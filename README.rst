@@ -422,6 +422,7 @@ completely wipe your database!
 First install the requirements file::
 
     pip install -r requirements.txt
+    pip install -r requirements-dev.txt
 
 To run all the tests::
 

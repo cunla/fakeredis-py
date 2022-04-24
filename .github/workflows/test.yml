@@ -1,16 +1,25 @@
-name: Unit tests 
-on: [push, pull_request]
+name: Unit tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
 concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
-        redis-py: ["4.1.2", "4.2.2"]
+        redis-py: ["4.1.2"]
         aioredis: ["2.0.1"]
         include:
           - python-version: "3.9"

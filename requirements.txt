@@ -16,7 +16,7 @@ deprecated==1.2.13
     # via redis
 flake8==4.0.1
     # via -r requirements.in
-hypothesis==6.43.1
+hypothesis==6.45.0
     # via -r requirements.in
 lupa==1.13
     # via -r requirements.in
@@ -38,9 +38,9 @@ sortedcontainers==2.4.0
     # via
     #   -r requirements.in
     #   hypothesis
-typing-extensions==4.1.1
+typing-extensions==4.2.0
     # via aioredis
 wrapt==1.14.0
     # via deprecated
-zipp==1.2.0
+zipp==3.8.0
     # via -r requirements.in
