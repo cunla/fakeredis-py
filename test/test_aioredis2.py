@@ -47,7 +47,7 @@ async def r(request):
     await ret.connection_pool.disconnect()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def conn(r):
     """A single connection, rather than a pool."""
     async with r.client() as conn:

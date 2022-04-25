@@ -15,7 +15,7 @@ pytestmark = [
 ]
 
 
-@pytest.fixture(
+@pytest_asyncio.fixture(
     params=[
         pytest.param('fake', marks=pytest.mark.fake),
         pytest.param('real', marks=pytest.mark.real)
