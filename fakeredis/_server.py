@@ -89,6 +89,7 @@ FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 # This needs to be grabbed early to avoid breaking tests that mock redis.Redis.
 _ORIG_SIG = inspect.signature(redis.Redis)
 
+
 class SimpleString:
     def __init__(self, value):
         assert isinstance(value, bytes)
