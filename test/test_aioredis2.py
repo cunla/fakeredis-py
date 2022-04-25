@@ -1,6 +1,7 @@
 import asyncio
 import re
 
+import pytest_asyncio
 from packaging.version import Version
 import pytest
 import aioredis
@@ -21,7 +22,7 @@ fake_only = pytest.mark.parametrize(
 )
 
 
-@pytest.fixture(
+@pytest_asyncio.fixture(
     params=[
         pytest.param('fake', marks=pytest.mark.fake),
         pytest.param('real', marks=pytest.mark.real)
