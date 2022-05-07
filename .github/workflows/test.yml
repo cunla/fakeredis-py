@@ -60,7 +60,7 @@ jobs:
             redis-py: "4.1.*"
             aioredis: "2.0.1"
           - python-version: "3.10"
-            redis-py: "4.2.2"
+            redis-py: "4.2.*"
             aioredis: "2.0.1"
             coverage: yes
     services:
