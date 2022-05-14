@@ -1,4 +1,4 @@
 from ._server import FakeServer, FakeRedis, FakeStrictRedis, FakeConnection   # noqa: F401
 
 
-__version__ = '1.7.4'
+__version__ = '1.7.5'
