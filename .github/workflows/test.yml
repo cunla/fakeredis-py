@@ -19,15 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
-        redis-py: ["4.1.2", "4.2.2"]
+        redis-py: ["4.1.2", "4.3.1"]
         aioredis: ["2.0.1"]
-        exclude:
-          - python-version: "3.7"
-            redis-py: "4.2.2"
-            aioredis: "2.0.1"
-          - python-version: "3.8"
-            redis-py: "4.2.2"
-            aioredis: "2.0.1"
         include:
           - python-version: "3.9"
             redis-py: "4.2.*"
@@ -60,7 +53,7 @@ jobs:
             redis-py: "4.1.*"
             aioredis: "2.0.1"
           - python-version: "3.10"
-            redis-py: "4.2.*"
+            redis-py: "4.3.1"
             aioredis: "2.0.1"
             coverage: yes
     services:
