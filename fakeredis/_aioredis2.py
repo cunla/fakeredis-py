@@ -1,7 +1,10 @@
 import asyncio
 from typing import Union
 
-import aioredis
+try:
+    import aioredis
+except ImportError:
+    from redis import asyncio as aioredis
 
 from . import _async, _server
 
