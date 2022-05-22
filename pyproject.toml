@@ -37,22 +37,14 @@ repository = "https://github.com/dsoftwareinc/fakeredis-py"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-aioredis = "2.0.1"
-async-timeout = "4.0.2"
-attrs = "21.4.0"
-deprecated = "1.2.13"
-hypothesis = "6.46.7"
-lupa = "1.13"
-packaging = "21.3"
+lupa = { version = "1.13", optional = true }
 redis = "4.3.1"
-six = "1.16.0"
-typing-extensions = "4.2.0"
-wrapt = "1.14.1"
-zipp = "3.8.0"
+aioredis = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 invoke = "1.7.1"
 wheel = "0.37.1"
+hypothesis = "6.46.7"
 tox = "3.25.0"
 twine = "4.0.0"
 coverage = "^6.3"
