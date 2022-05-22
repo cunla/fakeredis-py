@@ -51,10 +51,6 @@ jobs:
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
           poetry install
           poetry run pip install redis==${{ matrix.redis-py }} aioredis==${{ matrix.aioredis }}
-      - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
-        with:
-          redis-version: 6
       - name: Test with coverage
         if: ${{ matrix.coverage == 'yes' }}
         run: |          
