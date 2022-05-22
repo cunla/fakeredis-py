@@ -1779,6 +1779,16 @@ class FakeSocket:
     def llen(self, key):
         return len(key.value)
 
+    @command((Key(list, None), Key(list)))
+    def lmove(self, first_list, second_list, src, dst):
+        if src not in ['LEFT', 'RIGHT']:
+            raise SimpleError(SYNTAX_ERROR_MSG)
+        if dst not in ['LEFT', 'RIGHT']:
+            raise SimpleError(SYNTAX_ERROR_MSG)
+        el = self.rpop(src) if src == 'RIGHT' else self.lpop(src)
+        self.lpush(dst, el) if dst == 'LEFT' else self.rpush(dst, el)
+        return el
+
     def _list_pop(self, get_slice, key, *args):
         """Implements lpop and rpop.
 
