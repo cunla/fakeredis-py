@@ -59,7 +59,7 @@ def print_unimplemented_commands(implemented: dict, unimplemented: dict) -> None
             print()
 
     print("""-----
-Here is a list of all redis [implemented commands](#implemented-commands) and a 
+Here is a list of all redis [implemented commands](#implemented-commands) and a
 list of [unimplemented commands](#unimplemented-commands).
 """)
     print("""# Implemented Commands""")
