@@ -1,9 +1,8 @@
 -----
-Below you have a list of [implemented commands](#implemented-commands) and a list
-of [unimplemented commands](#unimplemented-commands).
+Here is a list of all redis [implemented commands](#implemented-commands) and a
+list of [unimplemented commands](#unimplemented-commands).
 
 # Implemented Commands
-    
 ### string
  * append
  * decr
@@ -167,7 +166,6 @@ of [unimplemented commands](#unimplemented-commands).
  * zscan
  * zscore
  * zunionstore
-
 
 # Unimplemented Commands
 All of the redis commands are implemented in fakeredis with these exceptions:

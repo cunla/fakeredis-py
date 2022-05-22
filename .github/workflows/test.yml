@@ -42,8 +42,6 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{github.event.pull_request.base.ref}}
       - uses: actions/setup-python@v2
         with:
           cache-dependency-path: poetry.lock
@@ -64,15 +62,6 @@ jobs:
         if: ${{ matrix.coverage != 'yes' }}
         run: |          
           poetry run pytest -v
-      - name: Update REDIS_COMMANDS.md
-        if: ${{ matrix.coverage == 'yes' }}
-        run: |          
-          poetry run python scripts/supported.py > REDIS_COMMANDS.md
-          git config --global user.name 'GitHub Bot' 
-          git config --global user.email 'bot@github.com'
-          git add REDIS_COMMANDS.md
-          git commit -m '[automated commit] Update REDIS_COMMANDS.md'
-          git push
       - name: Create coverage badge
         if: ${{ matrix.coverage == 'yes' && github.event_name == 'push' }}
         uses: schneegans/dynamic-badges-action@v1.1.0

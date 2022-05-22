@@ -3,6 +3,14 @@ fakeredis: A fake version of a redis-py
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)
 
+- [How to Use](#how-to-use)
+- [Support for aioredis](#support-for-aioredis)
+  * [aioredis 1.x](#aioredis-1x)
+  * [aioredis 2.x](#aioredis-2x)
+- [Other limitations](#other-limitations)
+- [Contributing](#contributing)
+- [Running the Tests](#running-the-tests)
+- [Alternatives](#alternatives)
 
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server.  This was created for a single
@@ -16,22 +24,12 @@ scripts (this includes features like ``redis.lock.Lock``, which are implemented
 in Lua). If you install fakeredis with ``pip install fakeredis[lua]`` it will
 be automatically installed.
 
-For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md) 
+For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md)
 
-Alternatives
-============
-
-Consider using [redislite](https://redislite.readthedocs.io/en/latest/) instead of fakeredis. It runs a real redis server and
-connects to it over a UNIX domain socket, so it will behave just like a real
-server. Another alternative is [birdisle](https://birdisle.readthedocs.io/en/latest/), which runs the redis code as a Python
-extension (no separate process), but which is currently unmaintained.
-
-
-How to Use
-==========
+# How to Use
 
 The intent is for fakeredis to act as though you're talking to a real
-redis server.  It does this by storing state internally.
+redis server. It does this by storing state internally.
 For example:
 
 ```
@@ -91,8 +89,7 @@ Fakeredis implements the same interface as `redis-py`, the
 popular redis client for python, and models the responses
 of redis 6.2 (although most new features are not supported).
 
-Support for aioredis
-====================
+# Support for aioredis
 
 You can also use fakeredis to mock out [aioredis](https://aioredis.readthedocs.io/).  This is a much newer
 addition to fakeredis (added in 1.4.0) with less testing, so your mileage may
@@ -141,8 +138,7 @@ The support is essentially the same as for redis-py e.g., you can pass a
 `server` keyword argument to the `FakeRedis` constructor.
 
 
-Other limitations
-=================
+# Other limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
 won't give identical results to real redis. The following are differences that
@@ -184,20 +180,17 @@ bugs in Github.
    **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
    can execute arbitrary code.
 
-Contributing
-============
-
-Contributions are welcome.  Please see the [contributing guide]() for
-more details. The maintainer generally has very little time to work on
-fakeredis, so the best way to get a bug fixed is to contribute a pull
-request.
+# Contributing
+Contributions are welcome.  Please see the 
+[contributing guide](.github/CONTRIBUTING.md) for more details. 
+The maintainer generally has very little time to work on fakeredis, so the 
+best way to get a bug fixed is to contribute a pull request.
 
 If you'd like to help out, you can start with any of the issues
 labeled with `Help wanted`.
 
 
-Running the Tests
-=================
+# Running the Tests
 
 To ensure parity with the real redis, there are a set of integration tests
 that mirror the unittests.  For every unittest that is written, the same
@@ -207,26 +200,30 @@ on localhost, port 6379 (the default settings). **WARNING**: the tests will
 completely wipe your database!
 
 
-First install the requirements file::
+First install poetry if you don't have it, and then install all the dependencies:
+```   
+pip install poetry
+poetry install
+``` 
 
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
-
-To run all the tests::
-
-    pytest
+To run all the tests:
+```
+poetry run pytest -v
+```
 
 If you only want to run tests against fake redis, without a real redis::
-
-    pytest -m fake
+```
+poetry run pytest -m fake
+```
 
 Because this module is attempting to provide the same interface as `redis-py`,
 the python bindings to redis, a reasonable way to test this to to take each
 unittest and run it against a real redis server.  fakeredis and the real redis
 server should give the same result. To run tests against a real redis instance
 instead::
-
-    pytest -m real
+```
+poetry run pytest -m real
+```
 
 If redis is not running and you try to run tests against a real redis server,
 these tests will have a result of 's' for skipped.
@@ -234,6 +231,13 @@ these tests will have a result of 's' for skipped.
 There are some tests that test redis blocking operations that are somewhat
 slow.  If you want to skip these tests during day to day development,
 they have all been tagged as 'slow' so you can skip them by running::
+```
+poetry run pytest -m "not slow"
+```
 
-    pytest -m "not slow"
+# Alternatives
 
+Consider using [redislite](https://redislite.readthedocs.io/en/latest/) instead of fakeredis. 
+It runs a real redis server and connects to it over a UNIX domain socket, so it will behave just like a real
+server. Another alternative is [birdisle](https://birdisle.readthedocs.io/en/latest/), which 
+runs the redis code as a Python extension (no separate process), but which is currently unmaintained.
