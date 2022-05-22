@@ -299,7 +299,7 @@ name = "lupa"
 version = "1.13"
 description = "Python wrapper around Lua and LuaJIT"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -723,7 +723,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "d22c3c72ab49fdec15113240c7083c3896f52214ad372d379c94eb91fc0a6624"
+content-hash = "75ee3381f95dc209f871ae2a0f38aeadc10edd824600316fd618aabedd5a5bb0"
 
 [metadata.files]
 aioredis = [

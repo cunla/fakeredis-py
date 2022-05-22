@@ -37,7 +37,7 @@ repository = "https://github.com/dsoftwareinc/fakeredis-py"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-lupa = { version = "1.13", optional = true }
+lupa = "1.13"
 redis = "4.3.1"
 aioredis = "^2.0.1"
 
