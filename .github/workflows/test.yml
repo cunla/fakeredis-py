@@ -41,45 +41,40 @@ jobs:
         ports:
           - 6379:6379
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-cache-v2-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-cache-v2-${{ matrix.python-version }}-
-            ${{ runner.os }}-pip-cache-v2-
+      - uses: actions/checkout@v3
       - uses: actions/setup-python@v2
         with:
+          cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
       - run: |
-          pip install -U pip setuptools wheel
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install redis==${{ matrix.redis-py }} aioredis==${{ matrix.aioredis }}
+          python -m pip --quiet install poetry
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+          poetry install
+          poetry run pip install redis==${{ matrix.redis-py }} aioredis==${{ matrix.aioredis }}
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
+        with:
+          redis-version: 6
       - name: Test with coverage
         if: ${{ matrix.coverage == 'yes' }}
-        run: |
-          pip install -e .
-          flake8
-          pytest -v --cov=fakeredis --cov-branch
-          coverage json
+        run: |          
+          poetry run flake8 fakeredis/
+          poetry run pytest -v --cov=fakeredis --cov-branch
+          poetry run coverage json
           echo "COVERAGE=$(jq '.totals.percent_covered_display|tonumber' coverage.json)" >> $GITHUB_ENV
       - name: Test without coverage
         if: ${{ matrix.coverage != 'yes' }}
-        run: |
-          pip install .
-          pytest -v
+        run: |          
+          poetry run pytest -v
       - name: Update REDIS_COMMANDS.md
         if: ${{ matrix.coverage == 'yes' }}
-        run: |
-          pip install fakeredis
-          python scripts/supported.py > REDIS_COMMANDS.md
+        run: |          
+          poetry run python scripts/supported.py > REDIS_COMMANDS.md
           git config --global user.name 'GitHub Bot' 
           git config --global user.email 'bot@github.com'
           git add REDIS_COMMANDS.md
           git commit -m '[automated commit] Update REDIS_COMMANDS.md'
-          git push
+          git push origin HEAD:${{github.event.pull_request.base.ref}}
       - name: Create coverage badge
         if: ${{ matrix.coverage == 'yes' && github.event_name == 'push' }}
         uses: schneegans/dynamic-badges-action@v1.1.0
