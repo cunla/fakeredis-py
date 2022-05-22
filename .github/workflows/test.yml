@@ -57,7 +57,6 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install redis==${{ matrix.redis-py }} aioredis==${{ matrix.aioredis }}
-
       - name: Test with coverage
         if: ${{ matrix.coverage == 'yes' }}
         run: |
@@ -71,6 +70,16 @@ jobs:
         run: |
           pip install .
           pytest -v
+      - name: Update REDIS_COMMANDS.md
+        if: ${{ matrix.coverage == 'yes' }}
+        run: |
+          pip install fakeredis
+          python scripts/supported.py > REDIS_COMMANDS.md
+          git config --global user.name 'GitHub Bot' 
+          git config --global user.email 'bot@github.com'
+          git add REDIS_COMMANDS.md
+          git commit -m '[automated commit] Update REDIS_COMMANDS.md'
+          git push
       - name: Create coverage badge
         if: ${{ matrix.coverage == 'yes' && github.event_name == 'push' }}
         uses: schneegans/dynamic-badges-action@v1.1.0
