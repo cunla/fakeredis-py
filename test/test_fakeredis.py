@@ -1,30 +1,33 @@
+import logging
+import math
+import os
+import threading
+from collections import OrderedDict
+from datetime import datetime, timedelta
+from queue import Queue
 from time import sleep, time
 
-import pytest_asyncio
-from redis.exceptions import ResponseError
-from collections import OrderedDict
-import os
-import math
-import threading
-import logging
-from queue import Queue
-
-import six
-from packaging.version import Version
 import pytest
+import pytest_asyncio
 import redis
 import redis.client
+import six
+from packaging.version import Version
+from redis.exceptions import ResponseError
 
 import fakeredis
-from datetime import datetime, timedelta
-
 
 REDIS_VERSION = Version(redis.__version__)
-REDIS3 = REDIS_VERSION >= Version('3')
 
-
-redis2_only = pytest.mark.skipif(REDIS3, reason="Test is only applicable to redis-py 2.x")
-redis3_only = pytest.mark.skipif(not REDIS3, reason="Test is only applicable to redis-py 3.x")
+redis_below_v3 = pytest.mark.skipif(REDIS_VERSION >= Version('3'), reason="Test is only applicable to redis-py 2.x")
+redis3_and_above = pytest.mark.skipif(
+    REDIS_VERSION < Version('3'),
+    reason="Test is only applicable to redis-py 3.x and above"
+)
+redis4_and_above = pytest.mark.skipif(
+    REDIS_VERSION < Version('4.1.2'),
+    reason="Test is only applicable to redis-py 4.1.2 and above"
+)
 fake_only = pytest.mark.parametrize(
     'create_redis',
     [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
@@ -54,14 +57,14 @@ def raw_command(r, *args):
 
 # Wrap some redis commands to abstract differences between redis-py 2 and 3.
 def zadd(r, key, d, *args, **kwargs):
-    if REDIS3:
+    if REDIS_VERSION >= Version('3'):
         return r.zadd(key, d, *args, **kwargs)
     else:
         return r.zadd(key, **d)
 
 
 def zincrby(r, key, amount, value):
-    if REDIS3:
+    if REDIS_VERSION >= Version('3'):
         return r.zincrby(key, amount, value)
     else:
         return r.zincrby(key, value, amount)
@@ -113,15 +116,15 @@ def create_redis(request):
 
 @pytest_asyncio.fixture
 def r(request, create_redis):
-    r = create_redis(db=0)
+    rconn = create_redis(db=0)
     connected = request.node.get_closest_marker('disconnected') is None
     if connected:
-        r.flushall()
-    yield r
+        rconn.flushall()
+    yield rconn
     if connected:
-        r.flushall()
+        rconn.flushall()
     if hasattr(r, 'close'):
-        r.close()     # Older versions of redis-py don't have this method
+        rconn.close()  # Older versions of redis-py don't have this method
 
 
 def test_large_command(r):
@@ -197,7 +200,7 @@ def test_set_then_get(r):
     assert r.get('foo') == b'bar'
 
 
-@redis2_only
+@redis_below_v3
 def test_set_None_value(r):
     assert r.set('foo', None) is True
     assert r.get('foo') == b'None'
@@ -645,7 +648,7 @@ def test_mget(r):
     assert r.mget('foo', 'bar') == [b'one', b'two']
 
 
-@redis2_only
+@redis_below_v3
 def test_mget_none(r):
     r.set('foo', 'one')
     r.set('bar', 'two')
@@ -653,7 +656,7 @@ def test_mget_none(r):
 
 
 def test_mget_with_no_keys(r):
-    if REDIS3:
+    if REDIS_VERSION >= Version('3'):
         assert r.mget([]) == []
     else:
         with pytest.raises(redis.ResponseError, match='wrong number of arguments'):
@@ -667,8 +670,8 @@ def test_mget_mixed_types(r):
     r.rpush('list', 'item1')
     r.set('string', 'value')
     assert (
-        r.mget(['hash', 'zset', 'set', 'string', 'absent'])
-        == [None, None, None, b'value', None]
+            r.mget(['hash', 'zset', 'set', 'string', 'absent'])
+            == [None, None, None, b'value', None]
     )
 
 
@@ -683,7 +686,7 @@ def test_mset(r):
     assert r.mget('foo', 'bar') == [b'one', b'two']
 
 
-@redis2_only
+@redis_below_v3
 def test_mset_accepts_kwargs(r):
     assert r.mset(foo='one', bar='two') is True
     assert r.mset(foo='one', baz='three') is True
@@ -734,7 +737,7 @@ def test_set_ex_overflow(r):
 
 def test_set_px_overflow(r):
     with pytest.raises(ResponseError):
-        r.set('foo', 'bar', px=2**63 - 2)  # Overflows after adding current time
+        r.set('foo', 'bar', px=2 ** 63 - 2)  # Overflows after adding current time
 
 
 def test_set_px(r):
@@ -918,21 +921,21 @@ def test_delete_nonexistent_key(r):
 
 # Tests for the list type.
 
-@redis2_only
+@redis_below_v3
 def test_rpush_then_lrange_with_nested_list1(r):
     assert r.rpush('foo', [12345, 6789]) == 1
     assert r.rpush('foo', [54321, 9876]) == 2
     assert r.lrange('foo', 0, -1) == [b'[12345, 6789]', b'[54321, 9876]']
 
 
-@redis2_only
+@redis_below_v3
 def test_rpush_then_lrange_with_nested_list2(r):
     assert r.rpush('foo', [12345, 'banana']) == 1
     assert r.rpush('foo', [54321, 'elephant']) == 2
     assert r.lrange('foo', 0, -1), [b'[12345, \'banana\']', b'[54321, \'elephant\']']
 
 
-@redis2_only
+@redis_below_v3
 def test_rpush_then_lrange_with_nested_list3(r):
     assert r.rpush('foo', [12345, []]) == 1
     assert r.rpush('foo', [54321, []]) == 2
@@ -1256,6 +1259,7 @@ def test_linsert_wrong_type(r):
     with pytest.raises(redis.ResponseError):
         r.linsert('foo', 'after', 'bar', 'element')
 
+
 def test_lmove(r):
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') is None
     assert r.lpop('bar') is None
@@ -1284,10 +1288,12 @@ def test_lmove(r):
     # and thus bar = ['two', b'one']
     assert r.lrem('bar', -1, 'two') == 1
 
+
 def test_lmove_to_nonexistent_destination(r):
     r.rpush('foo', 'one')
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') == b'one'
     assert r.rpop('bar') == b'one'
+
 
 def test_lmove_expiry(r):
     r.rpush('foo', 'one')
@@ -1295,6 +1301,7 @@ def test_lmove_expiry(r):
     r.expire('bar', 10)
     r.lmove('foo', 'bar', 'RIGHT', 'LEFT')
     assert r.ttl('bar') > 0
+
 
 def test_lmove_wrong_type(r):
     r.set('foo', 'bar')
@@ -1307,6 +1314,7 @@ def test_lmove_wrong_type(r):
         r.lmove('list', 'foo', 'RIGHT', 'LEFT')
     assert r.get('foo') == b'bar'
     assert r.lrange('list', 0, -1) == [b'element']
+
 
 def test_rpoplpush(r):
     assert r.rpoplpush('foo', 'bar') is None
@@ -1548,7 +1556,7 @@ def test_hgetall(r):
     }
 
 
-@redis2_only
+@redis_below_v3
 def test_hgetall_with_tuples(r):
     assert r.hset('foo', (1, 2), (1, 2, 3)) == 1
     assert r.hgetall('foo') == {b'(1, 2)': b'(1, 2, 3)'}
@@ -1740,13 +1748,13 @@ def test_hmset(r):
     assert r.hmset('foo', {'k2': 'v2', 'k3': 'v3'}) is True
 
 
-@redis2_only
+@redis_below_v3
 def test_hmset_convert_values(r):
     r.hmset('foo', {'k1': True, 'k2': 1})
     assert r.hgetall('foo') == {b'k1': b'True', b'k2': b'1'}
 
 
-@redis2_only
+@redis_below_v3
 def test_hmset_does_not_mutate_input_params(r):
     original = {'key': [123, 456]}
     r.hmset('foo', original)
@@ -2130,18 +2138,18 @@ def test_zadd(r):
     assert r.zrange('foo', 0, -1) == [b'zero', b'one', b'two', b'three', b'four']
     assert zadd(r, 'foo', {'zero': 7, 'one': 1, 'five': 5}) == 1
     assert (
-        r.zrange('foo', 0, -1)
-        == [b'one', b'two', b'three', b'four', b'five', b'zero']
+            r.zrange('foo', 0, -1)
+            == [b'one', b'two', b'three', b'four', b'five', b'zero']
     )
 
 
-@redis2_only
+@redis_below_v3
 def test_zadd_uses_str(r):
     r.zadd('foo', 12345, (1, 2, 3))
     assert r.zrange('foo', 0, 0) == [b'(1, 2, 3)']
 
 
-@redis2_only
+@redis_below_v3
 def test_zadd_errors(r):
     # The args are backwards, it should be 2, "two", so we
     # expect an exception to be raised.
@@ -2179,7 +2187,7 @@ def test_zadd_multiple(r):
     assert r.zrange('foo', 1, 1) == [b'two']
 
 
-@redis3_only
+@redis3_and_above
 @pytest.mark.parametrize(
     'input,return_value,state',
     [
@@ -2195,7 +2203,7 @@ def test_zadd_with_nx(r, input, return_value, state, ch):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@redis3_only
+@redis3_and_above
 @pytest.mark.parametrize(
     'input,return_value,state',
     [
@@ -2210,7 +2218,7 @@ def test_zadd_with_ch(r, input, return_value, state):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@redis3_only
+@redis3_and_above
 @pytest.mark.parametrize(
     'input,changed,state',
     [
@@ -2226,7 +2234,7 @@ def test_zadd_with_xx(r, input, changed, state, ch):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@redis3_only
+@redis3_and_above
 @pytest.mark.parametrize('ch', [False, True])
 def test_zadd_with_nx_and_xx(r, ch):
     zadd(r, 'foo', {'four': 4.0, 'three': 3.0})
@@ -2325,8 +2333,8 @@ def test_zrange_descending_with_scores(r):
     zadd(r, 'foo', {'two': 2})
     zadd(r, 'foo', {'three': 3})
     assert (
-        r.zrange('foo', 0, -1, desc=True, withscores=True)
-        == [(b'three', 3), (b'two', 2), (b'one', 1)]
+            r.zrange('foo', 0, -1, desc=True, withscores=True)
+            == [(b'three', 3), (b'two', 2), (b'one', 1)]
     )
 
 
@@ -2351,8 +2359,8 @@ def test_zrange_score_cast(r):
     expected_with_cast_round = [(b'one', 1.0), (b'two', 2.0)]
     assert r.zrange('foo', 0, 2, withscores=True) == expected_without_cast_round
     assert (
-        r.zrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
-        == expected_with_cast_round
+            r.zrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
+            == expected_with_cast_round
     )
 
 
@@ -2471,8 +2479,8 @@ def test_zrevrange_score_cast(r):
     expected_with_cast_round = [(b'two', 2.0), (b'one', 1.0)]
     assert r.zrevrange('foo', 0, 2, withscores=True) == expected_without_cast_round
     assert (
-        r.zrevrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
-        == expected_with_cast_round
+            r.zrevrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
+            == expected_with_cast_round
     )
 
 
@@ -2485,17 +2493,17 @@ def test_zrangebyscore(r):
     assert r.zrangebyscore('foo', 1, 3) == [b'two', b'two_a_also', b'two_b_also']
     assert r.zrangebyscore('foo', 2, 3) == [b'two', b'two_a_also', b'two_b_also']
     assert (
-        r.zrangebyscore('foo', 0, 4)
-        == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
+            r.zrangebyscore('foo', 0, 4)
+            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
     )
     assert r.zrangebyscore('foo', '-inf', 1) == [b'zero']
     assert (
-        r.zrangebyscore('foo', 2, '+inf')
-        == [b'two', b'two_a_also', b'two_b_also', b'four']
+            r.zrangebyscore('foo', 2, '+inf')
+            == [b'two', b'two_a_also', b'two_b_also', b'four']
     )
     assert (
-        r.zrangebyscore('foo', '-inf', '+inf')
-        == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
+            r.zrangebyscore('foo', '-inf', '+inf')
+            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
     )
 
 
@@ -2552,13 +2560,13 @@ def test_zrangebyscore_cast_scores(r):
     expected_without_cast_round = [(b'two', 2.0), (b'two_a_also', 2.2)]
     expected_with_cast_round = [(b'two', 2.0), (b'two_a_also', 2.0)]
     assert (
-        sorted(r.zrangebyscore('foo', 2, 3, withscores=True))
-        == sorted(expected_without_cast_round)
+            sorted(r.zrangebyscore('foo', 2, 3, withscores=True))
+            == sorted(expected_without_cast_round)
     )
     assert (
-        sorted(r.zrangebyscore('foo', 2, 3, withscores=True,
-                               score_cast_func=round_str))
-        == sorted(expected_with_cast_round)
+            sorted(r.zrangebyscore('foo', 2, 3, withscores=True,
+                                   score_cast_func=round_str))
+            == sorted(expected_with_cast_round)
     )
 
 
@@ -2611,13 +2619,13 @@ def test_zrevrangebyscore_cast_scores(r):
     expected_without_cast_round = [(b'two_a_also', 2.2), (b'two', 2.0)]
     expected_with_cast_round = [(b'two_a_also', 2.0), (b'two', 2.0)]
     assert (
-        r.zrevrangebyscore('foo', 3, 2, withscores=True)
-        == expected_without_cast_round
+            r.zrevrangebyscore('foo', 3, 2, withscores=True)
+            == expected_without_cast_round
     )
     assert (
-        r.zrevrangebyscore('foo', 3, 2, withscores=True,
-                           score_cast_func=round_str)
-        == expected_with_cast_round
+            r.zrevrangebyscore('foo', 3, 2, withscores=True,
+                               score_cast_func=round_str)
+            == expected_with_cast_round
     )
 
 
@@ -2630,8 +2638,8 @@ def test_zrangebylex(r):
     assert r.zrangebylex('foo', b'(t', b'[two_b') == [b'three_a', b'two_a', b'two_b']
     assert r.zrangebylex('foo', b'(t', b'(two_b') == [b'three_a', b'two_a']
     assert (
-        r.zrangebylex('foo', b'[three_a', b'[two_b')
-        == [b'three_a', b'two_a', b'two_b']
+            r.zrangebylex('foo', b'[three_a', b'[two_b')
+            == [b'three_a', b'two_a', b'two_b']
     )
     assert r.zrangebylex('foo', b'(three_a', b'[two_b') == [b'two_a', b'two_b']
     assert r.zrangebylex('foo', b'-', b'(two_b') == [b'one_a', b'three_a', b'two_a']
@@ -2686,8 +2694,8 @@ def test_zrangebylex_with_limit(r):
 
     # negative limit ignored
     assert (
-        r.zrangebylex('foo', b'-', b'+', 0, -2)
-        == [b'one_a', b'three_a', b'two_a', b'two_b']
+            r.zrangebylex('foo', b'-', b'+', 0, -2)
+            == [b'one_a', b'three_a', b'two_a', b'two_b']
     )
     assert r.zrangebylex('foo', b'-', b'+', 1, -2) == [b'three_a', b'two_a', b'two_b']
     assert r.zrangebylex('foo', b'+', b'-', 1, 1) == []
@@ -2725,13 +2733,13 @@ def test_zrevrangebylex(r):
     zadd(r, 'foo', {'three_a': 0})
     assert r.zrevrangebylex('foo', b'+', b'(t') == [b'two_b', b'two_a', b'three_a']
     assert (
-        r.zrevrangebylex('foo', b'[two_b', b'(t')
-        == [b'two_b', b'two_a', b'three_a']
+            r.zrevrangebylex('foo', b'[two_b', b'(t')
+            == [b'two_b', b'two_a', b'three_a']
     )
     assert r.zrevrangebylex('foo', b'(two_b', b'(t') == [b'two_a', b'three_a']
     assert (
-        r.zrevrangebylex('foo', b'[two_b', b'[three_a')
-        == [b'two_b', b'two_a', b'three_a']
+            r.zrevrangebylex('foo', b'[two_b', b'[three_a')
+            == [b'two_b', b'two_a', b'three_a']
     )
     assert r.zrevrangebylex('foo', b'[two_b', b'(three_a') == [b'two_b', b'two_a']
     assert r.zrevrangebylex('foo', b'(two_b', b'-') == [b'two_a', b'three_a', b'one_a']
@@ -2912,8 +2920,8 @@ def test_zunionstore(r):
     zadd(r, 'bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'])
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 2), (b'three', 3), (b'two', 4)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 2), (b'three', 3), (b'two', 4)]
     )
 
 
@@ -2925,8 +2933,8 @@ def test_zunionstore_sum(r):
     zadd(r, 'bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 2), (b'three', 3), (b'two', 4)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 2), (b'three', 3), (b'two', 4)]
     )
 
 
@@ -2938,8 +2946,8 @@ def test_zunionstore_max(r):
     zadd(r, 'bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='MAX')
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 1), (b'two', 2), (b'three', 3)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 1), (b'two', 2), (b'three', 3)]
     )
 
 
@@ -2951,8 +2959,8 @@ def test_zunionstore_min(r):
     zadd(r, 'bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='MIN')
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 0), (b'two', 0), (b'three', 3)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 0), (b'two', 0), (b'three', 3)]
     )
 
 
@@ -2964,8 +2972,8 @@ def test_zunionstore_weights(r):
     zadd(r, 'bar', {'four': 4})
     r.zunionstore('baz', {'foo': 1, 'bar': 2}, aggregate='SUM')
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 3), (b'two', 6), (b'four', 8)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 3), (b'two', 6), (b'four', 8)]
     )
 
 
@@ -3004,8 +3012,8 @@ def test_zunionstore_mixed_set_types(r):
     zadd(r, 'bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert (
-        r.zrange('baz', 0, -1, withscores=True)
-        == [(b'one', 2), (b'three', 3), (b'two', 3)]
+            r.zrange('baz', 0, -1, withscores=True)
+            == [(b'one', 2), (b'three', 3), (b'two', 3)]
     )
 
 
@@ -3210,13 +3218,13 @@ def test_sort_with_by_and_get_option(r):
     r['data_4'] = 'four'
 
     assert (
-        r.sort('foo', by='weight_*', get='data_*')
-        == [b'four', b'three', b'two', b'one']
+            r.sort('foo', by='weight_*', get='data_*')
+            == [b'four', b'three', b'two', b'one']
     )
     assert r.sort('foo', by='weight_*', get='#') == [b'4', b'3', b'2', b'1']
     assert (
-        r.sort('foo', by='weight_*', get=('data_*', '#'))
-        == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
+            r.sort('foo', by='weight_*', get=('data_*', '#'))
+            == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
     )
     assert r.sort('foo', by='weight_*', get='data_1') == [None, None, None, None]
 
@@ -3236,8 +3244,8 @@ def test_sort_with_hash(r):
 
     assert r.sort('foo', by='record_*->age') == [b'youngest', b'middle', b'eldest']
     assert (
-        r.sort('foo', by='record_*->age', get='record_*->name')
-        == [b'baby', b'teen', b'adult']
+            r.sort('foo', by='record_*->age', get='record_*->name')
+            == [b'baby', b'teen', b'adult']
     )
 
 
@@ -3405,7 +3413,7 @@ def test_watch_state_is_cleared_after_abort(r):
     raw_command(r, 'watch', 'foo')
     raw_command(r, 'multi')
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'mget')         # Wrong number of arguments
+        raw_command(r, 'mget')  # Wrong number of arguments
     with pytest.raises(redis.exceptions.ExecAbortError):
         raw_command(r, 'exec')
 
@@ -3549,18 +3557,18 @@ def test_ping(r):
     assert raw_command(r, 'ping', 'test') == b'test'
 
 
-@redis3_only
+@redis3_and_above
 def test_ping_pubsub(r):
     p = r.pubsub()
     p.subscribe('channel')
-    p.parse_response()    # Consume the subscribe reply
+    p.parse_response()  # Consume the subscribe reply
     p.ping()
     assert p.parse_response() == [b'pong', b'']
     p.ping('test')
     assert p.parse_response() == [b'pong', b'test']
 
 
-@redis3_only
+@redis3_and_above
 def test_swapdb(r, create_redis):
     r1 = create_redis(1)
     r.set('foo', 'abc')
@@ -3576,7 +3584,7 @@ def test_swapdb(r, create_redis):
     assert r1.get('baz') is None
 
 
-@redis3_only
+@redis3_and_above
 def test_swapdb_same_db(r):
     assert r.swapdb(1, 1)
 
@@ -3804,7 +3812,7 @@ def test_pubsub_listen_handler(r):
     sleep(1)
     for i in range(2):
         msg = pubsub.get_message()
-        assert msg is None   # get_message returns None when handler is used
+        assert msg is None  # get_message returns None when handler is used
     pubsub.close()
     calls.sort(key=lambda call: call['type'])
     assert calls == [
@@ -3931,7 +3939,7 @@ def test_pubsub_timeout(r, timeout_value):
 
     p = r.pubsub()
     p.subscribe('channel')
-    p.parse_response()   # Drains the subscribe message
+    p.parse_response()  # Drains the subscribe message
     publish_thread = threading.Thread(target=publish)
     publish_thread.start()
     message = p.get_message(timeout=timeout_value)
@@ -4441,7 +4449,7 @@ def test_eval_mget(r):
     assert val == [b'bar1', b'bar2']
 
 
-@redis2_only
+@redis_below_v3
 def test_eval_mget_none(r):
     r.set('foo1', None)
     r.set('foo2', None)
@@ -4476,7 +4484,7 @@ def test_eval_hgetall_iterate(r):
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
 
 
-@redis2_only
+@redis_below_v3
 def test_eval_list_with_nil(r):
     r.lpush('foo', 'bar')
     r.lpush('foo', None)
@@ -4571,7 +4579,7 @@ def test_eval_call_bool(r):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
 
 
-@redis2_only
+@redis_below_v3
 def test_eval_none_arg(r):
     val = r.eval('return ARGV[1] == "None"', 0, None)
     assert val
@@ -4848,7 +4856,7 @@ def test_lua_log_defined_vars(r, caplog):
     assert caplog.record_tuples == [(logger.name, logging.DEBUG, 'string')]
 
 
-@redis3_only
+@redis3_and_above
 def test_unlink(r):
     r.set('foo', 'bar')
     r.unlink('foo')
@@ -4883,7 +4891,7 @@ def test_socket_cleanup_watch(fake_server):
     r2.set('test', 'foo')
 
 
-@redis2_only
+@redis_below_v3
 @pytest.mark.parametrize(
     'create_redis',
     [
@@ -5177,7 +5185,7 @@ class TestInitArgs:
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
-    @redis3_only
+    @redis3_and_above
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
             'redis://localhost:6379/0',
