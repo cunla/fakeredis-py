@@ -1,2 +1,58 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-scm"]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+name = "fakeredis"
+packages = [
+    { include = "fakeredis" },
+]
+version = "1.7.6"
+description = "Fake implementation of redis API for testing purposes."
+readme = "README.md"
+keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
+authors = [
+    "James Saryerwinnie <js@jamesls.com>",
+    "Bruce Merry <bmerry@ska.ac.za>"
+]
+maintainers = [
+    "Daniel Moran <daniel.maruani@gmail.com>"
+]
+license = "BSD-3-Clause"
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Development Status :: 6 - Mature',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: BSD License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+homepage = "https://github.com/dsoftwareinc/fakeredis-py"
+repository = "https://github.com/dsoftwareinc/fakeredis-py"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+lupa = "1.13"
+redis = "4.3.1"
+aioredis = "^2.0.1"
+
+[tool.poetry.dev-dependencies]
+invoke = "1.7.1"
+wheel = "0.37.1"
+hypothesis = "6.46.7"
+tox = "3.25.0"
+twine = "4.0.0"
+coverage = "^6.3"
+pytest = "7.1.2"
+pytest-asyncio = "^0.18.3"
+pytest-cov = "3.0.0"
+pytest-mock = "^3.7.0"
+flake8 = "^4.0.1"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/dsoftwareinc/fakeredis-py/issues"
