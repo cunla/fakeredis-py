@@ -1260,6 +1260,7 @@ def test_linsert_wrong_type(r):
         r.linsert('foo', 'after', 'bar', 'element')
 
 
+@redis4_and_above
 def test_lmove(r):
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') is None
     assert r.lpop('bar') is None
@@ -1289,12 +1290,14 @@ def test_lmove(r):
     assert r.lrem('bar', -1, 'two') == 1
 
 
+@redis4_and_above
 def test_lmove_to_nonexistent_destination(r):
     r.rpush('foo', 'one')
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') == b'one'
     assert r.rpop('bar') == b'one'
 
 
+@redis4_and_above
 def test_lmove_expiry(r):
     r.rpush('foo', 'one')
     r.rpush('bar', 'two')
@@ -1303,6 +1306,7 @@ def test_lmove_expiry(r):
     assert r.ttl('bar') > 0
 
 
+@redis4_and_above
 def test_lmove_wrong_type(r):
     r.set('foo', 'bar')
     r.rpush('list', 'element')
