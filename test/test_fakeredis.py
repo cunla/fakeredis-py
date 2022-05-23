@@ -5336,6 +5336,7 @@ class TestFakeStrictRedisConnectionErrors:
         with pytest.raises(redis.ConnectionError):
             r.llen('name')
 
+    @redis4_and_above
     def test_lmove(self, r):
         with pytest.raises(redis.ConnectionError):
             r.lmove(1, 2, 'LEFT', 'RIGHT')
