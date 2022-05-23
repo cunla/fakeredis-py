@@ -95,6 +95,10 @@ class SimpleString:
         assert isinstance(value, bytes)
         self.value = value
 
+    @classmethod
+    def decode(cls, value):
+        return value
+
 
 class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""
@@ -1779,14 +1783,14 @@ class FakeSocket:
     def llen(self, key):
         return len(key.value)
 
-    @command((Key(list, None), Key(list)))
+    @command((Key(list, None), Key(list), SimpleString, SimpleString))
     def lmove(self, first_list, second_list, src, dst):
-        if src not in ['LEFT', 'RIGHT']:
+        if src not in [b'LEFT', b'RIGHT']:
             raise SimpleError(SYNTAX_ERROR_MSG)
-        if dst not in ['LEFT', 'RIGHT']:
+        if dst not in [b'LEFT', b'RIGHT']:
             raise SimpleError(SYNTAX_ERROR_MSG)
-        el = self.rpop(src) if src == 'RIGHT' else self.lpop(src)
-        self.lpush(dst, el) if dst == 'LEFT' else self.rpush(dst, el)
+        el = self.rpop(first_list) if src == b'RIGHT' else self.lpop(first_list)
+        self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
         return el
 
     def _list_pop(self, get_slice, key, *args):
