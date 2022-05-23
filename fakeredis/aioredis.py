@@ -1,4 +1,11 @@
-try:
+import redis
+import packaging.version
+
+# aioredis was integrated into redis in version 4.2.0 as redis.asyncio
+if packaging.version.Version(redis.__version__) >= packaging.version.Version("4.2.0"):
+    import redis.asyncio as aioredis
+    from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
+else:
     import aioredis
     import packaging.version
 
@@ -8,6 +15,3 @@ try:
         from ._aioredis1 import (  # noqa: F401
             FakeConnectionsPool, create_connection, create_redis, create_pool, create_redis_pool
         )
-except ImportError:
-    from redis import asyncio as aioredis
-    from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
