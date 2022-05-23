@@ -11,3 +11,5 @@ cover/
 venv/
 dist/
 build/*
+docker-compose.yml
+.DS_Store
