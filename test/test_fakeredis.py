@@ -27,6 +27,14 @@ redis4_and_above = pytest.mark.skipif(
     REDIS_VERSION < Version('4.1.2'),
     reason="Test is only applicable to redis-py 4.1.2 and above"
 )
+below_redis_4_2 = pytest.mark.skipif(
+    REDIS_VERSION >= Version("4.2.0"),
+    reason="Test is only applicable to redis-py below 4.2.0",
+)
+redis4_2_and_above = pytest.mark.skipif(
+    REDIS_VERSION < Version("4.2.0"),
+    reason="Test is only applicable to redis-py 4.2.0 and above",
+)
 fake_only = pytest.mark.parametrize(
     'create_redis',
     [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
@@ -38,6 +46,12 @@ lua_module = importlib.util.find_spec("lupa")
 lupa_required_for_test = pytest.mark.skipif(
     lua_module is None,
     reason="Test is only applicable if lupa is installed"
+)
+
+aioredis_module = importlib.util.find_spec("aioredis")
+without_aioredis = pytest.mark.skipif(
+    aioredis_module is not None,
+    reason="Test is only applicable if aioredis is not installed",
 )
 
 
@@ -5207,3 +5221,20 @@ class TestPubSubConnected:
         assert msg == check, 'Message was not published to channel'
         with pytest.raises(redis.ConnectionError):
             pubsub.get_message()
+
+
+@redis4_2_and_above
+@without_aioredis
+def test_fakeredis_aioredis_uses_redis_asyncio():
+    import fakeredis.aioredis as aioredis
+
+    assert not hasattr(aioredis, "__version__")
+
+
+@below_redis_4_2
+@without_aioredis
+def test_fakeredis_aioredis_raises_if_missing_aioredis():
+    with pytest.raises(
+        ImportError, match="aioredis is required for redis-py below 4.2.0"
+    ):
+        import fakeredis.aioredis as aioredis
