@@ -1,24 +1,28 @@
 import asyncio
 import re
 
-import pytest_asyncio
-from packaging.version import Version
 import pytest
-import aioredis
+import pytest_asyncio
+
+aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
 import fakeredis.aioredis
 
-
-aioredis2 = Version(aioredis.__version__) >= Version('2.0.0a1')
 pytestmark = [
     pytest.mark.asyncio,
-    pytest.mark.skipif(not aioredis2, reason="Test is only applicable to aioredis 2.x")
 ]
 fake_only = pytest.mark.parametrize(
     'r',
     [pytest.param('fake', marks=pytest.mark.fake)],
     indirect=True
+)
+import importlib
+
+lua_module = importlib.util.find_spec("lupa")
+lupa_required_for_test = pytest.mark.skipif(
+    lua_module is None,
+    reason="Test is only applicable if lupa is installed"
 )
 
 
@@ -84,7 +88,7 @@ async def test_transaction_fail(r):
     await r.set('foo', '1')
     async with r.pipeline(transaction=True) as tr:
         await tr.watch('foo')
-        await r.set('foo', '2')    # Different connection
+        await r.set('foo', '2')  # Different connection
         tr.multi()
         tr.get('foo')
         with pytest.raises(aioredis.exceptions.WatchError):
@@ -162,6 +166,7 @@ async def test_blocking_timeout(conn):
 @pytest.mark.slow
 async def test_blocking_unblock(r, conn, event_loop):
     """Blocking command that gets unblocked after some time."""
+
     async def unblock():
         await asyncio.sleep(0.1)
         await r.rpush('list', 'y')
@@ -189,6 +194,7 @@ async def test_no_script_error(r):
         await r.evalsha('0123456789abcdef0123456789abcdef', 0)
 
 
+@lupa_required_for_test
 async def test_failed_script_error(r):
     await r.set('foo', 'bar')
     with pytest.raises(aioredis.ResponseError, match='^Error running script'):
