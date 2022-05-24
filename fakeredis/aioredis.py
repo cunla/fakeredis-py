@@ -10,7 +10,6 @@ else:
         import aioredis
     except ImportError as e:
         raise ImportError("aioredis is required for redis-py below 4.2.0") from e
-    import packaging.version
 
     if packaging.version.Version(aioredis.__version__) >= packaging.version.Version('2.0.0a1'):
         from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
