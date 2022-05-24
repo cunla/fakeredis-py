@@ -3,7 +3,7 @@ import asyncio
 import pytest_asyncio
 from packaging.version import Version
 import pytest
-import aioredis
+aioredis = pytest.importorskip("aioredis")
 
 import fakeredis.aioredis
 

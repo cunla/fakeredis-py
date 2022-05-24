@@ -1433,10 +1433,6 @@ def test_blpop_transaction(r):
     assert result == [None]
 
 
-def test_eval_blpop(r):
-    r.rpush('foo', 'bar')
-    with pytest.raises(redis.ResponseError, match='not allowed from scripts'):
-        r.eval('return redis.pcall("BLPOP", KEYS[1], 1)', 1, 'foo')
 
 
 def test_brpop_test_multiple_lists(r):

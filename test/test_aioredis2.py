@@ -4,16 +4,13 @@ import re
 import pytest_asyncio
 from packaging.version import Version
 import pytest
-import aioredis
+aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
 import fakeredis.aioredis
 
-
-aioredis2 = Version(aioredis.__version__) >= Version('2.0.0a1')
 pytestmark = [
     pytest.mark.asyncio,
-    pytest.mark.skipif(not aioredis2, reason="Test is only applicable to aioredis 2.x")
 ]
 fake_only = pytest.mark.parametrize(
     'r',
@@ -84,7 +81,7 @@ async def test_transaction_fail(r):
     await r.set('foo', '1')
     async with r.pipeline(transaction=True) as tr:
         await tr.watch('foo')
-        await r.set('foo', '2')    # Different connection
+        await r.set('foo', '2')  # Different connection
         tr.multi()
         tr.get('foo')
         with pytest.raises(aioredis.exceptions.WatchError):
@@ -162,6 +159,7 @@ async def test_blocking_timeout(conn):
 @pytest.mark.slow
 async def test_blocking_unblock(r, conn, event_loop):
     """Blocking command that gets unblocked after some time."""
+
     async def unblock():
         await asyncio.sleep(0.1)
         await r.rpush('list', 'y')
