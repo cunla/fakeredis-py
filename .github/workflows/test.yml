@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   test:
+    name: 'Run tests <python:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},aioredis:${{ matrix.aioredis }},lupa:${{ matrix.lupa }},coverage:${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,8 +34,7 @@ jobs:
           - python-version: "3.10"
             redis-py: "4.1.2"
             aioredis: "2.0.1"
-          # should work fine with redis.asyncio
-          - python-version: "3.10"
+          - python-version: "3.10" # should work fine with redis.asyncio
             redis-py: "4.3.1"
             lupa: "1.13"
             coverage: yes

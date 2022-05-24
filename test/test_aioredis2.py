@@ -1,8 +1,9 @@
 import asyncio
 import re
 
-import pytest_asyncio
 import pytest
+import pytest_asyncio
+
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
@@ -15,6 +16,13 @@ fake_only = pytest.mark.parametrize(
     'r',
     [pytest.param('fake', marks=pytest.mark.fake)],
     indirect=True
+)
+import importlib
+
+lua_module = importlib.util.find_spec("lupa")
+lupa_required_for_test = pytest.mark.skipif(
+    lua_module is None,
+    reason="Test is only applicable if lupa is installed"
 )
 
 
@@ -186,6 +194,7 @@ async def test_no_script_error(r):
         await r.evalsha('0123456789abcdef0123456789abcdef', 0)
 
 
+@lupa_required_for_test
 async def test_failed_script_error(r):
     await r.set('foo', 'bar')
     with pytest.raises(aioredis.ResponseError, match='^Error running script'):
