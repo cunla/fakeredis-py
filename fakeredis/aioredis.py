@@ -6,7 +6,10 @@ if packaging.version.Version(redis.__version__) >= packaging.version.Version("4.
     import redis.asyncio as aioredis
     from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
 else:
-    import aioredis
+    try:
+        import aioredis
+    except ImportError as e:
+        raise ImportError("aioredis is required for redis-py below 4.2.0") from e
     import packaging.version
 
     if packaging.version.Version(aioredis.__version__) >= packaging.version.Version('2.0.0a1'):
