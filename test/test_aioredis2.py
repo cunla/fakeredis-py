@@ -3,11 +3,20 @@ import re
 
 import pytest
 import pytest_asyncio
+import redis
+from packaging.version import Version
 
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
 import fakeredis.aioredis
+
+REDIS_VERSION = Version(redis.__version__)
+
+redis_4_2_and_above = pytest.mark.skipif(
+    REDIS_VERSION < Version('4.2.0'),
+    reason="Test is only applicable to redis-py 4.2.0 and above"
+)
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -56,6 +65,12 @@ async def conn(r):
     """A single connection, rather than a pool."""
     async with r.client() as conn:
         yield conn
+
+
+@redis_4_2_and_above
+def test_redis_asyncio_is_used():
+    """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
+    assert not hasattr(fakeredis.aioredis, "__version__")
 
 
 async def test_ping(r):
