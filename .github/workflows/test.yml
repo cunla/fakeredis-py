@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   test:
-    name: 'Run tests <python:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},aioredis:${{ matrix.aioredis }},lupa:${{ matrix.lupa }},coverage:${{ matrix.coverage }}>'
+    name: 'Tests <py:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},aioredis:${{ matrix.aioredis }},lupa:${{ matrix.lupa }},cov:${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

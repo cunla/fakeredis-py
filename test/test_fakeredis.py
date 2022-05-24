@@ -32,6 +32,13 @@ fake_only = pytest.mark.parametrize(
     [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
     indirect=True
 )
+import importlib
+
+lua_module = importlib.util.find_spec("lupa")
+lupa_required_for_test = pytest.mark.skipif(
+    lua_module is None,
+    reason="Test is only applicable if lupa is installed"
+)
 
 
 def key_val_dict(size=100):
@@ -4351,7 +4358,6 @@ def test_set_existing_key_persists(r):
     assert r.ttl('foo') == -1
 
 
-
 def test_script_exists(r):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
@@ -4390,6 +4396,7 @@ def test_script_flush(r):
 
     # assert none of the scripts exists after flushing
     assert r.script_exists(*sha1_values) == [0] * len(sha1_values)
+
 
 @redis3_and_above
 def test_unlink(r):
@@ -4560,6 +4567,7 @@ class TestNonStrict:
             r.expire('some_unused_key', 1.2)
             r.pexpire('some_unused_key', 1000.2)
 
+    @lupa_required_for_test
     def test_lock(self, r):
         lock = r.lock('foo')
         assert lock.acquire()
@@ -4576,6 +4584,7 @@ class TestNonStrict:
             lock.release()
 
     @pytest.mark.slow
+    @lupa_required_for_test
     def test_unlock_expired(self, r):
         lock = r.lock('foo', timeout=0.01, sleep=0.001)
         assert lock.acquire()
@@ -4584,23 +4593,27 @@ class TestNonStrict:
             lock.release()
 
     @pytest.mark.slow
+    @lupa_required_for_test
     def test_lock_blocking_timeout(self, r):
         lock = r.lock('foo')
         assert lock.acquire()
         lock2 = r.lock('foo')
         assert not lock2.acquire(blocking_timeout=1)
 
+    @lupa_required_for_test
     def test_lock_nonblocking(self, r):
         lock = r.lock('foo')
         assert lock.acquire()
         lock2 = r.lock('foo')
         assert not lock2.acquire(blocking=False)
 
+    @lupa_required_for_test
     def test_lock_twice(self, r):
         lock = r.lock('foo')
         assert lock.acquire(blocking=False)
         assert not lock.acquire(blocking=False)
 
+    @lupa_required_for_test
     def test_acquiring_lock_different_lock_release(self, r):
         lock1 = r.lock('foo')
         lock2 = r.lock('foo')
@@ -4616,6 +4629,7 @@ class TestNonStrict:
         assert lock2.acquire(blocking=False)
         assert not lock1.acquire(blocking=False)
 
+    @lupa_required_for_test
     def test_lock_extend(self, r):
         lock = r.lock('foo', timeout=2)
         lock.acquire()
@@ -4623,6 +4637,7 @@ class TestNonStrict:
         ttl = int(r.pttl('foo'))
         assert 4000 < ttl <= 5000
 
+    @lupa_required_for_test
     def test_lock_extend_exceptions(self, r):
         lock1 = r.lock('foo', timeout=2)
         with pytest.raises(redis.exceptions.LockError):
@@ -4633,6 +4648,7 @@ class TestNonStrict:
             lock2.extend(3)  # Cannot extend a lock with no timeout
 
     @pytest.mark.slow
+    @lupa_required_for_test
     def test_lock_extend_expired(self, r):
         lock = r.lock('foo', timeout=0.01, sleep=0.001)
         lock.acquire()
