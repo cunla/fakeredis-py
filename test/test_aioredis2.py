@@ -2,7 +2,6 @@ import asyncio
 import re
 
 import pytest_asyncio
-from packaging.version import Version
 import pytest
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout

@@ -20,7 +20,6 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         redis-py: ["4.1.2", "4.3.1"]
-        aioredis: ["2.0.1"]
         include:
           - python-version: "3.10"
             redis-py: "2.10.6"
@@ -32,8 +31,12 @@ jobs:
             redis-py: "4.0.1"
             aioredis: "1.3.1"
           - python-version: "3.10"
-            redis-py: "4.2.2"
+            redis-py: "4.1.2"
             aioredis: "2.0.1"
+          # should work fine with redis.asyncio
+          - python-version: "3.10"
+            redis-py: "4.3.1"
+            lupa: "1.13"
             coverage: yes
     services:
       redis:
@@ -46,11 +49,20 @@ jobs:
         with:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
-      - run: |
+      - name: Install dependencies
+        run: |
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
           poetry install
-          poetry run pip install redis==${{ matrix.redis-py }} aioredis==${{ matrix.aioredis }}
+          poetry run pip install redis==${{ matrix.redis-py }}
+      - name: Install aioredis
+        if: ${{ matrix.aioredis }}
+        run: |
+          poetry run pip install aioredis==${{ matrix.aioredis }}
+      - name: Install lupa
+        if: ${{ matrix.lupa }}
+        run: |
+          poetry run pip install lupa==${{ matrix.lupa }}
       - name: Test with coverage
         if: ${{ matrix.coverage == 'yes' }}
         run: |          
