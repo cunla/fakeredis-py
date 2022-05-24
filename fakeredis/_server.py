@@ -1973,6 +1973,10 @@ class FakeSocket:
     def sismember(self, key, member):
         return int(member in key.value)
 
+    @command((Key(set), bytes), (bytes,))
+    def smismember(self, key, *members):
+        return [self.sismember(key, member) for member in members]
+
     @command((Key(set),))
     def smembers(self, key):
         return list(key.value)

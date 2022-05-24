@@ -1993,6 +1993,28 @@ def test_sismember_wrong_type(r):
         r.sismember('foo', 'member')
 
 
+def test_smismember(r):
+    assert r.smismember('foo', ['member1', 'member2', 'member3']) == [0, 0, 0]
+    r.sadd('foo', 'member1', 'member2', 'member3')
+    assert r.smismember('foo', ['member1', 'member2', 'member3'])  == [1, 1, 1]
+    assert r.smismember('foo', ['member1', 'member2', 'member3', 'member4']) == [1, 1, 1, 0]
+    assert r.smismember('foo', ['member4', 'member2', 'member3']) == [0, 1, 1]
+    # should also work if provided values as arguments
+    assert r.smismember('foo', 'member4', 'member2', 'member3') == [0, 1, 1]
+
+
+def test_smismember_wrong_type(r):
+    # verify that command fails when the key itself is not a SET
+    zadd(r, 'foo', {'member': 1})
+    with pytest.raises(redis.ResponseError):
+        r.smismember('foo', 'member')
+
+    # verify that command fails if the input parameter is of wrong type
+    r.sadd('foo2', 'member1', 'member2', 'member3')
+    with pytest.raises(redis.DataError, match='Invalid input of type'):
+        r.smismember('foo2', [["member1", "member2"]])
+
+
 def test_smembers(r):
     assert r.smembers('foo') == set()
 

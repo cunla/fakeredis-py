@@ -135,6 +135,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * sinter
  * sinterstore
  * sismember
+ * smismember
  * smembers
  * smove
  * spop
@@ -399,7 +400,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
 
 ### set
  * sintercard
- * smismember
 
 ### stream
  * xack
