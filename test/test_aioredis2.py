@@ -3,36 +3,12 @@ import re
 
 import pytest
 import pytest_asyncio
-import redis
-from packaging.version import Version
 
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
 import fakeredis.aioredis
-
-REDIS_VERSION = Version(redis.__version__)
-
-redis_4_2_and_above = pytest.mark.skipif(
-    REDIS_VERSION < Version('4.2.0'),
-    reason="Test is only applicable to redis-py 4.2.0 and above"
-)
-
-pytestmark = [
-    pytest.mark.asyncio,
-]
-fake_only = pytest.mark.parametrize(
-    'r',
-    [pytest.param('fake', marks=pytest.mark.fake)],
-    indirect=True
-)
-import importlib
-
-lua_module = importlib.util.find_spec("lupa")
-lupa_required_for_test = pytest.mark.skipif(
-    lua_module is None,
-    reason="Test is only applicable if lupa is installed"
-)
+import testtools
 
 
 @pytest_asyncio.fixture(
@@ -67,7 +43,7 @@ async def conn(r):
         yield conn
 
 
-@redis_4_2_and_above
+@testtools.redis_4_2_and_above
 def test_redis_asyncio_is_used():
     """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
     assert not hasattr(fakeredis.aioredis, "__version__")
@@ -209,14 +185,14 @@ async def test_no_script_error(r):
         await r.evalsha('0123456789abcdef0123456789abcdef', 0)
 
 
-@lupa_required_for_test
+@testtools.run_test_if_lupa
 async def test_failed_script_error(r):
     await r.set('foo', 'bar')
     with pytest.raises(aioredis.ResponseError, match='^Error running script'):
         await r.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
 
 
-@fake_only
+@testtools.fake_only
 def test_repr(r):
     assert re.fullmatch(
         r'ConnectionPool<FakeConnection<server=<fakeredis._server.FakeServer object at .*>,db=0>>',
@@ -224,14 +200,14 @@ def test_repr(r):
     )
 
 
-@fake_only
+@testtools.fake_only
 @pytest.mark.disconnected
 async def test_not_connected(r):
     with pytest.raises(aioredis.ConnectionError):
         await r.ping()
 
 
-@fake_only
+@testtools.fake_only
 async def test_disconnect_server(r, fake_server):
     await r.ping()
     fake_server.connected = False
@@ -253,7 +229,7 @@ async def test_from_url():
     await r1.connection_pool.disconnect()
 
 
-@fake_only
+@testtools.fake_only
 async def test_from_url_with_server(r, fake_server):
     r2 = fakeredis.aioredis.FakeRedis.from_url('redis://localhost', server=fake_server)
     await r.set('foo', 'bar')

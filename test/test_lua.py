@@ -2,6 +2,7 @@
 Tests will run only if module lupa is installed.
 """
 import logging
+
 import pytest
 import pytest_asyncio
 import redis
@@ -10,25 +11,9 @@ from packaging.version import Version
 from redis.exceptions import ResponseError
 
 import fakeredis
+import testtools
 
 lupa = pytest.importorskip("lupa")
-
-REDIS_VERSION = Version(redis.__version__)
-
-redis_below_v3 = pytest.mark.skipif(REDIS_VERSION >= Version('3'), reason="Test is only applicable to redis-py 2.x")
-redis3_and_above = pytest.mark.skipif(
-    REDIS_VERSION < Version('3'),
-    reason="Test is only applicable to redis-py 3.x and above"
-)
-redis4_and_above = pytest.mark.skipif(
-    REDIS_VERSION < Version('4.1.2'),
-    reason="Test is only applicable to redis-py 4.1.2 and above"
-)
-fake_only = pytest.mark.parametrize(
-    'create_redis',
-    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
-    indirect=True
-)
 
 
 @pytest_asyncio.fixture
@@ -178,7 +163,7 @@ def test_eval_mget(r):
     assert val == [b'bar1', b'bar2']
 
 
-@redis_below_v3
+@testtools.run_test_if_redis_ver('below', '3')
 def test_eval_mget_none(r):
     r.set('foo1', None)
     r.set('foo2', None)
@@ -213,7 +198,7 @@ def test_eval_hgetall_iterate(r):
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
 
 
-@redis_below_v3
+@testtools.run_test_if_redis_ver('below', '3')
 def test_eval_list_with_nil(r):
     r.lpush('foo', 'bar')
     r.lpush('foo', None)
@@ -308,7 +293,7 @@ def test_eval_call_bool(r):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
 
 
-@redis_below_v3
+@testtools.run_test_if_redis_ver('below', '3')
 def test_eval_none_arg(r):
     val = r.eval('return ARGV[1] == "None"', 0, None)
     assert val
@@ -486,7 +471,7 @@ def test_script(r):
     assert result == b'42'
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """
@@ -513,7 +498,7 @@ def test_lua_log_no_message(r):
         script()
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log_different_types(r, caplog):
     logger = fakeredis._server.LOGGER
     script = "redis.log(redis.LOG_DEBUG, 'string', 1, true, 3.14, 'string')"
@@ -532,7 +517,7 @@ def test_lua_log_wrong_level(r):
         script()
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log_defined_vars(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """

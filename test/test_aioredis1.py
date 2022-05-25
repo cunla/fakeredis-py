@@ -4,6 +4,8 @@ import pytest
 import pytest_asyncio
 from packaging.version import Version
 
+import testtools
+
 aioredis = pytest.importorskip("aioredis")
 
 import fakeredis.aioredis
@@ -13,13 +15,6 @@ pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.skipif(aioredis2, reason="Test is only applicable to aioredis 1.x")
 ]
-import importlib
-
-lua_module = importlib.util.find_spec("lupa")
-lupa_required_for_test = pytest.mark.skipif(
-    lua_module is None,
-    reason="Test is only applicable if lupa is installed"
-)
 
 
 @pytest_asyncio.fixture(
@@ -161,7 +156,7 @@ async def test_no_script_error(r):
         await r.evalsha('0123456789abcdef0123456789abcdef')
 
 
-@lupa_required_for_test
+@testtools.run_test_if_lupa
 async def test_failed_script_error(r):
     await r.set('foo', 'bar')
     with pytest.raises(aioredis.ReplyError, match='^ERR Error running script'):
