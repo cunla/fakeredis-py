@@ -1992,7 +1992,7 @@ def test_sismember_wrong_type(r):
     with pytest.raises(redis.ResponseError):
         r.sismember('foo', 'member')
 
-
+@redis4_and_above
 def test_smismember(r):
     assert r.smismember('foo', ['member1', 'member2', 'member3']) == [0, 0, 0]
     r.sadd('foo', 'member1', 'member2', 'member3')
@@ -2002,7 +2002,7 @@ def test_smismember(r):
     # should also work if provided values as arguments
     assert r.smismember('foo', 'member4', 'member2', 'member3') == [0, 1, 1]
 
-
+@redis4_and_above
 def test_smismember_wrong_type(r):
     # verify that command fails when the key itself is not a SET
     zadd(r, 'foo', {'member': 1})
