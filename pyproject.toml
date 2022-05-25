@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.7.6"
+version = "1.7.6.1"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
@@ -40,6 +40,8 @@ python = "^3.8"
 lupa = { version = "^1.13", optional = true }
 redis = "<=4.3.1"
 aioredis = { version = "^2.0.1", optional = true }
+six = "^1.16.0"
+sortedcontainers = "^2.4.0"
 
 [tool.poetry.extras]
 lua = ["lupa"]
