@@ -3,12 +3,25 @@ import re
 
 import pytest
 import pytest_asyncio
+import redis
+
+import testtools
 
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
 import fakeredis.aioredis
-import testtools
+from packaging.version import Version
+
+REDIS_VERSION = Version(redis.__version__)
+fake_only = pytest.mark.parametrize(
+    'req_aioredis2',
+    [pytest.param('fake', marks=pytest.mark.fake)],
+    indirect=True
+)
+pytestmark = [
+    pytest.mark.asyncio,
+]
 
 
 @pytest_asyncio.fixture(
@@ -17,7 +30,7 @@ import testtools
         pytest.param('real', marks=pytest.mark.real)
     ]
 )
-async def r(request):
+async def req_aioredis2(request):
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
         ret = fakeredis.aioredis.FakeRedis(server=fake_server)
@@ -37,26 +50,26 @@ async def r(request):
 
 
 @pytest_asyncio.fixture
-async def conn(r):
+async def conn(req_aioredis2):
     """A single connection, rather than a pool."""
-    async with r.client() as conn:
+    async with req_aioredis2.client() as conn:
         yield conn
 
 
-@testtools.redis_4_2_and_above
+@testtools.run_test_if_redis_ver('above', '4.2')
 def test_redis_asyncio_is_used():
     """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
     assert not hasattr(fakeredis.aioredis, "__version__")
 
 
-async def test_ping(r):
-    pong = await r.ping()
+async def test_ping(req_aioredis2):
+    pong = await req_aioredis2.ping()
     assert pong is True
 
 
-async def test_types(r):
-    await r.hset('hash', mapping={'key1': 'value1', 'key2': 'value2', 'key3': 123})
-    result = await r.hgetall('hash')
+async def test_types(req_aioredis2):
+    await req_aioredis2.hset('hash', mapping={'key1': 'value1', 'key2': 'value2', 'key3': 123})
+    result = await req_aioredis2.hgetall('hash')
     assert result == {
         b'key1': b'value1',
         b'key2': b'value2',
@@ -64,29 +77,29 @@ async def test_types(r):
     }
 
 
-async def test_transaction(r):
-    async with r.pipeline(transaction=True) as tr:
+async def test_transaction(req_aioredis2):
+    async with req_aioredis2.pipeline(transaction=True) as tr:
         tr.set('key1', 'value1')
         tr.set('key2', 'value2')
         ok1, ok2 = await tr.execute()
     assert ok1
     assert ok2
-    result = await r.get('key1')
+    result = await req_aioredis2.get('key1')
     assert result == b'value1'
 
 
-async def test_transaction_fail(r):
-    await r.set('foo', '1')
-    async with r.pipeline(transaction=True) as tr:
+async def test_transaction_fail(req_aioredis2):
+    await req_aioredis2.set('foo', '1')
+    async with req_aioredis2.pipeline(transaction=True) as tr:
         await tr.watch('foo')
-        await r.set('foo', '2')  # Different connection
+        await req_aioredis2.set('foo', '2')  # Different connection
         tr.multi()
         tr.get('foo')
         with pytest.raises(aioredis.exceptions.WatchError):
             await tr.execute()
 
 
-async def test_pubsub(r, event_loop):
+async def test_pubsub(req_aioredis2, event_loop):
     queue = asyncio.Queue()
 
     async def reader(ps):
@@ -97,11 +110,11 @@ async def test_pubsub(r, event_loop):
                     break
                 queue.put_nowait(message)
 
-    async with async_timeout.timeout(5), r.pubsub() as ps:
+    async with async_timeout.timeout(5), req_aioredis2.pubsub() as ps:
         await ps.subscribe('channel')
         task = event_loop.create_task(reader(ps))
-        await r.publish('channel', 'message1')
-        await r.publish('channel', 'message2')
+        await req_aioredis2.publish('channel', 'message1')
+        await req_aioredis2.publish('channel', 'message2')
         result1 = await queue.get()
         result2 = await queue.get()
         assert result1 == {
@@ -116,13 +129,13 @@ async def test_pubsub(r, event_loop):
             'type': 'message',
             'data': b'message2'
         }
-        await r.publish('channel', 'stop')
+        await req_aioredis2.publish('channel', 'stop')
         await task
 
 
 @pytest.mark.slow
-async def test_pubsub_timeout(r):
-    async with r.pubsub() as ps:
+async def test_pubsub_timeout(req_aioredis2):
+    async with req_aioredis2.pubsub() as ps:
         await ps.subscribe('channel')
         await ps.get_message(timeout=0.5)  # Subscription message
         message = await ps.get_message(timeout=0.5)
@@ -130,8 +143,8 @@ async def test_pubsub_timeout(r):
 
 
 @pytest.mark.slow
-async def test_pubsub_disconnect(r):
-    async with r.pubsub() as ps:
+async def test_pubsub_disconnect(req_aioredis2):
+    async with req_aioredis2.pubsub() as ps:
         await ps.subscribe('channel')
         await ps.connection.disconnect()
         message = await ps.get_message(timeout=0.5)  # Subscription message
@@ -140,9 +153,9 @@ async def test_pubsub_disconnect(r):
         assert message is None
 
 
-async def test_blocking_ready(r, conn):
+async def test_blocking_ready(req_aioredis2, conn):
     """Blocking command which does not need to block."""
-    await r.rpush('list', 'x')
+    await req_aioredis2.rpush('list', 'x')
     result = await conn.blpop('list', timeout=1)
     assert result == (b'list', b'x')
 
@@ -155,12 +168,12 @@ async def test_blocking_timeout(conn):
 
 
 @pytest.mark.slow
-async def test_blocking_unblock(r, conn, event_loop):
+async def test_blocking_unblock(req_aioredis2, conn, event_loop):
     """Blocking command that gets unblocked after some time."""
 
     async def unblock():
         await asyncio.sleep(0.1)
-        await r.rpush('list', 'y')
+        await req_aioredis2.rpush('list', 'y')
 
     task = event_loop.create_task(unblock())
     result = await conn.blpop('list', timeout=1)
@@ -168,51 +181,51 @@ async def test_blocking_unblock(r, conn, event_loop):
     await task
 
 
-async def test_wrongtype_error(r):
-    await r.set('foo', 'bar')
+async def test_wrongtype_error(req_aioredis2):
+    await req_aioredis2.set('foo', 'bar')
     with pytest.raises(aioredis.ResponseError, match='^WRONGTYPE'):
-        await r.rpush('foo', 'baz')
+        await req_aioredis2.rpush('foo', 'baz')
 
 
-async def test_syntax_error(r):
+async def test_syntax_error(req_aioredis2):
     with pytest.raises(aioredis.ResponseError,
                        match="^wrong number of arguments for 'get' command$"):
-        await r.execute_command('get')
+        await req_aioredis2.execute_command('get')
 
 
-async def test_no_script_error(r):
+async def test_no_script_error(req_aioredis2):
     with pytest.raises(aioredis.exceptions.NoScriptError):
-        await r.evalsha('0123456789abcdef0123456789abcdef', 0)
+        await req_aioredis2.evalsha('0123456789abcdef0123456789abcdef', 0)
 
 
 @testtools.run_test_if_lupa
-async def test_failed_script_error(r):
-    await r.set('foo', 'bar')
+async def test_failed_script_error(req_aioredis2):
+    await req_aioredis2.set('foo', 'bar')
     with pytest.raises(aioredis.ResponseError, match='^Error running script'):
-        await r.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
+        await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
 
 
-@testtools.fake_only
-def test_repr(r):
+@fake_only
+async def test_repr(req_aioredis2):
     assert re.fullmatch(
         r'ConnectionPool<FakeConnection<server=<fakeredis._server.FakeServer object at .*>,db=0>>',
-        repr(r.connection_pool)
+        repr(req_aioredis2.connection_pool)
     )
 
 
-@testtools.fake_only
+@fake_only
 @pytest.mark.disconnected
-async def test_not_connected(r):
+async def test_not_connected(req_aioredis2):
     with pytest.raises(aioredis.ConnectionError):
-        await r.ping()
+        await req_aioredis2.ping()
 
 
-@testtools.fake_only
-async def test_disconnect_server(r, fake_server):
-    await r.ping()
+@fake_only
+async def test_disconnect_server(req_aioredis2, fake_server):
+    await req_aioredis2.ping()
     fake_server.connected = False
     with pytest.raises(aioredis.ConnectionError):
-        await r.ping()
+        await req_aioredis2.ping()
     fake_server.connected = True
 
 
@@ -229,10 +242,10 @@ async def test_from_url():
     await r1.connection_pool.disconnect()
 
 
-@testtools.fake_only
-async def test_from_url_with_server(r, fake_server):
+@fake_only
+async def test_from_url_with_server(req_aioredis2, fake_server):
     r2 = fakeredis.aioredis.FakeRedis.from_url('redis://localhost', server=fake_server)
-    await r.set('foo', 'bar')
+    await req_aioredis2.set('foo', 'bar')
     assert await r2.get('foo') == b'bar'
     await r2.connection_pool.disconnect()
 

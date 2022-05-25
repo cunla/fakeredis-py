@@ -63,6 +63,10 @@ jobs:
         if: ${{ matrix.lupa }}
         run: |
           poetry run pip install lupa==${{ matrix.lupa }}
+      - name: Test import
+        run: |
+          pip install dist/fakeredis-*.tar.gz
+          python -c 'import fakeredis'
       - name: Test with coverage
         if: ${{ matrix.coverage == 'yes' }}
         run: |          

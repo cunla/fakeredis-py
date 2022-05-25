@@ -1,12 +1,19 @@
 import pytest
 import pytest_asyncio
 import redis
+from packaging.version import Version
 
+import fakeredis
 import testtools
 
 pytestmark = [
-    testtools.run_test_if_redis_ver('above', '4')
+    testtools.run_test_if_redis_ver('above', '4'),
 ]
+fake_only = pytest.mark.parametrize(
+    'create_redis',
+    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
+    indirect=True
+)
 
 
 @pytest_asyncio.fixture(
@@ -63,14 +70,13 @@ def test_fakeredis_aioredis_uses_redis_asyncio():
     assert not hasattr(aioredis, "__version__")
 
 
-@testtools.run_test_if_redis_ver('above', '4')
+@testtools.run_test_if_redis_ver('above', '4.1.2')
 def test_lmove_to_nonexistent_destination(r):
     r.rpush('foo', 'one')
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') == b'one'
     assert r.rpop('bar') == b'one'
 
 
-@testtools.run_test_if_redis_ver('above', '4')
 def test_lmove_expiry(r):
     r.rpush('foo', 'one')
     r.rpush('bar', 'two')
@@ -79,7 +85,6 @@ def test_lmove_expiry(r):
     assert r.ttl('bar') > 0
 
 
-@testtools.run_test_if_redis_ver('above', '4')
 def test_lmove_wrong_type(r):
     r.set('foo', 'bar')
     r.rpush('list', 'element')
@@ -93,31 +98,7 @@ def test_lmove_wrong_type(r):
     assert r.lrange('list', 0, -1) == [b'element']
 
 
-@testtools.run_test_if_redis_ver('above', '4')
-def test_smismember(r):
-    assert r.smismember('foo', ['member1', 'member2', 'member3']) == [0, 0, 0]
-    r.sadd('foo', 'member1', 'member2', 'member3')
-    assert r.smismember('foo', ['member1', 'member2', 'member3']) == [1, 1, 1]
-    assert r.smismember('foo', ['member1', 'member2', 'member3', 'member4']) == [1, 1, 1, 0]
-    assert r.smismember('foo', ['member4', 'member2', 'member3']) == [0, 1, 1]
-    # should also work if provided values as arguments
-    assert r.smismember('foo', 'member4', 'member2', 'member3') == [0, 1, 1]
-
-
-@testtools.run_test_if_redis_ver('above', '4')
-def test_smismember_wrong_type(r):
-    # verify that command fails when the key itself is not a SET
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.smismember('foo', 'member')
-
-    # verify that command fails if the input parameter is of wrong type
-    r.sadd('foo2', 'member1', 'member2', 'member3')
-    with pytest.raises(redis.DataError, match='Invalid input of type'):
-        r.smismember('foo2', [["member1", "member2"]])
-
-
-@testtools.run_test_if_redis_ver('above', '4')
+@testtools.run_test_if_redis_ver('above', '4.1.2')
 def test_lmove(r):
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') is None
     assert r.lpop('bar') is None
@@ -147,10 +128,32 @@ def test_lmove(r):
     assert r.lrem('bar', -1, 'two') == 1
 
 
+def test_smismember(r):
+    assert r.smismember('foo', ['member1', 'member2', 'member3']) == [0, 0, 0]
+    r.sadd('foo', 'member1', 'member2', 'member3')
+    assert r.smismember('foo', ['member1', 'member2', 'member3']) == [1, 1, 1]
+    assert r.smismember('foo', ['member1', 'member2', 'member3', 'member4']) == [1, 1, 1, 0]
+    assert r.smismember('foo', ['member4', 'member2', 'member3']) == [0, 1, 1]
+    # should also work if provided values as arguments
+    assert r.smismember('foo', 'member4', 'member2', 'member3') == [0, 1, 1]
+
+
+def test_smismember_wrong_type(r):
+    # verify that command fails when the key itself is not a SET
+    testtools.zadd(r, 'foo', {'member': 1})
+    with pytest.raises(redis.ResponseError):
+        r.smismember('foo', 'member')
+
+    # verify that command fails if the input parameter is of wrong type
+    r.sadd('foo2', 'member1', 'member2', 'member3')
+    with pytest.raises(redis.DataError, match='Invalid input of type'):
+        r.smismember('foo2', [["member1", "member2"]])
+
+
 @pytest.mark.disconnected
-@testtools.fake_only
+@fake_only
 class TestFakeStrictRedisConnectionErrors:
-    @testtools.run_test_if_redis_ver('above', '4')
+
     def test_lmove(self, r):
         with pytest.raises(redis.ConnectionError):
             r.lmove(1, 2, 'LEFT', 'RIGHT')
