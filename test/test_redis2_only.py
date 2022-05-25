@@ -12,19 +12,6 @@ pytestmark = [
 ]
 
 
-@pytest_asyncio.fixture
-def r(request, create_redis):
-    rconn = create_redis(db=0)
-    connected = request.node.get_closest_marker('disconnected') is None
-    if connected:
-        rconn.flushall()
-    yield rconn
-    if connected:
-        rconn.flushall()
-    if hasattr(r, 'close'):
-        rconn.close()  # Older versions of redis-py don't have this method
-
-
 def test_zadd_uses_str(r):
     r.testtools.zadd('foo', 12345, (1, 2, 3))
     assert r.zrange('foo', 0, 0) == [b'(1, 2, 3)']
