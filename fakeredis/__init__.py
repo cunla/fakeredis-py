@@ -1,6 +1,7 @@
-from ._server import FakeServer, FakeRedis, FakeStrictRedis, FakeConnection   # noqa: F401
+from ._server import FakeServer, FakeRedis, FakeStrictRedis, FakeConnection  # noqa: F401
 
-
-import importlib.metadata
-
-__version__ = importlib.metadata.version('fakeredis')
+try:
+    from importlib import metadata
+except ImportError:  # for Python<3.8
+    import importlib_metadata as metadata
+__version__ = metadata.version("fakeredis")

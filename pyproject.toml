@@ -27,6 +27,7 @@ classifiers = [
     'License :: OSI Approved :: BSD License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
+    'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
@@ -36,7 +37,7 @@ homepage = "https://github.com/dsoftwareinc/fakeredis-py"
 repository = "https://github.com/dsoftwareinc/fakeredis-py"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 lupa = { version = "^1.13", optional = true }
 redis = "<=4.3.1"
 aioredis = { version = "^2.0.1", optional = true }
