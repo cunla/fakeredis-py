@@ -1,14 +1,7 @@
 import pytest
-import redis
-from packaging.version import Version
 
 import fakeredis
-
-REDIS_VERSION = Version(redis.__version__)
-redis3_and_above = pytest.mark.skipif(
-    REDIS_VERSION < Version('3'),
-    reason="Test is only applicable to redis-py 3.x and above"
-)
+import testtools
 
 
 @pytest.mark.fake
@@ -77,7 +70,7 @@ class TestInitArgs:
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
-    @redis3_and_above
+    @testtools.run_test_if_redis_ver('above', '3')
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
             'redis://localhost:6379/0',

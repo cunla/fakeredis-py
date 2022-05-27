@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.7.6.1"
+version = "1.8"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
@@ -27,6 +27,7 @@ classifiers = [
     'License :: OSI Approved :: BSD License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
+    'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
@@ -36,12 +37,12 @@ homepage = "https://github.com/dsoftwareinc/fakeredis-py"
 repository = "https://github.com/dsoftwareinc/fakeredis-py"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-lupa = { version = "^1.13", optional = true }
+python = "^3.7"
 redis = "<=4.3.1"
-aioredis = { version = "^2.0.1", optional = true }
 six = "^1.16.0"
 sortedcontainers = "^2.4.0"
+lupa = { version = "^1.13", optional = true }
+aioredis = { version = "^2.0.1", optional = true }
 
 [tool.poetry.extras]
 lua = ["lupa"]
@@ -62,3 +63,14 @@ flake8 = "^4.0.1"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/dsoftwareinc/fakeredis-py/issues"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "fake: run tests only with fake redis",
+    "real: run tests with a locally running real Redis server",
+    "disconnected",
+    "min_server",
+    "decode_responses",
+]
+asyncio_mode="strict"
