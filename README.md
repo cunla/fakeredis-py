@@ -3,14 +3,16 @@ fakeredis: A fake version of a redis-py
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)
 
+- [fakeredis: A fake version of a redis-py](#fakeredis--a-fake-version-of-a-redis-py)
 - [How to Use](#how-to-use)
-- [Support for aioredis](#support-for-aioredis)
-  * [aioredis 1.x](#aioredis-1x)
-  * [aioredis 2.x](#aioredis-2x)
 - [Other limitations](#other-limitations)
-- [Contributing](#contributing)
+- [Support for redis-py <4.2 with aioredis](#support-for-redis-py--42-with-aioredis)
+    + [aioredis 1.x](#aioredis-1x)
+    + [aioredis 2.x](#aioredis-2x)
 - [Running the Tests](#running-the-tests)
+- [Contributing](#contributing)
 - [Alternatives](#alternatives)
+
 
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server.  This was created for a single
@@ -89,55 +91,6 @@ Fakeredis implements the same interface as `redis-py`, the
 popular redis client for python, and models the responses
 of redis 6.2 (although most new features are not supported).
 
-# Support for aioredis
-
-You can also use fakeredis to mock out [aioredis](https://aioredis.readthedocs.io/).  This is a much newer
-addition to fakeredis (added in 1.4.0) with less testing, so your mileage may
-vary. Both version 1 and version 2 (which have very different APIs) are
-supported. The API provided by fakeredis depends on the version of aioredis that is
-installed.
-
-aioredis 1.x
-------------
-
-Example:
-
-```
->>> import fakeredis.aioredis
->>> r = await fakeredis.aioredis.create_redis_pool()
->>> await r.set('foo', 'bar')
-True
->>> await r.get('foo')
-b'bar'
-```
-
-You can pass a `FakeServer` as the first argument to `create_redis` or
-`create_redis_pool` to share state (you can even share state with a
-`fakeredis.FakeRedis`). It should even be safe to do this state sharing between
-threads (as long as each connection/pool is only used in one thread).
-
-It is highly recommended that you only use the aioredis support with
-Python 3.5.3 or higher. Earlier versions will not work correctly with
-non-default event loops.
-
-aioredis 2.x
-------------
-
-Example:
-
-```
->>> import fakeredis.aioredis
->>> r = fakeredis.aioredis.FakeRedis()
->>> await r.set('foo', 'bar')
-True
->>> await r.get('foo')
-b'bar'
-```
-
-The support is essentially the same as for redis-py e.g., you can pass a
-`server` keyword argument to the `FakeRedis` constructor.
-
-
 # Other limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
@@ -180,14 +133,53 @@ bugs in Github.
    **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
    can execute arbitrary code.
 
-# Contributing
-Contributions are welcome.  Please see the 
-[contributing guide](.github/CONTRIBUTING.md) for more details. 
-The maintainer generally has very little time to work on fakeredis, so the 
-best way to get a bug fixed is to contribute a pull request.
+# Support for redis-py <4.2 with aioredis
 
-If you'd like to help out, you can start with any of the issues
-labeled with `Help wanted`.
+Aioredis is now in redis-py 4.2.0. But support is maintained until fakeredis 2 for older version of redis-py.
+
+You can also use fakeredis to mock out [aioredis](https://aioredis.readthedocs.io/).  This is a much newer
+addition to fakeredis (added in 1.4.0) with less testing, so your mileage may
+vary. Both version 1 and version 2 (which have very different APIs) are
+supported. The API provided by fakeredis depends on the version of aioredis that is
+installed.
+
+### aioredis 1.x
+
+Example:
+
+```
+>>> import fakeredis.aioredis
+>>> r = await fakeredis.aioredis.create_redis_pool()
+>>> await r.set('foo', 'bar')
+True
+>>> await r.get('foo')
+b'bar'
+```
+
+You can pass a `FakeServer` as the first argument to `create_redis` or
+`create_redis_pool` to share state (you can even share state with a
+`fakeredis.FakeRedis`). It should even be safe to do this state sharing between
+threads (as long as each connection/pool is only used in one thread).
+
+It is highly recommended that you only use the aioredis support with
+Python 3.5.3 or higher. Earlier versions will not work correctly with
+non-default event loops.
+
+### aioredis 2.x
+
+Example:
+
+```
+>>> import fakeredis.aioredis
+>>> r = fakeredis.aioredis.FakeRedis()
+>>> await r.set('foo', 'bar')
+True
+>>> await r.get('foo')
+b'bar'
+```
+
+The support is essentially the same as for redis-py e.g., you can pass a
+`server` keyword argument to the `FakeRedis` constructor.
 
 
 # Running the Tests
@@ -234,6 +226,15 @@ they have all been tagged as 'slow' so you can skip them by running::
 ```
 poetry run pytest -m "not slow"
 ```
+
+# Contributing
+Contributions are welcome.  Please see the 
+[contributing guide](.github/CONTRIBUTING.md) for more details. 
+The maintainer generally has very little time to work on fakeredis, so the 
+best way to get a bug fixed is to contribute a pull request.
+
+If you'd like to help out, you can start with any of the issues
+labeled with `Help wanted`.
 
 # Alternatives
 
