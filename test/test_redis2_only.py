@@ -13,7 +13,7 @@ pytestmark = [
 
 
 def test_zadd_uses_str(r):
-    r.testtools.zadd('foo', 12345, (1, 2, 3))
+    r.zadd('foo', 12345, (1, 2, 3))
     assert r.zrange('foo', 0, 0) == [b'(1, 2, 3)']
 
 
@@ -21,12 +21,12 @@ def test_zadd_errors(r):
     # The args are backwards, it should be 2, "two", so we
     # expect an exception to be raised.
     with pytest.raises(redis.ResponseError):
-        r.testtools.zadd('foo', 'two', 2)
+        r.zadd('foo', 'two', 2)
     with pytest.raises(redis.ResponseError):
-        r.testtools.zadd('foo', two='two')
+        r.zadd('foo', two='two')
     # It's expected an equal number of values and scores
     with pytest.raises(redis.RedisError):
-        r.testtools.zadd('foo', 'two')
+        r.zadd('foo', 'two')
 
 
 def test_mset_accepts_kwargs(r):
@@ -143,32 +143,32 @@ class TestNonStrict:
         assert r.lrem('foo', 'one') == 0
 
     def test_zadd_deprecated(self, r):
-        result = r.testtools.zadd('foo', 'one', 1)
+        result = r.zadd('foo', 'one', 1)
         assert result == 1
         assert r.zrange('foo', 0, -1) == [b'one']
 
     def test_zadd_missing_required_params(self, r):
         with pytest.raises(redis.RedisError):
             # Missing the 'score' param.
-            r.testtools.zadd('foo', 'one')
+            r.zadd('foo', 'one')
         with pytest.raises(redis.RedisError):
             # Missing the 'value' param.
-            r.testtools.zadd('foo', None, score=1)
+            r.zadd('foo', None, score=1)
         with pytest.raises(redis.RedisError):
-            r.testtools.zadd('foo')
+            r.zadd('foo')
 
     def test_zadd_with_single_keypair(self, r):
-        result = r.testtools.zadd('foo', bar=1)
+        result = r.zadd('foo', bar=1)
         assert result == 1
         assert r.zrange('foo', 0, -1) == [b'bar']
 
     def test_zadd_with_multiple_keypairs(self, r):
-        result = r.testtools.zadd('foo', bar=1, baz=9)
+        result = r.zadd('foo', bar=1, baz=9)
         assert result == 2
         assert r.zrange('foo', 0, -1) == [b'bar', b'baz']
 
     def test_zadd_with_name_is_non_string(self, r):
-        result = r.testtools.zadd('foo', 1, 9)
+        result = r.zadd('foo', 1, 9)
         assert result == 1
         assert r.zrange('foo', 0, -1) == [b'1']
 
