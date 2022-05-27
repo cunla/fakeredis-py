@@ -4673,4 +4673,5 @@ def test_fakeredis_aioredis_raises_if_missing_aioredis():
     with pytest.raises(
             ImportError, match="aioredis is required for redis-py below 4.2.0"
     ):
-        pass
+        import fakeredis.aioredis
+        fakeredis.aioredis
