@@ -8,7 +8,8 @@ from collections import defaultdict
 
 import redis
 
-from fakeredis._helpers import Database, FakeSelector, CONNECTION_ERROR_MSG, FakeSocket
+from fakeredis._helpers import (
+    Database, FakeSelector, CONNECTION_ERROR_MSG, FakeSocket)  # noqa: F401
 
 
 class FakeServer:
