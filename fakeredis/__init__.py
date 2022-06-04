@@ -1,4 +1,4 @@
-from ._server import FakeServer, FakeRedis, FakeStrictRedis, FakeConnection  # noqa: F401
+from ._server import FakeServer, FakeRedis, FakeStrictRedis, FakeConnection, FakeRedisConnSingleton
 
 try:
     from importlib import metadata

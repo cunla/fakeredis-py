@@ -3,6 +3,7 @@ import hashlib
 import inspect
 import itertools
 import logging
+import math
 import pickle
 import queue
 import random
@@ -14,7 +15,6 @@ import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
 
-import math
 import redis
 import six
 
@@ -85,6 +85,7 @@ RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
 RESTORE_INVALID_TTL_MSG = "ERR Invalid TTL value, must be >= 0"
 
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
+
 
 # This needs to be grabbed early to avoid breaking tests that mock redis.Redis.
 # _ORIG_SIG = inspect.signature(redis.Redis)
@@ -597,7 +598,7 @@ class Signature:
         for i, (arg, type_) in enumerate(zip(args, types)):
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
-                    return (type_.missing_return,)
+                    return type_.missing_return,
             elif type_ != bytes:
                 args[i] = type_.decode(args[i], )
 
@@ -769,14 +770,14 @@ class FakeSocket:
                 args, command_items = ret
                 if from_script and FLAG_NO_SCRIPT in sig.flags:
                     raise SimpleError(COMMAND_IN_SCRIPT_MSG)
-                if self._pubsub and sig.name not in [
+                if self._pubsub and sig.name not in {
                     'ping',
                     'subscribe',
                     'unsubscribe',
                     'psubscribe',
                     'punsubscribe',
                     'quit'
-                ]:
+                }:
                     raise SimpleError(BAD_COMMAND_IN_PUBSUB_MSG)
                 result = func(*args)
                 assert valid_response_type(result)
@@ -900,7 +901,7 @@ class FakeSocket:
     @staticmethod
     def _fix_range_string(start, end, length):
         # Negative number handling is based on the redis source code
-        if start < 0 and end < 0 and start > end:
+        if 0 > start > end and end < 0:
             return -1, -1
         if start < 0:
             start = max(0, start + length)
@@ -934,7 +935,7 @@ class FakeSocket:
         returned exactly once.
         """
         pattern = None
-        type = None
+        _type = None
         count = 10
         if len(args) % 2 != 0:
             raise SimpleError(SYNTAX_ERROR_MSG)
@@ -946,7 +947,7 @@ class FakeSocket:
                 if count <= 0:
                     raise SimpleError(SYNTAX_ERROR_MSG)
             elif casematch(args[i], b'type'):
-                type = args[i + 1]
+                _type = args[i + 1]
             else:
                 raise SimpleError(SYNTAX_ERROR_MSG)
 
@@ -962,11 +963,11 @@ class FakeSocket:
             return regex.match(key) if pattern is not None else True
 
         def match_type(key):
-            if type is not None:
-                return casematch(self.type(self._db[key]).value, type)
+            if _type is not None:
+                return casematch(self.type(self._db[key]).value, _type)
             return True
 
-        if pattern is not None or type is not None:
+        if pattern is not None or _type is not None:
             for val in itertools.islice(data, cursor, result_cursor):
                 compare_val = val[0] if isinstance(val, tuple) else val
                 if match_key(compare_val) and match_type(compare_val):
@@ -2069,7 +2070,7 @@ class FakeSocket:
 
     @command((Key(set), Key(set)), (Key(set),))
     def pfmerge(self, dest, *sources):
-        "Merge N different HyperLogLogs into a single one."
+        """Merge N different HyperLogLogs into a single one."""
         self.sunionstore(dest, *sources)
         return OK
 
@@ -2818,7 +2819,7 @@ class FakeRedisMixin:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         default_args = inspect.signature(redis.Redis.__init__).parameters.values()
-        kwds = {p.name: p.default for p in default_args if p.default != inspect._empty}
+        kwds = {p.name: p.default for p in default_args if p.default != inspect.Parameter.empty}
         kwds.update(kwargs)
         # bound = _ORIG_SIG.bind(*args, **params)
         # kwds = bound.arguments['kwds']
@@ -2887,3 +2888,20 @@ class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
 
 class FakeRedis(FakeRedisMixin, redis.Redis):
     pass
+
+
+# RQ
+# Configuration to pretend there is a Redis service available.
+# Set up the connection before RQ Django reads the settings.
+# The connection must be the same because in fakeredis connections
+# do not share the state. Therefore, we define a singleton object to reuse it.
+class FakeRedisConnSingleton:
+    """Singleton FakeRedis connection."""
+
+    def __init__(self):
+        self.conn = None
+
+    def __call__(self, _, strict):
+        if not self.conn:
+            self.conn = FakeStrictRedis() if strict else FakeRedis()
+        return self.conn
