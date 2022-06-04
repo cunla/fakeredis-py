@@ -2012,7 +2012,7 @@ def test_zadd_with_ch(r, param, return_value, state):
 @pytest.mark.parametrize('ch', [False, True])
 def test_zadd_with_xx(r, param, changed, state, ch):
     testtools.zadd(r, 'foo', {'four': 4.0, 'three': 3.0})
-    assert testtools.zadd(r, 'foo', input, xx=True, ch=ch) == (changed if ch else 0)
+    assert testtools.zadd(r, 'foo', param, xx=True, ch=ch) == (changed if ch else 0)
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
