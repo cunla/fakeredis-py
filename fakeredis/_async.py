@@ -2,10 +2,10 @@ import asyncio
 
 import async_timeout
 
-from . import _server
+from . import _helpers
 
 
-class AsyncFakeSocket(_server.FakeSocket):
+class AsyncFakeSocket(_helpers.FakeSocket):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responses = asyncio.Queue()
@@ -48,4 +48,4 @@ class AsyncFakeSocket(_server.FakeSocket):
         self._db.add_change_callback(callback)
         self.pause()
         loop.create_task(self._async_blocking(timeout, func, event, callback))
-        return _server.NoResponse()
+        return _helpers.NoResponse()
