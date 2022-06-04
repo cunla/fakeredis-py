@@ -2,9 +2,9 @@ import asyncio
 from typing import Union
 
 try:
-    import aioredis
-except ImportError:
     from redis import asyncio as aioredis
+except ImportError:
+    import aioredis
 
 from . import _async, _server
 
@@ -105,23 +105,23 @@ class FakeConnection(aioredis.Connection):
 
 class FakeRedis(aioredis.Redis):
     def __init__(
-        self,
-        *,
-        db: Union[str, int] = 0,
-        password: str = None,
-        socket_timeout: float = None,
-        connection_pool: aioredis.ConnectionPool = None,
-        encoding: str = "utf-8",
-        encoding_errors: str = "strict",
-        decode_responses: bool = False,
-        retry_on_timeout: bool = False,
-        max_connections: int = None,
-        health_check_interval: int = 0,
-        client_name: str = None,
-        username: str = None,
-        server: _server.FakeServer = None,
-        connected: bool = True,
-        **kwargs
+            self,
+            *,
+            db: Union[str, int] = 0,
+            password: str = None,
+            socket_timeout: float = None,
+            connection_pool: aioredis.ConnectionPool = None,
+            encoding: str = "utf-8",
+            encoding_errors: str = "strict",
+            decode_responses: bool = False,
+            retry_on_timeout: bool = False,
+            max_connections: int = None,
+            health_check_interval: int = 0,
+            client_name: str = None,
+            username: str = None,
+            server: _server.FakeServer = None,
+            connected: bool = True,
+            **kwargs
     ):
         if not connection_pool:
             # Adapted from aioredis

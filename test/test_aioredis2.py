@@ -7,6 +7,10 @@ import redis
 
 import testtools
 
+pytestmark = [
+    testtools.run_test_if_redis_ver('below', '4.2'),
+]
+
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
 import async_timeout
 
@@ -19,9 +23,9 @@ fake_only = pytest.mark.parametrize(
     [pytest.param('fake', marks=pytest.mark.fake)],
     indirect=True
 )
-pytestmark = [
+pytestmark.extend([
     pytest.mark.asyncio,
-]
+])
 
 
 @pytest_asyncio.fixture(

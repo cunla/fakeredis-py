@@ -6,15 +6,19 @@ from packaging.version import Version
 
 import testtools
 
+pytestmark = [
+    testtools.run_test_if_redis_ver('below', '4.2'),
+]
+
 aioredis = pytest.importorskip("aioredis")
 
 import fakeredis.aioredis
 
 aioredis2 = Version(aioredis.__version__) >= Version('2.0.0a1')
-pytestmark = [
+pytestmark.extend([
     pytest.mark.asyncio,
-    pytest.mark.skipif(aioredis2, reason="Test is only applicable to aioredis 1.x")
-]
+    pytest.mark.skipif(aioredis2, reason="Test is only applicable to aioredis 1.x"),
+])
 
 
 @pytest_asyncio.fixture(
