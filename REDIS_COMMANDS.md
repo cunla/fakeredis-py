@@ -46,6 +46,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * lindex
  * linsert
  * llen
+ * lmove
  * lpop
  * lpush
  * lpushx
@@ -135,8 +136,8 @@ list of [unimplemented commands](#unimplemented-commands).
  * sinter
  * sinterstore
  * sismember
- * smismember
  * smembers
+ * smismember
  * smove
  * spop
  * srandmember
@@ -306,7 +307,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
 ### list
  * blmove
  * blmpop
- * lmove
  * lmpop
  * lpos
 
