@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.8.1"
+version = "1.8.2"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
@@ -51,9 +51,9 @@ aioredis = ["aioredis"]
 [tool.poetry.dev-dependencies]
 invoke = "1.7.1"
 wheel = "0.37.1"
-hypothesis = "6.46.7"
+hypothesis = "6.47.2"
 tox = "3.25.0"
-twine = "4.0.0"
+twine = "4.0.1"
 coverage = "^6.3"
 pytest = "7.1.2"
 pytest-asyncio = "^0.18.3"
