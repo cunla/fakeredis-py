@@ -752,7 +752,7 @@ lua = ["lupa"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "bc23278e90a7deb784b8cd5329154004d485cbf851c7f1822426f17f67a53a78"
+content-hash = "c95c41fdce6e7d90dd8814f825d473ec1203116ef66902ff4e4c4aaa9ea53396"
 
 [metadata.files]
 aioredis = [
