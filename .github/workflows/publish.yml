@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.10'
     - name: Install dependencies
@@ -34,3 +34,23 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+        print_hash: true
+
+  # https://github.community/t/run-github-actions-job-only-if-previous-job-has-failed/174786/2
+  create-issue-on-failure:
+    name: Create an issue if publish failed
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: ${{ github.repository == 'dsoftwareinc/fakeredis-py' && always() && needs.deploy.result == 'failure' }}
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release failure on ${new Date().toDateString()}`,
+              body: `Details: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/publish.yml`,
+            })
