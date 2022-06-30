@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [ "3.7", "3.8", "3.9", "3.10" ]
-        redis-py: [ "4.1.2", "4.3.3" ]
+        redis-py: [ "4.1.2", "4.3.4" ]
         include:
           - python-version: "3.10"
             redis-py: "2.10.6"
@@ -35,7 +35,7 @@ jobs:
             redis-py: "4.1.2"
             aioredis: "2.0.1"
           - python-version: "3.10" # should work fine with redis.asyncio
-            redis-py: "4.3.3"
+            redis-py: "4.3.4"
             lupa: "1.13"
             coverage: yes
     services:
