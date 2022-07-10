@@ -1,13 +1,13 @@
 import redis
 
 
-def connect_redis(redis_host: str, redis_port: int) -> redis.Redis:
+def connect_redis_conn(redis_host: str, redis_port: int) -> redis.Redis:
     redis_con = redis.Redis(redis_host, redis_port)
     return redis_con
 
 
 def bar():
-    redis_con = connect_redis('localhost', 6000)
+    redis_con = connect_redis_conn('localhost', 6000)
     pass
 
 

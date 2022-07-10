@@ -139,7 +139,7 @@ class FakeRedisMixin:
             for arg in conn_pool_args:
                 if arg in kwds:
                     kwargs[arg] = kwds[arg]
-            kwargs['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
+            kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
         kwds.pop('server', None)
         kwds.pop('connected', None)
         super().__init__(*args, **kwds)
