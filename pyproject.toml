@@ -53,7 +53,7 @@ invoke = "^1.7.1"
 wheel = "^0.37.1"
 hypothesis = "^6.47.4"
 tox = "^3.25.0"
-twine = "^4.0.1"
+twine = "4.0.1"
 coverage = "^6.3"
 pytest = "^7.1.2"
 pytest-asyncio = "^0.18.3"
@@ -71,6 +71,7 @@ markers = [
     "real: run tests with a locally running real Redis server",
     "disconnected",
     "min_server",
+    "max_server",
     "decode_responses",
 ]
 asyncio_mode="strict"
