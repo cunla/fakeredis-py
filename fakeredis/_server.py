@@ -102,11 +102,9 @@ class FakeRedisMixin:
         default_args = inspect.signature(redis.Redis.__init__).parameters.values()
         kwds = {p.name: p.default for p in default_args if p.default != inspect.Parameter.empty}
         kwds.update(kwargs)
-        # bound = _ORIG_SIG.bind(*args, **params)
-        # kwds = bound.arguments['kwds']
-        if not kwds['connection_pool']:
-            charset = kwds['charset']
-            errors = kwds['errors']
+        if not kwds.get('connection_pool', None):
+            charset = kwds.get('charset', None)
+            errors = kwds.get('errors', None)
             # Adapted from redis-py
             if charset is not None:
                 warnings.warn(DeprecationWarning(
@@ -141,7 +139,9 @@ class FakeRedisMixin:
             for arg in conn_pool_args:
                 if arg in kwds:
                     kwargs[arg] = kwds[arg]
-            kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
+            kwargs['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
+        kwds.pop('server', None)
+        kwds.pop('connected', None)
         super().__init__(*args, **kwds)
 
     @classmethod
