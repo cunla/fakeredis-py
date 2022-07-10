@@ -1958,12 +1958,11 @@ def test_zadd_minus_zero_v6(r):
     # Changing -0 to +0 is ignored
     testtools.zadd(r, 'foo', {'a': -0.0})
     testtools.zadd(r, 'foo', {'a': 0.0})
-    assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
+    assert raw_command(r, 'zscore', 'foo', 'a') in {b'-0', b'0'}
 
 
 @pytest.mark.min_server('7.0')
 def test_zadd_minus_zero_v7(r):
-    # Changing -0 to +0 is ignored
     testtools.zadd(r, 'foo', {'a': -0.0})
     testtools.zadd(r, 'foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'0'

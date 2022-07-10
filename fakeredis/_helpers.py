@@ -2,7 +2,6 @@ import functools
 import hashlib
 import itertools
 import logging
-import math
 import pickle
 import queue
 import random
@@ -13,6 +12,7 @@ import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
 
+import math
 import redis
 import six
 
@@ -2116,7 +2116,7 @@ class FakeSocket:
             raise SimpleError(ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
-            (Float.decode(elements[j]), elements[j + 1])
+            (0 + Float.decode(elements[j]), elements[j + 1])
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)
