@@ -1788,7 +1788,7 @@ class FakeSocket:
             if count < 0:
                 raise SimpleError(INDEX_ERROR_MSG)
             elif count == 0:
-                return []
+                return None
         if not key:
             return None
         elif type(key.value) != list:
