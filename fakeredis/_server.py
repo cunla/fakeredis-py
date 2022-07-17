@@ -15,7 +15,7 @@ LOGGER = LOGGER
 
 
 class FakeServer:
-    def __init__(self):
+    def __init__(self, version=7):
         self.lock = threading.Lock()
         self.dbs = defaultdict(lambda: Database(self.lock))
         # Maps SHA1 to script source
@@ -27,6 +27,7 @@ class FakeServer:
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
         self.closed_sockets = []
+        self.version = version
 
 
 class FakeConnection(redis.Connection):

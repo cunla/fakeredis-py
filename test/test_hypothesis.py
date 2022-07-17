@@ -184,6 +184,15 @@ connection_commands = (
 )
 
 string_create_commands = commands(st.just('set'), keys, values)
+redis6_set_command = commands(st.just('set'), keys, values,
+                              st.none() | st.just('nx'),
+                              st.none() | st.just('xx'),
+                              st.none() | st.just('keepttl'),
+                              st.none() | st.just('get'))
+redis7_set_command = commands(st.just('set'), keys, values,
+                              st.none() | st.just('nx'),
+                              st.none() | st.just('xx'),
+                              st.none() | st.just('keepttl'))
 string_commands = (
         commands(st.just('append'), keys, values)
         | commands(st.just('bitcount'), keys)
@@ -206,8 +215,7 @@ string_commands = (
         | commands(st.just('set'), keys, values,
                    st.none() | st.just('nx'),
                    st.none() | st.just('xx'),
-                   st.none() | st.just('keepttl'),
-                   st.none() | st.just('get'))
+                   st.none() | st.just('keepttl'))
         | commands(st.just('setex'), keys, expires_seconds, values)
         | commands(st.just('psetex'), keys, expires_ms, values)
         | commands(st.just('setnx'), keys, values)
@@ -286,12 +294,12 @@ zset_create_commands = (
     commands(st.just('zadd'), keys, st.lists(st.tuples(scores, fields), min_size=1))
 )
 zset_commands = (
-        # commands(st.just('zadd'), keys,
-        #          st.none() | st.just('nx'),
-        #          st.none() | st.just('xx'),
-        #          st.none() | st.just('ch'),
-        #          st.none() | st.just('incr'),
-        #          st.lists(st.tuples(scores, fields)))
+        commands(st.just('zadd'), keys,
+                 st.none() | st.just('nx'),
+                 st.none() | st.just('xx'),
+                 st.none() | st.just('ch'),
+                 st.none() | st.just('incr'),
+                 st.lists(st.tuples(scores, fields)))
         # | commands(st.just('zcard'), keys)
         # | commands(st.just('zcount'), keys, score_tests, score_tests)
         # | commands(st.just('zincrby'), keys, scores, fields)
@@ -305,8 +313,7 @@ zset_commands = (
         # | commands(st.just('zrem'), keys, st.lists(fields))
         # | commands(st.just('zremrangebyrank'), keys, counts, counts)
         # | commands(st.just('zremrangebyscore'), keys, score_tests, score_tests)
-        # |
-        commands(st.just('zscore'), keys, fields)
+        | commands(st.just('zscore'), keys, fields)
         # | st.builds(build_zstore,
         #             command=st.sampled_from(['zunionstore', 'zinterstore']),
         #             dest=keys, sources=st.lists(st.tuples(keys, float_as_bytes)),
@@ -472,8 +479,8 @@ class BaseTest:
             create_command_strategy = self.create_command_strategy
             command_strategy = self.command_strategy
 
-        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        hypothesis.settings.load_profile("debug")
+        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        # hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)
 
 

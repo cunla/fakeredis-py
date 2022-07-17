@@ -2115,8 +2115,9 @@ class FakeSocket:
         if incr and len(elements) != 2:
             raise SimpleError(ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
+        ver7 = (self._server.version >= 7)
         items = [
-            (0 + Float.decode(elements[j]), elements[j + 1])
+            (0.0 + Float.decode(elements[j]) if ver7 else Float.decode(elements[j]), elements[j + 1])
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)

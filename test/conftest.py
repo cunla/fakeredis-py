@@ -59,9 +59,9 @@ def create_redis(request):
         else:
             cls = getattr(redis, name)
             conn = cls('localhost', port=6379, db=db, decode_responses=decode_responses)
+            server_version = conn.info()['redis_version']
             min_server_marker = request.node.get_closest_marker('min_server')
             if min_server_marker is not None:
-                server_version = conn.info()['redis_version']
                 min_version = Version(min_server_marker.args[0])
                 if Version(server_version) < min_version:
                     pytest.skip(
@@ -69,7 +69,6 @@ def create_redis(request):
                     )
             max_server_marker = request.node.get_closest_marker('max_server')
             if max_server_marker is not None:
-                server_version = conn.info()['redis_version']
                 max_server = Version(max_server_marker.args[0])
                 if Version(server_version) > max_server:
                     pytest.skip(
