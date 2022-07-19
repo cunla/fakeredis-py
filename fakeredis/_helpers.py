@@ -912,6 +912,7 @@ class FakeSocket:
         However, provided the database is not modified, every key will be
         returned exactly once.
         """
+        cursor = int(cursor)
         pattern = None
         type = None
         count = 10
@@ -955,7 +956,7 @@ class FakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [result_cursor, result_data]
+        return [str(result_cursor).encode(), result_data]
 
     # Connection commands
     # TODO: auth, quit
