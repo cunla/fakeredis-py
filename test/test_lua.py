@@ -486,3 +486,19 @@ def test_lua_log_defined_vars(r, caplog):
     with caplog.at_level('DEBUG'):
         script()
     assert caplog.record_tuples == [(logger.name, logging.DEBUG, 'string')]
+
+
+def test_hscan_cursors_are_bytes(r):
+    r.hset('hkey', 'foo', 1)
+
+    result = r.eval(
+        """
+        local results = redis.call("HSCAN", KEYS[1], "0")
+        return results[1]
+        """,
+        1,
+        'hkey'
+    )
+
+    assert result == b'0'
+    assert isinstance(result, bytes)
