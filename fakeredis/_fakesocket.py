@@ -1,13 +1,24 @@
+import functools
 import hashlib
 import itertools
 import pickle
 import queue
 import random
+import time
+import weakref
 
+import math
 import redis
 import six
 
-from ._helpers import *  # noqa: F405
+from . import _msgs as msgs
+from ._commands import (
+    Key, command, DbIndex, Int, CommandItem, BeforeAny, SortFloat, Float, BitOffset, BitValue, Hash,
+    StringTest, ScoreTest, Timeout)
+from ._helpers import (
+    PONG, OK, MAX_STRING_SIZE, SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
+    BGSAVE_STARTED, REDIS_LOG_LEVELS_TO_LOGGING, LOGGER, REDIS_LOG_LEVELS, casenorm, compile_pattern, QUEUED)
+from ._msgs import LUA_COMMAND_ARG_MSG
 from ._zset import ZSet
 
 
@@ -124,8 +135,8 @@ class FakeSocket:
                 result = ret[0]
             else:
                 args, command_items = ret
-                if from_script and FLAG_NO_SCRIPT in sig.flags:
-                    raise SimpleError(COMMAND_IN_SCRIPT_MSG)
+                if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
+                    raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
                 if self._pubsub and sig.name not in [
                     'ping',
                     'subscribe',
@@ -134,7 +145,7 @@ class FakeSocket:
                     'punsubscribe',
                     'quit'
                 ]:
-                    raise SimpleError(BAD_COMMAND_IN_PUBSUB_MSG)
+                    raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
                 result = func(*args)
                 assert valid_response_type(result)
         except SimpleError as exc:
@@ -194,12 +205,12 @@ class FakeSocket:
         if name.startswith('_') or not func or not hasattr(func, '_fakeredis_sig'):
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = name.replace('\r', ' ').replace('\n', ' ')
-            raise SimpleError(UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
         return func, func_name
 
     def sendall(self, data):
         if not self._server.connected:
-            raise self._connection_error_class(CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if isinstance(data, str):
             data = data.encode('ascii')
         self._parser.send(data)
@@ -295,18 +306,18 @@ class FakeSocket:
         type = None
         count = 10
         if len(args) % 2 != 0:
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.msgs.SYNTAX_ERROR_MSG)
         for i in range(0, len(args), 2):
             if casematch(args[i], b'match'):
                 pattern = args[i + 1]
             elif casematch(args[i], b'count'):
                 count = Int.decode(args[i + 1])
                 if count <= 0:
-                    raise SimpleError(SYNTAX_ERROR_MSG)
+                    raise SimpleError(msgs.msgs.SYNTAX_ERROR_MSG)
             elif casematch(args[i], b'type'):
                 type = args[i + 1]
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.msgs.SYNTAX_ERROR_MSG)
 
         if cursor >= len(keys):
             return [0, []]
@@ -346,7 +357,7 @@ class FakeSocket:
     @command((), (bytes,))
     def ping(self, *args):
         if len(args) > 1:
-            raise SimpleError(WRONG_ARGS_MSG.format('ping'))
+            raise SimpleError(msgs.WRONG_ARGS_MSG.format('ping'))
         if self._pubsub:
             return [b'pong', args[0] if args else b'']
         else:
@@ -469,7 +480,7 @@ class FakeSocket:
     @command((Key(), DbIndex))
     def move(self, key, db):
         if db == self._db_num:
-            raise SimpleError(SRC_DST_SAME_MSG)
+            raise SimpleError(msgs.SRC_DST_SAME_MSG)
         if not key or key.key in self._server.dbs[db]:
             return 0
         # TODO: what is the interaction with expiry?
@@ -487,7 +498,7 @@ class FakeSocket:
     @command((Key(), Key()))
     def rename(self, key, newkey):
         if not key:
-            raise SimpleError(NO_KEY_MSG)
+            raise SimpleError(msgs.NO_KEY_MSG)
         # TODO: check interaction with WATCH
         if newkey.key != key.key:
             newkey.value = key.value
@@ -498,7 +509,7 @@ class FakeSocket:
     @command((Key(), Key()))
     def renamenx(self, key, newkey):
         if not key:
-            raise SimpleError(NO_KEY_MSG)
+            raise SimpleError(msgs.NO_KEY_MSG)
         if newkey:
             return 0
         self.rename(key, newkey)
@@ -549,7 +560,7 @@ class FakeSocket:
         get = []
         if key.value is not None:
             if not isinstance(key.value, (set, list, ZSet)):
-                raise SimpleError(WRONGTYPE_MSG)
+                raise SimpleError(msgs.WRONGTYPE_MSG)
 
         while i < len(args):
             arg = args[i]
@@ -564,7 +575,7 @@ class FakeSocket:
                     limit_start = Int.decode(args[i + 1])
                     limit_count = Int.decode(args[i + 2])
                 except SimpleError:
-                    raise SimpleError(SYNTAX_ERROR_MSG)
+                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 else:
                     i += 2
             elif casematch(arg, b'store') and i + 1 < len(args):
@@ -579,7 +590,7 @@ class FakeSocket:
                 get.append(args[i + 1])
                 i += 1
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             i += 1
 
         # TODO: force sorting if the object is a set and either in Lua or
@@ -649,14 +660,14 @@ class FakeSocket:
                 replace = True
                 i += 1
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if key and not replace:
-            raise SimpleError(RESTORE_KEY_EXISTS)
+            raise SimpleError(msgs.RESTORE_KEY_EXISTS)
         checksum, value = value[:20], value[20:]
         if hashlib.sha1(value).digest() != checksum:
-            raise SimpleError(RESTORE_INVALID_CHECKSUM_MSG)
+            raise SimpleError(msgs.RESTORE_INVALID_CHECKSUM_MSG)
         if ttl < 0:
-            raise SimpleError(RESTORE_INVALID_TTL_MSG)
+            raise SimpleError(msgs.RESTORE_INVALID_TTL_MSG)
         if ttl == 0:
             expireat = None
         else:
@@ -676,7 +687,7 @@ class FakeSocket:
     @command((), flags='s')
     def multi(self):
         if self._transaction is not None:
-            raise SimpleError(MULTI_NESTED_MSG)
+            raise SimpleError(msgs.MULTI_NESTED_MSG)
         self._transaction = []
         self._transaction_failed = False
         return OK
@@ -684,7 +695,7 @@ class FakeSocket:
     @command((), flags='s')
     def discard(self):
         if self._transaction is None:
-            raise SimpleError(WITHOUT_MULTI_MSG.format('DISCARD'))
+            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('DISCARD'))
         self._transaction = None
         self._transaction_failed = False
         self._clear_watches()
@@ -693,11 +704,11 @@ class FakeSocket:
     @command((), name='exec', flags='s')
     def exec_(self):
         if self._transaction is None:
-            raise SimpleError(WITHOUT_MULTI_MSG.format('EXEC'))
+            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('EXEC'))
         if self._transaction_failed:
             self._transaction = None
             self._clear_watches()
-            raise SimpleError(EXECABORT_MSG)
+            raise SimpleError(msgs.EXECABORT_MSG)
         transaction = self._transaction
         self._transaction = None
         self._transaction_failed = False
@@ -720,7 +731,7 @@ class FakeSocket:
     @command((Key(),), (Key(),), flags='s')
     def watch(self, *keys):
         if self._transaction is not None:
-            raise SimpleError(WATCH_INSIDE_MULTI_MSG)
+            raise SimpleError(msgs.WATCH_INSIDE_MULTI_MSG)
         for key in keys:
             if key not in self._watches:
                 self._watches.add((key.key, self._db))
@@ -739,7 +750,7 @@ class FakeSocket:
     def append(self, key, value):
         old = key.get(b'')
         if len(old) + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(STRING_OVERFLOW_MSG)
+            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
         key.update(key.get(b'') + value)
         return len(key.value)
 
@@ -749,7 +760,7 @@ class FakeSocket:
         # we can't declare them as Int.
         if args:
             if len(args) != 2:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             start = Int.decode(args[0])
             end = Int.decode(args[1])
             start, end = self._fix_range_string(start, end, len(key.value))
@@ -781,7 +792,7 @@ class FakeSocket:
         # TODO: introduce convert_order so that we can specify amount is Float
         c = Float.decode(key.get(b'0')) + Float.decode(amount)
         if not math.isfinite(c):
-            raise SimpleError(NONFINITE_MSG)
+            raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True, )
         key.update(encoded)
         return encoded
@@ -879,12 +890,12 @@ class FakeSocket:
             elif casematch(args[i], b'ex') and i + 1 < len(args):
                 ex = Int.decode(args[i + 1])
                 if ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63:
-                    raise SimpleError(INVALID_EXPIRE_MSG.format('set'))
+                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
                 i += 2
             elif casematch(args[i], b'px') and i + 1 < len(args):
                 px = Int.decode(args[i + 1])
                 if px <= 0 or self._db.time * 1000 + px >= 2 ** 63:
-                    raise SimpleError(INVALID_EXPIRE_MSG.format('set'))
+                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
                 i += 2
             elif casematch(args[i], b'keepttl'):
                 keepttl = True
@@ -893,17 +904,17 @@ class FakeSocket:
                 get = True
                 i += 1
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and get and self.version < 7:
             # The command docs say this is allowed from Redis 7.0.
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         old_value = None
         if get:
             if key.value is not None and type(key.value) is not bytes:
-                raise SimpleError(WRONGTYPE_MSG)
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             old_value = key.value
 
         if nx and key:
@@ -923,7 +934,7 @@ class FakeSocket:
     @command((Key(), Int, bytes))
     def setex(self, key, seconds, value):
         if seconds <= 0 or (self._db.time + seconds) * 1000 >= 2 ** 63:
-            raise SimpleError(INVALID_EXPIRE_MSG.format('setex'))
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('setex'))
         key.value = value
         key.expireat = self._db.time + seconds
         return OK
@@ -931,7 +942,7 @@ class FakeSocket:
     @command((Key(), Int, bytes))
     def psetex(self, key, ms, value):
         if ms <= 0 or self._db.time * 1000 + ms >= 2 ** 63:
-            raise SimpleError(INVALID_EXPIRE_MSG.format('psetex'))
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('psetex'))
         key.value = value
         key.expireat = self._db.time + ms / 1000.0
         return OK
@@ -946,11 +957,11 @@ class FakeSocket:
     @command((Key(bytes), Int, bytes))
     def setrange(self, key, offset, value):
         if offset < 0:
-            raise SimpleError(INVALID_OFFSET_MSG)
+            raise SimpleError(msgs.INVALID_OFFSET_MSG)
         elif not value:
             return len(key.get(b''))
         elif offset + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(STRING_OVERFLOW_MSG)
+            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
         else:
             out = key.get(b'')
             if len(out) < offset:
@@ -999,7 +1010,7 @@ class FakeSocket:
     def hincrbyfloat(self, key, field, amount):
         c = Float.decode(key.value.get(field, b'0')) + Float.decode(amount)
         if not math.isfinite(c):
-            raise SimpleError(NONFINITE_MSG)
+            raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
         key.value[field] = encoded
         key.updated()
@@ -1063,7 +1074,7 @@ class FakeSocket:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             if not isinstance(item.value, list):
                 if first_pass:
-                    raise SimpleError(WRONGTYPE_MSG)
+                    raise SimpleError(msgs.WRONGTYPE_MSG)
                 else:
                     continue
             if item.value:
@@ -1090,14 +1101,14 @@ class FakeSocket:
         src = CommandItem(source, self._db, item=self._db.get(source), default=[])
         if not isinstance(src.value, list):
             if first_pass:
-                raise SimpleError(WRONGTYPE_MSG)
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             else:
                 return None
         if not src.value:
             return None  # Empty list
         dst = CommandItem(destination, self._db, item=self._db.get(destination), default=[])
         if not isinstance(dst.value, list):
-            raise SimpleError(WRONGTYPE_MSG)
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         el = src.value.pop()
         dst.value.insert(0, el)
         src.updated()
@@ -1123,7 +1134,7 @@ class FakeSocket:
     @command((Key(list), bytes, bytes, bytes))
     def linsert(self, key, where, pivot, value):
         if not casematch(where, b'before') and not casematch(where, b'after'):
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if not key:
             return 0
         else:
@@ -1144,9 +1155,9 @@ class FakeSocket:
     @command((Key(list, None), Key(list), SimpleString, SimpleString))
     def lmove(self, first_list, second_list, src, dst):
         if src not in [b'LEFT', b'RIGHT']:
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if dst not in [b'LEFT', b'RIGHT']:
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         el = self.rpop(first_list) if src == b'RIGHT' else self.lpop(first_list)
         self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
         return el
@@ -1161,17 +1172,17 @@ class FakeSocket:
         # behaviours described in https://github.com/redis/redis/issues/9680.
         count = 1
         if len(args) > 1:
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         elif len(args) == 1:
             count = args[0]
             if count < 0:
-                raise SimpleError(INDEX_ERROR_MSG)
+                raise SimpleError(msgs.INDEX_ERROR_MSG)
             elif count == 0:
-                return None # if self.version == 6 else []
+                return None  # if self.version == 6 else []
         if not key:
             return None
         elif type(key.value) != list:
-            raise SimpleError(WRONGTYPE_MSG)
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         slc = get_slice(count)
         ret = key.value[slc]
         del key.value[slc]
@@ -1226,12 +1237,12 @@ class FakeSocket:
     @command((Key(list), Int, bytes))
     def lset(self, key, index, value):
         if not key:
-            raise SimpleError(NO_KEY_MSG)
+            raise SimpleError(msgs.NO_KEY_MSG)
         try:
             key.value[index] = value
             key.updated()
         except IndexError:
-            raise SimpleError(INDEX_ERROR_MSG)
+            raise SimpleError(msgs.INDEX_ERROR_MSG)
         return OK
 
     @command((Key(list), Int, Int))
@@ -1291,7 +1302,7 @@ class FakeSocket:
         for other in keys:
             value = other.value if other.value is not None else set()
             if not isinstance(value, set):
-                raise SimpleError(WRONGTYPE_MSG)
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             if stop_if_missing and not value:
                 return set()
             ans = op(ans, value)
@@ -1362,7 +1373,7 @@ class FakeSocket:
             return item
         else:
             if count < 0:
-                raise SimpleError(INDEX_ERROR_MSG)
+                raise SimpleError(msgs.INDEX_ERROR_MSG)
             items = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)
@@ -1486,13 +1497,13 @@ class FakeSocket:
                 break
 
         if nx and xx:
-            raise SimpleError(ZADD_NX_XX_ERROR_MSG)
+            raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
 
         elements = args[i:]
         if not elements or len(elements) % 2 != 0:
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if incr and len(elements) != 2:
-            raise SimpleError(ZADD_INCR_LEN_ERROR_MSG)
+            raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
             (0.0 + Float.decode(elements[j]) if self.version >= 7 else Float.decode(elements[j]), elements[j + 1])
@@ -1539,7 +1550,7 @@ class FakeSocket:
         except TypeError:
             score = increment
         if math.isnan(score):
-            raise SimpleError(SCORE_NAN_MSG)
+            raise SimpleError(msgs.SCORE_NAN_MSG)
         key.value[member] = score
         key.updated()
         return self._encodefloat(score, False)
@@ -1555,7 +1566,7 @@ class FakeSocket:
             if casematch(arg, b'withscores'):
                 withscores = True
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         start, stop = self._fix_range(start, stop, len(zset))
         if reverse:
             start, stop = len(zset) - stop, len(zset) - start
@@ -1574,7 +1585,7 @@ class FakeSocket:
     def _zrangebylex(self, key, _min, _max, reverse, *args):
         if args:
             if len(args) != 3 or not casematch(args[0], b'limit'):
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             offset = Int.decode(args[1])
             count = Int.decode(args[2])
         else:
@@ -1609,7 +1620,7 @@ class FakeSocket:
                 count = Int.decode(args[i + 2])
                 i += 3
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         zset = key.value
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
@@ -1692,13 +1703,13 @@ class FakeSocket:
         elif isinstance(value, ZSet):
             return value
         else:
-            raise SimpleError(WRONGTYPE_MSG)
+            raise SimpleError(msgs.WRONGTYPE_MSG)
 
     def _zunioninter(self, func, dest, numkeys, *args):
         if numkeys < 1:
-            raise SimpleError(ZUNIONSTORE_KEYS_MSG)
+            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG)
         if numkeys > len(args):
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b'sum'
         sets = []
         for i in range(numkeys):
@@ -1715,10 +1726,10 @@ class FakeSocket:
             elif casematch(arg, b'aggregate') and i + 1 < len(args):
                 aggregate = casenorm(args[i + 1])
                 if aggregate not in (b'sum', b'min', b'max'):
-                    raise SimpleError(SYNTAX_ERROR_MSG)
+                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
             else:
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         out_members = set(sets[0])
         for s in sets[1:]:
@@ -1780,7 +1791,7 @@ class FakeSocket:
     @command((), (bytes,), flags='s')
     def bgsave(self, *args):
         if len(args) > 1 or (len(args) == 1 and not casematch(args[0], b'schedule')):
-            raise SimpleError(SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         self._server.lastsave = int(time.time())
         return BGSAVE_STARTED
 
@@ -1792,7 +1803,7 @@ class FakeSocket:
     def flushdb(self, *args):
         if args:
             if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         self._db.clear()
         return OK
 
@@ -1800,7 +1811,7 @@ class FakeSocket:
     def flushall(self, *args):
         if args:
             if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         for db in self._server.dbs.values():
             db.clear()
         # TODO: clear watches and/or pubsub as well?
@@ -1860,7 +1871,7 @@ class FakeSocket:
                 if key in result:
                     msg = self._convert_lua_result(result[key])
                     if not isinstance(msg, bytes):
-                        raise SimpleError(LUA_WRONG_NUMBER_ARGS_MSG)
+                        raise SimpleError(msgs.LUA_WRONG_NUMBER_ARGS_MSG)
                     if key == b'ok':
                         return SimpleString(msg)
                     elif nested:
@@ -1888,7 +1899,7 @@ class FakeSocket:
         if actual_globals != expected_globals:
             unexpected = [six.ensure_str(var, 'utf-8', 'replace')
                           for var in actual_globals - expected_globals]
-            raise SimpleError(GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
+            raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
     def _lua_redis_call(self, lua_runtime, expected_globals, op, *args):
         # Check if we've set any global variables before making any change.
@@ -1907,9 +1918,9 @@ class FakeSocket:
     def _lua_redis_log(self, lua_runtime, expected_globals, lvl, *args):
         self._check_for_lua_globals(lua_runtime, expected_globals)
         if len(args) < 1:
-            raise SimpleError(REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
+            raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
         if lvl not in REDIS_LOG_LEVELS.values():
-            raise SimpleError(LOG_INVALID_DEBUG_LEVEL_MSG)
+            raise SimpleError(msgs.LOG_INVALID_DEBUG_LEVEL_MSG)
         msg = ' '.join([x.decode('utf-8')
                         if isinstance(x, bytes) else str(x)
                         for x in args if not isinstance(x, bool)])
@@ -1920,9 +1931,9 @@ class FakeSocket:
         from lupa import LuaError, LuaRuntime, as_attrgetter
 
         if numkeys > len(keys_and_args):
-            raise SimpleError(TOO_MANY_KEYS_MSG)
+            raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
         if numkeys < 0:
-            raise SimpleError(NEGATIVE_KEYS_MSG)
+            raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
         sha1 = hashlib.sha1(script).hexdigest().encode()
         self._server.script_cache[sha1] = script
         lua_runtime = LuaRuntime(encoding=None, unpack_returned_tuples=True)
@@ -1958,7 +1969,7 @@ class FakeSocket:
         try:
             result = lua_runtime.execute(script)
         except (LuaError, SimpleError) as ex:
-            raise SimpleError(SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
+            raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
 
         self._check_for_lua_globals(lua_runtime, expected_globals)
 
@@ -1969,29 +1980,29 @@ class FakeSocket:
         try:
             script = self._server.script_cache[sha1]
         except KeyError:
-            raise SimpleError(NO_MATCHING_SCRIPT_MSG)
+            raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
         return self.eval(script, numkeys, *keys_and_args)
 
     @command((bytes,), (bytes,), flags='s')
     def script(self, subcmd, *args):
         if casematch(subcmd, b'load'):
             if len(args) != 1:
-                raise SimpleError(BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
             script = args[0]
             sha1 = hashlib.sha1(script).hexdigest().encode()
             self._server.script_cache[sha1] = script
             return sha1
         elif casematch(subcmd, b'exists'):
             if self.version >= 7 and len(args) == 0:
-                raise SimpleError(WRONG_ARGS_MSG.format('script|exists'))
+                raise SimpleError(msgs.WRONG_ARGS_MSG.format('script|exists'))
             return [int(sha1 in self._server.script_cache) for sha1 in args]
         elif casematch(subcmd, b'flush'):
             if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
-                raise SimpleError(BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
             self._server.script_cache = {}
             return OK
         else:
-            raise SimpleError(BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
 
     # Pubsub commands
     # TODO: pubsub command
