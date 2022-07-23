@@ -8,8 +8,9 @@ from collections import defaultdict
 
 import redis
 
+from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (
-    Database, FakeSelector, CONNECTION_ERROR_MSG, FakeSocket, LOGGER)
+    Database, FakeSelector, CONNECTION_ERROR_MSG, LOGGER)
 
 LOGGER = LOGGER
 
