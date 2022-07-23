@@ -108,7 +108,7 @@ jobs:
   releaseDraft:
     name: Release Draft
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
     steps:
       # Check out current repository
