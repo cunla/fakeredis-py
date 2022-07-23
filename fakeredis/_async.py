@@ -3,9 +3,10 @@ import asyncio
 import async_timeout
 
 from . import _helpers
+from . import _fakesocket
 
 
-class AsyncFakeSocket(_helpers.FakeSocket):
+class AsyncFakeSocket(_fakesocket.FakeSocket):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responses = asyncio.Queue()
