@@ -7,7 +7,7 @@ import random
 import redis
 import six
 
-from ._helpers import *
+from ._helpers import *  # noqa: F405
 from ._zset import ZSet
 
 
@@ -1167,7 +1167,7 @@ class FakeSocket:
             if count < 0:
                 raise SimpleError(INDEX_ERROR_MSG)
             elif count == 0:
-                return None if self.version == 6 else []
+                return None # if self.version == 6 else []
         if not key:
             return None
         elif type(key.value) != list:
