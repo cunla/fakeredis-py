@@ -16,6 +16,8 @@ jobs:
   pre:
     name: 'Test <Redis, Python, redis-py, aioredis, lupa, cov>'
     runs-on: ubuntu-latest
+    steps:
+      - run: echo ''
   test:
     name: 'Test <${{ matrix.redis-version }},${{ matrix.python-version }},${{ matrix.redis-py }},${{ matrix.aioredis }},${{ matrix.lupa }},${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
