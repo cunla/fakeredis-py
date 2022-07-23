@@ -656,6 +656,7 @@ class FakeSocket:
         self._paused = False
         self._parser = self._parse_commands()
         self._parser.send(None)
+        self.version = server.version
 
     def put_response(self, msg):
         # redis.Connection.__del__ might call self.close at any time, which
@@ -1518,7 +1519,7 @@ class FakeSocket:
                 raise SimpleError(SYNTAX_ERROR_MSG)
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(SYNTAX_ERROR_MSG)
-        if nx and get and self._server.version < 7:
+        if nx and get and self.version < 7:
             # The command docs say this is allowed from Redis 7.0.
             raise SimpleError(SYNTAX_ERROR_MSG)
 
@@ -1789,7 +1790,7 @@ class FakeSocket:
             if count < 0:
                 raise SimpleError(INDEX_ERROR_MSG)
             elif count == 0:
-                return None
+                return None if self.version == 6 else []
         if not key:
             return None
         elif type(key.value) != list:
@@ -2116,9 +2117,8 @@ class FakeSocket:
         if incr and len(elements) != 2:
             raise SimpleError(ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
-        ver7 = (self._server.version >= 7)
         items = [
-            (0.0 + Float.decode(elements[j]) if ver7 else Float.decode(elements[j]), elements[j + 1])
+            (0.0 + Float.decode(elements[j]) if self.version >= 7 else Float.decode(elements[j]), elements[j + 1])
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)
@@ -2301,7 +2301,9 @@ class FakeSocket:
     @command((Key(ZSet), bytes))
     def zscore(self, key, member):
         try:
-            return Float.encode(key.value[member], False)
+            r = key.value[member]
+            r = r if self.version < 7 else 0 + r
+            return Float.encode(r, False)
         except KeyError:
             return None
 
@@ -2605,7 +2607,7 @@ class FakeSocket:
             self._server.script_cache[sha1] = script
             return sha1
         elif casematch(subcmd, b'exists'):
-            if self._server.version >= 7 and len(args) == 0:
+            if self.version >= 7 and len(args) == 0:
                 raise SimpleError(WRONG_ARGS_MSG.format('script|exists'))
             return [int(sha1 in self._server.script_cache) for sha1 in args]
         elif casematch(subcmd, b'flush'):

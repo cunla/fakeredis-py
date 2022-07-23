@@ -19,7 +19,7 @@ jobs:
     steps:
       - run: echo ''
   test:
-    name: 'Test <${{ matrix.redis-version }},${{ matrix.python-version }},${{ matrix.redis-py }},${{ matrix.aioredis }},${{ matrix.lupa }},${{ matrix.coverage }}>'
+    name: 'Test <${{ matrix.redis-version }}, ${{ matrix.python-version }}, ${{ matrix.redis-py }}, ${{ matrix.aioredis }}, ${{ matrix.lupa }}, ${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
     needs: pre
     strategy:
