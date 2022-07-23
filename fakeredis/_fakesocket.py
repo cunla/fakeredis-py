@@ -1177,8 +1177,8 @@ class FakeSocket:
             count = args[0]
             if count < 0:
                 raise SimpleError(msgs.INDEX_ERROR_MSG)
-            elif count == 0:
-                return None  # if self.version == 6 else []
+            # elif count == 0:
+            #     return None  # if self.version == 6 else []
         if not key:
             return None
         elif type(key.value) != list:
