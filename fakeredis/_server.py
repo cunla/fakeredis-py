@@ -10,7 +10,8 @@ import redis
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (
-    Database, FakeSelector, CONNECTION_ERROR_MSG, LOGGER)
+    Database, FakeSelector, LOGGER)
+from fakeredis._msgs import CONNECTION_ERROR_MSG
 
 LOGGER = LOGGER
 
