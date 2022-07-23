@@ -1518,7 +1518,7 @@ class FakeSocket:
                 raise SimpleError(SYNTAX_ERROR_MSG)
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(SYNTAX_ERROR_MSG)
-        if nx and get:
+        if nx and get and self._server.version < 7:
             # The command docs say this is allowed from Redis 7.0.
             raise SimpleError(SYNTAX_ERROR_MSG)
 

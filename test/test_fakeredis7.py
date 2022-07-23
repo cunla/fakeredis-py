@@ -1,7 +1,7 @@
 import pytest as pytest
 import redis
 
-from test_fakeredis import raw_command
+from testtools import raw_command, zadd
 
 
 @pytest.mark.min_server('7')
@@ -24,3 +24,16 @@ def test_script_exists(r):
     sha1_two = r.script_load("return 'b'")
     assert r.script_exists(sha1_one, sha1_two) == [1, 1]
     assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
+
+
+@pytest.mark.min_server('7')
+def test_set_get_nx(r):
+    # Note: this will most likely fail on a 7.0 server, based on the docs for SET
+    assert raw_command(r, 'set', 'foo', 'bar', 'NX', 'GET') is None
+
+
+@pytest.mark.min_server('7.0')
+def test_zadd_minus_zero(r):
+    zadd(r, 'foo', {'a': -0.0})
+    zadd(r, 'foo', {'a': 0.0})
+    assert raw_command(r, 'zscore', 'foo', 'a') == b'0'
