@@ -100,7 +100,9 @@ class FakeRedisMixin:
     def __init__(self, *args, server=None, connected=True, **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
-        default_args = inspect.signature(redis.Redis.__init__).parameters.values()
+        parameters = inspect.signature(redis.Redis.__init__).parameters
+        parameter_names = list(parameters.keys())
+        default_args = parameters.values()
         kwds = {p.name: p.default for p in default_args if p.default != inspect.Parameter.empty}
         kwds.update(kwargs)
         if not kwds.get('connection_pool', None):
@@ -143,6 +145,9 @@ class FakeRedisMixin:
             kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
         kwds.pop('server', None)
         kwds.pop('connected', None)
+        parameter_names_to_cut = parameter_names[1:len(args) + 1]
+        for param in parameter_names_to_cut:
+            kwds.pop(param, None)
         super().__init__(*args, **kwds)
 
     @classmethod
