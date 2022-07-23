@@ -4147,6 +4147,7 @@ def test_set_existing_key_persists(r):
     assert r.ttl('foo') == -1
 
 
+@pytest.mark.max_server('6.2.7')
 def test_script_exists(r):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
