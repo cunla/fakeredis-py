@@ -97,7 +97,7 @@ class FakeConnection(redis.Connection):
 
 
 class FakeRedisMixin:
-    def __init__(self, *args, server=None, connected=True, **kwargs):
+    def __init__(self, *args, server=None, connected=True, version=7, **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = inspect.signature(redis.Redis.__init__).parameters
@@ -119,7 +119,7 @@ class FakeRedisMixin:
                 kwds['encoding_errors'] = errors
 
             if server is None:
-                server = FakeServer()
+                server = FakeServer(version=version)
                 server.connected = connected
             kwargs = {
                 'connection_class': FakeConnection,
@@ -145,6 +145,7 @@ class FakeRedisMixin:
             kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
         kwds.pop('server', None)
         kwds.pop('connected', None)
+        kwds.pop('version', None)
         parameter_names_to_cut = parameter_names[1:len(args) + 1]
         for param in parameter_names_to_cut:
             kwds.pop(param, None)

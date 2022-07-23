@@ -17,9 +17,9 @@ def get_redis_version():
     try:
         r = redis.StrictRedis('localhost', port=6379)
         r.ping()
-        return r.info()['redis_version']
+        return int(r.info()['redis_version'][0])
     except redis.ConnectionError:
-        return '6'
+        return 6
     finally:
         if hasattr(r, 'close'):
             r.close()  # Absent in older versions of redis-py
@@ -41,7 +41,7 @@ fields = sample_attr('fields')
 values = sample_attr('values')
 scores = sample_attr('scores')
 
-int_as_bytes = st.builds(lambda x: str(x).encode(), st.integers())
+int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), st.floats(width=32))
 counts = st.integers(min_value=-3, max_value=3) | st.integers()
 limits = st.just(()) | st.tuples(st.just('limit'), counts, counts)
@@ -112,8 +112,8 @@ def flatten(args):
 
 
 def default_normalize(x):
-    if redis_ver.startswith('7') and isinstance(x, float):
-        return 0.0 + x
+    if redis_ver >= 7 and (isinstance(x, float) or isinstance(x, int)):
+        return 0 + x
 
     return x
 
@@ -255,7 +255,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         if self.real.info('server').get('arch_bits') != 64:
             self.real.connection_pool.disconnect()
             pytest.skip('redis server is not 64-bit')
-        self.fake = fakeredis.FakeStrictRedis()
+        self.fake = fakeredis.FakeStrictRedis(version=redis_ver)
         # Disable the response parsing so that we can check the raw values returned
         self.fake.response_callbacks.clear()
         self.real.response_callbacks.clear()
