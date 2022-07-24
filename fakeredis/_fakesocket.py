@@ -1967,7 +1967,9 @@ class FakeSocket:
 
         try:
             result = lua_runtime.execute(script)
-        except (LuaError, SimpleError) as ex:
+        except SimpleError as ex:
+            raise SimpleError(ex.value)
+        except LuaError as ex:
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
 
         self._check_for_lua_globals(lua_runtime, expected_globals)

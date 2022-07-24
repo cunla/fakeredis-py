@@ -22,7 +22,7 @@ fake_only = pytest.mark.parametrize(
 
 def test_eval_blpop(r):
     r.rpush('foo', 'bar')
-    with pytest.raises(redis.ResponseError, match='not allowed from scripts'):
+    with pytest.raises(redis.ResponseError, match='This Redis command is not allowed from script'):
         r.eval('return redis.pcall("BLPOP", KEYS[1], 1)', 1, 'foo')
 
 
@@ -247,7 +247,7 @@ def test_eval_convert_bool(r):
 def test_eval_call_bool(r):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(redis.ResponseError,
-                       match=r'Lua redis\(\) command arguments must be strings or integers'):
+                       match=r'Lua redis lib command arguments must be strings or integers'):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
 
 
