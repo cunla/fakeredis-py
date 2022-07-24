@@ -1,17 +1,28 @@
-import operator
 import functools
+import operator
 
 import hypothesis
 import hypothesis.stateful
-from hypothesis.stateful import rule, initialize, precondition
 import hypothesis.strategies as st
 import pytest
 import redis
+from hypothesis.stateful import rule, initialize, precondition
 
 import fakeredis
 
-
 self_strategy = st.runner()
+
+
+def get_redis_version():
+    try:
+        r = redis.StrictRedis('localhost', port=6379)
+        r.ping()
+        return int(r.info()['redis_version'][0])
+    except redis.ConnectionError:
+        return 6
+    finally:
+        if hasattr(r, 'close'):
+            r.close()  # Absent in older versions of redis-py
 
 
 @st.composite
@@ -23,13 +34,15 @@ def sample_attr(draw, name):
     return values[position]
 
 
+redis_ver = get_redis_version()
+
 keys = sample_attr('keys')
 fields = sample_attr('fields')
 values = sample_attr('values')
 scores = sample_attr('scores')
 
-int_as_bytes = st.builds(lambda x: str(x).encode(), st.integers())
-float_as_bytes = st.builds(lambda x: repr(x).encode(), st.floats(width=32))
+int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
+float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), st.floats(width=32))
 counts = st.integers(min_value=-3, max_value=3) | st.integers()
 limits = st.just(()) | st.tuples(st.just('limit'), counts, counts)
 # Redis has an integer overflow bug in swapdb, so we confine the numbers to
@@ -40,8 +53,8 @@ patterns = (st.text(alphabet=st.sampled_from('[]^$*.?-azAZ\\\r\n\t'))
             | st.binary().filter(lambda x: b'\0' not in x))
 score_tests = scores | st.builds(lambda x: b'(' + repr(x).encode(), scores)
 string_tests = (
-    st.sampled_from([b'+', b'-'])
-    | st.builds(operator.add, st.sampled_from([b'(', b'[']), fields))
+        st.sampled_from([b'+', b'-'])
+        | st.builds(operator.add, st.sampled_from([b'(', b'[']), fields))
 # Redis has integer overflow bugs in time computations, which is why we set a maximum.
 expires_seconds = st.integers(min_value=100000, max_value=10000000000)
 expires_ms = st.integers(min_value=100000000, max_value=10000000000000)
@@ -49,6 +62,7 @@ expires_ms = st.integers(min_value=100000000, max_value=10000000000000)
 
 class WrappedException:
     """Wraps an exception for the purposes of comparison."""
+
     def __init__(self, exc):
         self.wrapped = exc
 
@@ -61,7 +75,7 @@ class WrappedException:
     def __eq__(self, other):
         if not isinstance(other, WrappedException):
             return NotImplemented
-        if type(self.wrapped) != type(other.wrapped):    # noqa: E721
+        if type(self.wrapped) != type(other.wrapped):  # noqa: E721
             return False
         # TODO: re-enable after more carefully handling order of error checks
         # return self.wrapped.args == other.wrapped.args
@@ -98,12 +112,17 @@ def flatten(args):
 
 
 def default_normalize(x):
+    if redis_ver >= 7 and (isinstance(x, float) or isinstance(x, int)):
+        return 0 + x
+
     return x
 
 
 class Command:
     def __init__(self, *args):
-        self.args = tuple(flatten(args))
+        args = list(flatten(args))
+        args = [default_normalize(x) for x in args]
+        self.args = tuple(args)
 
     def __repr__(self):
         parts = [repr(arg) for arg in self.args]
@@ -157,116 +176,23 @@ def commands(*args, **kwargs):
     return st.builds(functools.partial(Command, **kwargs), *args)
 
 
-# TODO: all expiry-related commands
+# # TODO: all expiry-related commands
 common_commands = (
-    commands(st.sampled_from(['del', 'persist', 'type', 'unlink']), keys)
-    | commands(st.just('exists'), st.lists(keys))
-    | commands(st.just('keys'), st.just('*'))
-    # Disabled for now due to redis giving wrong answers
-    # (https://github.com/antirez/redis/issues/5632)
-    # | st.tuples(st.just('keys'), patterns)
-    | commands(st.just('move'), keys, dbnums)
-    | commands(st.sampled_from(['rename', 'renamenx']), keys, keys)
-    # TODO: find a better solution to sort instability than throwing
-    # away the sort entirely with normalize. This also prevents us
-    # using LIMIT.
-    | commands(st.just('sort'), keys,
-               st.none() | st.just('asc'),
-               st.none() | st.just('desc'),
-               st.none() | st.just('alpha'))
-)
-
-# TODO: tests for select
-connection_commands = (
-    commands(st.just('echo'), values)
-    | commands(st.just('ping'), st.lists(values, max_size=2))
-    | commands(st.just('swapdb'), dbnums, dbnums)
-)
-
-string_create_commands = commands(st.just('set'), keys, values)
-string_commands = (
-    commands(st.just('append'), keys, values)
-    | commands(st.just('bitcount'), keys)
-    | commands(st.just('bitcount'), keys, values, values)
-    | commands(st.sampled_from(['incr', 'decr']), keys)
-    | commands(st.sampled_from(['incrby', 'decrby']), keys, values)
-    # Disabled for now because Python can't exactly model the long doubles.
-    # TODO: make a more targeted test that checks the basics.
-    # TODO: check how it gets stringified, without relying on hypothesis
-    # to get generate a get call before it gets overwritten.
-    # | commands(st.just('incrbyfloat'), keys, st.floats(width=32))
-    | commands(st.just('get'), keys)
-    | commands(st.just('getbit'), keys, counts)
-    | commands(st.just('setbit'), keys, counts,
-               st.integers(min_value=0, max_value=1) | st.integers())
-    | commands(st.sampled_from(['substr', 'getrange']), keys, counts, counts)
-    | commands(st.just('getset'), keys, values)
-    | commands(st.just('mget'), st.lists(keys))
-    | commands(st.sampled_from(['mset', 'msetnx']), st.lists(st.tuples(keys, values)))
-    | commands(st.just('set'), keys, values,
-               st.none() | st.just('nx'),
-               st.none() | st.just('xx'),
-               st.none() | st.just('keepttl'),
-               st.none() | st.just('get'))
-    | commands(st.just('setex'), keys, expires_seconds, values)
-    | commands(st.just('psetex'), keys, expires_ms, values)
-    | commands(st.just('setnx'), keys, values)
-    | commands(st.just('setrange'), keys, counts, values)
-    | commands(st.just('strlen'), keys)
-)
-
-# TODO: add a test for hincrbyfloat. See incrbyfloat for why this is
-# problematic.
-hash_create_commands = (
-    commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values), min_size=1))
-)
-hash_commands = (
-    commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values)))
-    | commands(st.just('hdel'), keys, st.lists(fields))
-    | commands(st.just('hexists'), keys, fields)
-    | commands(st.just('hget'), keys, fields)
-    | commands(st.sampled_from(['hgetall', 'hkeys', 'hvals']), keys)
-    | commands(st.just('hincrby'), keys, fields, st.integers())
-    | commands(st.just('hlen'), keys)
-    | commands(st.just('hmget'), keys, st.lists(fields))
-    | commands(st.sampled_from(['hset', 'hmset']), keys, st.lists(st.tuples(fields, values)))
-    | commands(st.just('hsetnx'), keys, fields, values)
-    | commands(st.just('hstrlen'), keys, fields)
-)
-
-# TODO: blocking commands
-list_create_commands = commands(st.just('rpush'), keys, st.lists(values, min_size=1))
-list_commands = (
-    commands(st.just('lindex'), keys, counts)
-    | commands(st.just('linsert'), keys,
-               st.sampled_from(['before', 'after', 'BEFORE', 'AFTER']) | st.binary(),
-               values, values)
-    | commands(st.just('llen'), keys)
-    | commands(st.sampled_from(['lpop', 'rpop']), keys, st.just(None) | st.integers())
-    | commands(st.sampled_from(['lpush', 'lpushx', 'rpush', 'rpushx']), keys, st.lists(values))
-    | commands(st.just('lrange'), keys, counts, counts)
-    | commands(st.just('lrem'), keys, counts, values)
-    | commands(st.just('lset'), keys, counts, values)
-    | commands(st.just('ltrim'), keys, counts, counts)
-    | commands(st.just('rpoplpush'), keys, keys)
-)
-
-# TODO:
-# - find a way to test srandmember, spop which are random
-# - sscan
-set_create_commands = (
-    commands(st.just('sadd'), keys, st.lists(fields, min_size=1))
-)
-set_commands = (
-    commands(st.just('sadd'), keys, st.lists(fields,))
-    | commands(st.just('scard'), keys)
-    | commands(st.sampled_from(['sdiff', 'sinter', 'sunion']), st.lists(keys))
-    | commands(st.sampled_from(['sdiffstore', 'sinterstore', 'sunionstore']),
-               keys, st.lists(keys))
-    | commands(st.just('sismember'), keys, fields)
-    | commands(st.just('smembers'), keys)
-    | commands(st.just('smove'), keys, keys, fields)
-    | commands(st.just('srem'), keys, st.lists(fields))
+        commands(st.sampled_from(['del', 'persist', 'type', 'unlink']), keys)
+        | commands(st.just('exists'), st.lists(keys))
+        | commands(st.just('keys'), st.just('*'))
+        # Disabled for now due to redis giving wrong answers
+        # (https://github.com/antirez/redis/issues/5632)
+        # | commands(st.just('keys'), patterns)
+        | commands(st.just('move'), keys, dbnums)
+        | commands(st.sampled_from(['rename', 'renamenx']), keys, keys)
+        # TODO: find a better solution to sort instability than throwing
+        # away the sort entirely with normalize. This also prevents us
+        # using LIMIT.
+        | commands(st.just('sort'), keys,
+                   st.none() | st.just('asc'),
+                   st.none() | st.just('desc'),
+                   st.none() | st.just('alpha'))
 )
 
 
@@ -281,70 +207,22 @@ def build_zstore(command, dest, sources, weights, aggregate):
     return Command(args)
 
 
-# TODO: zscan, zpopmin/zpopmax, bzpopmin/bzpopmax, probably more
-zset_create_commands = (
-    commands(st.just('zadd'), keys, st.lists(st.tuples(scores, fields), min_size=1))
-)
-zset_commands = (
-    commands(st.just('zadd'), keys,
-             st.none() | st.just('nx'),
-             st.none() | st.just('xx'),
-             st.none() | st.just('ch'),
-             st.none() | st.just('incr'),
-             st.lists(st.tuples(scores, fields)))
-    | commands(st.just('zcard'), keys)
-    | commands(st.just('zcount'), keys, score_tests, score_tests)
-    | commands(st.just('zincrby'), keys, scores, fields)
-    | commands(st.sampled_from(['zrange', 'zrevrange']), keys, counts, counts,
-               st.none() | st.just('withscores'))
-    | commands(st.sampled_from(['zrangebyscore', 'zrevrangebyscore']),
-               keys, score_tests, score_tests,
-               limits,
-               st.none() | st.just('withscores'))
-    | commands(st.sampled_from(['zrank', 'zrevrank']), keys, fields)
-    | commands(st.just('zrem'), keys, st.lists(fields))
-    | commands(st.just('zremrangebyrank'), keys, counts, counts)
-    | commands(st.just('zremrangebyscore'), keys, score_tests, score_tests)
-    | commands(st.just('zscore'), keys, fields)
-    | st.builds(build_zstore,
-                command=st.sampled_from(['zunionstore', 'zinterstore']),
-                dest=keys, sources=st.lists(st.tuples(keys, float_as_bytes)),
-                weights=st.booleans(),
-                aggregate=st.sampled_from([None, 'sum', 'min', 'max']))
-)
-
 zset_no_score_create_commands = (
     commands(st.just('zadd'), keys, st.lists(st.tuples(st.just(0), fields), min_size=1))
 )
 zset_no_score_commands = (
     # TODO: test incr
-    commands(st.just('zadd'), keys,
-             st.none() | st.just('nx'),
-             st.none() | st.just('xx'),
-             st.none() | st.just('ch'),
-             st.none() | st.just('incr'),
-             st.lists(st.tuples(st.just(0), fields)))
-    | commands(st.just('zlexcount'), keys, string_tests, string_tests)
-    | commands(st.sampled_from(['zrangebylex', 'zrevrangebylex']),
-               keys, string_tests, string_tests,
-               limits)
-    | commands(st.just('zremrangebylex'), keys, string_tests, string_tests)
-)
-
-transaction_commands = (
-    commands(st.sampled_from(['multi', 'discard', 'exec', 'unwatch']))
-    | commands(st.just('watch'), keys)
-)
-
-server_commands = (
-    # TODO: real redis raises an error if there is a save already in progress.
-    # Find a better way to test this.
-    # commands(st.just('bgsave'))
-    commands(st.just('dbsize'))
-    | commands(st.sampled_from(['flushdb', 'flushall']), st.sampled_from([[], 'async']))
-    # TODO: result is non-deterministic
-    # | commands(st.just('lastsave'))
-    | commands(st.just('save'))
+        commands(st.just('zadd'), keys,
+                 st.none() | st.just('nx'),
+                 st.none() | st.just('xx'),
+                 st.none() | st.just('ch'),
+                 st.none() | st.just('incr'),
+                 st.lists(st.tuples(st.just(0), fields)))
+        | commands(st.just('zlexcount'), keys, string_tests, string_tests)
+        | commands(st.sampled_from(['zrangebylex', 'zrevrangebylex']),
+                   keys, string_tests, string_tests,
+                   limits)
+        | commands(st.just('zremrangebylex'), keys, string_tests, string_tests)
 )
 
 bad_commands = (
@@ -377,7 +255,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         if self.real.info('server').get('arch_bits') != 64:
             self.real.connection_pool.disconnect()
             pytest.skip('redis server is not 64-bit')
-        self.fake = fakeredis.FakeStrictRedis()
+        self.fake = fakeredis.FakeStrictRedis(version=redis_ver)
         # Disable the response parsing so that we can check the raw values returned
         self.fake.response_callbacks.clear()
         self.real.response_callbacks.clear()
@@ -471,35 +349,150 @@ class BaseTest:
             create_command_strategy = self.create_command_strategy
             command_strategy = self.command_strategy
 
+        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        # hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)
 
 
 class TestConnection(BaseTest):
+    # TODO: tests for select
+    connection_commands = (
+            commands(st.just('echo'), values)
+            | commands(st.just('ping'), st.lists(values, max_size=2))
+            | commands(st.just('swapdb'), dbnums, dbnums)
+    )
     command_strategy = connection_commands | common_commands
 
 
 class TestString(BaseTest):
-    create_command_strategy = string_create_commands
+    string_commands = (
+            commands(st.just('append'), keys, values)
+            | commands(st.just('bitcount'), keys)
+            | commands(st.just('bitcount'), keys, values, values)
+            | commands(st.sampled_from(['incr', 'decr']), keys)
+            | commands(st.sampled_from(['incrby', 'decrby']), keys, values)
+            # Disabled for now because Python can't exactly model the long doubles.
+            # TODO: make a more targeted test that checks the basics.
+            # TODO: check how it gets stringified, without relying on hypothesis
+            # to get generate a get call before it gets overwritten.
+            # | commands(st.just('incrbyfloat'), keys, st.floats(width=32))
+            | commands(st.just('get'), keys)
+            | commands(st.just('getbit'), keys, counts)
+            | commands(st.just('setbit'), keys, counts,
+                       st.integers(min_value=0, max_value=1) | st.integers())
+            | commands(st.sampled_from(['substr', 'getrange']), keys, counts, counts)
+            | commands(st.just('getset'), keys, values)
+            | commands(st.just('mget'), st.lists(keys))
+            | commands(st.sampled_from(['mset', 'msetnx']), st.lists(st.tuples(keys, values)))
+            | commands(st.just('set'), keys, values,
+                       st.none() | st.just('nx'),
+                       st.none() | st.just('xx'),
+                       st.none() | st.just('keepttl'))
+            | commands(st.just('setex'), keys, expires_seconds, values)
+            | commands(st.just('psetex'), keys, expires_ms, values)
+            | commands(st.just('setnx'), keys, values)
+            | commands(st.just('setrange'), keys, counts, values)
+            | commands(st.just('strlen'), keys)
+    )
+    create_command_strategy = commands(st.just('set'), keys, values)
     command_strategy = string_commands | common_commands
 
 
 class TestHash(BaseTest):
-    create_command_strategy = hash_create_commands
+    # TODO: add a test for hincrbyfloat. See incrbyfloat for why this is
+    # problematic.
+    hash_commands = (
+            commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values)))
+            | commands(st.just('hdel'), keys, st.lists(fields))
+            | commands(st.just('hexists'), keys, fields)
+            | commands(st.just('hget'), keys, fields)
+            | commands(st.sampled_from(['hgetall', 'hkeys', 'hvals']), keys)
+            | commands(st.just('hincrby'), keys, fields, st.integers())
+            | commands(st.just('hlen'), keys)
+            | commands(st.just('hmget'), keys, st.lists(fields))
+            | commands(st.sampled_from(['hset', 'hmset']), keys, st.lists(st.tuples(fields, values)))
+            | commands(st.just('hsetnx'), keys, fields, values)
+            | commands(st.just('hstrlen'), keys, fields)
+    )
+    create_command_strategy = (
+        commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values), min_size=1))
+    )
     command_strategy = hash_commands | common_commands
 
 
 class TestList(BaseTest):
-    create_command_strategy = list_create_commands
+    # TODO: blocking commands
+    list_commands = (
+            commands(st.just('lindex'), keys, counts)
+            | commands(st.just('linsert'), keys,
+                       st.sampled_from(['before', 'after', 'BEFORE', 'AFTER']) | st.binary(),
+                       values, values)
+            | commands(st.just('llen'), keys)
+            | commands(st.sampled_from(['lpop', 'rpop']), keys, st.just(None) | st.just([]) | st.integers())
+            | commands(st.sampled_from(['lpush', 'lpushx', 'rpush', 'rpushx']), keys, st.lists(values))
+            | commands(st.just('lrange'), keys, counts, counts)
+            | commands(st.just('lrem'), keys, counts, values)
+            | commands(st.just('lset'), keys, counts, values)
+            | commands(st.just('ltrim'), keys, counts, counts)
+            | commands(st.just('rpoplpush'), keys, keys)
+    )
+    create_command_strategy = commands(st.just('rpush'), keys, st.lists(values, min_size=1))
     command_strategy = list_commands | common_commands
 
 
 class TestSet(BaseTest):
-    create_command_strategy = set_create_commands
+    set_commands = (
+            commands(st.just('sadd'), keys, st.lists(fields, ))
+            | commands(st.just('scard'), keys)
+            | commands(st.sampled_from(['sdiff', 'sinter', 'sunion']), st.lists(keys))
+            | commands(st.sampled_from(['sdiffstore', 'sinterstore', 'sunionstore']),
+                       keys, st.lists(keys))
+            | commands(st.just('sismember'), keys, fields)
+            | commands(st.just('smembers'), keys)
+            | commands(st.just('smove'), keys, keys, fields)
+            | commands(st.just('srem'), keys, st.lists(fields))
+    )
+    # TODO:
+    # - find a way to test srandmember, spop which are random
+    # - sscan
+    create_command_strategy = (
+        commands(st.just('sadd'), keys, st.lists(fields, min_size=1))
+    )
     command_strategy = set_commands | common_commands
 
 
 class TestZSet(BaseTest):
-    create_command_strategy = zset_create_commands
+    zset_commands = (
+            commands(st.just('zadd'), keys,
+                     st.none() | st.just('nx'),
+                     st.none() | st.just('xx'),
+                     st.none() | st.just('ch'),
+                     st.none() | st.just('incr'),
+                     st.lists(st.tuples(scores, fields)))
+            | commands(st.just('zcard'), keys)
+            | commands(st.just('zcount'), keys, score_tests, score_tests)
+            | commands(st.just('zincrby'), keys, scores, fields)
+            | commands(st.sampled_from(['zrange', 'zrevrange']), keys, counts, counts,
+                       st.none() | st.just('withscores'))
+            | commands(st.sampled_from(['zrangebyscore', 'zrevrangebyscore']),
+                       keys, score_tests, score_tests,
+                       limits,
+                       st.none() | st.just('withscores'))
+            | commands(st.sampled_from(['zrank', 'zrevrank']), keys, fields)
+            | commands(st.just('zrem'), keys, st.lists(fields))
+            | commands(st.just('zremrangebyrank'), keys, counts, counts)
+            | commands(st.just('zremrangebyscore'), keys, score_tests, score_tests)
+            | commands(st.just('zscore'), keys, fields)
+            | st.builds(build_zstore,
+                        command=st.sampled_from(['zunionstore', 'zinterstore']),
+                        dest=keys, sources=st.lists(st.tuples(keys, float_as_bytes)),
+                        weights=st.booleans(),
+                        aggregate=st.sampled_from([None, 'sum', 'min', 'max']))
+    )
+    # TODO: zscan, zpopmin/zpopmax, bzpopmin/bzpopmax, probably more
+    create_command_strategy = (
+        commands(st.just('zadd'), keys, st.lists(st.tuples(scores, fields), min_size=1))
+    )
     command_strategy = zset_commands | common_commands
 
 
@@ -509,23 +502,43 @@ class TestZSetNoScores(BaseTest):
 
 
 class TestTransaction(BaseTest):
-    create_command_strategy = string_create_commands
-    command_strategy = transaction_commands | string_commands | common_commands
+    transaction_commands = (
+            commands(st.sampled_from(['multi', 'discard', 'exec', 'unwatch']))
+            | commands(st.just('watch'), keys)
+    )
+    create_command_strategy = TestString.create_command_strategy
+    command_strategy = transaction_commands | TestString.string_commands | common_commands
 
 
 class TestServer(BaseTest):
-    create_command_strategy = string_create_commands
-    command_strategy = server_commands | string_commands | common_commands
+    server_commands = (
+        # TODO: real redis raises an error if there is a save already in progress.
+        # Find a better way to test this.
+        # commands(st.just('bgsave'))
+            commands(st.just('dbsize'))
+            | commands(st.sampled_from(['flushdb', 'flushall']), st.sampled_from([[], 'async']))
+            # TODO: result is non-deterministic
+            # | commands(st.just('lastsave'))
+            | commands(st.just('save'))
+    )
+    create_command_strategy = TestString.create_command_strategy
+    command_strategy = server_commands | TestString.string_commands | common_commands
 
 
 class TestJoint(BaseTest):
     create_command_strategy = (
-        string_create_commands | hash_create_commands | list_create_commands
-        | set_create_commands | zset_create_commands)
+            TestString.create_command_strategy
+            | TestHash.create_command_strategy | TestList.create_command_strategy
+            | TestSet.create_command_strategy
+            | TestZSet.create_command_strategy)
     command_strategy = (
-        transaction_commands | server_commands | connection_commands
-        | string_commands | hash_commands | list_commands | set_commands
-        | zset_commands | common_commands | bad_commands)
+            TestServer.server_commands
+            | TestConnection.connection_commands
+            | TestString.string_commands
+            | TestHash.hash_commands
+            | TestList.list_commands
+            | TestSet.set_commands
+            | TestZSet.zset_commands | common_commands | bad_commands)
 
 
 @st.composite
@@ -606,13 +619,13 @@ def mutated_commands(commands):
     return st.recursive(
         commands,
         lambda x:
-            delete_arg(x)
-            | replace_arg(x, args)
-            | uppercase_arg(x)
-            | prefix_arg(x, affixes)
-            | suffix_arg(x, affixes)
-            | add_arg(x, args)
-            | swap_args(x))
+        delete_arg(x)
+        | replace_arg(x, args)
+        | uppercase_arg(x)
+        | prefix_arg(x, affixes)
+        | suffix_arg(x, affixes)
+        | add_arg(x, args)
+        | swap_args(x))
 
 
 class TestFuzz(BaseTest):

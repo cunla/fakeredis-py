@@ -7,6 +7,16 @@ from packaging.version import Version
 REDIS_VERSION = Version(redis.__version__)
 
 
+def raw_command(r, *args):
+    """Like execute_command, but does not do command-specific response parsing"""
+    response_callbacks = r.response_callbacks
+    try:
+        r.response_callbacks = {}
+        return r.execute_command(*args)
+    finally:
+        r.response_callbacks = response_callbacks
+
+
 # Wrap some redis commands to abstract differences between redis-py 2 and 3.
 def zadd(r, key, d, *args, **kwargs):
     if REDIS_VERSION >= Version('3'):

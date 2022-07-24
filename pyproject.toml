@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.8.2"
+version = "1.9.0"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
@@ -71,6 +71,7 @@ markers = [
     "real: run tests with a locally running real Redis server",
     "disconnected",
     "min_server",
+    "max_server",
     "decode_responses",
 ]
 asyncio_mode="strict"

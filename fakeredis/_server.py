@@ -8,14 +8,16 @@ from collections import defaultdict
 
 import redis
 
+from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (
-    Database, FakeSelector, CONNECTION_ERROR_MSG, FakeSocket, LOGGER)
+    Database, FakeSelector, LOGGER)
+from fakeredis._msgs import CONNECTION_ERROR_MSG
 
 LOGGER = LOGGER
 
 
 class FakeServer:
-    def __init__(self):
+    def __init__(self, version=7):
         self.lock = threading.Lock()
         self.dbs = defaultdict(lambda: Database(self.lock))
         # Maps SHA1 to script source
@@ -27,6 +29,7 @@ class FakeServer:
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
         self.closed_sockets = []
+        self.version = version
 
 
 class FakeConnection(redis.Connection):
@@ -96,7 +99,7 @@ class FakeConnection(redis.Connection):
 
 
 class FakeRedisMixin:
-    def __init__(self, *args, server=None, connected=True, **kwargs):
+    def __init__(self, *args, server=None, connected=True, version=7, **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = inspect.signature(redis.Redis.__init__).parameters
@@ -118,7 +121,7 @@ class FakeRedisMixin:
                 kwds['encoding_errors'] = errors
 
             if server is None:
-                server = FakeServer()
+                server = FakeServer(version=version)
                 server.connected = connected
             kwargs = {
                 'connection_class': FakeConnection,
@@ -144,6 +147,7 @@ class FakeRedisMixin:
             kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
         kwds.pop('server', None)
         kwds.pop('connected', None)
+        kwds.pop('version', None)
         parameter_names_to_cut = parameter_names[1:len(args) + 1]
         for param in parameter_names_to_cut:
             kwds.pop(param, None)

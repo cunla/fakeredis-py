@@ -213,7 +213,7 @@ pyflakes = ">=2.4.0,<2.5.0"
 
 [[package]]
 name = "hypothesis"
-version = "6.50.1"
+version = "6.52.4"
 description = "A library for property-based testing"
 category = "dev"
 optional = false

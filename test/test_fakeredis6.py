@@ -15,6 +15,7 @@ from redis.exceptions import ResponseError
 
 import fakeredis
 import testtools
+from testtools import raw_command
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -27,16 +28,6 @@ def key_val_dict(size=100):
 def round_str(x):
     assert isinstance(x, bytes)
     return round(float(x))
-
-
-def raw_command(r, *args):
-    """Like execute_command, but does not do command-specific response parsing"""
-    response_callbacks = r.response_callbacks
-    try:
-        r.response_callbacks = {}
-        return r.execute_command(*args)
-    finally:
-        r.response_callbacks = response_callbacks
 
 
 def zincrby(r, key, amount, value):
@@ -766,6 +757,7 @@ def test_set_get_xx(r):
 
 
 @pytest.mark.min_server('6.2')
+@pytest.mark.max_server('6.2.7')
 def test_set_get_nx(r):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
     with pytest.raises(redis.ResponseError):
@@ -1952,11 +1944,13 @@ def test_zadd_empty(r):
         testtools.zadd(r, 'foo', {})
 
 
+@pytest.mark.max_server('6.2.7')
 def test_zadd_minus_zero(r):
     # Changing -0 to +0 is ignored
     testtools.zadd(r, 'foo', {'a': -0.0})
     testtools.zadd(r, 'foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
+
 
 
 def test_zadd_wrong_type(r):
@@ -4138,6 +4132,7 @@ def test_set_existing_key_persists(r):
     assert r.ttl('foo') == -1
 
 
+@pytest.mark.max_server('6.2.7')
 def test_script_exists(r):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument

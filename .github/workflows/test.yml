@@ -13,34 +13,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: 'Build <py:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},aioredis:${{ matrix.aioredis }},lupa:${{ matrix.lupa }},cov:${{ matrix.coverage }}>'
+  pre:
+    name: 'Test <Redis, Python, redis-py, aioredis, lupa, cov>'
     runs-on: ubuntu-latest
+    steps:
+      - run: echo ''
+  test:
+    name: 'Test <${{ matrix.redis-version }}, ${{ matrix.python-version }}, ${{ matrix.redis-py }}, ${{ matrix.aioredis }}, ${{ matrix.lupa }}, ${{ matrix.coverage }}>'
+    runs-on: ubuntu-latest
+    needs: pre
     strategy:
       fail-fast: false
       matrix:
+        redis-version: [ "6.2.6", "7.0.4" ]
         python-version: [ "3.7", "3.8", "3.9", "3.10" ]
         redis-py: [ "4.1.2", "4.3.4" ]
         include:
           - python-version: "3.10"
+            redis-version: "6.2.6"
             redis-py: "2.10.6"
             aioredis: "1.3.1"
           - python-version: "3.10"
+            redis-version: "6.2.6"
             redis-py: "3.5.3"
             aioredis: "1.3.1"
           - python-version: "3.10"
+            redis-version: "6.2.6"
             redis-py: "4.0.1"
             aioredis: "1.3.1"
           - python-version: "3.10"
+            redis-version: "6.2.6"
             redis-py: "4.1.2"
             aioredis: "2.0.1"
           - python-version: "3.10" # should work fine with redis.asyncio
+            redis-version: "7.0.4"
             redis-py: "4.3.4"
             lupa: "1.13"
             coverage: yes
     services:
       redis:
-        image: redis:6.2.6
+        image: redis:${{ matrix.redis-version }}
         ports:
           - 6379:6379
     outputs:
@@ -102,7 +114,7 @@ jobs:
   releaseDraft:
     name: Release Draft
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
     steps:
       # Check out current repository
