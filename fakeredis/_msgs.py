@@ -38,6 +38,7 @@ BAD_COMMAND_IN_PUBSUB_MSG = \
 CONNECTION_ERROR_MSG = "FakeRedis is emulating a connection error."
 REQUIRES_MORE_ARGS_MSG = "ERR {} requires {} arguments or more."
 LOG_INVALID_DEBUG_LEVEL_MSG = "ERR Invalid debug level."
+LUA_COMMAND_ARG_MSG6 = "ERR Lua redis() command arguments must be strings or integers"
 LUA_COMMAND_ARG_MSG = "ERR Lua redis lib command arguments must be strings or integers"
 LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"

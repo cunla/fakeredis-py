@@ -29,6 +29,8 @@ be automatically installed.
 For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md)
 
 # How to Use
+FakeRedis can imitate Redis server version 6.x or 7.x - There are a few minor behavior differences. 
+If you do not specify the version, version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real
 redis server. It does this by storing state internally.
@@ -36,7 +38,7 @@ For example:
 
 ```
 >>> import fakeredis
->>> r = fakeredis.FakeStrictRedis()
+>>> r = fakeredis.FakeStrictRedis(version=6)
 >>> r.set('foo', 'bar')
 True
 >>> r.get('foo')
