@@ -780,7 +780,7 @@ class FakeSocket:
     @command((Key(bytes), Int))
     def incrby(self, key, amount):
         c = Int.decode(key.get(b'0')) + amount
-        key.update(Int.encode(c))
+        key.update(self._encodeint(c))
         return c
 
     @command((Key(bytes),))
@@ -1002,7 +1002,7 @@ class FakeSocket:
     @command((Key(Hash), bytes, Int))
     def hincrby(self, key, field, amount):
         c = Int.decode(key.value.get(field, b'0')) + amount
-        key.value[field] = Int.encode(c)
+        key.value[field] = self._encodeint(c)
         key.updated()
         return c
 
@@ -1177,8 +1177,8 @@ class FakeSocket:
             count = args[0]
             if count < 0:
                 raise SimpleError(msgs.INDEX_ERROR_MSG)
-            # elif count == 0:
-            #     return None  # if self.version == 6 else []
+            elif count == 0 and self.version == 6:
+                return None
         if not key:
             return None
         elif type(key.value) != list:
@@ -1458,13 +1458,12 @@ class FakeSocket:
             out.append(item)
         return out
 
-    @staticmethod
-    def _apply_withscores(items, withscores):
+    def _apply_withscores(self, items, withscores):
         if withscores:
             out = []
             for item in items:
                 out.append(item[1])
-                out.append(Float.encode(item[0], False))
+                out.append(self._encodefloat(item[0], False))
         else:
             out = [item[1] for item in items]
         return out
@@ -2071,6 +2070,11 @@ class FakeSocket:
         if self.version >= 7:
             value = 0 + value
         return Float.encode(value, humanfriendly)
+
+    def _encodeint(self, value):
+        if self.version >= 7:
+            value = 0 + value
+        return Int.encode(value)
 
 
 setattr(FakeSocket, 'del', FakeSocket.del_)
