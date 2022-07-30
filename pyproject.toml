@@ -33,8 +33,8 @@ classifiers = [
     'Programming Language :: Python :: 3.10',
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
-homepage = "https://github.com/dsoftwareinc/fakeredis-py"
-repository = "https://github.com/dsoftwareinc/fakeredis-py"
+homepage = "https://github.com/cunla/fakeredis-py"
+repository = "https://github.com/cunla/fakeredis-py"
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -62,7 +62,7 @@ pytest-mock = "^3.7.0"
 flake8 = "^4.0.1"
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/dsoftwareinc/fakeredis-py/issues"
+"Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
 
 [tool.pytest.ini_options]
 markers = [

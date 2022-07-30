@@ -166,7 +166,7 @@ class FakeRedisMixin:
         # is called with a unix socket)
         pool.connection_kwargs.pop('path', None)
         # Using username and password fails since AUTH is not implemented.
-        # https://github.com/dsoftwareinc/fakeredis-py/issues/9
+        # https://github.com/cunla/fakeredis-py/issues/9
         pool.connection_kwargs.pop('username', None)
         pool.connection_kwargs.pop('password', None)
         return cls(connection_pool=pool)
