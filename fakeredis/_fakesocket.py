@@ -1,13 +1,13 @@
 import functools
 import hashlib
 import itertools
+import math
 import pickle
 import queue
 import random
 import time
 import weakref
 
-import math
 import redis
 import six
 
@@ -793,7 +793,7 @@ class FakeSocket:
         c = Float.decode(key.get(b'0')) + Float.decode(amount)
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
-        encoded = self._encodefloat(c, True, )
+        encoded = self._encodefloat(c, True)
         key.update(encoded)
         return encoded
 
@@ -1561,23 +1561,30 @@ class FakeSocket:
     def _zrange(self, key, start, stop, reverse, *args):
         zset = key.value
         withscores = False
+        byscore = False
         for arg in args:
             if casematch(arg, b'withscores'):
                 withscores = True
+            elif casematch(arg, b'byscore'):
+                byscore = True
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        start, stop = self._fix_range(start, stop, len(zset))
-        if reverse:
-            start, stop = len(zset) - stop, len(zset) - start
-        items = zset.islice_score(start, stop, reverse)
+        if byscore:
+            items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
+        else:
+            start, stop = Int.decode(start.bytes_val), Int.decode(stop.bytes_val)
+            start, stop = self._fix_range(start, stop, len(zset))
+            if reverse:
+                start, stop = len(zset) - stop, len(zset) - start
+            items = zset.islice_score(start, stop, reverse)
         items = self._apply_withscores(items, withscores)
         return items
 
-    @command((Key(ZSet), Int, Int), (bytes,))
+    @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrange(self, key, start, stop, *args):
         return self._zrange(key, start, stop, False, *args)
 
-    @command((Key(ZSet), Int, Int), (bytes,))
+    @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrange(self, key, start, stop, *args):
         return self._zrange(key, start, stop, True, *args)
 

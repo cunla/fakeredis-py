@@ -1,3 +1,4 @@
+import math
 import os
 import threading
 from collections import OrderedDict
@@ -5,7 +6,6 @@ from datetime import datetime, timedelta
 from queue import Queue
 from time import sleep, time
 
-import math
 import pytest
 import redis
 import redis.client
@@ -1952,7 +1952,6 @@ def test_zadd_minus_zero(r):
     assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
 
 
-
 def test_zadd_wrong_type(r):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
@@ -2260,6 +2259,14 @@ def test_zrevrange_score_cast(r):
             r.zrevrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
             == expected_with_cast_round
     )
+
+
+def test_zrange_with_large_int(r):
+    with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
+        r.zrange('', 0, 9223372036854775808)
+    with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
+        r.zrange('', 0, -9223372036854775809)
+
 
 
 def test_zrangebyscore(r):

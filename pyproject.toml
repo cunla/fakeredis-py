@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.9.0"
+version = "1.9.1"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
@@ -59,7 +59,7 @@ pytest = "^7.1.2"
 pytest-asyncio = "0.19.0"
 pytest-cov = "^3.0.0"
 pytest-mock = "^3.7.0"
-flake8 = "^4.0.1"
+flake8 = "^5.0.4"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
