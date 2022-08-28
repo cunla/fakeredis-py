@@ -1,3 +1,4 @@
+import math
 import os
 import threading
 from collections import OrderedDict
@@ -5,7 +6,6 @@ from datetime import datetime, timedelta
 from queue import Queue
 from time import sleep, time
 
-import math
 import pytest
 import redis
 import redis.client
@@ -1952,7 +1952,6 @@ def test_zadd_minus_zero(r):
     assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
 
 
-
 def test_zadd_wrong_type(r):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
@@ -2259,6 +2258,29 @@ def test_zrevrange_score_cast(r):
     assert (
             r.zrevrange('foo', 0, 2, withscores=True, score_cast_func=round_str)
             == expected_with_cast_round
+    )
+
+
+def test_zrange_with_byscore(r):
+    testtools.zadd(r, 'foo', {'zero': 0})
+    testtools.zadd(r, 'foo', {'two': 2})
+    testtools.zadd(r, 'foo', {'two_a_also': 2})
+    testtools.zadd(r, 'foo', {'two_b_also': 2})
+    testtools.zadd(r, 'foo', {'four': 4})
+    assert r.zrange('foo', 1, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
+    assert r.zrange('foo', 2, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
+    assert (
+            r.zrange('foo', 0, 4, byscore=True)
+            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
+    )
+    assert r.zrange('foo', '-inf', 1, byscore=True) == [b'zero']
+    assert (
+            r.zrange('foo', 2, '+inf', byscore=True)
+            == [b'two', b'two_a_also', b'two_b_also', b'four']
+    )
+    assert (
+            r.zrange('foo', '-inf', '+inf', byscore=True)
+            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
     )
 
 
