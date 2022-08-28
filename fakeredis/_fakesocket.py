@@ -793,7 +793,7 @@ class FakeSocket:
         c = Float.decode(key.get(b'0')) + Float.decode(amount)
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
-        encoded = self._encodefloat(c, True, )
+        encoded = self._encodefloat(c, True)
         key.update(encoded)
         return encoded
 
@@ -1572,8 +1572,8 @@ class FakeSocket:
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
         else:
-            start, stop = self._fix_range(start.value, stop.value, len(zset))
-            start, stop = int(start), int(stop)
+            start, stop = Int.decode(start.bytes_val), Int.decode(stop.bytes_val)
+            start, stop = self._fix_range(start, stop, len(zset))
             if reverse:
                 start, stop = len(zset) - stop, len(zset) - start
             items = zset.islice_score(start, stop, reverse)

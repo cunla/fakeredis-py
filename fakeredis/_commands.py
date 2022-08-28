@@ -1,7 +1,6 @@
 import functools
-import re
-
 import math
+import re
 
 from . import _msgs as msgs
 from ._helpers import MAX_STRING_SIZE, null_terminate, SimpleError
@@ -239,13 +238,15 @@ class AfterAny:
 class ScoreTest:
     """Argument converter for sorted set score endpoints."""
 
-    def __init__(self, value, exclusive=False):
+    def __init__(self, value, exclusive=False, bytes_val=None):
         self.value = value
         self.exclusive = exclusive
+        self.bytes_val = bytes_val
 
     @classmethod
     def decode(cls, value):
         try:
+            original_value = value
             exclusive = False
             if value[:1] == b'(':
                 exclusive = True
@@ -253,7 +254,7 @@ class ScoreTest:
             value = Float.decode(
                 value, allow_leading_whitespace=True, allow_erange=True,
                 allow_empty=True, crop_null=True)
-            return cls(value, exclusive)
+            return cls(value, exclusive, original_value)
         except SimpleError:
             raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
 

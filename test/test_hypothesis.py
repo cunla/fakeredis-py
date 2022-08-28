@@ -1,5 +1,6 @@
 import functools
 import operator
+import sys
 
 import hypothesis
 import hypothesis.stateful
@@ -291,6 +292,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         real_result, real_exc = self._evaluate(self.real, command)
 
         if fake_exc is not None and real_exc is None:
+            print('{} raised on only on fake when running {}'.format(fake_exc, command), file=sys.stderr)
             raise fake_exc
         elif real_exc is not None and fake_exc is None:
             assert real_exc == fake_exc, "Expected exception {} not raised".format(real_exc)
@@ -305,7 +307,10 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 assert n(f) == n(r)
             self.transaction_normalize = []
         else:
-            assert fake_result == real_result
+            if fake_result != real_result:
+                print('{}!={} when running {}'.format(fake_result, real_result, command),
+                      file=sys.stderr)
+            assert fake_result == real_result, "Discrepency when running command {}".format(command)
             if real_result == b'QUEUED':
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
