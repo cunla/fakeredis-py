@@ -2267,6 +2267,7 @@ def test_zrange_with_large_int(r):
     with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
         r.zrange('', 0, -9223372036854775809)
 
+
 def test_zrange_with_byscore(r):
     testtools.zadd(r, 'foo', {'zero': 0})
     testtools.zadd(r, 'foo', {'two': 2})
