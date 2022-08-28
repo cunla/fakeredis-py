@@ -2268,28 +2268,6 @@ def test_zrange_with_large_int(r):
         r.zrange('', 0, -9223372036854775809)
 
 
-def test_zrange_with_byscore(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_a_also': 2})
-    testtools.zadd(r, 'foo', {'two_b_also': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
-    assert r.zrange('foo', 1, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
-    assert r.zrange('foo', 2, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
-    assert (
-            r.zrange('foo', 0, 4, byscore=True)
-            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
-    )
-    assert r.zrange('foo', '-inf', 1, byscore=True) == [b'zero']
-    assert (
-            r.zrange('foo', 2, '+inf', byscore=True)
-            == [b'two', b'two_a_also', b'two_b_also', b'four']
-    )
-    assert (
-            r.zrange('foo', '-inf', '+inf', byscore=True)
-            == [b'zero', b'two', b'two_a_also', b'two_b_also', b'four']
-    )
-
 
 def test_zrangebyscore(r):
     testtools.zadd(r, 'foo', {'zero': 0})
