@@ -1,14 +1,24 @@
 from time import sleep
 from xmlrpc.client import ResponseError
 
-import pytest as pytest
+import pytest
 import redis
+import redis.client
+from packaging.version import Version
+from redis.exceptions import ResponseError
 
-from testtools import raw_command, zadd
+import testtools
+from testtools import raw_command
 
+REDIS_VERSION = Version(redis.__version__)
 pytestmark = [
     pytest.mark.min_server('7'),
 ]
+fake_only = pytest.mark.parametrize(
+    'create_redis',
+    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
+    indirect=True
+)
 
 
 def test_script_exists(r):
@@ -38,8 +48,8 @@ def test_set_get_nx(r):
 
 
 def test_zadd_minus_zero(r):
-    zadd(r, 'foo', {'a': -0.0})
-    zadd(r, 'foo', {'a': 0.0})
+    testtools.zadd(r, 'foo', {'a': -0.0})
+    testtools.zadd(r, 'foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'0'
 
 
@@ -53,9 +63,42 @@ def test_expire_should_expire_key(r):
     assert r.expire('bar', 1) is False
 
 
-@pytest.mark.slow
 def test_expire_should_throw_error(r):
-    # r.set('foo', 'bar')
-    # assert r.get('foo') == b'bar'
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
     with pytest.raises(ResponseError):
         r.expire('foo', 1, nx=True, xx=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True, gt=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True, lt=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, gt=True, lt=True)
+
+
+def test_expire_should_not_expire__when_no_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, xx=True) == 0
+
+
+def test_expire_should_not_expire__when_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, nx=True) == 1
+    assert r.expire('foo', 2, nx=True) == 0
+
+
+def test_expire_should_expire__when_expire_is_greater(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 100) == 1
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 200, gt=True) == 1
+
+
+def test_expire_should_expire__when_expire_is_lessthan(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 20) == 1
+    assert r.expire('foo', 10, lt=True) == 1

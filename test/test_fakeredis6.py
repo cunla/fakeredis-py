@@ -2268,7 +2268,6 @@ def test_zrange_with_large_int(r):
         r.zrange('', 0, -9223372036854775809)
 
 
-
 def test_zrangebyscore(r):
     testtools.zadd(r, 'foo', {'zero': 0})
     testtools.zadd(r, 'foo', {'two': 2})
@@ -3952,6 +3951,11 @@ def test_expire_should_expire_key(r):
     sleep(1.5)
     assert r.get('foo') is None
     assert r.expire('bar', 1) is False
+
+
+def test_expire_extra_params_return_error(r):
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True)
 
 
 def test_expire_should_return_true_for_existing_key(r):

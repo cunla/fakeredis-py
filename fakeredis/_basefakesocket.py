@@ -444,11 +444,16 @@ class BaseFakeSocket:
                 lt = True
             else:
                 raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
-        counter = (nx, xx, gt, lt).count(True)
-        if counter > 1:
+        if self.version < 7 and (nx or xx or gt or lt):
+            raise SimpleError(msgs.WRONG_ARGS_MSG.format('expire'))
+        counter = (nx, gt, lt).count(True)
+        if (counter > 1) or (nx and xx):
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
-        if not key:
+        if (not key
+                or (xx and key.expireat is None)
+                or (nx and key.expireat is not None)
+                or (gt and key.expireat is not None and timestamp < key.expireat)
+                or (lt and key.expireat is not None and timestamp > key.expireat)):
             return 0
-        else:
-            key.expireat = timestamp
-            return 1
+        key.expireat = timestamp
+        return 1
