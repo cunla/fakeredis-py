@@ -63,6 +63,7 @@ def test_expire_should_expire_key(r):
     assert r.expire('bar', 1) is False
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_should_throw_error(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -76,12 +77,14 @@ def test_expire_should_throw_error(r):
         r.expire('foo', 1, gt=True, lt=True)
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_should_not_expire__when_no_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
     assert r.expire('foo', 1, xx=True) == 0
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_should_not_expire__when_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -89,6 +92,7 @@ def test_expire_should_not_expire__when_expire_is_set(r):
     assert r.expire('foo', 2, nx=True) == 0
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_should_expire__when_expire_is_greater(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -97,6 +101,7 @@ def test_expire_should_expire__when_expire_is_greater(r):
     assert r.expire('foo', 200, gt=True) == 1
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_should_expire__when_expire_is_lessthan(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'

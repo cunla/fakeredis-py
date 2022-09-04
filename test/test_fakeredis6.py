@@ -3953,6 +3953,7 @@ def test_expire_should_expire_key(r):
     assert r.expire('bar', 1) is False
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
 def test_expire_extra_params_return_error(r):
     with pytest.raises(ResponseError):
         r.expire('foo', 1, nx=True)
