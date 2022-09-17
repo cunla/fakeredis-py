@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "1.9.1"
+version = "1.9.2"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
