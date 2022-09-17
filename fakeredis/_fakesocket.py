@@ -1088,23 +1088,28 @@ class FakeSocket(BaseFakeSocket):
     @command((Key(ZSet), bytes, bytes), (bytes,))
     def zadd(self, key, *args):
         zset = key.value
-        ZADD_PARAMS = ['nx', 'xx', 'ch', 'incr', ]
+        ZADD_PARAMS = ['nx', 'xx', 'ch', 'incr', 'gt', 'lt', ]
         param_val = {k: False for k in ZADD_PARAMS}
         i = 0
 
         while i < len(args):
+            found = False
             for param in ZADD_PARAMS:
                 if casematch(args[i], bytes(param, encoding='utf8')):
                     param_val[param] = True
-                    i += 1
+                    found=True
                     break
-                # First argument not matching flags indicates the start of
-                # score pairs.
-                break
+            if found:
+                i += 1
+                continue
+            # First argument not matching flags indicates the start of
+            # score pairs.
+            break
 
         if param_val['nx'] and param_val['xx']:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
-
+        if [param_val['nx'], param_val['gt'], param_val['lt']].count(True) > 1:
+            raise SimpleError(msgs.ZADD_NX_GT_LT_ERROR_MSG)
         elements = args[i:]
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -1125,8 +1130,12 @@ class FakeSocket(BaseFakeSocket):
             return self.zincrby(key, item_score, item_name)
 
         for item_score, item_name in items:
-            if ((not param_val['nx'] or item_name not in zset)
-                    and (not param_val['xx'] or item_name in zset)):
+            if ((param_val['nx'] and item_name not in zset)
+                    or (param_val['xx'] and item_name in zset)
+                    or (param_val['gt'] and item_name in zset and zset.get(item_name) < item_score)
+                    or (param_val['lt'] and item_name in zset and zset.get(item_name) > item_score)
+                    or ([param_val['nx'], param_val['xx'], param_val['gt'], param_val['lt']].count(True) == 0)
+            ):
                 if zset.add(item_name, item_score):
                     changed_items += 1
 
