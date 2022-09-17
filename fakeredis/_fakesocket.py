@@ -1133,9 +1133,11 @@ class FakeSocket(BaseFakeSocket):
             if (
                     (param_val['nx'] and item_name not in zset)
                     or (param_val['xx'] and item_name in zset)
-                    or (param_val['gt'] and item_name in zset and zset.get(item_name) < item_score)
-                    or (param_val['lt'] and item_name in zset and zset.get(item_name) > item_score)
-                    or ([param_val['nx'], param_val['xx'], param_val['gt'], param_val['lt']].count(True) == 0)
+                    or (param_val['gt'] and ((item_name in zset and zset.get(item_name) < item_score)
+                                             or (not param_val['xx'] and item_name not in zset)))
+                    or (param_val['lt'] and ((item_name in zset and zset.get(item_name) > item_score)
+                                             or (not param_val['xx'] and item_name not in zset)))
+                    or ([param_val['nx'], param_val['gt'], param_val['lt'], param_val['xx']].count(True) == 0)
             ):
                 if zset.add(item_name, item_score):
                     changed_items += 1
