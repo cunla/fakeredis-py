@@ -1097,7 +1097,7 @@ class FakeSocket(BaseFakeSocket):
             for param in ZADD_PARAMS:
                 if casematch(args[i], bytes(param, encoding='utf8')):
                     param_val[param] = True
-                    found=True
+                    found = True
                     break
             if found:
                 i += 1
@@ -1130,7 +1130,8 @@ class FakeSocket(BaseFakeSocket):
             return self.zincrby(key, item_score, item_name)
 
         for item_score, item_name in items:
-            if ((param_val['nx'] and item_name not in zset)
+            if (
+                    (param_val['nx'] and item_name not in zset)
                     or (param_val['xx'] and item_name in zset)
                     or (param_val['gt'] and item_name in zset and zset.get(item_name) < item_score)
                     or (param_val['lt'] and item_name in zset and zset.get(item_name) > item_score)
