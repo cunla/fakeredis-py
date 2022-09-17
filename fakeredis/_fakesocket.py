@@ -1088,37 +1088,27 @@ class FakeSocket(BaseFakeSocket):
     @command((Key(ZSet), bytes, bytes), (bytes,))
     def zadd(self, key, *args):
         zset = key.value
-
+        ZADD_PARAMS = ['nx', 'xx', 'ch', 'incr', ]
+        param_val = {k: False for k in ZADD_PARAMS}
         i = 0
-        ch = False
-        nx = False
-        xx = False
-        incr = False
+
         while i < len(args):
-            if casematch(args[i], b'ch'):
-                ch = True
-                i += 1
-            elif casematch(args[i], b'nx'):
-                nx = True
-                i += 1
-            elif casematch(args[i], b'xx'):
-                xx = True
-                i += 1
-            elif casematch(args[i], b'incr'):
-                incr = True
-                i += 1
-            else:
+            for param in ZADD_PARAMS:
+                if casematch(args[i], bytes(param, encoding='utf8')):
+                    param_val[param] = True
+                    i += 1
+                    break
                 # First argument not matching flags indicates the start of
                 # score pairs.
                 break
 
-        if nx and xx:
+        if param_val['nx'] and param_val['xx']:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
 
         elements = args[i:]
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if incr and len(elements) != 2:
+        if param_val['incr'] and len(elements) != 2:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
@@ -1128,24 +1118,22 @@ class FakeSocket(BaseFakeSocket):
         old_len = len(zset)
         changed_items = 0
 
-        if incr:
+        if param_val['incr']:
             item_score, item_name = items[0]
-            if (nx and item_name in zset) or (xx and item_name not in zset):
+            if (param_val['nx'] and item_name in zset) or (param_val['xx'] and item_name not in zset):
                 return None
             return self.zincrby(key, item_score, item_name)
 
         for item_score, item_name in items:
-            if (
-                    (not nx or item_name not in zset)
-                    and (not xx or item_name in zset)
-            ):
+            if ((not param_val['nx'] or item_name not in zset)
+                    and (not param_val['xx'] or item_name in zset)):
                 if zset.add(item_name, item_score):
                     changed_items += 1
 
         if changed_items:
             key.updated()
 
-        if ch:
+        if param_val['ch']:
             return changed_items
         return len(zset) - old_len
 
