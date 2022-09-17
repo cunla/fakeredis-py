@@ -1980,6 +1980,36 @@ def test_zadd_with_nx(r, param, return_value, state, ch):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
+@testtools.run_test_if_redis_ver('above', '4.2.0')
+@pytest.mark.parametrize(
+    'param,return_value,state',
+    [
+        ({'four': 2.0, 'three': 1.0}, 0, [(b'three', 3.0), (b'four', 4.0)]),
+        ({'four': 5.0, 'three': 1.0, 'zero': 0.0}, 2, [(b'zero', 0.0), (b'three', 3.0), (b'four', 5.0), ]),
+        ({'two': 2.0, 'one': 1.0}, 2, [(b'one', 1.0), (b'two', 2.0), (b'three', 3.0), (b'four', 4.0)])
+    ]
+)
+def test_zadd_with_gt_and_ch(r, param, return_value, state):
+    testtools.zadd(r, 'foo', {'four': 4.0, 'three': 3.0})
+    assert testtools.zadd(r, 'foo', param, gt=True, ch=True) == return_value
+    assert r.zrange('foo', 0, -1, withscores=True) == state
+
+
+@testtools.run_test_if_redis_ver('above', '4.2.0')
+@pytest.mark.parametrize(
+    'param,return_value,state',
+    [
+        ({'four': 2.0, 'three': 1.0}, 0, [(b'three', 3.0), (b'four', 4.0)]),
+        ({'four': 5.0, 'three': 1.0, 'zero': 0.0}, 1, [(b'zero', 0.0), (b'three', 3.0), (b'four', 5.0)]),
+        ({'two': 2.0, 'one': 1.0}, 2, [(b'one', 1.0), (b'two', 2.0), (b'three', 3.0), (b'four', 4.0)])
+    ]
+)
+def test_zadd_with_gt(r, param, return_value, state):
+    testtools.zadd(r, 'foo', {'four': 4.0, 'three': 3.0})
+    assert testtools.zadd(r, 'foo', param, gt=True) == return_value
+    assert r.zrange('foo', 0, -1, withscores=True) == state
+
+
 @testtools.run_test_if_redis_ver('above', '3')
 @pytest.mark.parametrize(
     'param,return_value,state',
