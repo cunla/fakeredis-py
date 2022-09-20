@@ -70,7 +70,7 @@ class TestInitArgs:
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
-    @testtools.run_test_if_redis_ver('above', '3')
+    @testtools.run_test_if_redispy_ver('above', '3')
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
             'redis://localhost:6379/0',

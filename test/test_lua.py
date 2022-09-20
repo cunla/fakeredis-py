@@ -121,7 +121,7 @@ def test_eval_mget(r):
     assert val == [b'bar1', b'bar2']
 
 
-@testtools.run_test_if_redis_ver('below', '3')
+@testtools.run_test_if_redispy_ver('below', '3')
 def test_eval_mget_none(r):
     r.set('foo1', None)
     r.set('foo2', None)
@@ -156,7 +156,7 @@ def test_eval_hgetall_iterate(r):
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
 
 
-@testtools.run_test_if_redis_ver('below', '3')
+@testtools.run_test_if_redispy_ver('below', '3')
 def test_eval_list_with_nil(r):
     r.lpush('foo', 'bar')
     r.lpush('foo', None)
@@ -260,7 +260,7 @@ def test_eval_call_bool7(r):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
 
 
-@testtools.run_test_if_redis_ver('below', '3')
+@testtools.run_test_if_redispy_ver('below', '3')
 def test_eval_none_arg(r):
     val = r.eval('return ARGV[1] == "None"', 0, None)
     assert val

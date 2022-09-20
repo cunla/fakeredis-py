@@ -8,7 +8,7 @@ import redis
 import testtools
 
 pytestmark = [
-    testtools.run_test_if_redis_ver('below', '4.2'),
+    testtools.run_test_if_redispy_ver('below', '4.2'),
 ]
 
 aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
@@ -60,7 +60,7 @@ async def conn(req_aioredis2):
         yield conn
 
 
-@testtools.run_test_if_redis_ver('above', '4.2')
+@testtools.run_test_if_redispy_ver('above', '4.2')
 def test_redis_asyncio_is_used():
     """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
     assert not hasattr(fakeredis.aioredis, "__version__")

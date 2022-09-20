@@ -4,7 +4,7 @@ import redis
 import testtools
 
 pytestmark = [
-    testtools.run_test_if_redis_ver('above', '4'),
+    testtools.run_test_if_redispy_ver('above', '4'),
 ]
 fake_only = pytest.mark.parametrize(
     'create_redis',
@@ -13,7 +13,7 @@ fake_only = pytest.mark.parametrize(
 )
 
 
-@testtools.run_test_if_redis_ver('above', '4.2.0')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
 @testtools.run_test_if_no_aioredis
 def test_fakeredis_aioredis_uses_redis_asyncio():
     import fakeredis.aioredis as aioredis
@@ -21,7 +21,7 @@ def test_fakeredis_aioredis_uses_redis_asyncio():
     assert not hasattr(aioredis, "__version__")
 
 
-@testtools.run_test_if_redis_ver('above', '4.1.2')
+@testtools.run_test_if_redispy_ver('above', '4.1.2')
 def test_lmove_to_nonexistent_destination(r):
     r.rpush('foo', 'one')
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') == b'one'
@@ -72,7 +72,7 @@ def test_lmove_wrong_type(r):
     assert r.lrange('list', 0, -1) == [b'element']
 
 
-@testtools.run_test_if_redis_ver('above', '4.1.2')
+@testtools.run_test_if_redispy_ver('above', '4.1.2')
 def test_lmove(r):
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') is None
     assert r.lpop('bar') is None

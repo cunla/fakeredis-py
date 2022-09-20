@@ -8,7 +8,7 @@ import redis
 import testtools
 
 pytestmark = [
-    testtools.run_test_if_redis_ver('below', '3'),
+    testtools.run_test_if_redispy_ver('below', '3'),
 ]
 
 

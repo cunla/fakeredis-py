@@ -7,7 +7,7 @@ from packaging.version import Version
 import testtools
 
 pytestmark = [
-    testtools.run_test_if_redis_ver('below', '4.2'),
+    testtools.run_test_if_redispy_ver('below', '4.2'),
 ]
 
 aioredis = pytest.importorskip("aioredis")

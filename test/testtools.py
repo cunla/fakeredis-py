@@ -25,7 +25,7 @@ def zadd(r, key, d, *args, **kwargs):
         return r.zadd(key, **d)
 
 
-def run_test_if_redis_ver(condition: str, ver: str):
+def run_test_if_redispy_ver(condition: str, ver: str):
     cond = REDIS_VERSION < Version(ver) if condition == 'above' else REDIS_VERSION > Version(ver)
     return pytest.mark.skipif(
         cond,
