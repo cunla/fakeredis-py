@@ -1926,8 +1926,6 @@ def test_empty_set(r):
     assert not r.exists('foo')
 
 
-
-
 def test_zrange_same_score(r):
     testtools.zadd(r, 'foo', {'two_a': 2})
     testtools.zadd(r, 'foo', {'two_b': 2})
