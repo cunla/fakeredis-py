@@ -9,7 +9,6 @@ from time import sleep, time
 import pytest
 import redis
 import redis.client
-import six
 from packaging.version import Version
 from redis.exceptions import ResponseError
 
@@ -3001,7 +3000,7 @@ def test_pipeline_raises_when_watched_key_changed(r):
     p = r.pipeline()
     try:
         p.watch('greet', 'foo')
-        nextf = six.ensure_binary(p.get('foo')) + b'baz'
+        nextf = bytes(p.get('foo')) + b'baz'
         # Simulate change happening on another thread.
         r.rpush('greet', 'world')
         # Begin pipelining.
@@ -3022,7 +3021,7 @@ def test_pipeline_succeeds_despite_unwatched_key_changed(r):
     try:
         # Only watch one of the 2 keys.
         p.watch('foo')
-        nextf = six.ensure_binary(p.get('foo')) + b'baz'
+        nextf = bytes(p.get('foo')) + b'baz'
         # Simulate change happening on another thread.
         r.rpush('greet', 'world')
         p.multi()
@@ -3042,7 +3041,7 @@ def test_pipeline_succeeds_when_watching_nonexistent_key(r):
     try:
         # Also watch a nonexistent key.
         p.watch('foo', 'bam')
-        nextf = six.ensure_binary(p.get('foo')) + b'baz'
+        nextf = bytes(p.get('foo')) + b'baz'
         # Simulate change happening on another thread.
         r.rpush('greet', 'world')
         p.multi()

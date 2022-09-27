@@ -7,7 +7,6 @@ import random
 import time
 
 import redis
-import six
 
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
@@ -1518,10 +1517,15 @@ class FakeSocket(BaseFakeSocket):
             return 1 if result else None
         return result
 
+    def ensure_str(self, s):
+        return (s.decode(encoding='utf-8', errors='replace')
+                if isinstance(s, bytes)
+                else str(s).encode(encoding='utf-8', errors='replace'))
+
     def _check_for_lua_globals(self, lua_runtime, expected_globals):
         actual_globals = set(lua_runtime.globals().keys())
         if actual_globals != expected_globals:
-            unexpected = [six.ensure_str(var, 'utf-8', 'replace')
+            unexpected = [self.ensure_str(var, 'utf-8', 'replace')
                           for var in actual_globals - expected_globals]
             raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
