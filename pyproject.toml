@@ -14,7 +14,8 @@ readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
 authors = [
     "James Saryerwinnie <js@jamesls.com>",
-    "Bruce Merry <bmerry@ska.ac.za>"
+    "Bruce Merry <bmerry@ska.ac.za>",
+    "Daniel Moran <daniel.maruani@gmail.com>"
 ]
 maintainers = [
     "Daniel Moran <daniel.maruani@gmail.com>"
