@@ -24,6 +24,11 @@ class TestInitArgs:
         assert 'bar' in r4
         assert 'bar' not in r1
 
+    def test_host_init_arg(self):
+        db = fakeredis.FakeStrictRedis(host='localhost')
+        db.set('foo', 'bar')
+        assert db.get('foo') == b'bar'
+
     def test_from_url(self):
         db = fakeredis.FakeStrictRedis.from_url(
             'redis://localhost:6379/0')

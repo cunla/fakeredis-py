@@ -127,7 +127,8 @@ class FakeRedisMixin:
                 'connection_class': FakeConnection,
                 'server': server
             }
-            conn_pool_args = [
+            conn_pool_args = {
+                'host',
                 'db',
                 # Ignoring because AUTH is not implemented
                 # 'username',
@@ -139,8 +140,8 @@ class FakeRedisMixin:
                 'retry_on_timeout',
                 'max_connections',
                 'health_check_interval',
-                'client_name'
-            ]
+                'client_name',
+            }
             for arg in conn_pool_args:
                 if arg in kwds:
                     kwargs[arg] = kwds[arg]

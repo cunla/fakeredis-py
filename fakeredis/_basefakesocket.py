@@ -4,7 +4,6 @@ import time
 import weakref
 
 import redis
-import six
 
 from . import _msgs as msgs
 from ._commands import (
@@ -190,7 +189,9 @@ class BaseFakeSocket:
                 return ret
 
     def _name_to_func(self, name):
-        name = six.ensure_str(name, encoding='utf-8', errors='replace')
+        name = (name.decode(encoding='utf-8', errors='replace')
+                if isinstance(name, bytes)
+                else str(name).encode(encoding='utf-8', errors='replace'))
         func_name = name.lower()
         func = getattr(self, func_name, None)
         if name.startswith('_') or not func or not hasattr(func, '_fakeredis_sig'):
