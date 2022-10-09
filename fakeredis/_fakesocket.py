@@ -1517,10 +1517,10 @@ class FakeSocket(BaseFakeSocket):
             return 1 if result else None
         return result
 
-    def ensure_str(self, s):
-        return (s.decode(encoding='utf-8', errors='replace')
+    def ensure_str(self, s, encoding, replaceerr):
+        return (s.decode(encoding=encoding, errors=replaceerr)
                 if isinstance(s, bytes)
-                else str(s).encode(encoding='utf-8', errors='replace'))
+                else str(s).encode(encoding=encoding, errors=replaceerr))
 
     def _check_for_lua_globals(self, lua_runtime, expected_globals):
         actual_globals = set(lua_runtime.globals().keys())
