@@ -24,7 +24,7 @@ def _check_for_lua_globals(lua_runtime, expected_globals):
 
 
 def _lua_redis_log(lua_runtime, expected_globals, lvl, *args):
-    _check_for_lua_globals(lua_runtime.globals().keys(), expected_globals)
+    _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
     if lvl not in REDIS_LOG_LEVELS.values():
