@@ -2,6 +2,7 @@ fakeredis: A fake version of a redis-py
 =======================================
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)
+![badge](https://img.shields.io/pypi/dm/fakeredis)
 
 - [fakeredis: A fake version of a redis-py](#fakeredis--a-fake-version-of-a-redis-py)
 - [How to Use](#how-to-use)
@@ -27,6 +28,8 @@ in Lua). If you install fakeredis with ``pip install fakeredis[lua]`` it will
 be automatically installed.
 
 For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md)
+
+[Link on pypi](https://pypi.org/project/fakeredis/)
 
 # How to Use
 FakeRedis can imitate Redis server version 6.x or 7.x - There are a few minor behavior differences. 
