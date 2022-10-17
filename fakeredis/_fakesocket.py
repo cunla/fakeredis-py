@@ -959,6 +959,8 @@ class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
 
     @command((Int, bytes), (bytes,))
     def sintercard(self, numkeys, *args):
+        if self.version < 7:
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format('sintercard'))
         if numkeys < 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         limit = 0
