@@ -1084,7 +1084,16 @@ class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
         return OK
 
     # Sorted set commands
-    # TODO: [b]zpopmin/zpopmax,
+
+    @command((Key(ZSet),), (Int,))
+    def zpopmin(self, key, count=1):
+        return self._zpop(key, count, False)
+
+    @command((Key(ZSet),), (Int,))
+    def zpopmax(self, key, count=1):
+        return self._zpop(key, count, True)
+
+    # TODO: bzpopmin/bzpopmax,
 
     @staticmethod
     def _limit_items(items, offset, count):

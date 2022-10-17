@@ -461,3 +461,15 @@ class BaseFakeSocket:
             return 0
         key.expireat = timestamp
         return 1
+
+    def _zpop(self, key, count, reverse):
+        zset = key.value
+        members = list(zset)
+        if reverse:
+            members.reverse()
+        members = members[:count]
+        res = [(bytes(member), self._encodefloat(zset.get(member), True)) for member in members]
+        res = list(itertools.chain.from_iterable(res))
+        for item in members:
+            zset.discard(item)
+        return res
