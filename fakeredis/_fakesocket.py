@@ -1,11 +1,11 @@
 import functools
 import hashlib
 import itertools
-import math
 import pickle
 import random
 import time
 
+import math
 import redis
 
 from . import _msgs as msgs
@@ -444,6 +444,12 @@ class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
     @command((Key(bytes),))
     def get(self, key):
         return key.get(None)
+
+    @command((Key(bytes),))
+    def getdel(self, key):
+        res = key.get(None)
+        self._delete(key)
+        return res
 
     @command((Key(bytes), BitOffset))
     def getbit(self, key, offset):
@@ -948,7 +954,24 @@ class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
 
     @command((Key(set),), (Key(set),))
     def sinter(self, *keys):
-        return self._setop(lambda a, b: a & b, True, None, *keys)
+        res = self._setop(lambda a, b: a & b, True, None, *keys)
+        return res
+
+    @command((Int, bytes), (bytes,))
+    def sintercard(self, numkeys, *args):
+        if numkeys < 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        limit = 0
+        if casematch(args[-2], b'limit'):
+            limit = Int.decode(args[-1])
+            args = args[:-2]
+        if numkeys != len(args):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        keys = [CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
+                for i in range(numkeys)]
+
+        res = self._setop(lambda a, b: a & b, False, None, *keys)
+        return len(res) if limit == 0 else min(limit, len(res))
 
     @command((Key(), Key(set)), (Key(set),))
     def sinterstore(self, dst, *keys):

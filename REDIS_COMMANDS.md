@@ -8,6 +8,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * decr
  * decrby
  * get
+ * getdel
  * getrange
  * getset
  * incr
@@ -375,7 +376,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
  * geosearchstore
 
 ### string
- * getdel
  * getex
  * lcs
 

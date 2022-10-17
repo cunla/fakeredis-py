@@ -343,7 +343,10 @@ class BaseFakeSocket:
     def _calc_setop(op, stop_if_missing, key, *keys):
         if stop_if_missing and not key.value:
             return set()
-        ans = key.value.copy()
+        value = key.value
+        if not isinstance(value, set):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        ans = value.copy()
         for other in keys:
             value = other.value if other.value is not None else set()
             if not isinstance(value, set):

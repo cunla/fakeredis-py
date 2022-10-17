@@ -1,3 +1,4 @@
+import os
 from time import sleep
 from xmlrpc.client import ResponseError
 
@@ -107,3 +108,55 @@ def test_expire_should_expire__when_expire_is_lessthan(r):
     assert r.get('foo') == b'bar'
     assert r.expire('foo', 20) == 1
     assert r.expire('foo', 10, lt=True) == 1
+
+
+def test_sintercard(r):
+    r.sadd('foo', 'member1')
+    r.sadd('foo', 'member2')
+    r.sadd('bar', 'member2')
+    r.sadd('bar', 'member3')
+    assert r.sintercard(2, ['foo', 'bar']) == 1
+    assert r.sintercard(1, ['foo']) == 2
+
+
+def test_sintercard_key_doesnt_exist(r):
+    r.sadd('foo', 'member1')
+    r.sadd('foo', 'member2')
+    r.sadd('bar', 'member2')
+    r.sadd('bar', 'member3')
+    assert r.sintercard(2, ['foo', 'bar']) == 1
+    assert r.sintercard(1, ['foo']) == 2
+    assert r.sintercard(1, ['foo'], limit=1) == 1
+    assert r.sintercard(3, ['foo', 'bar', 'ddd']) == 0
+
+
+def test_sintercard_bytes_keys(r):
+    foo = os.urandom(10)
+    bar = os.urandom(10)
+    r.sadd(foo, 'member1')
+    r.sadd(foo, 'member2')
+    r.sadd(bar, 'member2')
+    r.sadd(bar, 'member3')
+    assert r.sintercard(2, [foo, bar]) == 1
+    assert r.sintercard(1, [foo]) == 2
+    assert r.sintercard(1, [foo], limit=1) == 1
+
+
+def test_sintercard_wrong_type(r):
+    testtools.zadd(r, 'foo', {'member': 1})
+    r.sadd('bar', 'member')
+    with pytest.raises(redis.ResponseError):
+        r.sintercard(2, ['foo', 'bar'])
+    with pytest.raises(redis.ResponseError):
+        r.sintercard(2, ['bar', 'foo'])
+
+
+def test_sintercard_syntax_error(r):
+    testtools.zadd(r, 'foo', {'member': 1})
+    r.sadd('bar', 'member')
+    with pytest.raises(redis.ResponseError):
+        r.sintercard(3, ['foo', 'bar'])
+    with pytest.raises(redis.ResponseError):
+        r.sintercard(1, ['bar', 'foo'])
+    with pytest.raises(redis.ResponseError):
+        r.sintercard(1, ['bar', 'foo'], limit='x')
