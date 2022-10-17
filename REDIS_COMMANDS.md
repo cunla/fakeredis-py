@@ -8,6 +8,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * decr
  * decrby
  * get
+ * getdel
  * getrange
  * getset
  * incr
@@ -134,6 +135,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * sdiff
  * sdiffstore
  * sinter
+ * sintercard
  * sinterstore
  * sismember
  * smembers
@@ -375,7 +377,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
  * geosearchstore
 
 ### string
- * getdel
  * getex
  * lcs
 
@@ -397,9 +398,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
  * spublish
  * ssubscribe
  * sunsubscribe
-
-### set
- * sintercard
 
 ### stream
  * xack

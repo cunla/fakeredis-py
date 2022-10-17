@@ -11,7 +11,7 @@ import redis
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (
     Database, FakeSelector, LOGGER)
-from fakeredis._msgs import CONNECTION_ERROR_MSG
+from . import _msgs as msgs
 
 LOGGER = LOGGER
 
@@ -50,7 +50,7 @@ class FakeConnection(redis.Connection):
 
     def _connect(self):
         if not self._server.connected:
-            raise redis.ConnectionError(CONNECTION_ERROR_MSG)
+            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         return FakeSocket(self._server)
 
     def can_read(self, timeout=0):
@@ -78,7 +78,7 @@ class FakeConnection(redis.Connection):
             try:
                 response = self._sock.responses.get_nowait()
             except queue.Empty:
-                raise redis.ConnectionError(CONNECTION_ERROR_MSG)
+                raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
         if isinstance(response, redis.ResponseError):

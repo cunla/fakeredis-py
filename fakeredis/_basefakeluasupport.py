@@ -2,7 +2,7 @@ import functools
 import hashlib
 import itertools
 
-from fakeredis._helpers import SimpleError, SimpleString
+from fakeredis._helpers import SimpleError, SimpleString, casematch, casenorm, OK
 from . import _msgs as msgs
 from ._commands import command, Int
 from ._helpers import REDIS_LOG_LEVELS, REDIS_LOG_LEVELS_TO_LOGGING, LOGGER
@@ -165,3 +165,32 @@ class BaseFakeLuaSocket:
         _check_for_lua_globals(lua_runtime, expected_globals)
 
         return self._convert_lua_result(result, nested=False)
+
+    @command((bytes, Int), (bytes,), flags='s')
+    def evalsha(self, sha1, numkeys, *keys_and_args):
+        try:
+            script = self._server.script_cache[sha1]
+        except KeyError:
+            raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
+        return self.eval(script, numkeys, *keys_and_args)
+
+    @command((bytes,), (bytes,), flags='s')
+    def script(self, subcmd, *args):
+        if casematch(subcmd, b'load'):
+            if len(args) != 1:
+                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+            script = args[0]
+            sha1 = hashlib.sha1(script).hexdigest().encode()
+            self._server.script_cache[sha1] = script
+            return sha1
+        elif casematch(subcmd, b'exists'):
+            if self.version >= 7 and len(args) == 0:
+                raise SimpleError(msgs.WRONG_ARGS_MSG.format('script|exists'))
+            return [int(sha1 in self._server.script_cache) for sha1 in args]
+        elif casematch(subcmd, b'flush'):
+            if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
+                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+            self._server.script_cache = {}
+            return OK
+        else:
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))

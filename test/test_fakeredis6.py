@@ -1,4 +1,3 @@
-import math
 import os
 import threading
 from collections import OrderedDict
@@ -6,6 +5,7 @@ from datetime import datetime, timedelta
 from queue import Queue
 from time import sleep, time
 
+import math
 import pytest
 import redis
 import redis.client
@@ -773,6 +773,18 @@ def test_delete(r):
     r['foo'] = 'bar'
     assert r.delete('foo') == 1
     assert r.get('foo') is None
+
+
+@testtools.run_test_if_redispy_ver('above', '4.0.0')
+def test_getdel(r):
+    r['foo'] = 'bar'
+    assert r.getdel('foo') == b'bar'
+    assert r.get('foo') is None
+
+
+@testtools.run_test_if_redispy_ver('above', '4.0.0')
+def test_getdel_doesnt_exist(r):
+    assert r.getdel('foo') is None
 
 
 def test_echo(r):
