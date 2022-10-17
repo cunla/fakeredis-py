@@ -225,7 +225,7 @@ poetry run pytest -m fake
 ```
 
 Because this module is attempting to provide the same interface as `redis-py`,
-the python bindings to redis, a reasonable way to test this to to take each
+the python bindings to redis, a reasonable way to test this to take each
 unittest and run it against a real redis server. fakeredis and the real redis
 server should give the same result. To run tests against a real redis instance
 instead::
