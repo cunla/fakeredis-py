@@ -6,8 +6,7 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (
-    Int)
+from ._commands import (Int, CommandItem)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
@@ -473,3 +472,12 @@ class BaseFakeSocket:
         for item in members:
             zset.discard(item)
         return res
+
+    def _bzpop(self, keys, reverse, first_pass):
+        res = []
+        for key in keys:
+            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            temp_res = self._zpop(item, 1, reverse)
+            if temp_res:
+                return [key, temp_res[0], temp_res[1]]
+        return None
