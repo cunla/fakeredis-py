@@ -474,7 +474,6 @@ class BaseFakeSocket:
         return res
 
     def _bzpop(self, keys, reverse, first_pass):
-        res = []
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse)
