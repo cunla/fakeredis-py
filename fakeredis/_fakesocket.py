@@ -9,18 +9,18 @@ import math
 import redis
 
 from . import _msgs as msgs
-from ._basefakeluasupport import BaseFakeLuaSocket
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
     Key, command, DbIndex, Int, CommandItem, BeforeAny, SortFloat, Float, BitOffset, BitValue, Hash,
     StringTest, ScoreTest, Timeout)
+from ._fakeluasocket import FakeLuaSocket
 from ._helpers import (
     PONG, OK, MAX_STRING_SIZE, SimpleError, SimpleString, casematch,
     BGSAVE_STARTED, casenorm, compile_pattern)
 from ._zset import ZSet
 
 
-class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
+class FakeSocket(BaseFakeSocket, FakeLuaSocket):
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
@@ -1093,7 +1093,17 @@ class FakeSocket(BaseFakeSocket, BaseFakeLuaSocket):
     def zpopmax(self, key, count=1):
         return self._zpop(key, count, True)
 
-    # TODO: bzpopmin/bzpopmax,
+    @command((bytes, bytes), (bytes,), flags='s')
+    def bzpopmin(self, *args):
+        keys = args[:-1]
+        timeout = Timeout.decode(args[-1])
+        return self._blocking(timeout, functools.partial(self._bzpop, keys, False))
+
+    @command((bytes, bytes), (bytes,), flags='s')
+    def bzpopmax(self, *args):
+        keys = args[:-1]
+        timeout = Timeout.decode(args[-1])
+        return self._blocking(timeout, functools.partial(self._bzpop, keys, True))
 
     @staticmethod
     def _limit_items(items, offset, count):

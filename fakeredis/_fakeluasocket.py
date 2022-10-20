@@ -35,7 +35,7 @@ def _lua_redis_log(lua_runtime, expected_globals, lvl, *args):
     LOGGER.log(REDIS_LOG_LEVELS_TO_LOGGING[lvl], msg)
 
 
-class BaseFakeLuaSocket:
+class FakeLuaSocket:
 
     # Script commands
     # script debug and script kill will probably not be supported

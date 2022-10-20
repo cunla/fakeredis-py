@@ -60,6 +60,33 @@ list of [unimplemented commands](#unimplemented-commands).
  * rpush
  * rpushx
 
+### sorted-set
+ * bzpopmax
+ * bzpopmin
+ * zadd
+ * zcard
+ * zcount
+ * zincrby
+ * zinterstore
+ * zlexcount
+ * zpopmax
+ * zpopmin
+ * zrange
+ * zrangebylex
+ * zrangebyscore
+ * zrank
+ * zrem
+ * zremrangebylex
+ * zremrangebyrank
+ * zremrangebyscore
+ * zrevrange
+ * zrevrangebylex
+ * zrevrangebyscore
+ * zrevrank
+ * zscan
+ * zscore
+ * zunionstore
+
 ### generic
  * del
  * dump
@@ -148,33 +175,8 @@ list of [unimplemented commands](#unimplemented-commands).
  * sunion
  * sunionstore
 
-### sorted-set
- * zadd
- * zcard
- * zcount
- * zincrby
- * zinterstore
- * zlexcount
- * zpopmax
- * zpopmin
- * zrange
- * zrangebylex
- * zrangebyscore
- * zrank
- * zrem
- * zremrangebylex
- * zremrangebyrank
- * zremrangebyscore
- * zrevrange
- * zrevrangebylex
- * zrevrangebyscore
- * zrevrank
- * zscan
- * zscore
- * zunionstore
-
 # Unimplemented Commands
-All of the redis commands are implemented in fakeredis with these exceptions:
+All the redis commands are implemented in fakeredis with these exceptions:
     
 ### server
  * acl
@@ -316,8 +318,6 @@ All of the redis commands are implemented in fakeredis with these exceptions:
 
 ### sorted-set
  * bzmpop
- * bzpopmax
- * bzpopmin
  * zdiff
  * zdiffstore
  * zinter
