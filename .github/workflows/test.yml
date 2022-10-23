@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           VERSION=$(poetry version -s --no-ansi -n)
-          echo "::set-output name=VERSION::$VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test import
         run: |
           poetry build
