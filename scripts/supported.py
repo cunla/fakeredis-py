@@ -66,7 +66,7 @@ list of [unimplemented commands](#unimplemented-commands).
     print_groups(implemented)
 
     print("""# Unimplemented Commands
-All of the redis commands are implemented in fakeredis with these exceptions:
+All the redis commands are implemented in fakeredis with these exceptions:
     """)
     print_groups(unimplemented)
 
