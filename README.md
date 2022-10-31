@@ -2,7 +2,7 @@ fakeredis: A fake version of a redis-py
 =======================================
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)
-![badge](https://img.shields.io/pypi/dm/fakeredis)
+[![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
 
 - [fakeredis: A fake version of a redis-py](#fakeredis--a-fake-version-of-a-redis-py)
 - [How to Use](#how-to-use)
@@ -13,7 +13,8 @@ fakeredis: A fake version of a redis-py
     + [aioredis 2.x](#aioredis-2x)
 - [Running the Tests](#running-the-tests)
 - [Contributing](#contributing)
-- [Alternatives](#alternatives)
+- [Guides](#guides)
+  - [Implementing support for a redis command](#implementing-support-for-a-command)
 
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server. This was created for a single
@@ -252,17 +253,42 @@ Contributions are welcome. Please see the
 The maintainer generally has very little time to work on fakeredis, so the
 best way to get a bug fixed is to contribute a pull request.
 
-If you'd like to help out, you can start with any of the issues
-labeled with `Help wanted`.
+If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
 
-# Alternatives
+# Guides
+## Implementing support for a command 
+Creating a new command support should be done in the `FakeSocket` class (in `_fakesocket.py`) by creating the method
+and using `@command` decorator (which should be the command syntax, you can use existing samples on the file).
 
-### [redislite](https://redislite.readthedocs.io/en/latest/)
-Redis in a python module. It runs a real redis server and connects to it over a UNIX domain socket, so it will behave just like a real
-server.
+For example:
+```python
+class FakeSocket(BaseFakeSocket, FakeLuaSocket):
+   # ...
+   @command(...)
+   def zscore(self, key, member):
+     try:
+         return self._encodefloat(key.value[member], False)
+     except KeyError:
+         return None
+```
 
+### Implement a test for it
+There are multiple scenarios for test, with different versions of redis server, redis-py, etc.
+The tests not only assert the validity of output but runs the same test on a real redis-server and compares the output to the real server output.
 
-### [birdisle](https://birdisle.readthedocs.io/en/latest/) 
-Currently not maintained.
+- Create tests in the `test_fakeredis6.py` if the command is supported in redis server 6.x.
+- Alternatively, create the test in `test_fakeredis7.py` if the command is supported only on redis server 7.x.
+- If support for the command was introduced in a certain version of redis-py (see [redis-py release notes](https://github.com/redis/redis-py/releases/tag/v4.3.4)) you can use the decorator `@testtools.run_test_if_redispy_ver` on your tests. example:
+```python
+@testtools.run_test_if_redispy_ver('above', '4.2.0') # This will run for redis-py 4.2.0 or above.
+def test_expire_should_not_expire__when_no_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, xx=True) == 0
+```
 
-which runs the redis code as a Python extension (no separate process).
+### Updating `REDIS_COMMANDS.md`
+Lastly, run from the root of the project the script to regenarate `REDIS_COMMANDS.md`:
+```
+python scripts/supported.py > REDIS_COMMANDS.md    
+```
