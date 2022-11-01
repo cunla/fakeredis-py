@@ -10,7 +10,6 @@ from ._commands import (Int, CommandItem)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
-from ._zset import ZSet
 
 
 class BaseFakeSocket:
@@ -369,22 +368,6 @@ class BaseFakeSocket:
             dst.value = ans
             return len(dst.value)
 
-    def _type(self, key):
-        if key.value is None:
-            return SimpleString(b'none')
-        elif isinstance(key.value, bytes):
-            return SimpleString(b'string')
-        elif isinstance(key.value, list):
-            return SimpleString(b'list')
-        elif isinstance(key.value, set):
-            return SimpleString(b'set')
-        elif isinstance(key.value, ZSet):
-            return SimpleString(b'zset')
-        elif isinstance(key.value, dict):
-            return SimpleString(b'hash')
-        else:
-            assert False  # pragma: nocover
-
     def _clear_watches(self):
         self._watch_notified = False
         while self._watches:
@@ -421,46 +404,6 @@ class BaseFakeSocket:
             self.put_response(msg)
         return NoResponse()
 
-    def _delete(self, *keys):
-        ans = 0
-        done = set()
-        for key in keys:
-            if key and key.key not in done:
-                key.value = None
-                done.add(key.key)
-                ans += 1
-        return ans
-
-    def _expireat(self, key, timestamp, *args):
-        nx = False
-        xx = False
-        gt = False
-        lt = False
-        for arg in args:
-            if casematch(b'nx', arg):
-                nx = True
-            elif casematch(b'xx', arg):
-                xx = True
-            elif casematch(b'gt', arg):
-                gt = True
-            elif casematch(b'lt', arg):
-                lt = True
-            else:
-                raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
-        if self.version < 7 and (nx or xx or gt or lt):
-            raise SimpleError(msgs.WRONG_ARGS_MSG.format('expire'))
-        counter = (nx, gt, lt).count(True)
-        if (counter > 1) or (nx and xx):
-            raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
-        if (not key
-                or (xx and key.expireat is None)
-                or (nx and key.expireat is not None)
-                or (gt and key.expireat is not None and timestamp < key.expireat)
-                or (lt and key.expireat is not None and timestamp > key.expireat)):
-            return 0
-        key.expireat = timestamp
-        return 1
-
     def _zpop(self, key, count, reverse):
         zset = key.value
         members = list(zset)
@@ -480,3 +423,11 @@ class BaseFakeSocket:
             if temp_res:
                 return [key, temp_res[0], temp_res[1]]
         return None
+
+    def _ttl(self, key, scale):
+        if not key:
+            return -2
+        elif key.expireat is None:
+            return -1
+        else:
+            return int(round((key.expireat - self._db.time) * scale))
