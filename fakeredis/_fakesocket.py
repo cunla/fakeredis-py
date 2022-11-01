@@ -5,7 +5,6 @@ import time
 
 import redis
 
-from fakeredis.commands_mixins import *
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
@@ -15,6 +14,7 @@ from ._helpers import (
     PONG, OK, MAX_STRING_SIZE, SimpleError, SimpleString, casematch,
     BGSAVE_STARTED, casenorm, compile_pattern)
 from ._zset import ZSet
+from .commands_mixins import GenericCommandsMixin, ScriptingCommandsMixin, HashCommandsMixin
 
 
 class FakeSocket(
