@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: pre
     strategy:
+      max-parallel: 4
       fail-fast: false
       matrix:
         redis-version: [ "6.2.6", "7.0.5" ]
