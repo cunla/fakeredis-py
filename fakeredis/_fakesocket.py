@@ -884,7 +884,10 @@ class FakeSocket(
             raise SimpleError(msgs.SCORE_NAN_MSG)
         key.value[member] = score
         key.updated()
-        return self._encodefloat(score, False)
+        # For some reason, here it does not ignore the version
+        # https://github.com/cunla/fakeredis-py/actions/runs/3377186364/jobs/5605815202
+        return Float.encode(score, False)
+        # return self._encodefloat(score, False)
 
     @command((Key(ZSet), StringTest, StringTest))
     def zlexcount(self, key, min, max):
