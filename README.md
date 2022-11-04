@@ -28,6 +28,8 @@ many times you want to write unittests that do not talk to an external server
 (such as redis). This module now allows tests to simply use this
 module as a reasonable substitute for redis.
 
+For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](./REDIS_COMMANDS.md).
+
 # Installation
 To install fakeredis-py, simply:
 
@@ -38,10 +40,6 @@ $ pip install fakeredis
 You will need [lupa](https://pypi.org/project/lupa/) if you want to run Lua scripts 
 (this includes features like ``redis.lock.Lock``, which are implemented in Lua). 
 If you install fakeredis with ``pip install fakeredis[lua]`` it will be automatically installed.
-
-For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md)
-
-[Link on pypi](https://pypi.org/project/fakeredis/)
 
 # How to Use
 FakeRedis can imitate Redis server version 6.x or 7.x - There are a few minor behavior differences. 
@@ -103,9 +101,8 @@ ConnectionError: FakeRedis is emulating a connection error.
 True
 ```
 
-Fakeredis implements the same interface as `redis-py`, the
-popular redis client for python, and models the responses
-of redis 6.2 (although most new features are not supported).
+Fakeredis implements the same interface as `redis-py`, the popular 
+redis client for python, and models the responses of redis 7.0.
 
 ## Use to test django-rq
 
@@ -155,62 +152,10 @@ bugs in GitHub.
    deleted or renamed during iteration. They also won't necessarily iterate in
    the same chunk sizes or the same order as redis.
 
-8. DUMP/RESTORE will not return or expect data in the RDB format. Instead the
+8. DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
    `pickle` module is used to mimic an opaque and non-standard format.
    **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
    can execute arbitrary code.
-
-# Support for redis-py <4.2 with aioredis
-
-
-fakeredis-py 1.10.x will be the last generation of fakeredis-py to support redis-py 4.1.x
-
-
-Aioredis is now in redis-py 4.2.0. But support is maintained until fakeredis 2 for older version of redis-py.
-
-You can also use fakeredis to mock out [aioredis](https://aioredis.readthedocs.io/). This is a much newer
-addition to fakeredis (added in 1.4.0) with less testing, so your mileage may
-vary. Both version 1 and version 2 (which have very different APIs) are
-supported. The API provided by fakeredis depends on the version of aioredis that is
-installed.
-
-### aioredis 1.x
-
-Example:
-
-```
->>> import fakeredis.aioredis
->>> r = await fakeredis.aioredis.create_redis_pool()
->>> await r.set('foo', 'bar')
-True
->>> await r.get('foo')
-b'bar'
-```
-
-You can pass a `FakeServer` as the first argument to `create_redis` or
-`create_redis_pool` to share state (you can even share state with a
-`fakeredis.FakeRedis`). It should even be safe to do this state sharing between
-threads (as long as each connection/pool is only used in one thread).
-
-It is highly recommended that you only use the aioredis support with
-Python 3.5.3 or higher. Earlier versions will not work correctly with
-non-default event loops.
-
-### aioredis 2.x
-
-Example:
-
-```
->>> import fakeredis.aioredis
->>> r = fakeredis.aioredis.FakeRedis()
->>> await r.set('foo', 'bar')
-True
->>> await r.get('foo')
-b'bar'
-```
-
-The support is essentially the same as for redis-py e.g., you can pass a
-`server` keyword argument to the `FakeRedis` constructor.
 
 # Running the Tests
 
@@ -250,7 +195,7 @@ instead::
 poetry run pytest -m real
 ```
 
-If redis is not running and you try to run tests against a real redis server,
+If redis is not running, and you try to run tests against a real redis server,
 these tests will have a result of 's' for skipped.
 
 There are some tests that test redis blocking operations that are somewhat
