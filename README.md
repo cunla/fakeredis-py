@@ -1,20 +1,25 @@
 fakeredis: A fake version of a redis-py
 =======================================
-
+[![CI](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml/badge.svg)](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml)
 [![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml)
 [![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
+[![badge](https://img.shields.io/pypi/l/fakeredis)](./LICENSE)
 
-- [fakeredis: A fake version of a redis-py](#fakeredis--a-fake-version-of-a-redis-py)
+- [Intro](#intro)
 - [How to Use](#how-to-use)
   - [Use to test django-rq](#use-to-test-django-rq)
 - [Other limitations](#other-limitations)
-- [Support for redis-py <4.2 with aioredis](#support-for-redis-py--42-with-aioredis)
+- [Support for redis-py <4.2 with aioredis](#support-for-redis-py-42-with-aioredis)
     + [aioredis 1.x](#aioredis-1x)
     + [aioredis 2.x](#aioredis-2x)
 - [Running the Tests](#running-the-tests)
 - [Contributing](#contributing)
 - [Guides](#guides)
   - [Implementing support for a redis command](#implementing-support-for-a-command)
+
+--------------------
+
+# Intro
 
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server. This was created for a single
@@ -23,10 +28,16 @@ many times you want to write unittests that do not talk to an external server
 (such as redis). This module now allows tests to simply use this
 module as a reasonable substitute for redis.
 
-Although fakeredis is pure Python, you will need [lupa](https://pypi.org/project/lupa/) if you want to run Lua
-scripts (this includes features like ``redis.lock.Lock``, which are implemented
-in Lua). If you install fakeredis with ``pip install fakeredis[lua]`` it will
-be automatically installed.
+# Installation
+To install fakeredis-py, simply:
+
+``` bash
+$ pip install fakeredis
+```
+
+You will need [lupa](https://pypi.org/project/lupa/) if you want to run Lua scripts 
+(this includes features like ``redis.lock.Lock``, which are implemented in Lua). 
+If you install fakeredis with ``pip install fakeredis[lua]`` it will be automatically installed.
 
 For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](REDIS_COMMANDS.md)
 
@@ -150,6 +161,10 @@ bugs in GitHub.
    can execute arbitrary code.
 
 # Support for redis-py <4.2 with aioredis
+
+
+fakeredis-py 1.10.x will be the last generation of fakeredis-py to support redis-py 4.1.x
+
 
 Aioredis is now in redis-py 4.2.0. But support is maintained until fakeredis 2 for older version of redis-py.
 
