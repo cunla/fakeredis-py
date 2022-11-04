@@ -5,7 +5,6 @@ from packaging.version import Version
 
 import fakeredis
 
-
 @pytest_asyncio.fixture(scope="session")
 def is_redis_running():
     try:

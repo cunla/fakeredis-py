@@ -131,10 +131,3 @@ class TestFakeStrictRedisConnectionErrors:
     def test_lmove(self, r):
         with pytest.raises(redis.ConnectionError):
             r.lmove(1, 2, 'LEFT', 'RIGHT')
-
-
-def test_get_float_type(r):  # Test for issue #58
-    r.set('key', 123)
-    assert r.get('key') == b'123'
-    r.incr('key')
-    assert r.get('key') == b'124'

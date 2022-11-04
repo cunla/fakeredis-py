@@ -476,13 +476,3 @@ class TestPubSubConnected:
         assert msg == check, 'Message was not published to channel'
         with pytest.raises(redis.ConnectionError):
             pubsub.get_message()
-
-
-@testtools.run_test_if_redispy_ver('below', '4.2.0')
-@testtools.run_test_if_no_aioredis
-def test_fakeredis_aioredis_raises_if_missing_aioredis():
-    with pytest.raises(
-            ImportError, match="aioredis is required for redis-py below 4.2.0"
-    ):
-        import fakeredis.aioredis
-        v = fakeredis.aioredis

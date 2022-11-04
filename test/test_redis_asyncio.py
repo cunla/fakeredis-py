@@ -1,15 +1,15 @@
 import asyncio
 import re
-import redis.asyncio
+
+import async_timeout
 import pytest
 import pytest_asyncio
 import redis
+import redis.asyncio
+from packaging.version import Version
 
 import testtools
-import async_timeout
-
 from fakeredis import aioredis
-from packaging.version import Version
 
 pytestmark = [
 ]
