@@ -463,6 +463,18 @@ def test_set_existing_key_persists(r):
     assert r.ttl('foo') == -1
 
 
+def test_set_non_str_keys(r):
+    assert r.set(2, 'bar') is True
+    assert r.get(2) == b'bar'
+    assert r.get('2') == b'bar'
+
+
+def test_getset_not_exist(r):
+    val = r.getset('foo', 'bar')
+    assert val is None
+    assert r.get('foo') == b'bar'
+
+
 def test_get_float_type(r):  # Test for issue #58
     r.set('key', 123)
     assert r.get('key') == b'123'
