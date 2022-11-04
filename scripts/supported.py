@@ -15,7 +15,7 @@ import fakeredis
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 COMMANDS_FILE = os.path.join(THIS_DIR, '.commands.json')
-COMMANDS_URL = 'https://raw.github.com/antirez/redis-doc/master/commands.json'
+COMMANDS_URL = 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json'
 
 
 def download_redis_commands() -> dict:
