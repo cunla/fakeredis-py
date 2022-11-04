@@ -1,9 +1,6 @@
-from ._generic_mixin import GenericCommandsMixin
-from ._hash_mixin import HashCommandsMixin
-from ._scripting_mixin import ScriptingCommandsMixin
+from .generic_mixin import GenericCommandsMixin
+from .hash_mixin import HashCommandsMixin
+from .scripting_mixin import ScriptingCommandsMixin
+from .connection_mixin import ConnectionCommandsMixin
+from .list_mixin import ListCommandsMixin
 
-__all__ = [
-    'HashCommandsMixin',
-    'ScriptingCommandsMixin',
-    'GenericCommandsMixin',
-]
