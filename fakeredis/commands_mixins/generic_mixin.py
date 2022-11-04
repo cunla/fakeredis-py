@@ -9,6 +9,34 @@ from fakeredis._zset import ZSet
 
 
 class GenericCommandsMixin:
+    def _lookup_key(self, key, pattern):
+        """Python implementation of lookupKeyByPattern from redis"""
+        if pattern == b'#':
+            return key
+        p = pattern.find(b'*')
+        if p == -1:
+            return None
+        prefix = pattern[:p]
+        suffix = pattern[p + 1:]
+        arrow = suffix.find(b'->', 0, -1)
+        if arrow != -1:
+            field = suffix[arrow + 2:]
+            suffix = suffix[:arrow]
+        else:
+            field = None
+        new_key = prefix + key + suffix
+        item = CommandItem(new_key, self._db, item=self._db.get(new_key))
+        if item.value is None:
+            return None
+        if field is not None:
+            if not isinstance(item.value, dict):
+                return None
+            return item.value.get(field)
+        else:
+            if not isinstance(item.value, bytes):
+                return None
+            return item.value
+
     def _type(self, key):
         if key.value is None:
             return SimpleString(b'none')

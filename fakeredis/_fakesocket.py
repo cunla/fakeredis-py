@@ -1,22 +1,19 @@
 import functools
 import math
 import random
-import time
 
 import redis
 
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
-    Key, command, DbIndex, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest,
-    Timeout)
+    Key, command, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest, Timeout)
 from ._helpers import (
-    OK, MAX_STRING_SIZE, SimpleError, casematch,
-    BGSAVE_STARTED, casenorm, compile_pattern)
+    OK, MAX_STRING_SIZE, SimpleError, casematch, casenorm, compile_pattern)
 from ._zset import ZSet
 from .commands_mixins import (
     GenericCommandsMixin, ScriptingCommandsMixin, HashCommandsMixin, ConnectionCommandsMixin,
-    ListCommandsMixin, )
+    ListCommandsMixin, ServerCommandsMixin, )
 
 
 class FakeSocket(
@@ -26,50 +23,15 @@ class FakeSocket(
     HashCommandsMixin,
     ConnectionCommandsMixin,
     ListCommandsMixin,
+    ServerCommandsMixin,
 ):
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
         super(FakeSocket, self).__init__(server)
 
-    @command((DbIndex, DbIndex))
-    def swapdb(self, index1, index2):
-        if index1 != index2:
-            db1 = self._server.dbs[index1]
-            db2 = self._server.dbs[index2]
-            db1.swap(db2)
-        return OK
-
     # Key commands
     # TODO: lots
-
-    def _lookup_key(self, key, pattern):
-        """Python implementation of lookupKeyByPattern from redis"""
-        if pattern == b'#':
-            return key
-        p = pattern.find(b'*')
-        if p == -1:
-            return None
-        prefix = pattern[:p]
-        suffix = pattern[p + 1:]
-        arrow = suffix.find(b'->', 0, -1)
-        if arrow != -1:
-            field = suffix[arrow + 2:]
-            suffix = suffix[:arrow]
-        else:
-            field = None
-        new_key = prefix + key + suffix
-        item = CommandItem(new_key, self._db, item=self._db.get(new_key))
-        if item.value is None:
-            return None
-        if field is not None:
-            if not isinstance(item.value, dict):
-                return None
-            return item.value.get(field)
-        else:
-            if not isinstance(item.value, bytes):
-                return None
-            return item.value
 
     # Transaction commands
 
@@ -891,54 +853,6 @@ class FakeSocket(
     @command((Key(), Int, bytes), (bytes,))
     def zinterstore(self, dest, numkeys, *args):
         return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
-
-    # Server commands
-    # TODO: lots
-
-    @command((), (bytes,), flags='s')
-    def bgsave(self, *args):
-        if len(args) > 1 or (len(args) == 1 and not casematch(args[0], b'schedule')):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        self._server.lastsave = int(time.time())
-        return BGSAVE_STARTED
-
-    @command(())
-    def dbsize(self):
-        return len(self._db)
-
-    @command((), (bytes,))
-    def flushdb(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        self._db.clear()
-        return OK
-
-    @command((), (bytes,))
-    def flushall(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        for db in self._server.dbs.values():
-            db.clear()
-        # TODO: clear watches and/or pubsub as well?
-        return OK
-
-    @command(())
-    def lastsave(self):
-        return self._server.lastsave
-
-    @command((), flags='s')
-    def save(self):
-        self._server.lastsave = int(time.time())
-        return OK
-
-    @command(())
-    def time(self):
-        now_us = round(time.time() * 1000000)
-        now_s = now_us // 1000000
-        now_us %= 1000000
-        return [str(now_s).encode(), str(now_us).encode()]
 
     @command((bytes,), (bytes,), flags='s')
     def psubscribe(self, *patterns):

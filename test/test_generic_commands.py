@@ -468,3 +468,9 @@ def test_get_float_type(r):  # Test for issue #58
     assert r.get('key') == b'123'
     r.incr('key')
     assert r.get('key') == b'124'
+
+
+def test_set_float_value(r):
+    x = 1.23456789123456789
+    r.set('foo', x)
+    assert float(r.get('foo')) == x

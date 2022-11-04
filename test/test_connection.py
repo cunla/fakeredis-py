@@ -12,6 +12,11 @@ fake_only = pytest.mark.parametrize(
 )
 
 
+def test_ping(r):
+    assert r.ping()
+    assert testtools.raw_command(r, 'ping', 'test') == b'test'
+
+
 @fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch('time.time')
