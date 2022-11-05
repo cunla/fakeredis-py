@@ -26,7 +26,7 @@ jobs:
       max-parallel: 5
       fail-fast: false
       matrix:
-        redis-version: [ "6.2.6", "7.0.5" ]
+        redis-version: [ "6.2.7", "7.0.5" ]
         python-version: [ "3.7", "3.8", "3.10", '3.11' ]
         redis-py: [ '4.3.4' ]
         include:
