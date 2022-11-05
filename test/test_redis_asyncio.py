@@ -13,7 +13,6 @@ from fakeredis import aioredis
 
 pytestmark = [
 ]
-REDIS_VERSION = Version(redis.__version__)
 fake_only = pytest.mark.parametrize(
     'req_aioredis2',
     [pytest.param('fake', marks=pytest.mark.fake)],
@@ -22,6 +21,7 @@ fake_only = pytest.mark.parametrize(
 pytestmark.extend([
     pytest.mark.asyncio,
 ])
+server_version = None
 
 
 @pytest_asyncio.fixture(
@@ -31,6 +31,7 @@ pytestmark.extend([
     ]
 )
 async def req_aioredis2(request):
+    global server_version
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
         ret = aioredis.FakeRedis(server=fake_server)
@@ -38,6 +39,22 @@ async def req_aioredis2(request):
         if not request.getfixturevalue('is_redis_running'):
             pytest.skip('Redis is not running')
         ret = redis.asyncio.Redis()
+        server_version = server_version or (await ret.info())['redis_version']
+        min_server_marker = request.node.get_closest_marker('min_server')
+        if min_server_marker is not None:
+            min_version = Version(min_server_marker.args[0])
+            if Version(server_version) < min_version:
+                pytest.skip(
+                    'Redis server {} or more required but {} found'.format(min_version, server_version)
+                )
+        max_server_marker = request.node.get_closest_marker('max_server')
+        if max_server_marker is not None:
+            max_server = Version(max_server_marker.args[0])
+            if Version(server_version) > max_server:
+                pytest.skip(
+                    'Redis server {} or less required but {} found'.format(max_server, server_version)
+                )
+
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()
@@ -199,10 +216,20 @@ async def test_no_script_error(req_aioredis2):
 
 
 @testtools.run_test_if_lupa
-async def test_failed_script_error(req_aioredis2):
-    await req_aioredis2.set('foo', 'bar')
-    with pytest.raises(redis.asyncio.ResponseError, match='^Error running script'):
-        await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
+class TestScripts:
+
+    @pytest.mark.max_server('6.2.7')
+    async def test_failed_script_error6(self, req_aioredis2):
+        await req_aioredis2.set('foo', 'bar')
+        with pytest.raises(redis.asyncio.ResponseError, match='^Error running script'):
+            await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
+
+    @pytest.mark.min_server('7')
+    async def test_failed_script_error7(self, req_aioredis2):
+        await req_aioredis2.set('foo', 'bar')
+        with pytest.raises(redis.asyncio.ResponseError,
+                           match='^Wrong number of args calling Redis command from script'):
+            await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
 
 
 @fake_only
