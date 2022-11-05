@@ -6,14 +6,14 @@ fakeredis: A fake version of a redis-py
 [![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
 [![badge](https://img.shields.io/pypi/l/fakeredis)](./LICENSE)
 --------------------
-[Intro](#intro) | [How to Use](#how-to-use) | [Contributing](.github/CONTRIBUTING.md) | [Sponsoring](#sponsor) | [Guides](#guides) 
+[Intro](#intro) | [How to Use](#how-to-use) | [Contributing](.github/CONTRIBUTING.md) | [Guides](#guides) | [Sponsoring](#sponsor)  
 
 # Intro
 
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server. This was created for a single
-purpose: **to write unittests**. Setting up redis is not hard, but
-many times you want to write unittests that do not talk to an external server
+purpose: **to write tests**. Setting up redis is not hard, but
+many times you want to write tests that do not talk to an external server
 (such as redis). This module now allows tests to simply use this
 module as a reasonable substitute for redis.
 
@@ -104,7 +104,7 @@ from fakeredis import FakeRedisConnSingleton
 django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 ```
 
-## Limitations
+### Limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
 won't give identical results to real redis. The following are differences that
@@ -146,7 +146,7 @@ bugs in GitHub.
    **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
    can execute arbitrary code.
 
-## Running the Tests
+### Local development environment
 
 To ensure parity with the real redis, there are a set of integration tests
 that mirror the unittests. For every unittest that is written, the same
@@ -178,7 +178,7 @@ Because this module is attempting to provide the same interface as `redis-py`,
 the python bindings to redis, a reasonable way to test this to take each
 unittest and run it against a real redis server. fakeredis and the real redis
 server should give the same result. To run tests against a real redis instance
-instead::
+instead:
 
 ```
 poetry run pytest -m real
@@ -189,7 +189,7 @@ these tests will have a result of 's' for skipped.
 
 There are some tests that test redis blocking operations that are somewhat
 slow. If you want to skip these tests during day to day development,
-they have all been tagged as 'slow' so you can skip them by running::
+they have all been tagged as 'slow' so you can skip them by running:
 
 ```
 poetry run pytest -m "not slow"
@@ -197,20 +197,11 @@ poetry run pytest -m "not slow"
 
 # Contributing
 
-Contributions are welcome. Please see the
-[contributing guide](.github/CONTRIBUTING.md) for more details.
-The maintainer generally has very little time to work on fakeredis, so the
-best way to get a bug fixed is to contribute a pull request.
-
+Contributions are welcome. Please see the [contributing guide](.github/CONTRIBUTING.md) for more details.
 If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
 
-# Sponsor
-fakeredis-py is developed for free.  Support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
-
-Alternatively, you can buy me coffee using this link: [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/danielmoran)
-
 # Guides
-## Implementing support for a command 
+### Implementing support for a command 
 Creating a new command support should be done in the `FakeSocket` class (in `_fakesocket.py`) by creating the method
 and using `@command` decorator (which should be the command syntax, you can use existing samples on the file).
 
@@ -226,7 +217,7 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
          return None
 ```
 
-### Implement a test for it
+#### Implement a test for it
 There are multiple scenarios for test, with different versions of redis server, redis-py, etc.
 The tests not only assert the validity of output but runs the same test on a real redis-server and compares the output to the real server output.
 
@@ -241,8 +232,15 @@ def test_expire_should_not_expire__when_no_expire_is_set(r):
     assert r.expire('foo', 1, xx=True) == 0
 ```
 
-### Updating `REDIS_COMMANDS.md`
+#### Updating `REDIS_COMMANDS.md`
 Lastly, run from the root of the project the script to regenarate `REDIS_COMMANDS.md`:
 ```
 python scripts/supported.py > REDIS_COMMANDS.md    
 ```
+
+# Sponsor
+fakeredis-py is developed for free. 
+
+You can support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla). 
+
+Alternatively, you can buy me coffee using this link: [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/danielmoran)
