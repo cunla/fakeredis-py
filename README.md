@@ -6,15 +6,7 @@ fakeredis: A fake version of a redis-py
 [![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
 [![badge](https://img.shields.io/pypi/l/fakeredis)](./LICENSE)
 --------------------
-
-- [Intro](#intro)
-- [How to Use](#how-to-use)
-  - [Use to test django-rq](#use-to-test-django-rq)
-- [Other limitations](#other-limitations)
-- [Running the Tests](#running-the-tests)
-- [Contributing](#contributing)
-- [Guides](#guides)
-  - [Implementing support for a redis command](#implementing-support-for-a-command)
+[Intro](#intro) | [How to Use](#how-to-use) | [Contributing](.github/CONTRIBUTING.md) | [Sponsoring](#sponsor) | [Guides](#guides) 
 
 # Intro
 
@@ -112,7 +104,7 @@ from fakeredis import FakeRedisConnSingleton
 django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 ```
 
-# Other limitations
+## Limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
 won't give identical results to real redis. The following are differences that
@@ -154,7 +146,7 @@ bugs in GitHub.
    **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
    can execute arbitrary code.
 
-# Running the Tests
+## Running the Tests
 
 To ensure parity with the real redis, there are a set of integration tests
 that mirror the unittests. For every unittest that is written, the same
@@ -211,6 +203,11 @@ The maintainer generally has very little time to work on fakeredis, so the
 best way to get a bug fixed is to contribute a pull request.
 
 If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
+
+# Sponsor
+fakeredis-py is developed for free.  Support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
+
+Alternatively, you can buy me coffee using this link: [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/danielmoran)
 
 # Guides
 ## Implementing support for a command 
