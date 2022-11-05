@@ -3,9 +3,9 @@ import hashlib
 import itertools
 
 from fakeredis._helpers import SimpleError, SimpleString, casematch, casenorm, OK
-from . import _msgs as msgs
-from ._commands import command, Int
-from ._helpers import REDIS_LOG_LEVELS, REDIS_LOG_LEVELS_TO_LOGGING, LOGGER
+from fakeredis import _msgs as msgs
+from fakeredis._commands import command, Int
+from fakeredis._helpers import REDIS_LOG_LEVELS, REDIS_LOG_LEVELS_TO_LOGGING, LOGGER
 
 
 def _ensure_str(s, encoding, replaceerr):
@@ -35,7 +35,7 @@ def _lua_redis_log(lua_runtime, expected_globals, lvl, *args):
     LOGGER.log(REDIS_LOG_LEVELS_TO_LOGGING[lvl], msg)
 
 
-class FakeLuaSocket:
+class ScriptingCommandsMixin:
 
     # Script commands
     # script debug and script kill will probably not be supported

@@ -1,11 +1,8 @@
 import functools
-import hashlib
-import itertools
-import pickle
+import math
 import random
 import time
 
-import math
 import redis
 
 from typing import Optional, Union
@@ -13,16 +10,21 @@ from typing import Optional, Union
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
-    Key, command, DbIndex, Int, CommandItem, BeforeAny, SortFloat, Float, BitOffset, BitValue, Hash,
-    StringTest, ScoreTest, Timeout)
-from ._fakeluasocket import FakeLuaSocket
+    Key, command, DbIndex, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest,
+    Timeout)
 from ._helpers import (
     PONG, OK, MAX_STRING_SIZE, SimpleError, SimpleString, casematch,
     BGSAVE_STARTED, casenorm, compile_pattern)
 from ._zset import ZSet
+from .commands_mixins import GenericCommandsMixin, ScriptingCommandsMixin, HashCommandsMixin
 
 
-class FakeSocket(BaseFakeSocket, FakeLuaSocket):
+class FakeSocket(
+    BaseFakeSocket,
+    GenericCommandsMixin,
+    ScriptingCommandsMixin,
+    HashCommandsMixin,
+):
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
@@ -61,116 +63,6 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
     # Key commands
     # TODO: lots
 
-    @command((Key(),), (Key(),), name='del')
-    def del_(self, *keys):
-        return self._delete(*keys)
-
-    @command((Key(),), (Key(),), name='unlink')
-    def unlink(self, *keys):
-        return self._delete(*keys)
-
-    @command((Key(),), (Key(),))
-    def exists(self, *keys):
-        ret = 0
-        for key in keys:
-            if key:
-                ret += 1
-        return ret
-
-    def _ttl(self, key, scale):
-        if not key:
-            return -2
-        elif key.expireat is None:
-            return -1
-        else:
-            return int(round((key.expireat - self._db.time) * scale))
-
-    @command((Key(), Int,), (bytes,), name='expire')
-    def expire(self, key, seconds, *args):
-        res = self._expireat(key, self._db.time + seconds, *args)
-        return res
-
-    @command((Key(), Int))
-    def expireat(self, key, timestamp):
-        return self._expireat(key, float(timestamp))
-
-    @command((Key(), Int))
-    def pexpire(self, key, ms):
-        return self._expireat(key, self._db.time + ms / 1000.0)
-
-    @command((Key(), Int))
-    def pexpireat(self, key, ms_timestamp):
-        return self._expireat(key, ms_timestamp / 1000.0)
-
-    @command((Key(),))
-    def ttl(self, key):
-        return self._ttl(key, 1.0)
-
-    @command((Key(),))
-    def pttl(self, key):
-        return self._ttl(key, 1000.0)
-
-    @command((Key(),))
-    def type(self, key):
-        return self._type(key)
-
-    @command((Key(),))
-    def persist(self, key):
-        if key.expireat is None:
-            return 0
-        key.expireat = None
-        return 1
-
-    @command((bytes,))
-    def keys(self, pattern):
-        if pattern == b'*':
-            return list(self._db)
-        else:
-            regex = compile_pattern(pattern)
-            return [key for key in self._db if regex.match(key)]
-
-    @command((Key(), DbIndex))
-    def move(self, key, db):
-        if db == self._db_num:
-            raise SimpleError(msgs.SRC_DST_SAME_MSG)
-        if not key or key.key in self._server.dbs[db]:
-            return 0
-        # TODO: what is the interaction with expiry?
-        self._server.dbs[db][key.key] = self._server.dbs[self._db_num][key.key]
-        key.value = None  # Causes deletion
-        return 1
-
-    @command(())
-    def randomkey(self):
-        keys = list(self._db.keys())
-        if not keys:
-            return None
-        return random.choice(keys)
-
-    @command((Key(), Key()))
-    def rename(self, key, newkey):
-        if not key:
-            raise SimpleError(msgs.NO_KEY_MSG)
-        # TODO: check interaction with WATCH
-        if newkey.key != key.key:
-            newkey.value = key.value
-            newkey.expireat = key.expireat
-            key.value = None
-        return OK
-
-    @command((Key(), Key()))
-    def renamenx(self, key, newkey):
-        if not key:
-            raise SimpleError(msgs.NO_KEY_MSG)
-        if newkey:
-            return 0
-        self.rename(key, newkey)
-        return 1
-
-    @command((Int,), (bytes, bytes))
-    def scan(self, cursor, *args):
-        return self._scan(list(self._db), cursor, *args)
-
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b'#':
@@ -198,135 +90,6 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
             if not isinstance(item.value, bytes):
                 return None
             return item.value
-
-    @command((Key(),), (bytes,))
-    def sort(self, key, *args):
-        i = 0
-        desc = False
-        alpha = False
-        limit_start = 0
-        limit_count = -1
-        store = None
-        sortby = None
-        dontsort = False
-        get = []
-        if key.value is not None:
-            if not isinstance(key.value, (set, list, ZSet)):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-
-        while i < len(args):
-            arg = args[i]
-            if casematch(arg, b'asc'):
-                desc = False
-            elif casematch(arg, b'desc'):
-                desc = True
-            elif casematch(arg, b'alpha'):
-                alpha = True
-            elif casematch(arg, b'limit') and i + 2 < len(args):
-                try:
-                    limit_start = Int.decode(args[i + 1])
-                    limit_count = Int.decode(args[i + 2])
-                except SimpleError:
-                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-                else:
-                    i += 2
-            elif casematch(arg, b'store') and i + 1 < len(args):
-                store = args[i + 1]
-                i += 1
-            elif casematch(arg, b'by') and i + 1 < len(args):
-                sortby = args[i + 1]
-                if b'*' not in sortby:
-                    dontsort = True
-                i += 1
-            elif casematch(arg, b'get') and i + 1 < len(args):
-                get.append(args[i + 1])
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            i += 1
-
-        # TODO: force sorting if the object is a set and either in Lua or
-        # storing to a key, to match redis behaviour.
-        items = list(key.value) if key.value is not None else []
-
-        # These transformations are based on the redis implementation, but
-        # changed to produce a half-open range.
-        start = max(limit_start, 0)
-        end = len(items) if limit_count < 0 else start + limit_count
-        if start >= len(items):
-            start = end = len(items) - 1
-        end = min(end, len(items))
-
-        if not get:
-            get.append(b'#')
-        if sortby is None:
-            sortby = b'#'
-
-        if not dontsort:
-            if alpha:
-                def sort_key(v):
-                    byval = self._lookup_key(v, sortby)
-                    # TODO: use locale.strxfrm when not storing? But then need
-                    # to decode too.
-                    if byval is None:
-                        byval = BeforeAny()
-                    return byval
-
-            else:
-                def sort_key(v):
-                    byval = self._lookup_key(v, sortby)
-                    score = SortFloat.decode(byval, ) if byval is not None else 0.0
-                    return (score, v)
-
-            items.sort(key=sort_key, reverse=desc)
-        elif isinstance(key.value, (list, ZSet)):
-            items.reverse()
-
-        out = []
-        for row in items[start:end]:
-            for g in get:
-                v = self._lookup_key(row, g)
-                if store is not None and v is None:
-                    v = b''
-                out.append(v)
-        if store is not None:
-            item = CommandItem(store, self._db, item=self._db.get(store))
-            item.value = out
-            item.writeback()
-            return len(out)
-        else:
-            return out
-
-    @command((Key(missing_return=None),))
-    def dump(self, key):
-        value = pickle.dumps(key.value)
-        checksum = hashlib.sha1(value).digest()
-        return checksum + value
-
-    @command((Key(), Int, bytes), (bytes,))
-    def restore(self, key, ttl, value, *args):
-        replace = False
-        i = 0
-        while i < len(args):
-            if casematch(args[i], b'replace'):
-                replace = True
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if key and not replace:
-            raise SimpleError(msgs.RESTORE_KEY_EXISTS)
-        checksum, value = value[:20], value[20:]
-        if hashlib.sha1(value).digest() != checksum:
-            raise SimpleError(msgs.RESTORE_INVALID_CHECKSUM_MSG)
-        if ttl < 0:
-            raise SimpleError(msgs.RESTORE_INVALID_TTL_MSG)
-        if ttl == 0:
-            expireat = None
-        else:
-            expireat = self._db.time + ttl / 1000.0
-        key.value = pickle.loads(value)
-        key.expireat = expireat
-        return OK
 
     # Transaction commands
 
@@ -627,97 +390,6 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
         return len(key.get(b''))
 
     # Hash commands
-
-    @command((Key(Hash), bytes), (bytes,))
-    def hdel(self, key, *fields):
-        h = key.value
-        rem = 0
-        for field in fields:
-            if field in h:
-                del h[field]
-                key.updated()
-                rem += 1
-        return rem
-
-    @command((Key(Hash), bytes))
-    def hexists(self, key, field):
-        return int(field in key.value)
-
-    @command((Key(Hash), bytes))
-    def hget(self, key, field):
-        return key.value.get(field)
-
-    @command((Key(Hash),))
-    def hgetall(self, key):
-        return list(itertools.chain(*key.value.items()))
-
-    @command((Key(Hash), bytes, Int))
-    def hincrby(self, key, field, amount):
-        c = Int.decode(key.value.get(field, b'0')) + amount
-        key.value[field] = self._encodeint(c)
-        key.updated()
-        return c
-
-    @command((Key(Hash), bytes, bytes))
-    def hincrbyfloat(self, key, field, amount):
-        c = Float.decode(key.value.get(field, b'0')) + Float.decode(amount)
-        if not math.isfinite(c):
-            raise SimpleError(msgs.NONFINITE_MSG)
-        encoded = self._encodefloat(c, True)
-        key.value[field] = encoded
-        key.updated()
-        return encoded
-
-    @command((Key(Hash),))
-    def hkeys(self, key):
-        return list(key.value.keys())
-
-    @command((Key(Hash),))
-    def hlen(self, key):
-        return len(key.value)
-
-    @command((Key(Hash), bytes), (bytes,))
-    def hmget(self, key, *fields):
-        return [key.value.get(field) for field in fields]
-
-    @command((Key(Hash), bytes, bytes), (bytes, bytes))
-    def hmset(self, key, *args):
-        self.hset(key, *args)
-        return OK
-
-    @command((Key(Hash), Int,), (bytes, bytes))
-    def hscan(self, key, cursor, *args):
-        cursor, keys = self._scan(key.value, cursor, *args)
-        items = []
-        for k in keys:
-            items.append(k)
-            items.append(key.value[k])
-        return [cursor, items]
-
-    @command((Key(Hash), bytes, bytes), (bytes, bytes))
-    def hset(self, key, *args):
-        h = key.value
-        created = 0
-        for i in range(0, len(args), 2):
-            if args[i] not in h:
-                created += 1
-            h[args[i]] = args[i + 1]
-        key.updated()
-        return created
-
-    @command((Key(Hash), bytes, bytes))
-    def hsetnx(self, key, field, value):
-        if field in key.value:
-            return 0
-        return self.hset(key, field, value)
-
-    @command((Key(Hash), bytes))
-    def hstrlen(self, key, field):
-        return len(key.value.get(field, b''))
-
-    @command((Key(Hash),))
-    def hvals(self, key):
-        return list(key.value.values())
 
     # List commands
 
@@ -1214,7 +886,10 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
             raise SimpleError(msgs.SCORE_NAN_MSG)
         key.value[member] = score
         key.updated()
-        return self._encodefloat(score, False)
+        # For some reason, here it does not ignore the version
+        # https://github.com/cunla/fakeredis-py/actions/runs/3377186364/jobs/5605815202
+        return Float.encode(score, False)
+        # return self._encodefloat(score, False)
 
     @command((Key(ZSet), StringTest, StringTest))
     def zlexcount(self, key, min, max):
@@ -1566,8 +1241,6 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
         return Int.encode(value)
 
 
-setattr(FakeSocket, 'del', FakeSocket.del_)
-delattr(FakeSocket, 'del_')
 setattr(FakeSocket, 'set', FakeSocket.set_)
 delattr(FakeSocket, 'set_')
 setattr(FakeSocket, 'exec', FakeSocket.exec_)
