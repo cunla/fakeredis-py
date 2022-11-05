@@ -50,21 +50,41 @@ aioredis = ["aioredis"]
 
 [tool.poetry.dev-dependencies]
 invoke = "^1.7.1"
-wheel = "^0.37.1"
+wheel = "*"
 hypothesis = "^6.47.4"
 tox = "^3.25.0"
 twine = "4.0.1"
 coverage = "^6.3"
 pytest = "^7.1.2"
-pytest-asyncio = "0.19.0"
+pytest-asyncio = "^0.20"
 pytest-cov = "^4.0.0"
+pytest-describe = "^2"
 pytest-mock = "^3.7.0"
+pytest-order = "^1"
 flake8 = "^5.0.4"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
 
 [tool.pytest.ini_options]
+asyncio_mode="strict"
+minversion = "7.1"
+addopts = '''
+--order-scope=session
+--disable-pytest-warnings
+--strict-markers
+--cov
+--cov-config=pyproject.toml
+--cov-report xml:coverage.xml
+--no-cov-on-fail
+--junitxml=junit.xml
+-r
+fEsxp
+'''
+cache_dir = "./.cache"
+testpaths = [
+    "tests",
+]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "fake: run tests only with fake redis",
@@ -73,5 +93,14 @@ markers = [
     "min_server",
     "max_server",
     "decode_responses",
+    "descriptor",
+    "description",
 ]
-asyncio_mode="strict"
+python_classes = [
+    "Test*",
+    "Describe*",
+]
+python_functions = [
+    "test_*",
+    "describe_*",
+]

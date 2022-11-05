@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import os
+import random
 import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 from datetime import datetime, timedelta
+from functools import partial
+from operator import itemgetter
 from queue import Queue
 from time import sleep, time
+from typing import Callable, Dict, Generator, List, Tuple, Optional
 
 import math
 import pytest
@@ -13,7 +20,9 @@ from packaging.version import Version
 from redis.exceptions import ResponseError
 
 import fakeredis
+import hypothesis
 import testtools
+from hypothesis import strategies as st
 from testtools import raw_command
 
 REDIS_VERSION = Version(redis.__version__)
@@ -2104,6 +2113,156 @@ def test_zscore_wrong_type(r):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zscore('foo', 'one')
+
+
+@pytest.mark.descriptor
+@testtools.run_test_if_redispy_ver("above", "4.0.0")
+def describe_zmscore() -> None:
+    """Test that `fakeredis`'s implementation of `zmscore` behaves as expected
+    when..."""
+
+    cache_key: str = "scored-set-members"
+    member_key: Callable[..., str] = itemgetter(0)
+    member_score: Callable[..., str] = itemgetter(1)
+    key_score_tuples: st.SearchStrategy = st.lists(
+        st.tuples(
+            st.uuids(version=4, allow_nil=False),
+            st.floats(
+                min_value=0.01,
+                max_value=100.00,
+            ),
+        ).map(
+            lambda pair: (str(pair[0]), pair[1]),
+        ),
+        min_size=6,
+        max_size=100,
+        unique_by=itemgetter(0),
+    )
+    hypothesis_settings = partial(
+        hypothesis.settings,
+        suppress_health_check=(hypothesis.HealthCheck.function_scoped_fixture,),
+    )
+
+    def _populate_cache(
+        redis_client: redis.Redis,
+        members: List[Tuple[str, float]],
+    ) -> bool:
+        """Insert the supplied dictionary into the emulated cache as a `sorted
+        set`."""
+        members: Dict[str, float] = {
+            str(key): value
+            for (
+                key,
+                value,
+            ) in members
+        }
+        testtools.zadd(redis_client, cache_key, members)
+        return redis_client.type(cache_key) == b"zset"
+
+    def _wipe_cache(redis_client: redis.Redis) -> bool:
+        """Wipe the values inserted into the emulated cache by the previous
+        test before proceeding with the next one."""
+        redis_client.delete(cache_key)
+        return redis_client.type(cache_key) == b"none"
+
+    @contextmanager
+    def _scoped_redis_client(
+        redis_client: redis.Redis,
+    ) -> Generator[redis.Redis, None, None]:
+        """Automatically wipe the cache in between tests."""
+        assert _wipe_cache(redis_client)
+
+        yield redis_client
+
+        assert _wipe_cache(redis_client)
+
+    @pytest.mark.description
+    @hypothesis_settings()
+    @hypothesis.given(scored_members=key_score_tuples)
+    def when_no_members_are_present(
+        r: redis.Redis,
+        scored_members: List[Tuple[str, float]],
+    ) -> None:
+        """When no requested members are in the cache, a value of `None` should
+        be returned once for each requested member."""
+        with _scoped_redis_client(r) as redis_client:
+            assert _populate_cache(
+                redis_client,
+                [("default-member", 0.0)],
+            )
+            assert not any(
+                redis_client.zmscore(
+                    cache_key,
+                    list(map(member_key, scored_members)),
+                )
+            )
+
+    @pytest.mark.description
+    @hypothesis_settings()
+    @hypothesis.given(scored_members=key_score_tuples)
+    def when_all_members_are_present(
+        r: redis.Redis,
+        scored_members: List[Tuple[str, float]],
+    ) -> None:
+        """When all requested members are in the cache, a valid float value
+        should be returned for each requested member.
+
+        The order of the returned scores should always match the order
+        in which the set members were supplied.
+        """
+        with _scoped_redis_client(r) as redis_client:
+            assert _populate_cache(redis_client, scored_members)
+
+            cached_scores: List[Optional[float]] = redis_client.zmscore(
+                cache_key,
+                list(map(member_key, scored_members)),
+            )
+
+        assert all(
+            cached_scores[idx] == value
+            for (
+                idx,
+                value,
+            ) in enumerate(map(member_score, scored_members))
+        )
+
+    @pytest.mark.description
+    @hypothesis_settings()
+    @hypothesis.given(scored_members=key_score_tuples)
+    def when_some_members_are_present(
+        r: redis.Redis,
+        scored_members: List[Tuple[str, float]],
+    ) -> None:
+        """When only some of the requested members are in the cache, a valid
+        float value should be returned for each present member and `None` for
+        each missing member.
+
+        The order of the returned scores should always match the order
+        in which the set members were supplied.
+        """
+        cached = random.sample(
+            scored_members,
+            k=int(len(scored_members) * 0.65),
+        )
+
+        with _scoped_redis_client(r) as redis_client:
+            assert _populate_cache(redis_client, cached)
+
+            cached_scores: List[Optional[float]] = redis_client.zmscore(
+                cache_key,
+                list(map(member_key, scored_members)),
+            )
+
+        cached, uncached = dict(cached), dict(
+            set(
+                cached,
+            ).symmetric_difference(scored_members)
+        )
+
+        for cached_score, (member, score) in zip(cached_scores, scored_members):
+            assert (score and member in cached and score == cached_score) or (
+                score and member in uncached and cached_score is None
+            )
 
 
 def test_zrevrank(r):
