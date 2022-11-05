@@ -70,7 +70,7 @@ class GenericCommandsMixin:
             else:
                 raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
         if self.version < 7 and (nx or xx or gt or lt):
-            raise SimpleError(msgs.WRONG_ARGS_MSG.format('expire'))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
         counter = (nx, gt, lt).count(True)
         if (counter > 1) or (nx and xx):
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
