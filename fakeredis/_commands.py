@@ -301,22 +301,24 @@ class Signature:
         self.repeat = repeat
         self.flags = flags
 
-    def check_arity(self, args):
+    def check_arity(self, args, version):
         if len(args) != len(self.fixed):
             delta = len(args) - len(self.fixed)
             if delta < 0 or not self.repeat:
-                raise SimpleError(msgs.WRONG_ARGS_MSG.format(self.name))
+                msg = msgs.WRONG_ARGS_MSG7 if version >= 7 else msgs.WRONG_ARGS_MSG6.format(self.name)
+                raise SimpleError(msg)
 
-    def apply(self, args, db):
+    def apply(self, args, db, version):
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
         - a single containing a short-circuit return value
         """
-        self.check_arity(args)
+        self.check_arity(args, version)
         if self.repeat:
             delta = len(args) - len(self.fixed)
             if delta % len(self.repeat) != 0:
-                raise SimpleError(msgs.WRONG_ARGS_MSG.format(self.name))
+                msg = msgs.WRONG_ARGS_MSG7 if version >= 7 else msgs.WRONG_ARGS_MSG6.format(self.name)
+                raise SimpleError(msg)
 
         types = list(self.fixed)
         for i in range(len(args) - len(types)):
