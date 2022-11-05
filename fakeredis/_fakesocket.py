@@ -8,6 +8,8 @@ import time
 import math
 import redis
 
+from typing import Optional, Union
+
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
@@ -1358,6 +1360,27 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
             return self._encodefloat(key.value[member], False)
         except KeyError:
             return None
+
+    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zmscore(self, key: str, *members: Union[str, bytes]) -> list[Optional[float]]:
+        """Get the scores associated with the specified members in the sorted set stored at key.
+        For every member that does not exist in the sorted set, a nil value is returned."""
+        members = (
+            mbr
+            if isinstance(
+                mbr,
+                bytes,
+            )
+            else str(mbr).encode()
+            for mbr in members
+        )
+
+        scores = itertools.starmap(
+            self.zscore,
+            zip(itertools.repeat(key), members),
+        )
+
+        return list(scores)
 
     @staticmethod
     def _get_zset(value):
