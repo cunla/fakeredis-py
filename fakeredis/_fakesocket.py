@@ -11,9 +11,12 @@ from ._commands import (
 from ._helpers import (
     OK, MAX_STRING_SIZE, SimpleError, casematch, casenorm, compile_pattern)
 from ._zset import ZSet
-from .commands_mixins import (
-    GenericCommandsMixin, ScriptingCommandsMixin, HashCommandsMixin, ConnectionCommandsMixin,
-    ListCommandsMixin, ServerCommandsMixin, )
+from .commands_mixins.connection_mixin import ConnectionCommandsMixin
+from .commands_mixins.generic_mixin import GenericCommandsMixin
+from .commands_mixins.hash_mixin import HashCommandsMixin
+from .commands_mixins.list_mixin import ListCommandsMixin
+from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
+from .commands_mixins.server_mixin import ServerCommandsMixin
 
 
 class FakeSocket(
