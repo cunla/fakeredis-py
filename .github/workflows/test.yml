@@ -14,12 +14,12 @@ concurrency:
 
 jobs:
   pre:
-    name: 'Test <Redis, Python, redis-py, aioredis, lupa, cov>'
+    name: 'Test <Redis, Python, redis-py, lupa, cov>'
     runs-on: ubuntu-latest
     steps:
       - run: echo ''
   test:
-    name: 'Test <${{ matrix.redis-version }}, ${{ matrix.python-version }}, ${{ matrix.redis-py }}, ${{ matrix.aioredis }}, ${{ matrix.lupa }}, ${{ matrix.coverage }}>'
+    name: 'Test <${{ matrix.redis-version }}, ${{ matrix.python-version }}, ${{ matrix.redis-py }}, ${{ matrix.lupa }}, ${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
     needs: pre
     strategy:
@@ -59,10 +59,6 @@ jobs:
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
           poetry install
           poetry run pip install redis==${{ matrix.redis-py }}
-      - name: Install aioredis
-        if: ${{ matrix.aioredis }}
-        run: |
-          poetry run pip install aioredis==${{ matrix.aioredis }}
       - name: Install lupa
         if: ${{ matrix.lupa }}
         run: |
