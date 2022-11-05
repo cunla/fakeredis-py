@@ -17,7 +17,7 @@ jobs:
     name: 'Test <py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}>'
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 5
+#      max-parallel: 5
       fail-fast: false
       matrix:
         redis-version: [ "6.2.7", "7.0.5" ]
