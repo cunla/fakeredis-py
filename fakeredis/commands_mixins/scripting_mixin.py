@@ -156,9 +156,7 @@ class ScriptingCommandsMixin:
         try:
             result = lua_runtime.execute(script)
         except SimpleError as ex:
-            if self.version == 6:
-                raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
-            raise SimpleError(ex.value)
+            raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
         except LuaError as ex:
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
 
