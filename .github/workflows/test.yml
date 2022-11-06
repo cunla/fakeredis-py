@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   test:
-    name: 'Test <py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}>'
+    name: 'py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}'
     runs-on: ubuntu-latest
     strategy:
 #      max-parallel: 5
