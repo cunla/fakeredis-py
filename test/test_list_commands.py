@@ -4,13 +4,6 @@ from time import sleep
 import pytest
 import redis
 import redis.client
-
-from testtools import raw_command
-import threading
-from time import sleep
-
-import pytest
-import redis
 import redis.client
 
 from testtools import raw_command
@@ -160,6 +153,11 @@ def test_lpop_empty_list(r):
     # Verify what happens if we try to pop from a key
     # we've never seen before.
     assert r.lpop('noexists') is None
+
+
+def test_lpop_zero_elem(r):
+    r.rpush(b'\x00', b'')
+    assert r.lpop(b'\x00', 0) == []
 
 
 def test_lpop_wrong_type(r):
