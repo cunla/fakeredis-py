@@ -32,10 +32,8 @@ runs:
       id: coverage_report
       uses: mathiasvr/command-output@v1
       with:
-        run: |
-          mv forum/.coverage .
-          cp forum/.coveragerc .
-          coverage report
+        run: |      
+          poetry run coverage report
     - uses: mshick/add-pr-comment@v1
       if: ${{ github.event_name == 'pull_request' }}
       with:
