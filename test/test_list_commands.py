@@ -160,8 +160,14 @@ def test_lpop_zero_elem(r):
     assert r.lpop(b'\x00', 0) == []
 
 
-def test_lpop_non_existing_list(r):
-    assert r.lpop(b'', 0) == None
+def test_lpop_zero_non_existing_list(r):
+    assert r.lpop(b'', 0) is None
+
+
+def test_lpop_zero_wrong_type(r):
+    r.set(b'', b'')
+    with pytest.raises(redis.ResponseError):
+        r.lpop(b'', 0)
 
 
 def test_lpop_wrong_type(r):
