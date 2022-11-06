@@ -118,7 +118,7 @@ class ListCommandsMixin:
             count = args[0]
             if count < 0:
                 raise SimpleError(msgs.INDEX_ERROR_MSG)
-            elif count == 0 and self.version == 6:
+            elif count == 0:
                 return None
         if not key:
             return None

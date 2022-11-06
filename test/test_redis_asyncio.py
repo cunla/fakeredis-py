@@ -73,12 +73,6 @@ async def conn(req_aioredis2):
         yield conn
 
 
-@testtools.run_test_if_redispy_ver('above', '4.2')
-def test_asyncioio_is_used():
-    """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
-    assert not hasattr(aioredis, "__version__")
-
-
 async def test_ping(req_aioredis2):
     pong = await req_aioredis2.ping()
     assert pong is True
