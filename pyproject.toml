@@ -32,20 +32,16 @@ classifiers = [
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 homepage = "https://github.com/cunla/fakeredis-py"
 repository = "https://github.com/cunla/fakeredis-py"
 
 [tool.poetry.dependencies]
-# Supported Python Versions
 python = "^3.7"
-
-# Required Depenencies
 redis = "<4.5"
 sortedcontainers = "^2.4.0"
-
-# Optional Dependencies
 lupa = { version = "^1.13", optional = true }
 aioredis = { version = "^2.0.1", optional = true }
 
@@ -54,40 +50,21 @@ lua = ["lupa"]
 aioredis = ["aioredis"]
 
 [tool.poetry.dev-dependencies]
-coverage = "^6.5"
-flake8 = "^5.0.4"
-hypothesis = "^6.56.4"
 invoke = "^1.7.1"
-pytest = "^7.1.2"
-pytest-asyncio = "^0.20"
-pytest-cov = "^4"
-pytest-describe = "^2"
-pytest-mock = "^3.10"
+hypothesis = "^6.56.4"
 tox = "^3.27.0"
 twine = "4.0.1"
-wheel = "*"
+coverage = "^6.5"
+pytest = "^7.2.0"
+pytest-asyncio = "0.20.1"
+pytest-cov = "^4.0.0"
+pytest-mock = "^3.10.0"
+flake8 = "^5.0.4"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
 
 [tool.pytest.ini_options]
-asyncio_mode="strict"
-minversion = "7.1"
-addopts = '''
---disable-pytest-warnings
---strict-markers
---cov
---cov-config=pyproject.toml
---cov-report xml:coverage.xml
---no-cov-on-fail
---junitxml=junit.xml
--r
-fEsxp
-'''
-cache_dir = "./.cache"
-testpaths = [
-    "tests",
-]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "fake: run tests only with fake redis",
@@ -96,14 +73,5 @@ markers = [
     "min_server",
     "max_server",
     "decode_responses",
-    "descriptor",
-    "description",
 ]
-python_classes = [
-    "Test*",
-    "Describe*",
-]
-python_functions = [
-    "test_*",
-    "describe_*",
-]
+asyncio_mode="strict"
