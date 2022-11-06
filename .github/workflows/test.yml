@@ -112,34 +112,16 @@ jobs:
           color: green
   # Prepare a draft release for GitHub Releases page for the manual verification
   # If accepted and published, release workflow would be triggered
-  releaseDraft:
-    name: Release Draft
-    if: github.event_name != 'pull_request'
+  update_release_draft:
+    permissions:
+      # write permission is required to create a github release
+      contents: write
+      # write permission is required for autolabeler
+      # otherwise, read permission is required at least
+      pull-requests: write
     needs: test
     runs-on: ubuntu-latest
     steps:
-      # Check out current repository
-      - name: Fetch Sources
-        uses: actions/checkout@v3
-
-      # Remove old release drafts by using the curl request for the available releases with draft flag
-      - name: Remove Old Release Drafts
+      - uses: release-drafter/release-drafter@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api repos/{owner}/{repo}/releases \
-            --jq '.[] | select(.draft == true) | .id' \
-            | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
-      # Create new release draft - which is not publicly visible and requires manual acceptance
-      - name: Create Release Draft
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create v${{ needs.build.outputs.version }} \
-            --draft \
-            --title "v${{ needs.build.outputs.version }}" \
-            --notes "$(cat << 'EOM'
-          ${{ needs.build.outputs.version }}
-          EOM
-          )"
-          echo "::notice title=New release draft::${{ needs.build.outputs.version }}"          
