@@ -25,7 +25,7 @@ jobs:
         redis-py: [ '4.3.4' ]
         include:
           - python-version: "3.10" # should work fine with redis.asyncio
-            redis-version: "6.2.6"
+            redis-version: "6.2.7"
             redis-py: "4.3.4"
             lupa: "1.13"
           - python-version: "3.10" # should work fine with redis.asyncio
