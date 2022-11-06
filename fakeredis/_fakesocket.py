@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import functools
-import itertools
 import math
 import random
 import time
+from typing import Optional, Union
 
 import redis
-
-from typing import Optional, Union
 
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
@@ -1040,14 +1038,21 @@ class FakeSocket(
             return None
 
     @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zmscore(self, key: Key, *members: Union[str, bytes]) -> list[Optional[float]]:
-        """Get the scores associated with the specified members in the sorted set stored at key.
-        For every member that does not exist in the sorted set, a nil value is returned."""
-        scores = itertools.starmap(
-            self.zscore,
-            zip(itertools.repeat(key), members),
-        )
+    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+        """Get the scores associated with the specified members in the sorted set
+        stored at key.
 
+        For every member that does not exist in the sorted set, a nil value
+        is returned.
+        """
+        encoder = functools.partial(
+            self._encodefloat,
+            humanfriendly=False,
+        )
+        scores = map(
+            lambda score: score if score is None else encoder(score),
+            map(key.value.get, members),
+        )
         return list(scores)
 
     @staticmethod
