@@ -2117,8 +2117,8 @@ def test_zmscore(r: redis.Redis) -> None:
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
-    scores: Tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
+    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     testtools.zadd(r, cache_key, dict(zip(members, scores)))
     cached_scores: List[Optional[float]] = r.zmscore(
@@ -2133,7 +2133,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
+    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
 
     testtools.zadd(r, cache_key, {"eight": 8.8})
     cached_scores: List[Optional[float]] = r.zmscore(
@@ -2153,8 +2153,8 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
-    scores: Tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
+    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     testtools.zadd(
         r,
