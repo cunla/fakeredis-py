@@ -6,7 +6,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta
 from queue import Queue
 from time import sleep, time
-from typing import Callable, Dict, Generator, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 import math
 import pytest
@@ -2117,11 +2117,11 @@ def test_zmscore(r: redis.Redis) -> None:
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: tuple[str, ...] = "one", "two", "three", "four", "five", "six"
-    scores: tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
+    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
+    scores: Tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
 
     testtools.zadd(r, cache_key, dict(zip(members, scores)))
-    cached_scores: list[Optional[float]] = r.zmscore(
+    cached_scores: List[Optional[float]] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -2133,10 +2133,10 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
     cache_key: str = "scored-set-members"
-    members: tuple[str, ...] = "one", "two", "three", "four", "five", "six"
+    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
 
     testtools.zadd(r, cache_key, {"eight": 8.8})
-    cached_scores: list[Optional[float]] = r.zmscore(
+    cached_scores: List[Optional[float]] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -2153,8 +2153,8 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: tuple[str, ...] = "one", "two", "three", "four", "five", "six"
-    scores: tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
+    members: Tuple[str, ...] = "one", "two", "three", "four", "five", "six"
+    scores: Tuple[float, ...] = 1.1, 2.2, 3.3, 4.4, 5.5, 6.6
 
     testtools.zadd(
         r,
@@ -2162,7 +2162,7 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
         dict((member, scores[idx]) for (idx, member) in enumerate(members) if idx % 2 != 0),
     )
 
-    cached_scores: list[Optional[float]] = r.zmscore(cache_key, list(members))
+    cached_scores: List[Optional[float]] = r.zmscore(cache_key, list(members))
 
     assert all(cached_scores[idx] is None for (idx, score) in enumerate(scores) if idx % 2 == 0)
     assert all(cached_scores[idx] == score for (idx, score) in enumerate(scores) if idx % 2 != 0)
