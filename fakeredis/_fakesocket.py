@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import functools
 import math
 import random
 import time
+from typing import Optional, Union
 
 import redis
 
@@ -1033,6 +1036,24 @@ class FakeSocket(
             return self._encodefloat(key.value[member], False)
         except KeyError:
             return None
+
+    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+        """Get the scores associated with the specified members in the sorted set
+        stored at key.
+
+        For every member that does not exist in the sorted set, a nil value
+        is returned.
+        """
+        encoder = functools.partial(
+            self._encodefloat,
+            humanfriendly=False,
+        )
+        scores = map(
+            lambda score: score if score is None else encoder(score),
+            map(key.value.get, members),
+        )
+        return list(scores)
 
     @staticmethod
     def _get_zset(value):
