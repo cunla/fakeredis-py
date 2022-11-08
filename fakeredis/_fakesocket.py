@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Optional, Union
 
 import functools
 import math
 import random
+from typing import Optional, Union
 
 import redis
 
@@ -877,7 +877,6 @@ class FakeSocket(
             map(key.value.get, members),
         )
         return list(scores)
-
 
     @command((bytes,), (bytes,), flags='s')
     def psubscribe(self, *patterns):
