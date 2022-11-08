@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import math
 import random
@@ -856,6 +858,26 @@ class FakeSocket(
     @command((Key(), Int, bytes), (bytes,))
     def zinterstore(self, dest, numkeys, *args):
         return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
+import time
+from typing import Optional, Union
+    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+        """Get the scores associated with the specified members in the sorted set
+        stored at key.
+
+        For every member that does not exist in the sorted set, a nil value
+        is returned.
+        """
+        encoder = functools.partial(
+            self._encodefloat,
+            humanfriendly=False,
+        )
+        scores = map(
+            lambda score: score if score is None else encoder(score),
+            map(key.value.get, members),
+        )
+        return list(scores)
+
 
     @command((bytes,), (bytes,), flags='s')
     def psubscribe(self, *patterns):
