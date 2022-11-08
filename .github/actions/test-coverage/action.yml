@@ -32,16 +32,17 @@ runs:
       id: coverage_report
       shell: bash
       run: |      
-        REPORT=$(poetry run coverage report)
-        echo "{report}=${REPORT}" >> $GITHUB_OUTPUT
+        REPORT="$(poetry run coverage report)"
+        echo "REPORT=${REPORT}" >> $GITHUB_ENV
     - uses: mshick/add-pr-comment@v1
       if: ${{ github.event_name == 'pull_request' }}
       with:
         message: |
           Coverage report:
           ```
-          ${{ steps.coverage_report.outputs.report }}
+          ${{ env.REPORT }}
           ```
         repo-token: ${{ inputs.github-secret }}
         repo-token-user-login: 'github-actions[bot]'
         allow-repeats: false
+        message-id: coverage
