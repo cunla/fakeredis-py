@@ -185,7 +185,7 @@ class ScriptingCommandsMixin:
             return sha1
         elif casematch(subcmd, b'exists'):
             if self.version >= 7 and len(args) == 0:
-                raise SimpleError(msgs.WRONG_ARGS_MSG.format('script|exists'))
+                raise SimpleError(msgs.WRONG_ARGS_MSG7)
             return [int(sha1 in self._server.script_cache) for sha1 in args]
         elif casematch(subcmd, b'flush'):
             if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):

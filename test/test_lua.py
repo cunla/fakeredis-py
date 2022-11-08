@@ -9,7 +9,6 @@ import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
-import testtools
 
 lupa = pytest.importorskip("lupa")
 
@@ -121,14 +120,6 @@ def test_eval_mget(r):
     assert val == [b'bar1', b'bar2']
 
 
-@testtools.run_test_if_redispy_ver('below', '3')
-def test_eval_mget_none(r):
-    r.set('foo1', None)
-    r.set('foo2', None)
-    val = r.eval('return redis.call("mget", "foo1", "foo2")', 2, 'foo1', 'foo2')
-    assert val == [b'None', b'None']
-
-
 def test_eval_mget_not_set(r):
     val = r.eval('return redis.call("mget", "foo1", "foo2")', 2, 'foo1', 'foo2')
     assert val == [None, None]
@@ -154,15 +145,6 @@ def test_eval_hgetall_iterate(r):
     val = r.eval(lua, 1, 'foo')
     sorted_val = sorted([val[:2], val[2:]])
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
-
-
-@testtools.run_test_if_redispy_ver('below', '3')
-def test_eval_list_with_nil(r):
-    r.lpush('foo', 'bar')
-    r.lpush('foo', None)
-    r.lpush('foo', 'baz')
-    val = r.eval('return redis.call("lrange", KEYS[1], 0, 2)', 1, 'foo')
-    assert val == [b'baz', b'None', b'bar']
 
 
 def test_eval_invalid_command(r):
@@ -258,12 +240,6 @@ def test_eval_call_bool7(r):
     with pytest.raises(redis.ResponseError,
                        match=r'Lua redis lib command arguments must be strings or integers'):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
-
-
-@testtools.run_test_if_redispy_ver('below', '3')
-def test_eval_none_arg(r):
-    val = r.eval('return ARGV[1] == "None"', 0, None)
-    assert val
 
 
 def test_eval_return_error(r):

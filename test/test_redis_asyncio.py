@@ -1,23 +1,18 @@
 import asyncio
 import re
 
+import async_timeout
 import pytest
 import pytest_asyncio
 import redis
-
-import testtools
-
-pytestmark = [
-    testtools.run_test_if_redispy_ver('below', '4.2'),
-]
-
-aioredis = pytest.importorskip("aioredis", minversion='2.0.0a1')
-import async_timeout
-
-import fakeredis.aioredis
+import redis.asyncio
 from packaging.version import Version
 
-REDIS_VERSION = Version(redis.__version__)
+import testtools
+from fakeredis import aioredis
+
+pytestmark = [
+]
 fake_only = pytest.mark.parametrize(
     'req_aioredis2',
     [pytest.param('fake', marks=pytest.mark.fake)],
@@ -26,6 +21,7 @@ fake_only = pytest.mark.parametrize(
 pytestmark.extend([
     pytest.mark.asyncio,
 ])
+server_version = None
 
 
 @pytest_asyncio.fixture(
@@ -35,13 +31,30 @@ pytestmark.extend([
     ]
 )
 async def req_aioredis2(request):
+    global server_version
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
-        ret = fakeredis.aioredis.FakeRedis(server=fake_server)
+        ret = aioredis.FakeRedis(server=fake_server)
     else:
         if not request.getfixturevalue('is_redis_running'):
             pytest.skip('Redis is not running')
-        ret = aioredis.Redis()
+        ret = redis.asyncio.Redis()
+        server_version = server_version or (await ret.info())['redis_version']
+        min_server_marker = request.node.get_closest_marker('min_server')
+        if min_server_marker is not None:
+            min_version = Version(min_server_marker.args[0])
+            if Version(server_version) < min_version:
+                pytest.skip(
+                    'Redis server {} or more required but {} found'.format(min_version, server_version)
+                )
+        max_server_marker = request.node.get_closest_marker('max_server')
+        if max_server_marker is not None:
+            max_server = Version(max_server_marker.args[0])
+            if Version(server_version) > max_server:
+                pytest.skip(
+                    'Redis server {} or less required but {} found'.format(max_server, server_version)
+                )
+
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()
@@ -58,12 +71,6 @@ async def conn(req_aioredis2):
     """A single connection, rather than a pool."""
     async with req_aioredis2.client() as conn:
         yield conn
-
-
-@testtools.run_test_if_redispy_ver('above', '4.2')
-def test_redis_asyncio_is_used():
-    """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
-    assert not hasattr(fakeredis.aioredis, "__version__")
 
 
 async def test_ping(req_aioredis2):
@@ -99,7 +106,7 @@ async def test_transaction_fail(req_aioredis2):
         await req_aioredis2.set('foo', '2')  # Different connection
         tr.multi()
         tr.get('foo')
-        with pytest.raises(aioredis.exceptions.WatchError):
+        with pytest.raises(redis.asyncio.WatchError):
             await tr.execute()
 
 
@@ -187,26 +194,36 @@ async def test_blocking_unblock(req_aioredis2, conn, event_loop):
 
 async def test_wrongtype_error(req_aioredis2):
     await req_aioredis2.set('foo', 'bar')
-    with pytest.raises(aioredis.ResponseError, match='^WRONGTYPE'):
+    with pytest.raises(redis.asyncio.ResponseError, match='^WRONGTYPE'):
         await req_aioredis2.rpush('foo', 'baz')
 
 
 async def test_syntax_error(req_aioredis2):
-    with pytest.raises(aioredis.ResponseError,
+    with pytest.raises(redis.asyncio.ResponseError,
                        match="^wrong number of arguments for 'get' command$"):
         await req_aioredis2.execute_command('get')
 
 
 async def test_no_script_error(req_aioredis2):
-    with pytest.raises(aioredis.exceptions.NoScriptError):
+    with pytest.raises(redis.exceptions.NoScriptError):
         await req_aioredis2.evalsha('0123456789abcdef0123456789abcdef', 0)
 
 
 @testtools.run_test_if_lupa
-async def test_failed_script_error(req_aioredis2):
-    await req_aioredis2.set('foo', 'bar')
-    with pytest.raises(aioredis.ResponseError, match='^Error running script'):
-        await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
+class TestScripts:
+
+    @pytest.mark.max_server('6.2.7')
+    async def test_failed_script_error6(self, req_aioredis2):
+        await req_aioredis2.set('foo', 'bar')
+        with pytest.raises(redis.asyncio.ResponseError, match='^Error running script'):
+            await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
+
+    @pytest.mark.min_server('7')
+    async def test_failed_script_error7(self, req_aioredis2):
+        await req_aioredis2.set('foo', 'bar')
+        with pytest.raises(redis.asyncio.ResponseError,
+                           match='^Wrong number of args calling Redis command from script'):
+            await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
 
 
 @fake_only
@@ -220,7 +237,7 @@ async def test_repr(req_aioredis2):
 @fake_only
 @pytest.mark.disconnected
 async def test_not_connected(req_aioredis2):
-    with pytest.raises(aioredis.ConnectionError):
+    with pytest.raises(redis.asyncio.ConnectionError):
         await req_aioredis2.ping()
 
 
@@ -228,15 +245,15 @@ async def test_not_connected(req_aioredis2):
 async def test_disconnect_server(req_aioredis2, fake_server):
     await req_aioredis2.ping()
     fake_server.connected = False
-    with pytest.raises(aioredis.ConnectionError):
+    with pytest.raises(redis.asyncio.ConnectionError):
         await req_aioredis2.ping()
     fake_server.connected = True
 
 
 @pytest.mark.fake
 async def test_from_url():
-    r0 = fakeredis.aioredis.FakeRedis.from_url('redis://localhost?db=0')
-    r1 = fakeredis.aioredis.FakeRedis.from_url('redis://localhost?db=1')
+    r0 = aioredis.FakeRedis.from_url('redis://localhost?db=0')
+    r1 = aioredis.FakeRedis.from_url('redis://localhost?db=1')
     # Check that they are indeed different databases
     await r0.set('foo', 'a')
     await r1.set('foo', 'b')
@@ -248,7 +265,7 @@ async def test_from_url():
 
 @fake_only
 async def test_from_url_with_server(req_aioredis2, fake_server):
-    r2 = fakeredis.aioredis.FakeRedis.from_url('redis://localhost', server=fake_server)
+    r2 = aioredis.FakeRedis.from_url('redis://localhost', server=fake_server)
     await req_aioredis2.set('foo', 'bar')
     assert await r2.get('foo') == b'bar'
     await r2.connection_pool.disconnect()
@@ -256,12 +273,12 @@ async def test_from_url_with_server(req_aioredis2, fake_server):
 
 @pytest.mark.fake
 async def test_without_server():
-    r = fakeredis.aioredis.FakeRedis()
+    r = aioredis.FakeRedis()
     assert await r.ping()
 
 
 @pytest.mark.fake
 async def test_without_server_disconnected():
-    r = fakeredis.aioredis.FakeRedis(connected=False)
-    with pytest.raises(aioredis.ConnectionError):
+    r = aioredis.FakeRedis(connected=False)
+    with pytest.raises(redis.asyncio.ConnectionError):
         await r.ping()

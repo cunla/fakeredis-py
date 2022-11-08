@@ -13,6 +13,13 @@ fake_only = pytest.mark.parametrize(
 )
 
 
+@testtools.run_test_if_redispy_ver('above', '4.2')
+def test_asyncioio_is_used():
+    """Redis 4.2+ has support for asyncio and should be preferred over aioredis"""
+    from fakeredis import aioredis
+    assert not hasattr(aioredis, "__version__")
+
+
 @testtools.run_test_if_redispy_ver('above', '4.2.0')
 @testtools.run_test_if_no_aioredis
 def test_fakeredis_aioredis_uses_redis_asyncio():
@@ -131,10 +138,3 @@ class TestFakeStrictRedisConnectionErrors:
     def test_lmove(self, r):
         with pytest.raises(redis.ConnectionError):
             r.lmove(1, 2, 'LEFT', 'RIGHT')
-
-
-def test_get_float_type(r):  # Test for issue #58
-    r.set('key', 123)
-    assert r.get('key') == b'123'
-    r.incr('key')
-    assert r.get('key') == b'124'

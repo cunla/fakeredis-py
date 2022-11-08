@@ -1,19 +1,221 @@
-import redis
-import packaging.version
+import asyncio
+from typing import Union
 
-# aioredis was integrated into redis in version 4.2.0 as redis.asyncio
-if packaging.version.Version(redis.__version__) >= packaging.version.Version("4.2.0"):
-    import redis.asyncio as aioredis
-    from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
-else:
-    try:
-        import aioredis
-    except ImportError as e:
-        raise ImportError("aioredis is required for redis-py below 4.2.0") from e
+import async_timeout
 
-    if packaging.version.Version(aioredis.__version__) >= packaging.version.Version('2.0.0a1'):
-        from ._aioredis2 import FakeConnection, FakeRedis  # noqa: F401
-    else:
-        from ._aioredis1 import (  # noqa: F401
-            FakeConnectionsPool, create_connection, create_redis, create_pool, create_redis_pool
+import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
+
+from . import _fakesocket
+from . import _helpers
+from . import _server
+
+
+class AsyncFakeSocket(_fakesocket.FakeSocket):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.responses = asyncio.Queue()
+
+    def put_response(self, msg):
+        self.responses.put_nowait(msg)
+
+    async def _async_blocking(self, timeout, func, event, callback):
+        try:
+            result = None
+            async with async_timeout.timeout(timeout if timeout else None):
+                while True:
+                    await event.wait()
+                    event.clear()
+                    # This is a coroutine outside the normal control flow that
+                    # locks the server, so we have to take our own lock.
+                    with self._server.lock:
+                        ret = func(False)
+                        if ret is not None:
+                            result = self._decode_result(ret)
+                            self.put_response(result)
+                            break
+        except asyncio.TimeoutError:
+            result = None
+        finally:
+            with self._server.lock:
+                self._db.remove_change_callback(callback)
+            self.put_response(result)
+            self.resume()
+
+    def _blocking(self, timeout, func):
+        loop = asyncio.get_event_loop()
+        ret = func(True)
+        if ret is not None or self._in_transaction:
+            return ret
+        event = asyncio.Event()
+
+        def callback():
+            loop.call_soon_threadsafe(event.set)
+
+        self._db.add_change_callback(callback)
+        self.pause()
+        loop.create_task(self._async_blocking(timeout, func, event, callback))
+        return _helpers.NoResponse()
+
+
+class FakeSocket(AsyncFakeSocket):
+    _connection_error_class = redis_async.ConnectionError
+
+    def _decode_error(self, error):
+        return redis_async.connection.BaseParser(1).parse_error(error.value)
+
+
+class FakeReader:
+    pass
+
+
+class FakeWriter:
+    def __init__(self, socket: FakeSocket) -> None:
+        self._socket = socket
+
+    def close(self):
+        self._socket = None
+
+    async def wait_closed(self):
+        pass
+
+    async def drain(self):
+        pass
+
+    def writelines(self, data):
+        for chunk in data:
+            self._socket.sendall(chunk)
+
+
+class FakeConnection(redis_async.Connection):
+    def __init__(self, *args, **kwargs):
+        self._server = kwargs.pop('server')
+        self._sock = None
+        super().__init__(*args, **kwargs)
+
+    async def _connect(self):
+        if not self._server.connected:
+            raise redis_async.ConnectionError(_server.CONNECTION_ERROR_MSG)
+        self._sock = FakeSocket(self._server)
+        self._reader = FakeReader()
+        self._writer = FakeWriter(self._sock)
+
+    async def disconnect(self):
+        await super().disconnect()
+        self._sock = None
+
+    async def can_read(self, timeout: float = 0):
+        if not self.is_connected:
+            await self.connect()
+        if timeout == 0:
+            return not self._sock.responses.empty()
+        # asyncio.Queue doesn't have a way to wait for the queue to be
+        # non-empty without consuming an item, so kludge it with a sleep/poll
+        # loop.
+        loop = asyncio.get_event_loop()
+        start = loop.time()
+        while True:
+            if not self._sock.responses.empty():
+                return True
+            await asyncio.sleep(0.01)
+            now = loop.time()
+            if timeout is not None and now > start + timeout:
+                return False
+
+    def _decode(self, response):
+        if isinstance(response, list):
+            return [self._decode(item) for item in response]
+        elif isinstance(response, bytes):
+            return self.encoder.decode(response, )
+        else:
+            return response
+
+    async def read_response(self):
+        if not self._server.connected:
+            try:
+                response = self._sock.responses.get_nowait()
+            except asyncio.QueueEmpty:
+                raise redis_async.ConnectionError(_server.CONNECTION_ERROR_MSG)
+        else:
+            response = await self._sock.responses.get()
+        if isinstance(response, redis_async.ResponseError):
+            raise response
+        return self._decode(response)
+
+    def repr_pieces(self):
+        pieces = [
+            ('server', self._server),
+            ('db', self.db)
+        ]
+        if self.client_name:
+            pieces.append(('client_name', self.client_name))
+        return pieces
+
+
+class FakeRedis(redis_async.Redis):
+    def __init__(
+            self,
+            *,
+            db: Union[str, int] = 0,
+            password: str = None,
+            socket_timeout: float = None,
+            connection_pool: redis_async.ConnectionPool = None,
+            encoding: str = "utf-8",
+            encoding_errors: str = "strict",
+            decode_responses: bool = False,
+            retry_on_timeout: bool = False,
+            max_connections: int = None,
+            health_check_interval: int = 0,
+            client_name: str = None,
+            username: str = None,
+            server: _server.FakeServer = None,
+            connected: bool = True,
+            **kwargs
+    ):
+        if not connection_pool:
+            # Adapted from aioredis
+            if server is None:
+                server = _server.FakeServer()
+                server.connected = connected
+            connection_kwargs = {
+                "db": db,
+                "username": username,
+                "password": password,
+                "socket_timeout": socket_timeout,
+                "encoding": encoding,
+                "encoding_errors": encoding_errors,
+                "decode_responses": decode_responses,
+                "retry_on_timeout": retry_on_timeout,
+                "max_connections": max_connections,
+                "health_check_interval": health_check_interval,
+                "client_name": client_name,
+                "server": server,
+                "connection_class": FakeConnection
+            }
+            connection_pool = redis_async.ConnectionPool(**connection_kwargs)
+        super().__init__(
+            db=db,
+            password=password,
+            socket_timeout=socket_timeout,
+            connection_pool=connection_pool,
+            encoding=encoding,
+            encoding_errors=encoding_errors,
+            decode_responses=decode_responses,
+            retry_on_timeout=retry_on_timeout,
+            max_connections=max_connections,
+            health_check_interval=health_check_interval,
+            client_name=client_name,
+            username=username,
+            **kwargs
         )
+
+    @classmethod
+    def from_url(cls, url: str, **kwargs):
+        server = kwargs.pop('server', None)
+        if server is None:
+            server = _server.FakeServer()
+        self = super().from_url(url, **kwargs)
+        # Now override how it creates connections
+        pool = self.connection_pool
+        pool.connection_class = FakeConnection
+        pool.connection_kwargs['server'] = server
+        return self

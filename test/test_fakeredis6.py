@@ -1,25 +1,20 @@
 from __future__ import annotations
 
+import math
 import os
 import threading
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from queue import Queue
-from time import sleep, time
-from typing import List, Tuple, Optional
 
-import math
 import pytest
 import redis
 import redis.client
-from packaging.version import Version
 from redis.exceptions import ResponseError
 
 import fakeredis
 import testtools
 from testtools import raw_command
-
-REDIS_VERSION = Version(redis.__version__)
 
 
 def key_val_dict(size=100):
@@ -33,89 +28,12 @@ def round_str(x):
 
 
 def zincrby(r, key, amount, value):
-    if REDIS_VERSION >= Version('3'):
-        return r.zincrby(key, amount, value)
-    else:
-        return r.zincrby(key, value, amount)
+    return r.zincrby(key, amount, value)
 
 
 def test_large_command(r):
     r.set('foo', 'bar' * 10000)
     assert r.get('foo') == b'bar' * 10000
-
-
-def test_dbsize(r):
-    assert r.dbsize() == 0
-    r.set('foo', 'bar')
-    r.set('bar', 'foo')
-    assert r.dbsize() == 2
-
-
-def test_flushdb(r):
-    r.set('foo', 'bar')
-    assert r.keys() == [b'foo']
-    assert r.flushdb() is True
-    assert r.keys() == []
-
-
-def test_dump_missing(r):
-    assert r.dump('foo') is None
-
-
-def test_dump_restore(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    r.restore('baz', 0, dump)
-    assert r.get('baz') == b'bar'
-    assert r.ttl('baz') == -1
-
-
-def test_dump_restore_ttl(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    r.restore('baz', 2000, dump)
-    assert r.get('baz') == b'bar'
-    assert 1000 <= r.pttl('baz') <= 2000
-
-
-def test_dump_restore_replace(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    r.set('foo', 'baz')
-    r.restore('foo', 0, dump, replace=True)
-    assert r.get('foo') == b'bar'
-
-
-def test_restore_exists(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    with pytest.raises(ResponseError):
-        r.restore('foo', 0, dump)
-
-
-def test_restore_invalid_dump(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    with pytest.raises(ResponseError):
-        r.restore('baz', 0, dump[:-1])
-
-
-def test_restore_invalid_ttl(r):
-    r.set('foo', 'bar')
-    dump = r.dump('foo')
-    with pytest.raises(ResponseError):
-        r.restore('baz', -1, dump)
-
-
-def test_set_then_get(r):
-    assert r.set('foo', 'bar') is True
-    assert r.get('foo') == b'bar'
-
-
-def test_set_float_value(r):
-    x = 1.23456789123456789
-    r.set('foo', x)
-    assert float(r.get('foo')) == x
 
 
 def test_saving_non_ascii_chars_as_value(r):
@@ -163,121 +81,6 @@ def test_get_invalid_type(r):
     assert r.hset('foo', 'key', 'value') == 1
     with pytest.raises(redis.ResponseError):
         r.get('foo')
-
-
-def test_set_non_str_keys(r):
-    assert r.set(2, 'bar') is True
-    assert r.get(2) == b'bar'
-    assert r.get('2') == b'bar'
-
-
-def test_getbit(r):
-    r.setbit('foo', 3, 1)
-    assert r.getbit('foo', 0) == 0
-    assert r.getbit('foo', 1) == 0
-    assert r.getbit('foo', 2) == 0
-    assert r.getbit('foo', 3) == 1
-    assert r.getbit('foo', 4) == 0
-    assert r.getbit('foo', 100) == 0
-
-
-def test_getbit_wrong_type(r):
-    r.rpush('foo', b'x')
-    with pytest.raises(redis.ResponseError):
-        r.getbit('foo', 1)
-
-
-def test_multiple_bits_set(r):
-    r.setbit('foo', 1, 1)
-    r.setbit('foo', 3, 1)
-    r.setbit('foo', 5, 1)
-
-    assert r.getbit('foo', 0) == 0
-    assert r.getbit('foo', 1) == 1
-    assert r.getbit('foo', 2) == 0
-    assert r.getbit('foo', 3) == 1
-    assert r.getbit('foo', 4) == 0
-    assert r.getbit('foo', 5) == 1
-    assert r.getbit('foo', 6) == 0
-
-
-def test_unset_bits(r):
-    r.setbit('foo', 1, 1)
-    r.setbit('foo', 2, 0)
-    r.setbit('foo', 3, 1)
-    assert r.getbit('foo', 1) == 1
-    r.setbit('foo', 1, 0)
-    assert r.getbit('foo', 1) == 0
-    r.setbit('foo', 3, 0)
-    assert r.getbit('foo', 3) == 0
-
-
-def test_get_set_bits(r):
-    # set bit 5
-    assert not r.setbit('a', 5, True)
-    assert r.getbit('a', 5)
-    # unset bit 4
-    assert not r.setbit('a', 4, False)
-    assert not r.getbit('a', 4)
-    # set bit 4
-    assert not r.setbit('a', 4, True)
-    assert r.getbit('a', 4)
-    # set bit 5 again
-    assert r.setbit('a', 5, True)
-    assert r.getbit('a', 5)
-
-
-def test_setbits_and_getkeys(r):
-    # The bit operations and the get commands
-    # should play nicely with each other.
-    r.setbit('foo', 1, 1)
-    assert r.get('foo') == b'@'
-    r.setbit('foo', 2, 1)
-    assert r.get('foo') == b'`'
-    r.setbit('foo', 3, 1)
-    assert r.get('foo') == b'p'
-    r.setbit('foo', 9, 1)
-    assert r.get('foo') == b'p@'
-    r.setbit('foo', 54, 1)
-    assert r.get('foo') == b'p@\x00\x00\x00\x00\x02'
-
-
-def test_setbit_wrong_type(r):
-    r.rpush('foo', b'x')
-    with pytest.raises(redis.ResponseError):
-        r.setbit('foo', 0, 1)
-
-
-def test_setbit_expiry(r):
-    r.set('foo', b'0x00', ex=10)
-    r.setbit('foo', 1, 1)
-    assert r.ttl('foo') > 0
-
-
-def test_bitcount(r):
-    r.delete('foo')
-    assert r.bitcount('foo') == 0
-    r.setbit('foo', 1, 1)
-    assert r.bitcount('foo') == 1
-    r.setbit('foo', 8, 1)
-    assert r.bitcount('foo') == 2
-    assert r.bitcount('foo', 1, 1) == 1
-    r.setbit('foo', 57, 1)
-    assert r.bitcount('foo') == 3
-    r.set('foo', ' ')
-    assert r.bitcount('foo') == 1
-
-
-def test_bitcount_wrong_type(r):
-    r.rpush('foo', b'x')
-    with pytest.raises(redis.ResponseError):
-        r.bitcount('foo')
-
-
-def test_getset_not_exist(r):
-    val = r.getset('foo', 'bar')
-    assert val is None
-    assert r.get('foo') == b'bar'
 
 
 def test_getset_exists(r):
@@ -499,12 +302,6 @@ def test_keys(r):
     assert r.keys(r'abc[c-\e]e') == []
 
 
-def test_exists(r):
-    assert 'foo' not in r
-    r.set('foo', 'bar')
-    assert 'foo' in r
-
-
 def test_contains(r):
     assert not r.exists('foo')
     r.set('foo', 'bar')
@@ -554,11 +351,7 @@ def test_mget(r):
 
 
 def test_mget_with_no_keys(r):
-    if REDIS_VERSION >= Version('3'):
-        assert r.mget([]) == []
-    else:
-        with pytest.raises(redis.ResponseError, match='wrong number of arguments'):
-            r.mget([])
+    assert r.mget([]) == []
 
 
 def test_mget_mixed_types(r):
@@ -641,7 +434,7 @@ def test_set_px_using_timedelta(r):
     assert r.get('foo') == b'bar'
 
 
-@pytest.mark.skipif(REDIS_VERSION < Version('3.5'), reason="Test is only applicable to redis-py 3.5+")
+@testtools.run_test_if_redispy_ver('below', '3.5')
 @pytest.mark.min_server('6.0')
 def test_set_keepttl(r):
     r.set('foo', 'bar', ex=100)
@@ -655,7 +448,7 @@ def test_set_conflicting_expire_options(r):
         r.set('foo', 'bar', ex=1, px=1)
 
 
-@pytest.mark.skipif(REDIS_VERSION < Version('3.5'), reason="Test is only applicable to redis-py 3.5+")
+@testtools.run_test_if_redispy_ver('below', '3.5')
 def test_set_conflicting_expire_options_w_keepttl(r):
     with pytest.raises(ResponseError):
         r.set('foo', 'bar', ex=1, keepttl=True)
@@ -766,12 +559,6 @@ def set_get_wrongtype(r):
         raw_command(r, 'set', 'foo', 'bar', 'GET')
 
 
-def test_del_operator(r):
-    r['foo'] = 'bar'
-    del r['foo']
-    assert r.get('foo') is None
-
-
 def test_delete(r):
     r['foo'] = 'bar'
     assert r.delete('foo') == 1
@@ -821,758 +608,6 @@ def test_delete_multiple(r):
 
 def test_delete_nonexistent_key(r):
     assert r.delete('foo') == 0
-
-
-def test_lpush_then_lrange_all(r):
-    assert r.lpush('foo', 'bar') == 1
-    assert r.lpush('foo', 'baz') == 2
-    assert r.lpush('foo', 'bam', 'buzz') == 4
-    assert r.lrange('foo', 0, -1) == [b'buzz', b'bam', b'baz', b'bar']
-
-
-def test_lpush_then_lrange_portion(r):
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'two')
-    r.lpush('foo', 'three')
-    r.lpush('foo', 'four')
-    assert r.lrange('foo', 0, 2) == [b'four', b'three', b'two']
-    assert r.lrange('foo', 0, 3) == [b'four', b'three', b'two', b'one']
-
-
-def test_lrange_negative_indices(r):
-    r.rpush('foo', 'a', 'b', 'c')
-    assert r.lrange('foo', -1, -2) == []
-    assert r.lrange('foo', -2, -1) == [b'b', b'c']
-
-
-def test_lpush_key_does_not_exist(r):
-    assert r.lrange('foo', 0, -1) == []
-
-
-def test_lpush_with_nonstr_key(r):
-    r.lpush(1, 'one')
-    r.lpush(1, 'two')
-    r.lpush(1, 'three')
-    assert r.lrange(1, 0, 2) == [b'three', b'two', b'one']
-    assert r.lrange('1', 0, 2) == [b'three', b'two', b'one']
-
-
-def test_lpush_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lpush('foo', 'element')
-
-
-def test_llen(r):
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'two')
-    r.lpush('foo', 'three')
-    assert r.llen('foo') == 3
-
-
-def test_llen_no_exist(r):
-    assert r.llen('foo') == 0
-
-
-def test_llen_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.llen('foo')
-
-
-def test_lrem_positive_count(r):
-    r.lpush('foo', 'same')
-    r.lpush('foo', 'same')
-    r.lpush('foo', 'different')
-    r.lrem('foo', 2, 'same')
-    assert r.lrange('foo', 0, -1) == [b'different']
-
-
-def test_lrem_negative_count(r):
-    r.lpush('foo', 'removeme')
-    r.lpush('foo', 'three')
-    r.lpush('foo', 'two')
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'removeme')
-    r.lrem('foo', -1, 'removeme')
-    # Should remove it from the end of the list,
-    # leaving the 'removeme' from the front of the list alone.
-    assert r.lrange('foo', 0, -1) == [b'removeme', b'one', b'two', b'three']
-
-
-def test_lrem_zero_count(r):
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'one')
-    r.lrem('foo', 0, 'one')
-    assert r.lrange('foo', 0, -1) == []
-
-
-def test_lrem_default_value(r):
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'one')
-    r.lpush('foo', 'one')
-    r.lrem('foo', 0, 'one')
-    assert r.lrange('foo', 0, -1) == []
-
-
-def test_lrem_does_not_exist(r):
-    r.lpush('foo', 'one')
-    r.lrem('foo', 0, 'one')
-    # These should be noops.
-    r.lrem('foo', -2, 'one')
-    r.lrem('foo', 2, 'one')
-
-
-def test_lrem_return_value(r):
-    r.lpush('foo', 'one')
-    count = r.lrem('foo', 0, 'one')
-    assert count == 1
-    assert r.lrem('foo', 0, 'one') == 0
-
-
-def test_lrem_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lrem('foo', 0, 'element')
-
-
-def test_rpush(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    r.rpush('foo', 'three')
-    r.rpush('foo', 'four', 'five')
-    assert r.lrange('foo', 0, -1) == [b'one', b'two', b'three', b'four', b'five']
-
-
-def test_rpush_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.rpush('foo', 'element')
-
-
-def test_lpop(r):
-    assert r.rpush('foo', 'one') == 1
-    assert r.rpush('foo', 'two') == 2
-    assert r.rpush('foo', 'three') == 3
-    assert r.lpop('foo') == b'one'
-    assert r.lpop('foo') == b'two'
-    assert r.lpop('foo') == b'three'
-
-
-def test_lpop_empty_list(r):
-    r.rpush('foo', 'one')
-    r.lpop('foo')
-    assert r.lpop('foo') is None
-    # Verify what happens if we try to pop from a key
-    # we've never seen before.
-    assert r.lpop('noexists') is None
-
-
-def test_lpop_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lpop('foo')
-
-
-@pytest.mark.min_server('6.2')
-def test_lpop_count(r):
-    assert r.rpush('foo', 'one') == 1
-    assert r.rpush('foo', 'two') == 2
-    assert r.rpush('foo', 'three') == 3
-    assert raw_command(r, 'lpop', 'foo', 2) == [b'one', b'two']
-    # See https://github.com/redis/redis/issues/9680
-    raw = raw_command(r, 'rpop', 'foo', 0)
-    assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
-
-
-@pytest.mark.min_server('6.2')
-def test_lpop_count_negative(r):
-    with pytest.raises(redis.ResponseError):
-        raw_command(r, 'lpop', 'foo', -1)
-
-
-def test_lset(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    r.rpush('foo', 'three')
-    r.lset('foo', 0, 'four')
-    r.lset('foo', -2, 'five')
-    assert r.lrange('foo', 0, -1) == [b'four', b'five', b'three']
-
-
-def test_lset_index_out_of_range(r):
-    r.rpush('foo', 'one')
-    with pytest.raises(redis.ResponseError):
-        r.lset('foo', 3, 'three')
-
-
-def test_lset_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lset('foo', 0, 'element')
-
-
-def test_rpushx(r):
-    r.rpush('foo', 'one')
-    r.rpushx('foo', 'two')
-    r.rpushx('bar', 'three')
-    assert r.lrange('foo', 0, -1) == [b'one', b'two']
-    assert r.lrange('bar', 0, -1) == []
-
-
-def test_rpushx_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.rpushx('foo', 'element')
-
-
-def test_ltrim(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    r.rpush('foo', 'three')
-    r.rpush('foo', 'four')
-
-    assert r.ltrim('foo', 1, 3)
-    assert r.lrange('foo', 0, -1) == [b'two', b'three', b'four']
-    assert r.ltrim('foo', 1, -1)
-    assert r.lrange('foo', 0, -1) == [b'three', b'four']
-
-
-def test_ltrim_with_non_existent_key(r):
-    assert r.ltrim('foo', 0, -1)
-
-
-def test_ltrim_expiry(r):
-    r.rpush('foo', 'one', 'two', 'three')
-    r.expire('foo', 10)
-    r.ltrim('foo', 1, 2)
-    assert r.ttl('foo') > 0
-
-
-def test_ltrim_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.ltrim('foo', 1, -1)
-
-
-def test_lindex(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    assert r.lindex('foo', 0) == b'one'
-    assert r.lindex('foo', 4) is None
-    assert r.lindex('bar', 4) is None
-
-
-def test_lindex_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lindex('foo', 0)
-
-
-def test_lpushx(r):
-    r.lpush('foo', 'two')
-    r.lpushx('foo', 'one')
-    r.lpushx('bar', 'one')
-    assert r.lrange('foo', 0, -1) == [b'one', b'two']
-    assert r.lrange('bar', 0, -1) == []
-
-
-def test_lpushx_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.lpushx('foo', 'element')
-
-
-def test_rpop(r):
-    assert r.rpop('foo') is None
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    assert r.rpop('foo') == b'two'
-    assert r.rpop('foo') == b'one'
-    assert r.rpop('foo') is None
-
-
-def test_rpop_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.rpop('foo')
-
-
-@pytest.mark.min_server('6.2')
-def test_rpop_count(r):
-    assert r.rpush('foo', 'one') == 1
-    assert r.rpush('foo', 'two') == 2
-    assert r.rpush('foo', 'three') == 3
-    assert raw_command(r, 'rpop', 'foo', 2) == [b'three', b'two']
-    # See https://github.com/redis/redis/issues/9680
-    raw = raw_command(r, 'rpop', 'foo', 0)
-    assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
-
-
-@pytest.mark.min_server('6.2')
-def test_rpop_count_negative(r):
-    with pytest.raises(redis.ResponseError):
-        raw_command(r, 'rpop', 'foo', -1)
-
-
-def test_linsert_before(r):
-    r.rpush('foo', 'hello')
-    r.rpush('foo', 'world')
-    assert r.linsert('foo', 'before', 'world', 'there') == 3
-    assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
-
-
-def test_linsert_after(r):
-    r.rpush('foo', 'hello')
-    r.rpush('foo', 'world')
-    assert r.linsert('foo', 'after', 'hello', 'there') == 3
-    assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
-
-
-def test_linsert_no_pivot(r):
-    r.rpush('foo', 'hello')
-    r.rpush('foo', 'world')
-    assert r.linsert('foo', 'after', 'goodbye', 'bar') == -1
-    assert r.lrange('foo', 0, -1) == [b'hello', b'world']
-
-
-def test_linsert_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.linsert('foo', 'after', 'bar', 'element')
-
-
-def test_rpoplpush(r):
-    assert r.rpoplpush('foo', 'bar') is None
-    assert r.lpop('bar') is None
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    r.rpush('bar', 'one')
-
-    assert r.rpoplpush('foo', 'bar') == b'two'
-    assert r.lrange('foo', 0, -1) == [b'one']
-    assert r.lrange('bar', 0, -1) == [b'two', b'one']
-
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus bar = ['two', b'one']
-    assert r.lrem('bar', -1, 'two') == 1
-
-
-def test_rpoplpush_to_nonexistent_destination(r):
-    r.rpush('foo', 'one')
-    assert r.rpoplpush('foo', 'bar') == b'one'
-    assert r.rpop('bar') == b'one'
-
-
-def test_rpoplpush_expiry(r):
-    r.rpush('foo', 'one')
-    r.rpush('bar', 'two')
-    r.expire('bar', 10)
-    r.rpoplpush('foo', 'bar')
-    assert r.ttl('bar') > 0
-
-
-def test_rpoplpush_one_to_self(r):
-    r.rpush('list', 'element')
-    assert r.brpoplpush('list', 'list') == b'element'
-    assert r.lrange('list', 0, -1) == [b'element']
-
-
-def test_rpoplpush_wrong_type(r):
-    r.set('foo', 'bar')
-    r.rpush('list', 'element')
-    with pytest.raises(redis.ResponseError):
-        r.rpoplpush('foo', 'list')
-    assert r.get('foo') == b'bar'
-    assert r.lrange('list', 0, -1) == [b'element']
-    with pytest.raises(redis.ResponseError):
-        r.rpoplpush('list', 'foo')
-    assert r.get('foo') == b'bar'
-    assert r.lrange('list', 0, -1) == [b'element']
-
-
-def test_blpop_single_list(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    r.rpush('foo', 'three')
-    assert r.blpop(['foo'], timeout=1) == (b'foo', b'one')
-
-
-def test_blpop_test_multiple_lists(r):
-    r.rpush('baz', 'zero')
-    assert r.blpop(['foo', 'baz'], timeout=1) == (b'baz', b'zero')
-    assert not r.exists('baz')
-
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    # bar has nothing, so the returned value should come
-    # from foo.
-    assert r.blpop(['bar', 'foo'], timeout=1) == (b'foo', b'one')
-    r.rpush('bar', 'three')
-    # bar now has something, so the returned value should come
-    # from bar.
-    assert r.blpop(['bar', 'foo'], timeout=1) == (b'bar', b'three')
-    assert r.blpop(['bar', 'foo'], timeout=1) == (b'foo', b'two')
-
-
-def test_blpop_allow_single_key(r):
-    # blpop converts single key arguments to a one element list.
-    r.rpush('foo', 'one')
-    assert r.blpop('foo', timeout=1) == (b'foo', b'one')
-
-
-@pytest.mark.slow
-def test_blpop_block(r):
-    def push_thread():
-        sleep(0.5)
-        r.rpush('foo', 'value1')
-        sleep(0.5)
-        # Will wake the condition variable
-        r.set('bar', 'go back to sleep some more')
-        r.rpush('foo', 'value2')
-
-    thread = threading.Thread(target=push_thread)
-    thread.start()
-    try:
-        assert r.blpop('foo') == (b'foo', b'value1')
-        assert r.blpop('foo', timeout=5) == (b'foo', b'value2')
-    finally:
-        thread.join()
-
-
-def test_blpop_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.blpop('foo', timeout=1)
-
-
-def test_blpop_transaction(r):
-    p = r.pipeline()
-    p.multi()
-    p.blpop('missing', timeout=1000)
-    result = p.execute()
-    # Blocking commands behave like non-blocking versions in transactions
-    assert result == [None]
-
-
-def test_brpop_test_multiple_lists(r):
-    r.rpush('baz', 'zero')
-    assert r.brpop(['foo', 'baz'], timeout=1) == (b'baz', b'zero')
-    assert not r.exists('baz')
-
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    assert r.brpop(['bar', 'foo'], timeout=1) == (b'foo', b'two')
-
-
-def test_brpop_single_key(r):
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    assert r.brpop('foo', timeout=1) == (b'foo', b'two')
-
-
-@pytest.mark.slow
-def test_brpop_block(r):
-    def push_thread():
-        sleep(0.5)
-        r.rpush('foo', 'value1')
-        sleep(0.5)
-        # Will wake the condition variable
-        r.set('bar', 'go back to sleep some more')
-        r.rpush('foo', 'value2')
-
-    thread = threading.Thread(target=push_thread)
-    thread.start()
-    try:
-        assert r.brpop('foo') == (b'foo', b'value1')
-        assert r.brpop('foo', timeout=5) == (b'foo', b'value2')
-    finally:
-        thread.join()
-
-
-def test_brpop_wrong_type(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.brpop('foo', timeout=1)
-
-
-def test_brpoplpush_multi_keys(r):
-    assert r.lpop('bar') is None
-    r.rpush('foo', 'one')
-    r.rpush('foo', 'two')
-    assert r.brpoplpush('foo', 'bar', timeout=1) == b'two'
-    assert r.lrange('bar', 0, -1) == [b'two']
-
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus bar = ['two']
-    assert r.lrem('bar', -1, 'two') == 1
-
-
-def test_brpoplpush_wrong_type(r):
-    r.set('foo', 'bar')
-    r.rpush('list', 'element')
-    with pytest.raises(redis.ResponseError):
-        r.brpoplpush('foo', 'list')
-    assert r.get('foo') == b'bar'
-    assert r.lrange('list', 0, -1) == [b'element']
-    with pytest.raises(redis.ResponseError):
-        r.brpoplpush('list', 'foo')
-    assert r.get('foo') == b'bar'
-    assert r.lrange('list', 0, -1) == [b'element']
-
-
-@pytest.mark.slow
-def test_blocking_operations_when_empty(r):
-    assert r.blpop(['foo'], timeout=1) is None
-    assert r.blpop(['bar', 'foo'], timeout=1) is None
-    assert r.brpop('foo', timeout=1) is None
-    assert r.brpoplpush('foo', 'bar', timeout=1) is None
-
-
-def test_empty_list(r):
-    r.rpush('foo', 'bar')
-    r.rpop('foo')
-    assert not r.exists('foo')
-
-
-# Tests for the hash type.
-
-def test_hstrlen_missing(r):
-    assert r.hstrlen('foo', 'doesnotexist') == 0
-
-    r.hset('foo', 'key', 'value')
-    assert r.hstrlen('foo', 'doesnotexist') == 0
-
-
-def test_hstrlen(r):
-    r.hset('foo', 'key', 'value')
-    assert r.hstrlen('foo', 'key') == 5
-
-
-def test_hset_then_hget(r):
-    assert r.hset('foo', 'key', 'value') == 1
-    assert r.hget('foo', 'key') == b'value'
-
-
-def test_hset_update(r):
-    assert r.hset('foo', 'key', 'value') == 1
-    assert r.hset('foo', 'key', 'value') == 0
-
-
-def test_hset_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hset('foo', 'key', 'value')
-
-
-def test_hgetall(r):
-    assert r.hset('foo', 'k1', 'v1') == 1
-    assert r.hset('foo', 'k2', 'v2') == 1
-    assert r.hset('foo', 'k3', 'v3') == 1
-    assert r.hgetall('foo') == {
-        b'k1': b'v1',
-        b'k2': b'v2',
-        b'k3': b'v3'
-    }
-
-
-def test_hgetall_empty_key(r):
-    assert r.hgetall('foo') == {}
-
-
-def test_hgetall_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hgetall('foo')
-
-
-def test_hexists(r):
-    r.hset('foo', 'bar', 'v1')
-    assert r.hexists('foo', 'bar') == 1
-    assert r.hexists('foo', 'baz') == 0
-    assert r.hexists('bar', 'bar') == 0
-
-
-def test_hexists_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hexists('foo', 'key')
-
-
-def test_hkeys(r):
-    r.hset('foo', 'k1', 'v1')
-    r.hset('foo', 'k2', 'v2')
-    assert set(r.hkeys('foo')) == {b'k1', b'k2'}
-    assert set(r.hkeys('bar')) == set()
-
-
-def test_hkeys_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hkeys('foo')
-
-
-def test_hlen(r):
-    r.hset('foo', 'k1', 'v1')
-    r.hset('foo', 'k2', 'v2')
-    assert r.hlen('foo') == 2
-
-
-def test_hlen_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hlen('foo')
-
-
-def test_hvals(r):
-    r.hset('foo', 'k1', 'v1')
-    r.hset('foo', 'k2', 'v2')
-    assert set(r.hvals('foo')) == {b'v1', b'v2'}
-    assert set(r.hvals('bar')) == set()
-
-
-def test_hvals_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hvals('foo')
-
-
-def test_hmget(r):
-    r.hset('foo', 'k1', 'v1')
-    r.hset('foo', 'k2', 'v2')
-    r.hset('foo', 'k3', 'v3')
-    # Normal case.
-    assert r.hmget('foo', ['k1', 'k3']) == [b'v1', b'v3']
-    assert r.hmget('foo', 'k1', 'k3') == [b'v1', b'v3']
-    # Key does not exist.
-    assert r.hmget('bar', ['k1', 'k3']) == [None, None]
-    assert r.hmget('bar', 'k1', 'k3') == [None, None]
-    # Some keys in the hash do not exist.
-    assert r.hmget('foo', ['k1', 'k500']) == [b'v1', None]
-    assert r.hmget('foo', 'k1', 'k500') == [b'v1', None]
-
-
-def test_hmget_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hmget('foo', 'key1', 'key2')
-
-
-def test_hdel(r):
-    r.hset('foo', 'k1', 'v1')
-    r.hset('foo', 'k2', 'v2')
-    r.hset('foo', 'k3', 'v3')
-    assert r.hget('foo', 'k1') == b'v1'
-    assert r.hdel('foo', 'k1') == 1
-    assert r.hget('foo', 'k1') is None
-    assert r.hdel('foo', 'k1') == 0
-    # Since redis>=2.7.6 returns number of deleted items.
-    assert r.hdel('foo', 'k2', 'k3') == 2
-    assert r.hget('foo', 'k2') is None
-    assert r.hget('foo', 'k3') is None
-    assert r.hdel('foo', 'k2', 'k3') == 0
-
-
-def test_hdel_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hdel('foo', 'key')
-
-
-def test_hincrby(r):
-    r.hset('foo', 'counter', 0)
-    assert r.hincrby('foo', 'counter') == 1
-    assert r.hincrby('foo', 'counter') == 2
-    assert r.hincrby('foo', 'counter') == 3
-
-
-def test_hincrby_with_no_starting_value(r):
-    assert r.hincrby('foo', 'counter') == 1
-    assert r.hincrby('foo', 'counter') == 2
-    assert r.hincrby('foo', 'counter') == 3
-
-
-def test_hincrby_with_range_param(r):
-    assert r.hincrby('foo', 'counter', 2) == 2
-    assert r.hincrby('foo', 'counter', 2) == 4
-    assert r.hincrby('foo', 'counter', 2) == 6
-
-
-def test_hincrby_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hincrby('foo', 'key', 2)
-
-
-def test_hincrbyfloat(r):
-    r.hset('foo', 'counter', 0.0)
-    assert r.hincrbyfloat('foo', 'counter') == 1.0
-    assert r.hincrbyfloat('foo', 'counter') == 2.0
-    assert r.hincrbyfloat('foo', 'counter') == 3.0
-
-
-def test_hincrbyfloat_with_no_starting_value(r):
-    assert r.hincrbyfloat('foo', 'counter') == 1.0
-    assert r.hincrbyfloat('foo', 'counter') == 2.0
-    assert r.hincrbyfloat('foo', 'counter') == 3.0
-
-
-def test_hincrbyfloat_with_range_param(r):
-    assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.1)
-    assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.2)
-    assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.3)
-
-
-def test_hincrbyfloat_on_non_float_value_raises_error(r):
-    r.hset('foo', 'counter', 'cat')
-    with pytest.raises(redis.ResponseError):
-        r.hincrbyfloat('foo', 'counter')
-
-
-def test_hincrbyfloat_with_non_float_amount_raises_error(r):
-    with pytest.raises(redis.ResponseError):
-        r.hincrbyfloat('foo', 'counter', 'cat')
-
-
-def test_hincrbyfloat_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hincrbyfloat('foo', 'key', 0.1)
-
-
-def test_hincrbyfloat_precision(r):
-    x = 1.23456789123456789
-    assert r.hincrbyfloat('foo', 'bar', x) == x
-    assert float(r.hget('foo', 'bar')) == x
-
-
-def test_hsetnx(r):
-    assert r.hsetnx('foo', 'newkey', 'v1') == 1
-    assert r.hsetnx('foo', 'newkey', 'v1') == 0
-    assert r.hget('foo', 'newkey') == b'v1'
-
-
-def test_hmset_empty_raises_error(r):
-    with pytest.raises(redis.DataError):
-        r.hmset('foo', {})
-
-
-def test_hmset(r):
-    r.hset('foo', 'k1', 'v1')
-    assert r.hmset('foo', {'k2': 'v2', 'k3': 'v3'}) is True
-
-
-def test_hmset_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
-    with pytest.raises(redis.ResponseError):
-        r.hmset('foo', {'key': 'value'})
-
-
-def test_empty_hash(r):
-    r.hset('foo', 'bar', 'baz')
-    r.hdel('foo', 'bar')
-    assert not r.exists('foo')
 
 
 def test_sadd(r):
@@ -1625,7 +660,7 @@ def test_scan_iter_multiple_pages_with_match(r):
     assert actual == set(all_keys)
 
 
-@pytest.mark.skipif(REDIS_VERSION < Version('3.5'), reason="Test is only applicable to redis-py 3.5+")
+@testtools.run_test_if_redispy_ver('below', '3.5')
 @pytest.mark.min_server('6.0')
 def test_scan_iter_multiple_pages_with_type(r):
     all_keys = key_val_dict(size=100)
@@ -2148,7 +1183,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
 
 @testtools.run_test_if_redispy_ver("above", "4.2.0")
 def test_zmscore_mixed_membership(r: redis.Redis) -> None:
-    """When only some of the requested sorted-set members are in the cache, a
+    """When only some requested sorted-set members are in the cache, a
     valid float value should be returned for each present member and `None` for
     each missing member.
 
@@ -2873,138 +1908,6 @@ def test_basic_sort(r):
     assert r.sort('foo') == [b'1', b'2', b'3']
 
 
-def test_empty_sort(r):
-    assert r.sort('foo') == []
-
-
-def test_sort_range_offset_range(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '4')
-    r.rpush('foo', '3')
-
-    assert r.sort('foo', start=0, num=2) == [b'1', b'2']
-
-
-def test_sort_range_offset_range_and_desc(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '4')
-    r.rpush('foo', '3')
-
-    assert r.sort("foo", start=0, num=1, desc=True) == [b"4"]
-
-
-def test_sort_range_offset_norange(r):
-    with pytest.raises(redis.RedisError):
-        r.sort('foo', start=1)
-
-
-def test_sort_range_with_large_range(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '4')
-    r.rpush('foo', '3')
-    # num=20 even though len(foo) is 4.
-    assert r.sort('foo', start=1, num=20) == [b'2', b'3', b'4']
-
-
-def test_sort_descending(r):
-    r.rpush('foo', '1')
-    r.rpush('foo', '2')
-    r.rpush('foo', '3')
-    assert r.sort('foo', desc=True) == [b'3', b'2', b'1']
-
-
-def test_sort_alpha(r):
-    r.rpush('foo', '2a')
-    r.rpush('foo', '1b')
-    r.rpush('foo', '2b')
-    r.rpush('foo', '1a')
-
-    assert r.sort('foo', alpha=True) == [b'1a', b'1b', b'2a', b'2b']
-
-
-def test_sort_wrong_type(r):
-    r.set('string', '3')
-    with pytest.raises(redis.ResponseError):
-        r.sort('string')
-
-
-def test_foo(r):
-    r.rpush('foo', '2a')
-    r.rpush('foo', '1b')
-    r.rpush('foo', '2b')
-    r.rpush('foo', '1a')
-    with pytest.raises(redis.ResponseError):
-        r.sort('foo', alpha=False)
-
-
-def test_sort_with_store_option(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '4')
-    r.rpush('foo', '3')
-
-    assert r.sort('foo', store='bar') == 4
-    assert r.lrange('bar', 0, -1) == [b'1', b'2', b'3', b'4']
-
-
-def test_sort_with_by_and_get_option(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '4')
-    r.rpush('foo', '3')
-
-    r['weight_1'] = '4'
-    r['weight_2'] = '3'
-    r['weight_3'] = '2'
-    r['weight_4'] = '1'
-
-    r['data_1'] = 'one'
-    r['data_2'] = 'two'
-    r['data_3'] = 'three'
-    r['data_4'] = 'four'
-
-    assert (
-            r.sort('foo', by='weight_*', get='data_*')
-            == [b'four', b'three', b'two', b'one']
-    )
-    assert r.sort('foo', by='weight_*', get='#') == [b'4', b'3', b'2', b'1']
-    assert (
-            r.sort('foo', by='weight_*', get=('data_*', '#'))
-            == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
-    )
-    assert r.sort('foo', by='weight_*', get='data_1') == [None, None, None, None]
-
-
-def test_sort_with_hash(r):
-    r.rpush('foo', 'middle')
-    r.rpush('foo', 'eldest')
-    r.rpush('foo', 'youngest')
-    r.hset('record_youngest', 'age', 1)
-    r.hset('record_youngest', 'name', 'baby')
-
-    r.hset('record_middle', 'age', 10)
-    r.hset('record_middle', 'name', 'teen')
-
-    r.hset('record_eldest', 'age', 20)
-    r.hset('record_eldest', 'name', 'adult')
-
-    assert r.sort('foo', by='record_*->age') == [b'youngest', b'middle', b'eldest']
-    assert (
-            r.sort('foo', by='record_*->age', get='record_*->name')
-            == [b'baby', b'teen', b'adult']
-    )
-
-
-def test_sort_with_set(r):
-    r.sadd('foo', '3')
-    r.sadd('foo', '1')
-    r.sadd('foo', '2')
-    assert r.sort('foo') == [b'1', b'2', b'3']
-
-
 def test_pipeline(r):
     # The pipeline method returns an object for
     # issuing multiple commands in a batch.
@@ -3225,11 +2128,8 @@ def test_pipeline_no_commands(r):
     p = r.pipeline()
     p.watch('foo')
     r.set('foo', '2')
-    if REDIS_VERSION >= Version('3.4'):
-        with pytest.raises(redis.WatchError):
-            p.execute()
-    else:
-        assert p.execute() == []
+    with pytest.raises(redis.WatchError):
+        p.execute()
 
 
 def test_pipeline_failed_transaction(r):
@@ -3301,11 +2201,6 @@ def test_key_patterns(r):
     assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']
 
 
-def test_ping(r):
-    assert r.ping()
-    assert raw_command(r, 'ping', 'test') == b'test'
-
-
 @testtools.run_test_if_redispy_ver('above', '3')
 def test_ping_pubsub(r):
     p = r.pubsub()
@@ -3315,77 +2210,6 @@ def test_ping_pubsub(r):
     assert p.parse_response() == [b'pong', b'']
     p.ping('test')
     assert p.parse_response() == [b'pong', b'test']
-
-
-@testtools.run_test_if_redispy_ver('above', '3')
-def test_swapdb(r, create_redis):
-    r1 = create_redis(1)
-    r.set('foo', 'abc')
-    r.set('bar', 'xyz')
-    r1.set('foo', 'foo')
-    r1.set('baz', 'baz')
-    assert r.swapdb(0, 1)
-    assert r.get('foo') == b'foo'
-    assert r.get('bar') is None
-    assert r.get('baz') == b'baz'
-    assert r1.get('foo') == b'abc'
-    assert r1.get('bar') == b'xyz'
-    assert r1.get('baz') is None
-
-
-@testtools.run_test_if_redispy_ver('above', '3')
-def test_swapdb_same_db(r):
-    assert r.swapdb(1, 1)
-
-
-def test_save(r):
-    assert r.save()
-
-
-def test_bgsave(r):
-    assert r.bgsave()
-    with pytest.raises(ResponseError):
-        r.execute_command('BGSAVE', 'SCHEDULE', 'FOO')
-    with pytest.raises(ResponseError):
-        r.execute_command('BGSAVE', 'FOO')
-
-
-def test_lastsave(r):
-    assert isinstance(r.lastsave(), datetime)
-
-
-@pytest.mark.slow
-def test_bgsave_timestamp_update(r):
-    early_timestamp = r.lastsave()
-    sleep(1)
-    assert r.bgsave()
-    sleep(1)
-    late_timestamp = r.lastsave()
-    assert early_timestamp < late_timestamp
-
-
-@pytest.mark.slow
-def test_save_timestamp_update(r):
-    early_timestamp = r.lastsave()
-    sleep(1)
-    assert r.save()
-    late_timestamp = r.lastsave()
-    assert early_timestamp < late_timestamp
-
-
-def test_type(r):
-    r.set('string_key', "value")
-    r.lpush("list_key", "value")
-    r.sadd("set_key", "value")
-    testtools.zadd(r, "zset_key", {"value": 1})
-    r.hset('hset_key', 'key', 'value')
-
-    assert r.type('string_key') == b'string'
-    assert r.type('list_key') == b'list'
-    assert r.type('set_key') == b'set'
-    assert r.type('zset_key') == b'zset'
-    assert r.type('hset_key') == b'hash'
-    assert r.type('none_key') == b'none'
 
 
 @pytest.mark.slow
@@ -3663,10 +2487,7 @@ def test_pubsub_run_in_thread(r):
         1,
         pytest.param(
             None,
-            marks=pytest.mark.skipif(
-                Version("3.2") <= REDIS_VERSION < Version("3.3"),
-                reason="This test is not applicable to redis-py 3.2"
-            )
+            marks=testtools.run_test_if_redispy_ver('above', '3.2')
         )
     ]
 )
@@ -3724,40 +2545,6 @@ def test_pfmerge(r):
     assert r.pfadd(key2, "a", "b", "c", "foo") == 1
     assert r.pfmerge(key3, key1, key2)
     assert r.pfcount(key3) == 6
-
-
-def test_scan(r):
-    # Setup the data
-    for ix in range(20):
-        k = 'scan-test:%s' % ix
-        v = 'result:%s' % ix
-        r.set(k, v)
-    expected = r.keys()
-    assert len(expected) == 20  # Ensure we know what we're testing
-
-    # Test that we page through the results and get everything out
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.scan(cursor, count=6)
-        results.extend(data)
-    assert set(expected) == set(results)
-
-    # Now test that the MATCH functionality works
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.scan(cursor, match='*7', count=100)
-        results.extend(data)
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
-    assert len(results) == 2
-
-    # Test the match on iterator
-    results = [r for r in r.scan_iter(match='*7')]
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
-    assert len(results) == 2
 
 
 def test_sscan(r):
@@ -3897,208 +2684,6 @@ def test_psetex_expire_value_using_timedelta(r):
     assert r.get('foo') is None
 
 
-@pytest.mark.slow
-def test_expire_should_expire_key(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.expire('foo', 1)
-    sleep(1.5)
-    assert r.get('foo') is None
-    assert r.expire('bar', 1) is False
-
-
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
-@pytest.mark.max_server('7')
-def test_expire_extra_params_return_error(r):
-    with pytest.raises(ResponseError):
-        r.expire('foo', 1, nx=True)
-
-
-def test_expire_should_return_true_for_existing_key(r):
-    r.set('foo', 'bar')
-    assert r.expire('foo', 1) is True
-
-
-def test_expire_should_return_false_for_missing_key(r):
-    assert r.expire('missing', 1) is False
-
-
-@pytest.mark.slow
-def test_expire_should_expire_key_using_timedelta(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.expire('foo', timedelta(seconds=1))
-    sleep(1.5)
-    assert r.get('foo') is None
-    assert r.expire('bar', 1) is False
-
-
-@pytest.mark.slow
-def test_expire_should_expire_immediately_with_millisecond_timedelta(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.expire('foo', timedelta(milliseconds=750))
-    assert r.get('foo') is None
-    assert r.expire('bar', 1) is False
-
-
-def test_watch_expire(r):
-    """EXPIRE should mark a key as changed for WATCH."""
-    r.set('foo', 'bar')
-    with r.pipeline() as p:
-        p.watch('foo')
-        r.expire('foo', 10000)
-        p.multi()
-        p.get('foo')
-        with pytest.raises(redis.exceptions.WatchError):
-            p.execute()
-
-
-@pytest.mark.slow
-def test_pexpire_should_expire_key(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.pexpire('foo', 150)
-    sleep(0.2)
-    assert r.get('foo') is None
-    assert r.pexpire('bar', 1) == 0
-
-
-def test_pexpire_should_return_truthy_for_existing_key(r):
-    r.set('foo', 'bar')
-    assert r.pexpire('foo', 1)
-
-
-def test_pexpire_should_return_falsey_for_missing_key(r):
-    assert not r.pexpire('missing', 1)
-
-
-@pytest.mark.slow
-def test_pexpire_should_expire_key_using_timedelta(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.pexpire('foo', timedelta(milliseconds=750))
-    sleep(0.5)
-    assert r.get('foo') == b'bar'
-    sleep(0.5)
-    assert r.get('foo') is None
-    assert r.pexpire('bar', 1) == 0
-
-
-@pytest.mark.slow
-def test_expireat_should_expire_key_by_datetime(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.expireat('foo', datetime.now() + timedelta(seconds=1))
-    sleep(1.5)
-    assert r.get('foo') is None
-    assert r.expireat('bar', datetime.now()) is False
-
-
-@pytest.mark.slow
-def test_expireat_should_expire_key_by_timestamp(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.expireat('foo', int(time() + 1))
-    sleep(1.5)
-    assert r.get('foo') is None
-    assert r.expire('bar', 1) is False
-
-
-def test_expireat_should_return_true_for_existing_key(r):
-    r.set('foo', 'bar')
-    assert r.expireat('foo', int(time() + 1)) is True
-
-
-def test_expireat_should_return_false_for_missing_key(r):
-    assert r.expireat('missing', int(time() + 1)) is False
-
-
-@pytest.mark.slow
-def test_pexpireat_should_expire_key_by_datetime(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.pexpireat('foo', datetime.now() + timedelta(milliseconds=150))
-    sleep(0.2)
-    assert r.get('foo') is None
-    assert r.pexpireat('bar', datetime.now()) == 0
-
-
-@pytest.mark.slow
-def test_pexpireat_should_expire_key_by_timestamp(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.pexpireat('foo', int(time() * 1000 + 150))
-    sleep(0.2)
-    assert r.get('foo') is None
-    assert r.expire('bar', 1) is False
-
-
-def test_pexpireat_should_return_true_for_existing_key(r):
-    r.set('foo', 'bar')
-    assert r.pexpireat('foo', int(time() * 1000 + 150))
-
-
-def test_pexpireat_should_return_false_for_missing_key(r):
-    assert not r.pexpireat('missing', int(time() * 1000 + 150))
-
-
-def test_expire_should_not_handle_floating_point_values(r):
-    r.set('foo', 'bar')
-    with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
-        r.expire('something_new', 1.2)
-        r.pexpire('something_new', 1000.2)
-        r.expire('some_unused_key', 1.2)
-        r.pexpire('some_unused_key', 1000.2)
-
-
-def test_ttl_should_return_minus_one_for_non_expiring_key(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    assert r.ttl('foo') == -1
-
-
-def test_ttl_should_return_minus_two_for_non_existent_key(r):
-    assert r.get('foo') is None
-    assert r.ttl('foo') == -2
-
-
-def test_pttl_should_return_minus_one_for_non_expiring_key(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    assert r.pttl('foo') == -1
-
-
-def test_pttl_should_return_minus_two_for_non_existent_key(r):
-    assert r.get('foo') is None
-    assert r.pttl('foo') == -2
-
-
-def test_persist(r):
-    r.set('foo', 'bar', ex=20)
-    assert r.persist('foo') == 1
-    assert r.ttl('foo') == -1
-    assert r.persist('foo') == 0
-
-
-def test_watch_persist(r):
-    """PERSIST should mark a variable as changed."""
-    r.set('foo', 'bar', ex=10000)
-    with r.pipeline() as p:
-        p.watch('foo')
-        r.persist('foo')
-        p.multi()
-        p.get('foo')
-        with pytest.raises(redis.exceptions.WatchError):
-            p.execute()
-
-
-def test_set_existing_key_persists(r):
-    r.set('foo', 'bar', ex=20)
-    r.set('foo', 'foo')
-    assert r.ttl('foo') == -1
-
-
 @pytest.mark.max_server('6.2.7')
 def test_script_exists(r):
     # test response for no arguments by bypassing the py-redis command
@@ -4140,11 +2725,8 @@ def test_script_flush(r):
     assert r.script_exists(*sha1_values) == [0] * len(sha1_values)
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
-def test_unlink(r):
-    r.set('foo', 'bar')
-    r.unlink('foo')
-    assert r.get('foo') is None
+from time import sleep
+from typing import List, Tuple, Optional
 
 
 @testtools.run_test_if_redispy_ver('above', '3.4')

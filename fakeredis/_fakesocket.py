@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import math
 import random
-import time
 from typing import Optional, Union
 
 import redis
@@ -11,13 +10,16 @@ import redis
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
 from ._commands import (
-    Key, command, DbIndex, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest,
-    Timeout)
+    Key, command, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest, Timeout)
 from ._helpers import (
-    PONG, OK, MAX_STRING_SIZE, SimpleError, SimpleString, casematch,
-    BGSAVE_STARTED, casenorm, compile_pattern)
+    OK, MAX_STRING_SIZE, SimpleError, casematch, casenorm, compile_pattern)
 from ._zset import ZSet
-from .commands_mixins import GenericCommandsMixin, ScriptingCommandsMixin, HashCommandsMixin
+from .commands_mixins.connection_mixin import ConnectionCommandsMixin
+from .commands_mixins.generic_mixin import GenericCommandsMixin
+from .commands_mixins.hash_mixin import HashCommandsMixin
+from .commands_mixins.list_mixin import ListCommandsMixin
+from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
+from .commands_mixins.server_mixin import ServerCommandsMixin
 
 
 class FakeSocket(
@@ -25,72 +27,17 @@ class FakeSocket(
     GenericCommandsMixin,
     ScriptingCommandsMixin,
     HashCommandsMixin,
+    ConnectionCommandsMixin,
+    ListCommandsMixin,
+    ServerCommandsMixin,
 ):
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
         super(FakeSocket, self).__init__(server)
 
-    # Connection commands
-    # TODO: auth, quit
-
-    @command((bytes,))
-    def echo(self, message):
-        return message
-
-    @command((), (bytes,))
-    def ping(self, *args):
-        if len(args) > 1:
-            raise SimpleError(msgs.WRONG_ARGS_MSG.format('ping'))
-        if self._pubsub:
-            return [b'pong', args[0] if args else b'']
-        else:
-            return args[0] if args else PONG
-
-    @command((DbIndex,))
-    def select(self, index):
-        self._db = self._server.dbs[index]
-        self._db_num = index
-        return OK
-
-    @command((DbIndex, DbIndex))
-    def swapdb(self, index1, index2):
-        if index1 != index2:
-            db1 = self._server.dbs[index1]
-            db2 = self._server.dbs[index2]
-            db1.swap(db2)
-        return OK
-
     # Key commands
     # TODO: lots
-
-    def _lookup_key(self, key, pattern):
-        """Python implementation of lookupKeyByPattern from redis"""
-        if pattern == b'#':
-            return key
-        p = pattern.find(b'*')
-        if p == -1:
-            return None
-        prefix = pattern[:p]
-        suffix = pattern[p + 1:]
-        arrow = suffix.find(b'->', 0, -1)
-        if arrow != -1:
-            field = suffix[arrow + 2:]
-            suffix = suffix[:arrow]
-        else:
-            field = None
-        new_key = prefix + key + suffix
-        item = CommandItem(new_key, self._db, item=self._db.get(new_key))
-        if item.value is None:
-            return None
-        if field is not None:
-            if not isinstance(item.value, dict):
-                return None
-            return item.value.get(field)
-        else:
-            if not isinstance(item.value, bytes):
-                return None
-            return item.value
 
     # Transaction commands
 
@@ -389,222 +336,6 @@ class FakeSocket(
     @command((Key(bytes),))
     def strlen(self, key):
         return len(key.get(b''))
-
-    # Hash commands
-
-    # List commands
-
-    def _bpop_pass(self, keys, op, first_pass):
-        for key in keys:
-            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
-            if not isinstance(item.value, list):
-                if first_pass:
-                    raise SimpleError(msgs.WRONGTYPE_MSG)
-                else:
-                    continue
-            if item.value:
-                ret = op(item.value)
-                item.updated()
-                item.writeback()
-                return [key, ret]
-        return None
-
-    def _bpop(self, args, op):
-        keys = args[:-1]
-        timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
-
-    @command((bytes, bytes), (bytes,), flags='s')
-    def blpop(self, *args):
-        return self._bpop(args, lambda lst: lst.pop(0))
-
-    @command((bytes, bytes), (bytes,), flags='s')
-    def brpop(self, *args):
-        return self._bpop(args, lambda lst: lst.pop())
-
-    def _brpoplpush_pass(self, source, destination, first_pass):
-        src = CommandItem(source, self._db, item=self._db.get(source), default=[])
-        if not isinstance(src.value, list):
-            if first_pass:
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-            else:
-                return None
-        if not src.value:
-            return None  # Empty list
-        dst = CommandItem(destination, self._db, item=self._db.get(destination), default=[])
-        if not isinstance(dst.value, list):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        el = src.value.pop()
-        dst.value.insert(0, el)
-        src.updated()
-        src.writeback()
-        if destination != source:
-            # Ensure writeback only happens once
-            dst.updated()
-            dst.writeback()
-        return el
-
-    @command((bytes, bytes, Timeout), flags='s')
-    def brpoplpush(self, source, destination, timeout):
-        return self._blocking(timeout,
-                              functools.partial(self._brpoplpush_pass, source, destination))
-
-    @command((Key(list, None), Int))
-    def lindex(self, key, index):
-        try:
-            return key.value[index]
-        except IndexError:
-            return None
-
-    @command((Key(list), bytes, bytes, bytes))
-    def linsert(self, key, where, pivot, value):
-        if not casematch(where, b'before') and not casematch(where, b'after'):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if not key:
-            return 0
-        else:
-            try:
-                index = key.value.index(pivot)
-            except ValueError:
-                return -1
-            if casematch(where, b'after'):
-                index += 1
-            key.value.insert(index, value)
-            key.updated()
-            return len(key.value)
-
-    @command((Key(list),))
-    def llen(self, key):
-        return len(key.value)
-
-    @command((Key(list, None), Key(list), SimpleString, SimpleString))
-    def lmove(self, first_list, second_list, src, dst):
-        if src not in [b'LEFT', b'RIGHT']:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if dst not in [b'LEFT', b'RIGHT']:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        el = self.rpop(first_list) if src == b'RIGHT' else self.lpop(first_list)
-        self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
-        return el
-
-    def _list_pop(self, get_slice, key, *args):
-        """Implements lpop and rpop.
-
-        `get_slice` must take a count and return a slice expression for the
-        range to pop.
-        """
-        # This implementation is somewhat contorted to match the odd
-        # behaviours described in https://github.com/redis/redis/issues/9680.
-        count = 1
-        if len(args) > 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        elif len(args) == 1:
-            count = args[0]
-            if count < 0:
-                raise SimpleError(msgs.INDEX_ERROR_MSG)
-            elif count == 0 and self.version == 6:
-                return None
-        if not key:
-            return None
-        elif type(key.value) != list:
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        slc = get_slice(count)
-        ret = key.value[slc]
-        del key.value[slc]
-        key.updated()
-        if not args:
-            ret = ret[0]
-        return ret
-
-    @command((Key(),), (Int(),))
-    def lpop(self, key, *args):
-        return self._list_pop(lambda count: slice(None, count), key, *args)
-
-    @command((Key(list), bytes), (bytes,))
-    def lpush(self, key, *values):
-        for value in values:
-            key.value.insert(0, value)
-        key.updated()
-        return len(key.value)
-
-    @command((Key(list), bytes), (bytes,))
-    def lpushx(self, key, *values):
-        if not key:
-            return 0
-        return self.lpush(key, *values)
-
-    @command((Key(list), Int, Int))
-    def lrange(self, key, start, stop):
-        start, stop = self._fix_range(start, stop, len(key.value))
-        return key.value[start:stop]
-
-    @command((Key(list), Int, bytes))
-    def lrem(self, key, count, value):
-        a_list = key.value
-        found = []
-        for i, el in enumerate(a_list):
-            if el == value:
-                found.append(i)
-        if count > 0:
-            indices_to_remove = found[:count]
-        elif count < 0:
-            indices_to_remove = found[count:]
-        else:
-            indices_to_remove = found
-        # Iterating in reverse order to ensure the indices
-        # remain valid during deletion.
-        for index in reversed(indices_to_remove):
-            del a_list[index]
-        if indices_to_remove:
-            key.updated()
-        return len(indices_to_remove)
-
-    @command((Key(list), Int, bytes))
-    def lset(self, key, index, value):
-        if not key:
-            raise SimpleError(msgs.NO_KEY_MSG)
-        try:
-            key.value[index] = value
-            key.updated()
-        except IndexError:
-            raise SimpleError(msgs.INDEX_ERROR_MSG)
-        return OK
-
-    @command((Key(list), Int, Int))
-    def ltrim(self, key, start, stop):
-        if key:
-            if stop == -1:
-                stop = None
-            else:
-                stop += 1
-            new_value = key.value[start:stop]
-            # TODO: check if this should actually be conditional
-            if len(new_value) != len(key.value):
-                key.update(new_value)
-        return OK
-
-    @command((Key(),), (Int(),))
-    def rpop(self, key, *args):
-        return self._list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
-
-    @command((Key(list, None), Key(list)))
-    def rpoplpush(self, src, dst):
-        el = self.rpop(src)
-        self.lpush(dst, el)
-        return el
-
-    @command((Key(list), bytes), (bytes,))
-    def rpush(self, key, *values):
-        for value in values:
-            key.value.append(value)
-        key.updated()
-        return len(key.value)
-
-    @command((Key(list), bytes), (bytes,))
-    def rpushx(self, key, *values):
-        if not key:
-            return 0
-        return self.rpush(key, *values)
 
     # Set commands
 
@@ -1037,24 +768,6 @@ class FakeSocket(
         except KeyError:
             return None
 
-    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
-        """Get the scores associated with the specified members in the sorted set
-        stored at key.
-
-        For every member that does not exist in the sorted set, a nil value
-        is returned.
-        """
-        encoder = functools.partial(
-            self._encodefloat,
-            humanfriendly=False,
-        )
-        scores = map(
-            lambda score: score if score is None else encoder(score),
-            map(key.value.get, members),
-        )
-        return list(scores)
-
     @staticmethod
     def _get_zset(value):
         if isinstance(value, set):
@@ -1147,53 +860,23 @@ class FakeSocket(
     def zinterstore(self, dest, numkeys, *args):
         return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
 
-    # Server commands
-    # TODO: lots
+    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+        """Get the scores associated with the specified members in the sorted set
+        stored at key.
 
-    @command((), (bytes,), flags='s')
-    def bgsave(self, *args):
-        if len(args) > 1 or (len(args) == 1 and not casematch(args[0], b'schedule')):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        self._server.lastsave = int(time.time())
-        return BGSAVE_STARTED
-
-    @command(())
-    def dbsize(self):
-        return len(self._db)
-
-    @command((), (bytes,))
-    def flushdb(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        self._db.clear()
-        return OK
-
-    @command((), (bytes,))
-    def flushall(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        for db in self._server.dbs.values():
-            db.clear()
-        # TODO: clear watches and/or pubsub as well?
-        return OK
-
-    @command(())
-    def lastsave(self):
-        return self._server.lastsave
-
-    @command((), flags='s')
-    def save(self):
-        self._server.lastsave = int(time.time())
-        return OK
-
-    @command(())
-    def time(self):
-        now_us = round(time.time() * 1000000)
-        now_s = now_us // 1000000
-        now_us %= 1000000
-        return [str(now_s).encode(), str(now_us).encode()]
+        For every member that does not exist in the sorted set, a nil value
+        is returned.
+        """
+        encoder = functools.partial(
+            self._encodefloat,
+            humanfriendly=False,
+        )
+        scores = map(
+            lambda score: score if score is None else encoder(score),
+            map(key.value.get, members),
+        )
+        return list(scores)
 
     @command((bytes,), (bytes,), flags='s')
     def psubscribe(self, *patterns):

@@ -118,7 +118,7 @@ class BaseFakeSocket:
     def _run_command(self, func, sig, args, from_script):
         command_items = {}
         try:
-            ret = sig.apply(args, self._db)
+            ret = sig.apply(args, self._db, self.version)
             if len(ret) == 1:
                 result = ret[0]
             else:
@@ -226,7 +226,7 @@ class BaseFakeSocket:
                 now = time.time()
                 for db in self._server.dbs.values():
                     db.time = now
-                sig.check_arity(fields[1:])
+                sig.check_arity(fields[1:], self.version)
                 # TODO: make a signature attribute for transactions
                 if self._transaction is not None \
                         and func_name not in ('exec', 'discard', 'multi', 'watch'):
