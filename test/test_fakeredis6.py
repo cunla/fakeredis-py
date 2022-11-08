@@ -2109,6 +2109,7 @@ def test_zscore_wrong_type(r):
         r.zscore('foo', 'one')
 
 
+@testtools.run_test_if_redispy_ver("above", "4.2.0")
 def test_zmscore(r: redis.Redis) -> None:
     """When all of the requested sorted-set members are in the cache, a valid
     float value should be returned for each requested member.
@@ -2129,6 +2130,7 @@ def test_zmscore(r: redis.Redis) -> None:
     assert all(cached_scores[idx] == score for idx, score in enumerate(scores))
 
 
+@testtools.run_test_if_redispy_ver("above", "4.2.0")
 def test_zmscore_missing_members(r: redis.Redis) -> None:
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
@@ -2144,6 +2146,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
     assert all(score is None for score in cached_scores)
 
 
+@testtools.run_test_if_redispy_ver("above", "4.2.0")
 def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     """When only some of the requested sorted-set members are in the cache, a
     valid float value should be returned for each present member and `None` for
