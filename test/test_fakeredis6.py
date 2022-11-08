@@ -6,7 +6,6 @@ import threading
 from collections import OrderedDict
 from datetime import timedelta
 from queue import Queue
-from time import sleep
 
 import pytest
 import redis
@@ -82,14 +81,6 @@ def test_get_invalid_type(r):
     assert r.hset('foo', 'key', 'value') == 1
     with pytest.raises(redis.ResponseError):
         r.get('foo')
-
-
-
-
-
-
-
-
 
 
 def test_getset_exists(r):
@@ -1192,7 +1183,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
 
 @testtools.run_test_if_redispy_ver("above", "4.2.0")
 def test_zmscore_mixed_membership(r: redis.Redis) -> None:
-    """When only some of the requested sorted-set members are in the cache, a
+    """When only some requested sorted-set members are in the cache, a
     valid float value should be returned for each present member and `None` for
     each missing member.
 
@@ -1213,7 +1204,6 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
 
     assert all(cached_scores[idx] is None for (idx, score) in enumerate(scores) if idx % 2 == 0)
     assert all(cached_scores[idx] == score for (idx, score) in enumerate(scores) if idx % 2 != 0)
-
 
 
 def test_zrevrank(r):
@@ -2733,7 +2723,9 @@ def test_script_flush(r):
 
     # assert none of the scripts exists after flushing
     assert r.script_exists(*sha1_values) == [0] * len(sha1_values)
-from time import sleep, time
+
+
+from time import sleep
 from typing import List, Tuple, Optional
 
 
