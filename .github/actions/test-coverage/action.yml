@@ -31,9 +31,10 @@ runs:
       if: ${{ github.event_name == 'pull_request' }}
       id: coverage_report
       shell: bash
-      run: |      
-        REPORT="$(poetry run coverage report)"
-        echo REPORT="${REPORT}" >> $GITHUB_ENV
+      run: |
+        echo 'REPORT<<EOF' >> $GITHUB_ENV
+        poetry run coverage report >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
     - uses: mshick/add-pr-comment@v2
       if: ${{ github.event_name == 'pull_request' }}
       with:
