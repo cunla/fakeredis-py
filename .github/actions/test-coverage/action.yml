@@ -30,17 +30,17 @@ runs:
     - name: Coverage report
       if: ${{ github.event_name == 'pull_request' }}
       id: coverage_report
-      uses: mathiasvr/command-output@v1
-      with:
-        run: |      
-          poetry run coverage report
+      shell: bash
+      run: |      
+        REPORT=$(poetry run coverage report)
+        echo "{report}=${REPORT}" >> $GITHUB_OUTPUT
     - uses: mshick/add-pr-comment@v1
       if: ${{ github.event_name == 'pull_request' }}
       with:
         message: |
           Coverage report:
           ```
-          ${{ steps.coverage_report.outputs.stdout }}
+          ${{ steps.coverage_report.outputs.report }}
           ```
         repo-token: ${{ inputs.github-secret }}
         repo-token-user-login: 'github-actions[bot]'
