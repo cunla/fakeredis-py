@@ -83,8 +83,6 @@ class GenericCommandsMixin:
         key.expireat = timestamp
         return 1
 
-
-
     @command((Key(),), (Key(),), name='del')
     def del_(self, *keys):
         return delete_keys(*keys)

@@ -34,4 +34,3 @@ class FakeSocket(
 
     def __init__(self, server):
         super(FakeSocket, self).__init__(server)
-

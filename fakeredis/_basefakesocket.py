@@ -6,7 +6,7 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, CommandItem, Float)
+from ._commands import (Int, Float)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)

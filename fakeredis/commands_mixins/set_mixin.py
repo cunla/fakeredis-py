@@ -1,7 +1,8 @@
 import random
+
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, Float, CommandItem)
-from fakeredis._helpers import (OK, SimpleError, casematch, MAX_STRING_SIZE)
+from fakeredis._commands import (command, Key, Int, CommandItem)
+from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
 class SetCommandsMixin:
