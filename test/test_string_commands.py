@@ -369,10 +369,16 @@ def test_set_get_xx(r):
 
 @pytest.mark.min_server('6.2')
 @pytest.mark.max_server('6.2.7')
-def test_set_get_nx(r):
+def test_set_get_nx_redis6(r):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
     with pytest.raises(redis.ResponseError):
         raw_command(r, 'set', 'foo', 'bar', 'NX', 'GET')
+
+
+@pytest.mark.min_server('7')
+def test_set_get_nx_redis7(r):
+    # Note: this will most likely fail on a 7.0 server, based on the docs for SET
+    assert raw_command(r, 'set', 'foo', 'bar', 'NX', 'GET') is None
 
 
 @pytest.mark.min_server('6.2')

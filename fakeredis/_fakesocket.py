@@ -634,4 +634,3 @@ class FakeSocket(
             map(key.value.get, members),
         )
         return list(scores)
-

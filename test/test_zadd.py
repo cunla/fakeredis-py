@@ -28,11 +28,17 @@ def test_zadd_empty(r):
 
 
 @pytest.mark.max_server('6.2.7')
-def test_zadd_minus_zero(r):
+def test_zadd_minus_zero_redis6(r):
     # Changing -0 to +0 is ignored
     testtools.zadd(r, 'foo', {'a': -0.0})
     testtools.zadd(r, 'foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
+
+@pytest.mark.min_server('7')
+def test_zadd_minus_zero_redis7(r):
+    testtools.zadd(r, 'foo', {'a': -0.0})
+    testtools.zadd(r, 'foo', {'a': 0.0})
+    assert raw_command(r, 'zscore', 'foo', 'a') == b'0'
 
 
 def test_zadd_wrong_type(r):
