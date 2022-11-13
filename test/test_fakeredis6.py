@@ -166,7 +166,7 @@ def test_set_keepttl(r):
 
 def test_delete(r):
     r['foo'] = 'bar'
-    assert r.delete_keys('foo') == 1
+    assert r.delete('foo') == 1
     assert r.get('foo') is None
 
 
@@ -178,7 +178,7 @@ def test_echo(r):
 @pytest.mark.slow
 def test_delete_expire(r):
     r.set("foo", "bar", ex=1)
-    r.delete_keys("foo")
+    r.delete("foo")
     r.set("foo", "bar")
     sleep(2)
     assert r.get("foo") == b'bar'
@@ -189,18 +189,18 @@ def test_delete_multiple(r):
     r['two'] = 'two'
     r['three'] = 'three'
     # Since redis>=2.7.6 returns number of deleted items.
-    assert r.delete_keys('one', 'two') == 2
+    assert r.delete('one', 'two') == 2
     assert r.get('one') is None
     assert r.get('two') is None
     assert r.get('three') == b'three'
-    assert r.delete_keys('one', 'two') == 0
+    assert r.delete('one', 'two') == 0
     # If any keys are deleted, True is returned.
-    assert r.delete_keys('two', 'three', 'three') == 1
+    assert r.delete('two', 'three', 'three') == 1
     assert r.get('three') is None
 
 
 def test_delete_nonexistent_key(r):
-    assert r.delete_keys('foo') == 0
+    assert r.delete('foo') == 0
 
 
 def test_sadd(r):

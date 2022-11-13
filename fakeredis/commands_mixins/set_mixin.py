@@ -5,6 +5,7 @@ from fakeredis._helpers import (OK, SimpleError, casematch, MAX_STRING_SIZE)
 
 
 class SetCommandsMixin:
+    # Set and Hyperloglog commands
     def _setop(self, op, stop_if_missing, dst, key, *keys):
         """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
@@ -18,6 +19,23 @@ class SetCommandsMixin:
         else:
             dst.value = ans
             return len(dst.value)
+
+    @staticmethod
+    def _calc_setop(op, stop_if_missing, key, *keys):
+        if stop_if_missing and not key.value:
+            return set()
+        value = key.value
+        if not isinstance(value, set):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        ans = value.copy()
+        for other in keys:
+            value = other.value if other.value is not None else set()
+            if not isinstance(value, set):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
+            if stop_if_missing and not value:
+                return set()
+            ans = op(ans, value)
+        return ans
 
     # Set commands
     @command((Key(set), bytes), (bytes,))
@@ -143,3 +161,29 @@ class SetCommandsMixin:
     @command((Key(), Key(set)), (Key(set),))
     def sunionstore(self, dst, *keys):
         return self._setop(lambda a, b: a | b, False, dst, *keys)
+
+    # Hyperloglog commands
+    # These are not quite the same as the real redis ones, which are
+    # approximate and store the results in a string. Instead, it is implemented
+    # on top of sets.
+
+    @command((Key(set),), (bytes,))
+    def pfadd(self, key, *elements):
+        result = self.sadd(key, *elements)
+        # Per the documentation:
+        # - 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
+        return 1 if result > 0 else 0
+
+    @command((Key(set),), (Key(set),))
+    def pfcount(self, *keys):
+        """
+        Return the approximated cardinality of
+        the set observed by the HyperLogLog at key(s).
+        """
+        return len(self.sunion(*keys))
+
+    @command((Key(set), Key(set)), (Key(set),))
+    def pfmerge(self, dest, *sources):
+        """Merge N different HyperLogLogs into a single one."""
+        self.sunionstore(dest, *sources)
+        return OK

@@ -87,7 +87,7 @@ def test_setbit_expiry(r):
 
 
 def test_bitcount(r):
-    r.delete_keys('foo')
+    r.delete('foo')
     assert r.bitcount('foo') == 0
     r.setbit('foo', 1, 1)
     assert r.bitcount('foo') == 1

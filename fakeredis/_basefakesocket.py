@@ -245,23 +245,6 @@ class BaseFakeSocket:
     def notify_watch(self):
         self._watch_notified = True
 
-    # redis has inconsistent handling of negative indices, hence two versions
-    # of this code.
-
-
-
-    @staticmethod
-    def _fix_range(start, end, length):
-        # Redis handles negative slightly differently for zrange
-        if start < 0:
-            start = max(0, start + length)
-        if end < 0:
-            end += length
-        if start > end or start >= length:
-            return -1, -1
-        end = min(end, length - 1)
-        return start, end + 1
-
     def _scan(self, keys, cursor, *args):
         """
         This is the basis of most of the ``scan`` methods.
@@ -319,43 +302,6 @@ class BaseFakeSocket:
         if result_cursor >= len(data):
             result_cursor = 0
         return [str(result_cursor).encode(), result_data]
-
-    @staticmethod
-    def _calc_setop(op, stop_if_missing, key, *keys):
-        if stop_if_missing and not key.value:
-            return set()
-        value = key.value
-        if not isinstance(value, set):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        ans = value.copy()
-        for other in keys:
-            value = other.value if other.value is not None else set()
-            if not isinstance(value, set):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-            if stop_if_missing and not value:
-                return set()
-            ans = op(ans, value)
-        return ans
-
-    def _zpop(self, key, count, reverse):
-        zset = key.value
-        members = list(zset)
-        if reverse:
-            members.reverse()
-        members = members[:count]
-        res = [(bytes(member), self._encodefloat(zset.get(member), True)) for member in members]
-        res = list(itertools.chain.from_iterable(res))
-        for item in members:
-            zset.discard(item)
-        return res
-
-    def _bzpop(self, keys, reverse, first_pass):
-        for key in keys:
-            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
-            temp_res = self._zpop(item, 1, reverse)
-            if temp_res:
-                return [key, temp_res[0], temp_res[1]]
-        return None
 
     def _ttl(self, key, scale):
         if not key:
