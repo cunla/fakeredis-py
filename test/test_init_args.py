@@ -4,6 +4,25 @@ import fakeredis
 import testtools
 
 
+def test_multidb(r, create_redis):
+    r1 = create_redis(db=0)
+    r2 = create_redis(db=1)
+
+    r1['r1'] = 'r1'
+    r2['r2'] = 'r2'
+
+    assert 'r2' not in r1
+    assert 'r1' not in r2
+
+    assert r1['r1'] == b'r1'
+    assert r2['r2'] == b'r2'
+
+    assert r1.flushall() is True
+
+    assert 'r1' not in r1
+    assert 'r2' not in r2
+
+
 @pytest.mark.fake
 class TestInitArgs:
     def test_singleton(self):

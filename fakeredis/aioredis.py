@@ -2,7 +2,6 @@ import asyncio
 from typing import Union
 
 import async_timeout
-
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 
 from . import _fakesocket

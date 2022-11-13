@@ -3,8 +3,14 @@ from time import sleep, time
 
 import pytest
 import redis
+from redis.exceptions import ResponseError
 
 import testtools
+
+
+def key_val_dict(size=100):
+    return {b'key:' + bytes([i]): b'val:' + bytes([i])
+            for i in range(size)}
 
 
 @pytest.mark.slow
@@ -55,6 +61,15 @@ def test_ttl_should_return_minus_one_for_non_expiring_key(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
     assert r.ttl('foo') == -1
+
+
+@testtools.run_test_if_redispy_ver('below', '3.5')
+@pytest.mark.min_server('6.0')
+def test_set_keepttl(r):
+    r.set('foo', 'bar', ex=100)
+    assert r.set('foo', 'baz', keepttl=True) is True
+    assert r.ttl('foo') == 100
+    assert r.get('foo') == b'baz'
 
 
 def test_scan(r):
@@ -321,6 +336,20 @@ def test_expire_should_expire_key(r):
 
 
 @testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_throw_error(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True, xx=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True, gt=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, nx=True, lt=True)
+    with pytest.raises(ResponseError):
+        r.expire('foo', 1, gt=True, lt=True)
+
+
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
 @pytest.mark.max_server('7')
 def test_expire_extra_params_return_error(r):
     with pytest.raises(redis.exceptions.ResponseError):
@@ -486,3 +515,232 @@ def test_set_float_value(r):
     x = 1.23456789123456789
     r.set('foo', x)
     assert float(r.get('foo')) == x
+
+
+@pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_not_expire__when_no_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, xx=True) == 0
+
+
+@pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_not_expire__when_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, nx=True) == 1
+    assert r.expire('foo', 2, nx=True) == 0
+
+
+@pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_expire__when_expire_is_greater(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 100) == 1
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 200, gt=True) == 1
+
+
+@pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_expire__when_expire_is_lessthan(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 20) == 1
+    assert r.expire('foo', 10, lt=True) == 1
+
+
+def test_rename(r):
+    r.set('foo', 'unique value')
+    assert r.rename('foo', 'bar')
+    assert r.get('foo') is None
+    assert r.get('bar') == b'unique value'
+
+
+def test_rename_nonexistent_key(r):
+    with pytest.raises(redis.ResponseError):
+        r.rename('foo', 'bar')
+
+
+def test_renamenx_doesnt_exist(r):
+    r.set('foo', 'unique value')
+    assert r.renamenx('foo', 'bar')
+    assert r.get('foo') is None
+    assert r.get('bar') == b'unique value'
+
+
+def test_rename_does_exist(r):
+    r.set('foo', 'unique value')
+    r.set('bar', 'unique value2')
+    assert not r.renamenx('foo', 'bar')
+    assert r.get('foo') == b'unique value'
+    assert r.get('bar') == b'unique value2'
+
+
+def test_rename_expiry(r):
+    r.set('foo', 'value1', ex=10)
+    r.set('bar', 'value2')
+    r.rename('foo', 'bar')
+    assert r.ttl('bar') > 0
+
+
+def test_keys(r):
+    r.set('', 'empty')
+    r.set('abc\n', '')
+    r.set('abc\\', '')
+    r.set('abcde', '')
+    r.set(b'\xfe\xcd', '')
+    assert sorted(r.keys()) == [b'', b'abc\n', b'abc\\', b'abcde', b'\xfe\xcd']
+    assert r.keys('??') == [b'\xfe\xcd']
+    # empty pattern not the same as no pattern
+    assert r.keys('') == [b'']
+    # ? must match \n
+    assert sorted(r.keys('abc?')) == [b'abc\n', b'abc\\']
+    # must be anchored at both ends
+    assert r.keys('abc') == []
+    assert r.keys('bcd') == []
+    # wildcard test
+    assert r.keys('a*de') == [b'abcde']
+    # positive groups
+    assert sorted(r.keys('abc[d\n]*')) == [b'abc\n', b'abcde']
+    assert r.keys('abc[c-e]?') == [b'abcde']
+    assert r.keys('abc[e-c]?') == [b'abcde']
+    assert r.keys('abc[e-e]?') == []
+    assert r.keys('abcd[ef') == [b'abcde']
+    assert r.keys('abcd[]') == []
+    # negative groups
+    assert r.keys('abc[^d\\\\]*') == [b'abc\n']
+    assert r.keys('abc[^]e') == [b'abcde']
+    # escaping
+    assert r.keys(r'abc\?e') == []
+    assert r.keys(r'abc\de') == [b'abcde']
+    assert r.keys(r'abc[\d]e') == [b'abcde']
+    # some escaping cases that redis handles strangely
+    assert r.keys('abc\\') == [b'abc\\']
+    assert r.keys(r'abc[\c-e]e') == []
+    assert r.keys(r'abc[c-\e]e') == []
+
+
+def test_contains(r):
+    assert not r.exists('foo')
+    r.set('foo', 'bar')
+    assert r.exists('foo')
+
+
+def test_delete(r):
+    r['foo'] = 'bar'
+    assert r.delete('foo') == 1
+    assert r.get('foo') is None
+
+
+@pytest.mark.slow
+def test_delete_expire(r):
+    r.set("foo", "bar", ex=1)
+    r.delete("foo")
+    r.set("foo", "bar")
+    sleep(2)
+    assert r.get("foo") == b'bar'
+
+
+def test_delete_multiple(r):
+    r['one'] = 'one'
+    r['two'] = 'two'
+    r['three'] = 'three'
+    # Since redis>=2.7.6 returns number of deleted items.
+    assert r.delete('one', 'two') == 2
+    assert r.get('one') is None
+    assert r.get('two') is None
+    assert r.get('three') == b'three'
+    assert r.delete('one', 'two') == 0
+    # If any keys are deleted, True is returned.
+    assert r.delete('two', 'three', 'three') == 1
+    assert r.get('three') is None
+
+
+def test_delete_nonexistent_key(r):
+    assert r.delete('foo') == 0
+
+
+def test_scan_single(r):
+    r.set('foo1', 'bar1')
+    assert r.scan(match="foo*") == (0, [b'foo1'])
+
+
+def test_scan_iter_single_page(r):
+    r.set('foo1', 'bar1')
+    r.set('foo2', 'bar2')
+    assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
+    assert set(r.scan_iter()) == {b'foo1', b'foo2'}
+    assert set(r.scan_iter(match="")) == set()
+
+
+def test_scan_iter_multiple_pages(r):
+    all_keys = key_val_dict(size=100)
+    assert all(r.set(k, v) for k, v in all_keys.items())
+    assert set(r.scan_iter()) == set(all_keys)
+
+
+def test_scan_iter_multiple_pages_with_match(r):
+    all_keys = key_val_dict(size=100)
+    assert all(r.set(k, v) for k, v in all_keys.items())
+    # Now add a few keys that don't match the key:<number> pattern.
+    r.set('otherkey', 'foo')
+    r.set('andanother', 'bar')
+    actual = set(r.scan_iter(match='key:*'))
+    assert actual == set(all_keys)
+
+
+@testtools.run_test_if_redispy_ver('below', '3.5')
+@pytest.mark.min_server('6.0')
+def test_scan_iter_multiple_pages_with_type(r):
+    all_keys = key_val_dict(size=100)
+    assert all(r.set(k, v) for k, v in all_keys.items())
+    # Now add a few keys of another type
+    testtools.zadd(r, 'zset1', {'otherkey': 1})
+    testtools.zadd(r, 'zset2', {'andanother': 1})
+    actual = set(r.scan_iter(_type='string'))
+    assert actual == set(all_keys)
+    actual = set(r.scan_iter(_type='ZSET'))
+    assert actual == {b'zset1', b'zset2'}
+
+
+def test_scan_multiple_pages_with_count_arg(r):
+    all_keys = key_val_dict(size=100)
+    assert all(r.set(k, v) for k, v in all_keys.items())
+    assert set(r.scan_iter(count=1000)) == set(all_keys)
+
+
+def test_scan_all_in_single_call(r):
+    all_keys = key_val_dict(size=100)
+    assert all(r.set(k, v) for k, v in all_keys.items())
+    # Specify way more than the 100 keys we've added.
+    actual = r.scan(count=1000)
+    assert set(actual[1]) == set(all_keys)
+    assert actual[0] == 0
+
+
+@pytest.mark.slow
+def test_scan_expired_key(r):
+    r.set('expiringkey', 'value')
+    r.pexpire('expiringkey', 1)
+    sleep(1)
+    assert r.scan()[1] == []
+
+
+def test_basic_sort(r):
+    r.rpush('foo', '2')
+    r.rpush('foo', '1')
+    r.rpush('foo', '3')
+
+    assert r.sort('foo') == [b'1', b'2', b'3']
+
+
+def test_key_patterns(r):
+    r.mset({'one': 1, 'two': 2, 'three': 3, 'four': 4})
+    assert sorted(r.keys('*o*')) == [b'four', b'one', b'two']
+    assert r.keys('t??') == [b'two']
+    assert sorted(r.keys('*')) == [b'four', b'one', b'three', b'two']
+    assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']

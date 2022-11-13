@@ -2,7 +2,7 @@ import functools
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
-    Key, command, Int, CommandItem, Timeout)
+    Key, command, Int, CommandItem, Timeout, fix_range)
 from fakeredis._helpers import (
     OK, SimpleError, SimpleString, casematch)
 
@@ -149,7 +149,7 @@ class ListCommandsMixin:
 
     @command((Key(list), Int, Int))
     def lrange(self, key, start, stop):
-        start, stop = self._fix_range(start, stop, len(key.value))
+        start, stop = fix_range(start, stop, len(key.value))
         return key.value[start:stop]
 
     @command((Key(list), Int, bytes))

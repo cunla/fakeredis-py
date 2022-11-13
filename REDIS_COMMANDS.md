@@ -69,6 +69,7 @@ list of [unimplemented commands](#unimplemented-commands).
  * zincrby
  * zinterstore
  * zlexcount
+ * zmscore
  * zpopmax
  * zpopmin
  * zrange
@@ -323,7 +324,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
  * zinter
  * zintercard
  * zmpop
- * zmscore
  * zrandmember
  * zrangestore
  * zunion

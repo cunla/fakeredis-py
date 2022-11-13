@@ -6,25 +6,18 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, CommandItem)
+from ._commands import (Int, Float)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
 
 
 class BaseFakeSocket:
-    def __init__(self, server):
+    def __init__(self, server, *args, **kwargs):
+        super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server
         self._db = server.dbs[0]
         self._db_num = 0
-        # When in a MULTI, set to a list of function calls
-        self._transaction = None
-        self._transaction_failed = False
-        # Set when executing the commands from EXEC
-        self._in_transaction = False
-        self._watch_notified = False
-        self._watches = set()
-        self._pubsub = 0  # Count of subscriptions
         self.responses = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed
@@ -252,33 +245,6 @@ class BaseFakeSocket:
     def notify_watch(self):
         self._watch_notified = True
 
-    # redis has inconsistent handling of negative indices, hence two versions
-    # of this code.
-
-    @staticmethod
-    def _fix_range_string(start, end, length):
-        # Negative number handling is based on the redis source code
-        if start < 0 and end < 0 and start > end:
-            return -1, -1
-        if start < 0:
-            start = max(0, start + length)
-        if end < 0:
-            end = max(0, end + length)
-        end = min(end, length - 1)
-        return start, end + 1
-
-    @staticmethod
-    def _fix_range(start, end, length):
-        # Redis handles negative slightly differently for zrange
-        if start < 0:
-            start = max(0, start + length)
-        if end < 0:
-            end += length
-        if start > end or start >= length:
-            return -1, -1
-        end = min(end, length - 1)
-        return start, end + 1
-
     def _scan(self, keys, cursor, *args):
         """
         This is the basis of most of the ``scan`` methods.
@@ -337,93 +303,6 @@ class BaseFakeSocket:
             result_cursor = 0
         return [str(result_cursor).encode(), result_data]
 
-    @staticmethod
-    def _calc_setop(op, stop_if_missing, key, *keys):
-        if stop_if_missing and not key.value:
-            return set()
-        value = key.value
-        if not isinstance(value, set):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        ans = value.copy()
-        for other in keys:
-            value = other.value if other.value is not None else set()
-            if not isinstance(value, set):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-            if stop_if_missing and not value:
-                return set()
-            ans = op(ans, value)
-        return ans
-
-    def _setop(self, op, stop_if_missing, dst, key, *keys):
-        """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
-
-        If `stop_if_missing`, the output will be made an empty set as soon as
-        an empty input set is encountered (use for SINTER[STORE]). May assume
-        that `key` is a set (or empty), but `keys` could be anything.
-        """
-        ans = self._calc_setop(op, stop_if_missing, key, *keys)
-        if dst is None:
-            return list(ans)
-        else:
-            dst.value = ans
-            return len(dst.value)
-
-    def _clear_watches(self):
-        self._watch_notified = False
-        while self._watches:
-            (key, db) = self._watches.pop()
-            db.remove_watch(key, self)
-
-    # Pubsub commands
-    # TODO: pubsub command
-
-    def _subscribe(self, channels, subscribers, mtype):
-        for channel in channels:
-            subs = subscribers[channel]
-            if self not in subs:
-                subs.add(self)
-                self._pubsub += 1
-            msg = [mtype, channel, self._pubsub]
-            self.put_response(msg)
-        return NoResponse()
-
-    def _unsubscribe(self, channels, subscribers, mtype):
-        if not channels:
-            channels = []
-            for (channel, subs) in subscribers.items():
-                if self in subs:
-                    channels.append(channel)
-        for channel in channels:
-            subs = subscribers.get(channel, set())
-            if self in subs:
-                subs.remove(self)
-                if not subs:
-                    del subscribers[channel]
-                self._pubsub -= 1
-            msg = [mtype, channel, self._pubsub]
-            self.put_response(msg)
-        return NoResponse()
-
-    def _zpop(self, key, count, reverse):
-        zset = key.value
-        members = list(zset)
-        if reverse:
-            members.reverse()
-        members = members[:count]
-        res = [(bytes(member), self._encodefloat(zset.get(member), True)) for member in members]
-        res = list(itertools.chain.from_iterable(res))
-        for item in members:
-            zset.discard(item)
-        return res
-
-    def _bzpop(self, keys, reverse, first_pass):
-        for key in keys:
-            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
-            temp_res = self._zpop(item, 1, reverse)
-            if temp_res:
-                return [key, temp_res[0], temp_res[1]]
-        return None
-
     def _ttl(self, key, scale):
         if not key:
             return -2
@@ -431,3 +310,13 @@ class BaseFakeSocket:
             return -1
         else:
             return int(round((key.expireat - self._db.time) * scale))
+
+    def _encodefloat(self, value, humanfriendly):
+        if self.version >= 7:
+            value = 0 + value
+        return Float.encode(value, humanfriendly)
+
+    def _encodeint(self, value):
+        if self.version >= 7:
+            value = 0 + value
+        return Int.encode(value)

@@ -3,7 +3,7 @@ import sortedcontainers
 
 class ZSet:
     def __init__(self):
-        self._bylex = {}     # Maps value to score
+        self._bylex = {}  # Maps value to score
         self._byscore = sortedcontainers.SortedList()
 
     def __contains__(self, value):

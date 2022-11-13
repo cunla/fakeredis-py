@@ -358,3 +358,26 @@ def command(*args, **kwargs):
         return func
 
     return decorator
+
+
+def delete_keys(*keys):
+    ans = 0
+    done = set()
+    for key in keys:
+        if key and key.key not in done:
+            key.value = None
+            done.add(key.key)
+            ans += 1
+    return ans
+
+
+def fix_range(start, end, length):
+    # Redis handles negative slightly differently for zrange
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end += length
+    if start > end or start >= length:
+        return -1, -1
+    end = min(end, length - 1)
+    return start, end + 1

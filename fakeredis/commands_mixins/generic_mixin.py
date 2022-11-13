@@ -3,7 +3,7 @@ import pickle
 from random import random
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat
+from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat, delete_keys
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
 from fakeredis._zset import ZSet
 
@@ -83,19 +83,9 @@ class GenericCommandsMixin:
         key.expireat = timestamp
         return 1
 
-    def _delete(self, *keys):
-        ans = 0
-        done = set()
-        for key in keys:
-            if key and key.key not in done:
-                key.value = None
-                done.add(key.key)
-                ans += 1
-        return ans
-
     @command((Key(),), (Key(),), name='del')
     def del_(self, *keys):
-        return self._delete(*keys)
+        return delete_keys(*keys)
 
     @command((Key(missing_return=None),))
     def dump(self, key):
@@ -322,7 +312,7 @@ class GenericCommandsMixin:
 
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):
-        return self._delete(*keys)
+        return delete_keys(*keys)
 
 
 setattr(GenericCommandsMixin, 'del', GenericCommandsMixin.del_)

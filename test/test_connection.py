@@ -17,6 +17,11 @@ def test_ping(r):
     assert testtools.raw_command(r, 'ping', 'test') == b'test'
 
 
+def test_echo(r):
+    assert r.echo(b'hello') == b'hello'
+    assert r.echo('hello') == b'hello'
+
+
 @fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch('time.time')
