@@ -21,6 +21,7 @@ from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.string_mixin import StringCommandsMixin
+from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
 
 
 class FakeSocket(
@@ -32,6 +33,7 @@ class FakeSocket(
     ListCommandsMixin,
     ServerCommandsMixin,
     StringCommandsMixin,
+    TransactionsCommandsMixin,
 ):
     _connection_error_class = redis.ConnectionError
 
@@ -40,67 +42,6 @@ class FakeSocket(
 
     # Key commands
     # TODO: lots
-
-    # Transaction commands
-
-    @command((), flags='s')
-    def multi(self):
-        if self._transaction is not None:
-            raise SimpleError(msgs.MULTI_NESTED_MSG)
-        self._transaction = []
-        self._transaction_failed = False
-        return OK
-
-    @command((), flags='s')
-    def discard(self):
-        if self._transaction is None:
-            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('DISCARD'))
-        self._transaction = None
-        self._transaction_failed = False
-        self._clear_watches()
-        return OK
-
-    @command((), name='exec', flags='s')
-    def exec_(self):
-        if self._transaction is None:
-            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('EXEC'))
-        if self._transaction_failed:
-            self._transaction = None
-            self._clear_watches()
-            raise SimpleError(msgs.EXECABORT_MSG)
-        transaction = self._transaction
-        self._transaction = None
-        self._transaction_failed = False
-        watch_notified = self._watch_notified
-        self._clear_watches()
-        if watch_notified:
-            return None
-        result = []
-        for func, sig, args in transaction:
-            try:
-                self._in_transaction = True
-                ans = self._run_command(func, sig, args, False)
-            except SimpleError as exc:
-                ans = exc
-            finally:
-                self._in_transaction = False
-            result.append(ans)
-        return result
-
-    @command((Key(),), (Key(),), flags='s')
-    def watch(self, *keys):
-        if self._transaction is not None:
-            raise SimpleError(msgs.WATCH_INSIDE_MULTI_MSG)
-        for key in keys:
-            if key not in self._watches:
-                self._watches.add((key.key, self._db))
-                self._db.add_watch(key.key, self)
-        return OK
-
-    @command((), flags='s')
-    def unwatch(self):
-        self._clear_watches()
-        return OK
 
     @command((Key(bytes, 0),), (bytes,))
     def bitcount(self, key, *args):
@@ -724,8 +665,3 @@ class FakeSocket(
                     sock.put_response(msg)
                     receivers += 1
         return receivers
-
-
-
-setattr(FakeSocket, 'exec', FakeSocket.exec_)
-delattr(FakeSocket, 'exec_')

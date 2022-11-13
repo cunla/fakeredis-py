@@ -13,17 +13,12 @@ from ._helpers import (
 
 
 class BaseFakeSocket:
-    def __init__(self, server):
+    def __init__(self, server, *args, **kwargs):
+        print("BaseFakeSocket before ")
+        super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server
         self._db = server.dbs[0]
         self._db_num = 0
-        # When in a MULTI, set to a list of function calls
-        self._transaction = None
-        self._transaction_failed = False
-        # Set when executing the commands from EXEC
-        self._in_transaction = False
-        self._watch_notified = False
-        self._watches = set()
         self._pubsub = 0  # Count of subscriptions
         self.responses = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
@@ -367,12 +362,6 @@ class BaseFakeSocket:
         else:
             dst.value = ans
             return len(dst.value)
-
-    def _clear_watches(self):
-        self._watch_notified = False
-        while self._watches:
-            (key, db) = self._watches.pop()
-            db.remove_watch(key, self)
 
     # Pubsub commands
     # TODO: pubsub command
