@@ -6,7 +6,7 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, CommandItem)
+from ._commands import (Int, CommandItem, Float)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
@@ -431,3 +431,13 @@ class BaseFakeSocket:
             return -1
         else:
             return int(round((key.expireat - self._db.time) * scale))
+
+    def _encodefloat(self, value, humanfriendly):
+        if self.version >= 7:
+            value = 0 + value
+        return Float.encode(value, humanfriendly)
+
+    def _encodeint(self, value):
+        if self.version >= 7:
+            value = 0 + value
+        return Int.encode(value)
