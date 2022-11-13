@@ -12,12 +12,13 @@ from ._basefakesocket import BaseFakeSocket
 from ._commands import (
     Key, command, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest, Timeout)
 from ._helpers import (
-    OK, SimpleError, casematch, casenorm, compile_pattern)
+    OK, SimpleError, casematch, casenorm)
 from ._zset import ZSet
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
 from .commands_mixins.generic_mixin import GenericCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
+from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
 from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.string_mixin import StringCommandsMixin
@@ -34,6 +35,7 @@ class FakeSocket(
     ServerCommandsMixin,
     StringCommandsMixin,
     TransactionsCommandsMixin,
+    PubSubCommandsMixin,
 ):
     _connection_error_class = redis.ConnectionError
 
@@ -633,35 +635,3 @@ class FakeSocket(
         )
         return list(scores)
 
-    @command((bytes,), (bytes,), flags='s')
-    def psubscribe(self, *patterns):
-        return self._subscribe(patterns, self._server.psubscribers, b'psubscribe')
-
-    @command((bytes,), (bytes,), flags='s')
-    def subscribe(self, *channels):
-        return self._subscribe(channels, self._server.subscribers, b'subscribe')
-
-    @command((), (bytes,), flags='s')
-    def punsubscribe(self, *patterns):
-        return self._unsubscribe(patterns, self._server.psubscribers, b'punsubscribe')
-
-    @command((), (bytes,), flags='s')
-    def unsubscribe(self, *channels):
-        return self._unsubscribe(channels, self._server.subscribers, b'unsubscribe')
-
-    @command((bytes, bytes))
-    def publish(self, channel, message):
-        receivers = 0
-        msg = [b'message', channel, message]
-        subs = self._server.subscribers.get(channel, set())
-        for sock in subs:
-            sock.put_response(msg)
-            receivers += 1
-        for (pattern, socks) in self._server.psubscribers.items():
-            regex = compile_pattern(pattern)
-            if regex.match(channel):
-                msg = [b'pmessage', pattern, channel, message]
-                for sock in socks:
-                    sock.put_response(msg)
-                    receivers += 1
-        return receivers

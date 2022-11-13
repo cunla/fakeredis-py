@@ -18,7 +18,6 @@ class BaseFakeSocket:
         self._server = server
         self._db = server.dbs[0]
         self._db_num = 0
-        self._pubsub = 0  # Count of subscriptions
         self.responses = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed
@@ -362,35 +361,6 @@ class BaseFakeSocket:
             dst.value = ans
             return len(dst.value)
 
-    # Pubsub commands
-    # TODO: pubsub command
-
-    def _subscribe(self, channels, subscribers, mtype):
-        for channel in channels:
-            subs = subscribers[channel]
-            if self not in subs:
-                subs.add(self)
-                self._pubsub += 1
-            msg = [mtype, channel, self._pubsub]
-            self.put_response(msg)
-        return NoResponse()
-
-    def _unsubscribe(self, channels, subscribers, mtype):
-        if not channels:
-            channels = []
-            for (channel, subs) in subscribers.items():
-                if self in subs:
-                    channels.append(channel)
-        for channel in channels:
-            subs = subscribers.get(channel, set())
-            if self in subs:
-                subs.remove(self)
-                if not subs:
-                    del subscribers[channel]
-                self._pubsub -= 1
-            msg = [mtype, channel, self._pubsub]
-            self.put_response(msg)
-        return NoResponse()
 
     def _zpop(self, key, count, reverse):
         zset = key.value
