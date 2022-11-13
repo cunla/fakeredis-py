@@ -440,3 +440,51 @@ def test_setrange_expiry(r):
     r.set('foo', 'test', ex=10)
     r.setrange('foo', 1, 'aste')
     assert r.ttl('foo') > 0
+
+
+def test_large_command(r):
+    r.set('foo', 'bar' * 10000)
+    assert r.get('foo') == b'bar' * 10000
+
+
+def test_saving_non_ascii_chars_as_value(r):
+    assert r.set('foo', 'Ñandu') is True
+    assert r.get('foo') == 'Ñandu'.encode()
+
+
+def test_saving_unicode_type_as_value(r):
+    assert r.set('foo', 'Ñandu') is True
+    assert r.get('foo') == 'Ñandu'.encode()
+
+
+def test_saving_non_ascii_chars_as_key(r):
+    assert r.set('Ñandu', 'foo') is True
+    assert r.get('Ñandu') == b'foo'
+
+
+def test_saving_unicode_type_as_key(r):
+    assert r.set('Ñandu', 'foo') is True
+    assert r.get('Ñandu') == b'foo'
+
+
+def test_future_newbytes(r):
+    # bytes = pytest.importorskip('builtins', reason='future.types not available').bytes
+    r.set(bytes(b'\xc3\x91andu'), 'foo')
+    assert r.get('Ñandu') == b'foo'
+
+
+def test_future_newstr(r):
+    # str = pytest.importorskip('builtins', reason='future.types not available').str
+    r.set(str('Ñandu'), 'foo')
+    assert r.get('Ñandu') == b'foo'
+
+
+def test_setitem_getitem(r):
+    assert r.keys() == []
+    r['foo'] = 'bar'
+    assert r['foo'] == b'bar'
+
+
+def test_getitem_non_existent_key(r):
+    assert r.keys() == []
+    assert 'noexists' not in r.keys()

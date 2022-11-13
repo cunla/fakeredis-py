@@ -15,6 +15,10 @@ fake_only = pytest.mark.parametrize(
 def test_ping(r):
     assert r.ping()
     assert testtools.raw_command(r, 'ping', 'test') == b'test'
+def test_echo(r):
+    assert r.echo(b'hello') == b'hello'
+    assert r.echo('hello') == b'hello'
+
 
 
 @fake_only

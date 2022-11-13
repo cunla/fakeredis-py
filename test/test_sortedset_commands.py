@@ -1,24 +1,20 @@
 from __future__ import annotations
 
 import math
-import os
 from collections import OrderedDict
-from datetime import timedelta
-from time import sleep
-from typing import Optional, Tuple, List
+from typing import Tuple, List, Optional
 
 import pytest
 import redis
 import redis.client
-from redis.exceptions import ResponseError
+from packaging.version import Version
 
 import testtools
-from testtools import raw_command
 
-
-def key_val_dict(size=100):
-    return {b'key:' + bytes([i]): b'val:' + bytes([i])
-            for i in range(size)}
+REDIS_VERSION = Version(redis.__version__)
+pytestmark = [
+    testtools.run_test_if_redispy_ver('above', '3'),
+]
 
 
 def round_str(x):
@@ -30,516 +26,27 @@ def zincrby(r, key, amount, value):
     return r.zincrby(key, amount, value)
 
 
-def test_large_command(r):
-    r.set('foo', 'bar' * 10000)
-    assert r.get('foo') == b'bar' * 10000
-
-
-def test_saving_non_ascii_chars_as_value(r):
-    assert r.set('foo', 'Ñandu') is True
-    assert r.get('foo') == 'Ñandu'.encode()
-
-
-def test_saving_unicode_type_as_value(r):
-    assert r.set('foo', 'Ñandu') is True
-    assert r.get('foo') == 'Ñandu'.encode()
-
-
-def test_saving_non_ascii_chars_as_key(r):
-    assert r.set('Ñandu', 'foo') is True
-    assert r.get('Ñandu') == b'foo'
-
-
-def test_saving_unicode_type_as_key(r):
-    assert r.set('Ñandu', 'foo') is True
-    assert r.get('Ñandu') == b'foo'
-
-
-def test_future_newbytes(r):
-    # bytes = pytest.importorskip('builtins', reason='future.types not available').bytes
-    r.set(bytes(b'\xc3\x91andu'), 'foo')
-    assert r.get('Ñandu') == b'foo'
-
-
-def test_future_newstr(r):
-    # str = pytest.importorskip('builtins', reason='future.types not available').str
-    r.set(str('Ñandu'), 'foo')
-    assert r.get('Ñandu') == b'foo'
-
-
-def test_setitem_getitem(r):
-    assert r.keys() == []
-    r['foo'] = 'bar'
-    assert r['foo'] == b'bar'
-
-
-def test_getitem_non_existent_key(r):
-    assert r.keys() == []
-    assert 'noexists' not in r.keys()
-
-
-def test_keys(r):
-    r.set('', 'empty')
-    r.set('abc\n', '')
-    r.set('abc\\', '')
-    r.set('abcde', '')
-    r.set(b'\xfe\xcd', '')
-    assert sorted(r.keys()) == [b'', b'abc\n', b'abc\\', b'abcde', b'\xfe\xcd']
-    assert r.keys('??') == [b'\xfe\xcd']
-    # empty pattern not the same as no pattern
-    assert r.keys('') == [b'']
-    # ? must match \n
-    assert sorted(r.keys('abc?')) == [b'abc\n', b'abc\\']
-    # must be anchored at both ends
-    assert r.keys('abc') == []
-    assert r.keys('bcd') == []
-    # wildcard test
-    assert r.keys('a*de') == [b'abcde']
-    # positive groups
-    assert sorted(r.keys('abc[d\n]*')) == [b'abc\n', b'abcde']
-    assert r.keys('abc[c-e]?') == [b'abcde']
-    assert r.keys('abc[e-c]?') == [b'abcde']
-    assert r.keys('abc[e-e]?') == []
-    assert r.keys('abcd[ef') == [b'abcde']
-    assert r.keys('abcd[]') == []
-    # negative groups
-    assert r.keys('abc[^d\\\\]*') == [b'abc\n']
-    assert r.keys('abc[^]e') == [b'abcde']
-    # escaping
-    assert r.keys(r'abc\?e') == []
-    assert r.keys(r'abc\de') == [b'abcde']
-    assert r.keys(r'abc[\d]e') == [b'abcde']
-    # some escaping cases that redis handles strangely
-    assert r.keys('abc\\') == [b'abc\\']
-    assert r.keys(r'abc[\c-e]e') == []
-    assert r.keys(r'abc[c-\e]e') == []
-
-
-def test_contains(r):
-    assert not r.exists('foo')
-    r.set('foo', 'bar')
-    assert r.exists('foo')
-
-
-def test_rename(r):
-    r.set('foo', 'unique value')
-    assert r.rename('foo', 'bar')
-    assert r.get('foo') is None
-    assert r.get('bar') == b'unique value'
-
-
-def test_rename_nonexistent_key(r):
-    with pytest.raises(redis.ResponseError):
-        r.rename('foo', 'bar')
-
-
-def test_renamenx_doesnt_exist(r):
-    r.set('foo', 'unique value')
-    assert r.renamenx('foo', 'bar')
-    assert r.get('foo') is None
-    assert r.get('bar') == b'unique value'
-
-
-def test_rename_does_exist(r):
-    r.set('foo', 'unique value')
-    r.set('bar', 'unique value2')
-    assert not r.renamenx('foo', 'bar')
-    assert r.get('foo') == b'unique value'
-    assert r.get('bar') == b'unique value2'
-
-
-def test_rename_expiry(r):
-    r.set('foo', 'value1', ex=10)
-    r.set('bar', 'value2')
-    r.rename('foo', 'bar')
-    assert r.ttl('bar') > 0
-
-
-@testtools.run_test_if_redispy_ver('below', '3.5')
-@pytest.mark.min_server('6.0')
-def test_set_keepttl(r):
-    r.set('foo', 'bar', ex=100)
-    assert r.set('foo', 'baz', keepttl=True) is True
-    assert r.ttl('foo') == 100
-    assert r.get('foo') == b'baz'
-
-
-def test_delete(r):
-    r['foo'] = 'bar'
-    assert r.delete('foo') == 1
-    assert r.get('foo') is None
-
-
-def test_echo(r):
-    assert r.echo(b'hello') == b'hello'
-    assert r.echo('hello') == b'hello'
-
-
-@pytest.mark.slow
-def test_delete_expire(r):
-    r.set("foo", "bar", ex=1)
-    r.delete("foo")
-    r.set("foo", "bar")
-    sleep(2)
-    assert r.get("foo") == b'bar'
-
-
-def test_delete_multiple(r):
-    r['one'] = 'one'
-    r['two'] = 'two'
-    r['three'] = 'three'
-    # Since redis>=2.7.6 returns number of deleted items.
-    assert r.delete('one', 'two') == 2
-    assert r.get('one') is None
-    assert r.get('two') is None
-    assert r.get('three') == b'three'
-    assert r.delete('one', 'two') == 0
-    # If any keys are deleted, True is returned.
-    assert r.delete('two', 'three', 'three') == 1
-    assert r.get('three') is None
-
-
-def test_delete_nonexistent_key(r):
-    assert r.delete('foo') == 0
-
-
-def test_sadd(r):
-    assert r.sadd('foo', 'member1') == 1
-    assert r.sadd('foo', 'member1') == 0
-    assert r.smembers('foo') == {b'member1'}
-    assert r.sadd('foo', 'member2', 'member3') == 2
-    assert r.smembers('foo') == {b'member1', b'member2', b'member3'}
-    assert r.sadd('foo', 'member3', 'member4') == 1
-    assert r.smembers('foo') == {b'member1', b'member2', b'member3', b'member4'}
-
-
-def test_sadd_as_str_type(r):
-    assert r.sadd('foo', *range(3)) == 3
-    assert r.smembers('foo') == {b'0', b'1', b'2'}
-
-
-def test_sadd_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.sadd('foo', 'member2')
-
-
-def test_scan_single(r):
-    r.set('foo1', 'bar1')
-    assert r.scan(match="foo*") == (0, [b'foo1'])
-
-
-def test_scan_iter_single_page(r):
-    r.set('foo1', 'bar1')
-    r.set('foo2', 'bar2')
-    assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
-    assert set(r.scan_iter()) == {b'foo1', b'foo2'}
-    assert set(r.scan_iter(match="")) == set()
-
-
-def test_scan_iter_multiple_pages(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    assert set(r.scan_iter()) == set(all_keys)
-
-
-def test_scan_iter_multiple_pages_with_match(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Now add a few keys that don't match the key:<number> pattern.
-    r.set('otherkey', 'foo')
-    r.set('andanother', 'bar')
-    actual = set(r.scan_iter(match='key:*'))
-    assert actual == set(all_keys)
-
-
-@testtools.run_test_if_redispy_ver('below', '3.5')
-@pytest.mark.min_server('6.0')
-def test_scan_iter_multiple_pages_with_type(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Now add a few keys of another type
-    testtools.zadd(r, 'zset1', {'otherkey': 1})
-    testtools.zadd(r, 'zset2', {'andanother': 1})
-    actual = set(r.scan_iter(_type='string'))
-    assert actual == set(all_keys)
-    actual = set(r.scan_iter(_type='ZSET'))
-    assert actual == {b'zset1', b'zset2'}
-
-
-def test_scan_multiple_pages_with_count_arg(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    assert set(r.scan_iter(count=1000)) == set(all_keys)
-
-
-def test_scan_all_in_single_call(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Specify way more than the 100 keys we've added.
-    actual = r.scan(count=1000)
-    assert set(actual[1]) == set(all_keys)
-    assert actual[0] == 0
-
-
-@pytest.mark.slow
-def test_scan_expired_key(r):
-    r.set('expiringkey', 'value')
-    r.pexpire('expiringkey', 1)
-    sleep(1)
-    assert r.scan()[1] == []
-
-
-def test_scard(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('foo', 'member2')
-    assert r.scard('foo') == 2
-
-
-def test_scard_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.scard('foo')
-
-
-def test_sdiff(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sdiff('foo', 'bar') == {b'member1'}
-    # Original sets shouldn't be modified.
-    assert r.smembers('foo') == {b'member1', b'member2'}
-    assert r.smembers('bar') == {b'member2', b'member3'}
-
-
-def test_sdiff_one_key(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    assert r.sdiff('foo') == {b'member1', b'member2'}
-
-
-def test_sdiff_empty(r):
-    assert r.sdiff('foo') == set()
-
-
-def test_sdiff_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    r.sadd('bar', 'member')
-    with pytest.raises(redis.ResponseError):
-        r.sdiff('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.sdiff('bar', 'foo')
-
-
-def test_sdiffstore(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sdiffstore('baz', 'foo', 'bar') == 1
-
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {'member1', b'member1'}
-    r.sadd('baz', 'member1')
-    assert r.scard('baz') == 1
-
-
-def test_sinter(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sinter('foo', 'bar') == {b'member2'}
-    assert r.sinter('foo') == {b'member1', b'member2'}
-
-
-def test_sinter_bytes_keys(r):
-    foo = os.urandom(10)
-    bar = os.urandom(10)
-    r.sadd(foo, 'member1')
-    r.sadd(foo, 'member2')
-    r.sadd(bar, 'member2')
-    r.sadd(bar, 'member3')
-    assert r.sinter(foo, bar) == {b'member2'}
-    assert r.sinter(foo) == {b'member1', b'member2'}
-
-
-def test_sinter_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    r.sadd('bar', 'member')
-    with pytest.raises(redis.ResponseError):
-        r.sinter('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.sinter('bar', 'foo')
-
-
-def test_sinterstore(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sinterstore('baz', 'foo', 'bar') == 1
-
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {'member2', b'member2'}
-    r.sadd('baz', 'member2')
-    assert r.scard('baz') == 1
-
-
-def test_sismember(r):
-    assert r.sismember('foo', 'member1') is False
-    r.sadd('foo', 'member1')
-    assert r.sismember('foo', 'member1') is True
-
-
-def test_sismember_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.sismember('foo', 'member')
-
-
-def test_smembers(r):
-    assert r.smembers('foo') == set()
-
-
-def test_smembers_copy(r):
-    r.sadd('foo', 'member1')
-    ret = r.smembers('foo')
-    r.sadd('foo', 'member2')
-    assert r.smembers('foo') != ret
-
-
-def test_smembers_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.smembers('foo')
-
-
-def test_smembers_runtime_error(r):
-    r.sadd('foo', 'member1', 'member2')
-    for member in r.smembers('foo'):
-        r.srem('foo', member)
-
-
-def test_smove(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    assert r.smove('foo', 'bar', 'member1') is True
-    assert r.smembers('bar') == {b'member1'}
-
-
-def test_smove_non_existent_key(r):
-    assert r.smove('foo', 'bar', 'member1') is False
-
-
-def test_smove_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    r.sadd('bar', 'member')
-    with pytest.raises(redis.ResponseError):
-        r.smove('bar', 'foo', 'member')
-    # Must raise the error before removing member from bar
-    assert r.smembers('bar') == {b'member'}
-    with pytest.raises(redis.ResponseError):
-        r.smove('foo', 'bar', 'member')
-
-
-def test_spop(r):
-    # This is tricky because it pops a random element.
-    r.sadd('foo', 'member1')
-    assert r.spop('foo') == b'member1'
-    assert r.spop('foo') is None
-
-
-def test_spop_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.spop('foo')
-
-
-def test_srandmember(r):
-    r.sadd('foo', 'member1')
-    assert r.srandmember('foo') == b'member1'
-    # Shouldn't be removed from the set.
-    assert r.srandmember('foo') == b'member1'
-
-
-def test_srandmember_number(r):
-    """srandmember works with the number argument."""
-    assert r.srandmember('foo', 2) == []
-    r.sadd('foo', b'member1')
-    assert r.srandmember('foo', 2) == [b'member1']
-    r.sadd('foo', b'member2')
-    assert set(r.srandmember('foo', 2)) == {b'member1', b'member2'}
-    r.sadd('foo', b'member3')
-    res = r.srandmember('foo', 2)
-    assert len(res) == 2
-    for e in res:
-        assert e in {b'member1', b'member2', b'member3'}
-
-
-def test_srandmember_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.srandmember('foo')
-
-
-def test_srem(r):
-    r.sadd('foo', 'member1', 'member2', 'member3', 'member4')
-    assert r.smembers('foo') == {b'member1', b'member2', b'member3', b'member4'}
-    assert r.srem('foo', 'member1') == 1
-    assert r.smembers('foo') == {b'member2', b'member3', b'member4'}
-    assert r.srem('foo', 'member1') == 0
-    # Since redis>=2.7.6 returns number of deleted items.
-    assert r.srem('foo', 'member2', 'member3') == 2
-    assert r.smembers('foo') == {b'member4'}
-    assert r.srem('foo', 'member3', 'member4') == 1
-    assert r.smembers('foo') == set()
-    assert r.srem('foo', 'member3', 'member4') == 0
-
-
-def test_srem_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    with pytest.raises(redis.ResponseError):
-        r.srem('foo', 'member')
-
-
-def test_sunion(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sunion('foo', 'bar') == {b'member1', b'member2', b'member3'}
-
-
-def test_sunion_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
-    r.sadd('bar', 'member')
-    with pytest.raises(redis.ResponseError):
-        r.sunion('foo', 'bar')
-    with pytest.raises(redis.ResponseError):
-        r.sunion('bar', 'foo')
-
-
-def test_sunionstore(r):
-    r.sadd('foo', 'member1')
-    r.sadd('foo', 'member2')
-    r.sadd('bar', 'member2')
-    r.sadd('bar', 'member3')
-    assert r.sunionstore('baz', 'foo', 'bar') == 3
-    assert r.smembers('baz') == {b'member1', b'member2', b'member3'}
-
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {b'member1', b'member2', b'member3', 'member3'}
-    r.sadd('baz', 'member3')
-    assert r.scard('baz') == 3
-
-
-def test_empty_set(r):
-    r.sadd('foo', 'bar')
-    r.srem('foo', 'bar')
-    assert not r.exists('foo')
+def test_zpopmin(r):
+    testtools.zadd(r, 'foo', {'one': 1})
+    testtools.zadd(r, 'foo', {'two': 2})
+    testtools.zadd(r, 'foo', {'three': 3})
+    assert r.zpopmin('foo', count=2) == [(b'one', 1.0), (b'two', 2.0)]
+    assert r.zpopmin('foo', count=2) == [(b'three', 3.0)]
+
+
+def test_zpopmin_too_many(r):
+    testtools.zadd(r, 'foo', {'one': 1})
+    testtools.zadd(r, 'foo', {'two': 2})
+    testtools.zadd(r, 'foo', {'three': 3})
+    assert r.zpopmin('foo', count=5) == [(b'one', 1.0), (b'two', 2.0), (b'three', 3.0)]
+
+
+def test_zpopmax(r):
+    testtools.zadd(r, 'foo', {'one': 1})
+    testtools.zadd(r, 'foo', {'two': 2})
+    testtools.zadd(r, 'foo', {'three': 3})
+    assert r.zpopmax('foo', count=2) == [(b'three', 3.0), (b'two', 2.0)]
+    assert r.zpopmax('foo', count=2) == [(b'one', 1.0)]
 
 
 def test_zrange_same_score(r):
@@ -1455,157 +962,33 @@ def test_empty_zset(r):
     assert not r.exists('foo')
 
 
-def test_multidb(r, create_redis):
-    r1 = create_redis(db=0)
-    r2 = create_redis(db=1)
-
-    r1['r1'] = 'r1'
-    r2['r2'] = 'r2'
-
-    assert 'r2' not in r1
-    assert 'r1' not in r2
-
-    assert r1['r1'] == b'r1'
-    assert r2['r2'] == b'r2'
-
-    assert r1.flushall() is True
-
-    assert 'r1' not in r1
-    assert 'r2' not in r2
+def test_zpopmax_too_many(r):
+    testtools.zadd(r, 'foo', {'one': 1})
+    testtools.zadd(r, 'foo', {'two': 2})
+    testtools.zadd(r, 'foo', {'three': 3})
+    assert r.zpopmax('foo', count=5) == [(b'three', 3.0), (b'two', 2.0), (b'one', 1.0), ]
 
 
-def test_basic_sort(r):
-    r.rpush('foo', '2')
-    r.rpush('foo', '1')
-    r.rpush('foo', '3')
-
-    assert r.sort('foo') == [b'1', b'2', b'3']
-
-
-def test_key_patterns(r):
-    r.mset({'one': 1, 'two': 2, 'three': 3, 'four': 4})
-    assert sorted(r.keys('*o*')) == [b'four', b'one', b'two']
-    assert r.keys('t??') == [b'two']
-    assert sorted(r.keys('*')) == [b'four', b'one', b'three', b'two']
-    assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']
+def test_bzpopmin(r):
+    testtools.zadd(r, 'foo', {'one': 1, 'two': 2, 'three': 3})
+    testtools.zadd(r, 'bar', {'a': 1.5, 'b': 2, 'c': 3})
+    assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'one', 1.0)
+    assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'two', 2.0)
+    assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'three', 3.0)
+    assert r.bzpopmin(['foo', 'bar'], 0) == (b'bar', b'a', 1.5)
 
 
-def test_pfadd(r):
-    key = "hll-pfadd"
-    assert r.pfadd(key, "a", "b", "c", "d", "e", "f", "g") == 1
-    assert r.pfcount(key) == 7
-
-
-def test_pfcount(r):
-    key1 = "hll-pfcount01"
-    key2 = "hll-pfcount02"
-    key3 = "hll-pfcount03"
-    assert r.pfadd(key1, "foo", "bar", "zap") == 1
-    assert r.pfadd(key1, "zap", "zap", "zap") == 0
-    assert r.pfadd(key1, "foo", "bar") == 0
-    assert r.pfcount(key1) == 3
-    assert r.pfadd(key2, "1", "2", "3") == 1
-    assert r.pfcount(key2) == 3
-    assert r.pfcount(key1, key2) == 6
-    assert r.pfadd(key3, "foo", "bar", "zip") == 1
-    assert r.pfcount(key3) == 3
-    assert r.pfcount(key1, key3) == 4
-    assert r.pfcount(key1, key2, key3) == 7
-
-
-def test_pfmerge(r):
-    key1 = "hll-pfmerge01"
-    key2 = "hll-pfmerge02"
-    key3 = "hll-pfmerge03"
-    assert r.pfadd(key1, "foo", "bar", "zap", "a") == 1
-    assert r.pfadd(key2, "a", "b", "c", "foo") == 1
-    assert r.pfmerge(key3, key1, key2)
-    assert r.pfcount(key3) == 6
-
-
-def test_sscan(r):
-    # Setup the data
-    name = 'sscan-test'
-    for ix in range(20):
-        k = 'sscan-test:%s' % ix
-        r.sadd(name, k)
-    expected = r.smembers(name)
-    assert len(expected) == 20  # Ensure we know what we're testing
-
-    # Test that we page through the results and get everything out
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.sscan(name, cursor, count=6)
-        results.extend(data)
-    assert set(expected) == set(results)
-
-    # Test the iterator version
-    results = [r for r in r.sscan_iter(name, count=6)]
-    assert set(expected) == set(results)
-
-    # Now test that the MATCH functionality works
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.sscan(name, cursor, match='*7', count=100)
-        results.extend(data)
-    assert b'sscan-test:7' in results
-    assert b'sscan-test:17' in results
-    assert len(results) == 2
-
-    # Test the match on iterator
-    results = [r for r in r.sscan_iter(name, match='*7')]
-    assert b'sscan-test:7' in results
-    assert b'sscan-test:17' in results
-    assert len(results) == 2
-
-
-def test_hscan(r):
-    # Setup the data
-    name = 'hscan-test'
-    for ix in range(20):
-        k = 'key:%s' % ix
-        v = 'result:%s' % ix
-        r.hset(name, k, v)
-    expected = r.hgetall(name)
-    assert len(expected) == 20  # Ensure we know what we're testing
-
-    # Test that we page through the results and get everything out
-    results = {}
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.hscan(name, cursor, count=6)
-        results.update(data)
-    assert expected == results
-
-    # Test the iterator version
-    results = {}
-    for key, val in r.hscan_iter(name, count=6):
-        results[key] = val
-    assert expected == results
-
-    # Now test that the MATCH functionality works
-    results = {}
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.hscan(name, cursor, match='*7', count=100)
-        results.update(data)
-    assert b'key:7' in results
-    assert b'key:17' in results
-    assert len(results) == 2
-
-    # Test the match on iterator
-    results = {}
-    for key, val in r.hscan_iter(name, match='*7'):
-        results[key] = val
-    assert b'key:7' in results
-    assert b'key:17' in results
-    assert len(results) == 2
+def test_bzpopmax(r):
+    testtools.zadd(r, 'foo', {'one': 1, 'two': 2, 'three': 3})
+    testtools.zadd(r, 'bar', {'a': 1.5, 'b': 2.5, 'c': 3.5})
+    assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'three', 3.0)
+    assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'two', 2.0)
+    assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'one', 1.0)
+    assert r.bzpopmax(['foo', 'bar'], 0) == (b'bar', b'c', 3.5)
 
 
 def test_zscan(r):
-    # Setup the data
+    # Set up the data
     name = 'zscan-test'
     for ix in range(20):
         testtools.zadd(r, name, {'key:%s' % ix: ix})
@@ -1624,38 +1007,3 @@ def test_zscan(r):
         cursor, data = r.zscan(name, cursor, match='*7', count=6)
         results.update(data)
     assert results == {b'key:7': 7.0, b'key:17': 17.0}
-
-
-@pytest.mark.slow
-def test_set_ex_should_expire_value(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    r.set('foo', 'bar', ex=1)
-    sleep(2)
-    assert r.get('foo') is None
-
-
-@pytest.mark.slow
-def test_set_px_should_expire_value(r):
-    r.set('foo', 'bar', px=500)
-    sleep(1.5)
-    assert r.get('foo') is None
-
-
-@pytest.mark.slow
-def test_psetex_expire_value(r):
-    with pytest.raises(ResponseError):
-        r.psetex('foo', 0, 'bar')
-    r.psetex('foo', 500, 'bar')
-    sleep(1.5)
-    assert r.get('foo') is None
-
-
-@pytest.mark.slow
-def test_psetex_expire_value_using_timedelta(r):
-    with pytest.raises(ResponseError):
-        r.psetex('foo', timedelta(seconds=0), 'bar')
-    r.psetex('foo', timedelta(seconds=0.5), 'bar')
-    sleep(1.5)
-    assert r.get('foo') is None
-

@@ -242,3 +242,46 @@ def test_empty_hash(r):
     r.hset('foo', 'bar', 'baz')
     r.hdel('foo', 'bar')
     assert not r.exists('foo')
+
+
+def test_hscan(r):
+    # Set up the data
+    name = 'hscan-test'
+    for ix in range(20):
+        k = 'key:%s' % ix
+        v = 'result:%s' % ix
+        r.hset(name, k, v)
+    expected = r.hgetall(name)
+    assert len(expected) == 20  # Ensure we know what we're testing
+
+    # Test that we page through the results and get everything out
+    results = {}
+    cursor = '0'
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor, count=6)
+        results.update(data)
+    assert expected == results
+
+    # Test the iterator version
+    results = {}
+    for key, val in r.hscan_iter(name, count=6):
+        results[key] = val
+    assert expected == results
+
+    # Now test that the MATCH functionality works
+    results = {}
+    cursor = '0'
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor, match='*7', count=100)
+        results.update(data)
+    assert b'key:7' in results
+    assert b'key:17' in results
+    assert len(results) == 2
+
+    # Test the match on iterator
+    results = {}
+    for key, val in r.hscan_iter(name, match='*7'):
+        results[key] = val
+    assert b'key:7' in results
+    assert b'key:17' in results
+    assert len(results) == 2

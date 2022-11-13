@@ -34,6 +34,7 @@ def test_zadd_minus_zero_redis6(r):
     testtools.zadd(r, 'foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'-0'
 
+
 @pytest.mark.min_server('7')
 def test_zadd_minus_zero_redis7(r):
     testtools.zadd(r, 'foo', {'a': -0.0})
