@@ -4,6 +4,7 @@ from time import sleep, time
 import pytest
 import redis
 from redis.exceptions import ResponseError
+
 import testtools
 
 

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
+from time import sleep
 
 import pytest
 import redis
 import redis.client
 from redis.exceptions import ResponseError
-from datetime import timedelta
-from time import sleep
+
 import testtools
 
 

@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import math
-import os
-import threading
-from collections import OrderedDict
-from datetime import timedelta
-from queue import Queue
-
 import pytest
 import redis
 import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
-import testtools
 from testtools import raw_command
 
 

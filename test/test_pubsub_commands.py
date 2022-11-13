@@ -1,11 +1,12 @@
 import threading
+from queue import Queue
 from time import sleep
 
 import pytest
-import testtools
 import redis
-from queue import Queue
+
 import fakeredis
+import testtools
 
 
 @testtools.run_test_if_redispy_ver('above', '3')
