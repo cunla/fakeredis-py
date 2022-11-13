@@ -248,17 +248,7 @@ class BaseFakeSocket:
     # redis has inconsistent handling of negative indices, hence two versions
     # of this code.
 
-    @staticmethod
-    def _fix_range_string(start, end, length):
-        # Negative number handling is based on the redis source code
-        if start < 0 and end < 0 and start > end:
-            return -1, -1
-        if start < 0:
-            start = max(0, start + length)
-        if end < 0:
-            end = max(0, end + length)
-        end = min(end, length - 1)
-        return start, end + 1
+
 
     @staticmethod
     def _fix_range(start, end, length):
@@ -346,20 +336,6 @@ class BaseFakeSocket:
                 return set()
             ans = op(ans, value)
         return ans
-
-    def _setop(self, op, stop_if_missing, dst, key, *keys):
-        """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
-
-        If `stop_if_missing`, the output will be made an empty set as soon as
-        an empty input set is encountered (use for SINTER[STORE]). May assume
-        that `key` is a set (or empty), but `keys` could be anything.
-        """
-        ans = self._calc_setop(op, stop_if_missing, key, *keys)
-        if dst is None:
-            return list(ans)
-        else:
-            dst.value = ans
-            return len(dst.value)
 
     def _zpop(self, key, count, reverse):
         zset = key.value

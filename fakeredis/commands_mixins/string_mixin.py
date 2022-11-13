@@ -1,8 +1,8 @@
 import math
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, Float)
-from fakeredis._helpers import (OK, SimpleError, casematch, MAX_STRING_SIZE)
+from fakeredis._commands import (command, Key, Int, Float, delete_keys)
+from fakeredis._helpers import (OK, SimpleError, casematch, MAX_STRING_SIZE, fix_range_string)
 
 
 class StringCommandsMixin:
@@ -32,13 +32,13 @@ class StringCommandsMixin:
     @command((Key(bytes),))
     def getdel(self, key):
         res = key.get(None)
-        self._delete(key)
+        delete_keys(key)
         return res
 
     @command((Key(bytes), Int, Int))
     def getrange(self, key, start, end):
         value = key.get(b'')
-        start, end = self._fix_range_string(start, end, len(value))
+        start, end = fix_range_string(start, end, len(value))
         return value[start:end]
 
     @command((Key(bytes), bytes))

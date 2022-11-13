@@ -222,6 +222,18 @@ def valid_response_type(value, nested=False):
             return False
     return True
 
+def fix_range_string(start, end, length):
+    # Negative number handling is based on the redis source code
+    if 0 > start > end and end < 0:
+        return -1, -1
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end = max(0, end + length)
+    end = min(end, length - 1)
+    return start, end + 1
+
+
 
 class _DummyParser:
     def __init__(self, socket_read_size):
@@ -263,3 +275,4 @@ class FakeSelector(BaseSelector):
 
     def check_is_ready_for_command(self, timeout):
         return True
+

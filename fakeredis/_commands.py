@@ -358,3 +358,14 @@ def command(*args, **kwargs):
         return func
 
     return decorator
+
+
+def delete_keys(*keys):
+    ans = 0
+    done = set()
+    for key in keys:
+        if key and key.key not in done:
+            key.value = None
+            done.add(key.key)
+            ans += 1
+    return ans

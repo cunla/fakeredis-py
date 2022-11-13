@@ -2,17 +2,14 @@ from __future__ import annotations
 
 import functools
 import math
-import random
 from typing import Optional, Union
 
 import redis
 
 from . import _msgs as msgs
 from ._basefakesocket import BaseFakeSocket
-from ._commands import (
-    Key, command, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest, Timeout)
-from ._helpers import (
-    OK, SimpleError, casematch, casenorm)
+from ._commands import (Key, command, Int, CommandItem, Float, BitOffset, BitValue, StringTest, ScoreTest, Timeout)
+from ._helpers import (OK, SimpleError, casematch, casenorm)
 from ._zset import ZSet
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
 from .commands_mixins.generic_mixin import GenericCommandsMixin
@@ -21,6 +18,7 @@ from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
 from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 from .commands_mixins.server_mixin import ServerCommandsMixin
+from .commands_mixins.set_mixin import SetCommandsMixin
 from .commands_mixins.string_mixin import StringCommandsMixin
 from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
 
@@ -36,189 +34,14 @@ class FakeSocket(
     StringCommandsMixin,
     TransactionsCommandsMixin,
     PubSubCommandsMixin,
+    SetCommandsMixin,
 ):
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
         super(FakeSocket, self).__init__(server)
 
-    # Key commands
-    # TODO: lots
 
-    @command((Key(bytes, 0),), (bytes,))
-    def bitcount(self, key, *args):
-        # Redis checks the argument count before decoding integers. That's why
-        # we can't declare them as Int.
-        if args:
-            if len(args) != 2:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            start = Int.decode(args[0])
-            end = Int.decode(args[1])
-            start, end = self._fix_range_string(start, end, len(key.value))
-            value = key.value[start:end]
-        else:
-            value = key.value
-        return bin(int.from_bytes(value, 'little')).count('1')
-
-    @command((Key(bytes), BitOffset))
-    def getbit(self, key, offset):
-        value = key.get(b'')
-        byte = offset // 8
-        remaining = offset % 8
-        actual_bitoffset = 7 - remaining
-        try:
-            actual_val = value[byte]
-        except IndexError:
-            return 0
-        return 1 if (1 << actual_bitoffset) & actual_val else 0
-
-    @command((Key(bytes), BitOffset, BitValue))
-    def setbit(self, key, offset, value):
-        val = key.get(b'\x00')
-        byte = offset // 8
-        remaining = offset % 8
-        actual_bitoffset = 7 - remaining
-        if len(val) - 1 < byte:
-            # We need to expand val so that we can set the appropriate
-            # bit.
-            needed = byte - (len(val) - 1)
-            val += b'\x00' * needed
-        old_byte = val[byte]
-        if value == 1:
-            new_byte = old_byte | (1 << actual_bitoffset)
-        else:
-            new_byte = old_byte & ~(1 << actual_bitoffset)
-        old_value = value if old_byte == new_byte else 1 - value
-        reconstructed = bytearray(val)
-        reconstructed[byte] = new_byte
-        key.update(bytes(reconstructed))
-        return old_value
-
-    # Set commands
-
-    @command((Key(set), bytes), (bytes,))
-    def sadd(self, key, *members):
-        old_size = len(key.value)
-        key.value.update(members)
-        key.updated()
-        return len(key.value) - old_size
-
-    @command((Key(set),))
-    def scard(self, key):
-        return len(key.value)
-
-    @command((Key(set),), (Key(set),))
-    def sdiff(self, *keys):
-        return self._setop(lambda a, b: a - b, False, None, *keys)
-
-    @command((Key(), Key(set)), (Key(set),))
-    def sdiffstore(self, dst, *keys):
-        return self._setop(lambda a, b: a - b, False, dst, *keys)
-
-    @command((Key(set),), (Key(set),))
-    def sinter(self, *keys):
-        res = self._setop(lambda a, b: a & b, True, None, *keys)
-        return res
-
-    @command((Int, bytes), (bytes,))
-    def sintercard(self, numkeys, *args):
-        if self.version < 7:
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format('sintercard'))
-        if numkeys < 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        limit = 0
-        if casematch(args[-2], b'limit'):
-            limit = Int.decode(args[-1])
-            args = args[:-2]
-        if numkeys != len(args):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        keys = [CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
-                for i in range(numkeys)]
-
-        res = self._setop(lambda a, b: a & b, False, None, *keys)
-        return len(res) if limit == 0 else min(limit, len(res))
-
-    @command((Key(), Key(set)), (Key(set),))
-    def sinterstore(self, dst, *keys):
-        return self._setop(lambda a, b: a & b, True, dst, *keys)
-
-    @command((Key(set), bytes))
-    def sismember(self, key, member):
-        return int(member in key.value)
-
-    @command((Key(set), bytes), (bytes,))
-    def smismember(self, key, *members):
-        return [self.sismember(key, member) for member in members]
-
-    @command((Key(set),))
-    def smembers(self, key):
-        return list(key.value)
-
-    @command((Key(set, 0), Key(set), bytes))
-    def smove(self, src, dst, member):
-        try:
-            src.value.remove(member)
-            src.updated()
-        except KeyError:
-            return 0
-        else:
-            dst.value.add(member)
-            dst.updated()  # TODO: is it updated if member was already present?
-            return 1
-
-    @command((Key(set),), (Int,))
-    def spop(self, key, count=None):
-        if count is None:
-            if not key.value:
-                return None
-            item = random.sample(list(key.value), 1)[0]
-            key.value.remove(item)
-            key.updated()
-            return item
-        else:
-            if count < 0:
-                raise SimpleError(msgs.INDEX_ERROR_MSG)
-            items = self.srandmember(key, count)
-            for item in items:
-                key.value.remove(item)
-                key.updated()  # Inside the loop because redis special-cases count=0
-            return items
-
-    @command((Key(set),), (Int,))
-    def srandmember(self, key, count=None):
-        if count is None:
-            if not key.value:
-                return None
-            else:
-                return random.sample(list(key.value), 1)[0]
-        elif count >= 0:
-            count = min(count, len(key.value))
-            return random.sample(list(key.value), count)
-        else:
-            items = list(key.value)
-            return [random.choice(items) for _ in range(-count)]
-
-    @command((Key(set), bytes), (bytes,))
-    def srem(self, key, *members):
-        old_size = len(key.value)
-        for member in members:
-            key.value.discard(member)
-        deleted = old_size - len(key.value)
-        if deleted:
-            key.updated()
-        return deleted
-
-    @command((Key(set), Int), (bytes, bytes))
-    def sscan(self, key, cursor, *args):
-        return self._scan(key.value, cursor, *args)
-
-    @command((Key(set),), (Key(set),))
-    def sunion(self, *keys):
-        return self._setop(lambda a, b: a | b, False, None, *keys)
-
-    @command((Key(), Key(set)), (Key(set),))
-    def sunionstore(self, dst, *keys):
-        return self._setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
     # These are not quite the same as the real redis ones, which are
