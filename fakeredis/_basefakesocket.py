@@ -361,7 +361,6 @@ class BaseFakeSocket:
             dst.value = ans
             return len(dst.value)
 
-
     def _zpop(self, key, count, reverse):
         zset = key.value
         members = list(zset)
