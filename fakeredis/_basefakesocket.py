@@ -14,7 +14,6 @@ from ._helpers import (
 
 class BaseFakeSocket:
     def __init__(self, server, *args, **kwargs):
-        print("BaseFakeSocket before ")
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server
         self._db = server.dbs[0]

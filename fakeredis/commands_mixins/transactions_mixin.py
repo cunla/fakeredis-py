@@ -5,7 +5,6 @@ from fakeredis._helpers import (OK, SimpleError)
 
 class TransactionsCommandsMixin:
     def __init__(self, *args, **kwargs):
-        print("TransactionsCommandsMixin before ")
         super(TransactionsCommandsMixin, self).__init__(*args, **kwargs)
         self._watches = set()
         # When in a MULTI, set to a list of function calls
