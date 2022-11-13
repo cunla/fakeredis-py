@@ -13,11 +13,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: 'flake8 on code'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          cache-dependency-path: poetry.lock
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip --quiet install poetry
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+          poetry install
+      - name: Run flake8
+        shell: bash
+        run: |
+          poetry run flake8 fakeredis/
+      - name: Test import
+        run: |
+          poetry build
+          pip install dist/fakeredis-*.tar.gz
+          python -c 'import fakeredis'
   test:
     name: 'py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}'
+    needs: [ 'lint' ]
     runs-on: ubuntu-latest
     strategy:
-#      max-parallel: 5
+      #      max-parallel: 5
       fail-fast: false
       matrix:
         redis-version: [ "6.2.7", "7.0.5" ]
@@ -62,11 +86,6 @@ jobs:
         run: |
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      - name: Test import
-        run: |
-          poetry build
-          pip install dist/fakeredis-*.tar.gz
-          python -c 'import fakeredis'
       - name: Test without coverage
         if: ${{ matrix.coverage != 'yes' }}
         run: |
