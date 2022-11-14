@@ -1,3 +1,8 @@
+[build-system]
+requires = ["poetry_core"]
+build-backend = "poetry.core.masonry.api"
+
+
 [tool.poetry]
 name = "fakeredis"
 packages = [
@@ -13,7 +18,8 @@ authors = [
     "Daniel Moran <daniel.maruani@gmail.com>"
 ]
 maintainers = [
-    "Daniel Moran <daniel.maruani@gmail.com>"
+    "Daniel Moran <daniel.maruani@gmail.com>",
+    "Mark Schlachter <the@wondersmith.dev>",
 ]
 license = "BSD-3-Clause"
 classifiers = [
@@ -33,23 +39,16 @@ classifiers = [
 homepage = "https://github.com/cunla/fakeredis-py"
 repository = "https://github.com/cunla/fakeredis-py"
 
-[tool.poetry.urls]
-"Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
-
 [tool.poetry.dependencies]
-# Supported Python versions
-python = ">=3.7.2,<3.11"
-
-# Required Dependencies
+python = "^3.7"
 redis = "<4.5"
-sortedcontainers = "^2.4.0"
 typing-extensions = "*"
-
-# Optional Dependencies
+sortedcontainers = "^2.4.0"
 lupa = { version = "^1.13", optional = true }
-orjson = { version = "^3.8", optional = true }
 aioredis = { version = "^2.0.1", optional = true }
+orjson = { version = "^3.8", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
+
 
 [tool.poetry.extras]
 lua = ["lupa"]
@@ -57,189 +56,28 @@ aioredis = ["aioredis"]
 json = ["orjson", "jsonpath-ng"]
 
 [tool.poetry.dev-dependencies]
-# Formatting & Linting
-black = "^22.3"
-codespell = "^2.1"
-docformatter = "^1.4"
-flake8 = "^5.0"
-flake8-bugbear = "^22.7"
-flake8-docstrings = "^1.6"
-isort = { version = "^5.10", extras = [ "colors" ] }
-monkeytype = "^22"
-mypy = "*"
-perflint = "^0.7.3"
-pre-commit = "^2.13"
-pre-commit-hooks = "^4.0"
-pydocstyle = "^6"
-pylint = "^2"
-types-orjson = "^3"
-
-# Testing
-hypothesis = "^6.56"
 invoke = "^1.7.1"
-pytest = "^7.1"
-pytest-asyncio = "^0.20"
-pytest-cov = "^4.0.0"
-pytest-describe = "^2"
-pytest-flakefinder = "^1"
-pytest-mock = "^3.10.0"
-pytest-monkeytype = "*"
-pytest-order = "^1"
-pytest-rerunfailures = "^10"
-
-# Reports & Logging
-coverage = { version = "^6.5", extras = ["toml"] }
-
-# Packaging & Distribution
+hypothesis = "^6.56.4"
 tox = "^3.27.0"
 twine = "4.0.1"
+coverage = "^6.5"
+pytest = "^7.2.0"
+pytest-asyncio = "0.20.1"
+pytest-cov = "^4.0.0"
+pytest-mock = "^3.10.0"
+flake8 = "^5.0.4"
 
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
 
 [tool.pytest.ini_options]
-minversion = "7.1"
-asyncio_mode="strict"
-addopts = '''
---order-scope=session
---disable-pytest-warnings
---strict-markers
---cov
---cov-config=pyproject.toml
---cov-report lcov:cov.info
---no-cov-on-fail
--r
-fEsxp
-'''
-cache_dir = "./.cache"
-testpaths = [
-    "test",
-]
 markers = [
-    "descriptor",
-    "max_server",
-    "min_server",
-    "description",
-    "disconnected",
-    "decode_responses",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "fake: run tests only with fake redis",
     "real: run tests with a locally running real Redis server",
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "disconnected",
+    "min_server",
+    "max_server",
+    "decode_responses",
 ]
-python_classes = [
-    "Test*",
-    "Describe*",
-]
-python_functions = [
-    "test_*",
-    "describe_*",
-]
-
-[tool.coverage.report]
-fail_under = 50
-show_missing = true
-
-[tool.coverage.run]
-source = ["fakeredis"]
-omit = [
-    "test/*",
-    "scratch*.py",
-]
-
-[tool.black]
-color = true
-safe = true
-line-length = 119
-target-version = ["py37"]
-skip-string-normalization = false
-
-[tool.isort]
-profile = "black"
-atomic = true
-py_version = 37
-verbose = false
-remove_redundant_aliases = true
-ensure_newline_before_comments = true
-color_output = true
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 2
-use_parentheses = true
-line_length = 119
-combine_as_imports = true
-honor_noqa = true
-skip_gitignore = true
-default_section = "THIRDPARTY"
-known_first_party = ["fakeredis", "test"]
-import_heading_future = "Future Imports"
-import_heading_stdlib = "Standard Library Imports"
-import_heading_thirdparty = "Third-Party Imports"
-import_heading_firstparty = "Package-Level Imports"
-import_heading_localfolder = "Imports From Package Sub-Modules"
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-src_paths = ["fakeredis", "test"]
-
-[tool.pylint.main]
-jobs = 0
-persistent = false
-py-version = "3.7"
-
-[tool.pylint.format]
-max-module-lines = 3000
-
-[tool.pylint."messages control"]
-disable = [
-    # Message Categories
-    "C",  # convention checks
-    "R",  # refactoring checks
-    "W",  # various warnings
-    # Handled by pre-commit-hooks
-    "trailing-whitespace",
-    "missing-final-newline",
-    # Handled by flake8
-    "line-too-long",
-    "unused-import",
-    "unused-variable",
-    "too-many-branches",
-    "undefined-variable",
-    # Handled by isort
-    "wrong-import-order",
-    # Specific Messages
-    "no-member",
-    "bare-except",
-    "file-ignored",
-    "invalid-name",
-    "bad-super-call",
-    "locally-disabled",
-    "bad-inline-option",
-    "deprecated-pragma",
-    "no-name-in-module",
-    "raw-checker-failed",
-    "suppressed-message",
-    "useless-suppression",
-    "c-extension-no-member",
-    "use-symbolic-message-instead",
-]
-
-[tool.pylint.reports]
-score = false
-
-[tool.mypy]
-cache_dir = ".cache/mypy/"
-check_untyped_defs = true
-error_summary = true
-exclude = "/test/"
-ignore_errors = true
-ignore_missing_imports = true
-install_types = false
-follow_imports = "silent"
-strict = false
-pretty = true
-python_version = 3.7
-show_column_numbers = true
-show_error_codes = true
-show_error_context = true
-show_none_errors = false
-strict_optional = false
-
-[build-system]
-requires = ["poetry_core"]
-build-backend = "poetry.core.masonry.api"
+asyncio_mode = "strict"
