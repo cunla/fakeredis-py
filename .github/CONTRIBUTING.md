@@ -84,7 +84,7 @@ Please complete the following steps in advance to help us fix any potential bug 
   If you are looking for support, you might want to check [this section](#i-have-a-question)).
 - To see if other users have experienced (and potentially already solved) the same issue you are having,
   check if there is not already a bug report existing for your bug or error in the [bug tracker](https://github.com/cunla/fakeredis-py/issues?q=label%3Abug).
-- Also make sure to search the internet (including Stack Overflow) to see if users outside of the GitHub
+- Also make sure to search the internet (including Stack Overflow) to see if users outside the GitHub
   community have discussed the issue.
 - Collect information about the bug:
   - Stack trace (Traceback)

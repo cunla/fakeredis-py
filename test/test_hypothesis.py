@@ -211,8 +211,7 @@ def build_zstore(command, dest, sources, weights, aggregate):
 zset_no_score_create_commands = (
     commands(st.just('zadd'), keys, st.lists(st.tuples(st.just(0), fields), min_size=1))
 )
-zset_no_score_commands = (
-    # TODO: test incr
+zset_no_score_commands = (  # TODO: test incr
         commands(st.just('zadd'), keys,
                  st.none() | st.just('nx'),
                  st.none() | st.just('xx'),
@@ -277,7 +276,8 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         self.fake.connection_pool.disconnect()
         super().teardown()
 
-    def _evaluate(self, client, command):
+    @staticmethod
+    def _evaluate(client, command):
         try:
             result = client.execute_command(*command.args)
             if result != 'QUEUED':
@@ -516,10 +516,10 @@ class TestTransaction(BaseTest):
 
 
 class TestServer(BaseTest):
+    # TODO: real redis raises an error if there is a save already in progress.
+    # Find a better way to test this.
+    # commands(st.just('bgsave'))
     server_commands = (
-        # TODO: real redis raises an error if there is a save already in progress.
-        # Find a better way to test this.
-        # commands(st.just('bgsave'))
             commands(st.just('dbsize'))
             | commands(st.sampled_from(['flushdb', 'flushall']), st.sampled_from([[], 'async']))
             # TODO: result is non-deterministic

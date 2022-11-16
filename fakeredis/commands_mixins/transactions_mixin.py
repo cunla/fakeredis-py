@@ -80,6 +80,9 @@ class TransactionsCommandsMixin:
                 self._db.add_watch(key.key, self)
         return OK
 
+    def notify_watch(self):
+        self._watch_notified = True
+
 
 setattr(TransactionsCommandsMixin, 'exec', TransactionsCommandsMixin.exec_)
 delattr(TransactionsCommandsMixin, 'exec_')

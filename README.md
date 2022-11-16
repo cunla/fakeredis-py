@@ -74,7 +74,7 @@ True
 'baz'
 ```
 
-It is also possible to mock connection errors so you can effectively test
+It is also possible to mock connection errors, so you can effectively test
 your error handling. Simply set the connected attribute of the server to
 `False` after initialization.
 

@@ -45,7 +45,8 @@ class BaseFakeSocket:
     def shutdown(self, flags):
         self._parser.close()
 
-    def fileno(self):
+    @staticmethod
+    def fileno():
         # Our fake socket must return an integer from `FakeSocket.fileno()` since a real selector
         # will be created. The value does not matter since we replace the selector with our own
         # `FakeSelector` before it is ever used.
@@ -242,9 +243,6 @@ class BaseFakeSocket:
         if not isinstance(result, NoResponse):
             self.put_response(result)
 
-    def notify_watch(self):
-        self._watch_notified = True
-
     def _scan(self, keys, cursor, *args):
         """
         This is the basis of most of the ``scan`` methods.
@@ -259,7 +257,7 @@ class BaseFakeSocket:
         """
         cursor = int(cursor)
         pattern = None
-        type = None
+        _type = None
         count = 10
         if len(args) % 2 != 0:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -271,7 +269,7 @@ class BaseFakeSocket:
                 if count <= 0:
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             elif casematch(args[i], b'type'):
-                type = args[i + 1]
+                _type = args[i + 1]
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -287,11 +285,11 @@ class BaseFakeSocket:
             return regex.match(key) if pattern is not None else True
 
         def match_type(key):
-            if type is not None:
-                return casematch(self._type(self._db[key]).value, type)
+            if _type is not None:
+                return casematch(self._type(self._db[key]).value, _type)
             return True
 
-        if pattern is not None or type is not None:
+        if pattern is not None or _type is not None:
             for val in itertools.islice(data, cursor, result_cursor):
                 compare_val = val[0] if isinstance(val, tuple) else val
                 if match_key(compare_val) and match_type(compare_val):
