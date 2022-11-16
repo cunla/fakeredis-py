@@ -233,7 +233,7 @@ def test_setex_using_float(r):
 @pytest.mark.min_server('6.2')
 def test_setex_overflow(r):
     with pytest.raises(ResponseError):
-        r.setex('foo', 18446744073709561, 'bar')  # Overflows long long in ms
+        r.setex('foo', 18446744073709561, 'bar')  # Overflows longlong in ms
 
 
 def test_set_ex(r):
@@ -248,7 +248,7 @@ def test_set_ex_using_timedelta(r):
 
 def test_set_ex_overflow(r):
     with pytest.raises(ResponseError):
-        r.set('foo', 'bar', ex=18446744073709561)  # Overflows long long in ms
+        r.set('foo', 'bar', ex=18446744073709561)  # Overflows longlong in ms
 
 
 def test_set_px_overflow(r):

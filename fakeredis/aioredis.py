@@ -7,6 +7,7 @@ import redis.asyncio as redis_async  # aioredis was integrated into redis in ver
 from . import _fakesocket
 from . import _helpers
 from . import _server
+from . import _msgs as msgs
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -18,8 +19,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self.responses.put_nowait(msg)
 
     async def _async_blocking(self, timeout, func, event, callback):
+        result = None
         try:
-            result = None
             async with async_timeout.timeout(timeout if timeout else None):
                 while True:
                     await event.wait()
@@ -33,7 +34,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
                             self.put_response(result)
                             break
         except asyncio.TimeoutError:
-            result = None
+            pass
         finally:
             with self._server.lock:
                 self._db.remove_change_callback(callback)
@@ -97,7 +98,7 @@ class FakeConnection(redis_async.Connection):
 
     async def _connect(self):
         if not self._server.connected:
-            raise redis_async.ConnectionError(_server.CONNECTION_ERROR_MSG)
+            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         self._sock = FakeSocket(self._server)
         self._reader = FakeReader(self._sock)
         self._writer = FakeWriter(self._sock)
@@ -132,12 +133,12 @@ class FakeConnection(redis_async.Connection):
         else:
             return response
 
-    async def read_response(self):
+    async def read_response(self, **kwargs):
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except asyncio.QueueEmpty:
-                raise redis_async.ConnectionError(_server.CONNECTION_ERROR_MSG)
+                raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = await self._sock.responses.get()
         if isinstance(response, redis_async.ResponseError):

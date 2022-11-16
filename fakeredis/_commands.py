@@ -329,7 +329,7 @@ class Signature:
         for i, (arg, type_) in enumerate(zip(args, types)):
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
-                    return (type_.missing_return,)
+                    return type_.missing_return,
             elif type_ != bytes:
                 args[i] = type_.decode(args[i], )
 

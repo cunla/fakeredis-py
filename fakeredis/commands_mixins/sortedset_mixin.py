@@ -145,8 +145,8 @@ class SortedSetCommandsMixin:
         return len(key.value)
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
-    def zcount(self, key, min, max):
-        return key.value.zcount(min.lower_bound, max.upper_bound)
+    def zcount(self, key, _min, _max):
+        return key.value.zcount(_min.lower_bound, _max.upper_bound)
 
     @command((Key(ZSet), Float, bytes))
     def zincrby(self, key, increment, member):
@@ -166,8 +166,8 @@ class SortedSetCommandsMixin:
         # return self._encodefloat(score, False)
 
     @command((Key(ZSet), StringTest, StringTest))
-    def zlexcount(self, key, min, max):
-        return key.value.zlexcount(min.value, min.exclusive, max.value, max.exclusive)
+    def zlexcount(self, key, _min, _max):
+        return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)
 
     def _zrange(self, key, start, stop, reverse, *args):
         zset = key.value
@@ -277,14 +277,14 @@ class SortedSetCommandsMixin:
         return deleted
 
     @command((Key(ZSet), StringTest, StringTest))
-    def zremrangebylex(self, key, min, max):
-        items = key.value.irange_lex(min.value, max.value,
-                                     inclusive=(not min.exclusive, not max.exclusive))
+    def zremrangebylex(self, key, _min, _max):
+        items = key.value.irange_lex(_min.value, _max.value,
+                                     inclusive=(not _min.exclusive, not _max.exclusive))
         return self.zrem(key, *items)
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
-    def zremrangebyscore(self, key, min, max):
-        items = key.value.irange_score(min.lower_bound, max.upper_bound)
+    def zremrangebyscore(self, key, _min, _max):
+        items = key.value.irange_score(_min.lower_bound, _max.upper_bound)
         return self.zrem(key, *[item[1] for item in items])
 
     @command((Key(ZSet), Int, Int))

@@ -273,5 +273,6 @@ class FakeSelector(BaseSelector):
             if timeout is not None and now > start + timeout:
                 return False
 
-    def check_is_ready_for_command(self, timeout):
+    @staticmethod
+    def check_is_ready_for_command(timeout):
         return True

@@ -286,7 +286,7 @@ def test_empty_set(r):
 
 
 def test_sscan(r):
-    # Setup the data
+    # Set up the data
     name = 'sscan-test'
     for ix in range(20):
         k = 'sscan-test:%s' % ix
