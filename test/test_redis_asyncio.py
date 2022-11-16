@@ -282,3 +282,14 @@ async def test_without_server_disconnected():
     r = aioredis.FakeRedis(connected=False)
     with pytest.raises(redis.asyncio.ConnectionError):
         await r.ping()
+
+
+@pytest.mark.fake
+async def test_async():
+    # arrange
+    cache = aioredis.FakeRedis()
+    # act
+    await cache.set("fakeredis", "plz")
+    x = await cache.get("fakeredis")
+    # assert
+    assert x == b"plz"
