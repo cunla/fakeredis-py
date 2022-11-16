@@ -33,6 +33,8 @@ def _list_pop(get_slice, key, *args):
     if not args:
         ret = ret[0]
     return ret
+
+
 class ListCommandsMixin:
     # List commands
 
