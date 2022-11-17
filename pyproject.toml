@@ -80,6 +80,6 @@ asyncio_mode = "strict"
 
 [tool.mypy]
 ignore_missing_imports = true
-exclude = [
-    'fakeredis/__pycache__/*'
+packages = [
+    "fakeredis"
 ]
