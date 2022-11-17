@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import asyncio
-from typing import Union
+from typing import Union, Optional
 
 import async_timeout
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 
 from . import _fakesocket
 from . import _helpers
-from . import _server
 from . import _msgs as msgs
+from . import _server
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -156,18 +158,18 @@ class FakeRedis(redis_async.Redis):
             self,
             *,
             db: Union[str, int] = 0,
-            password: str = None,
-            socket_timeout: float = None,
-            connection_pool: redis_async.ConnectionPool = None,
+            password: Optional[str] = None,
+            socket_timeout: Optional[float] = None,
+            connection_pool: Optional[redis_async.ConnectionPool] = None,
             encoding: str = "utf-8",
             encoding_errors: str = "strict",
             decode_responses: bool = False,
             retry_on_timeout: bool = False,
-            max_connections: int = None,
+            max_connections: Optional[int] = None,
             health_check_interval: int = 0,
-            client_name: str = None,
-            username: str = None,
-            server: _server.FakeServer = None,
+            client_name: Optional[str] = None,
+            username: Optional[str] = None,
+            server: Optional[_server.FakeServer] = None,
             connected: bool = True,
             **kwargs
     ):
@@ -185,13 +187,14 @@ class FakeRedis(redis_async.Redis):
                 "encoding_errors": encoding_errors,
                 "decode_responses": decode_responses,
                 "retry_on_timeout": retry_on_timeout,
-                "max_connections": max_connections,
                 "health_check_interval": health_check_interval,
                 "client_name": client_name,
                 "server": server,
-                "connection_class": FakeConnection
             }
-            connection_pool = redis_async.ConnectionPool(**connection_kwargs)
+            connection_pool = redis_async.ConnectionPool(
+                connection_class=FakeConnection,
+                max_connections=max_connections,
+                connection_kwargs=connection_kwargs)
         super().__init__(
             db=db,
             password=password,
