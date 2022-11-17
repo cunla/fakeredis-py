@@ -80,6 +80,8 @@ markers = [
     "disconnected",
     "min_server",
     "max_server",
+    "descriptor",
+    "description",
     "decode_responses",
 ]
 asyncio_mode = "strict"
