@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 # Standard Library Imports
+import json
 import re
 from functools import partial
 from itertools import (
@@ -25,11 +26,7 @@ from typing import (
 
 # Third-Party Imports
 from redis.commands.json._util import JsonType
-from typing_extensions import (
-    Literal,
-    Protocol,
-    runtime_checkable,
-)
+from typing_extensions import Literal
 
 # Package-Level Imports
 from fakeredis import _msgs as msgs
@@ -47,8 +44,6 @@ else:
     FakeSocket = ForwardRef("JSONCommandsMixin")
 
 try:
-    # Third-Party Imports
-    import orjson
     from jsonpath_ng import jsonpath
     from jsonpath_ng.ext import parse as parse_jsonpath
 except ImportError:
@@ -58,12 +53,6 @@ except ImportError:
     def parse_jsonpath(*_: Any, **__: Any) -> Any:
         """Raise an error."""
         raise SimpleError("Optional JSON support not enabled!")
-
-    class orjson:
-        """Raises errors when the optional JSON support is not enabled."""
-
-        loads = dumps = parse_jsonpath
-        OPT_NON_STR_KEYS: int = 4
 
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
@@ -75,27 +64,6 @@ def format_jsonpath(path: Union[str, bytes]) -> str:
         path = path.decode()
 
     return path_pattern.sub("$", path)
-
-
-@runtime_checkable
-class RedisCompatibleJSONDecoder(Protocol):
-    """Any object implementing a callable `decode` method that returns a
-    `JsonType` object."""
-
-    def decode(self, data: Union[str, bytes]) -> JsonType:
-        """Deserialize the supplied string to its native Python equivalent."""
-        ...
-
-
-@runtime_checkable
-class RedisCompatibleJSONEncoder(Protocol):
-    """Any object implementing a callable `encode` method that returns
-    `bytes`."""
-
-    def encode(self, obj: Any) -> Union[str, bytes]:
-        """Serialize the supplied object to a JSON-encoded string or byte-
-        string."""
-        ...
 
 
 class JSONObject:
@@ -112,10 +80,7 @@ class JSONObject:
     @classmethod
     def decode(cls, value: bytes) -> Any:
         """Deserialize the supplied bytes into a valid Python object."""
-        # Third-Party Imports
-        import orjson
-
-        return orjson.loads(value)
+        return json.loads(value)
 
     @classmethod
     def encode(cls, value: Any) -> bytes:
@@ -149,8 +114,20 @@ class JSONCommandsMixin:
         For more information see `JSON.DEL
         <https://redis.io/commands/json.del>`_.
         """
-        # path = path or b"$"
-        raise NotImplementedError
+        cached_value = json.loads(key.value)
+
+        if cached_value is None:
+            return 0
+
+        path = format_jsonpath(path or b"$")
+
+        if path != "$":
+            raise NotImplementedError("Path-based key-value deletion not yet supported!")
+
+        key.value = None
+        key.writeback()
+
+        return 1
 
     # `forget` is an alias for `delete`
     json_forget = json_del
@@ -187,7 +164,7 @@ class JSONCommandsMixin:
             raise NotImplementedError
 
         path_count = len(args)
-        cached_value = orjson.loads(name.value)
+        cached_value = json.loads(name.value)
 
         callers = starmap(
             methodcaller,
@@ -214,7 +191,7 @@ class JSONCommandsMixin:
         if len(args) == 1:
             path_values = path_values[0]
 
-        return orjson.dumps(path_values, option=orjson.OPT_NON_STR_KEYS)
+        return json.dumps(path_values).encode()
 
     @command(
         name="JSON.SET",
@@ -239,7 +216,7 @@ class JSONCommandsMixin:
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
         cached_value, path = (
-            orjson.loads(name.value or b"null"),
+            json.loads(name.value or b"null"),
             parse_jsonpath(path.decode()),
         )
 
@@ -252,8 +229,10 @@ class JSONCommandsMixin:
 
         cached_value, name.value = (
             name.value,
-            orjson.dumps(setter(obj)),
+            json.dumps(setter(obj)).encode(),
         )
+
+        name.writeback()
 
         return name.value != cached_value
 
