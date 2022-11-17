@@ -246,16 +246,10 @@ class _DummyParser:
         pass
 
 
-# Redis <3.2 will not have a selector
-try:
-    from redis.selector import BaseSelector
-except ImportError:
-    class BaseSelector:
-        def __init__(self, sock):
-            self.sock = sock
+class FakeSelector(object):
+    def __init__(self, sock):
+        self.sock = sock
 
-
-class FakeSelector(BaseSelector):
     def check_can_read(self, timeout):
         if self.sock.responses.qsize():
             return True

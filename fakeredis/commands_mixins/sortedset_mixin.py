@@ -415,3 +415,6 @@ class SortedSetCommandsMixin:
             map(key.value.get, members),
         )
         return list(scores)
+
+    def _encodefloat(self, value, humanfriendly):
+        raise NotImplementedError  # Implemented in BaseFakeSocket
