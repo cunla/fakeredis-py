@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Union, Optional, Type
+import sys
+from typing import Union, Optional
+
+if sys.version_info >= (3, 8):
+    from typing import Type, TypedDict
+else:
+    from typing_extensions import Type, TypedDict
 
 import async_timeout
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
-from typing_extensions import TypedDict
 
 from . import _fakesocket
 from . import _helpers
