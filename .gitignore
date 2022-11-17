@@ -15,5 +15,9 @@ docker-compose.yml
 .DS_Store
 *.iml
 .venv/
+.fleet
+.mypy_cache
+.pytest_cache
+**/__pycache__
 scratch*
 .python-version

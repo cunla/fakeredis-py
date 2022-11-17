@@ -13,7 +13,7 @@ import testtools
 def test_ping_pubsub(r):
     p = r.pubsub()
     p.subscribe('channel')
-    p.parse_response()  # Consume the subscribe reply
+    p.parse_response()  # Consume the subscribe command reply
     p.ping()
     assert p.parse_response() == [b'pong', b'']
     p.ping('test')
@@ -306,7 +306,7 @@ def test_pubsub_timeout(r, timeout_value):
 
     p = r.pubsub()
     p.subscribe('channel')
-    p.parse_response()  # Drains the subscribe message
+    p.parse_response()  # Drains the subscribe command message
     publish_thread = threading.Thread(target=publish)
     publish_thread.start()
     message = p.get_message(timeout=timeout_value)

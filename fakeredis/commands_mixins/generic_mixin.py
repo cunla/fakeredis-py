@@ -37,7 +37,8 @@ class GenericCommandsMixin:
                 return None
             return item.value
 
-    def _type(self, key):
+    @staticmethod
+    def _key_value_type(key):
         if key.value is None:
             return SimpleString(b'none')
         elif isinstance(key.value, bytes):
@@ -69,7 +70,7 @@ class GenericCommandsMixin:
                 lt = True
             else:
                 raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
-        if self.version < 7 and (nx or xx or gt or lt):
+        if self.version < 7 and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
         counter = (nx, gt, lt).count(True)
         if (counter > 1) or (nx and xx):
@@ -269,19 +270,18 @@ class GenericCommandsMixin:
 
         if not dontsort:
             if alpha:
-                def sort_key(v):
-                    byval = self._lookup_key(v, sortby)
-                    # TODO: use locale.strxfrm when not storing? But then need
-                    # to decode too.
+                def sort_key(val):
+                    byval = self._lookup_key(val, sortby)
+                    # TODO: use locale.strxfrm when not storing? But then need to decode too.
                     if byval is None:
                         byval = BeforeAny()
                     return byval
 
             else:
-                def sort_key(v):
-                    byval = self._lookup_key(v, sortby)
+                def sort_key(val):
+                    byval = self._lookup_key(val, sortby)
                     score = SortFloat.decode(byval, ) if byval is not None else 0.0
-                    return (score, v)
+                    return score, val
 
             items.sort(key=sort_key, reverse=desc)
         elif isinstance(key.value, (list, ZSet)):
@@ -308,7 +308,7 @@ class GenericCommandsMixin:
 
     @command((Key(),))
     def type(self, key):
-        return self._type(key)
+        return self._key_value_type(key)
 
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):

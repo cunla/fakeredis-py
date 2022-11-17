@@ -31,7 +31,7 @@ You will need [lupa](https://pypi.org/project/lupa/) if you want to run Lua scri
 If you install fakeredis with ``pip install fakeredis[lua]`` it will be automatically installed.
 
 # How to Use
-FakeRedis can imitate Redis server version 6.x or 7.x - There are a few minor behavior differences. 
+FakeRedis can imitate Redis server version 6.x or 7.x. 
 If you do not specify the version, version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real
@@ -74,7 +74,7 @@ True
 'baz'
 ```
 
-It is also possible to mock connection errors so you can effectively test
+It is also possible to mock connection errors, so you can effectively test
 your error handling. Simply set the connected attribute of the server to
 `False` after initialization.
 
@@ -91,7 +91,7 @@ True
 ```
 
 Fakeredis implements the same interface as `redis-py`, the popular 
-redis client for python, and models the responses of redis 7.0.
+redis client for python, and models the responses of redis 6.x or 7.x.
 
 ## Use to test django-rq
 

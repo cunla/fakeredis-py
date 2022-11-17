@@ -7,6 +7,34 @@ from fakeredis._helpers import (
     OK, SimpleError, SimpleString, casematch)
 
 
+def _list_pop(get_slice, key, *args):
+    """Implements lpop and rpop.
+
+    `get_slice` must take a count and return a slice expression for the
+    range to pop.
+    """
+    # This implementation is somewhat contorted to match the odd
+    # behaviours described in https://github.com/redis/redis/issues/9680.
+    count = 1
+    if len(args) > 1:
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    elif len(args) == 1:
+        count = args[0]
+        if count < 0:
+            raise SimpleError(msgs.INDEX_ERROR_MSG)
+    if not key:
+        return None
+    elif type(key.value) != list:
+        raise SimpleError(msgs.WRONGTYPE_MSG)
+    slc = get_slice(count)
+    ret = key.value[slc]
+    del key.value[slc]
+    key.updated()
+    if not args:
+        ret = ret[0]
+    return ret
+
+
 class ListCommandsMixin:
     # List commands
 
@@ -103,36 +131,9 @@ class ListCommandsMixin:
         self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
         return el
 
-    def _list_pop(self, get_slice, key, *args):
-        """Implements lpop and rpop.
-
-        `get_slice` must take a count and return a slice expression for the
-        range to pop.
-        """
-        # This implementation is somewhat contorted to match the odd
-        # behaviours described in https://github.com/redis/redis/issues/9680.
-        count = 1
-        if len(args) > 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        elif len(args) == 1:
-            count = args[0]
-            if count < 0:
-                raise SimpleError(msgs.INDEX_ERROR_MSG)
-        if not key:
-            return None
-        elif type(key.value) != list:
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        slc = get_slice(count)
-        ret = key.value[slc]
-        del key.value[slc]
-        key.updated()
-        if not args:
-            ret = ret[0]
-        return ret
-
     @command((Key(),), (Int(),))
     def lpop(self, key, *args):
-        return self._list_pop(lambda count: slice(None, count), key, *args)
+        return _list_pop(lambda count: slice(None, count), key, *args)
 
     @command((Key(list), bytes), (bytes,))
     def lpush(self, key, *values):
@@ -199,7 +200,7 @@ class ListCommandsMixin:
 
     @command((Key(),), (Int(),))
     def rpop(self, key, *args):
-        return self._list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
+        return _list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
 
     @command((Key(list, None), Key(list)))
     def rpoplpush(self, src, dst):

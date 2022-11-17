@@ -1,24 +1,18 @@
+from unittest.mock import patch
+
 import redis
 
-
-def connect_redis_conn(redis_host: str, redis_port: int) -> redis.Redis:
-    redis_con = redis.Redis(redis_host, redis_port)
-    return redis_con
-
-
-def bar():
-    redis_con = connect_redis_conn('localhost', 6000)
-    pass
-
-
-from unittest.mock import patch
 from fakeredis import FakeRedis
 
 
-def test_bar():
+def test_mock():
     # Mock Redis connection
+    def bar(redis_host: str, redis_port: int):
+        redis_con = redis.Redis(redis_host, redis_port)
+        pass
+
     with patch('redis.Redis', FakeRedis):
         # Call function
-        bar()
+        bar('localhost', 6000)
 
         # Related to #36 - this should fail if mocking Redis does not work
