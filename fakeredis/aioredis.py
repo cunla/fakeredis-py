@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Union, Optional
+from typing import Union, Optional, TypedDict, Type
 
 import async_timeout
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
@@ -153,6 +153,22 @@ class FakeConnection(redis_async.Connection):
         return pieces
 
 
+class ConnectionKwargs(TypedDict, total=False):
+    db: Union[str, int]
+    username: Optional[str]
+    password: Optional[str]
+    socket_timeout: Optional[float]
+    encoding: str
+    encoding_errors: str
+    decode_responses: bool
+    retry_on_timeout: bool
+    health_check_interval: int
+    client_name: Optional[str]
+    server: Optional[_server.FakeServer]
+    connection_class: Type[redis_async.Connection]
+    max_connections: Optional[int]
+
+
 class FakeRedis(redis_async.Redis):
     def __init__(
             self,
@@ -178,7 +194,7 @@ class FakeRedis(redis_async.Redis):
             if server is None:
                 server = _server.FakeServer()
                 server.connected = connected
-            connection_kwargs = {
+            connection_kwargs: ConnectionKwargs = {
                 "db": db,
                 "username": username,
                 "password": password,
@@ -190,11 +206,10 @@ class FakeRedis(redis_async.Redis):
                 "health_check_interval": health_check_interval,
                 "client_name": client_name,
                 "server": server,
+                "connection_class": FakeConnection,
+                "max_connections": max_connections,
             }
-            connection_pool = redis_async.ConnectionPool(
-                connection_class=FakeConnection,
-                max_connections=max_connections,
-                connection_kwargs=connection_kwargs)
+            connection_pool = redis_async.ConnectionPool(**connection_kwargs)
         super().__init__(
             db=db,
             password=password,
