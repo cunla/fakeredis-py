@@ -14,6 +14,17 @@ categories:
     label: 'chore'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+autolabeler:
+  - label: 'chore'
+    files:
+      - '*.md'
+      - '.github/*'
+  - label: 'bug'
+    title:
+      - '/fix/i'
+  - label: 'enhancement'
+    branch:
+      - '/feature\/.+/'
 version-resolver:
   major:
     labels:
@@ -29,3 +40,5 @@ template: |
   ## Changes
 
   $CHANGES
+  
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
