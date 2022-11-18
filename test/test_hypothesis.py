@@ -310,7 +310,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             if fake_result != real_result:
                 print('{}!={} when running {}'.format(fake_result, real_result, command),
                       file=sys.stderr)
-            assert fake_result == real_result, "Discrepency when running command {}".format(command)
+            assert fake_result == real_result, "Discrepancy when running command {}".format(command)
             if real_result == b'QUEUED':
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
