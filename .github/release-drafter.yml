@@ -12,6 +12,8 @@ categories:
       - 'bug'
   - title: '🧰 Maintenance'
     label: 'chore'
+  - title: '⬆️ Dependency Updates'
+    label: 'dependencies'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 autolabeler:
@@ -22,9 +24,9 @@ autolabeler:
   - label: 'bug'
     title:
       - '/fix/i'
-  - label: 'enhancement'
-    branch:
-      - '/feature\/.+/'
+  - label: 'dependencies'
+    files:
+      - 'poetry.lock'
 version-resolver:
   major:
     labels:
