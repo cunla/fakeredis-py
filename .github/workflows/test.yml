@@ -23,6 +23,8 @@ jobs:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
@@ -71,6 +73,8 @@ jobs:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH

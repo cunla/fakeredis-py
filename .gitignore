@@ -1,4 +1,4 @@
-.commands.json
+scripts/*.json
 fakeredis.egg-info
 dump.rdb
 extras/*

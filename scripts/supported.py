@@ -11,25 +11,30 @@ import os
 
 import requests
 
-import fakeredis
+from fakeredis._fakesocket import FakeSocket
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
-COMMANDS_FILE = os.path.join(THIS_DIR, '.commands.json')
-COMMANDS_URL = 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json'
+COMMAND_FILES = [
+    ('.commands.json', 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json'),
+    ('.json.commands.json', 'https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json'),
+]
 
 
 def download_redis_commands() -> dict:
-    if not os.path.exists(COMMANDS_FILE):
-        contents = requests.get(COMMANDS_URL).content
-        open(COMMANDS_FILE, 'wb').write(contents)
-    cmds = json.load(open(COMMANDS_FILE))
-    cmds = {k.lower(): v for k, v in cmds.items()}
+    cmds = {}
+    for filename, url in COMMAND_FILES:
+        full_filename = os.path.join(THIS_DIR, filename)
+        if not os.path.exists(full_filename):
+            contents = requests.get(url).content
+            open(full_filename, 'wb').write(contents)
+        curr_cmds = json.load(open(full_filename))
+        cmds = cmds | {k.lower(): v for k, v in curr_cmds.items()}
     return cmds
 
 
 def implemented_commands() -> set:
     res = {name
-           for name, method in inspect.getmembers(fakeredis._server.FakeSocket)
+           for name, method in inspect.getmembers(FakeSocket)
            if hasattr(method, '_fakeredis_sig')
            }
     # Currently no programmatic way to discover implemented subcommands
