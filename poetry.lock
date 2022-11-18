@@ -727,7 +727,7 @@ python-versions = ">=3.6"
 name = "types-redis"
 version = "4.3.21.4"
 description = "Typing stubs for redis"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -805,7 +805,7 @@ lua = ["lupa"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e41d53af82a1795402dfd3d617ae0a49fd32173721cb72835dd9655bfcd97d6f"
+content-hash = "2fcf11cfcf760d778b0f982b4642ac60cfb0a405dd4afb628516e52ca4bb66de"
 
 [metadata.files]
 aioredis = [
