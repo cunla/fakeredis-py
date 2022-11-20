@@ -9,7 +9,7 @@ import redis.asyncio
 from packaging.version import Version
 
 import testtools
-from fakeredis import aioredis
+from fakeredis import FakeServer, aioredis
 
 pytestmark = [
 ]
@@ -293,3 +293,19 @@ async def test_async():
     x = await cache.get("fakeredis")
     # assert
     assert x == b"plz"
+
+
+@pytest.mark.fake
+async def test_server_disconnected_and_recover():
+    server = FakeServer()
+    r = aioredis.FakeRedis(server=server)
+
+    await r.set('foo', 'bar')
+    assert await r.get('foo') == b'bar'
+
+    server.connected = False
+    with pytest.raises(redis.ConnectionError):
+        await r.get('foo')
+
+    server.connected = True
+    assert await r.get('foo') == b'bar'
