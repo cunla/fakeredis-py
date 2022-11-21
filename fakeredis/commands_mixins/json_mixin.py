@@ -114,7 +114,7 @@ class JSONCommandsMixin:
         For more information see `JSON.DEL
         <https://redis.io/commands/json.del>`_.
         """
-        cached_value = json.loads(key.value)
+        cached_value = json.loads(key.value or b"null")
 
         if cached_value is None:
             return 0
@@ -204,7 +204,7 @@ class JSONCommandsMixin:
         path: bytes,
         obj: JsonType,
         flag: Optional[Literal[b"NX", b"XX"]] = None,
-    ) -> bool:
+    ) -> bytes:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         if `flag` is b"NX", set `value` only if it does not exist.
@@ -217,7 +217,7 @@ class JSONCommandsMixin:
         """
         cached_value, path = (
             json.loads(name.value or b"null"),
-            parse_jsonpath(path.decode()),
+            parse_jsonpath(format_jsonpath(path)),
         )
 
         if not flag or flag == b"NX":
@@ -234,7 +234,8 @@ class JSONCommandsMixin:
 
         name.writeback()
 
-        return name.value != cached_value
+        # return name.value != cached_value
+        return b"OK"
 
     @command(
         name="JSON.MGET",
