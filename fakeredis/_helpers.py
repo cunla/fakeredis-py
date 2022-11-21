@@ -1,24 +1,9 @@
-import logging
 import re
 import threading
 import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-
-LOGGER = logging.getLogger('fakeredis')
-REDIS_LOG_LEVELS = {
-    b'LOG_DEBUG': 0,
-    b'LOG_VERBOSE': 1,
-    b'LOG_NOTICE': 2,
-    b'LOG_WARNING': 3
-}
-REDIS_LOG_LEVELS_TO_LOGGING = {
-    0: logging.DEBUG,
-    1: logging.INFO,
-    2: logging.INFO,
-    3: logging.WARNING
-}
 
 
 class SimpleString:

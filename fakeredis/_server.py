@@ -1,4 +1,5 @@
 import inspect
+import logging
 import queue
 import threading
 import time
@@ -9,18 +10,16 @@ from collections import defaultdict
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import (Database, FakeSelector, LOGGER)
+from fakeredis._helpers import (Database, FakeSelector)
 from . import _msgs as msgs
 
-LOGGER = LOGGER
+LOGGER = logging.getLogger('fakeredis')
 
 
 class FakeServer:
     def __init__(self, version=7):
         self.lock = threading.Lock()
         self.dbs = defaultdict(lambda: Database(self.lock))
-        # Maps SHA1 to script source
-        self.script_cache = {}
         # Maps channel/pattern to weak set of sockets
         self.subscribers = defaultdict(weakref.WeakSet)
         self.psubscribers = defaultdict(weakref.WeakSet)

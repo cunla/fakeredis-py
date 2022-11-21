@@ -438,7 +438,7 @@ def test_lua_log_no_message(r):
 
 @testtools.fake_only
 def test_lua_log_different_types(r, caplog):
-    logger = fakeredis._server.LOGGER
+    logger = logging.getLogger('fakeredis')
     script = "redis.log(redis.LOG_DEBUG, 'string', 1, true, 3.14, 'string')"
     script = r.register_script(script)
     with caplog.at_level('DEBUG'):

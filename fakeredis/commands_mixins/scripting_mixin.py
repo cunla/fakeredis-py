@@ -1,11 +1,25 @@
 import functools
 import hashlib
 import itertools
+import logging
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
-from fakeredis._helpers import REDIS_LOG_LEVELS, REDIS_LOG_LEVELS_TO_LOGGING, LOGGER
 from fakeredis._helpers import SimpleError, SimpleString, casematch, casenorm, OK
+
+LOGGER = logging.getLogger('fakeredis')
+REDIS_LOG_LEVELS = {
+    b'LOG_DEBUG': 0,
+    b'LOG_VERBOSE': 1,
+    b'LOG_NOTICE': 2,
+    b'LOG_WARNING': 3
+}
+REDIS_LOG_LEVELS_TO_LOGGING = {
+    0: logging.DEBUG,
+    1: logging.INFO,
+    2: logging.INFO,
+    3: logging.WARNING
+}
 
 
 def _ensure_str(s, encoding, replaceerr):
@@ -39,6 +53,11 @@ class ScriptingCommandsMixin:
 
     # Script commands
     # script debug and script kill will probably not be supported
+
+    def __init__(self, *args, **kwargs):
+        super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
+        # Maps SHA1 to script source
+        self.script_cache = {}
 
     def _convert_redis_arg(self, lua_runtime, value):
         # Type checks are exact to avoid issues like bool being a subclass of int.
