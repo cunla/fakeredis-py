@@ -41,7 +41,7 @@ def _lua_redis_log(lua_runtime, expected_globals, lvl, *args):
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
-    if lvl not in REDIS_LOG_LEVELS.values():
+    if lvl not in REDIS_LOG_LEVELS_TO_LOGGING.keys():
         raise SimpleError(msgs.LOG_INVALID_DEBUG_LEVEL_MSG)
     msg = ' '.join([x.decode('utf-8')
                     if isinstance(x, bytes) else str(x)
@@ -141,7 +141,7 @@ class ScriptingCommandsMixin:
         if numkeys < 0:
             raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
         sha1 = hashlib.sha1(script).hexdigest().encode()
-        self._server.script_cache[sha1] = script
+        self.script_cache[sha1] = script
         lua_runtime = LuaRuntime(encoding=None, unpack_returned_tuples=True)
 
         set_globals = lua_runtime.eval(
@@ -188,7 +188,7 @@ class ScriptingCommandsMixin:
     @command((bytes, Int), (bytes,), flags='s')
     def evalsha(self, sha1, numkeys, *keys_and_args):
         try:
-            script = self._server.script_cache[sha1]
+            script = self.script_cache[sha1]
         except KeyError:
             raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
         return self.eval(script, numkeys, *keys_and_args)
@@ -200,16 +200,16 @@ class ScriptingCommandsMixin:
                 raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
             script = args[0]
             sha1 = hashlib.sha1(script).hexdigest().encode()
-            self._server.script_cache[sha1] = script
+            self.script_cache[sha1] = script
             return sha1
         elif casematch(subcmd, b'exists'):
             if self.version >= 7 and len(args) == 0:
                 raise SimpleError(msgs.WRONG_ARGS_MSG7)
-            return [int(sha1 in self._server.script_cache) for sha1 in args]
+            return [int(sha1 in self.script_cache) for sha1 in args]
         elif casematch(subcmd, b'flush'):
             if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
                 raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
-            self._server.script_cache = {}
+            self.script_cache = {}
             return OK
         else:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
