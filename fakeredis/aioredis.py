@@ -111,8 +111,8 @@ class FakeConnection(redis_async.Connection):
         self._reader = FakeReader(self._sock)
         self._writer = FakeWriter(self._sock)
 
-    async def disconnect(self):
-        await super().disconnect()
+    async def disconnect(self, **kwargs):
+        await super().disconnect(**kwargs)
         self._sock = None
 
     async def can_read(self, timeout: float = 0):
