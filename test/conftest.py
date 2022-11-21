@@ -75,7 +75,7 @@ def _create_redis(request):
             if min_server_marker is not None and Version(server_version) < min_server_marker:
                 pytest.skip(f'Redis server {min_version} or more required but {server_version} found')
             max_version, max_server_marker = marker_version_value('max_server')
-            if max_server_marker is not None and Version(server_version) > max_version:
+            if max_server_marker is not None and Version(server_version) > max_server_marker:
                 pytest.skip(f'Redis server {max_version} or less required but {server_version} found')
             return conn
 
