@@ -4,11 +4,7 @@
 from __future__ import annotations
 
 # Standard Library Imports
-from typing import (
-    TYPE_CHECKING,
-    ForwardRef,
-    Type,
-)
+from typing import Type
 
 # Third-Party Imports
 import redis
@@ -28,12 +24,6 @@ from .commands_mixins.set_mixin import SetCommandsMixin
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
 from .commands_mixins.string_mixin import StringCommandsMixin
 from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
-
-if TYPE_CHECKING:
-    # Package-Level Imports
-    from fakeredis import FakeServer
-else:
-    FakeServer = ForwardRef("fakeredis.FakeServer")
 
 
 class FakeSocket(
@@ -56,5 +46,5 @@ class FakeSocket(
 
     _connection_error_class: Type[Exception] = redis.ConnectionError
 
-    def __init__(self, server: FakeServer) -> None:
+    def __init__(self, server) -> None:
         super(FakeSocket, self).__init__(server)

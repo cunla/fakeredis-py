@@ -35,7 +35,7 @@ from fakeredis._commands import (
     Key,
     command,
 )
-from fakeredis._helpers import SimpleError
+from fakeredis import _helpers as helpers
 
 if TYPE_CHECKING:
     # Package-Level Imports
@@ -52,7 +52,7 @@ except ImportError:
 
     def parse_jsonpath(*_: Any, **__: Any) -> Any:
         """Raise an error."""
-        raise SimpleError("Optional JSON support not enabled!")
+        raise helpers.SimpleError("Optional JSON support not enabled!")
 
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
@@ -225,7 +225,7 @@ class JSONCommandsMixin:
         elif flag == b"XX":
             setter = partial(path.update, cached_value)
         else:
-            raise SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
+            raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
 
         cached_value, name.value = (
             name.value,
@@ -234,8 +234,7 @@ class JSONCommandsMixin:
 
         name.writeback()
 
-        # return name.value != cached_value
-        return b"OK"
+        return helpers.OK
 
     @command(
         name="JSON.MGET",
