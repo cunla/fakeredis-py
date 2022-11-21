@@ -295,17 +295,14 @@ async def test_async():
     assert x == b"plz"
 
 
+@pytest.mark.parametrize('nowait', [False, True])
 @pytest.mark.fake
-async def test_server_disconnected_and_recover():
+async def test_connection_disconnect(nowait):
     server = FakeServer()
     r = aioredis.FakeRedis(server=server)
+    conn = await r.connection_pool.get_connection("_")
+    assert conn is not None
 
-    await r.set('foo', 'bar')
-    assert await r.get('foo') == b'bar'
+    await conn.disconnect(nowait=nowait)
 
-    server.connected = False
-    with pytest.raises(redis.ConnectionError):
-        await r.get('foo')
-
-    server.connected = True
-    assert await r.get('foo') == b'bar'
+    assert conn._sock is None
