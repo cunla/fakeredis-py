@@ -42,7 +42,7 @@ repository = "https://github.com/cunla/fakeredis-py"
 python = "^3.7"
 redis = "<4.5"
 sortedcontainers = "^2.4.0"
-lupa = { version = "^1.13", optional = true }
+lupa = { version = "^1.14", optional = true }
 aioredis = { version = "^2.0.1", optional = true }
 
 [tool.poetry.extras]
