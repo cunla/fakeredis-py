@@ -1,8 +1,8 @@
 import math
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, Float, delete_keys)
-from fakeredis._helpers import (OK, SimpleError, casematch, MAX_STRING_SIZE, fix_range_string)
+from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys)
+from fakeredis._helpers import (OK, SimpleError, casematch, fix_range_string)
 
 
 class StringCommandsMixin:

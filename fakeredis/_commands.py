@@ -3,7 +3,9 @@ import math
 import re
 
 from . import _msgs as msgs
-from ._helpers import MAX_STRING_SIZE, null_terminate, SimpleError
+from ._helpers import null_terminate, SimpleError
+
+MAX_STRING_SIZE = 512 * 1024 * 1024
 
 
 class Key:

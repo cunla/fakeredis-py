@@ -20,8 +20,6 @@ REDIS_LOG_LEVELS_TO_LOGGING = {
     3: logging.WARNING
 }
 
-MAX_STRING_SIZE = 512 * 1024 * 1024
-
 
 class SimpleString:
     def __init__(self, value):
