@@ -23,6 +23,8 @@ jobs:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
@@ -57,6 +59,8 @@ jobs:
             redis-py: "4.3.4"
             lupa: "1.13"
             coverage: yes
+    permissions:
+      pull-requests: write
     services:
       redis:
         image: redis:${{ matrix.redis-version }}
@@ -71,6 +75,8 @@ jobs:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
