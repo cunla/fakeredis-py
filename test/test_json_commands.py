@@ -22,6 +22,51 @@ from redis.commands.json.decoders import (
 from redis.commands.json.path import Path
 
 
+@pytest.fixture(scope="function")
+def json_data() -> Dict[str, Any]:
+    """A module-scoped "blob" of JSON-encodable data."""
+    return {
+        "L1": {
+            "a": {
+                "A1_B1": 10,
+                "A1_B2": False,
+                "A1_B3": {
+                    "A1_B3_C1": None,
+                    "A1_B3_C2": [
+                        "A1_B3_C2_D1_1",
+                        "A1_B3_C2_D1_2",
+                        -19.5,
+                        "A1_B3_C2_D1_4",
+                        "A1_B3_C2_D1_5",
+                        {"A1_B3_C2_D1_6_E1": True},
+                    ],
+                    "A1_B3_C3": [1],
+                },
+                "A1_B4": {"A1_B4_C1": "foo"},
+            }
+        },
+        "L2": {
+            "a": {
+                "A2_B1": 20,
+                "A2_B2": False,
+                "A2_B3": {
+                    "A2_B3_C1": None,
+                    "A2_B3_C2": [
+                        "A2_B3_C2_D1_1",
+                        "A2_B3_C2_D1_2",
+                        -37.5,
+                        "A2_B3_C2_D1_4",
+                        "A2_B3_C2_D1_5",
+                        {"A2_B3_C2_D1_6_E1": False},
+                    ],
+                    "A2_B3_C3": [2],
+                },
+                "A2_B4": {"A2_B4_C1": "bar"},
+            }
+        },
+    }
+
+
 def test_json_setbinarykey(r: redis.Redis) -> None:
     data = {"hello": "world", b"some": "value"}
 
@@ -163,7 +208,6 @@ def test_mget_should_succeed(r: redis.Redis) -> None:
     ) == [1, 2]
 
 
-# @skip_ifmodversion_lt("99.99.99", "ReJSON")  # todo: update after the release
 @pytest.mark.xfail
 def test_clear(r: redis.Redis) -> None:
     r.json().set(
@@ -245,7 +289,6 @@ def test_nummultby(r: redis.Redis) -> None:
         )
 
 
-# @skip_ifmodversion_lt("99.99.99", "ReJSON")  # todo: update after the release
 @pytest.mark.xfail
 def test_toggle(r: redis.Redis) -> None:
     r.json().set(
@@ -1391,50 +1434,12 @@ def test_toggle_dollar(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_resp_dollar(r: redis.Redis) -> None:
-    data = {
-        "L1": {
-            "a": {
-                "A1_B1": 10,
-                "A1_B2": False,
-                "A1_B3": {
-                    "A1_B3_C1": None,
-                    "A1_B3_C2": [
-                        "A1_B3_C2_D1_1",
-                        "A1_B3_C2_D1_2",
-                        -19.5,
-                        "A1_B3_C2_D1_4",
-                        "A1_B3_C2_D1_5",
-                        {"A1_B3_C2_D1_6_E1": True},
-                    ],
-                    "A1_B3_C3": [1],
-                },
-                "A1_B4": {"A1_B4_C1": "foo"},
-            }
-        },
-        "L2": {
-            "a": {
-                "A2_B1": 20,
-                "A2_B2": False,
-                "A2_B3": {
-                    "A2_B3_C1": None,
-                    "A2_B3_C2": [
-                        "A2_B3_C2_D1_1",
-                        "A2_B3_C2_D1_2",
-                        -37.5,
-                        "A2_B3_C2_D1_4",
-                        "A2_B3_C2_D1_5",
-                        {"A2_B3_C2_D1_6_E1": False},
-                    ],
-                    "A2_B3_C3": [2],
-                },
-                "A2_B4": {"A2_B4_C1": "bar"},
-            }
-        },
-    }
-    r.json().set("doc1", "$", data)
+def test_resp_dollar(r: redis.Redis, json_data: Dict[str, Any]) -> None:
+    r.json().set("doc1", "$", json_data)
+
     # Test multi
     res = r.json().resp("doc1", "$..a")
+
     assert res == [
         [
             "{",
