@@ -220,11 +220,11 @@ class JSONCommandsMixin:
             parse_jsonpath(format_jsonpath(path)),
         )
 
-        if not flag or flag == b"NX":
-            setter = partial(path.update_or_create, cached_value)
-        elif flag == b"XX":
-            setter = partial(path.update, cached_value)
-        else:
+        setter = partial(path.update_or_create, cached_value)
+
+        if flag in (b"NX", b"XX"):
+            raise helpers.SimpleError("FakeRedis's `JSON.SET` implementation does not currently support flags!")
+        elif flag:
             raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
 
         cached_value, name.value = (
