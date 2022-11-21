@@ -1,4 +1,4 @@
-import importlib
+import importlib.util
 
 import pytest
 import redis
@@ -31,7 +31,6 @@ ALLOWED_CONDITIONS = {'above', 'below'}
 def run_test_if_redispy_ver(condition: str, ver: str):
     if condition not in ALLOWED_CONDITIONS:
         raise ValueError(f'condition {condition} is not in allowed conditions ({ALLOWED_CONDITIONS})')
-
     cond = REDIS_VERSION >= Version(ver) if condition == 'above' else REDIS_VERSION <= Version(ver)
     return pytest.mark.skipif(
         not cond,
@@ -45,8 +44,8 @@ run_test_if_lupa = pytest.mark.skipif(
     reason="Test is only applicable if lupa is installed"
 )
 
-_aioredis_module = importlib.util.find_spec("aioredis")
-run_test_if_no_aioredis = pytest.mark.skipif(
-    _aioredis_module is not None,
-    reason="Test is only applicable if aioredis is not installed",
+fake_only = pytest.mark.parametrize(
+    'create_redis',
+    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
+    indirect=True
 )

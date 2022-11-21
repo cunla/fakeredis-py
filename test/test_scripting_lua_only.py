@@ -9,14 +9,9 @@ import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
+import testtools
 
 lupa = pytest.importorskip("lupa")
-
-fake_only = pytest.mark.parametrize(
-    'create_redis',
-    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
-    indirect=True
-)
 
 
 def test_eval_blpop(r):
@@ -414,7 +409,7 @@ def test_script(r):
     assert result == b'42'
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """
@@ -441,7 +436,7 @@ def test_lua_log_no_message(r):
         script()
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log_different_types(r, caplog):
     logger = fakeredis._server.LOGGER
     script = "redis.log(redis.LOG_DEBUG, 'string', 1, true, 3.14, 'string')"
@@ -460,7 +455,7 @@ def test_lua_log_wrong_level(r):
         script()
 
 
-@fake_only
+@testtools.fake_only
 def test_lua_log_defined_vars(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """

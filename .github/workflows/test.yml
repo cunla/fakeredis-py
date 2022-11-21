@@ -59,6 +59,8 @@ jobs:
             redis-py: "4.3.4"
             lupa: "1.13"
             coverage: yes
+    permissions:
+      pull-requests: write
     services:
       redis:
         image: redis:${{ matrix.redis-version }}
