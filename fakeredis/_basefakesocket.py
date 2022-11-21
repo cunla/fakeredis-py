@@ -13,6 +13,8 @@ from ._helpers import (
 
 
 class BaseFakeSocket:
+    _connection_error_class = redis.ConnectionError
+
     def __init__(self, server, *args, **kwargs):
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server

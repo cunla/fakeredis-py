@@ -1,5 +1,3 @@
-import redis
-
 from ._basefakesocket import BaseFakeSocket
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
@@ -30,7 +28,6 @@ class FakeSocket(
     BitmapCommandsMixin,
     SortedSetCommandsMixin,
 ):
-    _connection_error_class = redis.ConnectionError
 
     def __init__(self, server):
         super(FakeSocket, self).__init__(server)
