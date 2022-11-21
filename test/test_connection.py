@@ -5,12 +5,6 @@ from redis.exceptions import ResponseError
 
 import testtools
 
-fake_only = pytest.mark.parametrize(
-    'create_redis',
-    [pytest.param('FakeStrictRedis', marks=pytest.mark.fake)],
-    indirect=True
-)
-
 
 def test_ping(r):
     assert r.ping()
@@ -22,7 +16,7 @@ def test_echo(r):
     assert r.echo('hello') == b'hello'
 
 
-@fake_only
+@testtools.fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch('time.time')
     fake_time.return_value = 1234567890.1234567
@@ -59,7 +53,7 @@ class TestDecodeResponses:
 
 
 @pytest.mark.disconnected
-@fake_only
+@testtools.fake_only
 class TestFakeStrictRedisConnectionErrors:
     def test_flushdb(self, r):
         with pytest.raises(redis.ConnectionError):
@@ -461,7 +455,7 @@ class TestFakeStrictRedisConnectionErrors:
 
 
 @pytest.mark.disconnected
-@fake_only
+@testtools.fake_only
 class TestPubSubConnected:
     @pytest.fixture
     def pubsub(self, r):
