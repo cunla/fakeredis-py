@@ -5,7 +5,7 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
-import testtools
+from .. import testtools
 
 
 def key_val_dict(size=100):

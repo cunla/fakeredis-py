@@ -2,7 +2,7 @@ import pytest
 import redis
 import redis.client
 
-import testtools
+from .. import testtools
 
 
 # Tests for the hash type.

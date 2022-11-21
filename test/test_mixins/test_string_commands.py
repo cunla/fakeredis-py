@@ -7,8 +7,7 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-import testtools
-from testtools import raw_command
+from .. import testtools
 
 
 def test_append(r):

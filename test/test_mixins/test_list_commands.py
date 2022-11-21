@@ -6,8 +6,7 @@ import redis
 import redis.client
 import redis.client
 
-import testtools
-from testtools import raw_command
+from .. import testtools
 
 
 def test_lpush_then_lrange_all(r):
@@ -182,16 +181,16 @@ def test_lpop_count(r):
     assert r.rpush('foo', 'one') == 1
     assert r.rpush('foo', 'two') == 2
     assert r.rpush('foo', 'three') == 3
-    assert raw_command(r, 'lpop', 'foo', 2) == [b'one', b'two']
+    assert testtools.raw_command(r, 'lpop', 'foo', 2) == [b'one', b'two']
     # See https://github.com/redis/redis/issues/9680
-    raw = raw_command(r, 'rpop', 'foo', 0)
+    raw = testtools.raw_command(r, 'rpop', 'foo', 0)
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
 @pytest.mark.min_server('6.2')
 def test_lpop_count_negative(r):
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'lpop', 'foo', -1)
+        testtools.raw_command(r, 'lpop', 'foo', -1)
 
 
 def test_lset(r):
@@ -306,16 +305,16 @@ def test_rpop_count(r):
     assert r.rpush('foo', 'one') == 1
     assert r.rpush('foo', 'two') == 2
     assert r.rpush('foo', 'three') == 3
-    assert raw_command(r, 'rpop', 'foo', 2) == [b'three', b'two']
+    assert testtools.raw_command(r, 'rpop', 'foo', 2) == [b'three', b'two']
     # See https://github.com/redis/redis/issues/9680
-    raw = raw_command(r, 'rpop', 'foo', 0)
+    raw = testtools.raw_command(r, 'rpop', 'foo', 0)
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
 @pytest.mark.min_server('6.2')
 def test_rpop_count_negative(r):
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'rpop', 'foo', -1)
+        testtools.raw_command(r, 'rpop', 'foo', -1)
 
 
 def test_linsert_before(r):

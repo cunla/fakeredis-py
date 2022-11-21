@@ -8,8 +8,8 @@ import redis
 import redis.asyncio
 from packaging.version import Version
 
-import testtools
 from fakeredis import FakeServer, aioredis
+from test import testtools
 
 pytestmark = [
 ]

@@ -3,8 +3,8 @@ import redis
 import redis.client
 from packaging.version import Version
 
-import testtools
-from testtools import raw_command
+from test import testtools
+from test.testtools import raw_command
 
 REDIS_VERSION = Version(redis.__version__)
 

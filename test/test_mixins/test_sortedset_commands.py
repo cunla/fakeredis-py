@@ -9,7 +9,7 @@ import redis
 import redis.client
 from packaging.version import Version
 
-import testtools
+from .. import testtools
 
 REDIS_VERSION = Version(redis.__version__)
 pytestmark = [

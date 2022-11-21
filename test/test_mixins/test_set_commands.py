@@ -9,7 +9,7 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-import testtools
+from .. import testtools
 
 
 def test_sadd(r):

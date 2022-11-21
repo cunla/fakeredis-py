@@ -426,3 +426,29 @@ All the redis commands are implemented in fakeredis with these exceptions:
  * xsetid
  * xtrim
 
+### json
+ * json.del
+ * json.forget
+ * json.get
+ * json.toggle
+ * json.clear
+ * json.set
+ * json.mget
+ * json.numincrby
+ * json.nummultby
+ * json.strappend
+ * json.strlen
+ * json.arrappend
+ * json.arrindex
+ * json.arrinsert
+ * json.arrlen
+ * json.arrpop
+ * json.arrtrim
+ * json.objkeys
+ * json.objlen
+ * json.type
+ * json.resp
+ * json.debug
+ * json.debug help
+ * json.debug memory
+

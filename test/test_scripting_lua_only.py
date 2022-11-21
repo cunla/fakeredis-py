@@ -9,7 +9,7 @@ import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
-import testtools
+from test import testtools
 
 lupa = pytest.importorskip("lupa")
 

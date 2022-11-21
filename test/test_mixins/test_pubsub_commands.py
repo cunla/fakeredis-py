@@ -6,7 +6,7 @@ import pytest
 import redis
 
 import fakeredis
-import testtools
+from .. import testtools
 
 
 @testtools.run_test_if_redispy_ver('above', '3')
