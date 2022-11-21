@@ -25,11 +25,17 @@ def zadd(r, key, d, *args, **kwargs):
         return r.zadd(key, **d)
 
 
+ALLOWED_CONDITIONS = {'above', 'below'}
+
+
 def run_test_if_redispy_ver(condition: str, ver: str):
-    cond = REDIS_VERSION < Version(ver) if condition == 'above' else REDIS_VERSION > Version(ver)
+    if condition not in ALLOWED_CONDITIONS:
+        raise ValueError(f'condition {condition} is not in allowed conditions ({ALLOWED_CONDITIONS})')
+
+    cond = REDIS_VERSION >= Version(ver) if condition == 'above' else REDIS_VERSION <= Version(ver)
     return pytest.mark.skipif(
-        cond,
-        reason=f"Test is only applicable to redis-py {ver} and above"
+        not cond,
+        reason=f"Test is not applicable to redis-py {REDIS_VERSION} ({condition}, {ver})"
     )
 
 

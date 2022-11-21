@@ -42,7 +42,7 @@ repository = "https://github.com/cunla/fakeredis-py"
 python = "^3.7"
 redis = "<4.5"
 sortedcontainers = "^2.4.0"
-lupa = { version = "^1.13", optional = true }
+lupa = { version = "^1.14", optional = true }
 aioredis = { version = "^2.0.1", optional = true }
 
 [tool.poetry.extras]
@@ -50,18 +50,18 @@ lua = ["lupa"]
 aioredis = ["aioredis"]
 
 [tool.poetry.dev-dependencies]
-invoke = "^1.7.1"
-hypothesis = "^6.56.4"
-tox = "^3.27.0"
-twine = "4.0.1"
+invoke = "^1.7"
+hypothesis = "^6.56"
+tox = "^3.27"
+twine = "^4.0"
 coverage = "^6.5"
-pytest = "^7.2.0"
-pytest-asyncio = "0.20.1"
-pytest-cov = "^4.0.0"
-pytest-mock = "^3.10.0"
-flake8 = "^5.0.4"
+pytest = "^7.2"
+pytest-asyncio = "^0.20"
+pytest-cov = "^4.0"
+pytest-mock = "^3.10"
+flake8 = "^5.0"
 mypy = "^0.991"
-types-redis = "^4.3.21.4"
+types-redis = "^4.3"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
