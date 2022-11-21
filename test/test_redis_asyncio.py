@@ -9,7 +9,7 @@ import redis.asyncio
 from packaging.version import Version
 
 import testtools
-from fakeredis import aioredis
+from fakeredis import FakeServer, aioredis
 
 pytestmark = [
 ]
@@ -293,3 +293,17 @@ async def test_async():
     x = await cache.get("fakeredis")
     # assert
     assert x == b"plz"
+
+
+@testtools.run_test_if_redispy_ver('above', '4.4.0rc2')
+@pytest.mark.parametrize('nowait', [False, True])
+@pytest.mark.fake
+async def test_connection_disconnect(nowait):
+    server = FakeServer()
+    r = aioredis.FakeRedis(server=server)
+    conn = await r.connection_pool.get_connection("_")
+    assert conn is not None
+
+    await conn.disconnect(nowait=nowait)
+
+    assert conn._sock is None
