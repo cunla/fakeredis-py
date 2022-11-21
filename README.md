@@ -41,7 +41,7 @@ The intent is for fakeredis to act as though you're talking to a real
 redis server. It does this by storing state internally.
 For example:
 
-```
+```python
 >>> import fakeredis
 >>> r = fakeredis.FakeStrictRedis(version=6)
 >>> r.set('foo', 'bar')
@@ -60,7 +60,7 @@ The state is stored in an instance of `FakeServer`. If one is not provided at
 construction, a new instance is automatically created for you, but you can
 explicitly create one to share state:
 
-```
+```python
 >>> import fakeredis
 >>> server = fakeredis.FakeServer()
 >>> r1 = fakeredis.FakeStrictRedis(server=server)
@@ -81,7 +81,7 @@ It is also possible to mock connection errors, so you can effectively test
 your error handling. Simply set the connected attribute of the server to
 `False` after initialization.
 
-```
+```python
 >>> import fakeredis
 >>> server = fakeredis.FakeServer()
 >>> server.connected = False
@@ -160,20 +160,20 @@ completely wipe your database!
 
 First install poetry if you don't have it, and then install all the dependencies:
 
-```   
+```bash
 pip install poetry
 poetry install
 ``` 
 
 To run all the tests:
 
-```
+```bash
 poetry run pytest -v
 ```
 
 If you only want to run tests against fake redis, without a real redis::
 
-```
+```bash
 poetry run pytest -m fake
 ```
 
@@ -183,7 +183,7 @@ unittest and run it against a real redis server. fakeredis and the real redis
 server should give the same result. To run tests against a real redis instance
 instead:
 
-```
+```bash
 poetry run pytest -m real
 ```
 
@@ -194,7 +194,7 @@ There are some tests that test redis blocking operations that are somewhat
 slow. If you want to skip these tests during day to day development,
 they have all been tagged as 'slow' so you can skip them by running:
 
-```
+```bash
 poetry run pytest -m "not slow"
 ```
 
@@ -247,7 +247,7 @@ def test_expire_should_not_expire__when_no_expire_is_set(r):
 
 Lastly, run from the root of the project the script to regenerate `REDIS_COMMANDS.md`:
 
-```
+```bash
 python scripts/supported.py > REDIS_COMMANDS.md    
 ```
 
