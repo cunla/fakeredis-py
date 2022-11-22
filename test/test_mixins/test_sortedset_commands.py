@@ -12,9 +12,6 @@ from packaging.version import Version
 from .. import testtools
 
 REDIS_VERSION = Version(redis.__version__)
-pytestmark = [
-    testtools.run_test_if_redispy_ver('above', '3'),
-]
 
 
 def round_str(x):

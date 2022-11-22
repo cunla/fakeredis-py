@@ -54,7 +54,6 @@ def test_zadd_multiple(r):
     assert r.zrange('foo', 1, 1) == [b'two']
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 @pytest.mark.parametrize(
     'param,return_value,state',
     [
@@ -100,7 +99,6 @@ def test_zadd_with_gt(r, param, return_value, state):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 @pytest.mark.parametrize(
     'param,return_value,state',
     [
@@ -115,7 +113,6 @@ def test_zadd_with_ch(r, param, return_value, state):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 @pytest.mark.parametrize(
     'param,changed,state',
     [
@@ -131,7 +128,6 @@ def test_zadd_with_xx(r, param, changed, state, ch):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 @pytest.mark.parametrize('ch', [False, True])
 def test_zadd_with_nx_and_xx(r, ch):
     testtools.zadd(r, 'foo', {'four': 4.0, 'three': 3.0})

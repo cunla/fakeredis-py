@@ -83,14 +83,12 @@ def test_getset_wrong_type(r):
         r.getset('foo', 'bar')
 
 
-@testtools.run_test_if_redispy_ver('above', '4.0.0')
 def test_getdel(r):
     r['foo'] = 'bar'
     assert r.getdel('foo') == b'bar'
     assert r.get('foo') is None
 
 
-@testtools.run_test_if_redispy_ver('above', '4.0.0')
 def test_getdel_doesnt_exist(r):
     assert r.getdel('foo') is None
 
