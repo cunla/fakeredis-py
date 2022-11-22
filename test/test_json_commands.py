@@ -119,7 +119,6 @@ def test_json_get_jset(r: redis.Redis) -> None:
     assert r.exists("foo") == 0
 
 
-@pytest.mark.xfail
 def test_nonascii_setgetdelete(r: redis.Redis) -> None:
     assert r.json().set(
         "not-ascii",
@@ -134,7 +133,6 @@ def test_nonascii_setgetdelete(r: redis.Redis) -> None:
     assert r.exists("not-ascii") == 0
 
 
-@pytest.mark.xfail
 def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
     obj = {"foo": "bar"}
     assert r.json().set("obj", Path.root_path(), obj)
@@ -1410,27 +1408,27 @@ def test_toggle_dollar(r: redis.Redis) -> None:
         r.json().toggle("non_existing_doc", "$..a")
 
 
-# # @pytest.mark.xfail
-# def test_debug_dollar(r: redis.Redis) -> None:
-#
-#    jdata, jtypes = load_types_data("a")
-#
-#    r.json().set("doc1", "$", jdata)
-#
-#    # Test multi
-#    assert r.json().debug("MEMORY", "doc1", "$..a") == [72, 24, 24, 16, 16, 1, 0]
-#
-#    # Test single
-#    assert r.json().debug("MEMORY", "doc1", "$.nested2.a") == [24]
-#
-#    # Test legacy
-#    assert r.json().debug("MEMORY", "doc1", "..a") == 72
-#
-#    # Test missing path (defaults to root)
-#    assert r.json().debug("MEMORY", "doc1") == 72
-#
-#    # Test missing key
-#    assert r.json().debug("MEMORY", "non_existing_doc", "$..a") == []
+@pytest.mark.xfail
+def test_debug_dollar(r: redis.Redis) -> None:
+
+   jdata, jtypes = load_types_data("a")
+
+   r.json().set("doc1", "$", jdata)
+
+   # Test multi
+   assert r.json().debug("MEMORY", "doc1", "$..a") == [72, 24, 24, 16, 16, 1, 0]
+
+   # Test single
+   assert r.json().debug("MEMORY", "doc1", "$.nested2.a") == [24]
+
+   # Test legacy
+   assert r.json().debug("MEMORY", "doc1", "..a") == 72
+
+   # Test missing path (defaults to root)
+   assert r.json().debug("MEMORY", "doc1") == 72
+
+   # Test missing key
+   assert r.json().debug("MEMORY", "non_existing_doc", "$..a") == []
 
 
 @pytest.mark.xfail

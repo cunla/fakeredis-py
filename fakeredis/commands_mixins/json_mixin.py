@@ -25,7 +25,7 @@ from typing import (
 )
 
 # Third-Party Imports
-from redis.commands.json._util import JsonType
+from redis.commands.json.commands import JsonType
 from typing_extensions import Literal
 
 # Package-Level Imports
@@ -64,6 +64,11 @@ def format_jsonpath(path: Union[str, bytes]) -> str:
         path = path.decode()
 
     return path_pattern.sub("$", path)
+
+
+def null_op(obj: JsonType, *_: Any, **__: Any) -> None:
+    """Return the supplied object, completely unaltered."""
+    return obj
 
 
 class JSONObject:
@@ -161,7 +166,14 @@ class JSONCommandsMixin:
         )
 
         if no_escape:
-            raise NotImplementedError
+            # Silently ignore this. It was apparently originally added
+            # to RedisJSON to maintain compatibility with ReJSON v1.0
+            # which has this option. Per the notes associated with
+            # Issue #145 of RedisJSON's public git repository, `no_escape`
+            # is the implicit behavior always in current and future
+            # versions of the module. For details, see:
+            # https://github.com/RedisJSON/RedisJSON/issues/145
+            pass
 
         path_count = len(args)
         cached_value = json.loads(name.value)
@@ -204,7 +216,7 @@ class JSONCommandsMixin:
         path: bytes,
         obj: JsonType,
         flag: Optional[Literal[b"NX", b"XX"]] = None,
-    ) -> bytes:
+    ) -> Any:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         if `flag` is b"NX", set `value` only if it does not exist.
@@ -222,10 +234,10 @@ class JSONCommandsMixin:
 
         setter = partial(path.update_or_create, cached_value)
 
-        if flag in (b"NX", b"XX"):
-            raise helpers.SimpleError("FakeRedis's `JSON.SET` implementation does not currently support flags!")
-        elif flag:
+        if flag and flag not in (b"NX", b"XX"):
             raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
+        elif (flag == b"NX" and path.find(cached_value)) or (flag == b"XX" and not path.find(cached_value)):
+            setter = partial(null_op, cached_value)
 
         cached_value, name.value = (
             name.value,
@@ -234,7 +246,7 @@ class JSONCommandsMixin:
 
         name.writeback()
 
-        return helpers.OK
+        return helpers.OK if cached_value != name.value else None
 
     @command(
         name="JSON.MGET",
