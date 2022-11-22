@@ -85,7 +85,7 @@ class JSONObject:
     @classmethod
     def decode(cls, value: bytes) -> Any:
         """Deserialize the supplied bytes into a valid Python object."""
-        return json.loads(value)
+        return json.loads(value or b"null")
 
     @classmethod
     def encode(cls, value: Any) -> bytes:
@@ -176,7 +176,7 @@ class JSONCommandsMixin:
             pass
 
         path_count = len(args)
-        cached_value = json.loads(name.value)
+        cached_value = json.loads(name.value or b"null")
 
         callers = starmap(
             methodcaller,
