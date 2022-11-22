@@ -1,3 +1,7 @@
+"""
+Helper classes and methods used in mixins implementing various commands.
+Unlike _helpers.py, here the methods should be used only in mixins.
+"""
 import functools
 import math
 import re
