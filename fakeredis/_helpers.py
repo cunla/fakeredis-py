@@ -205,7 +205,6 @@ def valid_response_type(value, nested=False):
     return True
 
 
-
 class FakeSelector(object):
     def __init__(self, sock):
         self.sock = sock
