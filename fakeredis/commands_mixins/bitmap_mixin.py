@@ -1,6 +1,6 @@
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, BitOffset, BitValue)
-from fakeredis._helpers import (SimpleError, fix_range_string)
+from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string)
+from fakeredis._helpers import SimpleError
 
 
 class BitmapCommandsMixin:

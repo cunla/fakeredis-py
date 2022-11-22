@@ -31,7 +31,6 @@ class NoResponse:
 
 OK = SimpleString(b'OK')
 QUEUED = SimpleString(b'QUEUED')
-PONG = SimpleString(b'PONG')
 BGSAVE_STARTED = SimpleString(b'Background saving started')
 
 
@@ -205,28 +204,6 @@ def valid_response_type(value, nested=False):
             return False
     return True
 
-
-def fix_range_string(start, end, length):
-    # Negative number handling is based on the redis source code
-    if 0 > start > end and end < 0:
-        return -1, -1
-    if start < 0:
-        start = max(0, start + length)
-    if end < 0:
-        end = max(0, end + length)
-    end = min(end, length - 1)
-    return start, end + 1
-
-
-class _DummyParser:
-    def __init__(self, socket_read_size):
-        self.socket_read_size = socket_read_size
-
-    def on_disconnect(self):
-        pass
-
-    def on_connect(self, connection):
-        pass
 
 
 class FakeSelector(object):

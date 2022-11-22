@@ -14,7 +14,6 @@ from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
 
 
 class FakeSocket(
-    BaseFakeSocket,
     GenericCommandsMixin,
     ScriptingCommandsMixin,
     HashCommandsMixin,
@@ -27,6 +26,7 @@ class FakeSocket(
     SetCommandsMixin,
     BitmapCommandsMixin,
     SortedSetCommandsMixin,
+    BaseFakeSocket,
 ):
 
     def __init__(self, server):
