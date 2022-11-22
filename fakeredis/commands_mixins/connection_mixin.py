@@ -18,11 +18,10 @@ class ConnectionCommandsMixin:
         if len(args) > 1:
             msg = msgs.WRONG_ARGS_MSG7 if self.version >= 7 else msgs.WRONG_ARGS_MSG6.format('ping')
             raise SimpleError(msg)
-        response = args[0] if len(args) > 0 else None
         if self._pubsub:
-            return [b'pong', response or b'']
+            return [b'pong', args[0] if args else b'']
         else:
-            return response or PONG
+            return args[0] if args else PONG
 
     @command((DbIndex,))
     def select(self, index):
