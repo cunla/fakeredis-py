@@ -7,41 +7,18 @@ from __future__ import annotations
 import json
 import re
 from functools import partial
-from itertools import (
-    chain,
-    repeat,
-    starmap,
-)
-from operator import (
-    attrgetter,
-    methodcaller,
-)
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ForwardRef,
-    Optional,
-    Union,
-)
+from itertools import (chain, repeat, starmap, )
+from operator import (attrgetter, methodcaller, )
+from typing import (Any, Optional, Union, )
 
 # Third-Party Imports
 from redis.commands.json.commands import JsonType
 from typing_extensions import Literal
 
+from fakeredis import _helpers as helpers
 # Package-Level Imports
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (
-    CommandItem,
-    Key,
-    command,
-)
-from fakeredis import _helpers as helpers
-
-if TYPE_CHECKING:
-    # Package-Level Imports
-    from fakeredis._fakesocket import FakeSocket
-else:
-    FakeSocket = ForwardRef("JSONCommandsMixin")
+from fakeredis._commands import (CommandItem, Key, command, )
 
 try:
     from jsonpath_ng import jsonpath
@@ -50,10 +27,10 @@ except ImportError:
 
     jsonpath = None
 
+
     def parse_jsonpath(*_: Any, **__: Any) -> Any:
         """Raise an error."""
         raise helpers.SimpleError("Optional JSON support not enabled!")
-
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
 
@@ -98,9 +75,9 @@ class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
     def __init__(
-        self: FakeSocket,
-        *args: Any,
-        **kwargs: Any,
+            self,
+            *args: Any,
+            **kwargs: Any,
     ) -> None:
         pass
 
@@ -110,9 +87,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_del(
-        self: FakeSocket,
-        key: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            key: CommandItem,
+            path: Optional[bytes] = None,
     ) -> int:
         """Delete the JSON value stored at key `key` under `path`.
 
@@ -143,9 +120,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_get(
-        self: FakeSocket,
-        name: CommandItem,
-        *args: bytes,
+            self,
+            name: CommandItem,
+            *args: bytes,
     ) -> bytes:
         """Get the object stored as a JSON value at key `name`.
 
@@ -192,9 +169,9 @@ class JSONCommandsMixin:
                     (
                         caller(path)
                         for caller, path in zip(
-                            callers,
-                            args,
-                        )
+                        callers,
+                        args,
+                    )
                     )
                 ),
             )
@@ -211,11 +188,11 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_set(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        obj: JsonType,
-        flag: Optional[Literal[b"NX", b"XX"]] = None,
+            self,
+            name: CommandItem,
+            path: bytes,
+            obj: JsonType,
+            flag: Optional[Literal[b"NX", b"XX"]] = None,
     ) -> Any:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
@@ -254,9 +231,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_mget(
-        self: FakeSocket,
-        keys: list[CommandItem],  # This seems like the wrong type 🤔
-        path: bytes,
+            self,
+            keys: list[CommandItem],  # This seems like the wrong type 🤔
+            path: bytes,
     ) -> list[JsonType]:
         """Get the objects stored as a JSON values under `path`. `keys` is a
         list of one or more keys.
@@ -272,9 +249,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_resp(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> Any:
         """Return the JSON value under `path` at key `name`.
 
@@ -290,9 +267,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_type(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> list[str]:
         """Get the type of the JSON value under `path` from key `name`.
 
@@ -308,9 +285,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_clear(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> int:
         """Empty arrays and objects (to have zero slots/keys without deleting
         the array/object).
@@ -329,10 +306,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_debug(
-        self: FakeSocket,
-        subcommand: CommandItem,
-        key: Optional[str] = None,
-        path: Optional[bytes] = None,
+            self,
+            subcommand: CommandItem,
+            key: Optional[str] = None,
+            path: Optional[bytes] = None,
     ) -> Union[int, list[str]]:
         """Return the memory usage in bytes of a value under `path` from key
         `name`.
@@ -349,9 +326,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrlen(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> list[Union[int, None]]:
         """Return the length of the array JSON value under `path` at key`name`.
 
@@ -367,10 +344,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrpop(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
-        index: Optional[int] = -1,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
+            index: Optional[int] = -1,
     ) -> list[Union[str, None]]:
 
         """Pop the element at `index` in the array JSON value under `path` at
@@ -388,9 +365,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_objlen(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> int:
         """Return the length of the dictionary JSON value under `path` at key
         `name`.
@@ -407,9 +384,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_strlen(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> list[Union[int, None]]:
         """Return the length of the string JSON value under `path` at key
         `name`.
@@ -425,9 +402,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_toggle(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> Union[bool, list[Optional[int]]]:
         """Toggle boolean value under `path` at key `name`. returning the new
         value.
@@ -444,11 +421,11 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrtrim(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        start: int,
-        stop: int,
+            self,
+            name: CommandItem,
+            path: bytes,
+            start: int,
+            stop: int,
     ) -> list[Union[int, None]]:
         """Trim the array JSON value under `path` at key `name` to the
         inclusive range given by `start` and `stop`.
@@ -464,9 +441,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_objkeys(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
     ) -> list[Union[list[str], None]]:
         """Return the key names in the dictionary JSON value under `path` at
         key `name`.
@@ -483,12 +460,12 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrindex(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        scalar: int,
-        start: Optional[int] = 0,
-        stop: Optional[int] = -1,
+            self,
+            name: CommandItem,
+            path: bytes,
+            scalar: int,
+            start: Optional[int] = 0,
+            stop: Optional[int] = -1,
     ) -> list[Union[int, None]]:
         """Return the index of `scalar` in the JSON array under `path` at key
         `name`.
@@ -506,10 +483,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrappend(
-        self: FakeSocket,
-        name: CommandItem,
-        path: Optional[bytes] = None,
-        *args: list[JsonType],
+            self,
+            name: CommandItem,
+            path: Optional[bytes] = None,
+            *args: list[JsonType],
     ) -> list[Union[int, None]]:
         """Append the objects `args` to the array under the `path` in key
         `name`.
@@ -526,11 +503,11 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_arrinsert(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        index: int,
-        *args: JsonType,
+            self,
+            name: CommandItem,
+            path: bytes,
+            index: int,
+            *args: JsonType,
     ) -> list[Union[int, None]]:
         """Insert the objects `args` to the array at index `index` under the
         `path` in key `name`.
@@ -546,10 +523,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_numincrby(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        number: int,
+            self,
+            name: CommandItem,
+            path: bytes,
+            number: int,
     ) -> str:
         """Increment the numeric (integer or floating point) JSON value under
         `path` at key `name` by the provided `number`.
@@ -565,10 +542,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_strappend(
-        self: FakeSocket,
-        name: CommandItem,
-        value: str,
-        path: Optional[int] = None,
+            self,
+            name: CommandItem,
+            value: str,
+            path: Optional[int] = None,
     ) -> Union[int, list[Optional[int]]]:
         """Append to the string JSON value. If two options are specified after
         the key name, the path is determined to be the first. If a single
@@ -589,10 +566,10 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_nummultby(
-        self: FakeSocket,
-        name: CommandItem,
-        path: bytes,
-        number: int,
+            self,
+            name: CommandItem,
+            path: bytes,
+            number: int,
     ) -> str:
         """Multiply the numeric (integer or floating point) JSON value under
         `path` at key `name` with the provided `number`.
