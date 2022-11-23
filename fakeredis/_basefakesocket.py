@@ -229,7 +229,7 @@ class BaseFakeSocket:
                 now = time.time()
                 for db in self._server.dbs.values():
                     db.time = now
-                sig.check_arity(fields[1:], self.version)
+                sig.check_arity(fields[arg_start_ind:], self.version)
                 # TODO: make a signature attribute for transactions
                 if (self._transaction is not None
                         and sig.name not in {'exec', 'discard', 'multi', 'watch'}):
@@ -247,7 +247,9 @@ class BaseFakeSocket:
                 self._transaction = None
                 self._transaction_failed = False
                 self._clear_watches()
-            result = exc
+                result = NoResponse()
+            else:
+                result = exc
         result = self._decode_result(result)
         if not isinstance(result, NoResponse):
             self.put_response(result)
