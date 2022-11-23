@@ -7,33 +7,32 @@ from __future__ import annotations
 import json
 import re
 from functools import partial
-from itertools import chain, repeat, starmap
+from itertools import chain, filterfalse
 from operator import attrgetter, methodcaller
 from typing import Any, Optional, Union
 
 # Third-Party Imports
+from fakeredis import _helpers as helpers, _msgs as msgs
+from fakeredis._commands import CommandItem, Key, command
 from redis.commands.json.commands import JsonType
 from typing_extensions import Literal
 
-from fakeredis import _helpers as helpers
-# Package-Level Imports
-from fakeredis import _msgs as msgs
-from fakeredis._commands import CommandItem, Key, command
-
 try:
+    # Third-Party Imports
     from jsonpath_ng import jsonpath
     from jsonpath_ng.ext import parse as parse_jsonpath
 except ImportError:
 
     jsonpath = None
 
-
     def parse_jsonpath(*_: Any, **__: Any) -> Any:
         """Raise an error."""
         raise helpers.SimpleError("Optional JSON support not enabled!")
 
 
-path_pattern: re.Pattern = helpers.compile_pattern(r"^((?<!\$)\.|(\$\.$))")
+path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
+is_no_escape = partial(helpers.casematch, b"noescape")
+is_not_no_escape = partial(filterfalse, is_no_escape)
 
 
 def format_jsonpath(path: Union[str, bytes]) -> str:
@@ -50,7 +49,6 @@ class JSONObject:
     DECODE_ERROR = msgs.WRONGTYPE_MSG
     ENCODE_ERROR = msgs.WRONGTYPE_MSG
 
-
     @classmethod
     def decode(cls, value: bytes) -> Any:
         """Deserialize the supplied bytes into a valid Python object."""
@@ -66,12 +64,8 @@ class JSONObject:
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
-    def __init__(
-            self,
-            *args: Any,
-            **kwargs: Any,
-    ) -> None:
-        super(JSONCommandsMixin, self).__init__(*args, **kwargs)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
     @command(
         name="JSON.DEL",
@@ -79,9 +73,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_del(
-            self,
-            key: CommandItem,
-            path: Optional[bytes] = None,
+        self,
+        key: CommandItem,
+        path: Optional[bytes] = None,
     ) -> int:
         """Delete the JSON value stored at key `key` under `path`.
 
@@ -112,9 +106,9 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_get(
-            self,
-            name: CommandItem,
-            *args: bytes,
+        self,
+        name: CommandItem,
+        *args: bytes,
     ) -> bytes:
         """Get the object stored as a JSON value at key `name`.
 
@@ -124,54 +118,40 @@ class JSONCommandsMixin:
 
         For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
         """
-        no_escape, args = (
-            bool(b"noescape" in args),
-            tuple(
-                map(
-                    parse_jsonpath,
-                    (format_jsonpath(arg) for arg in args if arg != b"noescape"),
-                )
-            ),
-        )
-
-        if no_escape:
-            # Silently ignore this. It was apparently originally added
-            # to RedisJSON to maintain compatibility with ReJSON v1.0
-            # which has this option. Per the notes associated with
-            # Issue #145 of RedisJSON's public git repository, `no_escape`
-            # is the implicit behavior always in current and future
-            # versions of the module. For details, see:
-            # https://github.com/RedisJSON/RedisJSON/issues/145
-            pass
-
-        path_count = len(args)
+        # Check the cache for the requested key
         cached_value = json.loads(name.value or b"null")
 
-        callers = starmap(
-            methodcaller,
-            zip(
-                repeat("find", path_count),
-                repeat(cached_value, path_count),
-            ),
-        )
-        path_values = tuple(
-            map(
-                attrgetter("value"),
-                chain.from_iterable(
-                    (
-                        caller(path)
-                        for caller, path in zip(
-                        callers,
-                        args,
-                    )
-                    )
-                ),
-            )
-        )
+        # Return early if the requested key is not in the cache
+        if not cached_value:
+            return b"null"
 
-        if len(args) == 1:
+        # Format the specified paths that are *not* the literal
+        # byte-string b"noescape" so that they can be properly
+        # parsed by `jsonpath_ng`
+        args = map(format_jsonpath, is_not_no_escape(args))
+
+        # Parse the sanitized paths into `jsonpath.JSONPath` objects
+        paths = tuple(map(parse_jsonpath, args))
+
+        find = methodcaller("find", cached_value)
+
+        # Call the `find` method of the parsed paths, with
+        # the cached value as the target JSON object to search
+        resolved_paths = chain.from_iterable(map(find, paths))
+
+        # Extract the resolved `value` from each of the search "results"
+        path_values = tuple(map(attrgetter("value"), resolved_paths))
+
+        # Emulate the behavior of `redis-py`:
+        #   - if only one path was supplied,
+        #     return a single value
+        #   - if more than one path was specified,
+        #     return one value for each specified path
+
+        if len(paths) == 1:
             path_values = path_values[0]
 
+        # Ensure the returned data is properly serialized and encoded
         return json.dumps(path_values).encode()
 
     @command(
@@ -180,12 +160,12 @@ class JSONCommandsMixin:
         repeat=(bytes,),
     )
     def json_set(
-            self,
-            name: CommandItem,
-            path: bytes,
-            obj: JsonType,
-            flag: Optional[Literal[b"NX", b"XX"]] = None,
-    ) -> Any:
+        self,
+        name: CommandItem,
+        path: bytes,
+        obj: JsonType,
+        flag: Optional[Literal[b"NX", b"XX"]] = None,
+    ) -> Optional[helpers.SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         if `flag` is b"NX", set `value` only if it does not exist.
@@ -205,7 +185,9 @@ class JSONCommandsMixin:
 
         if flag and flag not in (b"NX", b"XX"):
             raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
-        elif (flag == b"NX" and path.find(cached_value)) or (flag == b"XX" and not path.find(cached_value)):
+        elif (flag == b"NX" and path.find(cached_value)) or (
+            flag == b"XX" and not path.find(cached_value)
+        ):
             setter = lambda *_, **__: cached_value
 
         cached_value, name.value = (
