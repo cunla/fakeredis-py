@@ -35,8 +35,6 @@ def download_redis_commands() -> dict:
 
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
-    # Currently no programmatic way to discover implemented subcommands
-    # res.add('script load')
     return res
 
 
