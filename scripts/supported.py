@@ -48,7 +48,7 @@ def print_unimplemented_commands(all_commands: dict, implemented: dict, unimplem
         for group in dictionary:
             print(f'### {group}')
             for cmd in dictionary[group]:
-                print(f" * [{cmd}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
+                print(f" * [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
                 print(f"   {all_commands[cmd]['summary']}")
             print()
 
