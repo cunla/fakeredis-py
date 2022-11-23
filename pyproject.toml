@@ -78,7 +78,10 @@ markers = [
 asyncio_mode = "strict"
 
 [tool.mypy]
-ignore_missing_imports = true
-packages = [
-    "fakeredis"
+files = [
+    "fakeredis/**/*.py",
+    "test/**/*.py",
 ]
+follow_imports = "silent"
+ignore_missing_imports = true
+scripts_are_modules = true

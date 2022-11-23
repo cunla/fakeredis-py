@@ -193,7 +193,3 @@ class StringCommandsMixin:
     @command((Key(bytes), Int, Int))
     def substr(self, key, start, end):
         return self.getrange(key, start, end)
-
-
-setattr(StringCommandsMixin, 'set', StringCommandsMixin.set_)
-delattr(StringCommandsMixin, 'set_')

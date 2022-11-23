@@ -126,6 +126,8 @@ list of [unimplemented commands](#unimplemented-commands).
  * [eval](https://redis.io/commands/eval/)
  * [evalsha](https://redis.io/commands/evalsha/)
  * [script](https://redis.io/commands/script/)
+ * [script exists](https://redis.io/commands/script-exists/)
+ * [script flush](https://redis.io/commands/script-flush/)
  * [script load](https://redis.io/commands/script-load/)
 
 ### hash
@@ -359,8 +361,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
  * [function restore](https://redis.io/commands/function-restore/)
  * [function stats](https://redis.io/commands/function-stats/)
  * [script debug](https://redis.io/commands/script-debug/)
- * [script exists](https://redis.io/commands/script-exists/)
- * [script flush](https://redis.io/commands/script-flush/)
  * [script help](https://redis.io/commands/script-help/)
  * [script kill](https://redis.io/commands/script-kill/)
 

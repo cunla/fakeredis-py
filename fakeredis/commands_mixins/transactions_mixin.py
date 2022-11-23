@@ -82,7 +82,3 @@ class TransactionsCommandsMixin:
 
     def notify_watch(self):
         self._watch_notified = True
-
-
-setattr(TransactionsCommandsMixin, 'exec', TransactionsCommandsMixin.exec_)
-delattr(TransactionsCommandsMixin, 'exec_')

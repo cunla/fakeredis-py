@@ -5,7 +5,7 @@ import logging
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, SimpleString, casematch, casenorm, OK
+from fakeredis._helpers import SimpleError, SimpleString, casenorm, OK
 
 LOGGER = logging.getLogger('fakeredis')
 REDIS_LOG_LEVELS = {
@@ -121,7 +121,7 @@ class ScriptingCommandsMixin:
     def _lua_redis_call(self, lua_runtime, expected_globals, op, *args):
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
-        func, func_name, sig = self._name_to_func(op)
+        func, sig = self._name_to_func(self._encode_command(op))
         args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
         result = self._run_command(func, sig, args, True)
         return self._convert_redis_result(lua_runtime, result)
@@ -202,23 +202,19 @@ class ScriptingCommandsMixin:
         self.script_cache[sha1] = script
         return sha1
 
+    @command(name='script exists', fixed=(), repeat=(bytes,), flags='s', )
+    def script_exists(self, *args):
+        if self.version >= 7 and len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG7)
+        return [int(sha1 in self.script_cache) for sha1 in args]
+
+    @command(name='script flush', fixed=(), repeat=(bytes,), flags='s', )
+    def script_flush(self, *args):
+        if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+        self.script_cache = {}
+        return OK
+
     @command((bytes,), (bytes,), flags='s')
     def script(self, subcmd, *args):
-        if casematch(subcmd, b'load'):
-            if len(args) != 1:
-                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
-            script = args[0]
-            sha1 = hashlib.sha1(script).hexdigest().encode()
-            self.script_cache[sha1] = script
-            return sha1
-        elif casematch(subcmd, b'exists'):
-            if self.version >= 7 and len(args) == 0:
-                raise SimpleError(msgs.WRONG_ARGS_MSG7)
-            return [int(sha1 in self.script_cache) for sha1 in args]
-        elif casematch(subcmd, b'flush'):
-            if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
-                raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
-            self.script_cache = {}
-            return OK
-        else:
-            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+        raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
