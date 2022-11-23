@@ -1,18 +1,9 @@
-# Script will import fakeredis and list what
-# commands it supports and what commands
-# it does not have support for, based on the
-# command list from:
-# https://raw.github.com/antirez/redis-doc/master/commands.json
-# Because, who wants to do this by hand...
-
-import inspect
 import json
 import os
 
 import requests
 
 from fakeredis._commands import SUPPORTED_COMMANDS
-from fakeredis._fakesocket import FakeSocket
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 COMMAND_FILES = [
