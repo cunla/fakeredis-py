@@ -7,9 +7,9 @@ from __future__ import annotations
 import json
 import re
 from functools import partial
-from itertools import (chain, repeat, starmap, )
-from operator import (attrgetter, methodcaller, )
-from typing import (Any, Optional, Union, )
+from itertools import chain, repeat, starmap
+from operator import attrgetter, methodcaller
+from typing import Any, Optional, Union
 
 # Third-Party Imports
 from redis.commands.json.commands import JsonType
@@ -18,7 +18,7 @@ from typing_extensions import Literal
 from fakeredis import _helpers as helpers
 # Package-Level Imports
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (CommandItem, Key, command, )
+from fakeredis._commands import CommandItem, Key, command
 
 try:
     from jsonpath_ng import jsonpath
@@ -32,7 +32,8 @@ except ImportError:
         """Raise an error."""
         raise helpers.SimpleError("Optional JSON support not enabled!")
 
-path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
+
+path_pattern: re.Pattern = helpers.compile_pattern(r"^((?<!\$)\.|(\$\.$))")
 
 
 def format_jsonpath(path: Union[str, bytes]) -> str:
@@ -43,21 +44,12 @@ def format_jsonpath(path: Union[str, bytes]) -> str:
     return path_pattern.sub("$", path)
 
 
-def null_op(obj: JsonType, *_: Any, **__: Any) -> None:
-    """Return the supplied object, completely unaltered."""
-    return obj
-
-
 class JSONObject:
     """Argument converter for JSON objects."""
 
     DECODE_ERROR = msgs.WRONGTYPE_MSG
     ENCODE_ERROR = msgs.WRONGTYPE_MSG
 
-    @classmethod
-    def valid(cls, value: Any) -> bool:
-        """Determine if the supplied value is a "valid" `JSONObject`."""
-        raise NotImplementedError
 
     @classmethod
     def decode(cls, value: bytes) -> Any:
@@ -68,7 +60,7 @@ class JSONObject:
     def encode(cls, value: Any) -> bytes:
         """Serialize the supplied Python object into a valid, JSON-formatted
         byte-encoded string."""
-        raise NotImplementedError
+        return json.dumps(value, default=str).encode()
 
 
 class JSONCommandsMixin:
@@ -79,7 +71,7 @@ class JSONCommandsMixin:
             *args: Any,
             **kwargs: Any,
     ) -> None:
-        pass
+        super(JSONCommandsMixin, self).__init__(*args, **kwargs)
 
     @command(
         name="JSON.DEL",
@@ -214,7 +206,7 @@ class JSONCommandsMixin:
         if flag and flag not in (b"NX", b"XX"):
             raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
         elif (flag == b"NX" and path.find(cached_value)) or (flag == b"XX" and not path.find(cached_value)):
-            setter = partial(null_op, cached_value)
+            setter = lambda *_, **__: cached_value
 
         cached_value, name.value = (
             name.value,
