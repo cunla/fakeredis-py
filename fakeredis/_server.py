@@ -34,7 +34,6 @@ class FakeConnection(redis.Connection):
     description_format = "FakeConnection<db=%(db)s>"
 
     def __init__(self, *args, **kwargs):
-        self.encoder = None
         self.client_name = None
         self._sock = None
         self._selector = None

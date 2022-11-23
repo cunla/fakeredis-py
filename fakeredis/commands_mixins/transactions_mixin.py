@@ -21,7 +21,7 @@ class TransactionsCommandsMixin:
             db.remove_watch(key, self)
 
     # Transaction commands
-    @command((), flags='s')
+    @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def discard(self):
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('DISCARD'))
@@ -30,7 +30,7 @@ class TransactionsCommandsMixin:
         self._clear_watches()
         return OK
 
-    @command((), name='exec', flags='s')
+    @command(name='exec', fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def exec_(self):
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('EXEC'))
@@ -57,7 +57,7 @@ class TransactionsCommandsMixin:
             result.append(ans)
         return result
 
-    @command((), flags='s')
+    @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def multi(self):
         if self._transaction is not None:
             raise SimpleError(msgs.MULTI_NESTED_MSG)
@@ -65,12 +65,12 @@ class TransactionsCommandsMixin:
         self._transaction_failed = False
         return OK
 
-    @command((), flags='s')
+    @command((), flags=msgs.FLAG_NO_SCRIPT)
     def unwatch(self):
         self._clear_watches()
         return OK
 
-    @command((Key(),), (Key(),), flags='s')
+    @command((Key(),), (Key(),), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def watch(self, *keys):
         if self._transaction is not None:
             raise SimpleError(msgs.WATCH_INSIDE_MULTI_MSG)
@@ -82,7 +82,3 @@ class TransactionsCommandsMixin:
 
     def notify_watch(self):
         self._watch_notified = True
-
-
-setattr(TransactionsCommandsMixin, 'exec', TransactionsCommandsMixin.exec_)
-delattr(TransactionsCommandsMixin, 'exec_')

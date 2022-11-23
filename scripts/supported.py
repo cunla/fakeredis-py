@@ -1,22 +1,15 @@
-# Script will import fakeredis and list what
-# commands it supports and what commands
-# it does not have support for, based on the
-# command list from:
-# https://raw.github.com/antirez/redis-doc/master/commands.json
-# Because, who wants to do this by hand...
-
-import inspect
 import json
 import os
 
 import requests
 
-from fakeredis._fakesocket import FakeSocket
+from fakeredis._commands import SUPPORTED_COMMANDS
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 COMMAND_FILES = [
     ('.commands.json', 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json'),
     ('.json.commands.json', 'https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json'),
+    ('.graph.commands.json', 'https://raw.githubusercontent.com/RedisGraph/RedisGraph/master/commands.json'),
 ]
 
 
@@ -33,12 +26,7 @@ def download_redis_commands() -> dict:
 
 
 def implemented_commands() -> set:
-    res = {name
-           for name, method in inspect.getmembers(FakeSocket)
-           if hasattr(method, '_fakeredis_sig')
-           }
-    # Currently no programmatic way to discover implemented subcommands
-    res.add('script load')
+    res = set(SUPPORTED_COMMANDS.keys())
     return res
 
 
@@ -55,12 +43,13 @@ def commands_groups(
     return implemented, unimplemented
 
 
-def print_unimplemented_commands(implemented: dict, unimplemented: dict) -> None:
+def print_unimplemented_commands(all_commands: dict, implemented: dict, unimplemented: dict) -> None:
     def print_groups(dictionary: dict):
         for group in dictionary:
             print(f'### {group}')
             for cmd in dictionary[group]:
-                print(f" * {cmd}")
+                print(f" * [{cmd}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
+                print(f"   {all_commands[cmd]['summary']}")
             print()
 
     print("""-----
@@ -80,4 +69,4 @@ if __name__ == '__main__':
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     unimplemented_dict, implemented_dict = commands_groups(commands, implemented_commands_set)
-    print_unimplemented_commands(unimplemented_dict, implemented_dict)
+    print_unimplemented_commands(commands, unimplemented_dict, implemented_dict)

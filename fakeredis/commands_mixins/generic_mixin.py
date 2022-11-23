@@ -313,7 +313,3 @@ class GenericCommandsMixin:
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):
         return delete_keys(*keys)
-
-
-setattr(GenericCommandsMixin, 'del', GenericCommandsMixin.del_)
-delattr(GenericCommandsMixin, 'del_')
