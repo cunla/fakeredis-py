@@ -9,6 +9,7 @@ THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 COMMAND_FILES = [
     ('.commands.json', 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json'),
     ('.json.commands.json', 'https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json'),
+    ('.graph.commands.json', 'https://raw.githubusercontent.com/RedisGraph/RedisGraph/master/commands.json'),
 ]
 
 
@@ -42,12 +43,13 @@ def commands_groups(
     return implemented, unimplemented
 
 
-def print_unimplemented_commands(implemented: dict, unimplemented: dict) -> None:
+def print_unimplemented_commands(all_commands: dict, implemented: dict, unimplemented: dict) -> None:
     def print_groups(dictionary: dict):
         for group in dictionary:
             print(f'### {group}')
             for cmd in dictionary[group]:
                 print(f" * [{cmd}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
+                print(f"   {all_commands[cmd]['summary']}")
             print()
 
     print("""-----
@@ -67,4 +69,4 @@ if __name__ == '__main__':
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     unimplemented_dict, implemented_dict = commands_groups(commands, implemented_commands_set)
-    print_unimplemented_commands(unimplemented_dict, implemented_dict)
+    print_unimplemented_commands(commands, unimplemented_dict, implemented_dict)
