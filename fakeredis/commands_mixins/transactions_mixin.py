@@ -30,10 +30,8 @@ class TransactionsCommandsMixin:
         self._clear_watches()
         return OK
 
-    @command(name='exec', fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def exec_(self, *args):
-        if len(args) > 0:
-            raise SimpleError(msgs.EXECABORT_MSG)
+    @command(name='exec', fixed=(), repeat=(), flags=msgs.FLAG_NO_SCRIPT)
+    def exec_(self):
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('EXEC'))
         if self._transaction_failed:

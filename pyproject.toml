@@ -82,6 +82,7 @@ files = [
     "fakeredis/**/*.py",
     "test/**/*.py",
 ]
+packages = ['fakeredis', ]
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true

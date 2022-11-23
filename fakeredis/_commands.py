@@ -308,7 +308,7 @@ class Signature:
         self.func_name = func_name
         self.fixed = fixed
         self.repeat = repeat
-        self.flags = flags
+        self.flags = set(flags)
 
     def check_arity(self, args, version):
         if len(args) != len(self.fixed):

@@ -41,13 +41,13 @@ class SortedSetCommandsMixin:
     def zpopmax(self, key, count=1):
         return self._zpop(key, count, True)
 
-    @command((bytes, bytes), (bytes,), flags='s')
+    @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmin(self, *args):
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bzpop, keys, False))
 
-    @command((bytes, bytes), (bytes,), flags='s')
+    @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmax(self, *args):
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])

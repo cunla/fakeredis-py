@@ -1,3 +1,4 @@
+from fakeredis import _msgs as msgs
 from fakeredis._commands import (command)
 from fakeredis._helpers import (NoResponse, compile_pattern)
 
@@ -36,19 +37,19 @@ class PubSubCommandsMixin:
             self.put_response(msg)
         return NoResponse()
 
-    @command((bytes,), (bytes,), flags='s')
+    @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def psubscribe(self, *patterns):
         return self._subscribe(patterns, self._server.psubscribers, b'psubscribe')
 
-    @command((bytes,), (bytes,), flags='s')
+    @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def subscribe(self, *channels):
         return self._subscribe(channels, self._server.subscribers, b'subscribe')
 
-    @command((), (bytes,), flags='s')
+    @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def punsubscribe(self, *patterns):
         return self._unsubscribe(patterns, self._server.psubscribers, b'punsubscribe')
 
-    @command((), (bytes,), flags='s')
+    @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def unsubscribe(self, *channels):
         return self._unsubscribe(channels, self._server.subscribers, b'unsubscribe')
 

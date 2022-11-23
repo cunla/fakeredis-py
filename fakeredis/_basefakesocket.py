@@ -242,14 +242,12 @@ class BaseFakeSocket:
                 # TODO: should not apply if the exception is from _run_command
                 # e.g. watch inside multi
                 self._transaction_failed = True
-            if sig.func_name == 'exec' and exc.value.startswith('ERR '):
+            if sig.name == 'exec' and exc.value.startswith('ERR '):
                 exc.value = 'EXECABORT Transaction discarded because of: ' + exc.value[4:]
                 self._transaction = None
                 self._transaction_failed = False
                 self._clear_watches()
-                result = NoResponse()
-            else:
-                result = exc
+            result = exc
         result = self._decode_result(result)
         if not isinstance(result, NoResponse):
             self.put_response(result)
