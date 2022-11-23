@@ -230,9 +230,7 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(fields[arg_start_ind:], self.version)
-                # TODO: make a signature attribute for transactions
-                if (self._transaction is not None
-                        and sig.name not in {'exec', 'discard', 'multi', 'watch'}):
+                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
                     self._transaction.append((func, sig, fields[arg_start_ind:]))
                     result = QUEUED
                 else:
@@ -242,7 +240,7 @@ class BaseFakeSocket:
                 # TODO: should not apply if the exception is from _run_command
                 # e.g. watch inside multi
                 self._transaction_failed = True
-            if sig.name == 'exec' and exc.value.startswith('ERR '):
+            if cmd == 'exec' and exc.value.startswith('ERR '):
                 exc.value = 'EXECABORT Transaction discarded because of: ' + exc.value[4:]
                 self._transaction = None
                 self._transaction_failed = False
