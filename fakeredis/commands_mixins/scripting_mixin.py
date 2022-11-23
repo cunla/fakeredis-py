@@ -121,9 +121,9 @@ class ScriptingCommandsMixin:
     def _lua_redis_call(self, lua_runtime, expected_globals, op, *args):
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
-        func, func_name = self._name_to_func(op)
+        func, func_name, sig = self._name_to_func(op)
         args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
-        result = self._run_command(func, func._fakeredis_sig, args, True)
+        result = self._run_command(func, sig, args, True)
         return self._convert_redis_result(lua_runtime, result)
 
     def _lua_redis_pcall(self, lua_runtime, expected_globals, op, *args):
@@ -192,6 +192,15 @@ class ScriptingCommandsMixin:
         except KeyError:
             raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
         return self.eval(script, numkeys, *keys_and_args)
+
+    @command(name='script load', fixed=(bytes,), repeat=(bytes,), flags='s', )
+    def script_load(self, *args):
+        if len(args) != 1:
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+        script = args[0]
+        sha1 = hashlib.sha1(script).hexdigest().encode()
+        self.script_cache[sha1] = script
+        return sha1
 
     @command((bytes,), (bytes,), flags='s')
     def script(self, subcmd, *args):

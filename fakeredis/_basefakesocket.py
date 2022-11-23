@@ -6,7 +6,7 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, Float)
+from ._commands import (Int, Float, SUPPORTED_COMMANDS)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
@@ -188,11 +188,11 @@ class BaseFakeSocket:
                 else str(name).encode(encoding='utf-8', errors='replace'))
         func_name = name.lower()
         func = getattr(self, func_name, None)
-        if name.startswith('_') or not func or not hasattr(func, '_fakeredis_sig'):
+        if name.startswith('_') or not func or func_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = name.replace('\r', ' ').replace('\n', ' ')
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
-        return func, func_name
+        return func, func_name, SUPPORTED_COMMANDS[func_name]
 
     def sendall(self, data):
         if not self._server.connected:
@@ -206,8 +206,7 @@ class BaseFakeSocket:
             return
         func_name = None
         try:
-            func, func_name = self._name_to_func(fields[0])
-            sig = func._fakeredis_sig
+            func, func_name, sig = self._name_to_func(fields[0])
             with self._server.lock:
                 # Clean out old connections
                 while True:

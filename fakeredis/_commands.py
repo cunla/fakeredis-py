@@ -10,6 +10,7 @@ from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
+SUPPORTED_COMMANDS = dict()  # Dictionary of supported commands name => Signature
 
 
 class Key:
@@ -301,8 +302,9 @@ class StringTest:
 
 
 class Signature:
-    def __init__(self, name, fixed, repeat=(), flags=""):
+    def __init__(self, name, func, fixed, repeat=(), flags=""):
         self.name = name
+        self.func = func
         self.fixed = fixed
         self.repeat = repeat
         self.flags = flags
@@ -360,7 +362,7 @@ class Signature:
 def command(*args, **kwargs):
     def decorator(func):
         name = kwargs.pop('name', func.__name__)
-        func._fakeredis_sig = Signature(name, *args, **kwargs)
+        SUPPORTED_COMMANDS[name] = Signature(name, func, *args, **kwargs)
         return func
 
     return decorator

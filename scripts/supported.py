@@ -11,6 +11,7 @@ import os
 
 import requests
 
+from fakeredis._commands import SUPPORTED_COMMANDS
 from fakeredis._fakesocket import FakeSocket
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -33,12 +34,9 @@ def download_redis_commands() -> dict:
 
 
 def implemented_commands() -> set:
-    res = {name
-           for name, method in inspect.getmembers(FakeSocket)
-           if hasattr(method, '_fakeredis_sig')
-           }
+    res = set(SUPPORTED_COMMANDS.keys())
     # Currently no programmatic way to discover implemented subcommands
-    res.add('script load')
+    # res.add('script load')
     return res
 
 
