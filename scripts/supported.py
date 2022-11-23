@@ -60,7 +60,7 @@ def print_unimplemented_commands(implemented: dict, unimplemented: dict) -> None
         for group in dictionary:
             print(f'### {group}')
             for cmd in dictionary[group]:
-                print(f" * {cmd}")
+                print(f" * [{cmd}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
             print()
 
     print("""-----

@@ -4,451 +4,451 @@ list of [unimplemented commands](#unimplemented-commands).
 
 # Implemented Commands
 ### string
- * append
- * decr
- * decrby
- * get
- * getdel
- * getrange
- * getset
- * incr
- * incrby
- * incrbyfloat
- * mget
- * mset
- * msetnx
- * psetex
- * set
- * setex
- * setnx
- * setrange
- * strlen
- * substr
+ * [append](https://redis.io/commands/append/)
+ * [decr](https://redis.io/commands/decr/)
+ * [decrby](https://redis.io/commands/decrby/)
+ * [get](https://redis.io/commands/get/)
+ * [getdel](https://redis.io/commands/getdel/)
+ * [getrange](https://redis.io/commands/getrange/)
+ * [getset](https://redis.io/commands/getset/)
+ * [incr](https://redis.io/commands/incr/)
+ * [incrby](https://redis.io/commands/incrby/)
+ * [incrbyfloat](https://redis.io/commands/incrbyfloat/)
+ * [mget](https://redis.io/commands/mget/)
+ * [mset](https://redis.io/commands/mset/)
+ * [msetnx](https://redis.io/commands/msetnx/)
+ * [psetex](https://redis.io/commands/psetex/)
+ * [set](https://redis.io/commands/set/)
+ * [setex](https://redis.io/commands/setex/)
+ * [setnx](https://redis.io/commands/setnx/)
+ * [setrange](https://redis.io/commands/setrange/)
+ * [strlen](https://redis.io/commands/strlen/)
+ * [substr](https://redis.io/commands/substr/)
 
 ### server
- * bgsave
- * dbsize
- * flushall
- * flushdb
- * lastsave
- * save
- * swapdb
- * time
+ * [bgsave](https://redis.io/commands/bgsave/)
+ * [dbsize](https://redis.io/commands/dbsize/)
+ * [flushall](https://redis.io/commands/flushall/)
+ * [flushdb](https://redis.io/commands/flushdb/)
+ * [lastsave](https://redis.io/commands/lastsave/)
+ * [save](https://redis.io/commands/save/)
+ * [swapdb](https://redis.io/commands/swapdb/)
+ * [time](https://redis.io/commands/time/)
 
 ### bitmap
- * bitcount
- * getbit
- * setbit
+ * [bitcount](https://redis.io/commands/bitcount/)
+ * [getbit](https://redis.io/commands/getbit/)
+ * [setbit](https://redis.io/commands/setbit/)
 
 ### list
- * blpop
- * brpop
- * brpoplpush
- * lindex
- * linsert
- * llen
- * lmove
- * lpop
- * lpush
- * lpushx
- * lrange
- * lrem
- * lset
- * ltrim
- * rpop
- * rpoplpush
- * rpush
- * rpushx
+ * [blpop](https://redis.io/commands/blpop/)
+ * [brpop](https://redis.io/commands/brpop/)
+ * [brpoplpush](https://redis.io/commands/brpoplpush/)
+ * [lindex](https://redis.io/commands/lindex/)
+ * [linsert](https://redis.io/commands/linsert/)
+ * [llen](https://redis.io/commands/llen/)
+ * [lmove](https://redis.io/commands/lmove/)
+ * [lpop](https://redis.io/commands/lpop/)
+ * [lpush](https://redis.io/commands/lpush/)
+ * [lpushx](https://redis.io/commands/lpushx/)
+ * [lrange](https://redis.io/commands/lrange/)
+ * [lrem](https://redis.io/commands/lrem/)
+ * [lset](https://redis.io/commands/lset/)
+ * [ltrim](https://redis.io/commands/ltrim/)
+ * [rpop](https://redis.io/commands/rpop/)
+ * [rpoplpush](https://redis.io/commands/rpoplpush/)
+ * [rpush](https://redis.io/commands/rpush/)
+ * [rpushx](https://redis.io/commands/rpushx/)
 
 ### sorted-set
- * bzpopmax
- * bzpopmin
- * zadd
- * zcard
- * zcount
- * zincrby
- * zinterstore
- * zlexcount
- * zmscore
- * zpopmax
- * zpopmin
- * zrange
- * zrangebylex
- * zrangebyscore
- * zrank
- * zrem
- * zremrangebylex
- * zremrangebyrank
- * zremrangebyscore
- * zrevrange
- * zrevrangebylex
- * zrevrangebyscore
- * zrevrank
- * zscan
- * zscore
- * zunionstore
+ * [bzpopmax](https://redis.io/commands/bzpopmax/)
+ * [bzpopmin](https://redis.io/commands/bzpopmin/)
+ * [zadd](https://redis.io/commands/zadd/)
+ * [zcard](https://redis.io/commands/zcard/)
+ * [zcount](https://redis.io/commands/zcount/)
+ * [zincrby](https://redis.io/commands/zincrby/)
+ * [zinterstore](https://redis.io/commands/zinterstore/)
+ * [zlexcount](https://redis.io/commands/zlexcount/)
+ * [zmscore](https://redis.io/commands/zmscore/)
+ * [zpopmax](https://redis.io/commands/zpopmax/)
+ * [zpopmin](https://redis.io/commands/zpopmin/)
+ * [zrange](https://redis.io/commands/zrange/)
+ * [zrangebylex](https://redis.io/commands/zrangebylex/)
+ * [zrangebyscore](https://redis.io/commands/zrangebyscore/)
+ * [zrank](https://redis.io/commands/zrank/)
+ * [zrem](https://redis.io/commands/zrem/)
+ * [zremrangebylex](https://redis.io/commands/zremrangebylex/)
+ * [zremrangebyrank](https://redis.io/commands/zremrangebyrank/)
+ * [zremrangebyscore](https://redis.io/commands/zremrangebyscore/)
+ * [zrevrange](https://redis.io/commands/zrevrange/)
+ * [zrevrangebylex](https://redis.io/commands/zrevrangebylex/)
+ * [zrevrangebyscore](https://redis.io/commands/zrevrangebyscore/)
+ * [zrevrank](https://redis.io/commands/zrevrank/)
+ * [zscan](https://redis.io/commands/zscan/)
+ * [zscore](https://redis.io/commands/zscore/)
+ * [zunionstore](https://redis.io/commands/zunionstore/)
 
 ### generic
- * del
- * dump
- * exists
- * expire
- * expireat
- * keys
- * move
- * persist
- * pexpire
- * pexpireat
- * pttl
- * randomkey
- * rename
- * renamenx
- * restore
- * scan
- * sort
- * ttl
- * type
- * unlink
+ * [del](https://redis.io/commands/del/)
+ * [dump](https://redis.io/commands/dump/)
+ * [exists](https://redis.io/commands/exists/)
+ * [expire](https://redis.io/commands/expire/)
+ * [expireat](https://redis.io/commands/expireat/)
+ * [keys](https://redis.io/commands/keys/)
+ * [move](https://redis.io/commands/move/)
+ * [persist](https://redis.io/commands/persist/)
+ * [pexpire](https://redis.io/commands/pexpire/)
+ * [pexpireat](https://redis.io/commands/pexpireat/)
+ * [pttl](https://redis.io/commands/pttl/)
+ * [randomkey](https://redis.io/commands/randomkey/)
+ * [rename](https://redis.io/commands/rename/)
+ * [renamenx](https://redis.io/commands/renamenx/)
+ * [restore](https://redis.io/commands/restore/)
+ * [scan](https://redis.io/commands/scan/)
+ * [sort](https://redis.io/commands/sort/)
+ * [ttl](https://redis.io/commands/ttl/)
+ * [type](https://redis.io/commands/type/)
+ * [unlink](https://redis.io/commands/unlink/)
 
 ### transactions
- * discard
- * exec
- * multi
- * unwatch
- * watch
+ * [discard](https://redis.io/commands/discard/)
+ * [exec](https://redis.io/commands/exec/)
+ * [multi](https://redis.io/commands/multi/)
+ * [unwatch](https://redis.io/commands/unwatch/)
+ * [watch](https://redis.io/commands/watch/)
 
 ### connection
- * echo
- * ping
- * select
+ * [echo](https://redis.io/commands/echo/)
+ * [ping](https://redis.io/commands/ping/)
+ * [select](https://redis.io/commands/select/)
 
 ### scripting
- * eval
- * evalsha
- * script
- * script load
+ * [eval](https://redis.io/commands/eval/)
+ * [evalsha](https://redis.io/commands/evalsha/)
+ * [script](https://redis.io/commands/script/)
+ * [script load](https://redis.io/commands/script-load/)
 
 ### hash
- * hdel
- * hexists
- * hget
- * hgetall
- * hincrby
- * hincrbyfloat
- * hkeys
- * hlen
- * hmget
- * hmset
- * hscan
- * hset
- * hsetnx
- * hstrlen
- * hvals
+ * [hdel](https://redis.io/commands/hdel/)
+ * [hexists](https://redis.io/commands/hexists/)
+ * [hget](https://redis.io/commands/hget/)
+ * [hgetall](https://redis.io/commands/hgetall/)
+ * [hincrby](https://redis.io/commands/hincrby/)
+ * [hincrbyfloat](https://redis.io/commands/hincrbyfloat/)
+ * [hkeys](https://redis.io/commands/hkeys/)
+ * [hlen](https://redis.io/commands/hlen/)
+ * [hmget](https://redis.io/commands/hmget/)
+ * [hmset](https://redis.io/commands/hmset/)
+ * [hscan](https://redis.io/commands/hscan/)
+ * [hset](https://redis.io/commands/hset/)
+ * [hsetnx](https://redis.io/commands/hsetnx/)
+ * [hstrlen](https://redis.io/commands/hstrlen/)
+ * [hvals](https://redis.io/commands/hvals/)
 
 ### hyperloglog
- * pfadd
- * pfcount
- * pfmerge
+ * [pfadd](https://redis.io/commands/pfadd/)
+ * [pfcount](https://redis.io/commands/pfcount/)
+ * [pfmerge](https://redis.io/commands/pfmerge/)
 
 ### pubsub
- * psubscribe
- * publish
- * punsubscribe
- * subscribe
- * unsubscribe
+ * [psubscribe](https://redis.io/commands/psubscribe/)
+ * [publish](https://redis.io/commands/publish/)
+ * [punsubscribe](https://redis.io/commands/punsubscribe/)
+ * [subscribe](https://redis.io/commands/subscribe/)
+ * [unsubscribe](https://redis.io/commands/unsubscribe/)
 
 ### set
- * sadd
- * scard
- * sdiff
- * sdiffstore
- * sinter
- * sintercard
- * sinterstore
- * sismember
- * smembers
- * smismember
- * smove
- * spop
- * srandmember
- * srem
- * sscan
- * sunion
- * sunionstore
+ * [sadd](https://redis.io/commands/sadd/)
+ * [scard](https://redis.io/commands/scard/)
+ * [sdiff](https://redis.io/commands/sdiff/)
+ * [sdiffstore](https://redis.io/commands/sdiffstore/)
+ * [sinter](https://redis.io/commands/sinter/)
+ * [sintercard](https://redis.io/commands/sintercard/)
+ * [sinterstore](https://redis.io/commands/sinterstore/)
+ * [sismember](https://redis.io/commands/sismember/)
+ * [smembers](https://redis.io/commands/smembers/)
+ * [smismember](https://redis.io/commands/smismember/)
+ * [smove](https://redis.io/commands/smove/)
+ * [spop](https://redis.io/commands/spop/)
+ * [srandmember](https://redis.io/commands/srandmember/)
+ * [srem](https://redis.io/commands/srem/)
+ * [sscan](https://redis.io/commands/sscan/)
+ * [sunion](https://redis.io/commands/sunion/)
+ * [sunionstore](https://redis.io/commands/sunionstore/)
 
 # Unimplemented Commands
 All the redis commands are implemented in fakeredis with these exceptions:
     
 ### server
- * acl
- * acl cat
- * acl deluser
- * acl dryrun
- * acl genpass
- * acl getuser
- * acl help
- * acl list
- * acl load
- * acl log
- * acl save
- * acl setuser
- * acl users
- * acl whoami
- * bgrewriteaof
- * command
- * command count
- * command docs
- * command getkeys
- * command getkeysandflags
- * command help
- * command info
- * command list
- * config
- * config get
- * config help
- * config resetstat
- * config rewrite
- * config set
- * debug
- * failover
- * info
- * latency
- * latency doctor
- * latency graph
- * latency help
- * latency histogram
- * latency history
- * latency latest
- * latency reset
- * lolwut
- * memory
- * memory doctor
- * memory help
- * memory malloc-stats
- * memory purge
- * memory stats
- * memory usage
- * module
- * module help
- * module list
- * module load
- * module loadex
- * module unload
- * monitor
- * psync
- * replconf
- * replicaof
- * restore-asking
- * role
- * shutdown
- * slaveof
- * slowlog
- * slowlog get
- * slowlog help
- * slowlog len
- * slowlog reset
- * sync
+ * [acl](https://redis.io/commands/acl/)
+ * [acl cat](https://redis.io/commands/acl-cat/)
+ * [acl deluser](https://redis.io/commands/acl-deluser/)
+ * [acl dryrun](https://redis.io/commands/acl-dryrun/)
+ * [acl genpass](https://redis.io/commands/acl-genpass/)
+ * [acl getuser](https://redis.io/commands/acl-getuser/)
+ * [acl help](https://redis.io/commands/acl-help/)
+ * [acl list](https://redis.io/commands/acl-list/)
+ * [acl load](https://redis.io/commands/acl-load/)
+ * [acl log](https://redis.io/commands/acl-log/)
+ * [acl save](https://redis.io/commands/acl-save/)
+ * [acl setuser](https://redis.io/commands/acl-setuser/)
+ * [acl users](https://redis.io/commands/acl-users/)
+ * [acl whoami](https://redis.io/commands/acl-whoami/)
+ * [bgrewriteaof](https://redis.io/commands/bgrewriteaof/)
+ * [command](https://redis.io/commands/command/)
+ * [command count](https://redis.io/commands/command-count/)
+ * [command docs](https://redis.io/commands/command-docs/)
+ * [command getkeys](https://redis.io/commands/command-getkeys/)
+ * [command getkeysandflags](https://redis.io/commands/command-getkeysandflags/)
+ * [command help](https://redis.io/commands/command-help/)
+ * [command info](https://redis.io/commands/command-info/)
+ * [command list](https://redis.io/commands/command-list/)
+ * [config](https://redis.io/commands/config/)
+ * [config get](https://redis.io/commands/config-get/)
+ * [config help](https://redis.io/commands/config-help/)
+ * [config resetstat](https://redis.io/commands/config-resetstat/)
+ * [config rewrite](https://redis.io/commands/config-rewrite/)
+ * [config set](https://redis.io/commands/config-set/)
+ * [debug](https://redis.io/commands/debug/)
+ * [failover](https://redis.io/commands/failover/)
+ * [info](https://redis.io/commands/info/)
+ * [latency](https://redis.io/commands/latency/)
+ * [latency doctor](https://redis.io/commands/latency-doctor/)
+ * [latency graph](https://redis.io/commands/latency-graph/)
+ * [latency help](https://redis.io/commands/latency-help/)
+ * [latency histogram](https://redis.io/commands/latency-histogram/)
+ * [latency history](https://redis.io/commands/latency-history/)
+ * [latency latest](https://redis.io/commands/latency-latest/)
+ * [latency reset](https://redis.io/commands/latency-reset/)
+ * [lolwut](https://redis.io/commands/lolwut/)
+ * [memory](https://redis.io/commands/memory/)
+ * [memory doctor](https://redis.io/commands/memory-doctor/)
+ * [memory help](https://redis.io/commands/memory-help/)
+ * [memory malloc-stats](https://redis.io/commands/memory-malloc-stats/)
+ * [memory purge](https://redis.io/commands/memory-purge/)
+ * [memory stats](https://redis.io/commands/memory-stats/)
+ * [memory usage](https://redis.io/commands/memory-usage/)
+ * [module](https://redis.io/commands/module/)
+ * [module help](https://redis.io/commands/module-help/)
+ * [module list](https://redis.io/commands/module-list/)
+ * [module load](https://redis.io/commands/module-load/)
+ * [module loadex](https://redis.io/commands/module-loadex/)
+ * [module unload](https://redis.io/commands/module-unload/)
+ * [monitor](https://redis.io/commands/monitor/)
+ * [psync](https://redis.io/commands/psync/)
+ * [replconf](https://redis.io/commands/replconf/)
+ * [replicaof](https://redis.io/commands/replicaof/)
+ * [restore-asking](https://redis.io/commands/restore-asking/)
+ * [role](https://redis.io/commands/role/)
+ * [shutdown](https://redis.io/commands/shutdown/)
+ * [slaveof](https://redis.io/commands/slaveof/)
+ * [slowlog](https://redis.io/commands/slowlog/)
+ * [slowlog get](https://redis.io/commands/slowlog-get/)
+ * [slowlog help](https://redis.io/commands/slowlog-help/)
+ * [slowlog len](https://redis.io/commands/slowlog-len/)
+ * [slowlog reset](https://redis.io/commands/slowlog-reset/)
+ * [sync](https://redis.io/commands/sync/)
 
 ### cluster
- * asking
- * cluster
- * cluster addslots
- * cluster addslotsrange
- * cluster bumpepoch
- * cluster count-failure-reports
- * cluster countkeysinslot
- * cluster delslots
- * cluster delslotsrange
- * cluster failover
- * cluster flushslots
- * cluster forget
- * cluster getkeysinslot
- * cluster help
- * cluster info
- * cluster keyslot
- * cluster links
- * cluster meet
- * cluster myid
- * cluster nodes
- * cluster replicas
- * cluster replicate
- * cluster reset
- * cluster saveconfig
- * cluster set-config-epoch
- * cluster setslot
- * cluster shards
- * cluster slaves
- * cluster slots
- * readonly
- * readwrite
+ * [asking](https://redis.io/commands/asking/)
+ * [cluster](https://redis.io/commands/cluster/)
+ * [cluster addslots](https://redis.io/commands/cluster-addslots/)
+ * [cluster addslotsrange](https://redis.io/commands/cluster-addslotsrange/)
+ * [cluster bumpepoch](https://redis.io/commands/cluster-bumpepoch/)
+ * [cluster count-failure-reports](https://redis.io/commands/cluster-count-failure-reports/)
+ * [cluster countkeysinslot](https://redis.io/commands/cluster-countkeysinslot/)
+ * [cluster delslots](https://redis.io/commands/cluster-delslots/)
+ * [cluster delslotsrange](https://redis.io/commands/cluster-delslotsrange/)
+ * [cluster failover](https://redis.io/commands/cluster-failover/)
+ * [cluster flushslots](https://redis.io/commands/cluster-flushslots/)
+ * [cluster forget](https://redis.io/commands/cluster-forget/)
+ * [cluster getkeysinslot](https://redis.io/commands/cluster-getkeysinslot/)
+ * [cluster help](https://redis.io/commands/cluster-help/)
+ * [cluster info](https://redis.io/commands/cluster-info/)
+ * [cluster keyslot](https://redis.io/commands/cluster-keyslot/)
+ * [cluster links](https://redis.io/commands/cluster-links/)
+ * [cluster meet](https://redis.io/commands/cluster-meet/)
+ * [cluster myid](https://redis.io/commands/cluster-myid/)
+ * [cluster nodes](https://redis.io/commands/cluster-nodes/)
+ * [cluster replicas](https://redis.io/commands/cluster-replicas/)
+ * [cluster replicate](https://redis.io/commands/cluster-replicate/)
+ * [cluster reset](https://redis.io/commands/cluster-reset/)
+ * [cluster saveconfig](https://redis.io/commands/cluster-saveconfig/)
+ * [cluster set-config-epoch](https://redis.io/commands/cluster-set-config-epoch/)
+ * [cluster setslot](https://redis.io/commands/cluster-setslot/)
+ * [cluster shards](https://redis.io/commands/cluster-shards/)
+ * [cluster slaves](https://redis.io/commands/cluster-slaves/)
+ * [cluster slots](https://redis.io/commands/cluster-slots/)
+ * [readonly](https://redis.io/commands/readonly/)
+ * [readwrite](https://redis.io/commands/readwrite/)
 
 ### connection
- * auth
- * client
- * client caching
- * client getname
- * client getredir
- * client help
- * client id
- * client info
- * client kill
- * client list
- * client no-evict
- * client pause
- * client reply
- * client setname
- * client tracking
- * client trackinginfo
- * client unblock
- * client unpause
- * hello
- * quit
- * reset
+ * [auth](https://redis.io/commands/auth/)
+ * [client](https://redis.io/commands/client/)
+ * [client caching](https://redis.io/commands/client-caching/)
+ * [client getname](https://redis.io/commands/client-getname/)
+ * [client getredir](https://redis.io/commands/client-getredir/)
+ * [client help](https://redis.io/commands/client-help/)
+ * [client id](https://redis.io/commands/client-id/)
+ * [client info](https://redis.io/commands/client-info/)
+ * [client kill](https://redis.io/commands/client-kill/)
+ * [client list](https://redis.io/commands/client-list/)
+ * [client no-evict](https://redis.io/commands/client-no-evict/)
+ * [client pause](https://redis.io/commands/client-pause/)
+ * [client reply](https://redis.io/commands/client-reply/)
+ * [client setname](https://redis.io/commands/client-setname/)
+ * [client tracking](https://redis.io/commands/client-tracking/)
+ * [client trackinginfo](https://redis.io/commands/client-trackinginfo/)
+ * [client unblock](https://redis.io/commands/client-unblock/)
+ * [client unpause](https://redis.io/commands/client-unpause/)
+ * [hello](https://redis.io/commands/hello/)
+ * [quit](https://redis.io/commands/quit/)
+ * [reset](https://redis.io/commands/reset/)
 
 ### bitmap
- * bitfield
- * bitfield_ro
- * bitop
- * bitpos
+ * [bitfield](https://redis.io/commands/bitfield/)
+ * [bitfield_ro](https://redis.io/commands/bitfield_ro/)
+ * [bitop](https://redis.io/commands/bitop/)
+ * [bitpos](https://redis.io/commands/bitpos/)
 
 ### list
- * blmove
- * blmpop
- * lmpop
- * lpos
+ * [blmove](https://redis.io/commands/blmove/)
+ * [blmpop](https://redis.io/commands/blmpop/)
+ * [lmpop](https://redis.io/commands/lmpop/)
+ * [lpos](https://redis.io/commands/lpos/)
 
 ### sorted-set
- * bzmpop
- * zdiff
- * zdiffstore
- * zinter
- * zintercard
- * zmpop
- * zrandmember
- * zrangestore
- * zunion
+ * [bzmpop](https://redis.io/commands/bzmpop/)
+ * [zdiff](https://redis.io/commands/zdiff/)
+ * [zdiffstore](https://redis.io/commands/zdiffstore/)
+ * [zinter](https://redis.io/commands/zinter/)
+ * [zintercard](https://redis.io/commands/zintercard/)
+ * [zmpop](https://redis.io/commands/zmpop/)
+ * [zrandmember](https://redis.io/commands/zrandmember/)
+ * [zrangestore](https://redis.io/commands/zrangestore/)
+ * [zunion](https://redis.io/commands/zunion/)
 
 ### generic
- * copy
- * expiretime
- * migrate
- * object
- * object encoding
- * object freq
- * object help
- * object idletime
- * object refcount
- * pexpiretime
- * sort_ro
- * touch
- * wait
+ * [copy](https://redis.io/commands/copy/)
+ * [expiretime](https://redis.io/commands/expiretime/)
+ * [migrate](https://redis.io/commands/migrate/)
+ * [object](https://redis.io/commands/object/)
+ * [object encoding](https://redis.io/commands/object-encoding/)
+ * [object freq](https://redis.io/commands/object-freq/)
+ * [object help](https://redis.io/commands/object-help/)
+ * [object idletime](https://redis.io/commands/object-idletime/)
+ * [object refcount](https://redis.io/commands/object-refcount/)
+ * [pexpiretime](https://redis.io/commands/pexpiretime/)
+ * [sort_ro](https://redis.io/commands/sort_ro/)
+ * [touch](https://redis.io/commands/touch/)
+ * [wait](https://redis.io/commands/wait/)
 
 ### scripting
- * evalsha_ro
- * eval_ro
- * fcall
- * fcall_ro
- * function
- * function delete
- * function dump
- * function flush
- * function help
- * function kill
- * function list
- * function load
- * function restore
- * function stats
- * script debug
- * script exists
- * script flush
- * script help
- * script kill
+ * [evalsha_ro](https://redis.io/commands/evalsha_ro/)
+ * [eval_ro](https://redis.io/commands/eval_ro/)
+ * [fcall](https://redis.io/commands/fcall/)
+ * [fcall_ro](https://redis.io/commands/fcall_ro/)
+ * [function](https://redis.io/commands/function/)
+ * [function delete](https://redis.io/commands/function-delete/)
+ * [function dump](https://redis.io/commands/function-dump/)
+ * [function flush](https://redis.io/commands/function-flush/)
+ * [function help](https://redis.io/commands/function-help/)
+ * [function kill](https://redis.io/commands/function-kill/)
+ * [function list](https://redis.io/commands/function-list/)
+ * [function load](https://redis.io/commands/function-load/)
+ * [function restore](https://redis.io/commands/function-restore/)
+ * [function stats](https://redis.io/commands/function-stats/)
+ * [script debug](https://redis.io/commands/script-debug/)
+ * [script exists](https://redis.io/commands/script-exists/)
+ * [script flush](https://redis.io/commands/script-flush/)
+ * [script help](https://redis.io/commands/script-help/)
+ * [script kill](https://redis.io/commands/script-kill/)
 
 ### geo
- * geoadd
- * geodist
- * geohash
- * geopos
- * georadius
- * georadiusbymember
- * georadiusbymember_ro
- * georadius_ro
- * geosearch
- * geosearchstore
+ * [geoadd](https://redis.io/commands/geoadd/)
+ * [geodist](https://redis.io/commands/geodist/)
+ * [geohash](https://redis.io/commands/geohash/)
+ * [geopos](https://redis.io/commands/geopos/)
+ * [georadius](https://redis.io/commands/georadius/)
+ * [georadiusbymember](https://redis.io/commands/georadiusbymember/)
+ * [georadiusbymember_ro](https://redis.io/commands/georadiusbymember_ro/)
+ * [georadius_ro](https://redis.io/commands/georadius_ro/)
+ * [geosearch](https://redis.io/commands/geosearch/)
+ * [geosearchstore](https://redis.io/commands/geosearchstore/)
 
 ### string
- * getex
- * lcs
+ * [getex](https://redis.io/commands/getex/)
+ * [lcs](https://redis.io/commands/lcs/)
 
 ### hash
- * hrandfield
+ * [hrandfield](https://redis.io/commands/hrandfield/)
 
 ### hyperloglog
- * pfdebug
- * pfselftest
+ * [pfdebug](https://redis.io/commands/pfdebug/)
+ * [pfselftest](https://redis.io/commands/pfselftest/)
 
 ### pubsub
- * pubsub
- * pubsub channels
- * pubsub help
- * pubsub numpat
- * pubsub numsub
- * pubsub shardchannels
- * pubsub shardnumsub
- * spublish
- * ssubscribe
- * sunsubscribe
+ * [pubsub](https://redis.io/commands/pubsub/)
+ * [pubsub channels](https://redis.io/commands/pubsub-channels/)
+ * [pubsub help](https://redis.io/commands/pubsub-help/)
+ * [pubsub numpat](https://redis.io/commands/pubsub-numpat/)
+ * [pubsub numsub](https://redis.io/commands/pubsub-numsub/)
+ * [pubsub shardchannels](https://redis.io/commands/pubsub-shardchannels/)
+ * [pubsub shardnumsub](https://redis.io/commands/pubsub-shardnumsub/)
+ * [spublish](https://redis.io/commands/spublish/)
+ * [ssubscribe](https://redis.io/commands/ssubscribe/)
+ * [sunsubscribe](https://redis.io/commands/sunsubscribe/)
 
 ### stream
- * xack
- * xadd
- * xautoclaim
- * xclaim
- * xdel
- * xgroup
- * xgroup create
- * xgroup createconsumer
- * xgroup delconsumer
- * xgroup destroy
- * xgroup help
- * xgroup setid
- * xinfo
- * xinfo consumers
- * xinfo groups
- * xinfo help
- * xinfo stream
- * xlen
- * xpending
- * xrange
- * xread
- * xreadgroup
- * xrevrange
- * xsetid
- * xtrim
+ * [xack](https://redis.io/commands/xack/)
+ * [xadd](https://redis.io/commands/xadd/)
+ * [xautoclaim](https://redis.io/commands/xautoclaim/)
+ * [xclaim](https://redis.io/commands/xclaim/)
+ * [xdel](https://redis.io/commands/xdel/)
+ * [xgroup](https://redis.io/commands/xgroup/)
+ * [xgroup create](https://redis.io/commands/xgroup-create/)
+ * [xgroup createconsumer](https://redis.io/commands/xgroup-createconsumer/)
+ * [xgroup delconsumer](https://redis.io/commands/xgroup-delconsumer/)
+ * [xgroup destroy](https://redis.io/commands/xgroup-destroy/)
+ * [xgroup help](https://redis.io/commands/xgroup-help/)
+ * [xgroup setid](https://redis.io/commands/xgroup-setid/)
+ * [xinfo](https://redis.io/commands/xinfo/)
+ * [xinfo consumers](https://redis.io/commands/xinfo-consumers/)
+ * [xinfo groups](https://redis.io/commands/xinfo-groups/)
+ * [xinfo help](https://redis.io/commands/xinfo-help/)
+ * [xinfo stream](https://redis.io/commands/xinfo-stream/)
+ * [xlen](https://redis.io/commands/xlen/)
+ * [xpending](https://redis.io/commands/xpending/)
+ * [xrange](https://redis.io/commands/xrange/)
+ * [xread](https://redis.io/commands/xread/)
+ * [xreadgroup](https://redis.io/commands/xreadgroup/)
+ * [xrevrange](https://redis.io/commands/xrevrange/)
+ * [xsetid](https://redis.io/commands/xsetid/)
+ * [xtrim](https://redis.io/commands/xtrim/)
 
 ### json
- * json.del
- * json.forget
- * json.get
- * json.toggle
- * json.clear
- * json.set
- * json.mget
- * json.numincrby
- * json.nummultby
- * json.strappend
- * json.strlen
- * json.arrappend
- * json.arrindex
- * json.arrinsert
- * json.arrlen
- * json.arrpop
- * json.arrtrim
- * json.objkeys
- * json.objlen
- * json.type
- * json.resp
- * json.debug
- * json.debug help
- * json.debug memory
+ * [json.del](https://redis.io/commands/json.del/)
+ * [json.forget](https://redis.io/commands/json.forget/)
+ * [json.get](https://redis.io/commands/json.get/)
+ * [json.toggle](https://redis.io/commands/json.toggle/)
+ * [json.clear](https://redis.io/commands/json.clear/)
+ * [json.set](https://redis.io/commands/json.set/)
+ * [json.mget](https://redis.io/commands/json.mget/)
+ * [json.numincrby](https://redis.io/commands/json.numincrby/)
+ * [json.nummultby](https://redis.io/commands/json.nummultby/)
+ * [json.strappend](https://redis.io/commands/json.strappend/)
+ * [json.strlen](https://redis.io/commands/json.strlen/)
+ * [json.arrappend](https://redis.io/commands/json.arrappend/)
+ * [json.arrindex](https://redis.io/commands/json.arrindex/)
+ * [json.arrinsert](https://redis.io/commands/json.arrinsert/)
+ * [json.arrlen](https://redis.io/commands/json.arrlen/)
+ * [json.arrpop](https://redis.io/commands/json.arrpop/)
+ * [json.arrtrim](https://redis.io/commands/json.arrtrim/)
+ * [json.objkeys](https://redis.io/commands/json.objkeys/)
+ * [json.objlen](https://redis.io/commands/json.objlen/)
+ * [json.type](https://redis.io/commands/json.type/)
+ * [json.resp](https://redis.io/commands/json.resp/)
+ * [json.debug](https://redis.io/commands/json.debug/)
+ * [json.debug help](https://redis.io/commands/json.debug-help/)
+ * [json.debug memory](https://redis.io/commands/json.debug-memory/)
 
