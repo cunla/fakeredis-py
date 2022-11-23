@@ -4,7 +4,7 @@ import pytest
 import redis
 import redis.client
 
-from testtools import raw_command
+from test.testtools import raw_command
 
 
 @pytest.mark.min_server('7')

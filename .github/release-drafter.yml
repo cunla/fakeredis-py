@@ -14,7 +14,7 @@ categories:
     label: 'chore'
   - title: '⬆️ Dependency Updates'
     label: 'dependencies'
-change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 autolabeler:
   - label: 'chore'
@@ -39,8 +39,13 @@ version-resolver:
       - 'patch'
   default: patch
 template: |
-  ## Changes
+  # Changes
 
   $CHANGES
+  
+  ## Contributors
+  We'd like to thank all the contributors who worked on this release!
+  
+  $CONTRIBUTORS
   
   **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

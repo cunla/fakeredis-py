@@ -5,7 +5,7 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
-import testtools
+from .. import testtools
 
 
 def key_val_dict(size=100):
@@ -258,7 +258,6 @@ def test_type(r):
     assert r.type('none_key') == b'none'
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 def test_unlink(r):
     r.set('foo', 'bar')
     r.unlink('foo')

@@ -4,7 +4,7 @@ from time import sleep
 import pytest
 from redis.exceptions import ResponseError
 
-import testtools
+from .. import testtools
 
 
 @testtools.run_test_if_redispy_ver('above', '3')

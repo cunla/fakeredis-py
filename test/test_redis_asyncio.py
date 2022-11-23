@@ -8,8 +8,8 @@ import redis
 import redis.asyncio
 from packaging.version import Version
 
-import testtools
 from fakeredis import FakeServer, aioredis
+from test import testtools
 
 pytestmark = [
 ]
@@ -295,7 +295,7 @@ async def test_async():
     assert x == b"plz"
 
 
-@testtools.run_test_if_redispy_ver('above', '4.4.0rc2')
+@testtools.run_test_if_redispy_ver('above', '4.4.0')
 @pytest.mark.parametrize('nowait', [False, True])
 @pytest.mark.fake
 async def test_connection_disconnect(nowait):

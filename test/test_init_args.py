@@ -1,7 +1,6 @@
 import pytest
 
 import fakeredis
-import testtools
 
 
 def test_multidb(r, create_redis):
@@ -94,7 +93,6 @@ class TestInitArgs:
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
-    @testtools.run_test_if_redispy_ver('above', '3')
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
             'redis://localhost:6379/0',

@@ -1,26 +1,9 @@
-import logging
 import re
 import threading
 import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-
-LOGGER = logging.getLogger('fakeredis')
-REDIS_LOG_LEVELS = {
-    b'LOG_DEBUG': 0,
-    b'LOG_VERBOSE': 1,
-    b'LOG_NOTICE': 2,
-    b'LOG_WARNING': 3
-}
-REDIS_LOG_LEVELS_TO_LOGGING = {
-    0: logging.DEBUG,
-    1: logging.INFO,
-    2: logging.INFO,
-    3: logging.WARNING
-}
-
-MAX_STRING_SIZE = 512 * 1024 * 1024
 
 
 class SimpleString:
@@ -48,7 +31,6 @@ class NoResponse:
 
 OK = SimpleString(b'OK')
 QUEUED = SimpleString(b'QUEUED')
-PONG = SimpleString(b'PONG')
 BGSAVE_STARTED = SimpleString(b'Background saving started')
 
 
@@ -221,29 +203,6 @@ def valid_response_type(value, nested=False):
         if any(not valid_response_type(item, True) for item in value):
             return False
     return True
-
-
-def fix_range_string(start, end, length):
-    # Negative number handling is based on the redis source code
-    if 0 > start > end and end < 0:
-        return -1, -1
-    if start < 0:
-        start = max(0, start + length)
-    if end < 0:
-        end = max(0, end + length)
-    end = min(end, length - 1)
-    return start, end + 1
-
-
-class _DummyParser:
-    def __init__(self, socket_read_size):
-        self.socket_read_size = socket_read_size
-
-    def on_disconnect(self):
-        pass
-
-    def on_connect(self, connection):
-        pass
 
 
 class FakeSelector(object):

@@ -45,9 +45,7 @@ redis = "<4.5"
 typing-extensions = "*"
 sortedcontainers = "^2.4.0"
 lupa = { version = "^1.14", optional = true }
-aioredis = { version = "^2.0.1", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
-
 
 [tool.poetry.extras]
 lua = ["lupa"]

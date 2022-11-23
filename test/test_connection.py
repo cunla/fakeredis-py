@@ -3,7 +3,7 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-import testtools
+from test import testtools
 
 
 def test_ping(r):

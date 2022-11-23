@@ -40,21 +40,21 @@ jobs:
           python -c 'import fakeredis'
   test:
     name: 'py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}'
-    needs: [ 'lint' ]
+    needs:
+      - 'lint'
     runs-on: ubuntu-latest
     strategy:
-      #      max-parallel: 5
       fail-fast: false
       matrix:
         redis-version: [ "6.2.7", "7.0.5" ]
         python-version: [ "3.7", "3.8", "3.10", '3.11' ]
         redis-py: [ '4.3.4' ]
         include:
-          - python-version: "3.10" # should work fine with redis.asyncio
+          - python-version: "3.10"
             redis-version: "6.2.7"
             redis-py: "4.3.4"
             lupa: "1.13"
-          - python-version: "3.10" # should work fine with redis.asyncio
+          - python-version: "3.10"
             redis-version: "7.0.5"
             redis-py: "4.3.4"
             lupa: "1.13"
@@ -66,6 +66,11 @@ jobs:
         image: redis:${{ matrix.redis-version }}
         ports:
           - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
@@ -105,13 +110,15 @@ jobs:
   # Prepare a draft release for GitHub Releases page for the manual verification
   # If accepted and published, release workflow would be triggered
   update_release_draft:
+    name: 'Create or Update release draft'
     permissions:
       # write permission is required to create a GitHub release
       contents: write
       # write permission is required for autolabeler
       # otherwise, read permission is required at least
       pull-requests: write
-    needs: test
+    needs:
+      - 'test'
     runs-on: ubuntu-latest
     steps:
       - uses: release-drafter/release-drafter@v5

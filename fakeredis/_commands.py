@@ -1,9 +1,15 @@
+"""
+Helper classes and methods used in mixins implementing various commands.
+Unlike _helpers.py, here the methods should be used only in mixins.
+"""
 import functools
 import math
 import re
 
 from . import _msgs as msgs
-from ._helpers import MAX_STRING_SIZE, null_terminate, SimpleError
+from ._helpers import null_terminate, SimpleError
+
+MAX_STRING_SIZE = 512 * 1024 * 1024
 
 
 class Key:
@@ -379,5 +385,17 @@ def fix_range(start, end, length):
         end += length
     if start > end or start >= length:
         return -1, -1
+    end = min(end, length - 1)
+    return start, end + 1
+
+
+def fix_range_string(start, end, length):
+    # Negative number handling is based on the redis source code
+    if 0 > start > end and end < 0:
+        return -1, -1
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end = max(0, end + length)
     end = min(end, length - 1)
     return start, end + 1
