@@ -1,9 +1,3 @@
-"""`fakeredis`'s base socket emulation class."""
-
-from __future__ import annotations
-
-from typing import Any, Union, Tuple, Callable
-
 import itertools
 import queue
 import time
@@ -19,6 +13,8 @@ from ._helpers import (
 
 
 class BaseFakeSocket:
+    _connection_error_class = redis.ConnectionError
+
     def __init__(self, server, *args, **kwargs):
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server
@@ -186,23 +182,16 @@ class BaseFakeSocket:
             if ret is not None:
                 return ret
 
-    def _name_to_func(self, name: Union[str, bytes]) -> Tuple[Callable[..., Any], str]:
-        """Resolve the supplied name to its associated "handler" function."""
-
-        name = (
-            name.decode(encoding="utf-8", errors="replace")
-            if isinstance(name, bytes)
-            else str(name).encode(encoding="utf-8", errors="replace")
-        )
-
+    def _name_to_func(self, name):
+        name = (name.decode(encoding='utf-8', errors='replace')
+                if isinstance(name, bytes)
+                else str(name).encode(encoding='utf-8', errors='replace'))
         func_name = name.casefold().replace(".", "_")
         func = getattr(self, func_name, None)
-
-        if name.startswith("_") or not func or not hasattr(func, "_fakeredis_sig"):
+        if name.startswith('_') or not func or not hasattr(func, '_fakeredis_sig'):
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
-            clean_name = name.replace("\r", " ").replace("\n", " ")
+            clean_name = name.replace('\r', ' ').replace('\n', ' ')
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
-
         return func, func_name
 
     def sendall(self, data):

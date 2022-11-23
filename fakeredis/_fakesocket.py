@@ -1,15 +1,3 @@
-"""FakeRedis's internal emulation of a Redis server socket."""
-
-# Future Imports
-from __future__ import annotations
-
-# Standard Library Imports
-from typing import Type
-
-# Third-Party Imports
-import redis
-
-# Imports From Package Sub-Modules
 from ._basefakesocket import BaseFakeSocket
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
@@ -42,9 +30,6 @@ class FakeSocket(
     SortedSetCommandsMixin,
     JSONCommandsMixin,
 ):
-    """An emulated Redis server socket."""
 
-    _connection_error_class: Type[Exception] = redis.ConnectionError
-
-    def __init__(self, server) -> None:
+    def __init__(self, server):
         super(FakeSocket, self).__init__(server)
