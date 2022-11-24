@@ -24,7 +24,7 @@ For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](./RE
 
 To install fakeredis-py, simply:
 
-``` bash
+```bash
 $ pip install fakeredis
 ```
 
@@ -107,7 +107,7 @@ from fakeredis import FakeRedisConnSingleton
 django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 ```
 
-### Limitations
+# Known Limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
 won't give identical results to real redis. The following are differences that
@@ -115,41 +115,42 @@ are unlikely to ever be fixed; there are also differences that are fixable
 (such as commands that do not support all features) which should be filed as
 bugs in GitHub.
 
-1. Hyperloglogs are implemented using sets underneath. This means that the
-   `type` command will return the wrong answer, you can't use `get` to retrieve
-   the encoded value, and counts will be slightly different (they will in fact be
-   exact).
+- Hyperloglogs are implemented using sets underneath. This means that the
+  `type` command will return the wrong answer, you can't use `get` to retrieve
+  the encoded value, and counts will be slightly different (they will in fact be
+  exact).
+- When a command has multiple error conditions, such as operating on a key of
+  the wrong type and an integer argument is not well-formed, the choice of
+  error to return may not match redis.
 
-2. When a command has multiple error conditions, such as operating on a key of
-   the wrong type and an integer argument is not well-formed, the choice of
-   error to return may not match redis.
+- The `incrbyfloat` and `hincrbyfloat` commands in redis use the C `long
+  double` type, which typically has more precision than Python's `float`
+  type.
 
-3. The `incrbyfloat` and `hincrbyfloat` commands in redis use the C `long
-   double` type, which typically has more precision than Python's `float`
-   type.
+- Redis makes guarantees about the order in which clients blocked on blocking
+  commands are woken up. Fakeredis does not honour these guarantees.
 
-4. Redis makes guarantees about the order in which clients blocked on blocking
-   commands are woken up. Fakeredis does not honour these guarantees.
+- Where redis contains bugs, fakeredis generally does not try to provide exact
+  bug-compatibility. It's not practical for fakeredis to try to match the set
+  of bugs in your specific version of redis.
 
-5. Where redis contains bugs, fakeredis generally does not try to provide exact
-   bug-compatibility. It's not practical for fakeredis to try to match the set
-   of bugs in your specific version of redis.
+- There are a number of cases where the behaviour of redis is undefined, such
+  as the order of elements returned by set and hash commands. Fakeredis will
+  generally not produce the same results, and in Python versions before 3.6
+  may produce different results each time the process is re-run.
 
-6. There are a number of cases where the behaviour of redis is undefined, such
-   as the order of elements returned by set and hash commands. Fakeredis will
-   generally not produce the same results, and in Python versions before 3.6
-   may produce different results each time the process is re-run.
+- SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are
+  deleted or renamed during iteration. They also won't necessarily iterate in
+  the same chunk sizes or the same order as redis.
 
-7. SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are
-   deleted or renamed during iteration. They also won't necessarily iterate in
-   the same chunk sizes or the same order as redis.
+- DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
+  `pickle` module is used to mimic an opaque and non-standard format.
+  **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
+  can execute arbitrary code.
 
-8. DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
-   `pickle` module is used to mimic an opaque and non-standard format.
-   **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
-   can execute arbitrary code.
+--------------------
 
-### Local development environment
+# Local development environment
 
 To ensure parity with the real redis, there are a set of integration tests
 that mirror the unittests. For every unittest that is written, the same
@@ -215,7 +216,7 @@ For example:
 ```python
 class FakeSocket(BaseFakeSocket, FakeLuaSocket):
     # ...
-    @command(...)
+    @command(name='zscore',fixed=(bytes,), repeat=(bytes,), flags=[])
     def zscore(self, key, member):
         try:
             return self._encodefloat(key.value[member], False)
