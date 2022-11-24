@@ -25,12 +25,13 @@ For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](./RE
 To install fakeredis-py, simply:
 
 ```bash
-$ pip install fakeredis
+pip install fakeredis        # No additional modules support
+
+pip install fakeredis[lua]   # Support for LUA scripts
+
+pip install fakeredis[json]  # Support for RedisJSON commands
 ```
 
-You will need [lupa](https://pypi.org/project/lupa/) if you want to run Lua scripts
-(this includes features like ``redis.lock.Lock``, which are implemented in Lua).
-If you install fakeredis with ``pip install fakeredis[lua]`` it will be automatically installed.
 
 # How to Use
 
@@ -107,7 +108,18 @@ from fakeredis import FakeRedisConnSingleton
 django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 ```
 
-# Known Limitations
+## Support for additional modules
+Currently 
+
+### Lua support
+If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in 
+Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it using `pip install fakeredis[lua]`
+
+### JSON support
+Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
+[jsonpath-ng](https://github.com/h2non/jsonpath-ng), you can simply install it using `pip install fakeredis[json]`.
+
+## Known Limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis
 won't give identical results to real redis. The following are differences that
@@ -204,6 +216,11 @@ poetry run pytest -m "not slow"
 Contributions are welcome. Please see the [contributing guide](.github/CONTRIBUTING.md) for more details.
 If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
 
+There are guides how to [implement a new command](#implementing-support-for-a-command) and 
+how to [write new test cases](#write-a-new-test-case).
+
+New contribution guides are welcome.
+
 # Guides
 
 ### Implementing support for a command
@@ -230,8 +247,7 @@ There are multiple scenarios for test, with different versions of redis server, 
 The tests not only assert the validity of output but runs the same test on a real redis-server and compares the output
 to the real server output.
 
-- Create tests in the `test_fakeredis6.py` if the command is supported in redis server 6.x.
-- Alternatively, create the test in `test_fakeredis7.py` if the command is supported only on redis server 7.x.
+- Create tests in the relevant test file.
 - If support for the command was introduced in a certain version of redis-py (
   see [redis-py release notes](https://github.com/redis/redis-py/releases/tag/v4.3.4)) you can use the
   decorator `@testtools.run_test_if_redispy_ver` on your tests. example:
@@ -250,6 +266,31 @@ Lastly, run from the root of the project the script to regenerate `REDIS_COMMAND
 
 ```bash
 python scripts/supported.py > REDIS_COMMANDS.md    
+```
+
+### Write a new test case
+There are multiple scenarios for test, with different versions of python, redis-py and redis server, etc.
+The tests not only assert the validity of the expected output with FakeRedis but also with a real redis server. 
+That way parity of real Redis and FakeRedis is ensured.
+
+To write a new test case for a command:
+- Determine which mixin the command belongs to  and the test file for
+  the mixin (eg, `string_mixin.py` => `test_string_commands.py`).
+- Tests should support python 3.7 and above.
+- Determine when support for the command was introduced
+  - To limit the redis-server versions it will run on use: 
+    `@pytest.mark.max_server(version)` and `@pytest.mark.min_server(version)`
+  - To limit the redis-py version use `@run_test_if_redispy_ver(above/below, version)`
+- pytest will inject a redis connection to the argument `r` of the test.
+
+Sample of running a test for redis-py v4.2.0 and above, redis-server 7.0 and above.
+```python
+@pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.2.0')
+def test_expire_should_not_expire__when_no_expire_is_set(r):
+    r.set('foo', 'bar')
+    assert r.get('foo') == b'bar'
+    assert r.expire('foo', 1, xx=True) == 0
 ```
 
 # Sponsor
