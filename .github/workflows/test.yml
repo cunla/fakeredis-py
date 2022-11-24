@@ -61,7 +61,7 @@ jobs:
             redis-version: "7.0.5"
             redis-py: "4.3.5"
             lupa: "1.13"
-            coverage: yes
+            coverage: "yes"
     permissions:
       pull-requests: write
     services:
@@ -101,11 +101,11 @@ jobs:
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
-        if: ${{ matrix.coverage != "yes" }}
+        if: ${{ matrix.coverage != 'yes' }}
         run: |
           poetry run pytest -v
       - name: Test with coverage
-        if: ${{ matrix.coverage == "yes" }}
+        if: ${{ matrix.coverage == 'yes' }}
         uses: ./.github/actions/test-coverage
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
