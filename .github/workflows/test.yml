@@ -1,3 +1,4 @@
+---
 name: Unit tests
 
 on:
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
   lint:
-    name: 'flake8 on code'
+    name: "flake8 on code"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,26 +38,28 @@ jobs:
         run: |
           poetry build
           pip install dist/fakeredis-*.tar.gz
-          python -c 'import fakeredis'
+          python -c "import fakeredis"
   test:
-    name: 'py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }}, lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}'
+    name: >
+      py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }},
+      lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}
     needs:
-      - 'lint'
+      - "lint"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        redis-version: [ "6.2.7", "7.0.5" ]
-        python-version: [ "3.7", "3.8", "3.10", '3.11' ]
-        redis-py: [ '4.3.4' ]
+        redis-version: ["6.2.7", "7.0.5"]
+        python-version: ["3.7", "3.8", "3.10", "3.11"]
+        redis-py: ["4.3.4", "4.3.5"]
         include:
           - python-version: "3.10"
             redis-version: "6.2.7"
-            redis-py: "4.3.4"
+            redis-py: "4.3.5"
             lupa: "1.13"
           - python-version: "3.10"
             redis-version: "7.0.5"
-            redis-py: "4.3.4"
+            redis-py: "4.3.5"
             lupa: "1.13"
             coverage: yes
     permissions:
@@ -98,11 +101,11 @@ jobs:
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
-        if: ${{ matrix.coverage != 'yes' }}
+        if: ${{ matrix.coverage != "yes" }}
         run: |
           poetry run pytest -v
       - name: Test with coverage
-        if: ${{ matrix.coverage == 'yes' }}
+        if: ${{ matrix.coverage == "yes" }}
         uses: ./.github/actions/test-coverage
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
@@ -110,15 +113,15 @@ jobs:
   # Prepare a draft release for GitHub Releases page for the manual verification
   # If accepted and published, release workflow would be triggered
   update_release_draft:
-    name: 'Create or Update release draft'
+    name: "Create or Update release draft"
     permissions:
       # write permission is required to create a GitHub release
       contents: write
-      # write permission is required for autolabeler
+      # write permission is required for auto-labeler
       # otherwise, read permission is required at least
       pull-requests: write
     needs:
-      - 'test'
+      - "test"
     runs-on: ubuntu-latest
     steps:
       - uses: release-drafter/release-drafter@v5

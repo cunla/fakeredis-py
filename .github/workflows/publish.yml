@@ -1,10 +1,4 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+---
 
 name: Upload Python Package
 
@@ -18,32 +12,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    - name: Install dependencies
-      env:
-        PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        print_hash: true
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+      - name: Build package
+        run: python -m build
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          print_hash: true
 
   # https://github.community/t/run-github-actions-job-only-if-previous-job-has-failed/174786/2
   create-issue-on-failure:
     name: Create an issue if publish failed
     runs-on: ubuntu-latest
     needs: [deploy]
-    if: ${{ github.repository == 'cunla/fakeredis-py' && always() && needs.deploy.result == 'failure' }}
+    if: >
+      ${{ github.repository == "cunla/fakeredis-py" && always()
+      && needs.deploy.result == "failure" }}
     permissions:
       issues: write
     steps:
@@ -54,5 +50,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Release failure on ${new Date().toDateString()}`,
-              body: `Details: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/publish.yml`,
+              body: `Details: https://github.com/${context.repo.owner}/`+
+                    `${context.repo.repo}/actions/workflows/publish.yml`,
             })

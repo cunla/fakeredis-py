@@ -1,3 +1,4 @@
+---
 name-template: 'v$RESOLVED_VERSION 🌈'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
@@ -15,7 +16,7 @@ categories:
   - title: '⬆️ Dependency Updates'
     label: 'dependencies'
 change-template: '- $TITLE (#$NUMBER)'
-change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+change-title-escapes: '\<*_&'
 autolabeler:
   - label: 'chore'
     files:
@@ -42,10 +43,10 @@ template: |
   # Changes
 
   $CHANGES
-  
+
   ## Contributors
   We'd like to thank all the contributors who worked on this release!
-  
+
   $CONTRIBUTORS
-  
+
   **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
