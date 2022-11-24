@@ -12,6 +12,7 @@ COMMAND_FILES = [
     ('.graph.commands.json', 'https://raw.githubusercontent.com/RedisGraph/RedisGraph/master/commands.json'),
     ('.ts.commands.json', 'https://raw.githubusercontent.com/RedisTimeSeries/RedisTimeSeries/master/commands.json'),
     ('.ft.commands.json', 'https://raw.githubusercontent.com/RediSearch/RediSearch/master/commands.json'),
+    ('.bloom.commands.json', 'https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json'),
 ]
 
 
