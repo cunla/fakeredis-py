@@ -58,11 +58,11 @@ class ListCommandsMixin:
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
 
-    @command((bytes, bytes), (bytes,), flags='s')
+    @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def blpop(self, *args):
         return self._bpop(args, lambda lst: lst.pop(0))
 
-    @command((bytes, bytes), (bytes,), flags='s')
+    @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def brpop(self, *args):
         return self._bpop(args, lambda lst: lst.pop())
 
@@ -88,7 +88,7 @@ class ListCommandsMixin:
             dst.writeback()
         return el
 
-    @command((bytes, bytes, Timeout), flags='s')
+    @command((bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
     def brpoplpush(self, source, destination, timeout):
         return self._blocking(timeout,
                               functools.partial(self._brpoplpush_pass, source, destination))

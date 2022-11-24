@@ -10,6 +10,8 @@ from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
+SUPPORTED_COMMANDS = dict()  # Dictionary of supported commands name => Signature
+COMMANDS_WITH_SUB = set()
 
 
 class Key:
@@ -301,11 +303,12 @@ class StringTest:
 
 
 class Signature:
-    def __init__(self, name, fixed, repeat=(), flags=""):
+    def __init__(self, name, func_name, fixed, repeat=(), flags=""):
         self.name = name
+        self.func_name = func_name
         self.fixed = fixed
         self.repeat = repeat
-        self.flags = flags
+        self.flags = set(flags)
 
     def check_arity(self, args, version):
         if len(args) != len(self.fixed):
@@ -359,8 +362,10 @@ class Signature:
 
 def command(*args, **kwargs):
     def decorator(func):
-        name = kwargs.pop('name', func.__name__)
-        func._fakeredis_sig = Signature(name, *args, **kwargs)
+        cmd_name = kwargs.pop('name', func.__name__)
+        if ' ' in cmd_name:
+            COMMANDS_WITH_SUB.add(cmd_name.split(' ')[0])
+        SUPPORTED_COMMANDS[cmd_name] = Signature(cmd_name, func.__name__, *args, **kwargs)
         return func
 
     return decorator

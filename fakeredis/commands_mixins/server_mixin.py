@@ -8,7 +8,7 @@ from fakeredis._helpers import (OK, SimpleError, casematch, BGSAVE_STARTED)
 class ServerCommandsMixin:
     # TODO: lots
 
-    @command((), (bytes,), flags='s')
+    @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args):
         if len(args) > 1 or (len(args) == 1 and not casematch(args[0], b'schedule')):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -41,7 +41,7 @@ class ServerCommandsMixin:
     def lastsave(self):
         return self._server.lastsave
 
-    @command((), flags='s')
+    @command((), flags=msgs.FLAG_NO_SCRIPT)
     def save(self):
         self._server.lastsave = int(time.time())
         return OK

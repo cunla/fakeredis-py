@@ -51,3 +51,4 @@ RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
 RESTORE_INVALID_TTL_MSG = "ERR Invalid TTL value, must be >= 0"
 
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
+FLAG_TRANSACTION = 't'  # Command not allowed in scripts

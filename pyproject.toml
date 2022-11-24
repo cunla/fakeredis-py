@@ -18,8 +18,7 @@ authors = [
     "Daniel Moran <daniel.maruani@gmail.com>"
 ]
 maintainers = [
-    "Daniel Moran <daniel.maruani@gmail.com>",
-    "Mark Schlachter <the@wondersmith.dev>",
+    "Daniel Moran <daniel.maruani@gmail.com>"
 ]
 license = "BSD-3-Clause"
 classifiers = [
@@ -42,14 +41,12 @@ repository = "https://github.com/cunla/fakeredis-py"
 [tool.poetry.dependencies]
 python = "^3.7"
 redis = "<4.5"
-typing-extensions = "*"
 sortedcontainers = "^2.4.0"
 lupa = { version = "^1.14", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
 
 [tool.poetry.extras]
 lua = ["lupa"]
-aioredis = ["aioredis"]
 json = ["jsonpath-ng"]
 
 [tool.poetry.dev-dependencies]
@@ -82,7 +79,11 @@ markers = [
 asyncio_mode = "strict"
 
 [tool.mypy]
-ignore_missing_imports = true
-packages = [
-    "fakeredis"
+files = [
+    "fakeredis/**/*.py",
+    "test/**/*.py",
 ]
+packages = ['fakeredis', ]
+follow_imports = "silent"
+ignore_missing_imports = true
+scripts_are_modules = true

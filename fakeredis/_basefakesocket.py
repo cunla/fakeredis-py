@@ -6,7 +6,7 @@ import weakref
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, Float)
+from ._commands import (Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
@@ -53,6 +53,13 @@ class BaseFakeSocket:
         # will be created. The value does not matter since we replace the selector with our own
         # `FakeSelector` before it is ever used.
         return 0
+
+    @staticmethod
+    def _encode_command(s):
+        res = (s.decode(encoding='utf-8', errors='replace')
+               if isinstance(s, bytes)
+               else str(s).encode(encoding='utf-8', errors='replace'))
+        return res.lower()
 
     def _cleanup(self, server):
         """Remove all the references to `self` from `server`.
@@ -182,17 +189,14 @@ class BaseFakeSocket:
             if ret is not None:
                 return ret
 
-    def _name_to_func(self, name):
-        name = (name.decode(encoding='utf-8', errors='replace')
-                if isinstance(name, bytes)
-                else str(name).encode(encoding='utf-8', errors='replace'))
-        func_name = name.casefold().replace(".", "_")
-        func = getattr(self, func_name, None)
-        if name.startswith('_') or not func or not hasattr(func, '_fakeredis_sig'):
+    def _name_to_func(self, cmd_name):
+        if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
-            clean_name = name.replace('\r', ' ').replace('\n', ' ')
+            clean_name = cmd_name.replace('\r', ' ').replace('\n', ' ')
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
-        return func, func_name
+        sig = SUPPORTED_COMMANDS[cmd_name]
+        func = getattr(self, sig.func_name, None)
+        return func, sig
 
     def sendall(self, data):
         if not self._server.connected:
@@ -204,10 +208,13 @@ class BaseFakeSocket:
     def _process_command(self, fields):
         if not fields:
             return
-        func_name = None
         try:
-            func, func_name = self._name_to_func(fields[0])
-            sig = func._fakeredis_sig
+            arg_start_ind = 1
+            cmd = self._encode_command(fields[0])
+            if cmd in COMMANDS_WITH_SUB:
+                cmd += ' ' + self._encode_command(fields[1])
+                arg_start_ind = 2
+            func, sig = self._name_to_func(cmd)
             with self._server.lock:
                 # Clean out old connections
                 while True:
@@ -222,20 +229,18 @@ class BaseFakeSocket:
                 now = time.time()
                 for db in self._server.dbs.values():
                     db.time = now
-                sig.check_arity(fields[1:], self.version)
-                # TODO: make a signature attribute for transactions
-                if self._transaction is not None \
-                        and func_name not in ('exec', 'discard', 'multi', 'watch'):
-                    self._transaction.append((func, sig, fields[1:]))
+                sig.check_arity(fields[arg_start_ind:], self.version)
+                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                    self._transaction.append((func, sig, fields[arg_start_ind:]))
                     result = QUEUED
                 else:
-                    result = self._run_command(func, sig, fields[1:], False)
+                    result = self._run_command(func, sig, fields[arg_start_ind:], False)
         except SimpleError as exc:
             if self._transaction is not None:
                 # TODO: should not apply if the exception is from _run_command
                 # e.g. watch inside multi
                 self._transaction_failed = True
-            if func_name == 'exec' and exc.value.startswith('ERR '):
+            if cmd == 'exec' and exc.value.startswith('ERR '):
                 exc.value = 'EXECABORT Transaction discarded because of: ' + exc.value[4:]
                 self._transaction = None
                 self._transaction_failed = False
