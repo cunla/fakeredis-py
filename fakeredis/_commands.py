@@ -362,7 +362,7 @@ class Signature:
 
 def command(*args, **kwargs):
     def decorator(func):
-        cmd_name = kwargs.pop('name', func.__name__)
+        cmd_name = kwargs.pop('name', func.__name__).lower()
         if ' ' in cmd_name:
             COMMANDS_WITH_SUB.add(cmd_name.split(' ')[0])
         SUPPORTED_COMMANDS[cmd_name] = Signature(cmd_name, func.__name__, *args, **kwargs)
