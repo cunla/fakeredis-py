@@ -361,11 +361,20 @@ class Signature:
 
 
 def command(*args, **kwargs):
-    def decorator(func):
-        cmd_name = kwargs.pop('name', func.__name__)
+    def create_signature(func, cmd_name):
         if ' ' in cmd_name:
             COMMANDS_WITH_SUB.add(cmd_name.split(' ')[0])
         SUPPORTED_COMMANDS[cmd_name] = Signature(cmd_name, func.__name__, *args, **kwargs)
+
+    def decorator(func):
+        cmd_names = kwargs.pop('name', func.__name__)
+        if isinstance(cmd_names, list):  # Support for alias commands
+            for cmd_name in cmd_names:
+                create_signature(func, cmd_name.lower())
+        elif isinstance(cmd_names, str):
+            create_signature(func, cmd_names.lower())
+        else:
+            raise ValueError("command name should be a string or list of strings")
         return func
 
     return decorator
