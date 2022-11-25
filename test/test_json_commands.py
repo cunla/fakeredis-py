@@ -1,9 +1,7 @@
 """Tests for `fakeredis-py`'s emulation of Redis's JSON command subset."""
 
-# Future Imports
 from __future__ import annotations
 
-# Standard Library Imports
 from typing import (
     Any,
     Dict,
@@ -11,7 +9,6 @@ from typing import (
     Tuple,
 )
 
-# Third-Party Imports
 import pytest
 import redis
 from redis import exceptions
@@ -20,6 +17,16 @@ from redis.commands.json.decoders import (
     unstring,
 )
 from redis.commands.json.path import Path
+
+
+def test_jsonget(r: redis.Redis) -> None:
+    r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )
+    assert r.json().get("foo2") == {'x': "bar", 'y': {'x': 33}}
+    assert r.json().get("foo2", Path("$..x")) == ['bar', 33]
+
+    r.json().set("foo", Path.root_path(), {'x': "bar"}, )
+    assert r.json().get("foo") == {'x': "bar"}
+    assert r.json().get("foo", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
 
 
 @pytest.fixture(scope="function")
@@ -84,13 +91,7 @@ def test_json_setbinarykey(r: redis.Redis) -> None:
 
 
 def test_json_setgetdeleteforget(r: redis.Redis) -> None:
-    r.flushall()
-
-    assert r.json().set(
-        "foo",
-        Path.root_path(),
-        "bar",
-    )
+    assert r.json().set("foo", Path.root_path(), {'x': "bar"}, ) == 1
     assert r.json().get("foo") == "bar"
     assert r.json().get("baz") is None
     assert r.json().delete("foo") == 1
@@ -98,21 +99,8 @@ def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     assert r.exists("foo") == 0
 
 
-def test_jsonget(r: redis.Redis) -> None:
-    r.json().set(
-        "foo",
-        Path.root_path(),
-        "bar",
-    )
-    assert r.json().get("foo") == "bar"
-
-
 def test_json_get_jset(r: redis.Redis) -> None:
-    assert r.json().set(
-        "foo",
-        Path.root_path(),
-        "bar",
-    )
+    assert r.json().set("foo", Path.root_path(), "bar", ) == 1
     assert "bar" == r.json().get("foo")
     assert r.json().get("baz") is None
     assert 1 == r.json().delete("foo")
@@ -120,15 +108,8 @@ def test_json_get_jset(r: redis.Redis) -> None:
 
 
 def test_nonascii_setgetdelete(r: redis.Redis) -> None:
-    assert r.json().set(
-        "not-ascii",
-        Path.root_path(),
-        "hyvää-élève",
-    )
-    assert "hyvää-élève" == r.json().get(
-        "not-ascii",
-        no_escape=True,
-    )
+    assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève", )
+    assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
     assert 1 == r.json().delete("not-ascii")
     assert r.exists("not-ascii") == 0
 
@@ -138,24 +119,9 @@ def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
     assert r.json().set("obj", Path.root_path(), obj)
 
     # Test that flags prevent updates when conditions are unmet
-    assert (
-        r.json().set(
-            "obj",
-            Path("foo"),
-            "baz",
-            nx=True,
-        )
-        is None
-    )
-    assert (
-        r.json().set(
-            "obj",
-            Path("qaz"),
-            "baz",
-            xx=True,
-        )
-        is None
-    )
+    assert r.json().set("obj", Path("foo"), "baz", nx=True, ) is None
+
+    assert r.json().set("obj", Path("qaz"), "baz", xx=True, ) is None
 
     # Test that flags allow updates when conditions are met
     assert r.json().set(
@@ -172,7 +138,7 @@ def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
     )
 
     # Test that flags are mutually exclusive
-    with pytest.raises(Exception):
+    with pytest.raises(redis.ResponseError):
         r.json().set(
             "obj",
             Path("foo"),
@@ -299,11 +265,11 @@ def test_toggle(r: redis.Redis) -> None:
         Path.root_path(),
     )
     assert (
-        r.json().toggle(
-            "bool",
-            Path.root_path(),
-        )
-        is False
+            r.json().toggle(
+                "bool",
+                Path.root_path(),
+            )
+            is False
     )
 
     # check non-boolean value
@@ -938,12 +904,12 @@ def test_strappend_dollar(r: redis.Redis) -> None:
 
     # Test multi
     assert (
-        r.json().strappend(
-            "doc1",
-            "bar",
-            ".*.a",
-        )
-        == 8
+            r.json().strappend(
+                "doc1",
+                "bar",
+                ".*.a",
+            )
+            == 8
     )
     assert r.json().get("doc1", "$") == [
         {
@@ -1410,25 +1376,24 @@ def test_toggle_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_debug_dollar(r: redis.Redis) -> None:
+    jdata, jtypes = load_types_data("a")
 
-   jdata, jtypes = load_types_data("a")
+    r.json().set("doc1", "$", jdata)
 
-   r.json().set("doc1", "$", jdata)
+    # Test multi
+    assert r.json().debug("MEMORY", "doc1", "$..a") == [72, 24, 24, 16, 16, 1, 0]
 
-   # Test multi
-   assert r.json().debug("MEMORY", "doc1", "$..a") == [72, 24, 24, 16, 16, 1, 0]
+    # Test single
+    assert r.json().debug("MEMORY", "doc1", "$.nested2.a") == [24]
 
-   # Test single
-   assert r.json().debug("MEMORY", "doc1", "$.nested2.a") == [24]
+    # Test legacy
+    assert r.json().debug("MEMORY", "doc1", "..a") == 72
 
-   # Test legacy
-   assert r.json().debug("MEMORY", "doc1", "..a") == 72
+    # Test missing path (defaults to root)
+    assert r.json().debug("MEMORY", "doc1") == 72
 
-   # Test missing path (defaults to root)
-   assert r.json().debug("MEMORY", "doc1") == 72
-
-   # Test missing key
-   assert r.json().debug("MEMORY", "non_existing_doc", "$..a") == []
+    # Test missing key
+    assert r.json().debug("MEMORY", "non_existing_doc", "$..a") == []
 
 
 @pytest.mark.xfail

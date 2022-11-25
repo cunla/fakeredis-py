@@ -7,24 +7,22 @@ from __future__ import annotations
 import json
 import re
 from functools import partial
-from itertools import chain, filterfalse
+from itertools import filterfalse
 from json import JSONDecodeError
-from operator import attrgetter, methodcaller
 from typing import Any, Optional, Union
 
 from redis.commands.json.commands import JsonType
-from typing_extensions import Literal
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._commands import CommandItem, Key, command
-from fakeredis._helpers import SimpleError
+from fakeredis._helpers import SimpleError, casematch
 
 try:
     from jsonpath_ng import jsonpath
     from jsonpath_ng.ext import parse
 
 
-    def parse_jsonpath(path: Union[str, bytes]) -> str:
+    def parse_jsonpath(path: Union[str, bytes]):
         """Format the supplied JSON path value."""
         if isinstance(path, bytes):
             path = path.decode()
@@ -43,6 +41,12 @@ except ImportError:
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
 is_no_escape = partial(helpers.casematch, b"noescape")
 is_not_no_escape = partial(filterfalse, is_no_escape)
+
+
+def format_path(path) -> str:
+    if isinstance(path, bytes):
+        path = path.decode()
+    return path_pattern.sub("$", path)
 
 
 class JSONObject:
@@ -93,7 +97,7 @@ class JSONCommandsMixin:
         return 1
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), )
-    def json_get(self, name: CommandItem, *args: bytes, ) -> bytes:
+    def json_get(self, key, *args) -> bytes:
         """Get the object stored as a JSON value at key `name`.
 
         `args` is zero or more paths, and defaults to root path
@@ -102,29 +106,22 @@ class JSONCommandsMixin:
 
         For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
         """
-        # Check the cache for the requested key
-        cached_value = json.loads(name.value or b"null")
-
-        # Return early if the requested key is not in the cache
-        if not cached_value:
-            return b"null"
-
-        # Format the specified paths that are *not* the literal
-        # byte-string b"noescape" so that they can be properly
-        # parsed by `jsonpath_ng`
-        args = [is_not_no_escape(arg) for arg in args]
 
         # Parse the sanitized paths into `jsonpath.JSONPath` objects
-        paths = tuple(map(parse_jsonpath, args))
+        paths = [parse_jsonpath(arg)
+                 for arg in args
+                 if not casematch(b'noescape', arg)]
 
-        find = methodcaller("find", cached_value)
+        resolved_paths = [p.find(key.value) for p in paths]
 
-        # Call the `find` method of the parsed paths, with
-        # the cached value as the target JSON object to search
-        resolved_paths = chain.from_iterable(map(find, paths))
-
-        # Extract the resolved `value` from each of the search "results"
-        path_values = tuple(map(attrgetter("value"), resolved_paths))
+        path_values = list()  # [JSONObject.encode(p.value) for p in resolved_paths]
+        for lst in resolved_paths:
+            if len(lst) == 0:
+                path_values.append([])
+            elif len(lst) > 1 or len(paths) > 1:
+                path_values.append([i.value for i in lst])
+            else:
+                path_values.append(lst[0].value)
 
         # Emulate the behavior of `redis-py`:
         #   - if only one path was supplied,
@@ -132,23 +129,23 @@ class JSONCommandsMixin:
         #   - if more than one path was specified,
         #     return one value for each specified path
 
-        if len(paths) == 1:
-            path_values = path_values[0]
+        if len(path_values) == 1:
+            return JSONObject.encode(path_values[0])
 
-        # Ensure the returned data is properly serialized and encoded
-        return json.dumps(path_values).encode()
+        formatted_paths = [
+            format_path(arg)
+            for arg in args
+            if not casematch(b'noescape', arg)
+        ]
+        return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
-    @command(
-        name="JSON.SET",
-        fixed=(Key(), bytes, JSONObject),
-        repeat=(bytes,),
-    )
+    @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), )
     def json_set(
             self,
-            name: CommandItem,
-            path: bytes,
-            obj: JsonType,
-            flag: Optional[Literal[b"NX", b"XX"]] = None,
+            key: CommandItem,
+            path_str: bytes,
+            value: JsonType,
+            *args
     ) -> Optional[helpers.SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
@@ -160,25 +157,26 @@ class JSONCommandsMixin:
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
-        cached_value, path = (
-            json.loads(name.value or b"null"),
-            parse_jsonpath(path),
-        )
+        if key.value is not None and type(key.value) is not dict:
+            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
+        path = parse_jsonpath(path_str)
+        old_value = path.find(key.value)
+        nx, xx = False, False
+        i = 0
+        while i < len(args):
+            if casematch(args[i], b'nx'):
+                nx = True
+                i += 1
+            elif casematch(args[i], b'xx'):
+                xx = True
+                i += 1
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if xx and nx:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if (nx and old_value) or (xx and not old_value):
+            return None
+        new_value = path.update_or_create(key.value, value)
+        key.update(new_value)
 
-        setter = partial(path.update_or_create, cached_value)
-
-        if flag and flag not in (b"NX", b"XX"):
-            raise helpers.SimpleError(f"Unknown or unsupported `JSON.SET` flag: {flag}")
-        elif (flag == b"NX" and path.find(cached_value)) or (
-                flag == b"XX" and not path.find(cached_value)
-        ):
-            setter = lambda *_, **__: cached_value
-
-        cached_value, name.value = (
-            name.value,
-            json.dumps(setter(obj)).encode(),
-        )
-
-        name.writeback()
-
-        return helpers.OK if cached_value != name.value else None
+        return helpers.OK
