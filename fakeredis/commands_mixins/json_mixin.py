@@ -12,13 +12,14 @@ from json import JSONDecodeError
 from typing import Any, Optional, Union
 
 from redis.commands.json.commands import JsonType
+from redis.commands.json.path import Path
 
 from fakeredis import _helpers as helpers, _msgs as msgs
-from fakeredis._commands import CommandItem, Key, command
+from fakeredis._commands import Key, command, delete_keys
 from fakeredis._helpers import SimpleError, casematch
 
 try:
-    from jsonpath_ng import jsonpath
+    from jsonpath_ng import jsonpath, Root
     from jsonpath_ng.ext import parse
 
 
@@ -77,24 +78,25 @@ class JSONCommandsMixin:
         super().__init__(*args, **kwargs)
 
     @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), )
-    def json_del(self, key: CommandItem, path: Optional[bytes] = None, ) -> int:
+    def json_del(self, key, path_str) -> int:
         """Delete the JSON value stored at key `key` under `path`.
 
         For more information see `JSON.DEL
         <https://redis.io/commands/json.del>`_.
         """
-        cached_value = json.loads(key.value or b"null")
-
-        if cached_value is None:
+        if key.value is None:
             return 0
 
-        if path != "$":
-            raise NotImplementedError("Path-based key-value deletion not yet supported!")
+        path = parse_jsonpath(path_str)
 
-        key.value = None
-        key.writeback()
+        if path == Root():
+            delete_keys(key)
+            return 1
+        found_matches = path.find(key.value)
+        new_value = path.update_or_create(key.value, None)
+        key.update(new_value)
 
-        return 1
+        return len(found_matches)
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), )
     def json_get(self, key, *args) -> bytes:
@@ -124,11 +126,8 @@ class JSONCommandsMixin:
                 path_values.append(lst[0].value)
 
         # Emulate the behavior of `redis-py`:
-        #   - if only one path was supplied,
-        #     return a single value
-        #   - if more than one path was specified,
-        #     return one value for each specified path
-
+        #   - if only one path was supplied => return a single value
+        #   - if more than one path was specified => return one value for each specified path
         if len(path_values) == 1:
             return JSONObject.encode(path_values[0])
 
@@ -142,7 +141,7 @@ class JSONCommandsMixin:
     @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), )
     def json_set(
             self,
-            key: CommandItem,
+            key,
             path_str: bytes,
             value: JsonType,
             *args
@@ -157,9 +156,9 @@ class JSONCommandsMixin:
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
-        if key.value is not None and type(key.value) is not dict:
-            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         path = parse_jsonpath(path_str)
+        if key.value is not None and (type(key.value) is not dict) and path != Root():
+            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value = path.find(key.value)
         nx, xx = False, False
         i = 0

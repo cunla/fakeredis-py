@@ -90,15 +90,6 @@ def test_json_setbinarykey(r: redis.Redis) -> None:
     assert result
 
 
-def test_json_setgetdeleteforget(r: redis.Redis) -> None:
-    assert r.json().set("foo", Path.root_path(), {'x': "bar"}, ) == 1
-    assert r.json().get("foo") == "bar"
-    assert r.json().get("baz") is None
-    assert r.json().delete("foo") == 1
-    assert r.json().forget("foo") == 0  # second delete
-    assert r.exists("foo") == 0
-
-
 def test_json_get_jset(r: redis.Redis) -> None:
     assert r.json().set("foo", Path.root_path(), "bar", ) == 1
     assert "bar" == r.json().get("foo")
@@ -112,40 +103,6 @@ def test_nonascii_setgetdelete(r: redis.Redis) -> None:
     assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
     assert 1 == r.json().delete("not-ascii")
     assert r.exists("not-ascii") == 0
-
-
-def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
-    obj = {"foo": "bar"}
-    assert r.json().set("obj", Path.root_path(), obj)
-
-    # Test that flags prevent updates when conditions are unmet
-    assert r.json().set("obj", Path("foo"), "baz", nx=True, ) is None
-
-    assert r.json().set("obj", Path("qaz"), "baz", xx=True, ) is None
-
-    # Test that flags allow updates when conditions are met
-    assert r.json().set(
-        "obj",
-        Path("foo"),
-        "baz",
-        xx=True,
-    )
-    assert r.json().set(
-        "obj",
-        Path("qaz"),
-        "baz",
-        nx=True,
-    )
-
-    # Test that flags are mutually exclusive
-    with pytest.raises(redis.ResponseError):
-        r.json().set(
-            "obj",
-            Path("foo"),
-            "baz",
-            nx=True,
-            xx=True,
-        )
 
 
 @pytest.mark.xfail
@@ -189,17 +146,10 @@ def test_clear(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_type(r: redis.Redis) -> None:
-    r.json().set(
-        "1",
-        Path.root_path(),
-        1,
-    )
+    r.json().set("1", Path.root_path(), 1, )
 
-    assert "integer" == r.json().type(
-        "1",
-        Path.root_path(),
-    )
-    assert "integer" == r.json().type("1")
+    assert b"integer" == r.json().type("1", Path.root_path(), )
+    assert b"integer" == r.json().type("1")
 
 
 @pytest.mark.xfail
@@ -1553,7 +1503,7 @@ def test_arrindex_dollar(r: redis.Redis) -> None:
     # Test index of int scalar in multi values
     r.json().set(
         "test_num",
-        ".",
+        "..",
         [
             {"arr": [0, 1, 3.0, 3, 2, 1, 0, 3]},
             {"nested1_found": {"arr": [5, 4, 3, 2, 1, 0, 1, 2, 3.0, 2, 4, 5]}},
@@ -1582,7 +1532,7 @@ def test_arrindex_dollar(r: redis.Redis) -> None:
     # Test index of string scalar in multi values
     r.json().set(
         "test_string",
-        ".",
+        "..",
         [
             {"arr": ["bazzz", "bar", 2, "baz", 2, "ba", "baz", 3]},
             {"nested1_found": {"arr": [None, "baz2", "buzz", 2, 1, 0, 1, "2", "baz", 2, 4, 5]}},
@@ -1670,7 +1620,7 @@ def test_arrindex_dollar(r: redis.Redis) -> None:
     # Test index of None scalar in multi values
     r.json().set(
         "test_None",
-        ".",
+        "..",
         [
             {"arr": ["bazzz", "None", 2, None, 2, "ba", "baz", 3]},
             {"nested1_found": {"arr": ["zaz", "baz2", "buzz", 2, 1, 0, 1, "2", None, 2, 4, 5]}},

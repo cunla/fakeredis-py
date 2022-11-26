@@ -84,7 +84,7 @@ class CommandItem:
     def writeback(self):
         if self._modified:
             self.db.notify_watch(self.key)
-            if not isinstance(self.value, bytes) and not self.value:
+            if not isinstance(self.value, bytes) and self.value is None:
                 self.db.pop(self.key, None)
                 return
             else:
