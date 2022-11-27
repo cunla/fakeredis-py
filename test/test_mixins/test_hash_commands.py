@@ -244,6 +244,12 @@ def test_empty_hash(r):
     assert not r.exists('foo')
 
 
+def test_hset_removing_last_field_delete_key(r):
+    r.hset(b'3L', b'f1', b'v1')
+    r.hdel(b'3L', b'f1')
+    assert r.keys('*') == []
+
+
 def test_hscan(r):
     # Set up the data
     name = 'hscan-test'
