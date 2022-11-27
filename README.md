@@ -41,18 +41,18 @@ The intent is for fakeredis to act as though you're talking to a real
 redis server. It does this by storing state internally.
 For example:
 
-```python
->> > import fakeredis
->> > r = fakeredis.FakeStrictRedis(version=6)
->> > r.set('foo', 'bar')
+```pycon
+>>> import fakeredis
+>>> r = fakeredis.FakeStrictRedis(version=6)
+>>> r.set('foo', 'bar')
 True
->> > r.get('foo')
+>>> r.get('foo')
 'bar'
->> > r.lpush('bar', 1)
+>>> r.lpush('bar', 1)
 1
->> > r.lpush('bar', 2)
+>>> r.lpush('bar', 2)
 2
->> > r.lrange('bar', 0, -1)
+>>> r.lrange('bar', 0, -1)
 [2, 1]
 ```
 
@@ -60,20 +60,20 @@ The state is stored in an instance of `FakeServer`. If one is not provided at
 construction, a new instance is automatically created for you, but you can
 explicitly create one to share state:
 
-```python
->> > import fakeredis
->> > server = fakeredis.FakeServer()
->> > r1 = fakeredis.FakeStrictRedis(server=server)
->> > r1.set('foo', 'bar')
+```pycon
+>>> import fakeredis
+>>> server = fakeredis.FakeServer()
+>>> r1 = fakeredis.FakeStrictRedis(server=server)
+>>> r1.set('foo', 'bar')
 True
->> > r2 = fakeredis.FakeStrictRedis(server=server)
->> > r2.get('foo')
+>>> r2 = fakeredis.FakeStrictRedis(server=server)
+>>> r2.get('foo')
 'bar'
->> > r2.set('bar', 'baz')
+>>> r2.set('bar', 'baz')
 True
->> > r1.get('bar')
+>>> r1.get('bar')
 'baz'
->> > r2.get('bar')
+>>> r2.get('bar')
 'baz'
 ```
 
@@ -81,18 +81,15 @@ It is also possible to mock connection errors, so you can effectively test
 your error handling. Simply set the connected attribute of the server to
 `False` after initialization.
 
-```python
->> > import fakeredis
->> > server = fakeredis.FakeServer()
->> > server.connected = False
->> > r = fakeredis.FakeStrictRedis(server=server)
->> > r.set('foo', 'bar')
-ConnectionError: FakeRedis is emulating
-a
-connection
-error.
->> > server.connected = True
->> > r.set('foo', 'bar')
+```pycon
+>>> import fakeredis
+>>> server = fakeredis.FakeServer()
+>>> server.connected = False
+>>> r = fakeredis.FakeStrictRedis(server=server)
+>>> r.set('foo', 'bar')
+ConnectionError: FakeRedis is emulating a connection error.
+>>> server.connected = True
+>>> r.set('foo', 'bar')
 True
 ```
 
@@ -112,7 +109,21 @@ django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 
 ## Support for additional modules
 
-Currently
+### RedisJson
+
+Currently, Redis Json module is partially implemented (
+see [supported commands](https://github.com/cunla/fakeredis-py/blob/master/REDIS_COMMANDS.md#json)).
+
+```pycon
+>>> import fakeredis
+>>> from redis.commands.json.path import Path
+>>> r = fakeredis.FakeStrictRedis()
+>>> assert r.json().set("foo", Path.root_path(), {"x": "bar"}, ) == 1
+>>> r.json().get("foo")
+{'x': 'bar'}
+>>> r.json().get("foo", Path("x"))
+'bar'
+```
 
 ### Lua support
 
