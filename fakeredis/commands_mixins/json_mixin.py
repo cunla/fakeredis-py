@@ -54,7 +54,7 @@ class JSONObject:
         """Deserialize the supplied bytes into a valid Python object."""
         try:
             return json.loads(value or b"null")
-        except JSONDecodeError as e:
+        except JSONDecodeError:
             raise SimpleError(cls.DECODE_ERROR)
 
     @classmethod
