@@ -8,7 +8,7 @@ import pytest
 import redis
 from redis.commands.json.path import Path
 
-json_tests = pytest.importorskip("jsonpath-ng")
+json_tests = pytest.importorskip("jsonpath_ng")
 
 
 def test_jsonget(r: redis.Redis):

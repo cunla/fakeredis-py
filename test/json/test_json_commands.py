@@ -10,7 +10,7 @@ from redis import exceptions
 from redis.commands.json.decoders import decode_list, unstring
 from redis.commands.json.path import Path
 
-json_tests = pytest.importorskip("jsonpath-ng")
+json_tests = pytest.importorskip("jsonpath_ng")
 
 def test_jsonget(r: redis.Redis) -> None:
     r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )

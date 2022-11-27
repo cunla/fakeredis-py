@@ -11,6 +11,8 @@ from itertools import filterfalse
 from json import JSONDecodeError
 from typing import Any, Optional, Union
 
+from jsonpath_ng import Root, JSONPath
+from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
 
 from fakeredis import _helpers as helpers, _msgs as msgs
@@ -18,8 +20,7 @@ from fakeredis._commands import Key, command, delete_keys
 from fakeredis._helpers import SimpleError, casematch
 
 
-def parse_jsonpath(path: Union[str, bytes]):
-    from jsonpath_ng.ext import parse
+def _parse_jsonpath(path: Union[str, bytes]):
     """Format the supplied JSON path value."""
     if isinstance(path, bytes):
         path = path.decode()
@@ -27,9 +28,8 @@ def parse_jsonpath(path: Union[str, bytes]):
     return parse(re_path)
 
 
-def path_is_root(path) -> bool:
-    from jsonpath_ng import Root
-    return path == Root
+def _path_is_root(path: JSONPath) -> bool:
+    return path == Root()
 
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
@@ -37,7 +37,7 @@ is_no_escape = partial(helpers.casematch, b"noescape")
 is_not_no_escape = partial(filterfalse, is_no_escape)
 
 
-def format_path(path) -> str:
+def _format_path(path) -> str:
     if isinstance(path, bytes):
         path = path.decode()
     return path_pattern.sub("$", path)
@@ -80,9 +80,9 @@ class JSONCommandsMixin:
         if key.value is None:
             return 0
 
-        path = parse_jsonpath(path_str)
+        path = _parse_jsonpath(path_str)
 
-        if path_is_root(path):
+        if _path_is_root(path):
             delete_keys(key)
             return 1
         found_matches = path.find(key.value)
@@ -90,6 +90,12 @@ class JSONCommandsMixin:
         key.update(new_value)
 
         return len(found_matches)
+
+    @staticmethod
+    def _get_single(key, path_str):
+        path = _parse_jsonpath(path_str)
+        res = path.find(key.value)
+        return res
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), )
     def json_get(self, key, *args) -> bytes:
@@ -101,19 +107,19 @@ class JSONCommandsMixin:
 
         For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
         """
-
+        formatted_paths = [
+            _format_path(arg)
+            for arg in args
+            if not casematch(b'noescape', arg)
+        ]
         # Parse the sanitized paths into `jsonpath.JSONPath` objects
-        paths = [parse_jsonpath(arg)
-                 for arg in args
-                 if not casematch(b'noescape', arg)]
-
-        resolved_paths = [p.find(key.value) for p in paths]
+        resolved_paths = [self._get_single(key, path) for path in formatted_paths]
 
         path_values = list()  # [JSONObject.encode(p.value) for p in resolved_paths]
         for lst in resolved_paths:
             if len(lst) == 0:
                 path_values.append([])
-            elif len(lst) > 1 or len(paths) > 1:
+            elif len(lst) > 1 or len(resolved_paths) > 1:
                 path_values.append([i.value for i in lst])
             else:
                 path_values.append(lst[0].value)
@@ -124,11 +130,6 @@ class JSONCommandsMixin:
         if len(path_values) == 1:
             return JSONObject.encode(path_values[0])
 
-        formatted_paths = [
-            format_path(arg)
-            for arg in args
-            if not casematch(b'noescape', arg)
-        ]
         return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
     @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), )
@@ -149,8 +150,8 @@ class JSONCommandsMixin:
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
-        path = parse_jsonpath(path_str)
-        if key.value is not None and (type(key.value) is not dict) and not path_is_root(path):
+        path = _parse_jsonpath(path_str)
+        if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value = path.find(key.value)
         nx, xx = False, False
@@ -172,3 +173,6 @@ class JSONCommandsMixin:
         key.update(new_value)
 
         return helpers.OK
+
+    def json_mget(self, *args):
+        pass

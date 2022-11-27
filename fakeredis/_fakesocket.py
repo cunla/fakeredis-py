@@ -3,7 +3,7 @@ from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
 from .commands_mixins.generic_mixin import GenericCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
-from .commands_mixins.json_mixin import JSONCommandsMixin
+from fakeredis.stack import JSONCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
 from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
