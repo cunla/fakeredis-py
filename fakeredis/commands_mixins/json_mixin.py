@@ -12,32 +12,25 @@ from json import JSONDecodeError
 from typing import Any, Optional, Union
 
 from redis.commands.json.commands import JsonType
-from redis.commands.json.path import Path
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._commands import Key, command, delete_keys
 from fakeredis._helpers import SimpleError, casematch
 
-try:
-    from jsonpath_ng import jsonpath, Root
+
+def parse_jsonpath(path: Union[str, bytes]):
     from jsonpath_ng.ext import parse
+    """Format the supplied JSON path value."""
+    if isinstance(path, bytes):
+        path = path.decode()
+    re_path = path_pattern.sub("$", path)
+    return parse(re_path)
 
 
-    def parse_jsonpath(path: Union[str, bytes]):
-        """Format the supplied JSON path value."""
-        if isinstance(path, bytes):
-            path = path.decode()
-        re_path = path_pattern.sub("$", path)
-        return parse(re_path)
+def path_is_root(path) -> bool:
+    from jsonpath_ng import Root
+    return path == Root
 
-except ImportError:
-
-    jsonpath = None
-
-
-    def parse_jsonpath(*_: Any, **__: Any) -> Any:
-        """Raise an error."""
-        raise helpers.SimpleError("Optional JSON support not enabled!")
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
 is_no_escape = partial(helpers.casematch, b"noescape")
@@ -89,7 +82,7 @@ class JSONCommandsMixin:
 
         path = parse_jsonpath(path_str)
 
-        if path == Root():
+        if path_is_root(path):
             delete_keys(key)
             return 1
         found_matches = path.find(key.value)
@@ -157,7 +150,7 @@ class JSONCommandsMixin:
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
         path = parse_jsonpath(path_str)
-        if key.value is not None and (type(key.value) is not dict) and path != Root():
+        if key.value is not None and (type(key.value) is not dict) and not path_is_root(path):
             raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value = path.find(key.value)
         nx, xx = False, False
