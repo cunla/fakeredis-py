@@ -41,7 +41,7 @@ jobs:
           python -c "import fakeredis"
   test:
     name: >
-      py:${{ matrix.python-version }},Redis:${{ matrix.redis-version }},
+      py:${{ matrix.python-version }},${{ matrix.redis-image }},
       lupa:${{ matrix.lupa }}, cov:${{ matrix.coverage }}
     needs:
       - "lint"
@@ -49,24 +49,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        redis-version: ["6.2.7", "7.0.5"]
+        redis-image: ["redis:6.2.7", "redis:7.0.5"]
         python-version: ["3.7", "3.8", "3.10", "3.11"]
         redis-py: ["4.3.4", "4.3.5"]
         include:
           - python-version: "3.10"
-            redis-version: "6.2.7"
+            redis-image: "redis:6.2.7"
             redis-py: "4.3.5"
-            lupa: "1.13"
+            lupa: true
           - python-version: "3.10"
-            redis-version: "7.0.5"
+            redis-version: "redis/redis-stack:7.0.6-RC2"
             redis-py: "4.3.5"
-            lupa: "1.13"
-            coverage: "yes"
+            lupa: true
+            json: true
+            coverage: true
+
     permissions:
       pull-requests: write
     services:
       redis:
-        image: redis:${{ matrix.redis-version }}
+        image: ${{ matrix.redis-image }}
         ports:
           - 6379:6379
         options: >-
@@ -93,7 +95,11 @@ jobs:
       - name: Install lupa
         if: ${{ matrix.lupa }}
         run: |
-          poetry run pip install lupa==${{ matrix.lupa }}
+          poetry run pip install fakeredis[lupa]
+      - name: Install json
+        if: ${{ matrix.json }}
+        run: |
+          poetry run pip install fakeredis[jsonpath]
       - name: Get version
         id: getVersion
         shell: bash
@@ -101,11 +107,11 @@ jobs:
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
-        if: ${{ matrix.coverage != 'yes' }}
+        if: ${{ !matrix.coverage }}
         run: |
           poetry run pytest -v
       - name: Test with coverage
-        if: ${{ matrix.coverage == 'yes' }}
+        if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
