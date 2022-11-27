@@ -2,22 +2,15 @@
 
 from __future__ import annotations
 
-from typing import (
-    Any,
-    Dict,
-    List,
-    Tuple,
-)
+from typing import (Any, Dict, List, Tuple, )
 
 import pytest
 import redis
 from redis import exceptions
-from redis.commands.json.decoders import (
-    decode_list,
-    unstring,
-)
+from redis.commands.json.decoders import decode_list, unstring
 from redis.commands.json.path import Path
 
+json_tests = pytest.importorskip("jsonpath-ng")
 
 def test_jsonget(r: redis.Redis) -> None:
     r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )
