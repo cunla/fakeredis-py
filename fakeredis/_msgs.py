@@ -49,6 +49,7 @@ SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
 RESTORE_KEY_EXISTS = "BUSYKEY Target key name already exists."
 RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
 RESTORE_INVALID_TTL_MSG = "ERR Invalid TTL value, must be >= 0"
+JSON_WRONG_REDIS_TYPE = "ERR Existing key has wrong Redis type"
 
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 FLAG_TRANSACTION = 't'  # Command not allowed in scripts

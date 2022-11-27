@@ -327,6 +327,16 @@ list of [unimplemented commands](#unimplemented-commands).
  * [SUNIONSTORE](https://redis.io/commands/sunionstore/)
    Add multiple sets and store the resulting set in a key
 
+### json
+ * [JSON.DEL](https://redis.io/commands/json.del/)
+   Deletes a value
+ * [JSON.FORGET](https://redis.io/commands/json.forget/)
+   Deletes a value
+ * [JSON.GET](https://redis.io/commands/json.get/)
+   Gets the value at one or more paths in JSON serialized form
+ * [JSON.SET](https://redis.io/commands/json.set/)
+   Sets or updates the JSON value at a path
+
 # Unimplemented Commands
 All the redis commands are implemented in fakeredis with these exceptions:
     
@@ -793,18 +803,10 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Trims the stream to (approximately if '~' is passed) a certain size
 
 ### json
- * [JSON.DEL](https://redis.io/commands/json.del/)
-   Deletes a value
- * [JSON.FORGET](https://redis.io/commands/json.forget/)
-   Deletes a value
- * [JSON.GET](https://redis.io/commands/json.get/)
-   Gets the value at one or more paths in JSON serialized form
  * [JSON.TOGGLE](https://redis.io/commands/json.toggle/)
    Toggles a boolean value
  * [JSON.CLEAR](https://redis.io/commands/json.clear/)
    Clears all values from an array or an object and sets numeric values to `0`
- * [JSON.SET](https://redis.io/commands/json.set/)
-   Sets or updates the JSON value at a path
  * [JSON.MGET](https://redis.io/commands/json.mget/)
    Returns the values at a path from one or more keys
  * [JSON.NUMINCRBY](https://redis.io/commands/json.numincrby/)

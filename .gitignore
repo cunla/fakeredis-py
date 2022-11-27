@@ -19,3 +19,5 @@ docker-compose.yml
 .mypy_cache
 .pytest_cache
 **/__pycache__
+scratch*
+.python-version
