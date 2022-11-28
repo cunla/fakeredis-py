@@ -31,13 +31,16 @@ autolabeler:
 version-resolver:
   major:
     labels:
-      - 'major'
+      - 'breaking'
   minor:
     labels:
-      - 'minor'
+      - 'feature'
+      - 'enhancement'
   patch:
     labels:
-      - 'patch'
+      - 'chore'
+      - 'dependencies'
+      - 'bug'
   default: patch
 template: |
   # Changes
