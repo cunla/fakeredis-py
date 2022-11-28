@@ -50,6 +50,10 @@ def casematch(a, b):
     return casenorm(a) == casenorm(b)
 
 
+def encode_command(s):
+    return s.decode(encoding='utf-8', errors='replace').lower()
+
+
 def compile_pattern(pattern):
     """Compile a glob pattern (e.g. for keys) to a bytes regex.
 

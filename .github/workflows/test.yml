@@ -95,11 +95,11 @@ jobs:
       - name: Install lupa
         if: ${{ matrix.lupa }}
         run: |
-          poetry run pip install fakeredis[lupa]
+          poetry run pip install fakeredis[lua]
       - name: Install json
         if: ${{ matrix.json }}
         run: |
-          poetry run pip install fakeredis[jsonpath]
+          poetry run pip install fakeredis[json]
       - name: Get version
         id: getVersion
         shell: bash
