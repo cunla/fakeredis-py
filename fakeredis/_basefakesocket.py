@@ -13,7 +13,6 @@ from ._helpers import (
     compile_pattern, QUEUED, encode_command)
 
 
-
 def _extract_command(fields):
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
