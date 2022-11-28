@@ -10,13 +10,11 @@ from . import _msgs as msgs
 from ._commands import (Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
-    compile_pattern, QUEUED)
+    compile_pattern, QUEUED, encode_command)
+
 
 
 def _extract_command(fields):
-    def encode_command(s):
-        return s.decode(encoding='utf-8', errors='replace').lower()
-
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
         cmd += ' ' + encode_command(fields[1])

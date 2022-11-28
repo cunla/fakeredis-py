@@ -5,7 +5,7 @@ import logging
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, SimpleString, casenorm, OK
+from fakeredis._helpers import SimpleError, SimpleString, casenorm, OK, encode_command
 
 LOGGER = logging.getLogger('fakeredis')
 REDIS_LOG_LEVELS = {
@@ -121,7 +121,7 @@ class ScriptingCommandsMixin:
     def _lua_redis_call(self, lua_runtime, expected_globals, op, *args):
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
-        func, sig = self._name_to_func(self._encode_command(op))
+        func, sig = self._name_to_func(encode_command(op))
         args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
         result = self._run_command(func, sig, args, True)
         return self._convert_redis_result(lua_runtime, result)
