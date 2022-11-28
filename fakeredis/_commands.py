@@ -11,7 +11,7 @@ from ._helpers import null_terminate, SimpleError
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS = dict()  # Dictionary of supported commands name => Signature
-COMMANDS_WITH_SUB = set()
+COMMANDS_WITH_SUB = set()  # Commands with sub-commands
 
 
 class Key:

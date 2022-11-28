@@ -2,6 +2,7 @@ import itertools
 import queue
 import time
 import weakref
+from typing import List
 
 import redis
 
@@ -10,6 +11,19 @@ from ._commands import (Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED)
+
+
+def _extract_command(fields):
+    def encode_command(s):
+        return s.decode(encoding='utf-8', errors='replace').lower()
+
+    cmd = encode_command(fields[0])
+    if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
+        cmd += ' ' + encode_command(fields[1])
+        cmd_arguments = fields[2:]
+    else:
+        cmd_arguments = fields[1:]
+    return cmd, cmd_arguments
 
 
 class BaseFakeSocket:
@@ -53,13 +67,6 @@ class BaseFakeSocket:
         # will be created. The value does not matter since we replace the selector with our own
         # `FakeSelector` before it is ever used.
         return 0
-
-    @staticmethod
-    def _encode_command(s):
-        res = (s.decode(encoding='utf-8', errors='replace')
-               if isinstance(s, bytes)
-               else str(s).encode(encoding='utf-8', errors='replace'))
-        return res.lower()
 
     def _cleanup(self, server):
         """Remove all the references to `self` from `server`.
@@ -189,7 +196,9 @@ class BaseFakeSocket:
             if ret is not None:
                 return ret
 
-    def _name_to_func(self, cmd_name):
+    def _name_to_func(self, cmd_name: str):
+        """Get the signature and the method from the command name.
+        """
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace('\r', ' ').replace('\n', ' ')
@@ -205,15 +214,12 @@ class BaseFakeSocket:
             data = data.encode('ascii')
         self._parser.send(data)
 
-    def _process_command(self, fields):
+    def _process_command(self, fields: List[bytes]):
         if not fields:
             return
+
+        cmd, cmd_arguments = _extract_command(fields)
         try:
-            arg_start_ind = 1
-            cmd = self._encode_command(fields[0])
-            if cmd in COMMANDS_WITH_SUB:
-                cmd += ' ' + self._encode_command(fields[1])
-                arg_start_ind = 2
             func, sig = self._name_to_func(cmd)
             with self._server.lock:
                 # Clean out old connections
@@ -229,12 +235,12 @@ class BaseFakeSocket:
                 now = time.time()
                 for db in self._server.dbs.values():
                     db.time = now
-                sig.check_arity(fields[arg_start_ind:], self.version)
+                sig.check_arity(cmd_arguments, self.version)
                 if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
-                    self._transaction.append((func, sig, fields[arg_start_ind:]))
+                    self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
-                    result = self._run_command(func, sig, fields[arg_start_ind:], False)
+                    result = self._run_command(func, sig, cmd_arguments, False)
         except SimpleError as exc:
             if self._transaction is not None:
                 # TODO: should not apply if the exception is from _run_command
@@ -251,8 +257,7 @@ class BaseFakeSocket:
             self.put_response(result)
 
     def _scan(self, keys, cursor, *args):
-        """
-        This is the basis of most of the ``scan`` methods.
+        """This is the basis of most of the ``scan`` methods.
 
         This implementation is KNOWN to be un-performant, as it requires
         grabbing the full set of keys over which we are investigating subsets.

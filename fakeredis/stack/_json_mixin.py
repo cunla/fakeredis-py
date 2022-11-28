@@ -6,8 +6,6 @@ from __future__ import annotations
 # Standard Library Imports
 import json
 import re
-from functools import partial
-from itertools import filterfalse
 from json import JSONDecodeError
 from typing import Any, Optional, Union
 
@@ -18,6 +16,8 @@ from redis.commands.json.commands import JsonType
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._commands import Key, command, delete_keys
 from fakeredis._helpers import SimpleError, casematch
+
+path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
 
 
 def _parse_jsonpath(path: Union[str, bytes]):
@@ -30,11 +30,6 @@ def _parse_jsonpath(path: Union[str, bytes]):
 
 def _path_is_root(path: JSONPath) -> bool:
     return path == Root()
-
-
-path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
-is_no_escape = partial(helpers.casematch, b"noescape")
-is_not_no_escape = partial(filterfalse, is_no_escape)
 
 
 def _format_path(path) -> str:
@@ -53,7 +48,7 @@ class JSONObject:
     def decode(cls, value: bytes) -> Any:
         """Deserialize the supplied bytes into a valid Python object."""
         try:
-            return json.loads(value or b"null")
+            return json.loads(value)
         except JSONDecodeError:
             raise SimpleError(cls.DECODE_ERROR)
 
@@ -112,17 +107,17 @@ class JSONCommandsMixin:
             for arg in args
             if not casematch(b'noescape', arg)
         ]
-        # Parse the sanitized paths into `jsonpath.JSONPath` objects
         resolved_paths = [self._get_single(key, path) for path in formatted_paths]
 
-        path_values = list()  # [JSONObject.encode(p.value) for p in resolved_paths]
+        path_values = list()
         for lst in resolved_paths:
             if len(lst) == 0:
-                path_values.append([])
+                val = []
             elif len(lst) > 1 or len(resolved_paths) > 1:
-                path_values.append([i.value for i in lst])
+                val = [i.value for i in lst]
             else:
-                path_values.append(lst[0].value)
+                val = lst[0].value
+            path_values.append(val)
 
         # Emulate the behavior of `redis-py`:
         #   - if only one path was supplied => return a single value
