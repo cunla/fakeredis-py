@@ -99,7 +99,7 @@ jobs:
       - name: Install json
         if: ${{ matrix.json }}
         run: |
-          poetry run pip install fakeredis[jsonpath]
+          poetry run pip install fakeredis[json]
       - name: Get version
         id: getVersion
         shell: bash
