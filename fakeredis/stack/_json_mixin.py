@@ -14,7 +14,7 @@ from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
 
 from fakeredis import _helpers as helpers, _msgs as msgs
-from fakeredis._commands import Key, command, delete_keys
+from fakeredis._commands import Key, command, delete_keys, CommandItem
 from fakeredis._helpers import SimpleError, casematch
 
 path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
@@ -87,10 +87,15 @@ class JSONCommandsMixin:
         return len(found_matches)
 
     @staticmethod
-    def _get_single(key, path_str):
+    def _get_single(key, path_str: str, always_return_list: bool = False, empty_list_as_none: bool = False):
         path = _parse_jsonpath(path_str)
-        res = path.find(key.value)
-        return res
+        path_value = path.find(key.value)
+        val = [i.value for i in path_value]
+        if empty_list_as_none and len(val) == 0:
+            val = None
+        elif len(val) == 1 and not always_return_list:
+            val = val[0]
+        return val
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), )
     def json_get(self, key, *args) -> bytes:
@@ -107,17 +112,7 @@ class JSONCommandsMixin:
             for arg in args
             if not casematch(b'noescape', arg)
         ]
-        resolved_paths = [self._get_single(key, path) for path in formatted_paths]
-
-        path_values = list()
-        for lst in resolved_paths:
-            if len(lst) == 0:
-                val = []
-            elif len(lst) > 1 or len(resolved_paths) > 1:
-                val = [i.value for i in lst]
-            else:
-                val = lst[0].value
-            path_values.append(val)
+        path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]
 
         # Emulate the behavior of `redis-py`:
         #   - if only one path was supplied => return a single value
@@ -169,5 +164,13 @@ class JSONCommandsMixin:
 
         return helpers.OK
 
+    @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), )
     def json_mget(self, *args):
-        pass
+        if len(args) < 2:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.mget'))
+        path_str = args[-1]
+        keys = [CommandItem(key, self._db, item=self._db.get(key), default=[])
+                for key in args[:-1]]
+
+        result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
+        return result

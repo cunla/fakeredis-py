@@ -82,3 +82,32 @@ def test_json_set_flags_should_be_mutually_exclusive(r: redis.Redis):
 def test_json_unknown_param(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'unknown')
+
+
+def test_mget(r: redis.Redis):
+    # Test mget with multi paths
+    r.json().set("doc1", "$", {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}})
+    r.json().set("doc2", "$", {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}})
+    # Compare also to single JSON.GET
+    assert r.json().get("doc1", Path("$..a")) == [1, 3, None]
+    assert r.json().get("doc2", "$..a") == [4, 6, [None]]
+
+    # Test mget with single path
+    assert r.json().mget(["doc1"], "$..a") == [[1, 3, None]]
+
+    # Test mget with multi path
+    assert r.json().mget(["doc1", "doc2"], "$..a") == [[1, 3, None], [4, 6, [None]]]
+
+    # Test missing key
+    assert r.json().mget(["doc1", "missing_doc"], "$..a") == [[1, 3, None], None]
+
+    assert r.json().mget(["missing_doc1", "missing_doc2"], "$..a") == [None, None]
+
+
+def test_mget_should_succeed(r: redis.Redis) -> None:
+    r.json().set("1", Path.root_path(), 1)
+    r.json().set("2", Path.root_path(), 2)
+
+    assert r.json().mget(["1"], Path.root_path()) == [1]
+
+    assert r.json().mget([1, 2], Path.root_path()) == [1, 2]
