@@ -12,6 +12,13 @@ from redis.commands.json.path import Path
 
 json_tests = pytest.importorskip("jsonpath_ng")
 
+SAMPLE_DATA = {
+    "a": ["foo"],
+    "nested1": {"a": ["hello", None, "world"]},
+    "nested2": {"a": 31},
+}
+
+
 def test_jsonget(r: redis.Redis) -> None:
     r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )
     assert r.json().get("foo2") == {'x': "bar", 'y': {'x': 33}}
@@ -172,55 +179,21 @@ def test_numincrby(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_nummultby(r: redis.Redis) -> None:
-    r.json().set(
-        "num",
-        Path.root_path(),
-        1,
-    )
+    r.json().set("num", Path.root_path(), 1)
 
     with pytest.deprecated_call():
-        assert 2 == r.json().nummultby(
-            "num",
-            Path.root_path(),
-            2,
-        )
-        assert 5 == r.json().nummultby(
-            "num",
-            Path.root_path(),
-            2.5,
-        )
-        assert 2.5 == r.json().nummultby(
-            "num",
-            Path.root_path(),
-            0.5,
-        )
+        assert 2 == r.json().nummultby("num", Path.root_path(), 2)
+        assert 5 == r.json().nummultby("num", Path.root_path(), 2.5)
+        assert 2.5 == r.json().nummultby("num", Path.root_path(), 0.5)
 
 
 @pytest.mark.xfail
 def test_toggle(r: redis.Redis) -> None:
-    r.json().set(
-        "bool",
-        Path.root_path(),
-        False,
-    )
-    assert r.json().toggle(
-        "bool",
-        Path.root_path(),
-    )
-    assert (
-            r.json().toggle(
-                "bool",
-                Path.root_path(),
-            )
-            is False
-    )
+    r.json().set("bool", Path.root_path(), False)
+    assert r.json().toggle("bool", Path.root_path())
+    assert r.json().toggle("bool", Path.root_path()) is False
 
-    # check non-boolean value
-    r.json().set(
-        "num",
-        Path.root_path(),
-        1,
-    )
+    r.json().set("num", Path.root_path(), 1)
 
     with pytest.raises(redis.exceptions.ResponseError):
         r.json().toggle("num", Path.root_path())
@@ -228,69 +201,31 @@ def test_toggle(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_strappend(r: redis.Redis) -> None:
-    r.json().set(
-        "json-key",
-        Path.root_path(),
-        "foo",
-    )
+    r.json().set("json-key", Path.root_path(), "foo")
 
-    assert 6 == r.json().strappend(
-        "json-key",
-        "bar",
-    )
-    assert "foobar" == r.json().get(
-        "json-key",
-        Path.root_path(),
-    )
+    assert 6 == r.json().strappend("json-key", "bar")
+    assert "foobar" == r.json().get("json-key", Path.root_path())
 
 
 @pytest.mark.xfail
 def test_debug(r: redis.Redis) -> None:
-    r.json().set(
-        "str",
-        Path.root_path(),
-        "foo",
-    )
-    assert 24 == r.json().debug(
-        "MEMORY",
-        "str",
-        Path.root_path(),
-    )
-    assert 24 == r.json().debug(
-        "MEMORY",
-        "str",
-    )
+    r.json().set("str", Path.root_path(), "foo")
+    assert 24 == r.json().debug("MEMORY", "str", Path.root_path())
+    assert 24 == r.json().debug("MEMORY", "str")
 
     # technically help is valid
-    assert isinstance(
-        r.json().debug("HELP"),
-        list,
-    )
+    assert isinstance(r.json().debug("HELP"), list)
 
 
 @pytest.mark.xfail
 def test_strlen(r: redis.Redis) -> None:
-    r.json().set(
-        "str",
-        Path.root_path(),
-        "foo",
-    )
+    r.json().set("str", Path.root_path(), "foo")
 
-    assert 3 == r.json().strlen(
-        "str",
-        Path.root_path(),
-    )
+    assert 3 == r.json().strlen("str", Path.root_path())
 
-    r.json().strappend(
-        "str",
-        "bar",
-        Path.root_path(),
-    )
+    r.json().strappend("str", "bar", Path.root_path())
 
-    assert 6 == r.json().strlen(
-        "str",
-        Path.root_path(),
-    )
+    assert 6 == r.json().strlen("str", Path.root_path())
     assert 6 == r.json().strlen("str")
 
 
@@ -588,11 +523,7 @@ def test_objlen(r: redis.Redis) -> None:
 
 def test_json_commands_in_pipeline(r: redis.Redis) -> None:
     p = r.json().pipeline()
-    p.set(
-        "foo",
-        Path.root_path(),
-        "bar",
-    )
+    p.set("foo", Path.root_path(), "bar")
     p.get("foo")
     p.delete("foo")
     assert [True, "bar", 1] == p.execute()
@@ -630,35 +561,29 @@ def test_json_delete_with_dollar(r: redis.Redis) -> None:
     res = r.json().get("doc2", "$")
     assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
 
-    doc3 = [
-        {
-            "ciao": ["non ancora"],
-            "nested": [
-                {"ciao": [1, "a"]},
-                {"ciao": [2, "a"]},
-                {"ciaoc": [3, "non", "ciao"]},
-                {"ciao": [4, "a"]},
-                {"e": [5, "non", "ciao"]},
-            ],
-        }
-    ]
+    doc3 = [{
+        "ciao": ["non ancora"],
+        "nested": [
+            {"ciao": [1, "a"]},
+            {"ciao": [2, "a"]},
+            {"ciaoc": [3, "non", "ciao"]},
+            {"ciao": [4, "a"]},
+            {"e": [5, "non", "ciao"]},
+        ],
+    }]
     assert r.json().set("doc3", "$", doc3)
     assert r.json().delete("doc3", '$.[0]["nested"]..ciao') == 3
 
-    doc3val = [
-        [
-            {
-                "ciao": ["non ancora"],
-                "nested": [
-                    {},
-                    {},
-                    {"ciaoc": [3, "non", "ciao"]},
-                    {},
-                    {"e": [5, "non", "ciao"]},
-                ],
-            }
-        ]
-    ]
+    doc3val = [[{
+        "ciao": ["non ancora"],
+        "nested": [
+            {},
+            {},
+            {"ciaoc": [3, "non", "ciao"]},
+            {},
+            {"e": [5, "non", "ciao"]},
+        ],
+    }]]
     res = r.json().get("doc3", "$")
     assert res == doc3val
 
@@ -683,35 +608,29 @@ def test_json_forget_with_dollar(r: redis.Redis) -> None:
     res = r.json().get("doc2", "$")
     assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
 
-    doc3 = [
-        {
-            "ciao": ["non ancora"],
-            "nested": [
-                {"ciao": [1, "a"]},
-                {"ciao": [2, "a"]},
-                {"ciaoc": [3, "non", "ciao"]},
-                {"ciao": [4, "a"]},
-                {"e": [5, "non", "ciao"]},
-            ],
-        }
-    ]
+    doc3 = [{
+        "ciao": ["non ancora"],
+        "nested": [
+            {"ciao": [1, "a"]},
+            {"ciao": [2, "a"]},
+            {"ciaoc": [3, "non", "ciao"]},
+            {"ciao": [4, "a"]},
+            {"e": [5, "non", "ciao"]},
+        ],
+    }]
     assert r.json().set("doc3", "$", doc3)
     assert r.json().forget("doc3", '$.[0]["nested"]..ciao') == 3
 
-    doc3val = [
-        [
-            {
-                "ciao": ["non ancora"],
-                "nested": [
-                    {},
-                    {},
-                    {"ciaoc": [3, "non", "ciao"]},
-                    {},
-                    {"e": [5, "non", "ciao"]},
-                ],
-            }
-        ]
-    ]
+    doc3val = [[{
+        "ciao": ["non ancora"],
+        "nested": [
+            {},
+            {},
+            {"ciaoc": [3, "non", "ciao"]},
+            {},
+            {"e": [5, "non", "ciao"]},
+        ],
+    }]]
     res = r.json().get("doc3", "$")
     assert res == doc3val
 
@@ -725,16 +644,8 @@ def test_json_forget_with_dollar(r: redis.Redis) -> None:
 @pytest.mark.xfail
 def test_json_mget_dollar(r: redis.Redis) -> None:
     # Test mget with multi paths
-    r.json().set(
-        "doc1",
-        "$",
-        {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}},
-    )
-    r.json().set(
-        "doc2",
-        "$",
-        {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}},
-    )
+    r.json().set("doc1", "$", {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}})
+    r.json().set("doc2", "$", {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}})
     # Compare also to single JSON.GET
     assert r.json().get("doc1", "$..a") == [1, 3, None]
     assert r.json().get("doc2", "$..a") == [4, 6, [None]]
@@ -798,62 +709,32 @@ def test_numby_commands_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_strappend_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": "foo",
-            "nested1": {"a": "hello"},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
 
     # Test multi
-    assert r.json().strappend(
-        "doc1",
-        "bar",
-        "$..a",
-    ) == [6, 8, None]
+    assert r.json().strappend("doc1", "bar", "$..a", ) == [6, 8, None]
 
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": "foobar",
-            "nested1": {"a": "hello-bar"},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": "foobar",
+        "nested1": {"a": "hellobar"},
+        "nested2": {"a": 31},
+    }]
     # Test single
-    assert r.json().strappend(
-        "doc1",
-        "baz",
-        "$.nested1.a",
-    ) == [11]
+    assert r.json().strappend("doc1", "baz", "$.nested1.a", ) == [11]
 
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": "foobar",
-            "nested1": {"a": "hello-bar-baz"},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": "foobar",
+        "nested1": {"a": "hellobarbaz"},
+        "nested2": {"a": 31},
+    }]
 
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
-        r.json().strappend(
-            "non_existing_doc",
-            "$..a",
-            "err",
-        )
+        r.json().strappend("non_existing_doc", "$..a", "err")
 
     # Test multi
-    assert (
-            r.json().strappend(
-                "doc1",
-                "bar",
-                ".*.a",
-            )
-            == 8
-    )
+    assert r.json().strappend("doc1", "bar", ".*.a") == 8
+
     assert r.json().get("doc1", "$") == [
         {
             "a": "foo",
@@ -888,15 +769,8 @@ def test_strlen_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_arrappend_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
+
     # Test multi
     assert r.json().arrappend("doc1", "$..a", "bar", "racuda") == [3, 5, None]
     assert r.json().get("doc1", "$") == [
@@ -922,34 +796,22 @@ def test_arrappend_dollar(r: redis.Redis) -> None:
         r.json().arrappend("non_existing_doc", "$..a")
 
     # Test legacy
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi (all paths are updated, but return result of last path)
     assert r.json().arrappend("doc1", "..a", "bar", "racuda") == 5
 
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
+        "nested2": {"a": 31},
+    }]
     # Test single
     assert r.json().arrappend("doc1", ".nested1.a", "baz") == 6
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", None, "world", "bar", "racuda", "baz"]},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", None, "world", "bar", "racuda", "baz"]},
+        "nested2": {"a": 31},
+    }]
 
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
@@ -958,34 +820,22 @@ def test_arrappend_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_arrinsert_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi
     assert r.json().arrinsert("doc1", "$..a", "1", "bar", "racuda") == [3, 5, None]
 
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", "bar", "racuda", None, "world"]},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", "bar", "racuda", None, "world"]},
+        "nested2": {"a": 31},
+    }]
     # Test single
     assert r.json().arrinsert("doc1", "$.nested1.a", -2, "baz") == [6]
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", "bar", "racuda", "baz", None, "world"]},
-            "nested2": {"a": 31},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", "bar", "racuda", "baz", None, "world"]},
+        "nested2": {"a": 31},
+    }]
 
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
@@ -994,23 +844,11 @@ def test_arrinsert_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_arrlen_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
 
     # Test multi
     assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
-    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [
-        4,
-        6,
-        None,
-    ]
+    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [4, 6, None, ]
 
     r.json().clear("doc1", "$.a")
     assert r.json().arrlen("doc1", "$..a") == [0, 6, None]
@@ -1021,15 +859,7 @@ def test_arrlen_dollar(r: redis.Redis) -> None:
     with pytest.raises(exceptions.ResponseError):
         r.json().arrappend("non_existing_doc", "$..a")
 
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi (return result of last path)
     assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
     assert r.json().arrappend("doc1", "..a", "non", "abba", "stanza") == 6
@@ -1043,15 +873,7 @@ def test_arrlen_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_arrpop_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
 
     # # # Test multi
     assert r.json().arrpop("doc1", "$..a", 1) == ['"foo"', None, None]
@@ -1065,15 +887,7 @@ def test_arrpop_dollar(r: redis.Redis) -> None:
         r.json().arrpop("non_existing_doc", "..a")
 
     # # Test legacy
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi (all paths are updated, but return result of last path)
     assert r.json().arrpop("doc1", "..a", "1") is None
     assert r.json().get("doc1", "$") == [
@@ -1087,15 +901,7 @@ def test_arrpop_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_arrtrim_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi
     assert r.json().arrtrim("doc1", "$..a", "1", -1) == [0, 2, None]
     assert r.json().get("doc1", "$") == [
@@ -1115,15 +921,7 @@ def test_arrtrim_dollar(r: redis.Redis) -> None:
         r.json().arrtrim("non_existing_doc", "..a", "0", 1)
 
     # Test legacy
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": ["hello", None, "world"]},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
 
     # Test multi (all paths are updated, but return result of last path)
     assert r.json().arrtrim("doc1", "..a", "1", "-1") == 2
@@ -1141,15 +939,7 @@ def test_arrtrim_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_objkeys_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "nested1": {"a": {"foo": 10, "bar": 20}},
-            "a": ["foo"],
-            "nested2": {"a": {"baz": 50}},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
 
     # Test single
     assert r.json().objkeys("doc1", "$.nested1.a") == [["foo", "bar"]]
@@ -1171,15 +961,7 @@ def test_objkeys_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_objlen_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "nested1": {"a": {"foo": 10, "bar": 20}},
-            "a": ["foo"],
-            "nested2": {"a": {"baz": 50}},
-        },
-    )
+    r.json().set("doc1", "$", SAMPLE_DATA)
     # Test multi
     assert r.json().objlen("doc1", "$..a") == [None, 2, 1]
     # Test single
@@ -1206,9 +988,9 @@ def test_objlen_dollar(r: redis.Redis) -> None:
 
 
 def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
-    """TODO(the-wondersmith): Add docstring"""
-
-    td = {
+    """Generate a structure with sample of all types
+    """
+    type_samples = {
         "object": {},
         "array": [],
         "string": "str",
@@ -1218,12 +1000,11 @@ def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
         "null": None,
     }
     jdata = {}
-    types = []
-    for i, (k, v) in zip(range(1, len(td) + 1), iter(td.items())):
-        jdata[f"nested{i}"] = {nested_key_name: v}
-        types.append(k)
 
-    return jdata, types
+    for (k, v) in type_samples.items():
+        jdata[f"nested_{k}"] = {nested_key_name: v}
+
+    return jdata, [k.encode() for k in type_samples.keys()]
 
 
 @pytest.mark.xfail
@@ -1234,7 +1015,7 @@ def test_type_dollar(r: redis.Redis) -> None:
     assert r.json().type("doc1", "$..a") == jtypes
 
     # Test single
-    assert r.json().type("doc1", "$.nested2.a") == [jtypes[1]]
+    assert r.json().type("doc1", f"$.nested_{jtypes[1].decode()}.a") == [jtypes[1]]
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None
@@ -1242,16 +1023,13 @@ def test_type_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_clear_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "nested1": {"a": {"foo": 10, "bar": 20}},
-            "a": ["foo"],
-            "nested2": {"a": "claro"},
-            "nested3": {"a": {"baz": 50}},
-        },
-    )
+    data = {
+        "nested1": {"a": {"foo": 10, "bar": 20}},
+        "a": ["foo"],
+        "nested2": {"a": "claro"},
+        "nested3": {"a": {"baz": 50}}
+    }
+    r.json().set("doc1", "$", data)
     # Test multi
     assert r.json().clear("doc1", "$..a") == 3
 
@@ -1260,16 +1038,7 @@ def test_clear_dollar(r: redis.Redis) -> None:
     ]
 
     # Test single
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "nested1": {"a": {"foo": 10, "bar": 20}},
-            "a": ["foo"],
-            "nested2": {"a": "claro"},
-            "nested3": {"a": {"baz": 50}},
-        },
-    )
+    r.json().set("doc1", "$", data)
     assert r.json().clear("doc1", "$.nested1.a") == 1
     assert r.json().get("doc1", "$") == [
         {
@@ -1291,26 +1060,16 @@ def test_clear_dollar(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_toggle_dollar(r: redis.Redis) -> None:
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "a": ["foo"],
-            "nested1": {"a": False},
-            "nested2": {"a": 31},
-            "nested3": {"a": True},
-        },
-    )
+    data = {
+        "a": ["foo"],
+        "nested1": {"a": False},
+        "nested2": {"a": 31},
+        "nested3": {"a": True},
+    }
+    r.json().set("doc1", "$", data)
     # Test multi
     assert r.json().toggle("doc1", "$..a") == [None, 1, None, 0]
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo"],
-            "nested1": {"a": True},
-            "nested2": {"a": 31},
-            "nested3": {"a": False},
-        }
-    ]
+    assert r.json().get("doc1", "$") == [data]
 
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
