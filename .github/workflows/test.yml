@@ -95,7 +95,7 @@ jobs:
       - name: Install lupa
         if: ${{ matrix.lupa }}
         run: |
-          poetry run pip install fakeredis[lupa]
+          poetry run pip install fakeredis[lua]
       - name: Install json
         if: ${{ matrix.json }}
         run: |
