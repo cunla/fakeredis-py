@@ -3,6 +3,7 @@
 # Future Imports
 from __future__ import annotations
 
+import copy
 # Standard Library Imports
 import json
 import re
@@ -65,7 +66,7 @@ class JSONCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), )
+    @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_del(self, key, path_str) -> int:
         """Delete the JSON value stored at key `key` under `path`.
 
@@ -97,7 +98,7 @@ class JSONCommandsMixin:
             val = val[0]
         return val
 
-    @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), )
+    @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key, *args) -> bytes:
         """Get the object stored as a JSON value at key `name`.
 
@@ -107,9 +108,11 @@ class JSONCommandsMixin:
 
         For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
         """
+        paths = [arg for arg in args if not casematch(b'noescape', arg)]
+        no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
+
         formatted_paths = [
-            _format_path(arg)
-            for arg in args
+            _format_path(arg) for arg in args
             if not casematch(b'noescape', arg)
         ]
         path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]
@@ -117,12 +120,14 @@ class JSONCommandsMixin:
         # Emulate the behavior of `redis-py`:
         #   - if only one path was supplied => return a single value
         #   - if more than one path was specified => return one value for each specified path
-        if len(path_values) == 1:
+        if (no_wrapping_array or
+                (len(path_values) == 1 and isinstance(path_values[0], list))):
             return JSONObject.encode(path_values[0])
-
+        if len(path_values) == 1:
+            return JSONObject.encode(path_values)
         return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
-    @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), )
+    @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_set(
             self,
             key,
@@ -164,7 +169,7 @@ class JSONCommandsMixin:
 
         return helpers.OK
 
-    @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), )
+    @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mget(self, *args):
         if len(args) < 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.mget'))
@@ -174,3 +179,28 @@ class JSONCommandsMixin:
 
         result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
         return result
+
+    TYPES_EMPTY_VAL_DICT = {
+        dict: {},
+        int: 0,
+        float: 0.0,
+        list: [],
+    }
+
+    @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_clear(self, key, *args, ):
+        if key.value is None:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        curr_value = copy.deepcopy(key.value)
+        res = 0
+        for item in found_matches:
+            new_val = self.TYPES_EMPTY_VAL_DICT.get(type(item.value), None)
+            if new_val is not None:
+                curr_value = item.full_path.update(curr_value, new_val)
+                res += 1
+
+        key.update(curr_value)
+        return res

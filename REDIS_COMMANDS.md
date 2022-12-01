@@ -334,6 +334,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Deletes a value
  * [JSON.GET](https://redis.io/commands/json.get/)
    Gets the value at one or more paths in JSON serialized form
+ * [JSON.CLEAR](https://redis.io/commands/json.clear/)
+   Clears all values from an array or an object and sets numeric values to `0`
  * [JSON.SET](https://redis.io/commands/json.set/)
    Sets or updates the JSON value at a path
  * [JSON.MGET](https://redis.io/commands/json.mget/)
@@ -807,8 +809,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
 ### json
  * [JSON.TOGGLE](https://redis.io/commands/json.toggle/)
    Toggles a boolean value
- * [JSON.CLEAR](https://redis.io/commands/json.clear/)
-   Clears all values from an array or an object and sets numeric values to `0`
  * [JSON.NUMINCRBY](https://redis.io/commands/json.numincrby/)
    Increments the numeric value at path by a value
  * [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)

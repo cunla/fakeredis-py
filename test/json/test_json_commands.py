@@ -106,21 +106,6 @@ def test_nonascii_setgetdelete(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_clear(r: redis.Redis) -> None:
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-
-    assert 1 == r.json().clear(
-        "arr",
-        Path.root_path(),
-    )
-    assert [] == r.json().get("arr")
-
-
-@pytest.mark.xfail
 def test_type(r: redis.Redis) -> None:
     r.json().set("1", Path.root_path(), 1, )
 
@@ -957,43 +942,6 @@ def test_type_dollar(r: redis.Redis) -> None:
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None
-
-
-@pytest.mark.xfail
-def test_clear_dollar(r: redis.Redis) -> None:
-    data = {
-        "nested1": {"a": {"foo": 10, "bar": 20}},
-        "a": ["foo"],
-        "nested2": {"a": "claro"},
-        "nested3": {"a": {"baz": 50}}
-    }
-    r.json().set("doc1", "$", data)
-    # Test multi
-    assert r.json().clear("doc1", "$..a") == 3
-
-    assert r.json().get("doc1", "$") == [
-        {"nested1": {"a": {}}, "a": [], "nested2": {"a": "claro"}, "nested3": {"a": {}}}
-    ]
-
-    # Test single
-    r.json().set("doc1", "$", data)
-    assert r.json().clear("doc1", "$.nested1.a") == 1
-    assert r.json().get("doc1", "$") == [
-        {
-            "nested1": {"a": {}},
-            "a": ["foo"],
-            "nested2": {"a": "claro"},
-            "nested3": {"a": {"baz": 50}},
-        }
-    ]
-
-    # Test missing path (defaults to root)
-    assert r.json().clear("doc1") == 1
-    assert r.json().get("doc1", "$") == [{}]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().clear("non_existing_doc", "$..a")
 
 
 @pytest.mark.xfail

@@ -8,17 +8,17 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.1.0"
+version = "2.2.0"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
-keywords = ["redis", "rq", "django-rq", "rq-scheduler"]
+keywords = ["redis", "rq", "django-rq", "RedisJson", ]
 authors = [
     "James Saryerwinnie <js@jamesls.com>",
     "Bruce Merry <bmerry@ska.ac.za>",
     "Daniel Moran <daniel.maruani@gmail.com>"
 ]
 maintainers = [
-    "Daniel Moran <daniel.maruani@gmail.com>"
+    "Daniel Moran <daniel.maruani@gmail.com>",
 ]
 license = "BSD-3-Clause"
 classifiers = [
