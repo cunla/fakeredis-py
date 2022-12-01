@@ -108,10 +108,11 @@ class JSONCommandsMixin:
 
         For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
         """
-        no_wrapping_array = len(args) == 1 and args[0] == b'.'
+        paths = [arg for arg in args if not casematch(b'noescape', arg)]
+        no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
+
         formatted_paths = [
-            _format_path(arg)
-            for arg in args
+            _format_path(arg) for arg in args
             if not casematch(b'noescape', arg)
         ]
         path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]

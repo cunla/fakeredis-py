@@ -105,9 +105,6 @@ def test_nonascii_setgetdelete(r: redis.Redis) -> None:
     assert r.exists("not-ascii") == 0
 
 
-
-
-
 @pytest.mark.xfail
 def test_type(r: redis.Redis) -> None:
     r.json().set("1", Path.root_path(), 1, )
@@ -945,6 +942,7 @@ def test_type_dollar(r: redis.Redis) -> None:
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None
+
 
 @pytest.mark.xfail
 def test_toggle_dollar(r: redis.Redis) -> None:
