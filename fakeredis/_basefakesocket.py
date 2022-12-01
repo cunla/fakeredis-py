@@ -146,7 +146,7 @@ class BaseFakeSocket:
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
-            command_item.writeback()
+            command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
         return result
 
     def _decode_error(self, error):

@@ -24,6 +24,7 @@ def test_jsonget(r: redis.Redis):
     data2 = {'x': "bar"}
     r.json().set("foo2", Path.root_path(), data2, )
     assert r.json().get("foo2") == data2
+    assert r.json().get("foo2", "$") == [data2, ]
     assert r.json().get("foo2", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
 
     assert r.json().get("non-existing-key") is None
@@ -111,3 +112,48 @@ def test_mget_should_succeed(r: redis.Redis) -> None:
     assert r.json().mget(["1"], Path.root_path()) == [1]
 
     assert r.json().mget([1, 2], Path.root_path()) == [1, 2]
+
+
+def test_clear(r: redis.Redis) -> None:
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+
+    assert 1 == r.json().clear("arr", Path.root_path(), )
+    assert [] == r.json().get("arr")
+
+
+def test_clear_dollar(r: redis.Redis) -> None:
+    data = {
+        "nested1": {"a": {"foo": 10, "bar": 20}},
+        "a": ["foo"],
+        "nested2": {"a": "claro"},
+        "nested3": {"a": {"baz": 50}}
+    }
+    r.json().set("doc1", "$", data)
+    # Test multi
+    assert r.json().clear("doc1", "$..a") == 3
+
+    assert r.json().get("doc1", "$") == [
+        {"nested1": {"a": {}}, "a": [], "nested2": {"a": "claro"}, "nested3": {"a": {}}}
+    ]
+
+    # Test single
+    r.json().set("doc1", "$", data)
+    assert r.json().clear("doc1", "$.nested1.a") == 1
+    assert r.json().get("doc1", "$") == [
+        {
+            "nested1": {"a": {}},
+            "a": ["foo"],
+            "nested2": {"a": "claro"},
+            "nested3": {"a": {"baz": 50}},
+        }
+    ]
+
+    # Test missing path (defaults to root)
+    assert r.json().clear("doc1") == 1
+    assert r.json().get("doc1", "$") == [{}]
+
+
+def test_clear_no_doc(r: redis.Redis) -> None:
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().clear("non_existing_doc", "$..a")
