@@ -8,9 +8,7 @@ on:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -37,7 +35,7 @@ jobs:
     name: Create an issue if publish failed
     runs-on: ubuntu-latest
     needs: [deploy]
-    if: ${{ github.repository == "cunla/fakeredis-py" && always() && needs.deploy.result == "failure" }}
+    if: ${{ needs.deploy.result == "failure" }}
     permissions:
       issues: write
     steps:
