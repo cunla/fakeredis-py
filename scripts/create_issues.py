@@ -33,7 +33,10 @@ def print_gh_commands(commands: dict, unimplemented: dict):
             link = f"https://redis.io/commands/{item.replace(' ', '-')}/"
             summary = commands[item]['summary']
             title = f"Implement support for \`{cmd}\` ({group} command)"
-            body = f"Implement support for command \`{cmd}\` ([documentation]({link})). {summary}"
+            filename = f'{group}_mixin.py'
+            body = f"""Implement support for command \`{cmd}\` in {filename}
+{summary}. 
+[Full documentation]({link}))"""
             print(f'gh issue create --title "{title}" --body "{body}" --label "enhancement,help wanted"')
 
 
