@@ -42,16 +42,18 @@ jobs:
   test:
     name: >
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
-      cov:${{ matrix.coverage }},lupa:${{ matrix.lupa }}, json:${{matrix.json}}
+      redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
+      lupa:${{ matrix.lupa }}, json:${{matrix.json}}
     needs:
       - "lint"
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 5
       fail-fast: false
       matrix:
         redis-image: ["redis:6.2.7", "redis:7.0.5"]
-        python-version: ["3.7", "3.8", "3.10", "3.11"]
-        redis-py: ["4.3.4", "4.3.5", "4.4.0"]
+        python-version: ["3.7", "3.10", "3.11"]
+        redis-py: ["4.3.5", "4.4.0"]
         include:
           - python-version: "3.10"
             redis-image: "redis:6.2.7"
