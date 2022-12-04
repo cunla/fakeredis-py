@@ -7,7 +7,6 @@ from redis.exceptions import ResponseError
 from .. import testtools
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 def test_swapdb(r, create_redis):
     r1 = create_redis(1)
     r.set('foo', 'abc')
@@ -23,7 +22,6 @@ def test_swapdb(r, create_redis):
     assert r1.get('baz') is None
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 def test_swapdb_same_db(r):
     assert r.swapdb(1, 1)
 

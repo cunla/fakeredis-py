@@ -69,7 +69,6 @@ def test_zadd_with_nx(r, param, return_value, state, ch):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 @pytest.mark.parametrize(
     'param,return_value,state',
     [
@@ -84,7 +83,6 @@ def test_zadd_with_gt_and_ch(r, param, return_value, state):
     assert r.zrange('foo', 0, -1, withscores=True) == state
 
 
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 @pytest.mark.parametrize(
     'param,return_value,state',
     [

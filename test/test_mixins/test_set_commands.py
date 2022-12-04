@@ -346,7 +346,6 @@ def test_sscan(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_sintercard(r):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
@@ -357,7 +356,6 @@ def test_sintercard(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_sintercard_key_doesnt_exist(r):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
@@ -370,7 +368,6 @@ def test_sintercard_key_doesnt_exist(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_sintercard_bytes_keys(r):
     foo = os.urandom(10)
     bar = os.urandom(10)
@@ -384,7 +381,6 @@ def test_sintercard_bytes_keys(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_sintercard_wrong_type(r):
     testtools.zadd(r, 'foo', {'member': 1})
     r.sadd('bar', 'member')
@@ -395,7 +391,6 @@ def test_sintercard_wrong_type(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_sintercard_syntax_error(r):
     testtools.zadd(r, 'foo', {'member': 1})
     r.sadd('bar', 'member')

@@ -269,16 +269,6 @@ def test_set_conflicting_expire_options(r):
         r.set('foo', 'bar', ex=1, px=1)
 
 
-@testtools.run_test_if_redispy_ver('below', '3.5')
-def test_set_conflicting_expire_options_w_keepttl(r):
-    with pytest.raises(ResponseError):
-        r.set('foo', 'bar', ex=1, keepttl=True)
-    with pytest.raises(ResponseError):
-        r.set('foo', 'bar', px=1, keepttl=True)
-    with pytest.raises(ResponseError):
-        r.set('foo', 'bar', ex=1, px=1, keepttl=True)
-
-
 def test_set_raises_wrong_ex(r):
     with pytest.raises(ResponseError):
         r.set('foo', 'bar', ex=-100)

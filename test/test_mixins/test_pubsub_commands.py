@@ -9,7 +9,6 @@ import fakeredis
 from .. import testtools
 
 
-@testtools.run_test_if_redispy_ver('above', '3')
 def test_ping_pubsub(r):
     p = r.pubsub()
     p.subscribe('channel')
@@ -322,7 +321,6 @@ def test_pubsub_timeout(r, timeout_value):
         assert message is None
 
 
-@testtools.run_test_if_redispy_ver('above', '3.4')
 @pytest.mark.fake
 def test_socket_cleanup_pubsub(fake_server):
     r1 = fakeredis.FakeStrictRedis(server=fake_server)

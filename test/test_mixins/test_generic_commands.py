@@ -63,15 +63,6 @@ def test_ttl_should_return_minus_one_for_non_expiring_key(r):
     assert r.ttl('foo') == -1
 
 
-@testtools.run_test_if_redispy_ver('below', '3.5')
-@pytest.mark.min_server('6.0')
-def test_set_keepttl(r):
-    r.set('foo', 'bar', ex=100)
-    assert r.set('foo', 'baz', keepttl=True) is True
-    assert r.ttl('foo') == 100
-    assert r.get('foo') == b'baz'
-
-
 def test_scan(r):
     # Set up the data
     for ix in range(20):
@@ -334,7 +325,6 @@ def test_expire_should_expire_key(r):
     assert r.expire('bar', 1) is False
 
 
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_expire_should_throw_error(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -348,7 +338,6 @@ def test_expire_should_throw_error(r):
         r.expire('foo', 1, gt=True, lt=True)
 
 
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 @pytest.mark.max_server('7')
 def test_expire_extra_params_return_error(r):
     with pytest.raises(redis.exceptions.ResponseError):
@@ -517,7 +506,6 @@ def test_set_float_value(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_expire_should_not_expire__when_no_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -525,7 +513,6 @@ def test_expire_should_not_expire__when_no_expire_is_set(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_expire_should_not_expire__when_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -534,7 +521,6 @@ def test_expire_should_not_expire__when_expire_is_set(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_expire_should_expire__when_expire_is_greater(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -544,7 +530,6 @@ def test_expire_should_expire__when_expire_is_greater(r):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
 def test_expire_should_expire__when_expire_is_lessthan(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
@@ -690,20 +675,6 @@ def test_scan_iter_multiple_pages_with_match(r):
     r.set('andanother', 'bar')
     actual = set(r.scan_iter(match='key:*'))
     assert actual == set(all_keys)
-
-
-@testtools.run_test_if_redispy_ver('below', '3.5')
-@pytest.mark.min_server('6.0')
-def test_scan_iter_multiple_pages_with_type(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Now add a few keys of another type
-    testtools.zadd(r, 'zset1', {'otherkey': 1})
-    testtools.zadd(r, 'zset2', {'andanother': 1})
-    actual = set(r.scan_iter(_type='string'))
-    assert actual == set(all_keys)
-    actual = set(r.scan_iter(_type='ZSET'))
-    assert actual == {b'zset1', b'zset2'}
 
 
 def test_scan_multiple_pages_with_count_arg(r):
