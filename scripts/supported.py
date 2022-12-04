@@ -46,7 +46,10 @@ def commands_groups(
     return implemented, unimplemented
 
 
-def print_unimplemented_commands(all_commands: dict, implemented: dict, unimplemented: dict) -> None:
+def print_unimplemented_commands(
+        all_commands: dict,
+        unimplemented: dict,
+        implemented: dict) -> None:
     def print_groups(dictionary: dict):
         for group in dictionary:
             print(f'### {group}')
@@ -68,8 +71,17 @@ All the redis commands are implemented in fakeredis with these exceptions:
     print_groups(unimplemented)
 
 
-if __name__ == '__main__':
+def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands
+
+    """
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
-    unimplemented_dict, implemented_dict = commands_groups(commands, implemented_commands_set)
+    implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)
+    return unimplemented_dict, implemented_dict
+
+
+if __name__ == '__main__':
+    commands = download_redis_commands()
+    unimplemented_dict, implemented_dict = get_unimplemented_and_implemented_commands()
     print_unimplemented_commands(commands, unimplemented_dict, implemented_dict)
