@@ -148,7 +148,9 @@ class FakeConnection(redis_async.Connection):
             except asyncio.QueueEmpty:
                 raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
-            response = await self._sock.responses.get()
+            timeout = kwargs.pop('timeout', None)
+            can_read = await self.can_read(timeout)
+            response = await self._reader.read(0) if can_read else None
         if isinstance(response, redis_async.ResponseError):
             raise response
         return self._decode(response)
