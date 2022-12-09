@@ -63,6 +63,13 @@ class JSONObject:
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
+    TYPES_EMPTY_VAL_DICT = {
+        dict: {},
+        int: 0,
+        float: 0.0,
+        list: [],
+    }
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
@@ -77,15 +84,21 @@ class JSONCommandsMixin:
             return 0
 
         path = _parse_jsonpath(path_str)
-
         if _path_is_root(path):
             delete_keys(key)
             return 1
-        found_matches = path.find(key.value)
-        new_value = path.update_or_create(key.value, None)
-        key.update(new_value)
+        curr_value = copy.deepcopy(key.value)
 
-        return len(found_matches)
+        found_matches = path.find(curr_value)
+        res = 0
+        while len(found_matches) > 0:
+            item = found_matches[0]
+            curr_value = item.full_path.filter(lambda _: True, curr_value)
+            res += 1
+            found_matches = path.find(curr_value)
+
+        key.update(curr_value)
+        return res
 
     @staticmethod
     def _get_single(key, path_str: str, always_return_list: bool = False, empty_list_as_none: bool = False):
@@ -128,13 +141,7 @@ class JSONCommandsMixin:
         return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
     @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_set(
-            self,
-            key,
-            path_str: bytes,
-            value: JsonType,
-            *args
-    ) -> Optional[helpers.SimpleString]:
+    def json_set(self, key, path_str: bytes, value: JsonType, *args) -> Optional[helpers.SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         if `flag` is b"NX", set `value` only if it does not exist.
@@ -180,13 +187,6 @@ class JSONCommandsMixin:
         result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
         return result
 
-    TYPES_EMPTY_VAL_DICT = {
-        dict: {},
-        int: 0,
-        float: 0.0,
-        list: [],
-    }
-
     @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_clear(self, key, *args, ):
         if key.value is None:
@@ -203,4 +203,55 @@ class JSONCommandsMixin:
                 res += 1
 
         key.update(curr_value)
+        return res
+
+    @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
+    def json_strlen(self, key, *args):
+        """Returns the length of the JSON String at path in key
+
+        """
+        if key.value is None:
+            return None
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        res = list()
+        for item in found_matches:
+            res.append(len(item.value) if type(item.value) == str else None)
+
+        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0] == b'.')):
+            return res[0]
+
+        return res
+
+    @command(name="JSON.TOGGLE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_toggle(self, key, *args):
+        """Toggle a Boolean value stored at path
+
+        Returns an array of integer replies for each path, the new value (0 if
+        false or 1 if true), or nil for JSON values matching the path that are
+        not Boolean.
+
+        """
+        if key.value is None:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+
+        curr_value = copy.deepcopy(key.value)
+        res = list()
+        for item in found_matches:
+            if type(item.value) == bool:
+                curr_value = item.full_path.update(curr_value, not item.value)
+                res.append(not item.value)
+            else:
+                res.append(None)
+        if all([x is None for x in res]):
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        key.update(curr_value)
+
+        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0] == b'.')):
+            return res[0]
+
         return res
