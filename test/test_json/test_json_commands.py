@@ -133,18 +133,6 @@ def test_nummultby(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_toggle(r: redis.Redis) -> None:
-    r.json().set("bool", Path.root_path(), False)
-    assert r.json().toggle("bool", Path.root_path())
-    assert r.json().toggle("bool", Path.root_path()) is False
-
-    r.json().set("num", Path.root_path(), 1)
-
-    with pytest.raises(redis.exceptions.ResponseError):
-        r.json().toggle("num", Path.root_path())
-
-
-@pytest.mark.xfail
 def test_strappend(r: redis.Redis) -> None:
     r.json().set("json-key", Path.root_path(), "foo")
 
@@ -160,18 +148,6 @@ def test_debug(r: redis.Redis) -> None:
 
     # technically help is valid
     assert isinstance(r.json().debug("HELP"), list)
-
-
-@pytest.mark.xfail
-def test_strlen(r: redis.Redis) -> None:
-    r.json().set("str", Path.root_path(), "foo")
-
-    assert 3 == r.json().strlen("str", Path.root_path())
-
-    r.json().strappend("str", "bar", Path.root_path())
-
-    assert 6 == r.json().strlen("str", Path.root_path())
-    assert 6 == r.json().strlen("str")
 
 
 @pytest.mark.xfail
@@ -942,24 +918,6 @@ def test_type_dollar(r: redis.Redis) -> None:
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None
-
-
-@pytest.mark.xfail
-def test_toggle_dollar(r: redis.Redis) -> None:
-    data = {
-        "a": ["foo"],
-        "nested1": {"a": False},
-        "nested2": {"a": 31},
-        "nested3": {"a": True},
-    }
-    r.json().set("doc1", "$", data)
-    # Test multi
-    assert r.json().toggle("doc1", "$..a") == [None, 1, None, 0]
-    assert r.json().get("doc1", "$") == [data]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().toggle("non_existing_doc", "$..a")
 
 
 @pytest.mark.xfail

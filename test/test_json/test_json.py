@@ -166,8 +166,42 @@ def test_jsonstrlen(r: redis.Redis):
 
     r.json().set("foo2", Path.root_path(), "data2")
     assert r.json().strlen('foo2') == 5
+    assert r.json().strlen('foo2', Path.root_path()) == 5
 
     r.json().set("foo3", Path.root_path(), {'x': 'string'})
     assert r.json().strlen("foo3", Path("$.x")) == [6, ]
 
     assert r.json().strlen('non-existing') is None
+
+    r.json().set("str", Path.root_path(), "foo")
+    assert 3 == r.json().strlen("str", Path.root_path())
+
+
+def test_toggle(r: redis.Redis) -> None:
+    r.json().set("bool", Path.root_path(), False)
+    assert r.json().toggle("bool", Path.root_path())
+    assert r.json().toggle("bool", Path.root_path()) is False
+
+    r.json().set("num", Path.root_path(), 1)
+
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.json().toggle("num", Path.root_path())
+
+
+def test_toggle_dollar(r: redis.Redis) -> None:
+    data = {
+        "a": ["foo"],
+        "nested1": {"a": False},
+        "nested2": {"a": 31},
+        "nested3": {"a": True},
+    }
+    r.json().set("doc1", "$", data)
+    # Test multi
+    assert r.json().toggle("doc1", "$..a") == [None, 1, None, 0]
+    data['nested1']['a'] = True
+    data['nested3']['a'] = False
+    assert r.json().get("doc1", "$") == [data]
+
+    # Test missing key
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.json().toggle("non_existing_doc", "$..a")
