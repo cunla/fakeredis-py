@@ -40,7 +40,7 @@ def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     assert r.exists("foo") == 0
 
 
-def test_json_set_non_dict_value(r: redis.Redis):
+def test_json_et_non_dict_value(r: redis.Redis):
     r.json().set("str", Path.root_path(), 'str_val', )
     assert r.json().get('str') == 'str_val'
 
@@ -51,7 +51,7 @@ def test_json_set_non_dict_value(r: redis.Redis):
     assert r.json().get('bool') == False
 
 
-def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
+def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis) -> None:
     obj = {"foo": "bar"}
     assert r.json().set("obj", Path.root_path(), obj)
 
@@ -73,7 +73,7 @@ def test_json_set_existential_modifiers_should_succeed(r: redis.Redis) -> None:
     assert r.json().get('obj') == obj
 
 
-def test_json_set_flags_should_be_mutually_exclusive(r: redis.Redis):
+def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
     with pytest.raises(Exception):
         r.json().set("obj", Path("foo"), "baz", nx=True, xx=True)
     with pytest.raises(redis.ResponseError):
@@ -85,7 +85,7 @@ def test_json_unknown_param(r: redis.Redis):
         raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'unknown')
 
 
-def test_mget(r: redis.Redis):
+def test_jsonmget(r: redis.Redis):
     # Test mget with multi paths
     r.json().set("doc1", "$", {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}})
     r.json().set("doc2", "$", {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}})
@@ -105,7 +105,7 @@ def test_mget(r: redis.Redis):
     assert r.json().mget(["missing_doc1", "missing_doc2"], "$..a") == [None, None]
 
 
-def test_mget_should_succeed(r: redis.Redis) -> None:
+def test_jsonmget_should_succeed(r: redis.Redis) -> None:
     r.json().set("1", Path.root_path(), 1)
     r.json().set("2", Path.root_path(), 2)
 
@@ -114,14 +114,14 @@ def test_mget_should_succeed(r: redis.Redis) -> None:
     assert r.json().mget([1, 2], Path.root_path()) == [1, 2]
 
 
-def test_clear(r: redis.Redis) -> None:
+def test_jsonclear(r: redis.Redis) -> None:
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
 
     assert 1 == r.json().clear("arr", Path.root_path(), )
     assert [] == r.json().get("arr")
 
 
-def test_clear_dollar(r: redis.Redis) -> None:
+def test_jsonclear_dollar(r: redis.Redis) -> None:
     data = {
         "nested1": {"a": {"foo": 10, "bar": 20}},
         "a": ["foo"],
@@ -153,7 +153,21 @@ def test_clear_dollar(r: redis.Redis) -> None:
     assert r.json().get("doc1", "$") == [{}]
 
 
-def test_clear_no_doc(r: redis.Redis) -> None:
+def test_jsonclear_no_doc(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(redis.ResponseError):
         r.json().clear("non_existing_doc", "$..a")
+
+
+def test_jsonstrlen(r: redis.Redis):
+    data = {'x': "bar", 'y': {'x': 33}}
+    r.json().set("foo", Path.root_path(), data)
+    assert r.json().strlen("foo", Path("$..x")) == [3, None]
+
+    r.json().set("foo2", Path.root_path(), "data2")
+    assert r.json().strlen('foo2') == 5
+
+    r.json().set("foo3", Path.root_path(), {'x': 'string'})
+    assert r.json().strlen("foo3", Path("$.x")) == [6, ]
+
+    assert r.json().strlen('non-existing') is None

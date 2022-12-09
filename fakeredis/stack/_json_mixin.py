@@ -63,6 +63,13 @@ class JSONObject:
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
+    TYPES_EMPTY_VAL_DICT = {
+        dict: {},
+        int: 0,
+        float: 0.0,
+        list: [],
+    }
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
@@ -180,13 +187,6 @@ class JSONCommandsMixin:
         result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
         return result
 
-    TYPES_EMPTY_VAL_DICT = {
-        dict: {},
-        int: 0,
-        float: 0.0,
-        list: [],
-    }
-
     @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_clear(self, key, *args, ):
         if key.value is None:
@@ -203,4 +203,23 @@ class JSONCommandsMixin:
                 res += 1
 
         key.update(curr_value)
+        return res
+
+    @command(name="JSON.strlen", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_strlen(self, key, *args):
+        """Returns the length of the JSON String at path in key
+
+        """
+        if key.value is None:
+            return None
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        res = list()
+        for item in found_matches:
+            res.append(len(item.value) if type(item.value) == str else None)
+
+        if len(res) == 1 and len(args) == 0:
+            return res[0]
+
         return res
