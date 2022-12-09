@@ -39,6 +39,43 @@ def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     assert r.json().forget("foo") == 0  # second delete
     assert r.exists("foo") == 0
 
+def test_json_delete_with_dollar(r: redis.Redis) -> None:
+    doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
+    assert r.json().set("doc1", Path.root_path(), doc1)
+    assert r.json().delete("doc1", "$..a") == 2
+    assert r.json().get("doc1", Path.root_path()) == {"nested": {"b": 3}}
+
+    doc2 = {"a": {"a": 2, "b": 3}, "b": ["a", "b"], "nested": {"b": [True, "a", "b"]}}
+    r.json().set("doc2", "$", doc2)
+    assert r.json().delete("doc2", "$..a") == 1
+    assert r.json().get("doc2", Path.root_path()) == {"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}
+
+    doc3 = [{
+        "ciao": ["non ancora"],
+        "nested": [
+            {"ciao": [1, "a"]},
+            {"ciao": [2, "a"]},
+            {"ciaoc": [3, "non", "ciao"]},
+            {"ciao": [4, "a"]},
+            {"e": [5, "non", "ciao"]},
+        ],
+    }]
+    assert r.json().set("doc3", Path.root_path(), doc3)
+    assert r.json().delete("doc3", '$.[0]["nested"]..ciao') == 3
+
+    doc3val = [[{
+        "ciao": ["non ancora"],
+        "nested": [
+            {}, {}, {"ciaoc": [3, "non", "ciao"]}, {}, {"e": [5, "non", "ciao"]},
+        ],
+    }]]
+    assert r.json().get("doc3", Path.root_path()) == doc3val[0]
+
+    # Test default path
+    assert r.json().delete("doc3") == 1
+    assert r.json().get("doc3", Path.root_path()) is None
+
+    r.json().delete("not_a_document", "..a")
 
 def test_json_et_non_dict_value(r: redis.Redis):
     r.json().set("str", Path.root_path(), 'str_val', )
@@ -205,3 +242,29 @@ def test_toggle_dollar(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(redis.exceptions.ResponseError):
         r.json().toggle("non_existing_doc", "$..a")
+
+
+def test_json_commands_in_pipeline(r: redis.Redis) -> None:
+    p = r.json().pipeline()
+    p.set("foo", Path.root_path(), "bar")
+    p.get("foo")
+    p.delete("foo")
+    assert [True, "bar", 1] == p.execute()
+    assert r.keys() == []
+    assert r.get("foo") is None
+
+    # now with a true, json object
+    r.flushdb()
+    p = r.json().pipeline()
+    d = {"hello": "world", "oh": "snap"}
+
+    with pytest.deprecated_call():
+        p.jsonset("foo", Path.root_path(), d)
+        p.jsonget("foo")
+
+    p.exists("not-a-real-key")
+    p.delete("foo")
+
+    assert [True, d, 0, 1] == p.execute()
+    assert r.keys() == []
+    assert r.get("foo") is None

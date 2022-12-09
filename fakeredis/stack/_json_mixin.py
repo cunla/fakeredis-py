@@ -84,15 +84,21 @@ class JSONCommandsMixin:
             return 0
 
         path = _parse_jsonpath(path_str)
-
         if _path_is_root(path):
             delete_keys(key)
             return 1
-        found_matches = path.find(key.value)
-        new_value = path.update_or_create(key.value, None)
-        key.update(new_value)
+        curr_value = copy.deepcopy(key.value)
 
-        return len(found_matches)
+        found_matches = path.find(curr_value)
+        res = 0
+        while len(found_matches) > 0:
+            item = found_matches[0]
+            curr_value = item.full_path.filter(lambda _: True, curr_value)
+            res += 1
+            found_matches = path.find(curr_value)
+
+        key.update(curr_value)
+        return res
 
     @staticmethod
     def _get_single(key, path_str: str, always_return_list: bool = False, empty_list_as_none: bool = False):
