@@ -5,12 +5,14 @@ import os
 
 from supported import get_unimplemented_and_implemented_commands, download_redis_commands
 from github import Github
+from dotenv import load_dotenv
+load_dotenv()  # take environment variables from .env.
 
 IGNORE_GROUPS = {
     'server', 'cf', 'cms', 'topk', 'tdigest', 'bf', 'search', 'suggestion', 'timeseries',
     'graph', 'server', 'cluster', 'connection',
     'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'string', 'hash',
-    'hyperloglog', 'pubsub', 'stream', 'json', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
+    'hyperloglog', 'pubsub', 'stream', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
     'tdigest'
 }
 IGNORE_COMMANDS = {
@@ -23,11 +25,23 @@ IGNORE_COMMANDS = {
     'JSON.DEBUG HELP',
     'JSON.DEBUG MEMORY',
     'JSON.DEBUG',
+    'JSON.TYPE',
+    'JSON.OBJKEYS',
+    'JSON.OBJLEN',
+    'JSON.ARRTRIM',
+    'JSON.ARRAPPEND',
+    'JSON.ARRINDEX',
+    'JSON.ARRINSERT',
+    'JSON.ARRLEN',
+    'JSON.ARRPOP',
+    'JSON.NUMINCRBY',
+    'JSON.NUMMULTBY',
+    'JSON.RESP',
 }
 
 
 class GithubData:
-    def __init__(self, dry=True):
+    def __init__(self, dry=False):
         token = os.getenv('GITHUB_TOKEN', None)
         g = Github(token)
         self.dry = dry or (token is None)
