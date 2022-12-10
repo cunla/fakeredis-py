@@ -333,6 +333,19 @@ def test_socket_cleanup_pubsub(fake_server):
     r2.publish('test', 'foo')
 
 
+def test_pubsub_channels(r):
+    p = r.pubsub()
+    p.subscribe("foo", "bar", "baz", "test")
+    expected = {b"foo", b"bar", b"baz", b"test"}
+    assert set(r.pubsub_channels()) == expected
+
+
+def test_pubsub_channels_pattern(r):
+    p = r.pubsub()
+    p.subscribe("foo", "bar", "baz", "test")
+    assert set(r.pubsub_channels("b*")) == {b"bar", b"baz", }
+
+
 def test_pubsub_no_subcommands(r):
     with pytest.raises(redis.ResponseError):
         raw_command(r, "PUBSUB")

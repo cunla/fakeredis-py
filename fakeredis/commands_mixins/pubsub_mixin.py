@@ -70,6 +70,14 @@ class PubSubCommandsMixin:
                     receivers += 1
         return receivers
 
+    @command(name='PUBSUB CHANNELS', fixed=(), repeat=(bytes,))
+    def pubsub_channels(self, *args):
+        channels = list(self._server.subscribers.keys())
+        if len(args) > 0:
+            regex = compile_pattern(args[0])
+            channels = [ch for ch in channels if regex.match(ch)]
+        return channels
+
     @command(name='PUBSUB', fixed=())
     def pubsub(self, *args):
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format('pubsub'))
