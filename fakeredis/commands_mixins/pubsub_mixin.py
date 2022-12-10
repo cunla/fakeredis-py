@@ -1,6 +1,6 @@
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command)
-from fakeredis._helpers import (NoResponse, compile_pattern)
+from fakeredis._helpers import (NoResponse, compile_pattern, SimpleError)
 
 
 class PubSubCommandsMixin:
@@ -69,3 +69,30 @@ class PubSubCommandsMixin:
                     sock.put_response(msg)
                     receivers += 1
         return receivers
+
+    @command(name='PUBSUB', fixed=())
+    def pubsub(self, *args):
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format('pubsub'))
+
+    @command(name='PUBSUB HELP', fixed=())
+    def pubsub_help(self, *args):
+        help_strings = [
+            'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+            'CHANNELS [<pattern>]',
+            "    Return the currently active channels matching a <pattern> (default: '*')"
+            '.',
+            'NUMPAT',
+            '    Return number of subscriptions to patterns.',
+            'NUMSUB [<channel> ...]',
+            '    Return the number of subscribers for the specified channels, excluding',
+            '    pattern subscriptions(default: no channels).',
+            'SHARDCHANNELS [<pattern>]',
+            '    Return the currently active shard level channels matching a <pattern> (d'
+            "efault: '*').",
+            'SHARDNUMSUB [<shardchannel> ...]',
+            '    Return the number of subscribers for the specified shard level channel(s'
+            ')',
+            'HELP',
+            '    Prints this help.'
+        ]
+        return [s.encode() for s in help_strings]

@@ -7,6 +7,7 @@ import redis
 
 import fakeredis
 from .. import testtools
+from ..testtools import raw_command
 
 
 def test_ping_pubsub(r):
@@ -330,3 +331,30 @@ def test_socket_cleanup_pubsub(fake_server):
         ps.subscribe('test')
         ps.psubscribe('test*')
     r2.publish('test', 'foo')
+
+
+def test_pubsub_no_subcommands(r):
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, "PUBSUB")
+
+
+def test_pubsub_help(r):
+    assert raw_command(r, "PUBSUB HELP") == [
+        b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+        b'CHANNELS [<pattern>]',
+        b"    Return the currently active channels matching a <pattern> (default: '*')"
+        b'.',
+        b'NUMPAT',
+        b'    Return number of subscriptions to patterns.',
+        b'NUMSUB [<channel> ...]',
+        b'    Return the number of subscribers for the specified channels, excluding',
+        b'    pattern subscriptions(default: no channels).',
+        b'SHARDCHANNELS [<pattern>]',
+        b'    Return the currently active shard level channels matching a <pattern> (d'
+        b"efault: '*').",
+        b'SHARDNUMSUB [<shardchannel> ...]',
+        b'    Return the number of subscribers for the specified shard level channel(s'
+        b')',
+        b'HELP',
+        b'    Prints this help.'
+    ]
