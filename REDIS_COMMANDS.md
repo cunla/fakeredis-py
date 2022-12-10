@@ -342,6 +342,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Sets or updates the JSON value at a path
  * [JSON.MGET](https://redis.io/commands/json.mget/)
    Returns the values at a path from one or more keys
+ * [JSON.STRAPPEND](https://redis.io/commands/json.strappend/)
+   Appends a string to a JSON string value at path
  * [JSON.STRLEN](https://redis.io/commands/json.strlen/)
    Returns the length of the JSON String at path in key
 
@@ -815,8 +817,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Increments the numeric value at path by a value
  * [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)
    Multiplies the numeric value at path by a value
- * [JSON.STRAPPEND](https://redis.io/commands/json.strappend/)
-   Appends a string to a JSON string value at path
  * [JSON.ARRAPPEND](https://redis.io/commands/json.arrappend/)
    Append one or more json values into the array at path after the last element in it.
  * [JSON.ARRINDEX](https://redis.io/commands/json.arrindex/)
