@@ -236,6 +236,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Check existence of scripts in the script cache.
  * [SCRIPT FLUSH](https://redis.io/commands/script-flush/)
    Remove all the scripts from the script cache.
+ * [SCRIPT HELP](https://redis.io/commands/script-help/)
+   Show helpful text about the different subcommands
  * [SCRIPT LOAD](https://redis.io/commands/script-load/)
    Load the specified Lua script into the script cache.
 
@@ -284,6 +286,10 @@ list of [unimplemented commands](#unimplemented-commands).
    Listen for messages published to channels matching the given patterns
  * [PUBLISH](https://redis.io/commands/publish/)
    Post a message to a channel
+ * [PUBSUB](https://redis.io/commands/pubsub/)
+   A container for Pub/Sub commands
+ * [PUBSUB HELP](https://redis.io/commands/pubsub-help/)
+   Show helpful text about the different subcommands
  * [PUNSUBSCRIBE](https://redis.io/commands/punsubscribe/)
    Stop listening for messages posted to channels matching the given patterns
  * [SUBSCRIBE](https://redis.io/commands/subscribe/)
@@ -695,8 +701,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Return information about the function currently running (name, description, duration)
  * [SCRIPT DEBUG](https://redis.io/commands/script-debug/)
    Set the debug mode for executed scripts.
- * [SCRIPT HELP](https://redis.io/commands/script-help/)
-   Show helpful text about the different subcommands
  * [SCRIPT KILL](https://redis.io/commands/script-kill/)
    Kill the script currently in execution.
 
@@ -739,12 +743,8 @@ All the redis commands are implemented in fakeredis with these exceptions:
    An internal command for testing HyperLogLog values
 
 ### pubsub
- * [PUBSUB](https://redis.io/commands/pubsub/)
-   A container for Pub/Sub commands
  * [PUBSUB CHANNELS](https://redis.io/commands/pubsub-channels/)
    List active channels
- * [PUBSUB HELP](https://redis.io/commands/pubsub-help/)
-   Show helpful text about the different subcommands
  * [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/)
    Get the count of unique patterns pattern subscriptions
  * [PUBSUB NUMSUB](https://redis.io/commands/pubsub-numsub/)
