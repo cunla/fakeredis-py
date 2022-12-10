@@ -371,3 +371,17 @@ def test_pubsub_help(r):
         b'HELP',
         b'    Prints this help.'
     ]
+
+
+def test_pubsub_numsub(r):
+    p1 = r.pubsub()
+    p2 = r.pubsub()
+    p3 = r.pubsub()
+
+    p1.subscribe("a", "b", "c")
+    p2.subscribe("a", "b")
+    p3.subscribe("a")
+
+    assert r.pubsub_numsub("a", "b", "c") == [(b"a", 3), (b"b", 2), (b"c", 1), ]
+    assert r.pubsub_numsub() == []
+    assert r.pubsub_numsub("a", "non-existing") == [(b"a", 3), (b"non-existing", 0)]

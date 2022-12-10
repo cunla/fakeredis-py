@@ -78,6 +78,15 @@ class PubSubCommandsMixin:
             channels = [ch for ch in channels if regex.match(ch)]
         return channels
 
+    @command(name='PUBSUB NUMSUB', fixed=(), repeat=(bytes,))
+    def pubsub_numsub(self, *args):
+        channels = args
+        tuples_list = [
+            (ch, len(self._server.subscribers.get(ch, [])))
+            for ch in channels
+        ]
+        return [item for sublist in tuples_list for item in sublist]
+
     @command(name='PUBSUB', fixed=())
     def pubsub(self, *args):
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format('pubsub'))
