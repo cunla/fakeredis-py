@@ -351,7 +351,8 @@ def test_pubsub_no_subcommands(r):
         raw_command(r, "PUBSUB")
 
 
-def test_pubsub_help(r):
+@pytest.mark.min_server('7')
+def test_pubsub_help_redis7(r):
     assert raw_command(r, "PUBSUB HELP") == [
         b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
         b'CHANNELS [<pattern>]',
@@ -368,6 +369,23 @@ def test_pubsub_help(r):
         b'SHARDNUMSUB [<shardchannel> ...]',
         b'    Return the number of subscribers for the specified shard level channel(s'
         b')',
+        b'HELP',
+        b'    Prints this help.'
+    ]
+
+
+@pytest.mark.max_server('6.2.7')
+def test_pubsub_help_redis6(r):
+    assert raw_command(r, "PUBSUB HELP") == [
+        b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+        b'CHANNELS [<pattern>]',
+        b"    Return the currently active channels matching a <pattern> (default: '*')"
+        b'.',
+        b'NUMPAT',
+        b'    Return number of subscriptions to patterns.',
+        b'NUMSUB [<channel> ...]',
+        b'    Return the number of subscribers for the specified channels, excluding',
+        b'    pattern subscriptions(default: no channels).',
         b'HELP',
         b'    Prints this help.'
     ]
