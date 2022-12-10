@@ -3,9 +3,11 @@ Script to create issue for every unsupported command.
 """
 import os
 
-from supported import get_unimplemented_and_implemented_commands, download_redis_commands
-from github import Github
 from dotenv import load_dotenv
+from github import Github
+
+from supported import get_unimplemented_and_implemented_commands, download_redis_commands
+
 load_dotenv()  # take environment variables from .env.
 
 IGNORE_GROUPS = {
@@ -13,7 +15,7 @@ IGNORE_GROUPS = {
     'graph', 'server', 'cluster', 'connection',
     'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'string', 'hash',
     'hyperloglog', 'pubsub', 'stream', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
-    'tdigest'
+    'tdigest', 'json',
 }
 IGNORE_COMMANDS = {
     'PUBSUB HELP',
@@ -41,7 +43,7 @@ IGNORE_COMMANDS = {
 
 
 class GithubData:
-    def __init__(self, dry=False):
+    def __init__(self, dry=True):
         token = os.getenv('GITHUB_TOKEN', None)
         g = Github(token)
         self.dry = dry or (token is None)
@@ -61,9 +63,11 @@ class GithubData:
         link = f"https://redis.io/commands/{cmd.replace(' ', '-')}/"
         title = f"Implement support for `{cmd.upper()}` ({group} command)"
         filename = f'{group}_mixin.py'
-        body = f"""Implement support for command `{cmd.upper()}` in {filename}
+        body = f"""Implement support for command `{cmd.upper()}` in {filename}.
+        
         {summary}. 
-        [Full documentation]({link}))"""
+        
+        Here is the [Official documentation]({link})"""
         labels = [f'{group}-commands', 'enhancement', 'help wanted']
         for label in labels:
             if label not in self.labels:
