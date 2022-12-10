@@ -288,8 +288,12 @@ list of [unimplemented commands](#unimplemented-commands).
    Post a message to a channel
  * [PUBSUB](https://redis.io/commands/pubsub/)
    A container for Pub/Sub commands
+ * [PUBSUB CHANNELS](https://redis.io/commands/pubsub-channels/)
+   List active channels
  * [PUBSUB HELP](https://redis.io/commands/pubsub-help/)
    Show helpful text about the different subcommands
+ * [PUBSUB NUMSUB](https://redis.io/commands/pubsub-numsub/)
+   Get the count of subscribers for channels
  * [PUNSUBSCRIBE](https://redis.io/commands/punsubscribe/)
    Stop listening for messages posted to channels matching the given patterns
  * [SUBSCRIBE](https://redis.io/commands/subscribe/)
@@ -743,12 +747,8 @@ All the redis commands are implemented in fakeredis with these exceptions:
    An internal command for testing HyperLogLog values
 
 ### pubsub
- * [PUBSUB CHANNELS](https://redis.io/commands/pubsub-channels/)
-   List active channels
  * [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/)
    Get the count of unique patterns pattern subscriptions
- * [PUBSUB NUMSUB](https://redis.io/commands/pubsub-numsub/)
-   Get the count of subscribers for channels
  * [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/)
    List active shard channels
  * [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/)
