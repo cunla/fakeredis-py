@@ -29,6 +29,14 @@ def test_jsonget(r: redis.Redis):
 
     assert r.json().get("non-existing-key") is None
 
+    r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )
+    assert r.json().get("foo2") == {'x': "bar", 'y': {'x': 33}}
+    assert r.json().get("foo2", Path("$..x")) == ['bar', 33]
+
+    r.json().set("foo", Path.root_path(), {'x': "bar"}, )
+    assert r.json().get("foo") == {'x': "bar"}
+    assert r.json().get("foo", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
+
 
 def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     data = {'x': "bar"}
@@ -38,6 +46,7 @@ def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     assert r.json().delete("foo") == 1
     assert r.json().forget("foo") == 0  # second delete
     assert r.exists("foo") == 0
+
 
 def test_json_delete_with_dollar(r: redis.Redis) -> None:
     doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
@@ -76,6 +85,7 @@ def test_json_delete_with_dollar(r: redis.Redis) -> None:
     assert r.json().get("doc3", Path.root_path()) is None
 
     r.json().delete("not_a_document", "..a")
+
 
 def test_json_et_non_dict_value(r: redis.Redis):
     r.json().set("str", Path.root_path(), 'str_val', )
@@ -268,3 +278,37 @@ def test_json_commands_in_pipeline(r: redis.Redis) -> None:
     assert [True, d, 0, 1] == p.execute()
     assert r.keys() == []
     assert r.get("foo") is None
+
+
+def test_strappend(r: redis.Redis) -> None:
+    # Test single
+    r.json().set("json-key", Path.root_path(), "foo")
+    assert r.json().strappend("json-key", "bar") == 6
+    assert "foobar" == r.json().get("json-key", Path.root_path())
+
+    # Test multi
+    r.json().set("doc1", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}, })
+    assert r.json().strappend("doc1", "bar", "$..a") == [6, 8, None]
+    assert r.json().get("doc1") == {"a": "foobar", "nested1": {"a": "hellobar"}, "nested2": {"a": 31}, }
+
+    # Test single
+    assert r.json().strappend("doc1", "baz", "$.nested1.a", ) == [11]
+    assert r.json().get("doc1") == {"a": "foobar", "nested1": {"a": "hellobarbaz"}, "nested2": {"a": 31}, }
+
+    # Test missing key
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.json().strappend("non_existing_doc", "$..a", "err")
+
+    # Test multi
+    r.json().set("doc2", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": "hi"}, })
+    assert r.json().strappend("doc2", "bar", "$.*.a") == [8, 5]
+    assert r.json().get("doc2") == {"a": "foo", "nested1": {"a": "hellobar"}, "nested2": {"a": "hibar"}, }
+
+    # Test missing path
+    r.json().set("doc1", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}, })
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.json().strappend("doc1", "add", "piu")
+
+    # Test raw command with no arguments
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, 'json.strappend', '')

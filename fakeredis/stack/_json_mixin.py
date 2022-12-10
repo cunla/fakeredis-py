@@ -11,6 +11,7 @@ from json import JSONDecodeError
 from typing import Any, Optional, Union
 
 from jsonpath_ng import Root, JSONPath
+from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
 
@@ -18,25 +19,30 @@ from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._commands import Key, command, delete_keys, CommandItem
 from fakeredis._helpers import SimpleError, casematch
 
-path_pattern: re.Pattern = re.compile(r"^((?<!\$)\.|(\$\.$))")
-
-
-def _parse_jsonpath(path: Union[str, bytes]):
-    """Format the supplied JSON path value."""
-    if isinstance(path, bytes):
-        path = path.decode()
-    re_path = path_pattern.sub("$", path)
-    return parse(re_path)
-
-
-def _path_is_root(path: JSONPath) -> bool:
-    return path == Root()
-
 
 def _format_path(path) -> str:
     if isinstance(path, bytes):
         path = path.decode()
-    return path_pattern.sub("$", path)
+    if path == '.':
+        return '$'
+    elif path.startswith('.'):
+        return '$' + path
+    elif path.startswith('$'):
+        return path
+    else:
+        return '$.' + path
+
+
+def _parse_jsonpath(path: Union[str, bytes]):
+    path = _format_path(path)
+    try:
+        return parse(path)
+    except JsonPathParserError:
+        raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path))
+
+
+def _path_is_root(path: JSONPath) -> bool:
+    return path == Root()
 
 
 class JSONObject:
@@ -73,9 +79,20 @@ class JSONCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def _get_single(key, path_str: str, always_return_list: bool = False, empty_list_as_none: bool = False):
+        path = _parse_jsonpath(path_str)
+        path_value = path.find(key.value)
+        val = [i.value for i in path_value]
+        if empty_list_as_none and len(val) == 0:
+            val = None
+        elif len(val) == 1 and not always_return_list:
+            val = val[0]
+        return val
+
     @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_del(self, key, path_str) -> int:
-        """Delete the JSON value stored at key `key` under `path`.
+        """Delete the JSON value stored at key `key` under `path_str`.
 
         For more information see `JSON.DEL
         <https://redis.io/commands/json.del>`_.
@@ -99,46 +116,6 @@ class JSONCommandsMixin:
 
         key.update(curr_value)
         return res
-
-    @staticmethod
-    def _get_single(key, path_str: str, always_return_list: bool = False, empty_list_as_none: bool = False):
-        path = _parse_jsonpath(path_str)
-        path_value = path.find(key.value)
-        val = [i.value for i in path_value]
-        if empty_list_as_none and len(val) == 0:
-            val = None
-        elif len(val) == 1 and not always_return_list:
-            val = val[0]
-        return val
-
-    @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_get(self, key, *args) -> bytes:
-        """Get the object stored as a JSON value at key `name`.
-
-        `args` is zero or more paths, and defaults to root path
-        ``no_escape` is a boolean flag to add no_escape option to get
-        non-ascii characters
-
-        For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
-        """
-        paths = [arg for arg in args if not casematch(b'noescape', arg)]
-        no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
-
-        formatted_paths = [
-            _format_path(arg) for arg in args
-            if not casematch(b'noescape', arg)
-        ]
-        path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]
-
-        # Emulate the behavior of `redis-py`:
-        #   - if only one path was supplied => return a single value
-        #   - if more than one path was specified => return one value for each specified path
-        if (no_wrapping_array or
-                (len(path_values) == 1 and isinstance(path_values[0], list))):
-            return JSONObject.encode(path_values[0])
-        if len(path_values) == 1:
-            return JSONObject.encode(path_values)
-        return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
     @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_set(self, key, path_str: bytes, value: JsonType, *args) -> Optional[helpers.SimpleString]:
@@ -175,6 +152,33 @@ class JSONCommandsMixin:
         key.update(new_value)
 
         return helpers.OK
+
+    @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_get(self, key, *args) -> bytes:
+        """Get the object stored as a JSON value at key `name`.
+
+        `args` is zero or more paths, and defaults to root path.
+
+        For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
+        """
+        paths = [arg for arg in args if not casematch(b'noescape', arg)]
+        no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
+
+        formatted_paths = [
+            _format_path(arg) for arg in args
+            if not casematch(b'noescape', arg)
+        ]
+        path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]
+
+        # Emulate the behavior of `redis-py`:
+        #   - if only one path was supplied => return a single value
+        #   - if more than one path was specified => return one value for each specified path
+        if (no_wrapping_array or
+                (len(path_values) == 1 and isinstance(path_values[0], list))):
+            return JSONObject.encode(path_values[0])
+        if len(path_values) == 1:
+            return JSONObject.encode(path_values)
+        return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
     @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mget(self, *args):
