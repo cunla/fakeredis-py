@@ -92,7 +92,7 @@ class PubSubCommandsMixin:
 
     @command(name='PUBSUB HELP', fixed=())
     def pubsub_help(self, *args):
-        if self._version >= 7:
+        if self.version >= 7:
             help_strings = [
                 'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
                 'CHANNELS [<pattern>]',
