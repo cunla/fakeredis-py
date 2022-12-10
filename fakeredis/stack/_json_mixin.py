@@ -94,8 +94,7 @@ class JSONCommandsMixin:
     def json_del(self, key, path_str) -> int:
         """Delete the JSON value stored at key `key` under `path_str`.
 
-        For more information see `JSON.DEL
-        <https://redis.io/commands/json.del>`_.
+        For more information see `JSON.DEL <https://redis.io/commands/json.del>`_.
         """
         if key.value is None:
             return 0
@@ -120,12 +119,6 @@ class JSONCommandsMixin:
     @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_set(self, key, path_str: bytes, value: JsonType, *args) -> Optional[helpers.SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
-
-        if `flag` is b"NX", set `value` only if it does not exist.
-        if `flag` is b"XX", set `value` only if it exists.
-
-        For the purpose of using this within a pipeline, this command is also
-        aliased to JSON.SET.
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
@@ -256,6 +249,45 @@ class JSONCommandsMixin:
         key.update(curr_value)
 
         if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0] == b'.')):
+            return res[0]
+
+        return res
+
+    @command(name="JSON.STRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_strappend(self, key, *args):
+        """Append the json-string values to the string at path
+
+        Parameters:
+        key: database item to change
+        *args: optional path + string to append
+
+        Returns an array of integer replies for each path, the string's new
+        length, or nil, if the matching JSON value is not a string.
+        """
+        if len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.strappend'))
+        if key.value is None:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+
+        path_str, addition = (args[0], args[1]) if len(args) > 1 else ('$', args[0])
+        addition = JSONObject.decode(addition)
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        if len(found_matches) == 0:
+            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+
+        curr_value = copy.deepcopy(key.value)
+        res = list()
+        for item in found_matches:
+            if type(item.value) == str:
+                new_value = item.value + addition
+                curr_value = item.full_path.update(curr_value, new_value)
+                res.append(len(new_value))
+            else:
+                res.append(None)
+        key.update(curr_value)
+
+        if len(res) == 1 and (len(args) == 1 or (len(args) > 1 and args[0] == b'.')):
             return res[0]
 
         return res
