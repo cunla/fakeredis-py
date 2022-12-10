@@ -4,8 +4,8 @@ from fakeredis._helpers import SimpleError
 
 
 class BitmapCommandsMixin:
-    # Key commands
-    # TODO: lots
+    # BITMAP commands
+    # TODO: bitfield, bitfield_ro, bitop, bitpos
 
     @command((Key(bytes, 0),), (bytes,))
     def bitcount(self, key, *args):

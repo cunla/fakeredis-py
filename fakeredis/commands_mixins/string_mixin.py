@@ -7,7 +7,7 @@ from fakeredis._helpers import (OK, SimpleError, casematch)
 
 class StringCommandsMixin:
     # String commands
-    # TODO: bitfield, bitop, bitpos
+    # todo: GETEX, LCS
 
     @command((Key(bytes), bytes))
     def append(self, key, value):

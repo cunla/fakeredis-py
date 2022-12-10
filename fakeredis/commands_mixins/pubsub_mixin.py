@@ -5,7 +5,6 @@ from fakeredis._helpers import (NoResponse, compile_pattern, SimpleError)
 
 class PubSubCommandsMixin:
     # Pubsub commands
-    # TODO: pubsub command
     def __init__(self, *args, **kwargs):
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
