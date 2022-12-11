@@ -296,12 +296,20 @@ class SortedSetCommandsMixin:
 
     @command((Key(ZSet), Int), (bytes, bytes))
     def zscan(self, key, cursor, *args):
-        new_cursor, ans = self._scan(key.value.items(), cursor, 'zscan', *args)
+        cursor = int(cursor)
+        # When starting a new scan, saves snapshot of the keys
+        if cursor == 0:
+            self._scan_snapshot['zscan'] = key.value.items()
+        next_cursor, ans = self._scan(self._scan_snapshot['zscan'], cursor, *args)
+        # When scan is finished remove the snapshot
+        if next_cursor == 0:
+            del self._scan_snapshot['zscan']
+
         flat = []
         for (key, score) in ans:
             flat.append(key)
             flat.append(self._encodefloat(score, False))
-        return [new_cursor, flat]
+        return [next_cursor, flat]
 
     @command((Key(ZSet), bytes))
     def zscore(self, key, member):

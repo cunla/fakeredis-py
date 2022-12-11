@@ -66,12 +66,19 @@ class HashCommandsMixin:
 
     @command((Key(Hash), Int,), (bytes, bytes))
     def hscan(self, key, cursor, *args):
-        cursor, keys = self._scan(key.value, cursor, 'hscan', *args)
+        cursor = int(cursor)
+        # When starting a new scan, saves snapshot of the keys
+        if cursor == 0:
+            self._scan_snapshot['hscan'] = list(key.value)
+        next_cursor, keys = self._scan(self._scan_snapshot['hscan'], cursor, *args)
+        # When scan is finished remove the snapshot
+        if next_cursor == 0:
+            del self._scan_snapshot['hscan']
         items = []
         for k in keys:
             items.append(k)
             items.append(key.value[k])
-        return [cursor, items]
+        return [next_cursor, items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
     def hset(self, key, *args):

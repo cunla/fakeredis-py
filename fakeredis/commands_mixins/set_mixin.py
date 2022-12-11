@@ -153,7 +153,15 @@ class SetCommandsMixin:
 
     @command((Key(set), Int), (bytes, bytes))
     def sscan(self, key, cursor, *args):
-        return self._scan(key.value, cursor, 'sscan', *args)
+        cursor = int(cursor)
+        # When starting a new scan, saves snapshot of the keys
+        if cursor == 0:
+            self._scan_snapshot['sscan'] = key.value
+        next_cursor, keys = self._scan(self._scan_snapshot['sscan'], cursor, 'hscan', *args)
+        # When scan is finished remove the snapshot
+        if next_cursor == 0:
+            del self._scan_snapshot['sscan']
+        return [next_cursor, keys]
 
     @command((Key(set),), (Key(set),))
     def sunion(self, *keys):

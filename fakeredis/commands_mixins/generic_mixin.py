@@ -203,7 +203,15 @@ class GenericCommandsMixin:
 
     @command((Int,), (bytes, bytes))
     def scan(self, cursor, *args):
-        return self._scan(list(self._db), cursor, 'scan', *args)
+        cursor = int(cursor)
+        # When starting a new scan, saves snapshot of the data
+        if cursor == 0:
+            self._scan_snapshot['scan'] = list(self._db)
+        next_cursor, keys = self._scan(self._scan_snapshot['scan'], cursor, *args)
+        # When scan is finished remove the snapshot
+        if next_cursor == 0:
+            del self._scan_snapshot['scan']
+        return [next_cursor, keys]
 
     @command((Key(),), (bytes,))
     def sort(self, key, *args):

@@ -40,7 +40,7 @@ class BaseFakeSocket:
         self._parser.send(None)
         self.version = server.version
         # Save data snapshot for each type of scan
-        self._scan_snapshots = {}
+        self._scan_snapshot = {}
 
     def put_response(self, msg):
         # redis.Connection.__del__ might call self.close at any time, which
@@ -255,7 +255,7 @@ class BaseFakeSocket:
         if not isinstance(result, NoResponse):
             self.put_response(result)
 
-    def _scan(self, keys, cursor, scan_type, *args):
+    def _scan(self, keys, cursor, *args):
         """This is the basis of most of the ``scan`` methods.
 
         This implementation is KNOWN to be un-performant, as it requires
@@ -264,11 +264,6 @@ class BaseFakeSocket:
         It also doesn't allow for nested scans of the same type, since we are using a global state on the connection
         to track the data currently scanned. Doing nested scans will result in unexpected behavior.
         """
-        cursor = int(cursor)
-        if cursor == 0:
-            self._scan_snapshots[scan_type] = keys
-        else:
-            keys = self._scan_snapshots[scan_type]
         pattern = None
         _type = None
         count = 10
@@ -287,7 +282,6 @@ class BaseFakeSocket:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if cursor >= len(keys):
-            del self._scan_snapshots[scan_type]
             return [0, []]
         data = sorted(keys)
         result_cursor = cursor + count
@@ -312,9 +306,8 @@ class BaseFakeSocket:
             result_data = data[cursor:result_cursor]
 
         if result_cursor >= len(data):
-            del self._scan_snapshots[scan_type]
             result_cursor = 0
-        return [str(result_cursor).encode(), result_data]
+        return [result_cursor, result_data]
 
     def _ttl(self, key, scale):
         if not key:
