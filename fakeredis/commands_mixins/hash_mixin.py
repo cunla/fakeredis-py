@@ -66,7 +66,7 @@ class HashCommandsMixin:
 
     @command((Key(Hash), Int,), (bytes, bytes))
     def hscan(self, key, cursor, *args):
-        cursor, keys = self._scan(key.value, cursor, *args)
+        cursor, keys = self._scan(key.value, cursor, 'hscan', *args)
         items = []
         for k in keys:
             items.append(k)

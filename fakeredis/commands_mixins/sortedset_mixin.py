@@ -296,7 +296,7 @@ class SortedSetCommandsMixin:
 
     @command((Key(ZSet), Int), (bytes, bytes))
     def zscan(self, key, cursor, *args):
-        new_cursor, ans = self._scan(key.value.items(), cursor, *args)
+        new_cursor, ans = self._scan(key.value.items(), cursor, 'zscan', *args)
         flat = []
         for (key, score) in ans:
             flat.append(key)

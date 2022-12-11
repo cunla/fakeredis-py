@@ -153,7 +153,7 @@ class SetCommandsMixin:
 
     @command((Key(set), Int), (bytes, bytes))
     def sscan(self, key, cursor, *args):
-        return self._scan(key.value, cursor, *args)
+        return self._scan(key.value, cursor, 'sscan', *args)
 
     @command((Key(set),), (Key(set),))
     def sunion(self, *keys):

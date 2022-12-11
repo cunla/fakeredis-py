@@ -203,7 +203,7 @@ class GenericCommandsMixin:
 
     @command((Int,), (bytes, bytes))
     def scan(self, cursor, *args):
-        return self._scan(list(self._db), cursor, *args)
+        return self._scan(list(self._db), cursor, 'scan', *args)
 
     @command((Key(),), (bytes,))
     def sort(self, key, *args):
