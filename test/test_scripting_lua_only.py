@@ -484,9 +484,7 @@ def test_hscan_cursors_are_bytes(r):
     assert isinstance(result, bytes)
 
 
-@pytest.mark.xfail
-def test_script_deleting_keys(r):
-    # Fails because the script changes the DB while running.
+def test_deleting_while_scan(r):
     for i in range(100):
         r.set(f'key-{i}', i)
 

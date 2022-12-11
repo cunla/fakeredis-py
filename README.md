@@ -190,8 +190,8 @@ First install poetry if you don't have it, and then install all the dependencies
 
 ```bash
 pip install poetry
-poetry install
-``` 
+poetry install -E "lua, json"
+```
 
 To run all the tests:
 
