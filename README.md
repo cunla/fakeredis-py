@@ -228,7 +228,12 @@ poetry run pytest -m "not slow"
 
 # Contributing
 
-Contributions are welcome. Please see the [contributing guide](.github/CONTRIBUTING.md) for more details.
+Contributions are welcome.
+You can contribute in many ways: 
+Open issues for bugs you found, implementing a command which is not yet implemented,
+implement a test for scenario that is not covered yet, write a guide how to use fakeredis, etc.
+
+Please see the [contributing guide](.github/CONTRIBUTING.md) for more details.
 If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
 
 There are guides how to [implement a new command](#implementing-support-for-a-command) and

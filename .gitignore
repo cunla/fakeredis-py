@@ -21,3 +21,4 @@ docker-compose.yml
 **/__pycache__
 scratch*
 .python-version
+.env

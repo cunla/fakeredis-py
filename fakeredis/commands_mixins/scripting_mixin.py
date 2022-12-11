@@ -215,6 +215,32 @@ class ScriptingCommandsMixin:
         self.script_cache = {}
         return OK
 
-    @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def script(self, subcmd, *args):
+    @command((), flags=msgs.FLAG_NO_SCRIPT)
+    def script(self, *args):
         raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
+
+    @command(name='SCRIPT HELP', fixed=())
+    def script_help(self, *args):
+        help_strings = [
+            'SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+            'DEBUG (YES|SYNC|NO)',
+            '    Set the debug mode for subsequent scripts executed.',
+            'EXISTS <sha1> [<sha1> ...]',
+            '    Return information about the existence of the scripts in the script cach'
+            'e.',
+            'FLUSH [ASYNC|SYNC]',
+            '    Flush the Lua scripts cache. Very dangerous on replicas.',
+            '    When called without the optional mode argument, the behavior is determin'
+            'ed by the',
+            '    lazyfree-lazy-user-flush configuration directive. Valid modes are:',
+            '    * ASYNC: Asynchronously flush the scripts cache.',
+            '    * SYNC: Synchronously flush the scripts cache.',
+            'KILL',
+            '    Kill the currently executing Lua script.',
+            'LOAD <script>',
+            '    Load a script into the scripts cache without executing it.',
+            'HELP',
+            '    Prints this help.'
+        ]
+
+        return [s.encode() for s in help_strings]
