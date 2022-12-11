@@ -309,7 +309,7 @@ class SortedSetCommandsMixin:
         for (key, score) in ans:
             flat.append(key)
             flat.append(self._encodefloat(score, False))
-        return [next_cursor, flat]
+        return [str(next_cursor).encode(), flat]
 
     @command((Key(ZSet), bytes))
     def zscore(self, key, member):

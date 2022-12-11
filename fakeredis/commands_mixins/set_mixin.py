@@ -157,11 +157,11 @@ class SetCommandsMixin:
         # When starting a new scan, saves snapshot of the keys
         if cursor == 0:
             self._scan_snapshot['sscan'] = key.value
-        next_cursor, keys = self._scan(self._scan_snapshot['sscan'], cursor, 'hscan', *args)
+        next_cursor, keys = self._scan(self._scan_snapshot['sscan'], cursor, *args)
         # When scan is finished remove the snapshot
         if next_cursor == 0:
             del self._scan_snapshot['sscan']
-        return [next_cursor, keys]
+        return [str(next_cursor).encode(), keys]
 
     @command((Key(set),), (Key(set),))
     def sunion(self, *keys):

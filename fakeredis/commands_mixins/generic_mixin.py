@@ -211,7 +211,7 @@ class GenericCommandsMixin:
         # When scan is finished remove the snapshot
         if next_cursor == 0:
             del self._scan_snapshot['scan']
-        return [next_cursor, keys]
+        return [str(next_cursor).encode(), keys]
 
     @command((Key(),), (bytes,))
     def sort(self, key, *args):

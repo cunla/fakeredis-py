@@ -78,7 +78,7 @@ class HashCommandsMixin:
         for k in keys:
             items.append(k)
             items.append(key.value[k])
-        return [next_cursor, items]
+        return [str(next_cursor).encode(), items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
     def hset(self, key, *args):
