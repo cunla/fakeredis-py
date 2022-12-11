@@ -19,16 +19,6 @@ SAMPLE_DATA = {
 }
 
 
-def test_jsonget(r: redis.Redis) -> None:
-    r.json().set("foo2", Path.root_path(), {'x': "bar", 'y': {'x': 33}}, )
-    assert r.json().get("foo2") == {'x': "bar", 'y': {'x': 33}}
-    assert r.json().get("foo2", Path("$..x")) == ['bar', 33]
-
-    r.json().set("foo", Path.root_path(), {'x': "bar"}, )
-    assert r.json().get("foo") == {'x': "bar"}
-    assert r.json().get("foo", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
-
-
 @pytest.fixture(scope="function")
 def json_data() -> Dict[str, Any]:
     """A module-scoped "blob" of JSON-encodable data."""
@@ -130,14 +120,6 @@ def test_nummultby(r: redis.Redis) -> None:
         assert 2 == r.json().nummultby("num", Path.root_path(), 2)
         assert 5 == r.json().nummultby("num", Path.root_path(), 2.5)
         assert 2.5 == r.json().nummultby("num", Path.root_path(), 0.5)
-
-
-@pytest.mark.xfail
-def test_strappend(r: redis.Redis) -> None:
-    r.json().set("json-key", Path.root_path(), "foo")
-
-    assert 6 == r.json().strappend("json-key", "bar")
-    assert "foobar" == r.json().get("json-key", Path.root_path())
 
 
 @pytest.mark.xfail
@@ -484,47 +466,6 @@ def test_numby_commands_dollar(r: redis.Redis) -> None:
 
     with pytest.deprecated_call():
         assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
-
-
-@pytest.mark.xfail
-def test_strappend_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # Test multi
-    assert r.json().strappend("doc1", "bar", "$..a", ) == [6, 8, None]
-
-    assert r.json().get("doc1", "$") == [{
-        "a": "foobar",
-        "nested1": {"a": "hellobar"},
-        "nested2": {"a": 31},
-    }]
-    # Test single
-    assert r.json().strappend("doc1", "baz", "$.nested1.a", ) == [11]
-
-    assert r.json().get("doc1", "$") == [{
-        "a": "foobar",
-        "nested1": {"a": "hellobarbaz"},
-        "nested2": {"a": 31},
-    }]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().strappend("non_existing_doc", "$..a", "err")
-
-    # Test multi
-    assert r.json().strappend("doc1", "bar", ".*.a") == 8
-
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": "foo",
-            "nested1": {"a": "hello-bar"},
-            "nested2": {"a": 31},
-        }
-    ]
-
-    # Test missing path
-    with pytest.raises(exceptions.ResponseError):
-        r.json().strappend("doc1", "piu")
 
 
 @pytest.mark.xfail

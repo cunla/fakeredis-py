@@ -3,15 +3,19 @@ Script to create issue for every unsupported command.
 """
 import os
 
-from supported import get_unimplemented_and_implemented_commands, download_redis_commands
+from dotenv import load_dotenv
 from github import Github
+
+from supported import get_unimplemented_and_implemented_commands, download_redis_commands
+
+load_dotenv()  # take environment variables from .env.
 
 IGNORE_GROUPS = {
     'server', 'cf', 'cms', 'topk', 'tdigest', 'bf', 'search', 'suggestion', 'timeseries',
     'graph', 'server', 'cluster', 'connection',
     'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'string', 'hash',
-    'hyperloglog', 'pubsub', 'stream', 'json', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
-    'tdigest'
+    'hyperloglog', 'pubsub', 'stream', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
+    'tdigest', 'json',
 }
 IGNORE_COMMANDS = {
     'PUBSUB HELP',
@@ -23,6 +27,18 @@ IGNORE_COMMANDS = {
     'JSON.DEBUG HELP',
     'JSON.DEBUG MEMORY',
     'JSON.DEBUG',
+    'JSON.TYPE',
+    'JSON.OBJKEYS',
+    'JSON.OBJLEN',
+    'JSON.ARRTRIM',
+    'JSON.ARRAPPEND',
+    'JSON.ARRINDEX',
+    'JSON.ARRINSERT',
+    'JSON.ARRLEN',
+    'JSON.ARRPOP',
+    'JSON.NUMINCRBY',
+    'JSON.NUMMULTBY',
+    'JSON.RESP',
 }
 
 
@@ -47,9 +63,11 @@ class GithubData:
         link = f"https://redis.io/commands/{cmd.replace(' ', '-')}/"
         title = f"Implement support for `{cmd.upper()}` ({group} command)"
         filename = f'{group}_mixin.py'
-        body = f"""Implement support for command `{cmd.upper()}` in {filename}
+        body = f"""Implement support for command `{cmd.upper()}` in {filename}.
+        
         {summary}. 
-        [Full documentation]({link}))"""
+        
+        Here is the [Official documentation]({link})"""
         labels = [f'{group}-commands', 'enhancement', 'help wanted']
         for label in labels:
             if label not in self.labels:

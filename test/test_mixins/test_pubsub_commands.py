@@ -7,6 +7,7 @@ import redis
 
 import fakeredis
 from .. import testtools
+from ..testtools import raw_command
 
 
 def test_ping_pubsub(r):
@@ -330,3 +331,75 @@ def test_socket_cleanup_pubsub(fake_server):
         ps.subscribe('test')
         ps.psubscribe('test*')
     r2.publish('test', 'foo')
+
+
+def test_pubsub_channels(r):
+    p = r.pubsub()
+    p.subscribe("foo", "bar", "baz", "test")
+    expected = {b"foo", b"bar", b"baz", b"test"}
+    assert set(r.pubsub_channels()) == expected
+
+
+def test_pubsub_channels_pattern(r):
+    p = r.pubsub()
+    p.subscribe("foo", "bar", "baz", "test")
+    assert set(r.pubsub_channels("b*")) == {b"bar", b"baz", }
+
+
+def test_pubsub_no_subcommands(r):
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, "PUBSUB")
+
+
+@pytest.mark.min_server('7')
+def test_pubsub_help_redis7(r):
+    assert raw_command(r, "PUBSUB HELP") == [
+        b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+        b'CHANNELS [<pattern>]',
+        b"    Return the currently active channels matching a <pattern> (default: '*')"
+        b'.',
+        b'NUMPAT',
+        b'    Return number of subscriptions to patterns.',
+        b'NUMSUB [<channel> ...]',
+        b'    Return the number of subscribers for the specified channels, excluding',
+        b'    pattern subscriptions(default: no channels).',
+        b'SHARDCHANNELS [<pattern>]',
+        b'    Return the currently active shard level channels matching a <pattern> (d'
+        b"efault: '*').",
+        b'SHARDNUMSUB [<shardchannel> ...]',
+        b'    Return the number of subscribers for the specified shard level channel(s'
+        b')',
+        b'HELP',
+        b'    Prints this help.'
+    ]
+
+
+@pytest.mark.max_server('6.2.7')
+def test_pubsub_help_redis6(r):
+    assert raw_command(r, "PUBSUB HELP") == [
+        b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+        b'CHANNELS [<pattern>]',
+        b"    Return the currently active channels matching a <pattern> (default: '*')"
+        b'.',
+        b'NUMPAT',
+        b'    Return number of subscriptions to patterns.',
+        b'NUMSUB [<channel> ...]',
+        b'    Return the number of subscribers for the specified channels, excluding',
+        b'    pattern subscriptions(default: no channels).',
+        b'HELP',
+        b'    Prints this help.'
+    ]
+
+
+def test_pubsub_numsub(r):
+    p1 = r.pubsub()
+    p2 = r.pubsub()
+    p3 = r.pubsub()
+
+    p1.subscribe("a", "b", "c")
+    p2.subscribe("a", "b")
+    p3.subscribe("a")
+
+    assert r.pubsub_numsub("a", "b", "c") == [(b"a", 3), (b"b", 2), (b"c", 1), ]
+    assert r.pubsub_numsub() == []
+    assert r.pubsub_numsub("a", "non-existing") == [(b"a", 3), (b"non-existing", 0)]
