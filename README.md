@@ -167,9 +167,8 @@ bugs in GitHub.
   generally not produce the same results, and in Python versions before 3.6
   may produce different results each time the process is re-run.
 
-- SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are
-  deleted or renamed during iteration. They also won't necessarily iterate in
-  the same chunk sizes or the same order as redis.
+- SCAN/ZSCAN/HSCAN/SSCAN are not able to run in parallel for the same scan type from the same client. For example you
+  can run SCAN and HSCAN in parallel, but not two HSCAN.
 
 - DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
   `pickle` module is used to mimic an opaque and non-standard format.
