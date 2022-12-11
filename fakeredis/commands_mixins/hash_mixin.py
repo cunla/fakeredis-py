@@ -76,8 +76,9 @@ class HashCommandsMixin:
             del self._scan_snapshot['hscan']
         items = []
         for k in keys:
-            items.append(k)
-            items.append(key.value[k])
+            if k in key.value:
+                items.append(k)
+                items.append(key.value[k])
         return [str(next_cursor).encode(), items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))

@@ -291,3 +291,76 @@ def test_hscan(r):
     assert b'key:7' in results
     assert b'key:17' in results
     assert len(results) == 2
+
+
+def test_hscan_with_changing_state(r):
+    # Set up the data
+    name = 'hscan-test'
+    hashset = {}
+    hashset_count = 999
+    for ix in range(hashset_count):
+        k = 'key:%s' % ix
+        v = 'result:%s' % ix
+        r.hset(name, k, v)
+        hashset[k.encode()] = v
+
+    expected = r.hgetall(name)
+    assert len(expected) == hashset_count  # Ensure we know what we're testing
+
+    result = {}
+    # Start scanning
+    cursor, data = r.hscan(name, 0, count=3)
+    result.update(data)
+    # Delete seen keys - should not affect scan
+    for k in result.keys():
+        r.hdel(name, k)
+    # Delete 5 unseen keys - this should affect the scan since the value won't be found on the hashset
+    unseen_removed_count = 5
+    unseen_keys = list((set(hashset.keys()) - set(result.keys())))
+    for k in unseen_keys[:unseen_removed_count]:
+        r.hdel(name, k)
+    # Update 10 keys - this should affect the scan and return the new value
+    updated_keys = unseen_keys[unseen_removed_count:unseen_removed_count + 10]
+    for k in updated_keys:
+        r.hset(name, k, 'new_value')
+    # Add 20 new keys - should not appear in the scan
+    for ix in range(100, 120):
+        k = 'key:%s' % ix
+        v = 'result:%s' % ix
+        r.hset(name, k, v)
+
+    # Continue scanning
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor)
+        result.update(data)
+
+    assert len(result) == hashset_count - unseen_removed_count
+    assert [v for k, v in result.items() if k in updated_keys] == ['new_value'.encode()] * len(updated_keys)
+
+
+def test_hscan_renew_cursor(r):
+    # Set up the data
+    name = 'hscan-test'
+    for ix in range(999):
+        k = 'key:%s' % ix
+        v = 'result:%s' % ix
+        r.hset(name, k, v)
+    expected = r.hgetall(name)
+    assert len(expected) == 999  # Ensure we know what we're testing
+
+    # Start scanning
+    cursor, data = r.hscan(name, 0, count=3)
+    deleted_keys = data.keys()
+    # Delete seen keys
+    for k in deleted_keys:
+        r.hdel(name, k)
+        del expected[k]
+
+    # Start new scan - should not contain deleted keys
+    results = {}
+    cursor = '0'
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor, count=6)
+        results.update(data)
+
+    assert expected == results
