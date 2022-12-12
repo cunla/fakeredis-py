@@ -218,7 +218,7 @@ class StringCommandsMixin:
                 i += 1
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if ((expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2 ** 63)) \
+        if ((expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2 ** 63))
                 or (diff is not None and (diff <= 0 or diff * 1000 >= 2 ** 63))):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('getex'))
         if count_options > 1:
