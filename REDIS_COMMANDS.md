@@ -14,6 +14,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Get the value of a key
  * [GETDEL](https://redis.io/commands/getdel/)
    Get the value of a key and delete the key
+ * [GETEX](https://redis.io/commands/getex/)
+   Get the value of a key and optionally set its expiration
  * [GETRANGE](https://redis.io/commands/getrange/)
    Get a substring of the string stored at a key
  * [GETSET](https://redis.io/commands/getset/)
@@ -730,15 +732,13 @@ All the redis commands are implemented in fakeredis with these exceptions:
  * [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/)
    Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle, and store the result in another key.
 
-### string
- * [GETEX](https://redis.io/commands/getex/)
-   Get the value of a key and optionally set its expiration
- * [LCS](https://redis.io/commands/lcs/)
-   Find longest common substring
-
 ### hash
  * [HRANDFIELD](https://redis.io/commands/hrandfield/)
    Get one or multiple random fields from a hash
+
+### string
+ * [LCS](https://redis.io/commands/lcs/)
+   Find longest common substring
 
 ### hyperloglog
  * [PFDEBUG](https://redis.io/commands/pfdebug/)
