@@ -13,7 +13,7 @@ load_dotenv()  # take environment variables from .env.
 IGNORE_GROUPS = {
     'server', 'cf', 'cms', 'topk', 'tdigest', 'bf', 'search', 'suggestion', 'timeseries',
     'graph', 'server', 'cluster', 'connection',
-    'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'string', 'hash',
+    'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'hash',
     'hyperloglog', 'pubsub', 'stream', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
     'tdigest', 'json',
 }
@@ -43,7 +43,7 @@ IGNORE_COMMANDS = {
 
 
 class GithubData:
-    def __init__(self, dry=True):
+    def __init__(self, dry=False):
         token = os.getenv('GITHUB_TOKEN', None)
         g = Github(token)
         self.dry = dry or (token is None)
@@ -58,6 +58,7 @@ class GithubData:
             print(f'Creating label "{name}"')
         else:
             self.gh_repo.create_label(name, "f29513")
+        self.labels.add(name)
 
     def create_issue(self, group: str, cmd: str, summary: str):
         link = f"https://redis.io/commands/{cmd.replace(' ', '-')}/"
