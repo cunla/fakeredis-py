@@ -193,3 +193,36 @@ class StringCommandsMixin:
     @command((Key(bytes), Int, Int))
     def substr(self, key, start, end):
         return self.getrange(key, start, end)
+
+    @command((Key(bytes),), (bytes,))
+    def getex(self, key, *args):
+        i, count_options, expire_time, diff = 0, 0, None, None
+        while i < len(args):
+            count_options += 1
+            if casematch(args[i], b'ex') and i + 1 < len(args):
+                diff = Int.decode(args[i + 1])
+                expire_time = self._db.time + diff
+                i += 2
+            elif casematch(args[i], b'px') and i + 1 < len(args):
+                diff = Int.decode(args[i + 1])
+                expire_time = (self._db.time * 1000 + diff) / 1000.0
+                i += 2
+            elif casematch(args[i], b'exat') and i + 1 < len(args):
+                expire_time = Int.decode(args[i + 1])
+                i += 2
+            elif casematch(args[i], b'pxat') and i + 1 < len(args):
+                expire_time = Int.decode(args[i + 1]) / 1000.0
+                i += 2
+            elif casematch(args[i], b'persist'):
+                expire_time = None
+                i += 1
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if ((expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2 ** 63)) \
+                or (diff is not None and (diff <= 0 or diff * 1000 >= 2 ** 63))):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('getex'))
+        if count_options > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        key.expireat = expire_time
+        return key.get(None)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import timedelta
 
 import pytest
@@ -476,3 +477,43 @@ def test_setitem_getitem(r):
 def test_getitem_non_existent_key(r):
     assert r.keys() == []
     assert 'noexists' not in r.keys()
+
+
+@pytest.mark.slow
+def test_getex(r: redis.Redis):
+    # Exceptions
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'getex', 'foo', 'px', 1000, 'ex', 1)
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'getex', 'foo', 'dsac', 1000, 'ex', 1)
+    # with pytest.raises(redis.ResponseError):
+    #     raw_command(r, 'getex', 'foo', 'ex', -10)
+    r.set('foo', 'val')
+    assert r.getex('foo', ex=1) == b'val'
+    assert r.ttl('foo') > 0
+    time.sleep(1)
+    assert r.get('foo') is None
+
+    r.set('foo', 'val')
+    assert r.getex('foo', px=1000) == b'val'
+    assert r.ttl('foo') > 0
+    time.sleep(1)
+    assert r.get('foo') is None
+
+    r.set('foo', 'val')
+    r.getex('foo', exat=int(time.time() + 1.5))
+    assert r.ttl('foo') > 0
+    time.sleep(1.5)
+    assert r.get('foo') is None
+
+    r.set('foo', 'val')
+    r.getex('foo', pxat=int(time.time() + 1.4) * 1000)
+    assert r.ttl('foo') > 0
+    time.sleep(1.4)
+    assert r.get('foo') is None
+
+    r.setex('foo', 1, 'val')
+    r.getex('foo', persist=True)
+    assert r.ttl('foo') == -1
+    time.sleep(1)
+    assert r.get('foo') == b'val'
