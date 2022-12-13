@@ -486,8 +486,8 @@ def test_getex(r: redis.Redis):
         raw_command(r, 'getex', 'foo', 'px', 1000, 'ex', 1)
     with pytest.raises(redis.ResponseError):
         raw_command(r, 'getex', 'foo', 'dsac', 1000, 'ex', 1)
-    # with pytest.raises(redis.ResponseError):
-    #     raw_command(r, 'getex', 'foo', 'ex', -10)
+    with pytest.raises(redis.ResponseError):
+        r.getex('foo', ex=-1)
     r.set('foo', 'val')
     assert r.getex('foo', ex=1) == b'val'
     assert r.ttl('foo') > 0
@@ -501,15 +501,13 @@ def test_getex(r: redis.Redis):
     assert r.get('foo') is None
 
     r.set('foo', 'val')
-    r.getex('foo', exat=int(time.time() + 1.5))
-    assert r.ttl('foo') > 0
-    time.sleep(1.5)
+    r.getex('foo', exat=int(time.time() + 1))
+    time.sleep(1)
     assert r.get('foo') is None
 
     r.set('foo', 'val')
-    r.getex('foo', pxat=int(time.time() + 1.4) * 1000)
-    assert r.ttl('foo') > 0
-    time.sleep(1.4)
+    r.getex('foo', pxat=int(time.time() + 1) * 1000)
+    time.sleep(1)
     assert r.get('foo') is None
 
     r.setex('foo', 1, 'val')
