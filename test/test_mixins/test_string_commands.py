@@ -489,26 +489,26 @@ def test_getex(r: redis.Redis):
 
     r.set('foo', 'val')
     assert r.getex('foo', ex=1) == b'val'
-    time.sleep(1)
+    time.sleep(1.5)
     assert r.get('foo') is None
 
     r.set('foo2', 'val')
     assert r.getex('foo2', px=1000) == b'val'
-    time.sleep(1)
+    time.sleep(1.5)
     assert r.get('foo2') is None
 
     r.set('foo4', 'val')
     r.getex('foo4', exat=int(time.time() + 1))
-    time.sleep(1)
+    time.sleep(1.5)
     assert r.get('foo4') is None
 
     r.set('foo2', 'val')
     r.getex('foo2', pxat=int(time.time() + 1) * 1000)
-    time.sleep(1)
+    time.sleep(1.5)
     assert r.get('foo2') is None
 
     r.setex('foo5', 1, 'val')
     r.getex('foo5', persist=True)
     assert r.ttl('foo5') == -1
-    time.sleep(1)
+    time.sleep(1.5)
     assert r.get('foo5') == b'val'
