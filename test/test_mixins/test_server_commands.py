@@ -4,8 +4,6 @@ from time import sleep
 import pytest
 from redis.exceptions import ResponseError
 
-from .. import testtools
-
 
 def test_swapdb(r, create_redis):
     r1 = create_redis(1)

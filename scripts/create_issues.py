@@ -64,11 +64,12 @@ class GithubData:
         link = f"https://redis.io/commands/{cmd.replace(' ', '-')}/"
         title = f"Implement support for `{cmd.upper()}` ({group} command)"
         filename = f'{group}_mixin.py'
-        body = f"""Implement support for command `{cmd.upper()}` in {filename}.
+        body = f"""
+Implement support for command `{cmd.upper()}` in {filename}.
         
-        {summary}. 
+{summary}. 
         
-        Here is the [Official documentation]({link})"""
+Here is the [Official documentation]({link})"""
         labels = [f'{group}-commands', 'enhancement', 'help wanted']
         for label in labels:
             if label not in self.labels:
