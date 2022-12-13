@@ -486,8 +486,7 @@ def test_getex(r: redis.Redis):
         raw_command(r, 'getex', 'foo', 'px', 1000, 'ex', 1)
     with pytest.raises(redis.ResponseError):
         raw_command(r, 'getex', 'foo', 'dsac', 1000, 'ex', 1)
-    with pytest.raises(redis.ResponseError):
-        r.getex('foo', ex=-1)
+
     r.set('foo', 'val')
     assert r.getex('foo', ex=1) == b'val'
     assert r.ttl('foo') > 0
