@@ -127,7 +127,7 @@ class SortedSetCommandsMixin:
             update = update or (param_val['gt'] and ((item_name in zset and zset.get(item_name) < item_score)
                                                      or (not param_val['xx'] and item_name not in zset)))
             update = update or (param_val['lt'] and ((item_name in zset and zset.get(item_name) > item_score)
-                                     or (not param_val['xx'] and item_name not in zset)))
+                                                     or (not param_val['xx'] and item_name not in zset)))
 
             if update:
                 if zset.add(item_name, item_score):
