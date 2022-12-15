@@ -119,17 +119,17 @@ class SortedSetCommandsMixin:
             if (param_val['nx'] and item_name in zset) or (param_val['xx'] and item_name not in zset):
                 return None
             return self.zincrby(key, item_score, item_name)
-
+        count = [param_val['nx'], param_val['gt'], param_val['lt'], param_val['xx']].count(True)
         for item_score, item_name in items:
-            if (
-                    (param_val['nx'] and item_name not in zset)
-                    or (param_val['xx'] and item_name in zset)
-                    or (param_val['gt'] and ((item_name in zset and zset.get(item_name) < item_score)
-                                             or (not param_val['xx'] and item_name not in zset)))
-                    or (param_val['lt'] and ((item_name in zset and zset.get(item_name) > item_score)
-                                             or (not param_val['xx'] and item_name not in zset)))
-                    or ([param_val['nx'], param_val['gt'], param_val['lt'], param_val['xx']].count(True) == 0)
-            ):
+            update = count == 0
+            update = update or (count == 1 and param_val['nx'] and item_name not in zset)
+            update = update or (count == 1 and param_val['xx'] and item_name in zset)
+            update = update or (param_val['gt'] and ((item_name in zset and zset.get(item_name) < item_score)
+                                                     or (not param_val['xx'] and item_name not in zset)))
+            update = update or (param_val['lt'] and ((item_name in zset and zset.get(item_name) > item_score)
+                                     or (not param_val['xx'] and item_name not in zset)))
+
+            if update:
                 if zset.add(item_name, item_score):
                     changed_items += 1
 
