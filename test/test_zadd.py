@@ -141,3 +141,12 @@ def test_zadd_incr(r, ch):
     assert r.zscore('foo', 'three') == 3.0
     assert r.zadd('foo', {'bar': 1.0}, incr=True, xx=True, ch=ch) is None
     assert r.zadd('foo', {'three': 1.0}, incr=True, xx=True, ch=ch) == 4.0
+
+
+def test_zadd_with_xx_and_gt_and_ch(r):
+    r.zadd('test', {"one": 1})
+    assert r.zscore("test", "one") == 1.0
+    assert r.zadd("test", {"one": 4}, xx=True, gt=True, ch=True) == 1
+    assert r.zscore("test", "one") == 4.0
+    assert r.zadd("test", {"one": 0}, xx=True, gt=True, ch=True) == 0
+    assert r.zscore("test", "one") == 4.0
