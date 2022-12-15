@@ -8,7 +8,6 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-from .. import testtools
 from ..testtools import raw_command
 
 
@@ -187,7 +186,7 @@ def test_mget_with_no_keys(r):
 
 def test_mget_mixed_types(r):
     r.hset('hash', 'bar', 'baz')
-    testtools.zadd(r, 'zset', {'bar': 1})
+    r.zadd('zset', {'bar': 1})
     r.sadd('set', 'member')
     r.rpush('list', 'item1')
     r.set('string', 'value')

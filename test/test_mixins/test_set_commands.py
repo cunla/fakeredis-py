@@ -9,8 +9,6 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-from .. import testtools
-
 
 def test_sadd(r):
     assert r.sadd('foo', 'member1') == 1
@@ -28,7 +26,7 @@ def test_sadd_as_str_type(r):
 
 
 def test_sadd_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.sadd('foo', 'member2')
 
@@ -41,7 +39,7 @@ def test_scard(r):
 
 
 def test_scard_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.scard('foo')
 
@@ -68,7 +66,7 @@ def test_sdiff_empty(r):
 
 
 def test_sdiff_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.sdiff('foo', 'bar')
@@ -110,7 +108,7 @@ def test_sinter_bytes_keys(r):
 
 
 def test_sinter_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.sinter('foo', 'bar')
@@ -149,7 +147,7 @@ def test_smismember(r):
 
 def test_smismember_wrong_type(r):
     # verify that command fails when the key itself is not a SET
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.smismember('foo', 'member')
 
@@ -160,7 +158,7 @@ def test_smismember_wrong_type(r):
 
 
 def test_sismember_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.sismember('foo', 'member')
 
@@ -177,7 +175,7 @@ def test_smembers_copy(r):
 
 
 def test_smembers_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.smembers('foo')
 
@@ -200,7 +198,7 @@ def test_smove_non_existent_key(r):
 
 
 def test_smove_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.smove('bar', 'foo', 'member')
@@ -218,7 +216,7 @@ def test_spop(r):
 
 
 def test_spop_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.spop('foo')
 
@@ -245,7 +243,7 @@ def test_srandmember_number(r):
 
 
 def test_srandmember_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.srandmember('foo')
 
@@ -265,7 +263,7 @@ def test_srem(r):
 
 
 def test_srem_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.srem('foo', 'member')
 
@@ -279,7 +277,7 @@ def test_sunion(r):
 
 
 def test_sunion_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.sunion('foo', 'bar')
@@ -382,7 +380,7 @@ def test_sintercard_bytes_keys(r):
 
 @pytest.mark.min_server('7')
 def test_sintercard_wrong_type(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.sintercard(2, ['foo', 'bar'])
@@ -392,7 +390,7 @@ def test_sintercard_wrong_type(r):
 
 @pytest.mark.min_server('7')
 def test_sintercard_syntax_error(r):
-    testtools.zadd(r, 'foo', {'member': 1})
+    r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
         r.sintercard(3, ['foo', 'bar'])

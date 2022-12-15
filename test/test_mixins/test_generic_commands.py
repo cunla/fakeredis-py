@@ -5,8 +5,6 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
-from .. import testtools
-
 
 def key_val_dict(size=100):
     return {b'key:' + bytes([i]): b'val:' + bytes([i])
@@ -238,7 +236,7 @@ def test_type(r):
     r.set('string_key', "value")
     r.lpush("list_key", "value")
     r.sadd("set_key", "value")
-    testtools.zadd(r, "zset_key", {"value": 1})
+    r.zadd("zset_key", {"value": 1})
     r.hset('hset_key', 'key', 'value')
 
     assert r.type('string_key') == b'string'

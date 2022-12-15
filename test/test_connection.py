@@ -327,7 +327,7 @@ class TestFakeStrictRedisConnectionErrors:
 
     def test_zadd(self, r):
         with pytest.raises(redis.ConnectionError):
-            testtools.zadd(r, 'name', {'key': 'value'})
+            r.zadd('name', {'key': 'value'})
 
     def test_zcard(self, r):
         with pytest.raises(redis.ConnectionError):

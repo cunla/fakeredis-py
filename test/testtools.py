@@ -17,14 +17,6 @@ def raw_command(r, *args):
         r.response_callbacks = response_callbacks
 
 
-# Wrap some redis commands to abstract differences between redis-py 2 and 3.
-def zadd(r, key, d, *args, **kwargs):
-    if REDIS_VERSION >= Version('3'):
-        return r.zadd(key, d, *args, **kwargs)
-    else:
-        return r.zadd(key, **d)
-
-
 ALLOWED_CONDITIONS = {'above', 'below'}
 
 
