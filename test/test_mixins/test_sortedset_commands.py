@@ -292,8 +292,7 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
     scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
-    testtools.zadd(
-        r,
+    r.zadd(
         cache_key,
         dict((member, scores[idx]) for (idx, member) in enumerate(members) if idx % 2 != 0),
     )
