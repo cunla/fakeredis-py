@@ -62,6 +62,12 @@ class FakeConnection(redis.Connection):
         # FakeSelector.check_can_read.
         return self._selector.check_can_read(timeout)
 
+    def is_ready_for_command(self, timeout=0):
+        # We use check_is_ready_for_command because FakeSelector
+        # inherits from a stub BaseSelector which doesn't implement
+        # is_ready_for_command, which is called by redis-py's Connection
+        return self._selector.check_is_ready_for_command(timeout)
+
     def _decode(self, response):
         if isinstance(response, list):
             return [self._decode(item) for item in response]
