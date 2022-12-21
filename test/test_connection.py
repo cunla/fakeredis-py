@@ -5,6 +5,8 @@ from redis.exceptions import ResponseError
 
 from test import testtools
 
+import fakeredis
+
 
 def test_ping(r):
     assert r.ping()
@@ -480,3 +482,15 @@ class TestPubSubConnected:
         assert msg == check, 'Message was not published to channel'
         with pytest.raises(redis.ConnectionError):
             pubsub.get_message()
+
+
+@testtools.fake_only
+class TestFakeConnection:
+    @testtools.run_test_if_redispy_ver("above", "3.2.0")
+    def test_readiness_delegated_to_fake_connection(self, mocker, r):
+        fake_selector_spy = mocker.spy(fakeredis._server.FakeSelector, 'check_is_ready_for_command')
+        f = fakeredis.FakeConnection(server=fakeredis.FakeServer())
+        f.connect()
+        f.is_ready_for_command()
+        assert fake_selector_spy.call_count == 1
+
