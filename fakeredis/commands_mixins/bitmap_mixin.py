@@ -88,24 +88,22 @@ class BitmapCommandsMixin:
 
     @command((bytes, Key(), Key(bytes)), (Key(bytes),))
     def bitop(self, op_name, dst, *keys):
-        op = None
         if len(keys) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))
         if casematch(op_name, b'and'):
-            op = lambda a, b: a & b
+            res = self._bitop(lambda a, b: a & b, *keys)
         elif casematch(op_name, b'or'):
-            op = lambda a, b: a | b
+            res = self._bitop(lambda a, b: a | b, *keys)
         elif casematch(op_name, b'xor'):
-            op = lambda a, b: a ^ b
+            res = self._bitop(lambda a, b: a ^ b, *keys)
         elif casematch(op_name, b'not'):
             if len(keys) != 1:
                 raise SimpleError(msgs.BITOP_NOT_ONE_KEY_ONLY)
             val = keys[0].value
             print(val)
             print([~val[i] for i in range(len(val))])
-            dst.value = bytes([((1 << 8) - 1 - val[i]) for i in range(len(val))])
-            return len(dst.value)
+            res = bytes([((1 << 8) - 1 - val[i]) for i in range(len(val))])
         else:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))
-        dst.value = self._bitop(op, *keys)
+        dst.value = res
         return len(dst.value)

@@ -146,7 +146,16 @@ def test_bitop(r):
     assert r.bitop('xor', 'dest-xor', 'key1', 'key2') == 6
     assert r.get('dest-xor') == b'\x07\r\x0c\x06\x04\x14'
 
+
+def test_bitop_errors(r):
+    r.set('key1', 'foobar')
+    r.set('key2', 'abcdef')
+    r.sadd('key-set', 'member1')
     with pytest.raises(redis.ResponseError):
         r.bitop('not', 'dest', 'key1', 'key2')
     with pytest.raises(redis.ResponseError):
         r.bitop('badop', 'dest', 'key1', 'key2')
+    with pytest.raises(redis.ResponseError):
+        r.bitop('and', 'dest', 'key1', 'key-set')
+    with pytest.raises(redis.ResponseError):
+        r.bitop('and', 'dest')
