@@ -70,3 +70,42 @@ class BitmapCommandsMixin:
         reconstructed[byte] = new_byte
         key.update(bytes(reconstructed))
         return old_value
+
+    @staticmethod
+    def _bitop(op, *keys):
+        value = keys[0].value
+        if not isinstance(value, bytes):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        ans = keys[0].value
+        i = 1
+        while i < len(keys):
+            value = keys[i].value if keys[i].value is not None else b''
+            if not isinstance(value, bytes):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
+            ans = bytes(op(a, b) for a, b in zip(ans, value))
+            i += 1
+        return ans
+
+    @command((bytes, Key(), Key(bytes)), (Key(bytes),))
+    def bitop(self, op_name, dst, *keys):
+        op = None
+        if len(keys) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))
+        if casematch(op_name, b'and'):
+            op = lambda a, b: a & b
+        elif casematch(op_name, b'or'):
+            op = lambda a, b: a | b
+        elif casematch(op_name, b'xor'):
+            op = lambda a, b: a ^ b
+        elif casematch(op_name, b'not'):
+            if len(keys) != 1:
+                raise SimpleError(msgs.BITOP_NOT_ONE_KEY_ONLY)
+            val = keys[0].value
+            print(val)
+            print([~val[i] for i in range(len(val))])
+            dst.value = bytes([((1 << 8) - 1 - val[i]) for i in range(len(val))])
+            return len(dst.value)
+        else:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))
+        dst.value = self._bitop(op, *keys)
+        return len(dst.value)
