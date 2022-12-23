@@ -3,7 +3,8 @@ import pickle
 from random import random
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat, delete_keys
+from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat, delete_keys, \
+    _key_value_type
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
 from fakeredis._zset import ZSet
 
@@ -36,23 +37,6 @@ class GenericCommandsMixin:
             if not isinstance(item.value, bytes):
                 return None
             return item.value
-
-    @staticmethod
-    def _key_value_type(key):
-        if key.value is None:
-            return SimpleString(b'none')
-        elif isinstance(key.value, bytes):
-            return SimpleString(b'string')
-        elif isinstance(key.value, list):
-            return SimpleString(b'list')
-        elif isinstance(key.value, set):
-            return SimpleString(b'set')
-        elif isinstance(key.value, ZSet):
-            return SimpleString(b'zset')
-        elif isinstance(key.value, dict):
-            return SimpleString(b'hash')
-        else:
-            assert False  # pragma: nocover
 
     def _expireat(self, key, timestamp, *args):
         nx = False
@@ -308,7 +292,7 @@ class GenericCommandsMixin:
 
     @command((Key(),))
     def type(self, key):
-        return self._key_value_type(key)
+        return _key_value_type(key)
 
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):

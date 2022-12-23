@@ -7,7 +7,8 @@ import math
 import re
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError
+from ._helpers import null_terminate, SimpleError, SimpleString
+from ._zset import ZSet
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS = dict()  # Dictionary of supported commands name => Signature
@@ -414,3 +415,20 @@ def fix_range_string(start, end, length):
         end = max(0, end + length)
     end = min(end, length - 1)
     return start, end + 1
+
+
+def _key_value_type(key):
+    if key.value is None:
+        return SimpleString(b'none')
+    elif isinstance(key.value, bytes):
+        return SimpleString(b'string')
+    elif isinstance(key.value, list):
+        return SimpleString(b'list')
+    elif isinstance(key.value, set):
+        return SimpleString(b'set')
+    elif isinstance(key.value, ZSet):
+        return SimpleString(b'zset')
+    elif isinstance(key.value, dict):
+        return SimpleString(b'hash')
+    else:
+        assert False  # pragma: nocover

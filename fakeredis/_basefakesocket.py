@@ -7,7 +7,8 @@ from typing import List
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB)
+from ._commands import (
+    Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, _key_value_type)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED, encode_command)
@@ -295,7 +296,7 @@ class BaseFakeSocket:
 
         def match_type(key):
             if _type is not None:
-                return casematch(self._type(self._db[key]).value, _type)
+                return casematch(_key_value_type(self._db[key]).value, _type)
             return True
 
         if pattern is not None or _type is not None:
