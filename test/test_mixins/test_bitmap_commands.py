@@ -2,6 +2,8 @@ import pytest
 import redis
 import redis.client
 
+from test.testtools import raw_command
+
 
 def test_getbit(r):
     r.setbit('foo', 3, 1)
@@ -98,6 +100,14 @@ def test_bitcount(r):
     assert r.bitcount('foo') == 3
     r.set('foo', ' ')
     assert r.bitcount('foo') == 1
+    r.set('key', 'foobar')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitcount', 'key', '1', '2', 'dsd')
+    assert r.bitcount('key') == 26
+    assert r.bitcount('key', start=0, end=0) == 4
+    assert r.bitcount('key', start=1, end=1) == 6
+    assert r.bitcount('key', start=1, end=1, mode='byte') == 6
+    assert r.bitcount('key', start=5, end=30, mode='bit') == 17
 
 
 def test_bitcount_wrong_type(r):

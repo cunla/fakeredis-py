@@ -1,6 +1,6 @@
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string)
-from fakeredis._helpers import SimpleError
+from fakeredis._helpers import SimpleError, casematch
 
 
 class BitmapCommandsMixin:
@@ -11,15 +11,28 @@ class BitmapCommandsMixin:
     def bitcount(self, key, *args):
         # Redis checks the argument count before decoding integers. That's why
         # we can't declare them as Int.
-        if args:
-            if len(args) != 2:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            start = Int.decode(args[0])
-            end = Int.decode(args[1])
-            start, end = fix_range_string(start, end, len(key.value))
-            value = key.value[start:end]
-        else:
+        if len(args) == 0:
             value = key.value
+            return bin(int.from_bytes(value, 'little')).count('1')
+
+        if not 2 <= len(args) <= 3:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        start = Int.decode(args[0])
+        end = Int.decode(args[1])
+        bit_mode = False
+        if len(args) == 3:
+            bit_mode = casematch(args[2], b'bit')
+            if not bit_mode and not casematch(args[2], b'byte'):
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        if bit_mode:
+            value = key.value.decode() if key.value else ''
+            value = list(map(int, ''.join([bin(ord(i)).lstrip('0b').rjust(8, '0') for i in value])))
+            start, end = fix_range_string(start, end, len(value))
+            return value[start:end].count(1)
+        start, end = fix_range_string(start, end, len(key.value))
+        value = key.value[start:end]
+
         return bin(int.from_bytes(value, 'little')).count('1')
 
     @command((Key(bytes), BitOffset))
