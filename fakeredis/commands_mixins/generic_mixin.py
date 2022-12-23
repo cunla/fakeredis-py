@@ -3,9 +3,10 @@ import pickle
 from random import random
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat, delete_keys, \
-    _key_value_type
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
+from fakeredis._commands import (
+    command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat,
+    delete_keys, key_value_type, )
+from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch
 from fakeredis._zset import ZSet
 
 
@@ -292,7 +293,7 @@ class GenericCommandsMixin:
 
     @command((Key(),))
     def type(self, key):
-        return _key_value_type(key)
+        return key_value_type(key)
 
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):

@@ -417,7 +417,7 @@ def fix_range_string(start, end, length):
     return start, end + 1
 
 
-def _key_value_type(key):
+def key_value_type(key):
     if key.value is None:
         return SimpleString(b'none')
     elif isinstance(key.value, bytes):
