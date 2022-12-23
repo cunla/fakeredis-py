@@ -20,7 +20,9 @@ class BitmapCommandsMixin:
         start = Int.decode(args[0])
         end = Int.decode(args[1])
         bit_mode = False
-        if len(args) == 3:
+        if len(args) == 3 and self.version < 7:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) == 3 and self.version >= 7:
             bit_mode = casematch(args[2], b'bit')
             if not bit_mode and not casematch(args[2], b'byte'):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

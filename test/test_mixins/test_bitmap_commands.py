@@ -106,6 +106,20 @@ def test_bitcount(r):
     assert r.bitcount('key') == 26
     assert r.bitcount('key', start=0, end=0) == 4
     assert r.bitcount('key', start=1, end=1) == 6
+
+
+@pytest.mark.max_server('6')
+def test_bitcount_mode_redis6(r):
+    r.set('key', 'foobar')
+    with pytest.raises(redis.ResponseError):
+        r.bitcount('key', start=1, end=1, mode='byte')
+    with pytest.raises(redis.ResponseError):
+        r.bitcount('key', start=1, end=1, mode='bit')
+
+
+@pytest.mark.min_server('7')
+def test_bitcount_mode(r):
+    r.set('key', 'foobar')
     assert r.bitcount('key', start=1, end=1, mode='byte') == 6
     assert r.bitcount('key', start=5, end=30, mode='bit') == 17
 
@@ -114,3 +128,9 @@ def test_bitcount_wrong_type(r):
     r.rpush('foo', b'x')
     with pytest.raises(redis.ResponseError):
         r.bitcount('foo')
+
+# def test_bitop(r):
+#     r.set('key1', 'foobar')
+#     r.set('key2', 'abcdef')
+#     assert r.bitop('and', 'dest', 'key1', 'key2') == 6
+#     assert r.get('dest') == b'`bc`ab'
