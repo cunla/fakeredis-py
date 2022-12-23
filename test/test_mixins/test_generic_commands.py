@@ -657,6 +657,7 @@ def test_scan_iter_single_page(r):
     assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
     assert set(r.scan_iter()) == {b'foo1', b'foo2'}
     assert set(r.scan_iter(match="")) == set()
+    assert set(r.scan_iter(match="foo1", _type="string")) == {b'foo1', }
 
 
 def test_scan_iter_multiple_pages(r):
