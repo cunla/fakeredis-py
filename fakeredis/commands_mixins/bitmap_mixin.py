@@ -5,7 +5,7 @@ from fakeredis._helpers import SimpleError, casematch
 
 class BitmapCommandsMixin:
     # BITMAP commands
-    # TODO: bitfield, bitfield_ro, bitop, bitpos
+    # TODO: bitfield, bitfield_ro, bitpos
 
     @command((Key(bytes, 0),), (bytes,))
     def bitcount(self, key, *args):
@@ -100,8 +100,6 @@ class BitmapCommandsMixin:
             if len(keys) != 1:
                 raise SimpleError(msgs.BITOP_NOT_ONE_KEY_ONLY)
             val = keys[0].value
-            print(val)
-            print([~val[i] for i in range(len(val))])
             res = bytes([((1 << 8) - 1 - val[i]) for i in range(len(val))])
         else:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))
