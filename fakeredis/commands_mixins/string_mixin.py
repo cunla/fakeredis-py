@@ -5,6 +5,60 @@ from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, dele
 from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
+def _lcs(s1, s2):
+    l1 = len(s1)
+    l2 = len(s2)
+
+    # Opt array to store the optimal solution value till ith and jth position for 2 strings
+    opt = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+
+    # Pi array to store the direction when calculating the actual sequence
+    pi = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+
+    # Algorithm to calculate the length of the longest common subsequence
+    for i in range(1, l1 + 1):
+        for j in range(1, l2 + 1):
+            if s1[i - 1] == s2[j - 1]:
+                opt[i][j] = opt[i - 1][j - 1] + 1
+                pi[i][j] = 0
+            elif opt[i][j - 1] >= opt[i - 1][j]:
+                opt[i][j] = opt[i][j - 1]
+                pi[i][j] = 1
+            else:
+                opt[i][j] = opt[i - 1][j]
+                pi[i][j] = 2
+    # Length of the longest common subsequence is saved at opt[n][m]
+
+    # Algorithm to calculate the longest common subsequence using the Pi array
+    # Also calculate the list of matches
+    i, j = l1, l2
+    result = ''
+    matches = list()
+    s1ind, s2ind, curr_length = None, None, 0
+
+    while i > 0 and j > 0:
+        if pi[i][j] == 0:
+            result = chr(s1[i - 1]) + result
+            i -= 1
+            j -= 1
+            curr_length += 1
+        elif pi[i][j] == 2:
+            i -= 1
+        else:
+            j -= 1
+
+        if pi[i][j] == 0 and curr_length == 1:
+            s1ind = i
+            s2ind = j
+        elif pi[i][j] > 0 and curr_length > 0:
+            matches.append([[i, s1ind], [j, s2ind], curr_length])
+            s1ind, s2ind, curr_length = None, None, 0
+    if curr_length:
+        matches.append([[s1ind, i], [s2ind, j], curr_length])
+
+    return opt[l1][l2], result.encode(), matches
+
+
 class StringCommandsMixin:
     # String commands
     # todo: GETEX, LCS
@@ -97,12 +151,8 @@ class StringCommandsMixin:
     @command(name="set", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
         i = 0
-        ex = None
-        px = None
-        xx = False
-        nx = False
-        keepttl = False
-        get = False
+        ex, px = None, None
+        xx, nx, keepttl, get = False, False, False, False
         while i < len(args):
             if casematch(args[i], b'nx'):
                 nx = True
@@ -177,13 +227,12 @@ class StringCommandsMixin:
             return len(key.get(b''))
         elif offset + len(value) > MAX_STRING_SIZE:
             raise SimpleError(msgs.STRING_OVERFLOW_MSG)
-        else:
-            out = key.get(b'')
-            if len(out) < offset:
-                out += b'\x00' * (offset - len(out))
-            out = out[0:offset] + value + out[offset + len(value):]
-            key.update(out)
-            return len(out)
+        out = key.get(b'')
+        if len(out) < offset:
+            out += b'\x00' * (offset - len(out))
+        out = out[0:offset] + value + out[offset + len(value):]
+        key.update(out)
+        return len(out)
 
     @command((Key(bytes),))
     def strlen(self, key):
@@ -226,3 +275,36 @@ class StringCommandsMixin:
 
         key.expireat = expire_time
         return key.get(None)
+
+    @command((Key(bytes), Key(bytes),), (bytes,))
+    def lcs(self, k1, k2, *args):
+        s1 = k1.value or b''
+        s2 = k2.value or b''
+
+        arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen = [False] * 4
+        i = 0
+        while i < len(args):
+            if casematch(args[i], b'idx'):
+                arg_idx = True, True
+            elif casematch(args[i], b'len'):
+                arg_len = True
+            elif casematch(args[i], b'minmatchlen'):
+                arg_minmatchlen = Int.decode(args[i + 1])
+                i += 1
+            elif casematch(args[i], b'withmatchlen'):
+                arg_withmatchlen = True
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            i += 1
+        if arg_idx and arg_len:
+            raise SimpleError(msgs.LCS_CANT_HAVE_BOTH_LEN_AND_IDX)
+        lcs_len, lcs_val, matches = _lcs(s1, s2)
+        if not arg_idx and not arg_len:
+            return lcs_val
+        if arg_len:
+            return lcs_len
+        arg_minmatchlen = arg_minmatchlen if arg_minmatchlen else 0
+        results = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
+        if not arg_withmatchlen:
+            results = list(map(lambda x: [x[0], x[1]], results))
+        return [b'matches', results, b'len', lcs_len]

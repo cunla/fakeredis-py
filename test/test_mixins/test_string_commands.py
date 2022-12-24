@@ -511,3 +511,19 @@ def test_getex(r: redis.Redis):
     assert r.ttl('foo5') == -1
     time.sleep(1.5)
     assert r.get('foo5') == b'val'
+
+
+@pytest.mark.min_server('7')
+def test_lcs(r):
+    r.mset({"key1": "ohmytext", "key2": "mynewtext"})
+    assert r.lcs('key1', 'key2') == b'mytext'
+    assert r.lcs('key1', 'key2', len=True) == 6
+
+    assert (r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True)
+            == [b"matches", [[[4, 7], [5, 8], 4]], b"len", 6])
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
+
+    with pytest.raises(redis.ResponseError):
+        assert r.lcs("key1", "key2", len=True, idx=True)
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'lcs', "key1", "key2", 'not_supported_arg')

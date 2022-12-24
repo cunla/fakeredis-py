@@ -54,7 +54,7 @@ JSON_WRONG_REDIS_TYPE = "ERR Existing key has wrong Redis type"
 JSON_KEY_NOT_FOUND = "ERR could not perform this operation on a key that doesn't exist"
 JSON_PATH_NOT_FOUND_OR_NOT_STRING = "ERR Path '{}' does not exist or not a string"
 JSON_PATH_DOES_NOT_EXIST = "ERR Path '{}' does not exist"
-
+LCS_CANT_HAVE_BOTH_LEN_AND_IDX = "ERR If you want both the length and indexes, please just use IDX."
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = 'v'
 FLAG_TRANSACTION = 't'
