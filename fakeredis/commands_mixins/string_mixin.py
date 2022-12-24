@@ -61,7 +61,6 @@ def _lcs(s1, s2):
 
 class StringCommandsMixin:
     # String commands
-    # todo: GETEX, LCS
 
     @command((Key(bytes), bytes))
     def append(self, key, value):
