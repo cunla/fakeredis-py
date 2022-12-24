@@ -26,6 +26,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Increment the integer value of a key by the given amount
  * [INCRBYFLOAT](https://redis.io/commands/incrbyfloat/)
    Increment the float value of a key by the given amount
+ * [LCS](https://redis.io/commands/lcs/)
+   Find longest common substring
  * [MGET](https://redis.io/commands/mget/)
    Get the values of all the given keys
  * [MSET](https://redis.io/commands/mset/)
@@ -735,10 +737,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
 ### hash
  * [HRANDFIELD](https://redis.io/commands/hrandfield/)
    Get one or multiple random fields from a hash
-
-### string
- * [LCS](https://redis.io/commands/lcs/)
-   Find longest common substring
 
 ### hyperloglog
  * [PFDEBUG](https://redis.io/commands/pfdebug/)
