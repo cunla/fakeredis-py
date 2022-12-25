@@ -72,6 +72,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Count set bits in a string
  * [BITOP](https://redis.io/commands/bitop/)
    Perform bitwise operations between strings
+ * [BITPOS](https://redis.io/commands/bitpos/)
+   Find first bit set or clear in a string
  * [GETBIT](https://redis.io/commands/getbit/)
    Returns the bit value at offset in the string value stored at key
  * [SETBIT](https://redis.io/commands/setbit/)
@@ -617,8 +619,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Perform arbitrary bitfield integer operations on strings
  * [BITFIELD_RO](https://redis.io/commands/bitfield_ro/)
    Perform arbitrary bitfield integer operations on strings. Read-only variant of BITFIELD
- * [BITPOS](https://redis.io/commands/bitpos/)
-   Find first bit set or clear in a string
 
 ### list
  * [BLMOVE](https://redis.io/commands/blmove/)
