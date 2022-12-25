@@ -1,11 +1,46 @@
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string)
+from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string, fix_range)
 from fakeredis._helpers import SimpleError, casematch
 
 
 class BitmapCommandsMixin:
     # BITMAP commands
     # TODO: bitfield, bitfield_ro, bitpos
+    @staticmethod
+    def _bytes_as_bin_string(value):
+        return ''.join([bin(i).lstrip('0b').rjust(8, '0') for i in value])
+
+    @command((Key(bytes), Int), (bytes,))
+    def bitpos(self, key, bit, *args):
+        if bit != 0 and bit != 1:
+            raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
+        if len(args) > 3:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) == 3 and self.version < 7:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        bit_mode = False
+        if len(args) == 3 and self.version >= 7:
+            bit_mode = casematch(args[2], b'bit')
+            if not bit_mode and not casematch(args[2], b'byte'):
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        start = 0 if len(args) == 0 else Int.decode(args[0])
+        bit_chr = str(bit)
+        key_value = key.value if key.value else b''
+
+        if bit_mode:
+            value = self._bytes_as_bin_string(key_value)
+            end = len(value) if len(args) <= 1 else Int.decode(args[1])
+            start, end = fix_range(start, end, len(value))
+            value = value[start:end]
+        else:
+            end = len(key_value) if len(args) <= 1 else Int.decode(args[1])
+            start, end = fix_range(start, end, len(key_value))
+            value = self._bytes_as_bin_string(key_value[start:end])
+
+        result = value.find(bit_chr)
+        if result != -1:
+            result += start if bit_mode else (start * 8)
+        return result
 
     @command((Key(bytes, 0),), (bytes,))
     def bitcount(self, key, *args):
@@ -28,10 +63,9 @@ class BitmapCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if bit_mode:
-            value = key.value.decode() if key.value else ''
-            value = list(map(int, ''.join([bin(ord(i)).lstrip('0b').rjust(8, '0') for i in value])))
+            value = self._bytes_as_bin_string(key.value if key.value else b'')
             start, end = fix_range_string(start, end, len(value))
-            return value[start:end].count(1)
+            return value[start:end].count('1')
         start, end = fix_range_string(start, end, len(key.value))
         value = key.value[start:end]
 
@@ -74,19 +108,15 @@ class BitmapCommandsMixin:
     @staticmethod
     def _bitop(op, *keys):
         value = keys[0].value
-        if not isinstance(value, bytes):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         ans = keys[0].value
         i = 1
         while i < len(keys):
             value = keys[i].value if keys[i].value is not None else b''
-            if not isinstance(value, bytes):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
             ans = bytes(op(a, b) for a, b in zip(ans, value))
             i += 1
         return ans
 
-    @command((bytes, Key(), Key(bytes)), (Key(bytes),))
+    @command((bytes, Key()), (Key(bytes),))
     def bitop(self, op_name, dst, *keys):
         if len(keys) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('bitop'))

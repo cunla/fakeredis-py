@@ -115,13 +115,19 @@ def test_bitcount_mode_redis6(r):
         r.bitcount('key', start=1, end=1, mode='byte')
     with pytest.raises(redis.ResponseError):
         r.bitcount('key', start=1, end=1, mode='bit')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitcount', 'key', '1', '2', 'dsd', 'cd')
 
 
 @pytest.mark.min_server('7')
-def test_bitcount_mode(r):
+def test_bitcount_mode_redis7(r: redis.Redis):
     r.set('key', 'foobar')
     assert r.bitcount('key', start=1, end=1, mode='byte') == 6
     assert r.bitcount('key', start=5, end=30, mode='bit') == 17
+    with pytest.raises(redis.ResponseError):
+        r.bitcount('key', start=5, end=30, mode='dscd')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitcount', 'key', '1', '2', 'dsd', 'cd')
 
 
 def test_bitcount_wrong_type(r):
@@ -159,3 +165,46 @@ def test_bitop_errors(r):
         r.bitop('and', 'dest', 'key1', 'key-set')
     with pytest.raises(redis.ResponseError):
         r.bitop('and', 'dest')
+
+
+def test_bitpos(r: redis.Redis):
+    key = "key:bitpos"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitpos(key, 0) == 12
+    assert r.bitpos(key, 0, 2, -1) == 16
+    assert r.bitpos(key, 0, -2, -1) == 12
+    r.set(key, b"\x00\xff\xf0")
+    assert r.bitpos(key, 1, 0) == 8
+    assert r.bitpos(key, 1, 1) == 8
+    r.set(key, b"\x00\x00\x00")
+    assert r.bitpos(key, 1) == -1
+    r.set(key, b"\xff\xf0\x00")
+
+
+@pytest.mark.min_server('7')
+def test_bitops_mode_redis7(r: redis.Redis):
+    key = "key:bitpos"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitpos(key, 0, 8, -1, 'bit') == 12
+    assert r.bitpos(key, 1, 8, -1, 'bit') == 8
+    with pytest.raises(redis.ResponseError):
+        assert r.bitpos(key, 0, 8, -1, 'bad_mode') == 12
+
+
+@pytest.mark.max_server('6')
+def test_bitops_mode_redis6(r: redis.Redis):
+    key = "key:bitpos"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(redis.ResponseError):
+        assert r.bitpos(key, 0, 8, -1, 'bit') == 12
+
+
+def test_bitpos_wrong_arguments(r: redis.Redis):
+    key = "key:bitpos:wrong:args"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitpos', key, '7')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitpos', key, 1, '6', '5', 'BYTE', '6')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitpos', key)
