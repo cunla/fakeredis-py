@@ -691,7 +691,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "tox"
-version = "4.0.16"
+version = "4.0.18"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
@@ -710,7 +710,7 @@ tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 virtualenv = ">=20.17.1"
 
 [package.extras]
-docs = ["furo (>=2022.12.7)", "sphinx (>=5.3)", "sphinx-argparse-cli (>=1.10)", "sphinx-autodoc-typehints (>=1.19.5)", "sphinx-copybutton (>=0.5.1)", "sphinx-inline-tabs (>=2022.1.2b11)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.8)"]
+docs = ["furo (>=2022.12.7)", "sphinx (>=5.3)", "sphinx-argparse-cli (>=1.10)", "sphinx-autodoc-typehints (>=1.19.5)", "sphinx-copybutton (>=0.5.1)", "sphinx-inline-tabs (>=2022.1.2b11)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.12)"]
 testing = ["build[virtualenv] (>=0.9)", "covdefaults (>=2.2.2)", "devpi-process (>=0.3)", "diff-cover (>=7.3)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.11.1)", "psutil (>=5.9.4)", "pytest (>=7.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest-xdist (>=3.1)", "re-assert (>=1.1)", "time-machine (>=2.8.2)"]
 
 [[package]]
@@ -1278,8 +1278,8 @@ tomli = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 tox = [
-    {file = "tox-4.0.16-py3-none-any.whl", hash = "sha256:1ba98d4a67b815403e616cf6ded707aeb0fadff10702928f9b990274c9703e9f"},
-    {file = "tox-4.0.16.tar.gz", hash = "sha256:968fc4e27110defdf15972893cb15fe1669f338c8408d8835077462fb07e07fe"},
+    {file = "tox-4.0.18-py3-none-any.whl", hash = "sha256:2e3fa6d1b5cc09a971848e36d33bea64120dba9009cad5bff1fa8f6a5f367373"},
+    {file = "tox-4.0.18.tar.gz", hash = "sha256:e862abf5b75aa2d84e087a2f9696b97faf01dff8836515216f0453e951745eee"},
 ]
 twine = [
     {file = "twine-4.0.2-py3-none-any.whl", hash = "sha256:929bc3c280033347a00f847236564d1c52a3e61b1ac2516c97c48f3ceab756d8"},
