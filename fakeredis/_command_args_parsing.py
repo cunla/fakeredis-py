@@ -1,8 +1,10 @@
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, TypeAlias
 
 from . import _msgs as msgs
 from ._commands import Int
 from ._helpers import casematch, SimpleError
+
+_ArgValue: TypeAlias = bytes | list | int | bool | None
 
 
 def _count_params(s: str):
@@ -46,7 +48,7 @@ def extract_args(
         actual_args: Tuple[bytes, ...],
         expected: Tuple[str, ...],
         error_on_unexpected: bool = True,
-) -> Tuple[List[Any, ...], List[bytes, ...]]:
+) -> Tuple[List[_ArgValue, ...], List[bytes, ...]]:
     """Parse argument values
 
     Extract from actual arguments which arguments exist and their
