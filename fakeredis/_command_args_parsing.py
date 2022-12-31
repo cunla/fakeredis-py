@@ -45,7 +45,7 @@ def _parse_params(argument_name: str, ind: int, parse_following: int, actual_arg
 def extract_args(
         actual_args: Tuple[bytes, ...],
         expected: Tuple[str, ...],
-        error_on_non_param: bool = True,
+        error_on_unexpected: bool = True,
 ) -> Tuple[List[Any, ...], List[bytes, ...]]:
     """Parse argument values
 
@@ -78,7 +78,7 @@ def extract_args(
                 found = True
                 break
         if not found:
-            if error_on_non_param:
+            if error_on_unexpected:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             left_args.append(actual_args[i])
         i += 1
