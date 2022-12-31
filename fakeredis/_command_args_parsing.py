@@ -3,30 +3,25 @@ from ._commands import Int
 from ._helpers import casematch, SimpleError
 
 
+def _count_params(s: str):
+    res = 0
+    while s[res] == '+' or s[res] == '*':
+        res += 1
+    return res
+
+
 def _encode_arg(s: str):
-    ind = 0
-    while s[ind] == '+' or s[ind] == '*':
-        ind += 1
-    return s[ind:].encode()
+    return s[_count_params(s):].encode()
 
 
 def _default_value(s: str):
-    ind = 0
-    while s[ind] == '+' or s[ind] == '*':
-        ind += 1
+    ind = _count_params(s)
     if ind == 0:
         return False
     elif ind == 1:
         return None
     else:
         return [None] * ind
-
-
-def _number_of_args(s: str):
-    res = 0
-    while s[res] == '+' or s[res] == '*':
-        res += 1
-    return res
 
 
 def _parse_params(argument_name: str, ind: int, parse_following: int, actual_args: tuple[bytes, ...]):
@@ -53,7 +48,12 @@ def extract_args(
     """Parse argument values
 
     Extract from actual arguments which arguments exist and their
-    numerical value. Numerical arguments are identified by starting with a +.
+    numerical value.
+    An argument can have parameters:
+    - A numerical (Int) parameter is identified with +.
+    - A non-numerical parameter is identified with a *.
+    For example: '++limit' will translate as an argument with 2 int parameters.
+
 
     >>> extract_args((b'nx', b'ex', b'324', b'xx',), ('nx', 'xx', '+ex', 'keepttl'))
     [True, True, 324, False], None
@@ -62,7 +62,7 @@ def extract_args(
     results = [_default_value(key) for key in expected]
     left_args = []
     args_info: dict[bytes, int] = {
-        _encode_arg(k): (i, _number_of_args(k))
+        _encode_arg(k): (i, _count_params(k))
         for (i, k) in enumerate(expected)
     }
     i = 0
@@ -72,13 +72,12 @@ def extract_args(
             if casematch(actual_args[i], key):
                 arg_position, parse_following = args_info[key]
                 results[arg_position] = _parse_params(expected[arg_position], i, parse_following, actual_args)
-                i += 1 + parse_following
+                i += parse_following
                 found = True
                 break
         if not found:
             if error_on_non_param:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            else:
-                left_args.append(actual_args[i])
-                i += 1
+            left_args.append(actual_args[i])
+        i += 1
     return results, left_args
