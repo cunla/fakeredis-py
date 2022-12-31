@@ -150,7 +150,7 @@ class StringCommandsMixin:
 
     @command(name="set", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
-        ex, px, xx, nx, keepttl, get = extract_args(args, ('+ex', '+px', 'xx', 'nx', 'keepttl', 'get'))
+        (ex, px, xx, nx, keepttl, get), _ = extract_args(args, ('+ex', '+px', 'xx', 'nx', 'keepttl', 'get'))
         if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
         if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2 ** 63):
@@ -260,7 +260,7 @@ class StringCommandsMixin:
         s1 = k1.value or b''
         s2 = k2.value or b''
 
-        arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen = extract_args(
+        (arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen), _ = extract_args(
             args, ('idx', 'len', '+minmatchlen', 'withmatchlen'))
         if arg_idx and arg_len:
             raise SimpleError(msgs.LCS_CANT_HAVE_BOTH_LEN_AND_IDX)
