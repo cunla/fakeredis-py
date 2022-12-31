@@ -1,7 +1,8 @@
 import math
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys, fix_range_string, extract_args)
+from fakeredis._command_args_parsing import extract_args
+from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys, fix_range_string)
 from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
@@ -223,6 +224,7 @@ class StringCommandsMixin:
     @command((Key(bytes),), (bytes,))
     def getex(self, key, *args):
         i, count_options, expire_time, diff = 0, 0, None, None
+
         while i < len(args):
             count_options += 1
             if casematch(args[i], b'ex') and i + 1 < len(args):
@@ -258,21 +260,8 @@ class StringCommandsMixin:
         s1 = k1.value or b''
         s2 = k2.value or b''
 
-        arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen = [False] * 4
-        i = 0
-        while i < len(args):
-            if casematch(args[i], b'idx'):
-                arg_idx = True, True
-            elif casematch(args[i], b'len'):
-                arg_len = True
-            elif casematch(args[i], b'minmatchlen'):
-                arg_minmatchlen = Int.decode(args[i + 1])
-                i += 1
-            elif casematch(args[i], b'withmatchlen'):
-                arg_withmatchlen = True
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            i += 1
+        arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen = extract_args(
+            args, ('idx', 'len', '+minmatchlen', 'withmatchlen'))
         if arg_idx and arg_len:
             raise SimpleError(msgs.LCS_CANT_HAVE_BOTH_LEN_AND_IDX)
         lcs_len, lcs_val, matches = _lcs(s1, s2)
