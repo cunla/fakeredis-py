@@ -1,7 +1,7 @@
 import math
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys, fix_range_string)
+from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys, fix_range_string, extract_args)
 from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
@@ -149,34 +149,12 @@ class StringCommandsMixin:
 
     @command(name="set", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
-        i = 0
-        ex, px = None, None
-        xx, nx, keepttl, get = False, False, False, False
-        while i < len(args):
-            if casematch(args[i], b'nx'):
-                nx = True
-                i += 1
-            elif casematch(args[i], b'xx'):
-                xx = True
-                i += 1
-            elif casematch(args[i], b'ex') and i + 1 < len(args):
-                ex = Int.decode(args[i + 1])
-                if ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63:
-                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
-                i += 2
-            elif casematch(args[i], b'px') and i + 1 < len(args):
-                px = Int.decode(args[i + 1])
-                if px <= 0 or self._db.time * 1000 + px >= 2 ** 63:
-                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
-                i += 2
-            elif casematch(args[i], b'keepttl'):
-                keepttl = True
-                i += 1
-            elif casematch(args[i], b'get'):
-                get = True
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        ex, px, xx, nx, keepttl, get = extract_args(args, ('+ex', '+px', 'xx', 'nx', 'keepttl', 'get'))
+        if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
+        if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
+
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and get and self.version < 7:

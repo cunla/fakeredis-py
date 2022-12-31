@@ -5,9 +5,10 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
+from typing import Union
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError, SimpleString
+from ._helpers import null_terminate, SimpleError, SimpleString, casematch
 from ._zset import ZSet
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
@@ -432,3 +433,38 @@ def key_value_type(key):
         return SimpleString(b'hash')
     else:
         assert False  # pragma: nocover
+
+
+def extract_args(actual_args: tuple[bytes, ...], expected: tuple[str, ...]) -> tuple[Union[int, str], ...]:
+    """
+    Extract from actual arguments which arguments exist and their
+    numerical value. Numerical arguments are identified by starting with a +.
+
+    >>> extract_args((b'nx', b'ex', b'324', b'xx',), ('nx', 'xx', '+ex', 'keepttl'))
+    True, True, 324, False
+    """
+
+    def _encode_arg(s: str):
+        if s.startswith('+'):
+            s = s[1:]
+        return s.encode()
+
+    results = [None if key.startswith('+') else False
+               for key in expected]
+    args_dict = {_encode_arg(k): i for (i, k) in enumerate(expected)}
+    i = 0
+    while i < len(actual_args):
+        found = False
+        for key in args_dict:
+            if casematch(actual_args[i], key):
+                arg_position = args_dict[key]
+                results[arg_position] = True
+                if expected[arg_position].startswith('+'):
+                    results[arg_position] = Int.decode(actual_args[i + 1])
+                    i += 1
+                i += 1
+                found = True
+                break
+        if not found:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    return results
