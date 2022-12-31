@@ -1,3 +1,5 @@
+from typing import Tuple, List, Dict
+
 from . import _msgs as msgs
 from ._commands import Int
 from ._helpers import casematch, SimpleError
@@ -24,7 +26,7 @@ def _default_value(s: str):
         return [None] * ind
 
 
-def _parse_params(argument_name: str, ind: int, parse_following: int, actual_args: tuple[bytes, ...]):
+def _parse_params(argument_name: str, ind: int, parse_following: int, actual_args: Tuple[bytes, ...]):
     if parse_following == 0:
         return True
     temp_res = []
@@ -41,10 +43,10 @@ def _parse_params(argument_name: str, ind: int, parse_following: int, actual_arg
 
 
 def extract_args(
-        actual_args: tuple[bytes, ...],
-        expected: tuple[str, ...],
+        actual_args: Tuple[bytes, ...],
+        expected: Tuple[str, ...],
         error_on_non_param: bool = True,
-) -> tuple[list[int | bool | None, ...], list[bytes, ...]]:
+) -> Tuple[List[int | bool | List | None, ...], List[bytes, ...]]:
     """Parse argument values
 
     Extract from actual arguments which arguments exist and their
@@ -59,9 +61,9 @@ def extract_args(
     [True, True, 324, False], None
     """
 
-    results = [_default_value(key) for key in expected]
+    results: List = [_default_value(key) for key in expected]
     left_args = []
-    args_info: dict[bytes, int] = {
+    args_info: Dict[bytes, int] = {
         _encode_arg(k): (i, _count_params(k))
         for (i, k) in enumerate(expected)
     }
