@@ -82,7 +82,7 @@ class SortedSetCommandsMixin:
         zset = key.value
 
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
-            args, ('nx', 'xx', 'ch', 'incr', 'gt', 'lt',), error_on_non_param=False)
+            args, ('nx', 'xx', 'ch', 'incr', 'gt', 'lt',), error_on_unexpected=False)
 
         if nx and xx:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)

@@ -23,7 +23,7 @@ def test_extract_args__should_return_something():
     args = (b'nx', b'ex', b'324', b'xx', b'something')
 
     (xx, nx, ex, keepttl), left = extract_args(
-        args, ('nx', 'xx', '+ex', 'keepttl'), error_on_non_param=False)
+        args, ('nx', 'xx', '+ex', 'keepttl'), error_on_unexpected=False)
     assert xx
     assert nx
     assert ex == 324
@@ -33,7 +33,7 @@ def test_extract_args__should_return_something():
     args = (b'nx', b'something', b'ex', b'324', b'xx',)
 
     (xx, nx, ex, keepttl), left = extract_args(
-        args, ('nx', 'xx', '+ex', 'keepttl'), error_on_non_param=False)
+        args, ('nx', 'xx', '+ex', 'keepttl'), error_on_unexpected=False)
     assert xx
     assert nx
     assert ex == 324

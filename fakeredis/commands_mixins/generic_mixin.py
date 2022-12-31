@@ -189,7 +189,7 @@ class GenericCommandsMixin:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (desc, alpha, store, sortby, (limit_start, limit_count)), args = extract_args(
-            args, ('desc', 'alpha', '*store', '*by', '++limit'), error_on_non_param=False)
+            args, ('desc', 'alpha', '*store', '*by', '++limit'), error_on_unexpected=False)
         limit_start = limit_start or 0
         limit_count = limit_count or -1
         dontsort = (sortby is not None and b'*' not in sortby)
