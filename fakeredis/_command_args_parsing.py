@@ -4,7 +4,7 @@ from . import _msgs as msgs
 from ._commands import Int
 from ._helpers import casematch, SimpleError
 
-_ArgValue: TypeAlias = bytes | list | int | bool | None
+_ArgValue: TypeAlias = bytes | int | bool | None | List[bytes | int | None]
 
 
 def _count_params(s: str):
