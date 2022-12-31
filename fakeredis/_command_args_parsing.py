@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Any
 
 from . import _msgs as msgs
 from ._commands import Int
@@ -46,7 +46,7 @@ def extract_args(
         actual_args: Tuple[bytes, ...],
         expected: Tuple[str, ...],
         error_on_non_param: bool = True,
-) -> Tuple[List[int | bool | List | None, ...], List[bytes, ...]]:
+) -> Tuple[List[Any, ...], List[bytes, ...]]:
     """Parse argument values
 
     Extract from actual arguments which arguments exist and their
