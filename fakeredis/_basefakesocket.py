@@ -7,6 +7,7 @@ from typing import List
 import redis
 
 from . import _msgs as msgs
+from ._command_args_parsing import extract_args
 from ._commands import (
     Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, key_value_type)
 from ._helpers import (
@@ -266,22 +267,8 @@ class BaseFakeSocket:
         returned exactly once.
         """
         cursor = int(cursor)
-        pattern = None
-        _type = None
-        count = 10
-        if len(args) % 2 != 0:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        for i in range(0, len(args), 2):
-            if casematch(args[i], b'match'):
-                pattern = args[i + 1]
-            elif casematch(args[i], b'count'):
-                count = Int.decode(args[i + 1])
-                if count <= 0:
-                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            elif casematch(args[i], b'type'):
-                _type = args[i + 1]
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        (pattern, _type, count), _ = extract_args(args, ('*match', '*type', '+count'))
+        count = 10 if count is None else count
 
         if cursor >= len(keys):
             return [0, []]

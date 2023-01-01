@@ -108,7 +108,7 @@ def test_bitcount(r):
     assert r.bitcount('key', start=1, end=1) == 6
 
 
-@pytest.mark.max_server('6')
+@pytest.mark.max_server('6.2.7')
 def test_bitcount_mode_redis6(r):
     r.set('key', 'foobar')
     with pytest.raises(redis.ResponseError):
@@ -191,7 +191,7 @@ def test_bitops_mode_redis7(r: redis.Redis):
         assert r.bitpos(key, 0, 8, -1, 'bad_mode') == 12
 
 
-@pytest.mark.max_server('6')
+@pytest.mark.max_server('6.2.7')
 def test_bitops_mode_redis6(r: redis.Redis):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")

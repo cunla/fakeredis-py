@@ -149,3 +149,12 @@ def test_zadd_with_xx_and_gt_and_ch(r):
     assert r.zscore("test", "one") == 4.0
     assert r.zadd("test", {"one": 0}, xx=True, gt=True, ch=True) == 0
     assert r.zscore("test", "one") == 4.0
+
+
+def test_zadd_and_zrangebyscore(r):
+    raw_command(r, 'zadd', '', 0.0, '')
+    assert raw_command(r, 'zrangebyscore', '', 0.0, 0.0, 'limit', 0, 0) == []
+    with pytest.raises(redis.RedisError):
+        raw_command(r, 'zrangebyscore', '', 0.0, 0.0, 'limit', 0)
+    with pytest.raises(redis.RedisError):
+        raw_command(r, 'zadd', 't', 0.0, 'xx', '')

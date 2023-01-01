@@ -76,11 +76,10 @@ class HashCommandsMixin:
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
     def hset(self, key, *args):
         h = key.value
-        created = 0
-        for i in range(0, len(args), 2):
-            if args[i] not in h:
-                created += 1
-            h[args[i]] = args[i + 1]
+        keys_count = len(h.keys())
+        h.update(dict(zip(*[iter(args)] * 2)))  # https://stackoverflow.com/a/12739974/1056460
+        created = len(h.keys()) - keys_count
+
         key.updated()
         return created
 
