@@ -39,7 +39,7 @@ def null_terminate(s):
     # first NULL.
     ind = s.find(b'\0')
     if ind > -1:
-        return s[:ind]
+        return s[:ind].lower()
     return s.lower()
 
 
