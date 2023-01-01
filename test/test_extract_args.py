@@ -28,7 +28,7 @@ def test_extract_args__should_return_something():
     assert nx
     assert ex == 324
     assert not keepttl
-    assert left == (b'something', )
+    assert left == (b'something',)
 
     args = (b'nx', b'something', b'ex', b'324', b'xx',)
 
@@ -42,7 +42,6 @@ def test_extract_args__should_return_something():
     assert ex == 324
     assert not keepttl
     assert left == [b'something', ]
-
 
 
 def test_extract_args__multiple_numbers():
