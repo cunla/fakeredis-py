@@ -30,6 +30,8 @@ def _parse_params(argument_name: str, ind: int, parse_following: int, actual_arg
     if parse_following == 0:
         return True
     temp_res = []
+    if ind + parse_following >= len(actual_args):
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     for i in range(parse_following):
         curr_arg = actual_args[ind + i + 1]
         if argument_name[i] == '+':
