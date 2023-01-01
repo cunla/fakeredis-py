@@ -29,9 +29,9 @@ def _default_value(s: str):
 def _parse_params(argument_name: str, ind: int, parse_following: int, actual_args: Tuple[bytes, ...]):
     if parse_following == 0:
         return True
-    temp_res = []
     if ind + parse_following >= len(actual_args):
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    temp_res = []
     for i in range(parse_following):
         curr_arg = actual_args[ind + i + 1]
         if argument_name[i] == '+':
