@@ -28,17 +28,21 @@ def test_extract_args__should_return_something():
     assert nx
     assert ex == 324
     assert not keepttl
-    assert left == [b'something', ]
+    assert left == (b'something', )
 
     args = (b'nx', b'something', b'ex', b'324', b'xx',)
 
     (xx, nx, ex, keepttl), left = extract_args(
-        args, ('nx', 'xx', '+ex', 'keepttl'), error_on_unexpected=False)
+        args, ('nx', 'xx', '+ex', 'keepttl'),
+        error_on_unexpected=False,
+        left_from_first_unexpected=False
+    )
     assert xx
     assert nx
     assert ex == 324
     assert not keepttl
     assert left == [b'something', ]
+
 
 
 def test_extract_args__multiple_numbers():
