@@ -5,6 +5,8 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
+from test.testtools import raw_command
+
 
 def key_val_dict(size=100):
     return {b'key:' + bytes([i]): b'val:' + bytes([i])
@@ -705,6 +707,7 @@ def test_basic_sort(r):
     r.rpush('foo', '3')
 
     assert r.sort('foo') == [b'1', b'2', b'3']
+    assert raw_command(r, 'sort', 'foo', 'asc') == [b'1', b'2', b'3']
 
 
 def test_key_patterns(r):
