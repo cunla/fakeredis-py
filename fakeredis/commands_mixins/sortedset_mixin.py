@@ -213,7 +213,7 @@ class SortedSetCommandsMixin:
     def _zrangebyscore(self, key, _min, _max, reverse, *args):
         (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
         offset = offset or 0
-        count = count or -1
+        count = -1 if count is None else count
         zset = key.value
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
