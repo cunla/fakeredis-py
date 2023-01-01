@@ -156,3 +156,5 @@ def test_zadd_and_zrangebyscore(r):
     assert raw_command(r, 'zrangebyscore', '', 0.0, 0.0, 'limit', 0, 0) == []
     with pytest.raises(redis.RedisError):
         raw_command(r, 'zrangebyscore', '', 0.0, 0.0, 'limit', 0)
+    with pytest.raises(redis.RedisError):
+        raw_command(r, 'zadd', 't', 0.0, 'xx', '')

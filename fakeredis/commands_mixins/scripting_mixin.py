@@ -5,7 +5,7 @@ import logging
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, SimpleString, casenorm, OK, encode_command
+from fakeredis._helpers import SimpleError, SimpleString, null_terminate, OK, encode_command
 
 LOGGER = logging.getLogger('fakeredis')
 REDIS_LOG_LEVELS = {
@@ -210,7 +210,7 @@ class ScriptingCommandsMixin:
 
     @command(name='script flush', fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT, )
     def script_flush(self, *args):
-        if len(args) > 1 or (len(args) == 1 and casenorm(args[0]) not in {b'sync', b'async'}):
+        if len(args) > 1 or (len(args) == 1 and null_terminate(args[0]) not in {b'sync', b'async'}):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format('SCRIPT'))
         self.script_cache = {}
         return OK

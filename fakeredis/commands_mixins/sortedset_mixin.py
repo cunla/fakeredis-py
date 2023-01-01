@@ -8,7 +8,7 @@ from typing import Union, Optional
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout, ScoreTest, StringTest, fix_range)
-from fakeredis._helpers import (SimpleError, casematch, casenorm, )
+from fakeredis._helpers import (SimpleError, casematch, null_terminate, )
 from fakeredis._zset import ZSet
 
 
@@ -317,7 +317,7 @@ class SortedSetCommandsMixin:
                 weights = [Float.decode(x) for x in args[i + 1:i + numkeys + 1]]
                 i += numkeys + 1
             elif casematch(arg, b'aggregate') and i + 1 < len(args):
-                aggregate = casenorm(args[i + 1])
+                aggregate = null_terminate(args[i + 1])
                 if aggregate not in (b'sum', b'min', b'max'):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2

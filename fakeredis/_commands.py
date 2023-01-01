@@ -6,7 +6,6 @@ import functools
 import math
 import re
 
-
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
 from ._zset import ZSet

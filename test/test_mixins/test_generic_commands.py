@@ -200,6 +200,11 @@ def test_sort_with_by_and_get_option(r):
             == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
     )
     assert r.sort('foo', by='weight_*', get='data_1') == [None, None, None, None]
+    # Test sort with different parameters order
+    assert (
+            raw_command(r, 'sort', 'foo', 'get', 'data_*', 'by', 'weight_*', 'get', '#')
+            == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
+    )
 
 
 def test_sort_with_hash(r):

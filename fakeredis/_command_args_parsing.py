@@ -2,7 +2,7 @@ from typing import Tuple, List, Dict
 
 from . import _msgs as msgs
 from ._commands import Int
-from ._helpers import casematch, SimpleError
+from ._helpers import SimpleError, null_terminate
 
 
 def _count_params(s: str):
@@ -48,6 +48,7 @@ def extract_args(
         actual_args: Tuple[bytes, ...],
         expected: Tuple[str, ...],
         error_on_unexpected: bool = True,
+        left_from_first_unexpected: bool = True,
 ) -> Tuple[List, List]:
     """Parse argument values
 
@@ -73,15 +74,18 @@ def extract_args(
     while i < len(actual_args):
         found = False
         for key in args_info:
-            if casematch(actual_args[i], key):
+            if null_terminate(actual_args[i]).lower() == key:
                 arg_position, parse_following = args_info[key]
                 results[arg_position] = _parse_params(expected[arg_position], i, parse_following, actual_args)
                 i += parse_following
                 found = True
                 break
+
         if not found:
             if error_on_unexpected:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if left_from_first_unexpected:
+                return results, actual_args[i:]
             left_args.append(actual_args[i])
         i += 1
     return results, left_args
