@@ -200,13 +200,11 @@ class GenericCommandsMixin:
         i = 0
         get = []
         while i < len(args):
-            arg = args[i]
-            if casematch(arg, b'get') and i + 1 < len(args):
+            if casematch(args[i], b'get') and i + 1 < len(args):
                 get.append(args[i + 1])
-                i += 1
+                i += 2
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            i += 1
 
         # TODO: force sorting if the object is a set and either in Lua or
         # storing to a key, to match redis behaviour.

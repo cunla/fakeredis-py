@@ -21,17 +21,15 @@ class ServerCommandsMixin:
 
     @command((), (bytes,))
     def flushdb(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) > 0 and (len(args) != 1 or not casematch(args[0], b'async')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         self._db.clear()
         return OK
 
     @command((), (bytes,))
     def flushall(self, *args):
-        if args:
-            if len(args) != 1 or not casematch(args[0], b'async'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) > 0 and (len(args) != 1 or not casematch(args[0], b'async')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         for db in self._server.dbs.values():
             db.clear()
         # TODO: clear watches and/or pubsub as well?
