@@ -64,6 +64,8 @@ types-redis = "^4.3"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
+"Funding" = "https://github.com/sponsors/cunla"
+
 
 [tool.pytest.ini_options]
 markers = [
