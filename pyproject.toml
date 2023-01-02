@@ -13,9 +13,9 @@ description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "rq", "django-rq", "RedisJson", ]
 authors = [
-    "James Saryerwinnie <js@jamesls.com>",
+    "Daniel Moran <daniel.maruani@gmail.com>",
     "Bruce Merry <bmerry@ska.ac.za>",
-    "Daniel Moran <daniel.maruani@gmail.com>"
+    "James Saryerwinnie <js@jamesls.com>",
 ]
 maintainers = [
     "Daniel Moran <daniel.maruani@gmail.com>",
