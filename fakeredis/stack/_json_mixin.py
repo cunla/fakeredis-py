@@ -171,7 +171,7 @@ class JSONCommandsMixin:
         keys = [CommandItem(key, self._db, item=self._db.get(key), default=[])
                 for key in args[:-1]]
 
-        result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
+        result = [JSONObject.encode(self._get_single(key, path_str, empty_list_as_none=True)) for key in keys]
         return result
 
     @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)

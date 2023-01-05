@@ -136,15 +136,17 @@ def test_jsonmget(r: redis.Redis):
     # Test mget with multi paths
     r.json().set("doc1", "$", {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}})
     r.json().set("doc2", "$", {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}})
+    r.json().set("doc3", "$", {"a": 5, "b": 5, "nested": {"a": 8}, "c": None, "nested2": {"a": {"b": "nested3"}}})
     # Compare also to single JSON.GET
     assert r.json().get("doc1", Path("$..a")) == [1, 3, None]
     assert r.json().get("doc2", "$..a") == [4, 6, [None]]
+    assert r.json().get("doc3", "$..a") == [5, 8, {"b": "nested3"}]
 
     # Test mget with single path
     assert r.json().mget(["doc1"], "$..a") == [[1, 3, None]]
 
     # Test mget with multi path
-    assert r.json().mget(["doc1", "doc2"], "$..a") == [[1, 3, None], [4, 6, [None]]]
+    assert r.json().mget(["doc1", "doc2", "doc3"], "$..a") == [[1, 3, None], [4, 6, [None]], [5, 8, {"b": "nested3"}]]
 
     # Test missing key
     assert r.json().mget(["doc1", "missing_doc"], "$..a") == [[1, 3, None], None]
