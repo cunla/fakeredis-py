@@ -3,8 +3,11 @@ import pickle
 from random import random
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat, delete_keys
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
+from fakeredis._command_args_parsing import extract_args
+from fakeredis._commands import (
+    command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat,
+    delete_keys, key_value_type, )
+from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch
 from fakeredis._zset import ZSet
 
 
@@ -36,23 +39,6 @@ class GenericCommandsMixin:
             if not isinstance(item.value, bytes):
                 return None
             return item.value
-
-    @staticmethod
-    def _key_value_type(key):
-        if key.value is None:
-            return SimpleString(b'none')
-        elif isinstance(key.value, bytes):
-            return SimpleString(b'string')
-        elif isinstance(key.value, list):
-            return SimpleString(b'list')
-        elif isinstance(key.value, set):
-            return SimpleString(b'set')
-        elif isinstance(key.value, ZSet):
-            return SimpleString(b'zset')
-        elif isinstance(key.value, dict):
-            return SimpleString(b'hash')
-        else:
-            assert False  # pragma: nocover
 
     def _expireat(self, key, timestamp, *args):
         nx = False
@@ -178,14 +164,7 @@ class GenericCommandsMixin:
 
     @command((Key(), Int, bytes), (bytes,))
     def restore(self, key, ttl, value, *args):
-        replace = False
-        i = 0
-        while i < len(args):
-            if casematch(args[i], b'replace'):
-                replace = True
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        (replace,), _ = extract_args(args, ('replace',))
         if key and not replace:
             raise SimpleError(msgs.RESTORE_KEY_EXISTS)
         checksum, value = value[:20], value[20:]
@@ -215,49 +194,25 @@ class GenericCommandsMixin:
 
     @command((Key(),), (bytes,))
     def sort(self, key, *args):
-        i = 0
-        desc = False
-        alpha = False
-        limit_start = 0
-        limit_count = -1
-        store = None
-        sortby = None
-        dontsort = False
-        get = []
-        if key.value is not None:
-            if not isinstance(key.value, (set, list, ZSet)):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
+        if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        (asc, desc, alpha, store, sortby, (limit_start, limit_count)), args = extract_args(
+            args, ('asc', 'desc', 'alpha', '*store', '*by', '++limit'),
+            error_on_unexpected=False,
+            left_from_first_unexpected=False,
+        )
+        limit_start = limit_start or 0
+        limit_count = -1 if limit_count is None else limit_count
+        dontsort = (sortby is not None and b'*' not in sortby)
 
+        i = 0
+        get = []
         while i < len(args):
-            arg = args[i]
-            if casematch(arg, b'asc'):
-                desc = False
-            elif casematch(arg, b'desc'):
-                desc = True
-            elif casematch(arg, b'alpha'):
-                alpha = True
-            elif casematch(arg, b'limit') and i + 2 < len(args):
-                try:
-                    limit_start = Int.decode(args[i + 1])
-                    limit_count = Int.decode(args[i + 2])
-                except SimpleError:
-                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-                else:
-                    i += 2
-            elif casematch(arg, b'store') and i + 1 < len(args):
-                store = args[i + 1]
-                i += 1
-            elif casematch(arg, b'by') and i + 1 < len(args):
-                sortby = args[i + 1]
-                if b'*' not in sortby:
-                    dontsort = True
-                i += 1
-            elif casematch(arg, b'get') and i + 1 < len(args):
+            if casematch(args[i], b'get') and i + 1 < len(args):
                 get.append(args[i + 1])
-                i += 1
+                i += 2
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            i += 1
 
         # TODO: force sorting if the object is a set and either in Lua or
         # storing to a key, to match redis behaviour.
@@ -316,7 +271,7 @@ class GenericCommandsMixin:
 
     @command((Key(),))
     def type(self, key):
-        return self._key_value_type(key)
+        return key_value_type(key)
 
     @command((Key(),), (Key(),), name='unlink')
     def unlink(self, *keys):

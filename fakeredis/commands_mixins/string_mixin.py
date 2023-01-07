@@ -1,13 +1,67 @@
 import math
 
 from fakeredis import _msgs as msgs
+from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (command, Key, Int, Float, MAX_STRING_SIZE, delete_keys, fix_range_string)
 from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
+def _lcs(s1, s2):
+    l1 = len(s1)
+    l2 = len(s2)
+
+    # Opt array to store the optimal solution value till ith and jth position for 2 strings
+    opt = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+
+    # Pi array to store the direction when calculating the actual sequence
+    pi = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+
+    # Algorithm to calculate the length of the longest common subsequence
+    for i in range(1, l1 + 1):
+        for j in range(1, l2 + 1):
+            if s1[i - 1] == s2[j - 1]:
+                opt[i][j] = opt[i - 1][j - 1] + 1
+                pi[i][j] = 0
+            elif opt[i][j - 1] >= opt[i - 1][j]:
+                opt[i][j] = opt[i][j - 1]
+                pi[i][j] = 1
+            else:
+                opt[i][j] = opt[i - 1][j]
+                pi[i][j] = 2
+    # Length of the longest common subsequence is saved at opt[n][m]
+
+    # Algorithm to calculate the longest common subsequence using the Pi array
+    # Also calculate the list of matches
+    i, j = l1, l2
+    result = ''
+    matches = list()
+    s1ind, s2ind, curr_length = None, None, 0
+
+    while i > 0 and j > 0:
+        if pi[i][j] == 0:
+            result = chr(s1[i - 1]) + result
+            i -= 1
+            j -= 1
+            curr_length += 1
+        elif pi[i][j] == 2:
+            i -= 1
+        else:
+            j -= 1
+
+        if pi[i][j] == 0 and curr_length == 1:
+            s1ind = i
+            s2ind = j
+        elif pi[i][j] > 0 and curr_length > 0:
+            matches.append([[i, s1ind], [j, s2ind], curr_length])
+            s1ind, s2ind, curr_length = None, None, 0
+    if curr_length:
+        matches.append([[s1ind, i], [s2ind, j], curr_length])
+
+    return opt[l1][l2], result.encode(), matches
+
+
 class StringCommandsMixin:
     # String commands
-    # todo: GETEX, LCS
 
     @command((Key(bytes), bytes))
     def append(self, key, value):
@@ -96,38 +150,12 @@ class StringCommandsMixin:
 
     @command(name="set", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
-        i = 0
-        ex = None
-        px = None
-        xx = False
-        nx = False
-        keepttl = False
-        get = False
-        while i < len(args):
-            if casematch(args[i], b'nx'):
-                nx = True
-                i += 1
-            elif casematch(args[i], b'xx'):
-                xx = True
-                i += 1
-            elif casematch(args[i], b'ex') and i + 1 < len(args):
-                ex = Int.decode(args[i + 1])
-                if ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63:
-                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
-                i += 2
-            elif casematch(args[i], b'px') and i + 1 < len(args):
-                px = Int.decode(args[i + 1])
-                if px <= 0 or self._db.time * 1000 + px >= 2 ** 63:
-                    raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
-                i += 2
-            elif casematch(args[i], b'keepttl'):
-                keepttl = True
-                i += 1
-            elif casematch(args[i], b'get'):
-                get = True
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        (ex, px, xx, nx, keepttl, get), _ = extract_args(args, ('+ex', '+px', 'xx', 'nx', 'keepttl', 'get'))
+        if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
+        if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('set'))
+
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and get and self.version < 7:
@@ -177,13 +205,12 @@ class StringCommandsMixin:
             return len(key.get(b''))
         elif offset + len(value) > MAX_STRING_SIZE:
             raise SimpleError(msgs.STRING_OVERFLOW_MSG)
-        else:
-            out = key.get(b'')
-            if len(out) < offset:
-                out += b'\x00' * (offset - len(out))
-            out = out[0:offset] + value + out[offset + len(value):]
-            key.update(out)
-            return len(out)
+        out = key.get(b'')
+        if len(out) < offset:
+            out += b'\x00' * (offset - len(out))
+        out = out[0:offset] + value + out[offset + len(value):]
+        key.update(out)
+        return len(out)
 
     @command((Key(bytes),))
     def strlen(self, key):
@@ -193,3 +220,57 @@ class StringCommandsMixin:
     @command((Key(bytes), Int, Int))
     def substr(self, key, start, end):
         return self.getrange(key, start, end)
+
+    @command((Key(bytes),), (bytes,))
+    def getex(self, key, *args):
+        i, count_options, expire_time, diff = 0, 0, None, None
+
+        while i < len(args):
+            count_options += 1
+            if casematch(args[i], b'ex') and i + 1 < len(args):
+                diff = Int.decode(args[i + 1])
+                expire_time = self._db.time + diff
+                i += 2
+            elif casematch(args[i], b'px') and i + 1 < len(args):
+                diff = Int.decode(args[i + 1])
+                expire_time = (self._db.time * 1000 + diff) / 1000.0
+                i += 2
+            elif casematch(args[i], b'exat') and i + 1 < len(args):
+                expire_time = Int.decode(args[i + 1])
+                i += 2
+            elif casematch(args[i], b'pxat') and i + 1 < len(args):
+                expire_time = Int.decode(args[i + 1]) / 1000.0
+                i += 2
+            elif casematch(args[i], b'persist'):
+                expire_time = None
+                i += 1
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if ((expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2 ** 63))
+                or (diff is not None and (diff <= 0 or diff * 1000 >= 2 ** 63))):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format('getex'))
+        if count_options > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        key.expireat = expire_time
+        return key.get(None)
+
+    @command((Key(bytes), Key(bytes),), (bytes,))
+    def lcs(self, k1, k2, *args):
+        s1 = k1.value or b''
+        s2 = k2.value or b''
+
+        (arg_idx, arg_len, arg_minmatchlen, arg_withmatchlen), _ = extract_args(
+            args, ('idx', 'len', '+minmatchlen', 'withmatchlen'))
+        if arg_idx and arg_len:
+            raise SimpleError(msgs.LCS_CANT_HAVE_BOTH_LEN_AND_IDX)
+        lcs_len, lcs_val, matches = _lcs(s1, s2)
+        if not arg_idx and not arg_len:
+            return lcs_val
+        if arg_len:
+            return lcs_len
+        arg_minmatchlen = arg_minmatchlen if arg_minmatchlen else 0
+        results = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
+        if not arg_withmatchlen:
+            results = list(map(lambda x: [x[0], x[1]], results))
+        return [b'matches', results, b'len', lcs_len]

@@ -6,8 +6,9 @@ import math
 from typing import Union, Optional
 
 from fakeredis import _msgs as msgs
+from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout, ScoreTest, StringTest, fix_range)
-from fakeredis._helpers import (SimpleError, casematch, casenorm, )
+from fakeredis._helpers import (SimpleError, casematch, null_terminate, )
 from fakeredis._zset import ZSet
 
 
@@ -79,32 +80,18 @@ class SortedSetCommandsMixin:
     @command((Key(ZSet), bytes, bytes), (bytes,))
     def zadd(self, key, *args):
         zset = key.value
-        ZADD_PARAMS = ['nx', 'xx', 'ch', 'incr', 'gt', 'lt', ]
-        param_val = {k: False for k in ZADD_PARAMS}
-        i = 0
 
-        while i < len(args):
-            found = False
-            for param in ZADD_PARAMS:
-                if casematch(args[i], bytes(param, encoding='utf8')):
-                    param_val[param] = True
-                    found = True
-                    break
-            if found:
-                i += 1
-                continue
-            # First argument not matching flags indicates the start of
-            # score pairs.
-            break
+        (nx, xx, ch, incr, gt, lt), left_args = extract_args(
+            args, ('nx', 'xx', 'ch', 'incr', 'gt', 'lt',), error_on_unexpected=False)
 
-        if param_val['nx'] and param_val['xx']:
+        if nx and xx:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
-        if [param_val['nx'], param_val['gt'], param_val['lt']].count(True) > 1:
+        if [nx, gt, lt].count(True) > 1:
             raise SimpleError(msgs.ZADD_NX_GT_LT_ERROR_MSG)
-        elements = args[i:]
+        elements = left_args
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if param_val['incr'] and len(elements) != 2:
+        if incr and len(elements) != 2:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
@@ -114,29 +101,29 @@ class SortedSetCommandsMixin:
         old_len = len(zset)
         changed_items = 0
 
-        if param_val['incr']:
+        if incr:
             item_score, item_name = items[0]
-            if (param_val['nx'] and item_name in zset) or (param_val['xx'] and item_name not in zset):
+            if (nx and item_name in zset) or (xx and item_name not in zset):
                 return None
             return self.zincrby(key, item_score, item_name)
-
+        count = [nx, gt, lt, xx].count(True)
         for item_score, item_name in items:
-            if (
-                    (param_val['nx'] and item_name not in zset)
-                    or (param_val['xx'] and item_name in zset)
-                    or (param_val['gt'] and ((item_name in zset and zset.get(item_name) < item_score)
-                                             or (not param_val['xx'] and item_name not in zset)))
-                    or (param_val['lt'] and ((item_name in zset and zset.get(item_name) > item_score)
-                                             or (not param_val['xx'] and item_name not in zset)))
-                    or ([param_val['nx'], param_val['gt'], param_val['lt'], param_val['xx']].count(True) == 0)
-            ):
+            update = count == 0
+            update = update or (count == 1 and nx and item_name not in zset)
+            update = update or (count == 1 and xx and item_name in zset)
+            update = update or (gt and ((item_name in zset and zset.get(item_name) < item_score)
+                                        or (not xx and item_name not in zset)))
+            update = update or (lt and ((item_name in zset and zset.get(item_name) > item_score)
+                                        or (not xx and item_name not in zset)))
+
+            if update:
                 if zset.add(item_name, item_score):
                     changed_items += 1
 
         if changed_items:
             key.updated()
 
-        if param_val['ch']:
+        if ch:
             return changed_items
         return len(zset) - old_len
 
@@ -224,20 +211,9 @@ class SortedSetCommandsMixin:
         return self._zrangebylex(key, _min, _max, True, *args)
 
     def _zrangebyscore(self, key, _min, _max, reverse, *args):
-        withscores = False
-        offset = 0
-        count = -1
-        i = 0
-        while i < len(args):
-            if casematch(args[i], b'withscores'):
-                withscores = True
-                i += 1
-            elif casematch(args[i], b'limit') and i + 2 < len(args):
-                offset = Int.decode(args[i + 1])
-                count = Int.decode(args[i + 2])
-                i += 3
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
+        offset = offset or 0
+        count = -1 if count is None else count
         zset = key.value
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
@@ -349,7 +325,7 @@ class SortedSetCommandsMixin:
                 weights = [Float.decode(x) for x in args[i + 1:i + numkeys + 1]]
                 i += numkeys + 1
             elif casematch(arg, b'aggregate') and i + 1 < len(args):
-                aggregate = casenorm(args[i + 1])
+                aggregate = null_terminate(args[i + 1])
                 if aggregate not in (b'sum', b'min', b'max'):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2

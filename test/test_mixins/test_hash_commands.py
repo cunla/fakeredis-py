@@ -2,8 +2,6 @@ import pytest
 import redis
 import redis.client
 
-from .. import testtools
-
 
 # Tests for the hash type.
 
@@ -30,7 +28,7 @@ def test_hset_update(r):
 
 
 def test_hset_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hset('foo', 'key', 'value')
 
@@ -51,7 +49,7 @@ def test_hgetall_empty_key(r):
 
 
 def test_hgetall_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hgetall('foo')
 
@@ -64,7 +62,7 @@ def test_hexists(r):
 
 
 def test_hexists_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hexists('foo', 'key')
 
@@ -77,7 +75,7 @@ def test_hkeys(r):
 
 
 def test_hkeys_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hkeys('foo')
 
@@ -89,7 +87,7 @@ def test_hlen(r):
 
 
 def test_hlen_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hlen('foo')
 
@@ -102,7 +100,7 @@ def test_hvals(r):
 
 
 def test_hvals_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hvals('foo')
 
@@ -123,7 +121,7 @@ def test_hmget(r):
 
 
 def test_hmget_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hmget('foo', 'key1', 'key2')
 
@@ -144,7 +142,7 @@ def test_hdel(r):
 
 
 def test_hdel_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hdel('foo', 'key')
 
@@ -169,7 +167,7 @@ def test_hincrby_with_range_param(r):
 
 
 def test_hincrby_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hincrby('foo', 'key', 2)
 
@@ -205,7 +203,7 @@ def test_hincrbyfloat_with_non_float_amount_raises_error(r):
 
 
 def test_hincrbyfloat_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hincrbyfloat('foo', 'key', 0.1)
 
@@ -233,7 +231,7 @@ def test_hmset(r):
 
 
 def test_hmset_wrong_type(r):
-    testtools.zadd(r, 'foo', {'bar': 1})
+    r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hmset('foo', {'key': 'value'})
 

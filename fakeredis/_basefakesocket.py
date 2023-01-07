@@ -7,7 +7,9 @@ from typing import List
 import redis
 
 from . import _msgs as msgs
-from ._commands import (Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB)
+from ._command_args_parsing import extract_args
+from ._commands import (
+    Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, key_value_type)
 from ._helpers import (
     SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
     compile_pattern, QUEUED, encode_command)
@@ -264,22 +266,10 @@ class BaseFakeSocket:
         It also doesn't allow for nested scans of the same type, since we are using a global state on the connection
         to track the data currently scanned. Doing nested scans will result in unexpected behavior.
         """
-        pattern = None
-        _type = None
-        count = 10
-        if len(args) % 2 != 0:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        for i in range(0, len(args), 2):
-            if casematch(args[i], b'match'):
-                pattern = args[i + 1]
-            elif casematch(args[i], b'count'):
-                count = Int.decode(args[i + 1])
-                if count <= 0:
-                    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            elif casematch(args[i], b'type'):
-                _type = args[i + 1]
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        cursor = int(cursor)
+        (pattern, _type, count), _ = extract_args(args, ('*match', '*type', '+count'))
+        count = 10 if count is None else count
 
         if cursor >= len(keys):
             return [0, []]
@@ -294,7 +284,7 @@ class BaseFakeSocket:
 
         def match_type(key):
             if _type is not None:
-                return casematch(self._type(self._db[key]).value, _type)
+                return casematch(key_value_type(self._db[key]).value, _type)
             return True
 
         if pattern is not None or _type is not None:

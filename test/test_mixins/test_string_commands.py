@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import timedelta
 
 import pytest
@@ -7,7 +8,6 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-from .. import testtools
 from ..testtools import raw_command
 
 
@@ -186,7 +186,7 @@ def test_mget_with_no_keys(r):
 
 def test_mget_mixed_types(r):
     r.hset('hash', 'bar', 'baz')
-    testtools.zadd(r, 'zset', {'bar': 1})
+    r.zadd('zset', {'bar': 1})
     r.sadd('set', 'member')
     r.rpush('list', 'item1')
     r.set('string', 'value')
@@ -476,3 +476,54 @@ def test_setitem_getitem(r):
 def test_getitem_non_existent_key(r):
     assert r.keys() == []
     assert 'noexists' not in r.keys()
+
+
+@pytest.mark.slow
+def test_getex(r: redis.Redis):
+    # Exceptions
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'getex', 'foo', 'px', 1000, 'ex', 1)
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'getex', 'foo', 'dsac', 1000, 'ex', 1)
+
+    r.set('foo', 'val')
+    assert r.getex('foo', ex=1) == b'val'
+    time.sleep(1.5)
+    assert r.get('foo') is None
+
+    r.set('foo2', 'val')
+    assert r.getex('foo2', px=1000) == b'val'
+    time.sleep(1.5)
+    assert r.get('foo2') is None
+
+    r.set('foo4', 'val')
+    r.getex('foo4', exat=int(time.time() + 1))
+    time.sleep(1.5)
+    assert r.get('foo4') is None
+
+    r.set('foo2', 'val')
+    r.getex('foo2', pxat=int(time.time() + 1) * 1000)
+    time.sleep(1.5)
+    assert r.get('foo2') is None
+
+    r.setex('foo5', 1, 'val')
+    r.getex('foo5', persist=True)
+    assert r.ttl('foo5') == -1
+    time.sleep(1.5)
+    assert r.get('foo5') == b'val'
+
+
+@pytest.mark.min_server('7')
+def test_lcs(r):
+    r.mset({"key1": "ohmytext", "key2": "mynewtext"})
+    assert r.lcs('key1', 'key2') == b'mytext'
+    assert r.lcs('key1', 'key2', len=True) == 6
+
+    assert (r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True)
+            == [b"matches", [[[4, 7], [5, 8], 4]], b"len", 6])
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
+
+    with pytest.raises(redis.ResponseError):
+        assert r.lcs("key1", "key2", len=True, idx=True)
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'lcs', "key1", "key2", 'not_supported_arg')

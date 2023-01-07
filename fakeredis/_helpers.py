@@ -37,17 +37,14 @@ BGSAVE_STARTED = SimpleString(b'Background saving started')
 def null_terminate(s):
     # Redis uses C functions on some strings, which means they stop at the
     # first NULL.
-    if b'\0' in s:
-        return s[:s.find(b'\0')]
-    return s
-
-
-def casenorm(s):
-    return null_terminate(s).lower()
+    ind = s.find(b'\0')
+    if ind > -1:
+        return s[:ind].lower()
+    return s.lower()
 
 
 def casematch(a, b):
-    return casenorm(a) == casenorm(b)
+    return null_terminate(a) == null_terminate(b)
 
 
 def encode_command(s):

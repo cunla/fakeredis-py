@@ -24,43 +24,43 @@ def zincrby(r, key, amount, value):
 
 
 def test_zpopmin(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zpopmin('foo', count=2) == [(b'one', 1.0), (b'two', 2.0)]
     assert r.zpopmin('foo', count=2) == [(b'three', 3.0)]
 
 
 def test_zpopmin_too_many(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zpopmin('foo', count=5) == [(b'one', 1.0), (b'two', 2.0), (b'three', 3.0)]
 
 
 def test_zpopmax(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zpopmax('foo', count=2) == [(b'three', 3.0), (b'two', 2.0)]
     assert r.zpopmax('foo', count=2) == [(b'one', 1.0)]
 
 
 def test_zrange_same_score(r):
-    testtools.zadd(r, 'foo', {'two_a': 2})
-    testtools.zadd(r, 'foo', {'two_b': 2})
-    testtools.zadd(r, 'foo', {'two_c': 2})
-    testtools.zadd(r, 'foo', {'two_d': 2})
-    testtools.zadd(r, 'foo', {'two_e': 2})
+    r.zadd('foo', {'two_a': 2})
+    r.zadd('foo', {'two_b': 2})
+    r.zadd('foo', {'two_c': 2})
+    r.zadd('foo', {'two_d': 2})
+    r.zadd('foo', {'two_e': 2})
     assert r.zrange('foo', 2, 3) == [b'two_c', b'two_d']
 
 
 def test_zrange_with_byscore(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_a_also': 2})
-    testtools.zadd(r, 'foo', {'two_b_also': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'two_a_also': 2})
+    r.zadd('foo', {'two_b_also': 2})
+    r.zadd('foo', {'four': 4})
     assert r.zrange('foo', 1, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
     assert r.zrange('foo', 2, 3, byscore=True) == [b'two', b'two_a_also', b'two_b_also']
     assert (
@@ -79,8 +79,8 @@ def test_zrange_with_byscore(r):
 
 
 def test_zcard(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
     assert r.zcard('foo') == 2
 
 
@@ -95,9 +95,9 @@ def test_zcard_wrong_type(r):
 
 
 def test_zcount(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'three': 2})
-    testtools.zadd(r, 'foo', {'five': 5})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'three': 2})
+    r.zadd('foo', {'five': 5})
     assert r.zcount('foo', 2, 4) == 1
     assert r.zcount('foo', 1, 4) == 2
     assert r.zcount('foo', 0, 5) == 3
@@ -107,9 +107,9 @@ def test_zcount(r):
 
 
 def test_zcount_exclusive(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'three': 2})
-    testtools.zadd(r, 'foo', {'five': 5})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'three': 2})
+    r.zadd('foo', {'five': 5})
     assert r.zcount('foo', '-inf', '(2') == 1
     assert r.zcount('foo', '-inf', 2) == 2
     assert r.zcount('foo', '(5', '+inf') == 0
@@ -126,7 +126,7 @@ def test_zcount_wrong_type(r):
 
 
 def test_zincrby(r):
-    testtools.zadd(r, 'foo', {'one': 1})
+    r.zadd('foo', {'one': 1})
     assert zincrby(r, 'foo', 10, 'one') == 11
     assert r.zrange('foo', 0, -1, withscores=True) == [(b'one', 11)]
 
@@ -138,16 +138,16 @@ def test_zincrby_wrong_type(r):
 
 
 def test_zrange_descending(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrange('foo', 0, -1, desc=True) == [b'three', b'two', b'one']
 
 
 def test_zrange_descending_with_scores(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert (
             r.zrange('foo', 0, -1, desc=True, withscores=True)
             == [(b'three', 3), (b'two', 2), (b'one', 1)]
@@ -155,9 +155,9 @@ def test_zrange_descending_with_scores(r):
 
 
 def test_zrange_with_positive_indices(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrange('foo', 0, 1) == [b'one', b'two']
 
 
@@ -168,8 +168,8 @@ def test_zrange_wrong_type(r):
 
 
 def test_zrange_score_cast(r):
-    testtools.zadd(r, 'foo', {'one': 1.2})
-    testtools.zadd(r, 'foo', {'two': 2.2})
+    r.zadd('foo', {'one': 1.2})
+    r.zadd('foo', {'two': 2.2})
 
     expected_without_cast_round = [(b'one', 1.2), (b'two', 2.2)]
     expected_with_cast_round = [(b'one', 1.0), (b'two', 2.0)]
@@ -181,9 +181,9 @@ def test_zrange_score_cast(r):
 
 
 def test_zrank(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrank('foo', 'one') == 0
     assert r.zrank('foo', 'two') == 1
     assert r.zrank('foo', 'three') == 2
@@ -200,10 +200,10 @@ def test_zrank_wrong_type(r):
 
 
 def test_zrem(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
+    r.zadd('foo', {'four': 4})
     assert r.zrem('foo', 'one') == 1
     assert r.zrange('foo', 0, -1) == [b'two', b'three', b'four']
     # Since redis>=2.7.6 returns number of deleted items.
@@ -219,7 +219,7 @@ def test_zrem_non_existent_member(r):
 
 
 def test_zrem_numeric_member(r):
-    testtools.zadd(r, 'foo', {'128': 13.0, '129': 12.0})
+    r.zadd('foo', {'128': 13.0, '129': 12.0})
     assert r.zrem('foo', 128) == 1
     assert r.zrange('foo', 0, -1) == [b'129']
 
@@ -231,7 +231,7 @@ def test_zrem_wrong_type(r):
 
 
 def test_zscore(r):
-    testtools.zadd(r, 'foo', {'one': 54})
+    r.zadd('foo', {'one': 54})
     assert r.zscore('foo', 'one') == 54
 
 
@@ -256,7 +256,7 @@ def test_zmscore(r: redis.Redis) -> None:
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
     scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
-    testtools.zadd(r, cache_key, dict(zip(members, scores)))
+    r.zadd(cache_key, dict(zip(members, scores)))
     cached_scores: List[Optional[float]] = r.zmscore(
         cache_key,
         list(members),
@@ -271,7 +271,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
     cache_key: str = "scored-set-members"
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
 
-    testtools.zadd(r, cache_key, {"eight": 8.8})
+    r.zadd(cache_key, {"eight": 8.8})
     cached_scores: List[Optional[float]] = r.zmscore(
         cache_key,
         list(members),
@@ -292,8 +292,7 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
     scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
-    testtools.zadd(
-        r,
+    r.zadd(
         cache_key,
         dict((member, scores[idx]) for (idx, member) in enumerate(members) if idx % 2 != 0),
     )
@@ -305,9 +304,9 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
 
 
 def test_zrevrank(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrevrank('foo', 'one') == 2
     assert r.zrevrank('foo', 'two') == 1
     assert r.zrevrank('foo', 'three') == 0
@@ -324,18 +323,18 @@ def test_zrevrank_wrong_type(r):
 
 
 def test_zrevrange(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrevrange('foo', 0, 1) == [b'three', b'two']
     assert r.zrevrange('foo', 0, -1) == [b'three', b'two', b'one']
 
 
 def test_zrevrange_sorted_keys(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_b': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'two_b': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrevrange('foo', 0, 2) == [b'three', b'two_b', b'two']
     assert r.zrevrange('foo', 0, -1) == [b'three', b'two_b', b'two', b'one']
 
@@ -347,8 +346,8 @@ def test_zrevrange_wrong_type(r):
 
 
 def test_zrevrange_score_cast(r):
-    testtools.zadd(r, 'foo', {'one': 1.2})
-    testtools.zadd(r, 'foo', {'two': 2.2})
+    r.zadd('foo', {'one': 1.2})
+    r.zadd('foo', {'two': 2.2})
 
     expected_without_cast_round = [(b'two', 2.2), (b'one', 1.2)]
     expected_with_cast_round = [(b'two', 2.0), (b'one', 1.0)]
@@ -367,11 +366,11 @@ def test_zrange_with_large_int(r):
 
 
 def test_zrangebyscore(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_a_also': 2})
-    testtools.zadd(r, 'foo', {'two_b_also': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'two_a_also': 2})
+    r.zadd('foo', {'two_b_also': 2})
+    r.zadd('foo', {'four': 4})
     assert r.zrangebyscore('foo', 1, 3) == [b'two', b'two_a_also', b'two_b_also']
     assert r.zrangebyscore('foo', 2, 3) == [b'two', b'two_a_also', b'two_b_also']
     assert (
@@ -390,19 +389,19 @@ def test_zrangebyscore(r):
 
 
 def test_zrangebysore_exclusive(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
-    testtools.zadd(r, 'foo', {'five': 5})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'four': 4})
+    r.zadd('foo', {'five': 5})
     assert r.zrangebyscore('foo', '(0', 6) == [b'two', b'four', b'five']
     assert r.zrangebyscore('foo', '(2', '(5') == [b'four']
     assert r.zrangebyscore('foo', 0, '(4') == [b'zero', b'two']
 
 
 def test_zrangebyscore_raises_error(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     with pytest.raises(redis.ResponseError):
         r.zrangebyscore('foo', 'one', 2)
     with pytest.raises(redis.ResponseError):
@@ -420,24 +419,24 @@ def test_zrangebyscore_wrong_type(r):
 
 
 def test_zrangebyscore_slice(r):
-    testtools.zadd(r, 'foo', {'two_a': 2})
-    testtools.zadd(r, 'foo', {'two_b': 2})
-    testtools.zadd(r, 'foo', {'two_c': 2})
-    testtools.zadd(r, 'foo', {'two_d': 2})
+    r.zadd('foo', {'two_a': 2})
+    r.zadd('foo', {'two_b': 2})
+    r.zadd('foo', {'two_c': 2})
+    r.zadd('foo', {'two_d': 2})
     assert r.zrangebyscore('foo', 0, 4, 0, 2) == [b'two_a', b'two_b']
     assert r.zrangebyscore('foo', 0, 4, 1, 3) == [b'two_b', b'two_c', b'two_d']
 
 
 def test_zrangebyscore_withscores(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrangebyscore('foo', 1, 3, 0, 2, True) == [(b'one', 1), (b'two', 2)]
 
 
 def test_zrangebyscore_cast_scores(r):
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_a_also': 2.2})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'two_a_also': 2.2})
 
     expected_without_cast_round = [(b'two', 2.0), (b'two_a_also', 2.2)]
     expected_with_cast_round = [(b'two', 2.0), (b'two_a_also', 2.0)]
@@ -453,9 +452,9 @@ def test_zrangebyscore_cast_scores(r):
 
 
 def test_zrevrangebyscore(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrevrangebyscore('foo', 3, 1) == [b'three', b'two', b'one']
     assert r.zrevrangebyscore('foo', 3, 2) == [b'three', b'two']
     assert r.zrevrangebyscore('foo', 3, 1, 0, 1) == [b'three']
@@ -463,9 +462,9 @@ def test_zrevrangebyscore(r):
 
 
 def test_zrevrangebyscore_exclusive(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zrevrangebyscore('foo', '(3', 1) == [b'two', b'one']
     assert r.zrevrangebyscore('foo', 3, '(2') == [b'three']
     assert r.zrevrangebyscore('foo', '(3', '(1') == [b'two']
@@ -475,9 +474,9 @@ def test_zrevrangebyscore_exclusive(r):
 
 
 def test_zrevrangebyscore_raises_error(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     with pytest.raises(redis.ResponseError):
         r.zrevrangebyscore('foo', 'three', 1)
     with pytest.raises(redis.ResponseError):
@@ -495,8 +494,8 @@ def test_zrevrangebyscore_wrong_type(r):
 
 
 def test_zrevrangebyscore_cast_scores(r):
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'two_a_also': 2.2})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'two_a_also': 2.2})
 
     expected_without_cast_round = [(b'two_a_also', 2.2), (b'two', 2.0)]
     expected_with_cast_round = [(b'two_a_also', 2.0), (b'two', 2.0)]
@@ -512,10 +511,10 @@ def test_zrevrangebyscore_cast_scores(r):
 
 
 def test_zrangebylex(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zrangebylex('foo', b'(t', b'+') == [b'three_a', b'two_a', b'two_b']
     assert r.zrangebylex('foo', b'(t', b'[two_b') == [b'three_a', b'two_a', b'two_b']
     assert r.zrangebylex('foo', b'(t', b'(two_b') == [b'three_a', b'two_a']
@@ -540,10 +539,10 @@ def test_zrangebylex_wrong_type(r):
 
 
 def test_zlexcount(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zlexcount('foo', b'(t', b'+') == 3
     assert r.zlexcount('foo', b'(t', b'[two_b') == 3
     assert r.zlexcount('foo', b'(t', b'(two_b') == 2
@@ -565,10 +564,10 @@ def test_zlexcount_wrong_type(r):
 
 
 def test_zrangebylex_with_limit(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zrangebylex('foo', b'-', b'+', 1, 2) == [b'three_a', b'two_a']
 
     # negative offset no results
@@ -584,10 +583,10 @@ def test_zrangebylex_with_limit(r):
 
 
 def test_zrangebylex_raises_error(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
 
     with pytest.raises(redis.ResponseError):
         r.zrangebylex('foo', b'', b'[two_b')
@@ -609,10 +608,10 @@ def test_zrangebylex_raises_error(r):
 
 
 def test_zrevrangebylex(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zrevrangebylex('foo', b'+', b'(t') == [b'two_b', b'two_a', b'three_a']
     assert (
             r.zrevrangebylex('foo', b'[two_b', b'(t')
@@ -634,18 +633,18 @@ def test_zrevrangebylex(r):
 
 
 def test_zrevrangebylex_with_limit(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zrevrangebylex('foo', b'+', b'-', 1, 2) == [b'two_a', b'three_a']
 
 
 def test_zrevrangebylex_raises_error(r):
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
 
     with pytest.raises(redis.ResponseError):
         r.zrevrangebylex('foo', b'[two_b', b'')
@@ -673,23 +672,23 @@ def test_zrevrangebylex_wrong_type(r):
 
 
 def test_zremrangebyrank(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zremrangebyrank('foo', 0, 1) == 2
     assert r.zrange('foo', 0, -1) == [b'three']
 
 
 def test_zremrangebyrank_negative_indices(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zremrangebyrank('foo', -2, -1) == 2
     assert r.zrange('foo', 0, -1) == [b'one']
 
 
 def test_zremrangebyrank_out_of_bounds(r):
-    testtools.zadd(r, 'foo', {'one': 1})
+    r.zadd('foo', {'one': 1})
     assert r.zremrangebyrank('foo', 1, 3) == 0
 
 
@@ -700,9 +699,9 @@ def test_zremrangebyrank_wrong_type(r):
 
 
 def test_zremrangebyscore(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'four': 4})
     # Outside of range.
     assert r.zremrangebyscore('foo', 5, 10) == 0
     assert r.zrange('foo', 0, -1) == [b'zero', b'two', b'four']
@@ -716,9 +715,9 @@ def test_zremrangebyscore(r):
 
 
 def test_zremrangebyscore_exclusive(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'four': 4})
     assert r.zremrangebyscore('foo', '(0', 1) == 0
     assert r.zrange('foo', 0, -1) == [b'zero', b'two', b'four']
     assert r.zremrangebyscore('foo', '-inf', '(0') == 0
@@ -732,9 +731,9 @@ def test_zremrangebyscore_exclusive(r):
 
 
 def test_zremrangebyscore_raises_error(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'four': 4})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'four': 4})
     with pytest.raises(redis.ResponseError):
         r.zremrangebyscore('foo', 'three', 1)
     with pytest.raises(redis.ResponseError):
@@ -756,10 +755,10 @@ def test_zremrangebyscore_wrong_type(r):
 
 
 def test_zremrangebylex(r):
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'three_a': 0})
     assert r.zremrangebylex('foo', b'(three_a', b'[two_b') == 2
     assert r.zremrangebylex('foo', b'(three_a', b'[two_b') == 0
     assert r.zremrangebylex('foo', b'-', b'(o') == 0
@@ -770,10 +769,10 @@ def test_zremrangebylex(r):
 
 
 def test_zremrangebylex_error(r):
-    testtools.zadd(r, 'foo', {'two_a': 0})
-    testtools.zadd(r, 'foo', {'two_b': 0})
-    testtools.zadd(r, 'foo', {'one_a': 0})
-    testtools.zadd(r, 'foo', {'three_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'three_a': 0})
     with pytest.raises(redis.ResponseError):
         r.zremrangebylex('foo', b'(t', b'two_b')
 
@@ -795,11 +794,11 @@ def test_zremrangebylex_wrong_type(r):
 
 
 def test_zunionstore(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'])
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -808,11 +807,11 @@ def test_zunionstore(r):
 
 
 def test_zunionstore_sum(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -821,11 +820,11 @@ def test_zunionstore_sum(r):
 
 
 def test_zunionstore_max(r):
-    testtools.zadd(r, 'foo', {'one': 0})
-    testtools.zadd(r, 'foo', {'two': 0})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 0})
+    r.zadd('foo', {'two': 0})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='MAX')
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -834,11 +833,11 @@ def test_zunionstore_max(r):
 
 
 def test_zunionstore_min(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'bar', {'one': 0})
-    testtools.zadd(r, 'bar', {'two': 0})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('bar', {'one': 0})
+    r.zadd('bar', {'two': 0})
+    r.zadd('bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='MIN')
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -847,11 +846,11 @@ def test_zunionstore_min(r):
 
 
 def test_zunionstore_weights(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'four': 4})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'four': 4})
     r.zunionstore('baz', {'foo': 1, 'bar': 2}, aggregate='SUM')
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -860,8 +859,8 @@ def test_zunionstore_weights(r):
 
 
 def test_zunionstore_nan_to_zero(r):
-    testtools.zadd(r, 'foo', {'x': math.inf})
-    testtools.zadd(r, 'foo2', {'x': math.inf})
+    r.zadd('foo', {'x': math.inf})
+    r.zadd('foo2', {'x': math.inf})
     r.zunionstore('bar', OrderedDict([('foo', 1.0), ('foo2', 0.0)]))
     # This is different to test_zinterstore_nan_to_zero because of a quirk
     # in redis. See https://github.com/antirez/redis/issues/3954.
@@ -869,9 +868,9 @@ def test_zunionstore_nan_to_zero(r):
 
 
 def test_zunionstore_nan_to_zero2(r):
-    testtools.zadd(r, 'foo', {'zero': 0})
-    testtools.zadd(r, 'foo2', {'one': 1})
-    testtools.zadd(r, 'foo3', {'one': 1})
+    r.zadd('foo', {'zero': 0})
+    r.zadd('foo2', {'one': 1})
+    r.zadd('foo3', {'one': 1})
     r.zunionstore('bar', {'foo': math.inf}, aggregate='SUM')
     assert r.zrange('bar', 0, -1, withscores=True) == [(b'zero', 0)]
     r.zunionstore('bar', OrderedDict([('foo2', math.inf), ('foo3', -math.inf)]))
@@ -879,8 +878,8 @@ def test_zunionstore_nan_to_zero2(r):
 
 
 def test_zunionstore_nan_to_zero_ordering(r):
-    testtools.zadd(r, 'foo', {'e1': math.inf})
-    testtools.zadd(r, 'bar', {'e1': -math.inf, 'e2': 0.0})
+    r.zadd('foo', {'e1': math.inf})
+    r.zadd('bar', {'e1': -math.inf, 'e2': 0.0})
     r.zunionstore('baz', ['foo', 'bar', 'foo'])
     assert r.zscore('baz', 'e1') == 0.0
 
@@ -889,9 +888,9 @@ def test_zunionstore_mixed_set_types(r):
     # No score, redis will use 1.0.
     r.sadd('foo', 'one')
     r.sadd('foo', 'two')
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert (
             r.zrange('baz', 0, -1, withscores=True)
@@ -900,8 +899,8 @@ def test_zunionstore_mixed_set_types(r):
 
 
 def test_zunionstore_badkey(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1), (b'two', 2)]
     r.zunionstore('baz', {'foo': 1, 'bar': 2}, aggregate='SUM')
@@ -915,11 +914,11 @@ def test_zunionstore_wrong_type(r):
 
 
 def test_zinterstore(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zinterstore('baz', ['foo', 'bar'])
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 2), (b'two', 4)]
 
@@ -927,25 +926,25 @@ def test_zinterstore(r):
 def test_zinterstore_mixed_set_types(r):
     r.sadd('foo', 'one')
     r.sadd('foo', 'two')
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zinterstore('baz', ['foo', 'bar'], aggregate='SUM')
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 2), (b'two', 3)]
 
 
 def test_zinterstore_max(r):
-    testtools.zadd(r, 'foo', {'one': 0})
-    testtools.zadd(r, 'foo', {'two': 0})
-    testtools.zadd(r, 'bar', {'one': 1})
-    testtools.zadd(r, 'bar', {'two': 2})
-    testtools.zadd(r, 'bar', {'three': 3})
+    r.zadd('foo', {'one': 0})
+    r.zadd('foo', {'two': 0})
+    r.zadd('bar', {'one': 1})
+    r.zadd('bar', {'two': 2})
+    r.zadd('bar', {'three': 3})
     r.zinterstore('baz', ['foo', 'bar'], aggregate='MAX')
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1), (b'two', 2)]
 
 
 def test_zinterstore_onekey(r):
-    testtools.zadd(r, 'foo', {'one': 1})
+    r.zadd('foo', {'one': 1})
     r.zinterstore('baz', ['foo'], aggregate='MAX')
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1)]
 
@@ -956,8 +955,8 @@ def test_zinterstore_nokey(r):
 
 
 def test_zinterstore_nan_to_zero(r):
-    testtools.zadd(r, 'foo', {'x': math.inf})
-    testtools.zadd(r, 'foo2', {'x': math.inf})
+    r.zadd('foo', {'x': math.inf})
+    r.zadd('foo2', {'x': math.inf})
     r.zinterstore('bar', OrderedDict([('foo', 1.0), ('foo2', 0.0)]))
     assert r.zscore('bar', 'x') == 0.0
 
@@ -974,21 +973,21 @@ def test_zinterstore_wrong_type(r):
 
 
 def test_empty_zset(r):
-    testtools.zadd(r, 'foo', {'one': 1})
+    r.zadd('foo', {'one': 1})
     r.zrem('foo', 'one')
     assert not r.exists('foo')
 
 
 def test_zpopmax_too_many(r):
-    testtools.zadd(r, 'foo', {'one': 1})
-    testtools.zadd(r, 'foo', {'two': 2})
-    testtools.zadd(r, 'foo', {'three': 3})
+    r.zadd('foo', {'one': 1})
+    r.zadd('foo', {'two': 2})
+    r.zadd('foo', {'three': 3})
     assert r.zpopmax('foo', count=5) == [(b'three', 3.0), (b'two', 2.0), (b'one', 1.0), ]
 
 
 def test_bzpopmin(r):
-    testtools.zadd(r, 'foo', {'one': 1, 'two': 2, 'three': 3})
-    testtools.zadd(r, 'bar', {'a': 1.5, 'b': 2, 'c': 3})
+    r.zadd('foo', {'one': 1, 'two': 2, 'three': 3})
+    r.zadd('bar', {'a': 1.5, 'b': 2, 'c': 3})
     assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'one', 1.0)
     assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'two', 2.0)
     assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'three', 3.0)
@@ -996,8 +995,8 @@ def test_bzpopmin(r):
 
 
 def test_bzpopmax(r):
-    testtools.zadd(r, 'foo', {'one': 1, 'two': 2, 'three': 3})
-    testtools.zadd(r, 'bar', {'a': 1.5, 'b': 2.5, 'c': 3.5})
+    r.zadd('foo', {'one': 1, 'two': 2, 'three': 3})
+    r.zadd('bar', {'a': 1.5, 'b': 2.5, 'c': 3.5})
     assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'three', 3.0)
     assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'two', 2.0)
     assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'one', 1.0)
@@ -1008,7 +1007,7 @@ def test_zscan(r):
     # Set up the data
     name = 'zscan-test'
     for ix in range(20):
-        testtools.zadd(r, name, {'key:%s' % ix: ix})
+        r.zadd(name, {'key:%s' % ix: ix})
     expected = dict(r.zrange(name, 0, -1, withscores=True))
 
     # Test the basic version

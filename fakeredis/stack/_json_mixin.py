@@ -15,6 +15,7 @@ from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
 
 from fakeredis import _helpers as helpers, _msgs as msgs
+from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem
 from fakeredis._helpers import SimpleError, casematch
 
@@ -125,17 +126,7 @@ class JSONCommandsMixin:
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value = path.find(key.value)
-        nx, xx = False, False
-        i = 0
-        while i < len(args):
-            if casematch(args[i], b'nx'):
-                nx = True
-                i += 1
-            elif casematch(args[i], b'xx'):
-                xx = True
-                i += 1
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        (nx, xx), _ = extract_args(args, ('nx', 'xx'))
         if xx and nx:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if (nx and old_value) or (xx and not old_value):
@@ -180,7 +171,7 @@ class JSONCommandsMixin:
         keys = [CommandItem(key, self._db, item=self._db.get(key), default=[])
                 for key in args[:-1]]
 
-        result = [self._get_single(key, path_str, empty_list_as_none=True) for key in keys]
+        result = [JSONObject.encode(self._get_single(key, path_str, empty_list_as_none=True)) for key in keys]
         return result
 
     @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)

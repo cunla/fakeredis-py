@@ -14,6 +14,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Get the value of a key
  * [GETDEL](https://redis.io/commands/getdel/)
    Get the value of a key and delete the key
+ * [GETEX](https://redis.io/commands/getex/)
+   Get the value of a key and optionally set its expiration
  * [GETRANGE](https://redis.io/commands/getrange/)
    Get a substring of the string stored at a key
  * [GETSET](https://redis.io/commands/getset/)
@@ -24,6 +26,8 @@ list of [unimplemented commands](#unimplemented-commands).
    Increment the integer value of a key by the given amount
  * [INCRBYFLOAT](https://redis.io/commands/incrbyfloat/)
    Increment the float value of a key by the given amount
+ * [LCS](https://redis.io/commands/lcs/)
+   Find longest common substring
  * [MGET](https://redis.io/commands/mget/)
    Get the values of all the given keys
  * [MSET](https://redis.io/commands/mset/)
@@ -66,6 +70,10 @@ list of [unimplemented commands](#unimplemented-commands).
 ### bitmap
  * [BITCOUNT](https://redis.io/commands/bitcount/)
    Count set bits in a string
+ * [BITOP](https://redis.io/commands/bitop/)
+   Perform bitwise operations between strings
+ * [BITPOS](https://redis.io/commands/bitpos/)
+   Find first bit set or clear in a string
  * [GETBIT](https://redis.io/commands/getbit/)
    Returns the bit value at offset in the string value stored at key
  * [SETBIT](https://redis.io/commands/setbit/)
@@ -611,10 +619,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Perform arbitrary bitfield integer operations on strings
  * [BITFIELD_RO](https://redis.io/commands/bitfield_ro/)
    Perform arbitrary bitfield integer operations on strings. Read-only variant of BITFIELD
- * [BITOP](https://redis.io/commands/bitop/)
-   Perform bitwise operations between strings
- * [BITPOS](https://redis.io/commands/bitpos/)
-   Find first bit set or clear in a string
 
 ### list
  * [BLMOVE](https://redis.io/commands/blmove/)
@@ -729,12 +733,6 @@ All the redis commands are implemented in fakeredis with these exceptions:
    Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle.
  * [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/)
    Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle, and store the result in another key.
-
-### string
- * [GETEX](https://redis.io/commands/getex/)
-   Get the value of a key and optionally set its expiration
- * [LCS](https://redis.io/commands/lcs/)
-   Find longest common substring
 
 ### hash
  * [HRANDFIELD](https://redis.io/commands/hrandfield/)

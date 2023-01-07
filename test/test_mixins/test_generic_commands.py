@@ -5,7 +5,7 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
-from .. import testtools
+from test.testtools import raw_command
 
 
 def key_val_dict(size=100):
@@ -200,6 +200,11 @@ def test_sort_with_by_and_get_option(r):
             == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
     )
     assert r.sort('foo', by='weight_*', get='data_1') == [None, None, None, None]
+    # Test sort with different parameters order
+    assert (
+            raw_command(r, 'sort', 'foo', 'get', 'data_*', 'by', 'weight_*', 'get', '#')
+            == [b'four', b'4', b'three', b'3', b'two', b'2', b'one', b'1']
+    )
 
 
 def test_sort_with_hash(r):
@@ -238,7 +243,7 @@ def test_type(r):
     r.set('string_key', "value")
     r.lpush("list_key", "value")
     r.sadd("set_key", "value")
-    testtools.zadd(r, "zset_key", {"value": 1})
+    r.zadd("zset_key", {"value": 1})
     r.hset('hset_key', 'key', 'value')
 
     assert r.type('string_key') == b'string'
@@ -659,6 +664,7 @@ def test_scan_iter_single_page(r):
     assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
     assert set(r.scan_iter()) == {b'foo1', b'foo2'}
     assert set(r.scan_iter(match="")) == set()
+    assert set(r.scan_iter(match="foo1", _type="string")) == {b'foo1', }
 
 
 def test_scan_iter_multiple_pages(r):
@@ -706,6 +712,7 @@ def test_basic_sort(r):
     r.rpush('foo', '3')
 
     assert r.sort('foo') == [b'1', b'2', b'3']
+    assert raw_command(r, 'sort', 'foo', 'asc') == [b'1', b'2', b'3']
 
 
 def test_key_patterns(r):
