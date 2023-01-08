@@ -856,7 +856,7 @@ lua = ["lupa"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.1,<4.0"
-content-hash = "cef4299a68f5615b636817e0416f400e3165579d716e4c8327de597f95844263"
+content-hash = "b6caf5812a4e8a650e5f58b2ec9886d23fb37b4e07b2941f6bb67b1342601a66"
 
 [metadata.files]
 async-timeout = [
