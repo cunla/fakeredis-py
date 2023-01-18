@@ -102,7 +102,8 @@ class BitmapCommandsMixin:
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        key.update(bytes(reconstructed))
+        if old_byte != new_byte:
+            key.update(bytes(reconstructed))
         return old_value
 
     @staticmethod

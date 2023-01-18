@@ -721,3 +721,19 @@ def test_key_patterns(r):
     assert r.keys('t??') == [b'two']
     assert sorted(r.keys('*')) == [b'four', b'one', b'three', b'two']
     assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']
+
+
+def test_watch_persist(r: redis.Redis):
+    # state.init_data(commands=[Command('set', b'\x00', b'0')])
+    # state.one_command(command=Command('watch', b'\x00'))
+    # state.one_command(command=Command('setbit', b'\x00', 0, 0))
+    # state.one_command(command=Command('multi'))
+    # state.one_command(command=Command('exec'))
+    """PERSIST should mark a variable as changed."""
+    r.set('foo', b'0')
+
+    with r.pipeline() as p:
+        p.watch('foo')
+        assert r.setbit('foo', 0, 0) == 0
+        assert p.multi() is None
+        assert p.execute() == []
