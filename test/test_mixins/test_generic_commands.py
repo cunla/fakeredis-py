@@ -723,13 +723,8 @@ def test_key_patterns(r):
     assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']
 
 
-def test_watch_while_setbit_error(r: redis.Redis):
-    # state.init_data(commands=[Command('set', b'\x00', b'0')])
-    # state.one_command(command=Command('watch', b'\x00'))
-    # state.one_command(command=Command('setbit', b'\x00', 0, 0))
-    # state.one_command(command=Command('multi'))
-    # state.one_command(command=Command('exec'))
-    """PERSIST should mark a variable as changed."""
+@pytest.mark.min_server('7')
+def test_watch_when_setbit_does_not_change_value(r: redis.Redis):
     r.set('foo', b'0')
 
     with r.pipeline() as p:
@@ -737,3 +732,13 @@ def test_watch_while_setbit_error(r: redis.Redis):
         assert r.setbit('foo', 0, 0) == 0
         assert p.multi() is None
         assert p.execute() == []
+
+
+def test_from_hypothesis_redis7(r: redis.Redis):
+    r.set('foo', b'0')
+    assert r.setbit('foo', 0, 0) == 0
+    assert r.append('foo', b'') == 1
+
+    r.set(b'', b'')
+    assert r.setbit(b'', 0, 0) == 0
+    assert r.get(b'') == b'\x00'
