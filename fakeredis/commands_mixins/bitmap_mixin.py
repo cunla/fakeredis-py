@@ -85,7 +85,7 @@ class BitmapCommandsMixin:
 
     @command((Key(bytes), BitOffset, BitValue))
     def setbit(self, key, offset, value):
-        val = key.get(b'\x00')
+        val = key.value if key.value is not None else b'\x00'
         byte = offset // 8
         remaining = offset % 8
         actual_bitoffset = 7 - remaining
@@ -101,8 +101,9 @@ class BitmapCommandsMixin:
             new_byte = old_byte & ~(1 << actual_bitoffset)
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
-        if reconstructed[byte] != new_byte or key.value is None:
-            reconstructed[byte] = new_byte
+        reconstructed[byte] = new_byte
+        if (old_byte != new_byte or
+                (self.version == 7 and bytes(reconstructed) != key.value)):
             key.update(bytes(reconstructed))
         return old_value
 
