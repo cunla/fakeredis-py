@@ -102,8 +102,8 @@ class BitmapCommandsMixin:
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        if (old_byte != new_byte or
-                (self.version == 7 and bytes(reconstructed) != key.value)):
+        if (bytes(reconstructed) != key.value
+                or (self.version == 6 and old_byte != new_byte)):
             key.update(bytes(reconstructed))
         return old_value
 
