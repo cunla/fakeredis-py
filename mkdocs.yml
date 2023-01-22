@@ -102,7 +102,7 @@ theme:
     - toc.follow
     # - toc.integrate
   analytics:
-    gtag: G-GRY8R9SXZ0
+    gtag: G-GJBJBKXT19
   highlightjs: true
   hljs_languages:
     - yaml
