@@ -1,6 +1,5 @@
 import json
 import os
-
 import requests
 
 from fakeredis._commands import SUPPORTED_COMMANDS
@@ -14,6 +13,11 @@ COMMAND_FILES = [
     ('.ft.commands.json', 'https://raw.githubusercontent.com/RediSearch/RediSearch/master/commands.json'),
     ('.bloom.commands.json', 'https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json'),
 ]
+
+TARGET_FILES = {
+    'unimplemented': 'docs/redis-commands/unimplemented_commands.md',
+    'implemented': 'docs/redis-commands/implemented_commands.md',
+}
 
 
 def download_redis_commands() -> dict:
@@ -46,29 +50,32 @@ def commands_groups(
     return implemented, unimplemented
 
 
-def print_unimplemented_commands(
+def generate_markdown_files(
         all_commands: dict,
         unimplemented: dict,
         implemented: dict) -> None:
-    def print_groups(dictionary: dict):
+    def print_groups(dictionary: dict, f):
         for group in dictionary:
-            print(f'### {group}')
+            f.write(f'## {group} commands\n\n')
             for cmd in dictionary[group]:
-                print(f" * [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)")
-                print(f"   {all_commands[cmd]['summary']}")
-            print()
+                f.write(f"### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
+                f.write(f"{all_commands[cmd]['summary']}\n\n")
+            f.write("\n")
 
-    print("""-----
+    supported_commands_file = open(TARGET_FILES['implemented'], 'w')
+    supported_commands_file.write("""# Supported commands
+
 Here is a list of all redis [implemented commands](#implemented-commands) and a
 list of [unimplemented commands](#unimplemented-commands).
-""")
-    print("""# Implemented Commands""")
-    print_groups(implemented)
 
-    print("""# Unimplemented Commands
-All the redis commands are implemented in fakeredis with these exceptions:
-    """)
-    print_groups(unimplemented)
+------\n\n
+""")
+    print_groups(implemented, supported_commands_file)
+
+    unimplemented_cmds_file = open(TARGET_FILES['unimplemented'], 'w')
+    unimplemented_cmds_file.write("""# Unimplemented Commands
+All the redis commands are implemented in fakeredis with these exceptions:\n\n""")
+    print_groups(unimplemented, unimplemented_cmds_file)
 
 
 def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
@@ -84,4 +91,4 @@ def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], 
 if __name__ == '__main__':
     commands = download_redis_commands()
     unimplemented_dict, implemented_dict = get_unimplemented_and_implemented_commands()
-    print_unimplemented_commands(commands, unimplemented_dict, implemented_dict)
+    generate_markdown_files(commands, unimplemented_dict, implemented_dict)
