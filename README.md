@@ -110,10 +110,12 @@ django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
 
 ## Support for additional modules
 
-### RedisJson
+### RedisJson support
 
 Currently, Redis Json module is partially implemented (
-see [supported commands](https://github.com/cunla/fakeredis-py/blob/master/REDIS_COMMANDS.md#json)).
+see [supported commands](https://github.com/cunla/fakeredis-py/blob/master/docs/REDIS_COMMANDS.md#json)).
+Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
+[jsonpath-ng](https://github.com/h2non/jsonpath-ng), you can simply install it using `pip install fakeredis[json]`.
 
 ```pycon
 >>> import fakeredis
@@ -130,11 +132,6 @@ see [supported commands](https://github.com/cunla/fakeredis-py/blob/master/REDIS
 
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
 Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it using `pip install fakeredis[lua]`
-
-### JSON support
-
-Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
-[jsonpath-ng](https://github.com/h2non/jsonpath-ng), you can simply install it using `pip install fakeredis[json]`.
 
 ## Known Limitations
 
