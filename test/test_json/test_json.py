@@ -318,3 +318,7 @@ def test_strappend(r: redis.Redis) -> None:
 @pytest.mark.decode_responses(True)
 def test_decode_null(r: redis.Redis):
     assert r.json().get("abc") is None
+
+
+def test_decode_response_disabaled_null(r: redis.Redis):
+    assert r.json().get("abc") is None
