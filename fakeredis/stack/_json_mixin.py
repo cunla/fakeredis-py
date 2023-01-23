@@ -3,16 +3,16 @@
 # Future Imports
 from __future__ import annotations
 
+from json import JSONDecodeError
+
 import copy
 # Standard Library Imports
 import json
-from json import JSONDecodeError
-from typing import Any, Optional, Union
-
 from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
+from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -63,7 +63,7 @@ class JSONObject:
     def encode(cls, value: Any) -> bytes:
         """Serialize the supplied Python object into a valid, JSON-formatted
         byte-encoded string."""
-        return json.dumps(value, default=str).encode()
+        return json.dumps(value, default=str).encode() if value is not None else None
 
 
 class JSONCommandsMixin:

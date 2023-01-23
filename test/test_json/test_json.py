@@ -5,7 +5,6 @@ Tests for `fakeredis-py`'s emulation of Redis's JSON.GET command subset.
 from __future__ import annotations
 
 import json
-
 import pytest
 import redis
 from redis.commands.json.path import Path
@@ -314,3 +313,8 @@ def test_strappend(r: redis.Redis) -> None:
     # Test raw command with no arguments
     with pytest.raises(redis.ResponseError) as e:
         raw_command(r, 'json.strappend', '')
+
+
+@pytest.mark.decode_responses(True)
+def test_decode_null(r: redis.Redis):
+    assert r.json().get("abc") is None
