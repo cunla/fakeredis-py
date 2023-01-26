@@ -914,10 +914,6 @@ Returns the JSON keys of the object at path
 
 Returns the number of keys of the object at path
 
-### [JSON.TYPE](https://redis.io/commands/json.type/)
-
-Returns the type of the JSON value at path
-
 ### [JSON.RESP](https://redis.io/commands/json.resp/)
 
 Returns the JSON value at path in Redis Serialization Protocol (RESP)

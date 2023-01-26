@@ -715,4 +715,8 @@ Appends a string to a JSON string value at path
 
 Returns the length of the JSON String at path in key
 
+### [JSON.TYPE](https://redis.io/commands/json.type/)
+
+Returns the type of the JSON value at path
+
 

@@ -34,7 +34,7 @@ def download_redis_commands() -> dict:
 
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
-    if 'json.get' not in res:
+    if 'json.type' not in res:
         raise ValueError('Make sure jsonpath_ng is installed to get accurate documenentation')
     return res
 
