@@ -10,6 +10,7 @@ from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.set_mixin import SetCommandsMixin
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
+from .commands_mixins.streams_mixin import StreamsCommandsMixin
 from .commands_mixins.string_mixin import StringCommandsMixin
 from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
 
@@ -28,6 +29,7 @@ class FakeSocket(
     SetCommandsMixin,
     BitmapCommandsMixin,
     SortedSetCommandsMixin,
+    StreamsCommandsMixin,
     JSONCommandsMixin,
 ):
 

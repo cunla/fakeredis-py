@@ -322,3 +322,66 @@ def test_decode_null(r: redis.Redis):
 
 def test_decode_response_disabaled_null(r: redis.Redis):
     assert r.json().get("abc") is None
+
+
+def test_json_get_jset(r: redis.Redis) -> None:
+    assert r.json().set("foo", Path.root_path(), "bar", ) == 1
+    assert "bar" == r.json().get("foo")
+    assert r.json().get("baz") is None
+    assert 1 == r.json().delete("foo")
+    assert r.exists("foo") == 0
+
+
+def test_nonascii_setgetdelete(r: redis.Redis) -> None:
+    assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève", )
+    assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
+    assert 1 == r.json().delete("not-ascii")
+    assert r.exists("not-ascii") == 0
+
+
+def test_json_setbinarykey(r: redis.Redis) -> None:
+    data = {"hello": "world", b"some": "value"}
+
+    with pytest.raises(TypeError):
+        r.json().set("some-key", Path.root_path(), data)
+
+    assert r.json().set("some-key", Path.root_path(), data, decode_keys=True)
+
+
+def test_set_file(r: redis.Redis) -> None:
+    # Standard Library Imports
+    import json
+    import tempfile
+
+    obj = {"hello": "world"}
+    jsonfile = tempfile.NamedTemporaryFile(suffix=".json")
+    with open(jsonfile.name, "w+") as fp:
+        fp.write(json.dumps(obj))
+
+    no_json_file = tempfile.NamedTemporaryFile()
+    no_json_file.write(b"Hello World")
+
+    assert r.json().set_file("test", Path.root_path(), jsonfile.name)
+    assert r.json().get("test") == obj
+    with pytest.raises(json.JSONDecodeError):
+        r.json().set_file("test2", Path.root_path(), no_json_file.name)
+
+
+def test_set_path(r: redis.Redis) -> None:
+    # Standard Library Imports
+    import json
+    import tempfile
+
+    root = tempfile.mkdtemp()
+    sub = tempfile.mkdtemp(dir=root)
+    jsonfile = tempfile.mktemp(suffix=".json", dir=sub)
+    no_json_file = tempfile.mktemp(dir=root)
+
+    with open(jsonfile, "w+") as fp:
+        fp.write(json.dumps({"hello": "world"}))
+    with open(no_json_file, "a+") as fp:
+        fp.write("hello")
+
+    result = {jsonfile: True, no_json_file: False}
+    assert r.json().set_path(Path.root_path(), root) == result
+    assert r.json().get(jsonfile.rsplit(".")[0]) == {"hello": "world"}

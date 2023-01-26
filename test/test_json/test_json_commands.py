@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, List, Tuple, )
-
 import pytest
 import redis
 from redis import exceptions
-from redis.commands.json.decoders import decode_list, unstring
 from redis.commands.json.path import Path
+from typing import (Any, Dict, List, Tuple, )
 
 json_tests = pytest.importorskip("jsonpath_ng")
 
@@ -62,37 +60,6 @@ def json_data() -> Dict[str, Any]:
             }
         },
     }
-
-
-def test_json_setbinarykey(r: redis.Redis) -> None:
-    data = {"hello": "world", b"some": "value"}
-
-    with pytest.raises(TypeError):
-        r.json().set("some-key", Path.root_path(), data)
-
-    result = r.json().set(
-        "some-key",
-        Path.root_path(),
-        data,
-        decode_keys=True,
-    )
-
-    assert result
-
-
-def test_json_get_jset(r: redis.Redis) -> None:
-    assert r.json().set("foo", Path.root_path(), "bar", ) == 1
-    assert "bar" == r.json().get("foo")
-    assert r.json().get("baz") is None
-    assert 1 == r.json().delete("foo")
-    assert r.exists("foo") == 0
-
-
-def test_nonascii_setgetdelete(r: redis.Redis) -> None:
-    assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève", )
-    assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
-    assert 1 == r.json().delete("not-ascii")
-    assert r.exists("not-ascii") == 0
 
 
 @pytest.mark.xfail
@@ -1077,74 +1044,3 @@ def test_arrindex_dollar(r: redis.Redis) -> None:
     # Test index of None scalar in single value
     assert r.json().arrindex("test_None", ".[0].arr", "None") == 1
     assert r.json().arrindex("test_None", "..nested2_not_found.arr", "None") == 0
-
-
-# @pytest.mark.xfail
-def test_decoders_and_unstring():
-    assert unstring("4") == 4
-    assert unstring("45.55") == 45.55
-    assert unstring("hello world") == "hello world"
-
-    assert decode_list(b"45.55") == 45.55
-    assert decode_list("45.55") == 45.55
-    assert decode_list(["hello", b"world"]) == ["hello", "world"]
-
-
-# noinspection PyUnresolvedReferences
-@pytest.mark.xfail
-def test_custom_decoder(r: redis.Redis) -> None:
-    # Standard Library Imports
-    import json
-
-    # Third-Party Imports
-    import orjson
-
-    cj = r.json(encoder=orjson, decoder=orjson)
-    assert cj.set("foo", Path.root_path(), "bar")
-    assert "bar" == cj.get("foo")
-    assert cj.get("baz") is None
-    assert 1 == cj.delete("foo")
-    assert r.exists("foo") == 0
-    assert not isinstance(cj.__encoder__, json.JSONEncoder)
-    assert not isinstance(cj.__decoder__, json.JSONDecoder)
-
-
-# @pytest.mark.xfail
-def test_set_file(r: redis.Redis) -> None:
-    # Standard Library Imports
-    import json
-    import tempfile
-
-    obj = {"hello": "world"}
-    jsonfile = tempfile.NamedTemporaryFile(suffix=".json")
-    with open(jsonfile.name, "w+") as fp:
-        fp.write(json.dumps(obj))
-
-    no_json_file = tempfile.NamedTemporaryFile()
-    no_json_file.write(b"Hello World")
-
-    assert r.json().set_file("test", Path.root_path(), jsonfile.name)
-    assert r.json().get("test") == obj
-    with pytest.raises(json.JSONDecodeError):
-        r.json().set_file("test2", Path.root_path(), no_json_file.name)
-
-
-# @pytest.mark.xfail
-def test_set_path(r: redis.Redis) -> None:
-    # Standard Library Imports
-    import json
-    import tempfile
-
-    root = tempfile.mkdtemp()
-    sub = tempfile.mkdtemp(dir=root)
-    jsonfile = tempfile.mktemp(suffix=".json", dir=sub)
-    no_json_file = tempfile.mktemp(dir=root)
-
-    with open(jsonfile, "w+") as fp:
-        fp.write(json.dumps({"hello": "world"}))
-    with open(no_json_file, "a+") as fp:
-        fp.write("hello")
-
-    result = {jsonfile: True, no_json_file: False}
-    assert r.json().set_path(Path.root_path(), root) == result
-    assert r.json().get(jsonfile.rsplit(".")[0]) == {"hello": "world"}
