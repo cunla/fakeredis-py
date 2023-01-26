@@ -1,22 +1,6 @@
 import pytest
-import re
 
 import redis
-
-
-@pytest.mark.xfail
-def test_xrevrange(r: redis.Redis):
-    stream = "stream"
-    message_id = r.xadd(stream, {"foo": "bar"})
-    assert re.match(rb"[0-9]+\-[0-9]+", message_id)
-
-    # explicit message id
-    message_id = b"9999999999999999999-0"
-    assert message_id == r.xadd(stream, {"foo": "bar"}, id=message_id)
-
-    # with maxlen, the list evicts the first message
-    r.xadd(stream, {"foo": "bar"}, maxlen=2, approximate=False)
-    assert r.xlen(stream) == 2
 
 
 @pytest.mark.xfail

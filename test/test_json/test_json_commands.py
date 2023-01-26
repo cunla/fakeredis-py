@@ -63,14 +63,6 @@ def json_data() -> Dict[str, Any]:
 
 
 @pytest.mark.xfail
-def test_type(r: redis.Redis) -> None:
-    r.json().set("1", Path.root_path(), 1, )
-
-    assert b"integer" == r.json().type("1", Path.root_path(), )
-    assert b"integer" == r.json().type("1")
-
-
-@pytest.mark.xfail
 def test_numincrby(r: redis.Redis) -> None:
     r.json().set("num", Path.root_path(), 1)
 

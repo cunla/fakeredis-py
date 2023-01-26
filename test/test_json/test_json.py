@@ -385,3 +385,24 @@ def test_set_path(r: redis.Redis) -> None:
     result = {jsonfile: True, no_json_file: False}
     assert r.json().set_path(Path.root_path(), root) == result
     assert r.json().get(jsonfile.rsplit(".")[0]) == {"hello": "world"}
+
+
+def test_type(r: redis.Redis) -> None:
+    r.json().set("1", Path.root_path(), 1, )
+
+    assert r.json().type("1", Path.root_path(), ) == b"integer"
+    assert r.json().type("1") == b"integer"
+
+    meta_data = {"object": {}, "array": [], "string": "str", "integer": 42, "number": 1.2, "boolean": False,
+                 "null": None, }
+    data = {k: {'a': meta_data[k]} for k in meta_data}
+    r.json().set("doc1", "$", data)
+    # Test multi
+    assert r.json().type("doc1", "$..a") == [k.encode() for k in meta_data.keys()]
+
+    # Test single
+    assert r.json().type("doc1", f"$.integer.a") == [b'integer']
+    assert r.json().type("doc1") == b'object'
+
+    # Test missing key
+    assert r.json().type("non_existing_doc", "..a") is None

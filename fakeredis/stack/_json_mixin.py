@@ -12,12 +12,14 @@ from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
+from types import NoneType
 from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem
 from fakeredis._helpers import SimpleError, casematch
+from fakeredis._zset import ZSet
 
 
 def _format_path(path) -> str:
@@ -74,6 +76,18 @@ class JSONCommandsMixin:
         int: 0,
         float: 0.0,
         list: [],
+    }
+    TYPE_NAMES = {
+        dict: b'object',
+        int: b'integer',
+        float: b'number',
+        bytes: b'string',
+        list: b'array',
+        set: b'set',
+        str: b'string',
+        bool: b'boolean',
+        NoneType: b'null',
+        ZSet: 'zset'
     }
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -280,4 +294,21 @@ class JSONCommandsMixin:
         if len(res) == 1 and (len(args) == 1 or (len(args) > 1 and args[0] == b'.')):
             return res[0]
 
+        return res
+
+    @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_type(self, key, *args, ):
+        if key.value is None:
+            return None
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+
+        res = []
+        for item in found_matches:
+            type_val = self.TYPE_NAMES.get(type(item.value), None)
+            res.append(type_val)
+
+        if len(res) == 1 and (len(args) == 1 and args[0] == b'.'):
+            return res[0]
         return res
