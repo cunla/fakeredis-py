@@ -677,3 +677,42 @@ Add multiple sets
 Add multiple sets and store the resulting set in a key
 
 
+## json commands
+
+### [JSON.DEL](https://redis.io/commands/json.del/)
+
+Deletes a value
+
+### [JSON.FORGET](https://redis.io/commands/json.forget/)
+
+Deletes a value
+
+### [JSON.GET](https://redis.io/commands/json.get/)
+
+Gets the value at one or more paths in JSON serialized form
+
+### [JSON.TOGGLE](https://redis.io/commands/json.toggle/)
+
+Toggles a boolean value
+
+### [JSON.CLEAR](https://redis.io/commands/json.clear/)
+
+Clears all values from an array or an object and sets numeric values to `0`
+
+### [JSON.SET](https://redis.io/commands/json.set/)
+
+Sets or updates the JSON value at a path
+
+### [JSON.MGET](https://redis.io/commands/json.mget/)
+
+Returns the values at a path from one or more keys
+
+### [JSON.STRAPPEND](https://redis.io/commands/json.strappend/)
+
+Appends a string to a JSON string value at path
+
+### [JSON.STRLEN](https://redis.io/commands/json.strlen/)
+
+Returns the length of the JSON String at path in key
+
+

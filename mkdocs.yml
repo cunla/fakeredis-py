@@ -11,8 +11,12 @@ repo_url: https://github.com/cunla/fakeredis
 copyright: Copyright &copy; 2022 - 2023 Daniel Moran
 
 extra:
+  generator: false
   version:
     provider: mike
+  analytics:
+    provider: google
+    property: G-GJBJBKXT19
 markdown_extensions:
   - abbr
   - admonition
@@ -49,6 +53,9 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+  - toc:
+      permalink: true
+      toc_depth: 2
 
 nav:
   - Home: index.md
@@ -101,8 +108,6 @@ theme:
     - search.suggest
     - toc.follow
     # - toc.integrate
-  analytics:
-    gtag: G-GJBJBKXT19
   highlightjs: true
   hljs_languages:
     - yaml

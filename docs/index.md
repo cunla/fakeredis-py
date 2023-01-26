@@ -1,6 +1,5 @@
 ## fakeredis: A python implementation of redis server
 
-
 fakeredis is a pure-Python implementation of the redis-py python client
 that simulates talking to a redis server. This was created for a single
 purpose: **to write tests**. Setting up redis is not hard, but
@@ -8,7 +7,7 @@ many times you want to write tests that do not talk to an external server
 (such as redis). This module now allows tests to simply use this
 module as a reasonable substitute for redis.
 
-For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](./REDIS_COMMANDS.md).
+For a list of supported/unsupported redis commands, see [Supported commands](./redis-commands/implemented_commands.md).
 
 ## Installation
 
@@ -25,6 +24,7 @@ pip install fakeredis[json]  ## Support for RedisJSON commands
 ## How to Use
 
 ### General usage
+
 FakeRedis can imitate Redis server version 6.x or 7.x.
 If you do not specify the version, version 7 is used by default.
 
@@ -139,7 +139,6 @@ bugs in GitHub.
   **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
   can execute arbitrary code.
 
-
 ## Local development environment
 
 To ensure parity with the real redis, there are a set of integration tests
@@ -192,11 +191,11 @@ poetry run pytest -m "not slow"
 ## Contributing
 
 Contributions are welcome.
-You can contribute in many ways: 
+You can contribute in many ways:
 Open issues for bugs you found, implementing a command which is not yet implemented,
 implement a test for scenario that is not covered yet, write a guide how to use fakeredis, etc.
 
-Please see the [contributing guide](.github/CONTRIBUTING.md) for more details.
+Please see the [contributing guide](./about/contributing.md) for more details.
 If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
 
 There are guides how to [implement a new command](#implementing-support-for-a-command) and
