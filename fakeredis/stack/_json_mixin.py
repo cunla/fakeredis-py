@@ -312,3 +312,22 @@ class JSONCommandsMixin:
         if len(res) == 1 and (len(args) == 1 and args[0] == b'.'):
             return res[0]
         return res
+
+    @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
+    def json_arrlen(self, key, *args):
+        """Returns the length of the JSON String at path in key
+
+        """
+        if key.value is None:
+            return None
+        path_str = args[0] if len(args) > 0 else '$'
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        res = list()
+        for item in found_matches:
+            res.append(len(item.value) if type(item.value) == list else None)
+
+        if len(res) == 1 and (len(args) == 1 and args[0][0] == 46):
+            return res[0]
+
+        return res

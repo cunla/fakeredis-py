@@ -894,10 +894,6 @@ Returns the index of the first occurrence of a JSON scalar value in the array at
 
 Inserts the JSON scalar(s) value at the specified index in the array at path
 
-### [JSON.ARRLEN](https://redis.io/commands/json.arrlen/)
-
-Returns the length of the array at path
-
 ### [JSON.ARRPOP](https://redis.io/commands/json.arrpop/)
 
 Removes and returns the element at the specified index in the array at path

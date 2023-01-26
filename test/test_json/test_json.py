@@ -406,3 +406,20 @@ def test_type(r: redis.Redis) -> None:
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None
+
+
+def test_arrlen(r: redis.Redis) -> None:
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+    assert r.json().arrlen("arr", Path.root_path(), ) == 5
+    assert r.json().arrlen("arr") == 5
+    assert r.json().arrlen("fake-key") is None
+
+    r.json().set("doc1", Path.root_path(),
+                 {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
+
+    assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
+    assert r.json().arrlen("doc1", "$.nested1.a") == [3]
+
+    r.json().set("doc2", "$", {"a": ["foo"], "nested1": {"a": ["hello", 1, 1, None, "world"]}, "nested2": {"a": 31}, })
+    assert r.json().arrlen("doc2", "$..a") == [1, 5, None]
+    assert r.json().arrlen("doc2", ".nested1.a") == 5

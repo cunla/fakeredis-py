@@ -170,21 +170,6 @@ def test_arrinsert(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_arrlen(r: redis.Redis) -> None:
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 5 == r.json().arrlen(
-        "arr",
-        Path.root_path(),
-    )
-    assert 5 == r.json().arrlen("arr")
-    assert r.json().arrlen("fake-key") is None
-
-
-@pytest.mark.xfail
 def test_arrpop(r: redis.Redis) -> None:
     r.json().set(
         "arr",
@@ -519,35 +504,6 @@ def test_arrinsert_dollar(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
         r.json().arrappend("non_existing_doc", "$..a")
-
-
-@pytest.mark.xfail
-def test_arrlen_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # Test multi
-    assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
-    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [4, 6, None, ]
-
-    r.json().clear("doc1", "$.a")
-    assert r.json().arrlen("doc1", "$..a") == [0, 6, None]
-    # Test single
-    assert r.json().arrlen("doc1", "$.nested1.a") == [6]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrappend("non_existing_doc", "$..a")
-
-    r.json().set("doc1", "$", SAMPLE_DATA)
-    # Test multi (return result of last path)
-    assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
-    assert r.json().arrappend("doc1", "..a", "non", "abba", "stanza") == 6
-
-    # Test single
-    assert r.json().arrlen("doc1", ".nested1.a") == 6
-
-    # Test missing key
-    assert r.json().arrlen("non_existing_doc", "..a") is None
 
 
 @pytest.mark.xfail
