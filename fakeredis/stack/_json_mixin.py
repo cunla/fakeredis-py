@@ -336,7 +336,7 @@ class JSONCommandsMixin:
         """Append one or more json values into the array at path after the last element in it.
         """
         if len(args) == 0:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.strappend'))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.arrappend'))
         if key.value is None:
             raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
 
