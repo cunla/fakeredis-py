@@ -715,6 +715,10 @@ Appends a string to a JSON string value at path
 
 Returns the length of the JSON String at path in key
 
+### [JSON.ARRAPPEND](https://redis.io/commands/json.arrappend/)
+
+Append one or more json values into the array at path after the last element in it.
+
 ### [JSON.ARRLEN](https://redis.io/commands/json.arrlen/)
 
 Returns the length of the array at path

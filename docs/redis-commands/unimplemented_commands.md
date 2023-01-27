@@ -882,10 +882,6 @@ Increments the numeric value at path by a value
 
 Multiplies the numeric value at path by a value
 
-### [JSON.ARRAPPEND](https://redis.io/commands/json.arrappend/)
-
-Append one or more json values into the array at path after the last element in it.
-
 ### [JSON.ARRINDEX](https://redis.io/commands/json.arrindex/)
 
 Returns the index of the first occurrence of a JSON scalar value in the array at path
