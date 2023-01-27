@@ -1,7 +1,16 @@
-
-## v2.5.1
+## v2.6.0
+### 🚀 Features
+- Implement `JSON.TYPE`, `JSON.ARRLEN` and `JSON.ARRAPPEND`
+  
 ### 🐛 Bug Fixes
 - Fix encoding of None (#118)
+
+### 🧰 Maintenance
+- Start skeleton for streams commands in `streams_mixin.py` and `test_streams_commands.py`
+- Start migrating documentation to https://fakeredis.readthedocs.io/
+ 
+**Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.5.0...v2.6.0
+
 ## v2.5.0
 #### 🚀 Features
 - Implement support for `BITPOS` (bitmap command) (#112)
