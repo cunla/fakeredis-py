@@ -92,32 +92,6 @@ def test_debug(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_arrappend(r: redis.Redis) -> None:
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [1],
-    )
-
-    assert 2 == r.json().arrappend(
-        "arr",
-        Path.root_path(),
-        2,
-    )
-    assert 4 == r.json().arrappend(
-        "arr",
-        Path.root_path(),
-        3,
-        4,
-    )
-    assert 7 == r.json().arrappend(
-        "arr",
-        Path.root_path(),
-        *[5, 6, 7],
-    )
-
-
-@pytest.mark.xfail
 def test_arrindex(r: redis.Redis) -> None:
     r.json().set(
         "arr",
@@ -429,57 +403,6 @@ def test_strlen_dollar(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
         r.json().strlen("non_existing_doc", "$..a")
-
-
-@pytest.mark.xfail
-def test_arrappend_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # Test multi
-    assert r.json().arrappend("doc1", "$..a", "bar", "racuda") == [3, 5, None]
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
-            "nested2": {"a": 31},
-        }
-    ]
-
-    # Test single
-    assert r.json().arrappend("doc1", "$.nested1.a", "baz") == [6]
-    assert r.json().get("doc1", "$") == [
-        {
-            "a": ["foo", "bar", "racuda"],
-            "nested1": {"a": ["hello", None, "world", "bar", "racuda", "baz"]},
-            "nested2": {"a": 31},
-        }
-    ]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrappend("non_existing_doc", "$..a")
-
-    # Test legacy
-    r.json().set("doc1", "$", SAMPLE_DATA)
-    # Test multi (all paths are updated, but return result of last path)
-    assert r.json().arrappend("doc1", "..a", "bar", "racuda") == 5
-
-    assert r.json().get("doc1", "$") == [{
-        "a": ["foo", "bar", "racuda"],
-        "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
-        "nested2": {"a": 31},
-    }]
-    # Test single
-    assert r.json().arrappend("doc1", ".nested1.a", "baz") == 6
-    assert r.json().get("doc1", "$") == [{
-        "a": ["foo", "bar", "racuda"],
-        "nested1": {"a": ["hello", None, "world", "bar", "racuda", "baz"]},
-        "nested2": {"a": 31},
-    }]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrappend("non_existing_doc", "$..a")
 
 
 @pytest.mark.xfail

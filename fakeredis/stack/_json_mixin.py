@@ -315,8 +315,7 @@ class JSONCommandsMixin:
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key, *args):
-        """Returns the length of the JSON String at path in key
-
+        """Returns the length of the JSON Array at path in key
         """
         if key.value is None:
             return None
@@ -328,6 +327,40 @@ class JSONCommandsMixin:
             res.append(len(item.value) if type(item.value) == list else None)
 
         if len(res) == 1 and (len(args) == 1 and args[0][0] == 46):
+            return res[0]
+
+        return res
+
+    @command(name="JSON.ARRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrappend(self, key, *args):
+        """Append one or more json values into the array at path after the last element in it.
+        """
+        if len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.strappend'))
+        if key.value is None:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+
+        path_str, addition = (args[0], args[1:]) if len(args) > 1 else ('$', args)
+        addition = [JSONObject.decode(item) for item in addition]
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        if len(found_matches) == 0:
+            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+
+        curr_value = copy.deepcopy(key.value)
+        new_value = None
+        res = list()
+        for item in found_matches:
+            if type(item.value) == list:
+                new_value = item.value + addition
+                curr_value = item.full_path.update(curr_value, new_value)
+                res.append(len(new_value))
+            else:
+                res.append(None)
+        key.update(curr_value)
+        if path_str[0] == 46:
+            return len(new_value)
+        if len(res) == 1 and path_str[0] != 36:
             return res[0]
 
         return res

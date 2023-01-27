@@ -423,3 +423,101 @@ def test_arrlen(r: redis.Redis) -> None:
     r.json().set("doc2", "$", {"a": ["foo"], "nested1": {"a": ["hello", 1, 1, None, "world"]}, "nested2": {"a": 31}, })
     assert r.json().arrlen("doc2", "$..a") == [1, 5, None]
     assert r.json().arrlen("doc2", ".nested1.a") == 5
+    r.json().set(
+        "doc1",
+        "$",
+        {
+            "a": ["foo"],
+            "nested1": {"a": ["hello", None, "world"]},
+            "nested2": {"a": 31},
+        },
+    )
+
+    # Test multi
+    assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
+    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [
+        4,
+        6,
+        None,
+    ]
+
+    r.json().clear("doc1", "$.a")
+    assert r.json().arrlen("doc1", "$..a") == [0, 6, None]
+    # Test single
+    assert r.json().arrlen("doc1", "$.nested1.a") == [6]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().arrappend("non_existing_doc", "$..a")
+
+    r.json().set(
+        "doc1",
+        "$",
+        {
+            "a": ["foo"],
+            "nested1": {"a": ["hello", None, "world"]},
+            "nested2": {"a": 31},
+        },
+    )
+    # Test multi (return result of last path)
+    assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
+    assert r.json().arrappend("doc1", "..a", "non", "abba", "stanza") == 6
+
+    # Test single
+    assert r.json().arrlen("doc1", ".nested1.a") == 6
+
+    # Test missing key
+    assert r.json().arrlen("non_existing_doc", "..a") is None
+
+
+def test_arrappend(r: redis.Redis):
+    with pytest.raises(redis.ResponseError):
+        r.json().arrappend("non-existing-key", Path.root_path(), 2)
+
+    r.json().set("arr", Path.root_path(), [1])
+    assert r.json().arrappend("arr", Path.root_path(), 2) == 2
+    assert r.json().arrappend("arr", Path.root_path(), 3, 4) == 4
+    assert r.json().arrappend("arr", Path.root_path(), *[5, 6, 7]) == 7
+    assert r.json().get("arr") == [1, 2, 3, 4, 5, 6, 7]
+    r.json().set(
+        "doc1", "$",
+        {
+            "a": ["foo"],
+            "nested1": {"a": ["hello", None, "world"]},
+            "nested2": {"a": 31},
+        },
+    )
+    # Test multi
+    assert r.json().arrappend("doc1", "$..a", "bar", "racuda") == [3, 5, None]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
+        "nested2": {"a": 31},
+    }]
+    assert r.json().arrappend("doc1", "$.nested1.a", "baz") == [6]
+
+    # Test legacy
+    r.json().set("doc1", "$", {
+        "a": ["foo"],
+        "nested1": {"a": ["hello", None, "world"]},
+        "nested2": {"a": 31},
+    })
+    # Test multi (all paths are updated, but return result of last path)
+    assert r.json().arrappend("doc1", "..a", "bar", "racuda") == 5
+
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", None, "world", "bar", "racuda"]},
+        "nested2": {"a": 31},
+    }]
+    # Test single
+    assert r.json().arrappend("doc1", ".nested1.a", "baz") == 6
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", None, "world", "bar", "racuda", "baz"]},
+        "nested2": {"a": 31},
+    }]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().arrappend("non_existing_doc", "$..a")
