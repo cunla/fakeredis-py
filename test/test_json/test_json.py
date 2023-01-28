@@ -430,7 +430,6 @@ def test_objlen(r: redis.Redis) -> None:
     # Test single
     assert r.json().objlen("doc1", "$.nested1.a") == [2]
 
-
     assert r.json().objlen("doc1", "$.nowhere") == []
 
     # Test legacy
@@ -445,3 +444,45 @@ def test_objlen(r: redis.Redis) -> None:
     # Test missing path
     # with pytest.raises(exceptions.ResponseError):
     r.json().objlen("doc1", ".nowhere")
+
+
+def test_objkeys(r: redis.Redis):
+    obj = {"foo": "bar", "baz": "qaz"}
+    r.json().set("obj", Path.root_path(), obj)
+    keys = r.json().objkeys("obj", Path.root_path())
+    keys.sort()
+    exp = list(obj.keys())
+    exp.sort()
+    assert exp == keys
+
+    r.json().set("obj", Path.root_path(), obj)
+    assert r.json().objkeys("obj") == list(obj.keys())
+
+    assert r.json().objkeys("fakekey") is None
+
+    r.json().set(
+        "doc1",
+        "$",
+        {
+            "nested1": {"a": {"foo": 10, "bar": 20}},
+            "a": ["foo"],
+            "nested2": {"a": {"baz": 50}},
+        },
+    )
+
+    # Test single
+    assert r.json().objkeys("doc1", "$.nested1.a") == [[b"foo", b"bar"]]
+
+    # Test legacy
+    assert r.json().objkeys("doc1", ".*.a") == ["foo", "bar"]
+    # Test single
+    assert r.json().objkeys("doc1", ".nested2.a") == ["baz"]
+
+    # Test missing key
+    assert r.json().objkeys("non_existing_doc", "..a") is None
+
+    # Test non existing doc
+    with pytest.raises(redis.ResponseError):
+        assert r.json().objkeys("non_existing_doc", "$..a") == []
+
+    assert r.json().objkeys("doc1", "$..nowhere") == []

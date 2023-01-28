@@ -374,3 +374,8 @@ class JSONCommandsMixin:
     def json_type(self, key, *args, ):
         return self._json_iterate(
             lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
+
+    @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
+    def json_objkeys(self, key, *args):
+        return self._json_iterate(
+            lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)
