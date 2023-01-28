@@ -882,10 +882,6 @@ Increments the numeric value at path by a value
 
 Multiplies the numeric value at path by a value
 
-### [JSON.ARRINDEX](https://redis.io/commands/json.arrindex/)
-
-Returns the index of the first occurrence of a JSON scalar value in the array at path
-
 ### [JSON.ARRINSERT](https://redis.io/commands/json.arrinsert/)
 
 Inserts the JSON scalar(s) value at the specified index in the array at path
@@ -901,10 +897,6 @@ Trims the array at path to contain only the specified inclusive range of indices
 ### [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
 
 Returns the JSON keys of the object at path
-
-### [JSON.OBJLEN](https://redis.io/commands/json.objlen/)
-
-Returns the number of keys of the object at path
 
 ### [JSON.RESP](https://redis.io/commands/json.resp/)
 

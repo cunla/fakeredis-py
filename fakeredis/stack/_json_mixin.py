@@ -17,7 +17,7 @@ from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, delete_keys, CommandItem
+from fakeredis._commands import Key, command, delete_keys, CommandItem, Int
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis._zset import ZSet
 
@@ -206,25 +206,6 @@ class JSONCommandsMixin:
         key.update(curr_value)
         return res
 
-    @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
-    def json_strlen(self, key, *args):
-        """Returns the length of the JSON String at path in key
-
-        """
-        if key.value is None:
-            return None
-        path_str = args[0] if len(args) > 0 else '$'
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        res = list()
-        for item in found_matches:
-            res.append(len(item.value) if type(item.value) == str else None)
-
-        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0] == b'.')):
-            return res[0]
-
-        return res
-
     @command(name="JSON.TOGGLE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_toggle(self, key, *args):
         """Toggle a Boolean value stored at path
@@ -313,24 +294,6 @@ class JSONCommandsMixin:
             return res[0]
         return res
 
-    @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
-    def json_arrlen(self, key, *args):
-        """Returns the length of the JSON Array at path in key
-        """
-        if key.value is None:
-            return None
-        path_str = args[0] if len(args) > 0 else '$'
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        res = list()
-        for item in found_matches:
-            res.append(len(item.value) if type(item.value) == list else None)
-
-        if len(res) == 1 and (len(args) == 1 and args[0][0] == 46):
-            return res[0]
-
-        return res
-
     @command(name="JSON.ARRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(self, key, *args):
         """Append one or more json values into the array at path after the last element in it.
@@ -364,3 +327,70 @@ class JSONCommandsMixin:
             return res[0]
 
         return res
+
+    def _json_iterate(self, method, key, *args):
+        path_str = args[0] if len(args) > 0 else '$'
+        if key.value is None:
+            if path_str[0] == 36:
+                raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+            else:
+                return None
+
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        res = list()
+        for item in found_matches:
+            res.append(method(item.value))
+
+        if path_str[0] == 46:
+            return res[0] if len(res) > 0 else None
+        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == 46)):
+            return res[0]
+
+        return res
+
+    @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrindex(self, key, path_str, encoded_value, *args):
+        """Return the index of ``scalar`` in the JSON array under ``path`` at key ``name``.
+        """
+        if key.value is None:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        start = max(0, Int.decode(args[0]) if len(args) > 0 else 0)
+        end = Int.decode(args[1]) if len(args) > 1 else -1
+        end = end if end > 0 else -1
+        value = JSONObject.decode(encoded_value)
+        path = _parse_jsonpath(path_str)
+        found_matches = path.find(key.value)
+        if len(found_matches) == 0 and path_str[0] != 36:
+            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+
+        res = list()
+        for item in found_matches:
+            if type(item.value) == list:
+                try:
+                    ind = next(filter(
+                        lambda x: x[1] == value and type(x[1]) == type(value),
+                        enumerate(item.value[start:end])))
+                    res.append(ind[0] + start)
+                except StopIteration:
+                    res.append(-1)
+            else:
+                res.append(None)
+        if len(res) == 1 and path_str[0] != 36:
+            return res[0]
+        return res
+
+    @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
+    def json_strlen(self, key, *args):
+        return self._json_iterate(
+            lambda val: len(val) if type(val) == str else None, key, *args)
+
+    @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
+    def json_arrlen(self, key, *args):
+        return self._json_iterate(
+            lambda val: len(val) if type(val) == list else None, key, *args)
+
+    @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
+    def json_objlen(self, key, *args):
+        return self._json_iterate(
+            lambda val: len(val) if type(val) == dict else None, key, *args)

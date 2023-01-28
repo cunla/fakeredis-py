@@ -719,9 +719,17 @@ Returns the length of the JSON String at path in key
 
 Append one or more json values into the array at path after the last element in it.
 
+### [JSON.ARRINDEX](https://redis.io/commands/json.arrindex/)
+
+Returns the index of the first occurrence of a JSON scalar value in the array at path
+
 ### [JSON.ARRLEN](https://redis.io/commands/json.arrlen/)
 
 Returns the length of the array at path
+
+### [JSON.OBJLEN](https://redis.io/commands/json.objlen/)
+
+Returns the number of keys of the object at path
 
 ### [JSON.TYPE](https://redis.io/commands/json.type/)
 
