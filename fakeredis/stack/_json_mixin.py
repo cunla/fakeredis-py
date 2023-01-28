@@ -328,7 +328,7 @@ class JSONCommandsMixin:
 
         return res
 
-    def _json_iterate(self, method, key, *args):
+    def _json_iterate(self, method, key, *args, error_on_zero_matches=False):
         path_str = args[0] if len(args) > 0 else '$'
         if key.value is None:
             if path_str[0] == 36:
@@ -338,6 +338,8 @@ class JSONCommandsMixin:
 
         path = _parse_jsonpath(path_str)
         found_matches = path.find(key.value)
+        if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != 36:
+            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
         res = list()
         for item in found_matches:
             res.append(method(item.value))
@@ -351,34 +353,24 @@ class JSONCommandsMixin:
 
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrindex(self, key, path_str, encoded_value, *args):
-        """Return the index of ``scalar`` in the JSON array under ``path`` at key ``name``.
-        """
-        if key.value is None:
-            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
         start = max(0, Int.decode(args[0]) if len(args) > 0 else 0)
         end = Int.decode(args[1]) if len(args) > 1 else -1
         end = end if end > 0 else -1
-        value = JSONObject.decode(encoded_value)
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        if len(found_matches) == 0 and path_str[0] != 36:
-            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+        expected_value = JSONObject.decode(encoded_value)
 
-        res = list()
-        for item in found_matches:
-            if type(item.value) == list:
+        def check_index(value):
+            if type(value) == list:
                 try:
                     ind = next(filter(
-                        lambda x: x[1] == value and type(x[1]) == type(value),
-                        enumerate(item.value[start:end])))
-                    res.append(ind[0] + start)
+                        lambda x: x[1] == expected_value and type(x[1]) == type(expected_value),
+                        enumerate(value[start:end])))
+                    return ind[0] + start
                 except StopIteration:
-                    res.append(-1)
+                    return -1
             else:
-                res.append(None)
-        if len(res) == 1 and path_str[0] != 36:
-            return res[0]
-        return res
+                return None
+
+        return self._json_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key, *args):
