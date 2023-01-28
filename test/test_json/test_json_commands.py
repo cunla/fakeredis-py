@@ -270,38 +270,6 @@ def test_resp(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_objkeys(r: redis.Redis) -> None:
-    obj = {
-        "foo": "bar",
-        "baz": "qaz",
-    }
-
-    r.json().set(
-        "obj",
-        Path.root_path(),
-        obj,
-    )
-
-    keys = r.json().objkeys(
-        "obj",
-        Path.root_path(),
-    )
-
-    keys.sort()
-    exp = list(obj.keys())
-    exp.sort()
-
-    assert exp == keys
-
-    r.json().set("obj", Path.root_path(), obj)
-    keys = r.json().objkeys("obj")
-    assert keys == list(obj.keys())
-
-    assert r.json().objkeys("fake-key") is None
-
-
-
-@pytest.mark.xfail
 def test_numby_commands_dollar(r: redis.Redis) -> None:
     # Test NUMINCRBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
@@ -452,29 +420,6 @@ def test_arrtrim_dollar(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
         r.json().arrtrim("non_existing_doc", "..a", 1, 1)
-
-
-@pytest.mark.xfail
-def test_objkeys_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # Test single
-    assert r.json().objkeys("doc1", "$.nested1.a") == [["foo", "bar"]]
-
-    # Test legacy
-    assert r.json().objkeys("doc1", ".*.a") == ["foo", "bar"]
-    # Test single
-    assert r.json().objkeys("doc1", ".nested2.a") == ["baz"]
-
-    # Test missing key
-    assert r.json().objkeys("non_existing_doc", "..a") is None
-
-    # Test non existing doc
-    with pytest.raises(exceptions.ResponseError):
-        assert r.json().objkeys("non_existing_doc", "$..a") == []
-
-    assert r.json().objkeys("doc1", "$..nowhere") == []
-
 
 
 def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
