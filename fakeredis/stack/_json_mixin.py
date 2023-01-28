@@ -277,23 +277,6 @@ class JSONCommandsMixin:
 
         return res
 
-    @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_type(self, key, *args, ):
-        if key.value is None:
-            return None
-        path_str = args[0] if len(args) > 0 else '$'
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-
-        res = []
-        for item in found_matches:
-            type_val = self.TYPE_NAMES.get(type(item.value), None)
-            res.append(type_val)
-
-        if len(res) == 1 and (len(args) == 1 and args[0] == b'.'):
-            return res[0]
-        return res
-
     @command(name="JSON.ARRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(self, key, *args):
         """Append one or more json values into the array at path after the last element in it.
@@ -386,3 +369,8 @@ class JSONCommandsMixin:
     def json_objlen(self, key, *args):
         return self._json_iterate(
             lambda val: len(val) if type(val) == dict else None, key, *args)
+
+    @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_type(self, key, *args, ):
+        return self._json_iterate(
+            lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
