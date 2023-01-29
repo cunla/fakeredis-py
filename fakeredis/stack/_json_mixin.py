@@ -311,7 +311,7 @@ class JSONCommandsMixin:
 
         return res
 
-    def _json_iterate(self, method, key, *args, error_on_zero_matches=False):
+    def _json_read_iterate(self, method, key, *args, error_on_zero_matches=False):
         path_str = args[0] if len(args) > 0 else '$'
         if key.value is None:
             if path_str[0] == 36:
@@ -353,29 +353,29 @@ class JSONCommandsMixin:
             else:
                 return None
 
-        return self._json_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
+        return self._json_read_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key, *args):
-        return self._json_iterate(
+        return self._json_read_iterate(
             lambda val: len(val) if type(val) == str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key, *args):
-        return self._json_iterate(
+        return self._json_read_iterate(
             lambda val: len(val) if type(val) == list else None, key, *args)
 
     @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
     def json_objlen(self, key, *args):
-        return self._json_iterate(
+        return self._json_read_iterate(
             lambda val: len(val) if type(val) == dict else None, key, *args)
 
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key, *args, ):
-        return self._json_iterate(
+        return self._json_read_iterate(
             lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
 
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key, *args):
-        return self._json_iterate(
+        return self._json_read_iterate(
             lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)

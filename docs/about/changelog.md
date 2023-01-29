@@ -1,5 +1,12 @@
 ## v2.6.0
 ### 🚀 Features
+- Implement `JSON.ARRINDEX`, `JSON.OBJLEN` and `JSON.OBJKEYS`
+
+### 🧰 Maintenance
+- Improve json commands implementation.
+
+## v2.6.0
+### 🚀 Features
 - Implement `JSON.TYPE`, `JSON.ARRLEN` and `JSON.ARRAPPEND`
   
 ### 🐛 Bug Fixes
