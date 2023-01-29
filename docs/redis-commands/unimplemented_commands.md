@@ -894,10 +894,6 @@ Removes and returns the element at the specified index in the array at path
 
 Trims the array at path to contain only the specified inclusive range of indices from start to stop
 
-### [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
-
-Returns the JSON keys of the object at path
-
 ### [JSON.RESP](https://redis.io/commands/json.resp/)
 
 Returns the JSON value at path in Redis Serialization Protocol (RESP)

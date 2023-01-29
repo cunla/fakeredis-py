@@ -727,6 +727,10 @@ Returns the index of the first occurrence of a JSON scalar value in the array at
 
 Returns the length of the array at path
 
+### [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
+
+Returns the JSON keys of the object at path
+
 ### [JSON.OBJLEN](https://redis.io/commands/json.objlen/)
 
 Returns the number of keys of the object at path
