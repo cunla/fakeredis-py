@@ -421,8 +421,8 @@ def test_objlen(r: redis.Redis) -> None:
     r.json().set("obj", Path.root_path(), obj)
     assert len(obj) == r.json().objlen("obj")
     r.json().set("doc1", "$", {
-        "nested1": {"a": {"foo": 10, "bar": 20}},
         "a": ["foo"],
+        "nested1": {"a": {"foo": 10, "bar": 20}},
         "nested2": {"a": {"baz": 50}},
     })
     # Test multi
