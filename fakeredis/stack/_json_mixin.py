@@ -106,10 +106,6 @@ class JSONCommandsMixin:
 
     @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_del(self, key, path_str) -> int:
-        """Delete the JSON value stored at key `key` under `path_str`.
-
-        For more information see `JSON.DEL <https://redis.io/commands/json.del>`_.
-        """
         if key.value is None:
             return 0
 
@@ -152,12 +148,6 @@ class JSONCommandsMixin:
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key, *args) -> bytes:
-        """Get the object stored as a JSON value at key `name`.
-
-        `args` is zero or more paths, and defaults to root path.
-
-        For more information see `JSON.GET <https://redis.io/commands/json.get>`_.
-        """
         paths = [arg for arg in args if not casematch(b'noescape', arg)]
         no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
 
@@ -272,8 +262,6 @@ class JSONCommandsMixin:
 
     @command(name="JSON.ARRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(self, key, *args):
-        """Append one or more json values into the array at path after the last element in it.
-        """
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.arrappend'))
 
@@ -288,6 +276,22 @@ class JSONCommandsMixin:
                 return None, None
 
         return self._json_write_iterate(arrappend, key, *args)
+
+    @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrinsert(self, key, path_str, index, *args):
+        if len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.arrinsert'))
+
+        addition = [JSONObject.decode(item) for item in args]
+
+        def arrinsert(val):
+            if type(val) == list:
+                new_value = val[:index] + addition + val[index:]
+                return new_value, len(new_value)
+            else:
+                return None, None
+
+        return self._json_write_iterate(arrinsert, key, path_str, *args)
 
     def _json_read_iterate(self, method, key, *args, error_on_zero_matches=False):
         path_str = args[0] if len(args) > 0 else '$'

@@ -262,3 +262,39 @@ def test_arrindex(r: redis.Redis) -> None:
     # Test index of None scalar in single value
     assert r.json().arrindex("test_None", ".[0].arr", "None") == 1
     assert r.json().arrindex("test_None", "..nested2_not_found.arr", "None") == 0
+
+
+def test_arrinsert(r: redis.Redis) -> None:
+    r.json().set("arr", Path.root_path(), [0, 4], )
+
+    assert r.json().arrinsert("arr", Path.root_path(), 1, *[1, 2, 3], ) == 5
+    assert r.json().get("arr") == [0, 1, 2, 3, 4]
+
+    # test prepends
+    r.json().set("val2", Path.root_path(), [5, 6, 7, 8, 9], )
+    assert r.json().arrinsert("val2", Path.root_path(), 0, ["some", "thing"], ) == 6
+    assert r.json().get("val2") == [["some", "thing"], 5, 6, 7, 8, 9]
+    r.json().set("doc1", "$", {
+        "a": ["foo"],
+        "nested1": {"a": ["hello", None, "world"]},
+        "nested2": {"a": 31},
+    })
+    # Test multi
+    assert r.json().arrinsert("doc1", "$..a", "1", "bar", "racuda") == [3, 5, None]
+
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", "bar", "racuda", None, "world"]},
+        "nested2": {"a": 31},
+    }]
+    # Test single
+    assert r.json().arrinsert("doc1", "$.nested1.a", -2, "baz") == [6]
+    assert r.json().get("doc1", "$") == [{
+        "a": ["foo", "bar", "racuda"],
+        "nested1": {"a": ["hello", "bar", "racuda", "baz", None, "world"]},
+        "nested2": {"a": 31},
+    }]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().arrappend("non_existing_doc", "$..a")
