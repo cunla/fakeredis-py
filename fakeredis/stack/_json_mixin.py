@@ -313,6 +313,25 @@ class JSONCommandsMixin:
 
         return self._json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
+    @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrtrim(self, key, *args):
+        path_str = args[0] if len(args) > 0 else '$'
+        start = Int.decode(args[1]) if len(args) > 1 else 0
+        stop = Int.decode(args[2]) if len(args) > 2 else None
+
+        def arrtrim(val):
+            if type(val) == list:
+                start_ind = min(start, len(val))
+                stop_ind = len(val) if stop is None or stop == -1 else stop + 1
+                if stop_ind < 0:
+                    stop_ind = len(val) + stop_ind + 1
+                new_val = val[start_ind:stop_ind]
+                return new_val, len(new_val), True
+            else:
+                return None, None, False
+
+        return self._json_write_iterate(arrtrim, key, path_str)
+
     def _json_read_iterate(self, method, key, *args, error_on_zero_matches=False):
         path_str = args[0] if len(args) > 0 else '$'
         if key.value is None:

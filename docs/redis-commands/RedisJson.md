@@ -46,9 +46,21 @@ Append one or more json values into the array at path after the last element in 
 
 Returns the index of the first occurrence of a JSON scalar value in the array at path
 
+### [JSON.ARRINSERT](https://redis.io/commands/json.arrinsert/)
+
+Inserts the JSON scalar(s) value at the specified index in the array at path
+
 ### [JSON.ARRLEN](https://redis.io/commands/json.arrlen/)
 
 Returns the length of the array at path
+
+### [JSON.ARRPOP](https://redis.io/commands/json.arrpop/)
+
+Removes and returns the element at the specified index in the array at path
+
+### [JSON.ARRTRIM](https://redis.io/commands/json.arrtrim/)
+
+Trims the array at path to contain only the specified inclusive range of indices from start to stop
 
 ### [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
 
@@ -73,18 +85,6 @@ Increments the numeric value at path by a value
 #### [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)
 
 Multiplies the numeric value at path by a value
-
-#### [JSON.ARRINSERT](https://redis.io/commands/json.arrinsert/)
-
-Inserts the JSON scalar(s) value at the specified index in the array at path
-
-#### [JSON.ARRPOP](https://redis.io/commands/json.arrpop/)
-
-Removes and returns the element at the specified index in the array at path
-
-#### [JSON.ARRTRIM](https://redis.io/commands/json.arrtrim/)
-
-Trims the array at path to contain only the specified inclusive range of indices from start to stop
 
 #### [JSON.RESP](https://redis.io/commands/json.resp/)
 

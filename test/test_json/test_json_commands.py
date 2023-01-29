@@ -92,75 +92,6 @@ def test_debug(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_arrtrim(r: redis.Redis) -> None:
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-
-    assert 3 == r.json().arrtrim(
-        "arr",
-        Path.root_path(),
-        1,
-        3,
-    )
-    assert [1, 2, 3] == r.json().get("arr")
-
-    # <0 test, should be 0 equivalent
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 0 == r.json().arrtrim(
-        "arr",
-        Path.root_path(),
-        -1,
-        3,
-    )
-
-    # testing stop > end
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 2 == r.json().arrtrim(
-        "arr",
-        Path.root_path(),
-        3,
-        99,
-    )
-
-    # start > array size and stop
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 0 == r.json().arrtrim(
-        "arr",
-        Path.root_path(),
-        9,
-        1,
-    )
-
-    # all larger
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 0 == r.json().arrtrim(
-        "arr",
-        Path.root_path(),
-        9,
-        11,
-    )
-
-
-@pytest.mark.xfail
 def test_resp(r: redis.Redis) -> None:
     obj = {
         "foo": "bar",
@@ -250,43 +181,6 @@ def test_strlen_dollar(r: redis.Redis) -> None:
     with pytest.raises(exceptions.ResponseError):
         r.json().strlen("non_existing_doc", "$..a")
 
-
-@pytest.mark.xfail
-def test_arrtrim_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-    # Test multi
-    assert r.json().arrtrim("doc1", "$..a", "1", -1) == [0, 2, None]
-    assert r.json().get("doc1", "$") == [
-        {"a": [], "nested1": {"a": [None, "world"]}, "nested2": {"a": 31}}
-    ]
-
-    assert r.json().arrtrim("doc1", "$..a", "1", "1") == [0, 1, None]
-    assert r.json().get("doc1", "$") == [
-        {"a": [], "nested1": {"a": ["world"]}, "nested2": {"a": 31}}
-    ]
-    # Test single
-    assert r.json().arrtrim("doc1", "$.nested1.a", 1, 0) == [0]
-    assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": []}, "nested2": {"a": 31}}]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrtrim("non_existing_doc", "..a", "0", 1)
-
-    # Test legacy
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # Test multi (all paths are updated, but return result of last path)
-    assert r.json().arrtrim("doc1", "..a", "1", "-1") == 2
-
-    # Test single
-    assert r.json().arrtrim("doc1", ".nested1.a", "1", "1") == 1
-    assert r.json().get("doc1", "$") == [
-        {"a": [], "nested1": {"a": ["world"]}, "nested2": {"a": 31}}
-    ]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrtrim("non_existing_doc", "..a", 1, 1)
 
 
 def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
