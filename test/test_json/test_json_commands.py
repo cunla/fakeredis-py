@@ -92,56 +92,6 @@ def test_debug(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_arrpop(r: redis.Redis) -> None:
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-
-    assert 4 == r.json().arrpop(
-        "arr",
-        Path.root_path(),
-        4,
-    )
-    assert 3 == r.json().arrpop(
-        "arr",
-        Path.root_path(),
-        -1,
-    )
-    assert 2 == r.json().arrpop(
-        "arr",
-        Path.root_path(),
-    )
-    assert 0 == r.json().arrpop(
-        "arr",
-        Path.root_path(),
-        0,
-    )
-    assert [1] == r.json().get("arr")
-
-    # test out of bounds
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert 4 == r.json().arrpop(
-        "arr",
-        Path.root_path(),
-        99,
-    )
-
-    # none test
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [],
-    )
-    assert r.json().arrpop("arr") is None
-
-
-@pytest.mark.xfail
 def test_arrtrim(r: redis.Redis) -> None:
     r.json().set(
         "arr",
@@ -299,35 +249,6 @@ def test_strlen_dollar(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(exceptions.ResponseError):
         r.json().strlen("non_existing_doc", "$..a")
-
-
-
-@pytest.mark.xfail
-def test_arrpop_dollar(r: redis.Redis) -> None:
-    r.json().set("doc1", "$", SAMPLE_DATA)
-
-    # # # Test multi
-    assert r.json().arrpop("doc1", "$..a", 1) == ['"foo"', None, None]
-
-    assert r.json().get("doc1", "$") == [
-        {"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}
-    ]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrpop("non_existing_doc", "..a")
-
-    # # Test legacy
-    r.json().set("doc1", "$", SAMPLE_DATA)
-    # Test multi (all paths are updated, but return result of last path)
-    assert r.json().arrpop("doc1", "..a", "1") is None
-    assert r.json().get("doc1", "$") == [
-        {"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}
-    ]
-
-    # # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().arrpop("non_existing_doc", "..a")
 
 
 @pytest.mark.xfail

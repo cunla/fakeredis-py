@@ -221,7 +221,10 @@ class JSONCommandsMixin:
         key.update(curr_value)
         return res
 
-    def _json_write_iterate(self, method, key, path_str, *args):
+    def _json_write_iterate(self, method, key, path_str, **kwargs):
+        """Implement json.* write commands.
+        Iterate over values with path_str in key and running method to get new value for path item.
+        """
         if key.value is None:
             raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
         path = _parse_jsonpath(path_str)
@@ -232,50 +235,52 @@ class JSONCommandsMixin:
         curr_value = copy.deepcopy(key.value)
         res = list()
         for item in found_matches:
-            new_value, res_val = method(item.value)
-            if res_val is not None:
+            new_value, res_val, update = method(item.value)
+            if update:
                 curr_value = item.full_path.update(curr_value, new_value)
             res.append(res_val)
 
         key.update(curr_value)
 
-        if path_str[0] == ord(b'.'):
-            return next(x for x in reversed(res) if x is not None)
+        if len(path_str) > 1 and path_str[0] == ord(b'.'):
+            if kwargs.get('allow_result_none', False):
+                return res[-1]
+            else:
+                return next(x for x in reversed(res) if x is not None)
         if len(res) == 1 and path_str[0] != ord(b'$'):
             return res[0]
         return res
 
-    @command(name="JSON.STRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_strappend(self, key, *args):
+    @command(name="JSON.STRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_strappend(self, key, path_str, *args):
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.strappend'))
-        addition = JSONObject.decode(args[1] if len(args) > 1 else args[0])
+        addition = JSONObject.decode(args[0])
 
         def strappend(val):
             if type(val) == str:
                 new_value = val + addition
-                return new_value, len(new_value)
+                return new_value, len(new_value), True
             else:
-                return None, None
+                return None, None, False
 
-        return self._json_write_iterate(strappend, key, *args)
+        return self._json_write_iterate(strappend, key, path_str)
 
-    @command(name="JSON.ARRAPPEND", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_arrappend(self, key, *args):
+    @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrappend(self, key, path_str, *args):
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.arrappend'))
 
-        addition = args[1:] if len(args) > 1 else args
-        addition = [JSONObject.decode(item) for item in addition]
+        addition = [JSONObject.decode(item) for item in args]
 
         def arrappend(val):
             if type(val) == list:
                 new_value = val + addition
-                return new_value, len(new_value)
+                return new_value, len(new_value), True
             else:
-                return None, None
+                return None, None, False
 
-        return self._json_write_iterate(arrappend, key, *args)
+        return self._json_write_iterate(arrappend, key, path_str)
 
     @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(self, key, path_str, index, *args):
@@ -287,11 +292,26 @@ class JSONCommandsMixin:
         def arrinsert(val):
             if type(val) == list:
                 new_value = val[:index] + addition + val[index:]
-                return new_value, len(new_value)
+                return new_value, len(new_value), True
             else:
-                return None, None
+                return None, None, False
 
-        return self._json_write_iterate(arrinsert, key, path_str, *args)
+        return self._json_write_iterate(arrinsert, key, path_str)
+
+    @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_arrpop(self, key, *args):
+        path_str = args[0] if len(args) > 0 else '$'
+        index = Int.decode(args[1]) if len(args) > 1 else -1
+
+        def arrpop(val):
+            if type(val) == list and len(val) > 0:
+                ind = index if index < len(val) else -1
+                res = val.pop(ind)
+                return val, JSONObject.encode(res), True
+            else:
+                return None, None, False
+
+        return self._json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
     def _json_read_iterate(self, method, key, *args, error_on_zero_matches=False):
         path_str = args[0] if len(args) > 0 else '$'

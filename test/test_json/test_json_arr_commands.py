@@ -274,11 +274,7 @@ def test_arrinsert(r: redis.Redis) -> None:
     r.json().set("val2", Path.root_path(), [5, 6, 7, 8, 9], )
     assert r.json().arrinsert("val2", Path.root_path(), 0, ["some", "thing"], ) == 6
     assert r.json().get("val2") == [["some", "thing"], 5, 6, 7, 8, 9]
-    r.json().set("doc1", "$", {
-        "a": ["foo"],
-        "nested1": {"a": ["hello", None, "world"]},
-        "nested2": {"a": 31},
-    })
+    r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
     # Test multi
     assert r.json().arrinsert("doc1", "$..a", "1", "bar", "racuda") == [3, 5, None]
 
@@ -298,3 +294,45 @@ def test_arrinsert(r: redis.Redis) -> None:
     # Test missing key
     with pytest.raises(redis.ResponseError):
         r.json().arrappend("non_existing_doc", "$..a")
+
+
+def test_arrpop(r: redis.Redis) -> None:
+    # todo fix failing raw_command
+    # r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+    # assert raw_command(r, 'json.arrpop', 'arr') == b'4'
+
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+    assert r.json().arrpop("arr", Path.root_path(), 4, ) == 4
+    assert r.json().arrpop("arr", Path.root_path(), -1, ) == 3
+    assert r.json().arrpop("arr", Path.root_path(), ) == 2
+    assert r.json().arrpop("arr", Path.root_path(), 0, ) == 0
+    assert r.json().get("arr") == [1]
+
+    # test out of bounds
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+    assert r.json().arrpop("arr", Path.root_path(), 99, ) == 4
+
+    # none test
+    r.json().set("arr", Path.root_path(), [], )
+    assert r.json().arrpop("arr") is None
+
+    r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
+
+    # # # Test multi
+    assert r.json().arrpop("doc1", "$..a", 1) == ['"foo"', None, None]
+
+    assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().arrpop("non_existing_doc", "..a")
+
+    # # Test legacy
+    r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
+    # Test multi (all paths are updated, but return result of last path)
+    assert r.json().arrpop("doc1", "..a", "1") is None
+    assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}]
+
+    # # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().arrpop("non_existing_doc", "..a")
