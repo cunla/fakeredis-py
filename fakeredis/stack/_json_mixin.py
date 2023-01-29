@@ -47,6 +47,61 @@ def _path_is_root(path: JSONPath) -> bool:
     return path == Root()
 
 
+def _json_write_iterate(method, key, path_str, **kwargs):
+    """Implement json.* write commands.
+    Iterate over values with path_str in key and running method to get new value for path item.
+    """
+    if key.value is None:
+        raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+    path = _parse_jsonpath(path_str)
+    found_matches = path.find(key.value)
+    if len(found_matches) == 0:
+        raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+
+    curr_value = copy.deepcopy(key.value)
+    res = list()
+    for item in found_matches:
+        new_value, res_val, update = method(item.value)
+        if update:
+            curr_value = item.full_path.update(curr_value, new_value)
+        res.append(res_val)
+
+    key.update(curr_value)
+
+    if len(path_str) > 1 and path_str[0] == ord(b'.'):
+        if kwargs.get('allow_result_none', False):
+            return res[-1]
+        else:
+            return next(x for x in reversed(res) if x is not None)
+    if len(res) == 1 and path_str[0] != ord(b'$'):
+        return res[0]
+    return res
+
+
+def _json_read_iterate(method, key, *args, error_on_zero_matches=False):
+    path_str = args[0] if len(args) > 0 else '$'
+    if key.value is None:
+        if path_str[0] == 36:
+            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        else:
+            return None
+
+    path = _parse_jsonpath(path_str)
+    found_matches = path.find(key.value)
+    if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != 36:
+        raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+    res = list()
+    for item in found_matches:
+        res.append(method(item.value))
+
+    if path_str[0] == 46:
+        return res[0] if len(res) > 0 else None
+    if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == 46)):
+        return res[0]
+
+    return res
+
+
 class JSONObject:
     """Argument converter for JSON objects."""
 
@@ -221,36 +276,6 @@ class JSONCommandsMixin:
         key.update(curr_value)
         return res
 
-    def _json_write_iterate(self, method, key, path_str, **kwargs):
-        """Implement json.* write commands.
-        Iterate over values with path_str in key and running method to get new value for path item.
-        """
-        if key.value is None:
-            raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        if len(found_matches) == 0:
-            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
-
-        curr_value = copy.deepcopy(key.value)
-        res = list()
-        for item in found_matches:
-            new_value, res_val, update = method(item.value)
-            if update:
-                curr_value = item.full_path.update(curr_value, new_value)
-            res.append(res_val)
-
-        key.update(curr_value)
-
-        if len(path_str) > 1 and path_str[0] == ord(b'.'):
-            if kwargs.get('allow_result_none', False):
-                return res[-1]
-            else:
-                return next(x for x in reversed(res) if x is not None)
-        if len(res) == 1 and path_str[0] != ord(b'$'):
-            return res[0]
-        return res
-
     @command(name="JSON.STRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_strappend(self, key, path_str, *args):
         if len(args) == 0:
@@ -264,7 +289,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(strappend, key, path_str)
+        return _json_write_iterate(strappend, key, path_str)
 
     @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(self, key, path_str, *args):
@@ -280,7 +305,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrappend, key, path_str)
+        return _json_write_iterate(arrappend, key, path_str)
 
     @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(self, key, path_str, index, *args):
@@ -296,7 +321,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrinsert, key, path_str)
+        return _json_write_iterate(arrinsert, key, path_str)
 
     @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrpop(self, key, *args):
@@ -311,7 +336,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrpop, key, path_str, allow_result_none=True)
+        return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
     @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrtrim(self, key, *args):
@@ -330,30 +355,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrtrim, key, path_str)
-
-    def _json_read_iterate(self, method, key, *args, error_on_zero_matches=False):
-        path_str = args[0] if len(args) > 0 else '$'
-        if key.value is None:
-            if path_str[0] == 36:
-                raise SimpleError(msgs.JSON_KEY_NOT_FOUND)
-            else:
-                return None
-
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != 36:
-            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
-        res = list()
-        for item in found_matches:
-            res.append(method(item.value))
-
-        if path_str[0] == 46:
-            return res[0] if len(res) > 0 else None
-        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == 46)):
-            return res[0]
-
-        return res
+        return _json_write_iterate(arrtrim, key, path_str)
 
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrindex(self, key, path_str, encoded_value, *args):
@@ -373,29 +375,29 @@ class JSONCommandsMixin:
             except StopIteration:
                 return -1
 
-        return self._json_read_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
+        return _json_read_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key, *args):
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: len(val) if type(val) == str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key, *args):
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: len(val) if type(val) == list else None, key, *args)
 
     @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
     def json_objlen(self, key, *args):
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: len(val) if type(val) == dict else None, key, *args)
 
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key, *args, ):
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
 
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key, *args):
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)
