@@ -381,18 +381,6 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(nummultby, key, path_str)
 
-    @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_numincrby(self, key, path_str, inc_by, *args):
-
-        def numincrby(val):
-            if type(val) in {int, float}:
-                new_value = val + inc_by
-                return new_value, new_value, True
-            else:
-                return None, None, False
-
-        return _json_write_iterate(numincrby, key, path_str)
-
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrindex(self, key, path_str, encoded_value, *args):
