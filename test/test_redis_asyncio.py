@@ -1,9 +1,8 @@
-import asyncio
-import re
-
 import async_timeout
+import asyncio
 import pytest
 import pytest_asyncio
+import re
 import redis
 import redis.asyncio
 from packaging.version import Version

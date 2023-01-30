@@ -204,7 +204,7 @@ class JSONCommandsMixin:
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key, *args) -> bytes:
         paths = [arg for arg in args if not casematch(b'noescape', arg)]
-        no_wrapping_array = (len(paths) == 1 and paths[0] == b'.')
+        no_wrapping_array = (len(paths) == 1 and paths[0][0] == ord(b'.'))
 
         formatted_paths = [
             _format_path(arg) for arg in args

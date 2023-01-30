@@ -1,8 +1,7 @@
-from datetime import datetime
-from time import sleep
-
 import pytest
+from datetime import datetime
 from redis.exceptions import ResponseError
+from time import sleep
 
 
 def test_swapdb(r, create_redis):
