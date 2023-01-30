@@ -17,7 +17,7 @@ from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, delete_keys, CommandItem, Int
+from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis._zset import ZSet
 
@@ -45,6 +45,27 @@ def _parse_jsonpath(path: Union[str, bytes]):
 
 def _path_is_root(path: JSONPath) -> bool:
     return path == Root()
+
+
+class JSONObject:
+    """Argument converter for JSON objects."""
+
+    DECODE_ERROR = msgs.JSON_WRONG_REDIS_TYPE
+    ENCODE_ERROR = msgs.JSON_WRONG_REDIS_TYPE
+
+    @classmethod
+    def decode(cls, value: bytes) -> Any:
+        """Deserialize the supplied bytes into a valid Python object."""
+        try:
+            return json.loads(value)
+        except JSONDecodeError:
+            raise SimpleError(cls.DECODE_ERROR)
+
+    @classmethod
+    def encode(cls, value: Any) -> bytes:
+        """Serialize the supplied Python object into a valid, JSON-formatted
+        byte-encoded string."""
+        return json.dumps(value, default=str).encode() if value is not None else None
 
 
 def _json_write_iterate(method, key, path_str, **kwargs):
@@ -100,27 +121,6 @@ def _json_read_iterate(method, key, *args, error_on_zero_matches=False):
         return res[0]
 
     return res
-
-
-class JSONObject:
-    """Argument converter for JSON objects."""
-
-    DECODE_ERROR = msgs.JSON_WRONG_REDIS_TYPE
-    ENCODE_ERROR = msgs.JSON_WRONG_REDIS_TYPE
-
-    @classmethod
-    def decode(cls, value: bytes) -> Any:
-        """Deserialize the supplied bytes into a valid Python object."""
-        try:
-            return json.loads(value)
-        except JSONDecodeError:
-            raise SimpleError(cls.DECODE_ERROR)
-
-    @classmethod
-    def encode(cls, value: Any) -> bytes:
-        """Serialize the supplied Python object into a valid, JSON-formatted
-        byte-encoded string."""
-        return json.dumps(value, default=str).encode() if value is not None else None
 
 
 class JSONCommandsMixin:
@@ -357,6 +357,43 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(arrtrim, key, path_str)
 
+    @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_numincrby(self, key, path_str, inc_by, *args):
+
+        def numincrby(val):
+            if type(val) in {int, float}:
+                new_value = val + inc_by
+                return new_value, new_value, True
+            else:
+                return None, None, False
+
+        return _json_write_iterate(numincrby, key, path_str)
+
+    @command(name="JSON.NUMMULTBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_nummultby(self, key, path_str, mult_by, *args):
+
+        def numincrby(val):
+            if type(val) in {int, float}:
+                new_value = val * mult_by
+                return new_value, new_value, True
+            else:
+                return None, None, False
+
+        return _json_write_iterate(numincrby, key, path_str)
+
+    @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_numincrby(self, key, path_str, inc_by, *args):
+
+        def numincrby(val):
+            if type(val) in {int, float}:
+                new_value = val + inc_by
+                return new_value, new_value, True
+            else:
+                return None, None, False
+
+        return _json_write_iterate(numincrby, key, path_str)
+
+    # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrindex(self, key, path_str, encoded_value, *args):
         start = max(0, Int.decode(args[0]) if len(args) > 0 else 0)

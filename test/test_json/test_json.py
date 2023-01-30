@@ -222,7 +222,22 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen('non-existing') is None
 
     r.json().set("str", Path.root_path(), "foo")
-    assert 3 == r.json().strlen("str", Path.root_path())
+    assert r.json().strlen("str", Path.root_path()) == 3
+    # Test multi
+    r.json().set("doc1", "$", {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
+    assert r.json().strlen("doc1", "$..a") == [3, 5, None]
+
+    res2 = r.json().strappend("doc1", "bar", "$..a")
+    res1 = r.json().strlen("doc1", "$..a")
+    assert res1 == res2
+
+    # Test single
+    assert r.json().strlen("doc1", "$.nested1.a") == [8]
+    assert r.json().strlen("doc1", "$.nested2.a") == [None]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().strlen("non_existing_doc", "$..a")
 
 
 def test_toggle(r: redis.Redis) -> None:
@@ -486,3 +501,59 @@ def test_objkeys(r: redis.Redis):
         assert r.json().objkeys("non_existing_doc", "$..a") == []
 
     assert r.json().objkeys("doc1", "$..nowhere") == []
+
+
+def test_numincrby(r: redis.Redis) -> None:
+    r.json().set("num", Path.root_path(), 1)
+
+    assert 2 == r.json().numincrby("num", Path.root_path(), 1)
+    assert 2.5 == r.json().numincrby("num", Path.root_path(), 0.5)
+    assert 1.25 == r.json().numincrby("num", Path.root_path(), -1.25)
+    # Test NUMINCRBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+    # Test multi
+    assert r.json().numincrby("doc1", "$..a", 2) == [None, 4, 7.0, None]
+
+    assert r.json().numincrby("doc1", "$..a", 2.5) == [None, 6.5, 9.5, None]
+    # Test single
+    assert r.json().numincrby("doc1", "$.b[1].a", 2) == [11.5]
+
+    assert r.json().numincrby("doc1", "$.b[2].a", 2) == [None]
+    assert r.json().numincrby("doc1", "$.b[1].a", 3.5) == [15.0]
+
+
+def test_nummultby(r: redis.Redis) -> None:
+    r.json().set("num", Path.root_path(), 1)
+
+    with pytest.deprecated_call():
+        assert r.json().nummultby("num", Path.root_path(), 2) == 2
+        assert r.json().nummultby("num", Path.root_path(), 2.5) == 5
+        assert r.json().nummultby("num", Path.root_path(), 0.5) == 2.5
+
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    # test list
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", "$..a", 2) == [None, 4, 10, None]
+        assert r.json().nummultby("doc1", "$..a", 2.5) == [None, 10.0, 25.0, None]
+
+    # Test single
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", "$.b[1].a", 2) == [50.0]
+        assert r.json().nummultby("doc1", "$.b[2].a", 2) == [None]
+        assert r.json().nummultby("doc1", "$.b[1].a", 3) == [150.0]
+
+    # test missing keys
+    with pytest.raises(redis.ResponseError):
+        r.json().numincrby("non_existing_doc", "$..a", 2)
+        r.json().nummultby("non_existing_doc", "$..a", 2)
+
+    # Test legacy NUMINCRBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+    assert r.json().numincrby("doc1", ".b[0].a", 3) == 5
+
+    # Test legacy NUMMULTBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", ".b[0].a", 3) == 6

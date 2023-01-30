@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 import redis
-from redis import exceptions
 from redis.commands.json.path import Path
 from typing import (Any, Dict, List, Tuple, )
 
@@ -63,25 +62,6 @@ def json_data() -> Dict[str, Any]:
 
 
 @pytest.mark.xfail
-def test_numincrby(r: redis.Redis) -> None:
-    r.json().set("num", Path.root_path(), 1)
-
-    assert 2 == r.json().numincrby("num", Path.root_path(), 1)
-    assert 2.5 == r.json().numincrby("num", Path.root_path(), 0.5)
-    assert 1.25 == r.json().numincrby("num", Path.root_path(), -1.25)
-
-
-@pytest.mark.xfail
-def test_nummultby(r: redis.Redis) -> None:
-    r.json().set("num", Path.root_path(), 1)
-
-    with pytest.deprecated_call():
-        assert 2 == r.json().nummultby("num", Path.root_path(), 2)
-        assert 5 == r.json().nummultby("num", Path.root_path(), 2.5)
-        assert 2.5 == r.json().nummultby("num", Path.root_path(), 0.5)
-
-
-@pytest.mark.xfail
 def test_debug(r: redis.Redis) -> None:
     r.json().set("str", Path.root_path(), "foo")
     assert 24 == r.json().debug("MEMORY", "str", Path.root_path())
@@ -93,94 +73,16 @@ def test_debug(r: redis.Redis) -> None:
 
 @pytest.mark.xfail
 def test_resp(r: redis.Redis) -> None:
-    obj = {
-        "foo": "bar",
-        "baz": 1,
-        "qaz": True,
-    }
-    r.json().set(
-        "obj",
-        Path.root_path(),
-        obj,
-    )
+    obj = {"foo": "bar", "baz": 1, "qaz": True, }
+    r.json().set("obj", Path.root_path(), obj, )
 
-    assert "bar" == r.json().resp(
-        "obj",
-        Path("foo"),
-    )
-    assert 1 == r.json().resp(
-        "obj",
-        Path("baz"),
-    )
+    assert "bar" == r.json().resp("obj", Path("foo"), )
+    assert 1 == r.json().resp("obj", Path("baz"), )
     assert r.json().resp(
         "obj",
         Path("qaz"),
     )
     assert isinstance(r.json().resp("obj"), list)
-
-
-@pytest.mark.xfail
-def test_numby_commands_dollar(r: redis.Redis) -> None:
-    # Test NUMINCRBY
-    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-    # Test multi
-    assert r.json().numincrby("doc1", "$..a", 2) == [None, 4, 7.0, None]
-
-    assert r.json().numincrby("doc1", "$..a", 2.5) == [None, 6.5, 9.5, None]
-    # Test single
-    assert r.json().numincrby("doc1", "$.b[1].a", 2) == [11.5]
-
-    assert r.json().numincrby("doc1", "$.b[2].a", 2) == [None]
-    assert r.json().numincrby("doc1", "$.b[1].a", 3.5) == [15.0]
-
-    # Test NUMMULTBY
-    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-
-    # test list
-    with pytest.deprecated_call():
-        assert r.json().nummultby("doc1", "$..a", 2) == [None, 4, 10, None]
-        assert r.json().nummultby("doc1", "$..a", 2.5) == [None, 10.0, 25.0, None]
-
-    # Test single
-    with pytest.deprecated_call():
-        assert r.json().nummultby("doc1", "$.b[1].a", 2) == [50.0]
-        assert r.json().nummultby("doc1", "$.b[2].a", 2) == [None]
-        assert r.json().nummultby("doc1", "$.b[1].a", 3) == [150.0]
-
-    # test missing keys
-    with pytest.raises(exceptions.ResponseError):
-        r.json().numincrby("non_existing_doc", "$..a", 2)
-        r.json().nummultby("non_existing_doc", "$..a", 2)
-
-    # Test legacy NUMINCRBY
-    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-    assert r.json().numincrby("doc1", ".b[0].a", 3) == 5
-
-    # Test legacy NUMMULTBY
-    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-
-    with pytest.deprecated_call():
-        assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
-
-
-@pytest.mark.xfail
-def test_strlen_dollar(r: redis.Redis) -> None:
-    # Test multi
-    r.json().set("doc1", "$", {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
-    assert r.json().strlen("doc1", "$..a") == [3, 5, None]
-
-    res2 = r.json().strappend("doc1", "bar", "$..a")
-    res1 = r.json().strlen("doc1", "$..a")
-    assert res1 == res2
-
-    # Test single
-    assert r.json().strlen("doc1", "$.nested1.a") == [8]
-    assert r.json().strlen("doc1", "$.nested2.a") == [None]
-
-    # Test missing key
-    with pytest.raises(exceptions.ResponseError):
-        r.json().strlen("non_existing_doc", "$..a")
-
 
 
 def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
@@ -201,20 +103,6 @@ def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
         jdata[f"nested_{k}"] = {nested_key_name: v}
 
     return jdata, [k.encode() for k in type_samples.keys()]
-
-
-@pytest.mark.xfail
-def test_type_dollar(r: redis.Redis) -> None:
-    jdata, jtypes = load_types_data("a")
-    r.json().set("doc1", "$", jdata)
-    # Test multi
-    assert r.json().type("doc1", "$..a") == jtypes
-
-    # Test single
-    assert r.json().type("doc1", f"$.nested_{jtypes[1].decode()}.a") == [jtypes[1]]
-
-    # Test missing key
-    assert r.json().type("non_existing_doc", "..a") is None
 
 
 @pytest.mark.xfail

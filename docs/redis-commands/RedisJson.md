@@ -30,6 +30,14 @@ Sets or updates the JSON value at a path
 
 Returns the values at a path from one or more keys
 
+### [JSON.NUMINCRBY](https://redis.io/commands/json.numincrby/)
+
+Increments the numeric value at path by a value
+
+### [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)
+
+Multiplies the numeric value at path by a value
+
 ### [JSON.STRAPPEND](https://redis.io/commands/json.strappend/)
 
 Appends a string to a JSON string value at path
@@ -77,14 +85,6 @@ Returns the type of the JSON value at path
 
 ### Unsupported json commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [JSON.NUMINCRBY](https://redis.io/commands/json.numincrby/)
-
-Increments the numeric value at path by a value
-
-#### [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)
-
-Multiplies the numeric value at path by a value
 
 #### [JSON.RESP](https://redis.io/commands/json.resp/)
 
