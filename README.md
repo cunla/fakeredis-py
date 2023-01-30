@@ -13,13 +13,12 @@ Documentation is now hosted in https://fakeredis.readthedocs.io/
 # Intro
 
 fakeredis is a pure-Python implementation of the redis-py python client
-that simulates talking to a redis server. This was created for a single
-purpose: **to write tests**. Setting up redis is not hard, but
-many times you want to write tests that do not talk to an external server
-(such as redis). This module now allows tests to simply use this
-module as a reasonable substitute for redis.
+that simulates talking to a redis server. 
 
-For a list of supported/unsupported redis commands, see [REDIS_COMMANDS.md](./REDIS_COMMANDS.md).
+This was created originally for a single purpose: **to write tests**.
+
+This module now allows tests to simply use this
+module as a reasonable substitute for redis.
 
 # Sponsor
 
