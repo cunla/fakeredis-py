@@ -3,8 +3,9 @@ import pytest
 import redis
 
 
-@pytest.mark.xfail
 def test_xadd_nomkstream(r: redis.Redis):
+    r.xadd('stream2', {"some": "other"}, nomkstream=True)
+    assert r.xlen('stream2') == 0
     # nomkstream option
     stream = "stream"
     r.xadd(stream, {"foo": "bar"})
@@ -12,6 +13,52 @@ def test_xadd_nomkstream(r: redis.Redis):
     assert r.xlen(stream) == 2
     r.xadd(stream, {"some": "other"}, nomkstream=True)
     assert r.xlen(stream) == 3
+
+
+def test_xrevrange(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    m3 = r.xadd(stream, {"foo": "bar"})
+    m4 = r.xadd(stream, {"foo": "bar"})
+
+    def get_ids(results):
+        return [result[0] for result in results]
+
+    results = r.xrevrange(stream, max=m4)
+    assert get_ids(results) == [m4, m3, m2, m1]
+
+    results = r.xrevrange(stream, max=m3, min=m2)
+    assert get_ids(results) == [m3, m2]
+
+    results = r.xrevrange(stream, min=m3)
+    assert get_ids(results) == [m4, m3]
+
+    results = r.xrevrange(stream, min=m2, count=1)
+    assert get_ids(results) == [m4]
+
+
+def test_xrange(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    m3 = r.xadd(stream, {"foo": "bar"})
+    m4 = r.xadd(stream, {"foo": "bar"})
+
+    def get_ids(results):
+        return [result[0] for result in results]
+
+    results = r.xrange(stream, min=m1)
+    assert get_ids(results) == [m1, m2, m3, m4]
+
+    results = r.xrange(stream, min=m2, max=m3)
+    assert get_ids(results) == [m2, m3]
+
+    results = r.xrange(stream, max=m3)
+    assert get_ids(results) == [m1, m2, m3]
+
+    results = r.xrange(stream, max=m2, count=1)
+    assert get_ids(results) == [m1]
 
 
 @pytest.mark.xfail
@@ -59,27 +106,3 @@ def test_xadd_minlen_and_limit(r: redis.Redis):
     m3 = r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
     assert r.xadd(stream, {"foo": "bar"}, approximate=True, minid=m3)
-
-
-@pytest.mark.xfail
-def test_xrevrange(r: redis.Redis):
-    stream = "stream"
-    m1 = r.xadd(stream, {"foo": "bar"})
-    m2 = r.xadd(stream, {"foo": "bar"})
-    m3 = r.xadd(stream, {"foo": "bar"})
-    m4 = r.xadd(stream, {"foo": "bar"})
-
-    def get_ids(results):
-        return [result[0] for result in results]
-
-    results = r.xrevrange(stream, max=m4)
-    assert get_ids(results) == [m4, m3, m2, m1]
-
-    results = r.xrevrange(stream, max=m3, min=m2)
-    assert get_ids(results) == [m3, m2]
-
-    results = r.xrevrange(stream, min=m3)
-    assert get_ids(results) == [m4, m3]
-
-    results = r.xrevrange(stream, min=m2, count=1)
-    assert get_ids(results) == [m4]
