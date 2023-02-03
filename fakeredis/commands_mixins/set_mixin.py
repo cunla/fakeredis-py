@@ -5,38 +5,40 @@ from fakeredis._commands import (command, Key, Int, CommandItem)
 from fakeredis._helpers import (OK, SimpleError, casematch)
 
 
-class SetCommandsMixin:
-    # Set and Hyperloglog commands
-    def _setop(self, op, stop_if_missing, dst, key, *keys):
-        """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
-
-        If `stop_if_missing`, the output will be made an empty set as soon as
-        an empty input set is encountered (use for SINTER[STORE]). May assume
-        that `key` is a set (or empty), but `keys` could be anything.
-        """
-        ans = self._calc_setop(op, stop_if_missing, key, *keys)
-        if dst is None:
-            return list(ans)
-        else:
-            dst.value = ans
-            return len(dst.value)
-
-    @staticmethod
-    def _calc_setop(op, stop_if_missing, key, *keys):
-        if stop_if_missing and not key.value:
-            return set()
-        value = key.value
+def _calc_setop(op, stop_if_missing, key, *keys):
+    if stop_if_missing and not key.value:
+        return set()
+    value = key.value
+    if not isinstance(value, set):
+        raise SimpleError(msgs.WRONGTYPE_MSG)
+    ans = value.copy()
+    for other in keys:
+        value = other.value if other.value is not None else set()
         if not isinstance(value, set):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        ans = value.copy()
-        for other in keys:
-            value = other.value if other.value is not None else set()
-            if not isinstance(value, set):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-            if stop_if_missing and not value:
-                return set()
-            ans = op(ans, value)
-        return ans
+        if stop_if_missing and not value:
+            return set()
+        ans = op(ans, value)
+    return ans
+
+
+def _setop(op, stop_if_missing, dst, key, *keys):
+    """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
+
+    If `stop_if_missing`, the output will be made an empty set as soon as
+    an empty input set is encountered (use for SINTER[STORE]). May assume
+    that `key` is a set (or empty), but `keys` could be anything.
+    """
+    ans = _calc_setop(op, stop_if_missing, key, *keys)
+    if dst is None:
+        return list(ans)
+    else:
+        dst.value = ans
+        return len(dst.value)
+
+
+class SetCommandsMixin:
+    # Set and Hyperloglog commands
 
     # Set commands
     @command((Key(set), bytes), (bytes,))
@@ -52,15 +54,15 @@ class SetCommandsMixin:
 
     @command((Key(set),), (Key(set),))
     def sdiff(self, *keys):
-        return self._setop(lambda a, b: a - b, False, None, *keys)
+        return _setop(lambda a, b: a - b, False, None, *keys)
 
     @command((Key(), Key(set)), (Key(set),))
     def sdiffstore(self, dst, *keys):
-        return self._setop(lambda a, b: a - b, False, dst, *keys)
+        return _setop(lambda a, b: a - b, False, dst, *keys)
 
     @command((Key(set),), (Key(set),))
     def sinter(self, *keys):
-        res = self._setop(lambda a, b: a & b, True, None, *keys)
+        res = _setop(lambda a, b: a & b, True, None, *keys)
         return res
 
     @command((Int, bytes), (bytes,))
@@ -78,12 +80,12 @@ class SetCommandsMixin:
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
                 for i in range(numkeys)]
 
-        res = self._setop(lambda a, b: a & b, False, None, *keys)
+        res = _setop(lambda a, b: a & b, False, None, *keys)
         return len(res) if limit == 0 else min(limit, len(res))
 
     @command((Key(), Key(set)), (Key(set),))
     def sinterstore(self, dst, *keys):
-        return self._setop(lambda a, b: a & b, True, dst, *keys)
+        return _setop(lambda a, b: a & b, True, dst, *keys)
 
     @command((Key(set), bytes))
     def sismember(self, key, member):
@@ -157,11 +159,11 @@ class SetCommandsMixin:
 
     @command((Key(set),), (Key(set),))
     def sunion(self, *keys):
-        return self._setop(lambda a, b: a | b, False, None, *keys)
+        return _setop(lambda a, b: a | b, False, None, *keys)
 
     @command((Key(), Key(set)), (Key(set),))
     def sunionstore(self, dst, *keys):
-        return self._setop(lambda a, b: a | b, False, dst, *keys)
+        return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
     # These are not quite the same as the real redis ones, which are
