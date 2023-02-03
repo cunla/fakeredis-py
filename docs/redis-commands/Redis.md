@@ -1465,6 +1465,24 @@ Add multiple sets and store the resulting set in a key
 > To implement support for a command, see [here](/guides/implement-command/) 
 
 
+## stream commands
+
+### [XADD](https://redis.io/commands/xadd/)
+
+Appends a new entry to a stream
+
+### [XLEN](https://redis.io/commands/xlen/)
+
+Return the number of entries in a stream
+
+### [XRANGE](https://redis.io/commands/xrange/)
+
+Return a range of elements in a stream, with IDs matching the specified IDs interval
+
+### [XREVRANGE](https://redis.io/commands/xrevrange/)
+
+Return a range of elements in a stream, with IDs matching the specified IDs interval, in reverse order (from greater to smaller IDs) compared to XRANGE
+
 
 ### Unsupported stream commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
@@ -1472,10 +1490,6 @@ Add multiple sets and store the resulting set in a key
 #### [XACK](https://redis.io/commands/xack/)
 
 Marks a pending message as correctly processed, effectively removing it from the pending entries list of the consumer group. Return value of the command is the number of messages successfully acknowledged, that is, the IDs we were actually able to resolve in the PEL.
-
-#### [XADD](https://redis.io/commands/xadd/)
-
-Appends a new entry to a stream
 
 #### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/)
 
@@ -1537,17 +1551,9 @@ Show helpful text about the different subcommands
 
 Get information about a stream
 
-#### [XLEN](https://redis.io/commands/xlen/)
-
-Return the number of entries in a stream
-
 #### [XPENDING](https://redis.io/commands/xpending/)
 
 Return information and entries from a stream consumer group pending entries list, that are messages fetched but never acknowledged.
-
-#### [XRANGE](https://redis.io/commands/xrange/)
-
-Return a range of elements in a stream, with IDs matching the specified IDs interval
 
 #### [XREAD](https://redis.io/commands/xread/)
 
@@ -1556,10 +1562,6 @@ Return never seen elements in multiple streams, with IDs greater than the ones r
 #### [XREADGROUP](https://redis.io/commands/xreadgroup/)
 
 Return new entries from a stream using a consumer group, or access the history of the pending entries for a given consumer. Can block.
-
-#### [XREVRANGE](https://redis.io/commands/xrevrange/)
-
-Return a range of elements in a stream, with IDs matching the specified IDs interval, in reverse order (from greater to smaller IDs) compared to XRANGE
 
 #### [XSETID](https://redis.io/commands/xsetid/)
 
