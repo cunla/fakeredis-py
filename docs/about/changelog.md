@@ -8,6 +8,10 @@
   - `JSON.ARRTRIM`
   - `JSON.NUMINCRBY`
   - `JSON.NUMMULTBY`
+  - `XADD`
+  - `XLEN`
+  - `XRANGE`
+  - `XREVRANGE`
 
 ### 🧰 Maintenance
 - Improve json commands implementation.
