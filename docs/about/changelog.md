@@ -1,4 +1,6 @@
 ## Next release
+
+## v2.7.0
 ### 🚀 Features
 - Implement 
   - `JSON.ARRINDEX` 
