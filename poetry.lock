@@ -491,14 +491,14 @@ pyflakes = ">=3.0.0,<3.1.0"
 
 [[package]]
 name = "hypothesis"
-version = "6.65.2"
+version = "6.66.0"
 description = "A library for property-based testing"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "hypothesis-6.65.2-py3-none-any.whl", hash = "sha256:26c52473a526b31672d97f88be0b7ac134f0ea180737c71ada2a4d82ad175e92"},
-    {file = "hypothesis-6.65.2.tar.gz", hash = "sha256:821279f05fad38575271be3fdfff1e22232613f3d21b3fc991d735057f9b5b47"},
+    {file = "hypothesis-6.66.0-py3-none-any.whl", hash = "sha256:f3633335bd6deb856c7aaeddaf48247b2933856d407bd1343b49da84d3263181"},
+    {file = "hypothesis-6.66.0.tar.gz", hash = "sha256:2fb334ab068dc6e7c02d49a1c694f66bd1f681197eeed94406650a59eebef870"},
 ]
 
 [package.dependencies]
@@ -1305,14 +1305,14 @@ files = [
 
 [[package]]
 name = "tox"
-version = "4.4.2"
+version = "4.4.4"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tox-4.4.2-py3-none-any.whl", hash = "sha256:258895ba5de919490c03ef97467c4c8c42954537dfd96ae72cc2fb63dac67cf0"},
-    {file = "tox-4.4.2.tar.gz", hash = "sha256:3d8a8dd8a5afdc0d37af3e2b4959e427fe22530d0aa599baf0120e144b3defa3"},
+    {file = "tox-4.4.4-py3-none-any.whl", hash = "sha256:1195820ca35b141ce5ab040c9dfad8f03de6897c9bd867c6151dfb7dc58e64cd"},
+    {file = "tox-4.4.4.tar.gz", hash = "sha256:e1ef01d9e9503b1218511f74517dc3f0008c8b5e0cc53ab7f51ff3c2ca63b349"},
 ]
 
 [package.dependencies]
@@ -1387,14 +1387,14 @@ cryptography = ">=35.0.0"
 
 [[package]]
 name = "types-redis"
-version = "4.4.0.4"
+version = "4.4.0.5"
 description = "Typing stubs for redis"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-redis-4.4.0.4.tar.gz", hash = "sha256:b70829ca3401d3153d628e28d860070eff1b36b2fa3e5af3e583c1d167383cab"},
-    {file = "types_redis-4.4.0.4-py3-none-any.whl", hash = "sha256:802e893ad3f88e03d3a2feb0d23a715d60b0bb330bc598a52f1de237fc2547a5"},
+    {file = "types-redis-4.4.0.5.tar.gz", hash = "sha256:cd6d34bf1511317cd4e47f9a5c24262b300bc6f3a83fcaee23a9068b19f44318"},
+    {file = "types_redis-4.4.0.5-py3-none-any.whl", hash = "sha256:af621c36dbefb09226211a192454f57b8df0af9b0c27609d19a15101937e6d6c"},
 ]
 
 [package.dependencies]
