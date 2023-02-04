@@ -6,6 +6,5 @@ except ImportError as e:
     if e.name != 'jsonpath_ng':
         raise e
 
-
     class JSONCommandsMixin:
         pass

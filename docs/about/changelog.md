@@ -1,4 +1,7 @@
 ## Next release
+## v2.7.1
+#### 🐛 Bug Fixes
+- Fix import error for NoneType #527
 
 ## v2.7.0
 ### 🚀 Features
