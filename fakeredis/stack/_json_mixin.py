@@ -12,7 +12,6 @@ from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
-from types import NoneType
 from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
@@ -125,7 +124,7 @@ def _json_read_iterate(method, key, *args, error_on_zero_matches=False):
 
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
-
+    NoneType = type(None)
     TYPES_EMPTY_VAL_DICT = {
         dict: {},
         int: 0,
