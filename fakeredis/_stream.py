@@ -20,15 +20,17 @@ class XStream:
             id_str = id_str.decode()
 
         if id_str is None or id_str == '*':
-            ts, seq = int(time.time() + 1), 1
+            ts, seq = int(time.time() + 1), 0
             if (len(self._values) > 0
                     and self._values[-1][0][0] == ts
                     and self._values[-1][0][1] >= seq):
                 seq = self._values[-1][0][1] + 1
             ts_seq = (ts, seq)
         elif id_str[-1] == '*':
-            ts, seq = id_str.split('-')
-            ts = int(ts)
+            split = id_str.split('-')
+            if len(split) != 2:
+                return None
+            ts, seq = int(split[0]), split[1]
             if len(self._values) > 0 and ts == self._values[-1][0][0]:
                 seq = self._values[-1][0][1] + 1
             else:
