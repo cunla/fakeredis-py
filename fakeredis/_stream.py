@@ -47,7 +47,8 @@ class XStream:
         ts_seq = StreamRangeTest.parse_id(id_str)
         return bisect.bisect_left(self._values, ts_seq, key=lambda x: x[0])
 
-    def _format_record(self, record):
+    @staticmethod
+    def _format_record(record):
         return [f'{record[0][0]}-{record[0][1]}'.encode(), list(record[1:])]
 
     def irange(self,
@@ -55,18 +56,15 @@ class XStream:
                exclusive: Tuple[bool, bool] = (True, True),
                reverse=False):
         def match(record):
-            res = stop > record[0] > start
-            res = res or (not exclusive[0] and record[0] == start)
-            res = res or (not exclusive[1] and record[0] == stop)
-            return res
+            result = stop > record[0] > start
+            result = result or (not exclusive[0] and record[0] == start)
+            result = result or (not exclusive[1] and record[0] == stop)
+            return result
 
-        matches = filter(match, self._values)
-        res = list()
-        for record in matches:
-            res.append(self._format_record(record))
+        matches = map(self._format_record, filter(match, self._values))
         if reverse:
-            return list(reversed(res))
-        return res
+            matches = reversed(list(matches))
+        return list(matches)
 
 
 if __name__ == '__main__':
