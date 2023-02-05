@@ -3,8 +3,7 @@ import time
 from typing import List, Union, Tuple
 
 from fakeredis._commands import StreamRangeTest
-from fakeredis._helpers import SimpleError
-import fakeredis._msgs as msgs
+
 
 class XStream:
     def __init__(self):
