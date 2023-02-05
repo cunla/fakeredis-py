@@ -14,18 +14,20 @@ class XStream:
         # ]
         self._values = list()
 
-    def add(self, fields: List, id_str: bytes = '*') -> Union[None, bytes]:
+    def add(self, fields: List, id_str: str = '*') -> Union[None, bytes]:
         assert len(fields) % 2 == 0
+        if isinstance(id_str, bytes):
+            id_str = id_str.decode()
 
-        if id_str is None or id_str == b'*':
+        if id_str is None or id_str == '*':
             ts, seq = int(time.time() + 1), 1
             if (len(self._values) > 0
                     and self._values[-1][0][0] == ts
                     and self._values[-1][0][1] >= seq):
                 seq = self._values[-1][0][1] + 1
             ts_seq = (ts, seq)
-        elif id_str[-1] == ord(b'*'):
-            ts, seq = id_str.decode().split('-')
+        elif id_str[-1] == '*':
+            ts, seq = id_str.split('-')
             ts = int(ts)
             if len(self._values) > 0 and ts == self._values[-1][0][0]:
                 seq = self._values[-1][0][1] + 1
@@ -46,9 +48,8 @@ class XStream:
 
     def __iter__(self):
         def gen():
-            for val in self._values:
-                ts_seq = val[0]
-                yield f"{ts_seq[0]}-{ts_seq[1]}"
+            for record in self._values:
+                yield self._format_record(record)
 
         return gen()
 
@@ -74,22 +75,3 @@ class XStream:
         if reverse:
             matches = reversed(list(matches))
         return list(matches)
-
-
-if __name__ == '__main__':
-    stream = XStream()
-    stream.add([0, 0, 1, 1, 2, 2, 3, 3], '0-1')
-    stream.add([1, 1, 2, 2, 3, 3, 4, 4], '1-2')
-    stream.add([2, 2, 3, 3, 4, 4], '1-3')
-    stream.add([3, 3, 4, 4], '2-1')
-    stream.add([3, 3, 4, 4], '2-2')
-    stream.add([3, 3, 4, 4], '3-1')
-    for i in stream:
-        print(i)
-    assert stream.find_index('1-2') == 1
-    assert stream.find_index('0-1') == 0
-    assert stream.find_index('2-1') == 3
-    assert stream.find_index('1-4') == 3
-    lst = stream.irange('0-2', '3-0')
-    for i in lst:
-        print(i)
