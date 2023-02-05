@@ -8,7 +8,7 @@ from fakeredis._stream import XStream
 class StreamsCommandsMixin:
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,), )
     def xadd(self, key, *args):
-        # TODO: handle id_str not *, MAXLEN, MINID, LIMIT
+        # TODO: MAXLEN, MINID, LIMIT
         (nomkstream, limit,), left_args = extract_args(args, ('nomkstream', '+limit'), error_on_unexpected=False)
         if nomkstream and key.value is None:
             return None
@@ -17,9 +17,14 @@ class StreamsCommandsMixin:
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('XADD'))
         stream = key.value or XStream()
+        if self.version < 7 and id_str != b'*' and StreamRangeTest.parse_id(id_str) == (-1, -1):
+            raise SimpleError(msgs.XADD_INVALID_ID)
         id_str = stream.add(elements, id_str=id_str)
-        if id_str is not None:
-            key.update(stream)
+        if id_str is None:
+            if StreamRangeTest.parse_id(left_args[0]) == (-1, -1):
+                raise SimpleError(msgs.XADD_INVALID_ID)
+            raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
+        key.update(stream)
         return id_str
 
     @command(name="XLEN", fixed=(Key(XStream),))

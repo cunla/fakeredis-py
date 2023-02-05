@@ -3,7 +3,8 @@ import time
 from typing import List, Union, Tuple
 
 from fakeredis._commands import StreamRangeTest
-
+from fakeredis._helpers import SimpleError
+import fakeredis._msgs as msgs
 
 class XStream:
     def __init__(self):
@@ -14,17 +15,26 @@ class XStream:
         # ]
         self._values = list()
 
-    def add(self, fields: List, id_str: str = '*') -> Union[None, bytes]:
+    def add(self, fields: List, id_str: bytes = '*') -> Union[None, bytes]:
         assert len(fields) % 2 == 0
-        if id_str != b'*':
-            ts_seq = StreamRangeTest.parse_id(id_str)
-        else:
+
+        if id_str is None or id_str == b'*':
             ts, seq = int(time.time() + 1), 1
             if (len(self._values) > 0
                     and self._values[-1][0][0] == ts
                     and self._values[-1][0][1] >= seq):
                 seq = self._values[-1][0][1] + 1
             ts_seq = (ts, seq)
+        elif id_str[-1] == ord(b'*'):
+            ts, seq = id_str.decode().split('-')
+            ts = int(ts)
+            if len(self._values) > 0 and ts == self._values[-1][0][0]:
+                seq = self._values[-1][0][1] + 1
+            else:
+                seq = 0
+            ts_seq = (ts, seq)
+        else:
+            ts_seq = StreamRangeTest.parse_id(id_str)
 
         if len(self._values) > 0 and self._values[-1][0] > ts_seq:
             return None

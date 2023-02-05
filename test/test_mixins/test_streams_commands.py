@@ -3,6 +3,47 @@ import pytest
 import redis
 
 
+@pytest.mark.max_server('6.2.8')
+def test_xadd(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"some": "other"})
+    ts1, seq1 = m1.decode().split('-')
+    seq1 = int(seq1)
+    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-{seq1 + 1}')
+    ts2, seq2 = m2.decode().split('-')
+    assert ts1 == ts2
+    assert int(seq2) == int(seq1) + 1
+
+    stream = "stream2"
+    m1 = r.xadd(stream, {"some": "other"})
+    ts1, seq1 = m1.decode().split('-')
+    ts1 = int(ts1) - 1
+    with pytest.raises(redis.ResponseError):
+        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
+    with pytest.raises(redis.ResponseError):
+        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-1')
+
+
+@pytest.mark.min_server('7')
+def test_xadd_redis7(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"some": "other"})
+    ts1, seq1 = m1.decode().split('-')
+    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
+    ts2, seq2 = m2.decode().split('-')
+    assert ts1 == ts2
+    assert int(seq2) == int(seq1) + 1
+
+    stream = "stream2"
+    m1 = r.xadd(stream, {"some": "other"})
+    ts1, seq1 = m1.decode().split('-')
+    ts1 = int(ts1) - 1
+    with pytest.raises(redis.ResponseError):
+        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
+    with pytest.raises(redis.ResponseError):
+        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-1')
+
+
 def test_xadd_nomkstream(r: redis.Redis):
     r.xadd('stream2', {"some": "other"}, nomkstream=True)
     assert r.xlen('stream2') == 0

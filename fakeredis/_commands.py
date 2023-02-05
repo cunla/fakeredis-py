@@ -315,7 +315,10 @@ class StreamRangeTest:
     def parse_id(id_str: str):
         if isinstance(id_str, bytes):
             id_str = id_str.decode()
-        timestamp, sequence = (int(x) for x in id_str.split('-'))
+        try:
+            timestamp, sequence = (int(x) for x in id_str.split('-'))
+        except ValueError:
+            return -1, -1
         return timestamp, sequence
 
     @classmethod
