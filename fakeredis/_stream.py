@@ -57,7 +57,7 @@ class XStream:
 
     def find_index(self, id_str: str):
         ts_seq = StreamRangeTest.parse_id(id_str)
-        return bisect.bisect_left(self._values, ts_seq, key=lambda x: x[0])
+        return bisect.bisect_left(list(map(lambda x: x[0], self._values)), ts_seq)
 
     @staticmethod
     def _format_record(record):
