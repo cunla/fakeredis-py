@@ -51,7 +51,7 @@ jobs:
       max-parallel: 5
       fail-fast: false
       matrix:
-        redis-image: ["redis:6.2.10", "redis:7.0.8"]
+        redis-image: ["redis:6.2.10", "redis:7.0.7"]
         python-version: ["3.8", "3.10", "3.11"]
         redis-py: ["4.3.5", "4.4.1", "4.5.0"]
         include:
