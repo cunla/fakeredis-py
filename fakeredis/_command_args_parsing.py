@@ -52,13 +52,28 @@ def extract_args(
 ) -> Tuple[List, List]:
     """Parse argument values
 
-    Extract from actual arguments which arguments exist and their
-    numerical value.
-    An argument can have parameters:
+    Extract from actual arguments which arguments exist and their value if relevant.
+
+    Parameters:
+    - actual_args:
+        The actual arguments to parse
+    - expected:
+        Arguments to look for, see below explanation.
+    - error_on_unexpected:
+        Should an error be raised when actual_args contain an unexpected argument?
+    - left_from_first_unexpected:
+        Once reaching an unexpected argument in actual_args,
+        Should parsing stop?
+    Returns:
+    - List of values for expected arguments.
+    - List of remaining args.
+
+    An expected argument can have parameters:
     - A numerical (Int) parameter is identified with +.
     - A non-numerical parameter is identified with a *.
-    For example: '++limit' will translate as an argument with 2 int parameters.
 
+    e.g.
+    '++limit' will translate as an argument with 2 int parameters.
 
     >>> extract_args((b'nx', b'ex', b'324', b'xx',), ('nx', 'xx', '+ex', 'keepttl'))
     [True, True, 324, False], None

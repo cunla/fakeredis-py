@@ -1,7 +1,14 @@
 ## Next release
+## v2.8.0
+### 🚀 Features
+- Support for redis-py 4.5.0 [#124](https://github.com/cunla/fakeredis-py/issues/124)
+
+### 🐛 Bug Fixes
+- Fix import error for redis-py v3+ [#121](https://github.com/cunla/fakeredis-py/issues/121)
+
 
 ## v2.7.1
-#### 🐛 Bug Fixes
+### 🐛 Bug Fixes
 - Fix import error for NoneType #527
 
 ## v2.7.0

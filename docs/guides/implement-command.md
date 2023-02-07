@@ -16,6 +16,35 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
             return None
 ```
 
+## Parsing command arguments
+The `extract_args` method should help extracting arguments from `*args`. 
+It extracts from actual arguments which arguments exist and their value if relevant.
+
+Parameters `extract_args` expect:
+- `actual_args`
+    The actual arguments to parse
+- `expected`
+    Arguments to look for, see below explanation.
+- `error_on_unexpected` (default: True)
+    Should an error be raised when actual_args contain an unexpected argument?
+- `left_from_first_unexpected` (default: True)
+    Once reaching an unexpected argument in actual_args,
+    Should parsing stop?
+
+It returns two lists:
+- List of values for expected arguments.
+- List of remaining args.
+
+### Expected argument structure:
+- If expected argument has only a name, it will be parsed as boolean
+  (Whether it exists in actual `*args` or not).
+- In order to parse a numerical value following the expected argument,
+  a `+` prefix is needed, e.g., `+px` will parse `args=('px', '1')` as `px=1`
+- In order to parse a string value following the expected argument,
+  a `*` prefix is needed, e.g., `*type` will parse `args=('type', 'number')` as `type='number'`
+- You can have more than one `+`/`*`, e.g., `++limit` will parse `args=('limit','1','10')`
+  as `limit=(1,10)`
+
 ## How to use `@command` decorator
 
 The `@command` decorator register the method as a redis command and define the accepted format for it.
