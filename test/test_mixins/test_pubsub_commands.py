@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import redis
 import threading
@@ -391,12 +393,15 @@ def test_pubsub_help_redis6(r):
 
 
 def test_pubsub_numsub(r):
+    a = uuid.uuid4().hex
+    b = uuid.uuid4().hex
+    c = uuid.uuid4().hex
     p1 = r.pubsub()
     p2 = r.pubsub()
 
-    p1.subscribe("a", "b", "c")
-    p2.subscribe("a", "b")
+    p1.subscribe(a, b, c)
+    p2.subscribe(a, b)
 
-    assert r.pubsub_numsub("a", "b", "c") == [(b"a", 2), (b"b", 2), (b"c", 1), ]
+    assert r.pubsub_numsub(a, b, c) == [(a.encode(), 2), (b.encode(), 2), (c.encode(), 1), ]
     assert r.pubsub_numsub() == []
-    assert r.pubsub_numsub("a", "non-existing") == [(b"a", 2), (b"non-existing", 0)]
+    assert r.pubsub_numsub(a, "non-existing") == [(a.encode(), 2), (b"non-existing", 0)]
