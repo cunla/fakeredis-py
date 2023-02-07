@@ -39,8 +39,8 @@ repository = "https://github.com/cunla/fakeredis-py"
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<4.0"
-redis = "<4.5"
-sortedcontainers = "^2.4.0"
+redis = "^4"
+sortedcontainers = "^2.4"
 lupa = { version = "^1.14", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
 
