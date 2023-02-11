@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from collections import OrderedDict
-
 import math
+from collections import OrderedDict
+from typing import Tuple, List, Optional
+
 import pytest
 import redis
 import redis.client
 from packaging.version import Version
-from typing import Tuple, List, Optional
+
+from test import testtools
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -51,6 +53,62 @@ def test_zrange_same_score(r):
     r.zadd('foo', {'two_d': 2})
     r.zadd('foo', {'two_e': 2})
     assert r.zrange('foo', 2, 3) == [b'two_c', b'two_d']
+
+
+def test_zrange_with_bylex_and_byscore(r: redis.Redis):
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'zrange', 'foo', '(t', '+', 'bylex', 'byscore')
+
+
+def test_zrange_with_rev_and_bylex(r: redis.Redis):
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
+    assert r.zrange('foo', b'+', b'(t', desc=True, bylex=True) == [b'two_b', b'two_a', b'three_a']
+    assert (
+            r.zrange('foo', b'[two_b', b'(t', desc=True, bylex=True)
+            == [b'two_b', b'two_a', b'three_a']
+    )
+    assert r.zrange('foo', b'(two_b', b'(t', desc=True, bylex=True) == [b'two_a', b'three_a']
+    assert (
+            r.zrange('foo', b'[two_b', b'[three_a', desc=True, bylex=True)
+            == [b'two_b', b'two_a', b'three_a']
+    )
+    assert r.zrange('foo', b'[two_b', b'(three_a', desc=True, bylex=True) == [b'two_b', b'two_a']
+    assert r.zrange('foo', b'(two_b', b'-', desc=True, bylex=True) == [b'two_a', b'three_a', b'one_a']
+    assert r.zrange('foo', b'(two_b', b'[two_b', bylex=True) == []
+    # reversed max + and min - boundaries
+    # these will be always empty, but allowed by redis
+    assert r.zrange('foo', b'-', b'+', desc=True, bylex=True) == []
+    assert r.zrange('foo', b'[three_a', b'+', desc=True, bylex=True) == []
+    assert r.zrange('foo', b'-', b'[o', desc=True, bylex=True) == []
+
+
+def test_zrange_with_bylex(r):
+    r.zadd('foo', {'one_a': 0})
+    r.zadd('foo', {'two_a': 0})
+    r.zadd('foo', {'two_b': 0})
+    r.zadd('foo', {'three_a': 0})
+    assert r.zrange('foo', b'(t', b'+', bylex=True) == [b'three_a', b'two_a', b'two_b']
+    assert r.zrange('foo', b'(t', b'[two_b', bylex=True) == [b'three_a', b'two_a', b'two_b']
+    assert r.zrange('foo', b'(t', b'(two_b', bylex=True) == [b'three_a', b'two_a']
+    assert (
+            r.zrange('foo', b'[three_a', b'[two_b', bylex=True)
+            == [b'three_a', b'two_a', b'two_b']
+    )
+    assert r.zrange('foo', b'(three_a', b'[two_b', bylex=True) == [b'two_a', b'two_b']
+    assert r.zrange('foo', b'-', b'(two_b', bylex=True) == [b'one_a', b'three_a', b'two_a']
+    assert r.zrange('foo', b'[two_b', b'(two_b', bylex=True) == []
+    # reversed max + and min - boundaries
+    # these will be always empty, but allowed by redis
+    assert r.zrange('foo', b'+', b'-', bylex=True) == []
+    assert r.zrange('foo', b'+', b'[three_a', bylex=True) == []
+    assert r.zrange('foo', b'[o', b'-', bylex=True) == []
 
 
 def test_zrange_with_byscore(r):
