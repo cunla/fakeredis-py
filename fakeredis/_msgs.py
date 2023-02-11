@@ -1,7 +1,8 @@
 INVALID_EXPIRE_MSG = "ERR invalid expire time in {}"
 WRONGTYPE_MSG = "WRONGTYPE Operation against a key holding the wrong kind of value"
 SYNTAX_ERROR_MSG = "ERR syntax error"
-SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG="ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX"
+SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
+    "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX")
 INVALID_INT_MSG = "ERR value is not an integer or out of range"
 INVALID_FLOAT_MSG = "ERR value is not a valid float"
 INVALID_OFFSET_MSG = "ERR offset is out of range"
