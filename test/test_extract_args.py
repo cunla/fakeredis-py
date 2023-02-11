@@ -54,6 +54,13 @@ def test_extract_args__multiple_numbers():
     assert limit == [324, 123]
     assert not keepttl
 
+    (xx, nx, limit, keepttl), _ = extract_args(
+        (b'nx', b'xx',),
+        ('nx', 'xx', '++limit', 'keepttl'))
+    assert xx
+    assert nx
+    assert not keepttl
+    assert limit == [None, None]
 
 def test_extract_args__extract_non_numbers():
     args = (b'by', b'dd', b'nx', b'limit', b'324', b'123', b'xx',)
