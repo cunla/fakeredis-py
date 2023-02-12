@@ -1,8 +1,11 @@
 import pytest
-
 import redis
 
 from fakeredis._stream import XStream
+
+
+def get_ids(results):
+    return [result[0] for result in results]
 
 
 def test_xstream(r):
@@ -51,6 +54,18 @@ def test_xadd(r: redis.Redis):
         r.xadd(stream, {'add': 'more'}, id=f'{ts1}-1')
 
 
+def test_xadd_maxlen(r: redis.Redis):
+    stream = "stream"
+    id_list = []
+    for i in range(10):
+        id_list.append(r.xadd(stream, {"k": i}))
+    maxlen = 5
+    id_list.append(r.xadd(stream, {'k': 'new'}, maxlen=maxlen, approximate=False))
+    assert r.xlen(stream) == maxlen
+    results = r.xrange(stream, id_list[0])
+    assert get_ids(results) == id_list[len(id_list) - maxlen:]
+
+
 @pytest.mark.min_server('7')
 def test_xadd_redis7(r: redis.Redis):
     stream = "stream"
@@ -90,9 +105,6 @@ def test_xrevrange(r: redis.Redis):
     m3 = r.xadd(stream, {"foo": "bar"})
     m4 = r.xadd(stream, {"foo": "bar"})
 
-    def get_ids(results):
-        return [result[0] for result in results]
-
     results = r.xrevrange(stream, max=m4)
     assert get_ids(results) == [m4, m3, m2, m1]
 
@@ -112,9 +124,6 @@ def test_xrange(r: redis.Redis):
     m2 = r.xadd(stream, {"foo": "bar"})
     m3 = r.xadd(stream, {"foo": "bar"})
     m4 = r.xadd(stream, {"foo": "bar"})
-
-    def get_ids(results):
-        return [result[0] for result in results]
 
     results = r.xrange(stream, min=m1)
     assert get_ids(results) == [m1, m2, m3, m4]

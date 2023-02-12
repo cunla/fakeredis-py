@@ -62,6 +62,7 @@ def test_extract_args__multiple_numbers():
     assert not keepttl
     assert limit == [None, None]
 
+
 def test_extract_args__extract_non_numbers():
     args = (b'by', b'dd', b'nx', b'limit', b'324', b'123', b'xx',)
 
@@ -69,5 +70,34 @@ def test_extract_args__extract_non_numbers():
         args, ('nx', 'xx', '++limit', '*by'))
     assert xx
     assert nx
+    assert limit == [324, 123]
+    assert sortby == b'dd'
+
+
+def test_extract_args__extract_maxlen():
+    args = (b'MAXLEN', b'5')
+    (nomkstream, limit, maxlen, maxid), left_args = extract_args(
+        args, ('nomkstream', '+limit', '~+maxlen', '~maxid'), error_on_unexpected=False)
+    assert not nomkstream
+    assert limit is None
+    assert maxlen == 5
+    assert maxid is None
+
+    args = (b'MAXLEN', b'~', b'5', b'maxid', b'~', b'1')
+    (nomkstream, limit, maxlen, maxid), left_args = extract_args(
+        args, ('nomkstream', '+limit', '~+maxlen', '~maxid'), error_on_unexpected=False)
+    assert not nomkstream
+    assert limit is None
+    assert maxlen == 5
+    assert maxid == b"1"
+
+    args = (b'by', b'dd', b'nx', b'maxlen', b'~', b'10',
+            b'limit', b'324', b'123', b'xx',)
+
+    (nx, maxlen, xx, limit, sortby), _ = extract_args(
+        args, ('nx', '~+maxlen', 'xx', '++limit', '*by'))
+    assert xx
+    assert nx
+    assert maxlen == 10
     assert limit == [324, 123]
     assert sortby == b'dd'

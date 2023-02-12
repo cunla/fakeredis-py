@@ -63,6 +63,9 @@ class XStream:
     def _format_record(record):
         return [f'{record[0][0]}-{record[0][1]}'.encode(), list(record[1:])]
 
+    def trim(self, length: int):
+        self._values = self._values[len(self._values) - length:]
+
     def irange(self,
                start, stop,
                exclusive: Tuple[bool, bool] = (True, True),

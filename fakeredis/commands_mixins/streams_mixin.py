@@ -9,7 +9,8 @@ class StreamsCommandsMixin:
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,), )
     def xadd(self, key, *args):
         # TODO: MAXLEN, MINID, LIMIT
-        (nomkstream, limit,), left_args = extract_args(args, ('nomkstream', '+limit'), error_on_unexpected=False)
+        (nomkstream, limit, maxlen, minid), left_args = extract_args(
+            args, ('nomkstream', '+limit', '~+maxlen', '~minid'), error_on_unexpected=False)
         if nomkstream and key.value is None:
             return None
         id_str = left_args[0]
@@ -24,6 +25,11 @@ class StreamsCommandsMixin:
             if StreamRangeTest.parse_id(left_args[0]) == (-1, -1):
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
+        if maxlen is not None:
+            stream.trim(maxlen)
+        if minid is not None:
+            ind = stream.find_index(minid)
+            stream.trim(len(stream) - ind)
         key.update(stream)
         return id_str
 
