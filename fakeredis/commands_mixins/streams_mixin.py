@@ -8,7 +8,7 @@ from fakeredis._stream import XStream
 class StreamsCommandsMixin:
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,), )
     def xadd(self, key, *args):
-        # TODO: MAXLEN, MINID, LIMIT
+
         (nomkstream, limit, maxlen, minid), left_args = extract_args(
             args, ('nomkstream', '+limit', '~+maxlen', '~minid'), error_on_unexpected=False)
         if nomkstream and key.value is None:
@@ -25,13 +25,25 @@ class StreamsCommandsMixin:
             if StreamRangeTest.parse_id(left_args[0]) == (-1, -1):
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
-        if maxlen is not None:
-            stream.trim(maxlen)
-        if minid is not None:
-            ind = stream.find_index(minid)
-            stream.trim(len(stream) - ind)
+        if maxlen is not None or minid is not None:
+            stream.trim(maxlen=maxlen, minid=minid, limit=limit)
         key.update(stream)
         return id_str
+
+    @command(name='XTRIM', fixed=(Key(XStream),), repeat=(bytes,), )
+    def xtrim(self, key, *args):
+        (limit, maxlen, minid), _ = extract_args(
+            args, ('+limit', '~+maxlen', '~minid'))
+        if maxlen is not None and minid is not None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if maxlen is None and minid is None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        stream = key.value or XStream()
+
+        res = stream.trim(maxlen=maxlen, minid=minid, limit=limit)
+
+        key.update(stream)
+        return res
 
     @command(name="XLEN", fixed=(Key(XStream),))
     def xlen(self, key):

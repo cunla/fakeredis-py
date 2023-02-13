@@ -1,6 +1,6 @@
 import bisect
 import time
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 from fakeredis._commands import StreamRangeTest
 
@@ -55,16 +55,32 @@ class XStream:
 
         return gen()
 
-    def find_index(self, id_str: str):
+    def find_index(self, id_str: str) -> Tuple[int, bool]:
         ts_seq = StreamRangeTest.parse_id(id_str)
-        return bisect.bisect_left(list(map(lambda x: x[0], self._values)), ts_seq)
+        ind = bisect.bisect_left(list(map(lambda x: x[0], self._values)), ts_seq)
+        return ind, self._values[ind][0] == ts_seq
 
     @staticmethod
     def _format_record(record):
         return [f'{record[0][0]}-{record[0][1]}'.encode(), list(record[1:])]
 
-    def trim(self, length: int):
-        self._values = self._values[len(self._values) - length:]
+    def trim(self,
+             maxlen: Optional[int] = None,
+             minid: Optional[str] = None,
+             limit: Optional[int] = None) -> int:
+        if maxlen is not None and minid is not None:
+            raise
+        start_ind = None
+        if maxlen is not None:
+            start_ind = len(self._values) - maxlen
+        elif minid is not None:
+            ind, exact = self.find_index(minid)
+            start_ind = ind
+        res = max(start_ind, 0)
+        if limit is not None:
+            res = min(start_ind, limit)
+        self._values = self._values[res:]
+        return res
 
     def irange(self,
                start, stop,
