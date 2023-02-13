@@ -1483,6 +1483,10 @@ Return a range of elements in a stream, with IDs matching the specified IDs inte
 
 Return a range of elements in a stream, with IDs matching the specified IDs interval, in reverse order (from greater to smaller IDs) compared to XRANGE
 
+### [XTRIM](https://redis.io/commands/xtrim/)
+
+Trims the stream to (approximately if '~' is passed) a certain size
+
 
 ### Unsupported stream commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
@@ -1566,9 +1570,5 @@ Return new entries from a stream using a consumer group, or access the history o
 #### [XSETID](https://redis.io/commands/xsetid/)
 
 An internal command for replicating stream values
-
-#### [XTRIM](https://redis.io/commands/xtrim/)
-
-Trims the stream to (approximately if '~' is passed) a certain size
 
 
