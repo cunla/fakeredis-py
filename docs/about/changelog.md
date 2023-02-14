@@ -3,11 +3,14 @@
 ### 🚀 Features
 - Implement `XTRIM`
 - Add support for `MAXLEN`, `MAXID`, `LIMIT` arguments for `XADD` command
-- Add support for `ZRANGE` arguments for `ZRANGE` command
+- Add support for `ZRANGE` arguments for `ZRANGE` command [#127](https://github.com/cunla/fakeredis-py/issues/127)
+
+### 🧰 Maintenance
+- Relax python version requirement #128
 
 ## v2.8.0
 ### 🚀 Features
-- Support for redis-py 4.5.0 [#124](https://github.com/cunla/fakeredis-py/issues/124)
+- Support for redis-py 4.5.0 [#125](https://github.com/cunla/fakeredis-py/issues/125)
 
 ### 🐛 Bug Fixes
 - Fix import error for redis-py v3+ [#121](https://github.com/cunla/fakeredis-py/issues/121)
