@@ -361,6 +361,8 @@ files = [
     {file = "cryptography-39.0.1-cp36-abi3-win32.whl", hash = "sha256:fe913f20024eb2cb2f323e42a64bdf2911bb9738a15dba7d3cce48151034e3a8"},
     {file = "cryptography-39.0.1-cp36-abi3-win_amd64.whl", hash = "sha256:ced4e447ae29ca194449a3f1ce132ded8fcab06971ef5f618605aacaa612beac"},
     {file = "cryptography-39.0.1-pp38-pypy38_pp73-macosx_10_12_x86_64.whl", hash = "sha256:807ce09d4434881ca3a7594733669bd834f5b2c6d5c7e36f8c00f691887042ad"},
+    {file = "cryptography-39.0.1-pp38-pypy38_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:c5caeb8188c24888c90b5108a441c106f7faa4c4c075a2bcae438c6e8ca73cef"},
+    {file = "cryptography-39.0.1-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:4789d1e3e257965e960232345002262ede4d094d1a19f4d3b52e48d4d8f3b885"},
     {file = "cryptography-39.0.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:96f1157a7c08b5b189b16b47bc9db2332269d6680a196341bf30046330d15388"},
     {file = "cryptography-39.0.1-pp39-pypy39_pp73-macosx_10_12_x86_64.whl", hash = "sha256:e422abdec8b5fa8462aa016786680720d78bdce7a30c652b7fadf83a4ba35336"},
     {file = "cryptography-39.0.1-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:b0afd054cd42f3d213bf82c629efb1ee5f22eba35bf0eec88ea9ea7304f511a2"},
@@ -1333,13 +1335,14 @@ testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.2.2)", "devpi-process
 
 [[package]]
 name = "tox-docker"
-version = "4.0.0a2"
+version = "4.0.0"
 description = "Launch a docker instance around test runs"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tox-docker-4.0.0a2.tar.gz", hash = "sha256:721dcba7d52bb9207ea4866d897c91c4a69c713954a7632a25447e3996e3fb53"},
+    {file = "tox-docker-4.0.0.tar.gz", hash = "sha256:c0b259a6f14fcb68f8e767926aa1d9e6649eb11862444ba704b5cacf93e4e937"},
+    {file = "tox_docker-4.0.0-py2.py3-none-any.whl", hash = "sha256:84a260b8e8096d2bb5e2115d8a75cac33b183e1b5d0ef341302e64971a562731"},
 ]
 
 [package.dependencies]
@@ -1372,14 +1375,14 @@ urllib3 = ">=1.26.0"
 
 [[package]]
 name = "types-pyopenssl"
-version = "23.0.0.2"
+version = "23.0.0.3"
 description = "Typing stubs for pyOpenSSL"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-pyOpenSSL-23.0.0.2.tar.gz", hash = "sha256:2e95f9a667d5eeb0af699196f857f7d23d5b4d642437bd37355bc13a87e9f4ae"},
-    {file = "types_pyOpenSSL-23.0.0.2-py3-none-any.whl", hash = "sha256:ea7e5d06f9190a1cb013ad4b13d48896e5cd1e785c04491f38b206d1bc4b8dc1"},
+    {file = "types-pyOpenSSL-23.0.0.3.tar.gz", hash = "sha256:6ca54d593f8b946f9570f9ed7457c41da3b518feff5e344851941a6209bea62b"},
+    {file = "types_pyOpenSSL-23.0.0.3-py3-none-any.whl", hash = "sha256:847ab17a16475a882dc29898648a6a35ad0d3e11a5bba5aa8ab2f3435a8647cb"},
 ]
 
 [package.dependencies]
@@ -1502,5 +1505,5 @@ lua = ["lupa"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.8.1,<4.0"
-content-hash = "f5f5e2dec72b2408f31e6d83f97394f5c73188fbc19224278a7326a6127a8edb"
+python-versions = "^3.8"
+content-hash = "d4e32598a09d34f23d15c068544c84790377a8c41dd3dfe3ea1efa38c382f2c8"
