@@ -1,4 +1,8 @@
 ## Next release
+## v2.9.1
+### 🐛 Bug Fixes
+- Fix bug for `xrevrange`
+
 ## v2.9.0
 ### 🚀 Features
 - Implement `XTRIM`
