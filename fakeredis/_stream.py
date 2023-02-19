@@ -94,5 +94,5 @@ class XStream:
 
         matches = map(self._format_record, filter(match, self._values))
         if reverse:
-            matches = reversed(list(matches))
+            return list(reversed(tuple(matches)))
         return list(matches)
