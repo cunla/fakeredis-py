@@ -26,11 +26,11 @@ def test_xstream(r):
     stream.add([3, 3, 4, 4], '3-1')
     assert len(stream) == 6
     i = iter(stream)
-    assert next(i) == [b'0-1', [[0, 0, 1, 1, 2, 2, 3, 3]]]
-    assert next(i) == [b'1-2', [[1, 1, 2, 2, 3, 3, 4, 4]]]
-    assert next(i) == [b'1-3', [[2, 2, 3, 3, 4, 4]]]
-    assert next(i) == [b'2-1', [[3, 3, 4, 4]]]
-    assert next(i) == [b'2-2', [[3, 3, 4, 4]]]
+    assert next(i) == [b'0-1', [0, 0, 1, 1, 2, 2, 3, 3]]
+    assert next(i) == [b'1-2', [1, 1, 2, 2, 3, 3, 4, 4]]
+    assert next(i) == [b'1-3', [2, 2, 3, 3, 4, 4]]
+    assert next(i) == [b'2-1', [3, 3, 4, 4]]
+    assert next(i) == [b'2-2', [3, 3, 4, 4]]
 
     assert stream.find_index('1-2') == (1, True)
     assert stream.find_index('0-1') == (0, True)
