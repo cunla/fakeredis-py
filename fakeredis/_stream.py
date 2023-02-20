@@ -62,7 +62,8 @@ class XStream:
 
     @staticmethod
     def _format_record(record):
-        return [f'{record[0][0]}-{record[0][1]}'.encode(), list(record[1:])]
+        results = list(record[1:][0])
+        return [f'{record[0][0]}-{record[0][1]}'.encode(), results]
 
     def trim(self,
              maxlen: Optional[int] = None,

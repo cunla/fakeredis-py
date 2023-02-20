@@ -1,4 +1,10 @@
 ## Next release
+
+## v2.9.2
+### 🐛 Bug Fixes
+- Fix bug for `xrange`
+
+
 ## v2.9.1
 ### 🐛 Bug Fixes
 - Fix bug for `xrevrange`
