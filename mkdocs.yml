@@ -12,8 +12,6 @@ copyright: Copyright &copy; 2022 - 2023 Daniel Moran
 
 extra:
   generator: false
-  version:
-    provider: mike
   analytics:
     provider: google
     property: G-GJBJBKXT19

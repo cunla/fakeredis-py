@@ -1307,14 +1307,14 @@ files = [
 
 [[package]]
 name = "tox"
-version = "4.4.5"
+version = "4.4.6"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tox-4.4.5-py3-none-any.whl", hash = "sha256:1081864f1a1393ffa11ebe9beaa280349020579310d217a594a4e7b6124c5425"},
-    {file = "tox-4.4.5.tar.gz", hash = "sha256:f9bc83c5da8666baa2a4d4e884bbbda124fe646e4b1c0e412949cecc2b6e8f90"},
+    {file = "tox-4.4.6-py3-none-any.whl", hash = "sha256:e3d4a65852f029e5ba441a01824d2d839d30bb8fb071635ef9cb53952698e6bf"},
+    {file = "tox-4.4.6.tar.gz", hash = "sha256:9786671d23b673ace7499c602c5746e2a225d1ecd9d9f624d0461303f40bd93b"},
 ]
 
 [package.dependencies]
@@ -1375,14 +1375,14 @@ urllib3 = ">=1.26.0"
 
 [[package]]
 name = "types-pyopenssl"
-version = "23.0.0.3"
+version = "23.0.0.4"
 description = "Typing stubs for pyOpenSSL"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-pyOpenSSL-23.0.0.3.tar.gz", hash = "sha256:6ca54d593f8b946f9570f9ed7457c41da3b518feff5e344851941a6209bea62b"},
-    {file = "types_pyOpenSSL-23.0.0.3-py3-none-any.whl", hash = "sha256:847ab17a16475a882dc29898648a6a35ad0d3e11a5bba5aa8ab2f3435a8647cb"},
+    {file = "types-pyOpenSSL-23.0.0.4.tar.gz", hash = "sha256:8b3550b6e19d51ce78aabd724b0d8ebd962081a5fce95e7f85a592dfcdbc16bf"},
+    {file = "types_pyOpenSSL-23.0.0.4-py3-none-any.whl", hash = "sha256:ad49e15bb8bb2f251b8fc24776f414d877629e44b1b049240063ab013b5a6a7d"},
 ]
 
 [package.dependencies]
@@ -1390,14 +1390,14 @@ cryptography = ">=35.0.0"
 
 [[package]]
 name = "types-redis"
-version = "4.5.1.1"
+version = "4.5.1.2"
 description = "Typing stubs for redis"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-redis-4.5.1.1.tar.gz", hash = "sha256:c072e4824855f46d0a968509c3e0fa4789fc13b62d472064527bad3d1815aeed"},
-    {file = "types_redis-4.5.1.1-py3-none-any.whl", hash = "sha256:081dfeec730df6e3f32ccbdafe3198873b7c02516c22d79cc2a40efdd69a3963"},
+    {file = "types-redis-4.5.1.2.tar.gz", hash = "sha256:6a08970e3bd08b3b7f47ac9560d36b5733cc4c55f0dc4a931e8c6dfd2678b17e"},
+    {file = "types_redis-4.5.1.2-py3-none-any.whl", hash = "sha256:834f4faa5c14b79c4674ab8464c72b38a893cdc81288f765624ac25d64b18e8c"},
 ]
 
 [package.dependencies]
