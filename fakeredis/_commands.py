@@ -304,34 +304,6 @@ class StringTest:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
 
 
-class StreamRangeTest:
-    """Argument converter for sorted set LEX endpoints."""
-
-    def __init__(self, value, exclusive):
-        self.value = value
-        self.exclusive = exclusive
-
-    @staticmethod
-    def parse_id(id_str: str):
-        if isinstance(id_str, bytes):
-            id_str = id_str.decode()
-        try:
-            timestamp, sequence = (int(x) for x in id_str.split('-'))
-        except ValueError:
-            return -1, -1
-        return timestamp, sequence
-
-    @classmethod
-    def decode(cls, value):
-        if value == b'-':
-            return cls(BeforeAny(), True)
-        elif value == b'+':
-            return cls(AfterAny(), True)
-        elif value[:1] == b'(':
-            return cls(cls.parse_id(value[1:]), True)
-        return cls(cls.parse_id(value), False)
-
-
 class Signature:
     def __init__(self, name, func_name, fixed, repeat=(), flags=""):
         self.name = name

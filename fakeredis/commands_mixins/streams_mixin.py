@@ -1,8 +1,8 @@
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, StreamRangeTest
+from fakeredis._commands import Key, command
 from fakeredis._helpers import SimpleError
-from fakeredis._stream import XStream
+from fakeredis._stream import XStream, StreamRangeTest
 
 
 class StreamsCommandsMixin:
