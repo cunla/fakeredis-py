@@ -86,19 +86,19 @@ Returns the type of the JSON value at path
 ### Unsupported json commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [JSON.RESP](https://redis.io/commands/json.resp/)
+#### [JSON.RESP](https://redis.io/commands/json.resp/) <small>(not implemented)</small>
 
 Returns the JSON value at path in Redis Serialization Protocol (RESP)
 
-#### [JSON.DEBUG](https://redis.io/commands/json.debug/)
+#### [JSON.DEBUG](https://redis.io/commands/json.debug/) <small>(not implemented)</small>
 
 Debugging container command
 
-#### [JSON.DEBUG HELP](https://redis.io/commands/json.debug-help/)
+#### [JSON.DEBUG HELP](https://redis.io/commands/json.debug-help/) <small>(not implemented)</small>
 
 Shows helpful information
 
-#### [JSON.DEBUG MEMORY](https://redis.io/commands/json.debug-memory/)
+#### [JSON.DEBUG MEMORY](https://redis.io/commands/json.debug-memory/) <small>(not implemented)</small>
 
 Reports the size in bytes of a key
 

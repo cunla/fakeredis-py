@@ -72,7 +72,8 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
         f.write(f'### Unsupported {group} commands \n')
         f.write(f'> To implement support for a command, see [here](/guides/implement-command/) \n\n')
         for cmd in unimplemented_in_group:
-            f.write(f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
+            f.write(f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)"
+                    f" <small>(not implemented)</small>\n\n")
             f.write(f"{commands[cmd]['summary']}\n\n")
         f.write("\n")
 

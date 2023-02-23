@@ -38,275 +38,275 @@ Return the current server time
 ### Unsupported server commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [ACL](https://redis.io/commands/acl/)
+#### [ACL](https://redis.io/commands/acl/) <small>(not implemented)</small>
 
 A container for Access List Control commands 
 
-#### [ACL CAT](https://redis.io/commands/acl-cat/)
+#### [ACL CAT](https://redis.io/commands/acl-cat/) <small>(not implemented)</small>
 
 List the ACL categories or the commands inside a category
 
-#### [ACL DELUSER](https://redis.io/commands/acl-deluser/)
+#### [ACL DELUSER](https://redis.io/commands/acl-deluser/) <small>(not implemented)</small>
 
 Remove the specified ACL users and the associated rules
 
-#### [ACL DRYRUN](https://redis.io/commands/acl-dryrun/)
+#### [ACL DRYRUN](https://redis.io/commands/acl-dryrun/) <small>(not implemented)</small>
 
 Returns whether the user can execute the given command without executing the command.
 
-#### [ACL GENPASS](https://redis.io/commands/acl-genpass/)
+#### [ACL GENPASS](https://redis.io/commands/acl-genpass/) <small>(not implemented)</small>
 
 Generate a pseudorandom secure password to use for ACL users
 
-#### [ACL GETUSER](https://redis.io/commands/acl-getuser/)
+#### [ACL GETUSER](https://redis.io/commands/acl-getuser/) <small>(not implemented)</small>
 
 Get the rules for a specific ACL user
 
-#### [ACL HELP](https://redis.io/commands/acl-help/)
+#### [ACL HELP](https://redis.io/commands/acl-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [ACL LIST](https://redis.io/commands/acl-list/)
+#### [ACL LIST](https://redis.io/commands/acl-list/) <small>(not implemented)</small>
 
 List the current ACL rules in ACL config file format
 
-#### [ACL LOAD](https://redis.io/commands/acl-load/)
+#### [ACL LOAD](https://redis.io/commands/acl-load/) <small>(not implemented)</small>
 
 Reload the ACLs from the configured ACL file
 
-#### [ACL LOG](https://redis.io/commands/acl-log/)
+#### [ACL LOG](https://redis.io/commands/acl-log/) <small>(not implemented)</small>
 
 List latest events denied because of ACLs in place
 
-#### [ACL SAVE](https://redis.io/commands/acl-save/)
+#### [ACL SAVE](https://redis.io/commands/acl-save/) <small>(not implemented)</small>
 
 Save the current ACL rules in the configured ACL file
 
-#### [ACL SETUSER](https://redis.io/commands/acl-setuser/)
+#### [ACL SETUSER](https://redis.io/commands/acl-setuser/) <small>(not implemented)</small>
 
 Modify or create the rules for a specific ACL user
 
-#### [ACL USERS](https://redis.io/commands/acl-users/)
+#### [ACL USERS](https://redis.io/commands/acl-users/) <small>(not implemented)</small>
 
 List the username of all the configured ACL rules
 
-#### [ACL WHOAMI](https://redis.io/commands/acl-whoami/)
+#### [ACL WHOAMI](https://redis.io/commands/acl-whoami/) <small>(not implemented)</small>
 
 Return the name of the user associated to the current connection
 
-#### [BGREWRITEAOF](https://redis.io/commands/bgrewriteaof/)
+#### [BGREWRITEAOF](https://redis.io/commands/bgrewriteaof/) <small>(not implemented)</small>
 
 Asynchronously rewrite the append-only file
 
-#### [COMMAND](https://redis.io/commands/command/)
+#### [COMMAND](https://redis.io/commands/command/) <small>(not implemented)</small>
 
 Get array of Redis command details
 
-#### [COMMAND COUNT](https://redis.io/commands/command-count/)
+#### [COMMAND COUNT](https://redis.io/commands/command-count/) <small>(not implemented)</small>
 
 Get total number of Redis commands
 
-#### [COMMAND DOCS](https://redis.io/commands/command-docs/)
+#### [COMMAND DOCS](https://redis.io/commands/command-docs/) <small>(not implemented)</small>
 
 Get array of specific Redis command documentation
 
-#### [COMMAND GETKEYS](https://redis.io/commands/command-getkeys/)
+#### [COMMAND GETKEYS](https://redis.io/commands/command-getkeys/) <small>(not implemented)</small>
 
 Extract keys given a full Redis command
 
-#### [COMMAND GETKEYSANDFLAGS](https://redis.io/commands/command-getkeysandflags/)
+#### [COMMAND GETKEYSANDFLAGS](https://redis.io/commands/command-getkeysandflags/) <small>(not implemented)</small>
 
 Extract keys and access flags given a full Redis command
 
-#### [COMMAND HELP](https://redis.io/commands/command-help/)
+#### [COMMAND HELP](https://redis.io/commands/command-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [COMMAND INFO](https://redis.io/commands/command-info/)
+#### [COMMAND INFO](https://redis.io/commands/command-info/) <small>(not implemented)</small>
 
 Get array of specific Redis command details, or all when no argument is given.
 
-#### [COMMAND LIST](https://redis.io/commands/command-list/)
+#### [COMMAND LIST](https://redis.io/commands/command-list/) <small>(not implemented)</small>
 
 Get an array of Redis command names
 
-#### [CONFIG](https://redis.io/commands/config/)
+#### [CONFIG](https://redis.io/commands/config/) <small>(not implemented)</small>
 
 A container for server configuration commands
 
-#### [CONFIG GET](https://redis.io/commands/config-get/)
+#### [CONFIG GET](https://redis.io/commands/config-get/) <small>(not implemented)</small>
 
 Get the values of configuration parameters
 
-#### [CONFIG HELP](https://redis.io/commands/config-help/)
+#### [CONFIG HELP](https://redis.io/commands/config-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [CONFIG RESETSTAT](https://redis.io/commands/config-resetstat/)
+#### [CONFIG RESETSTAT](https://redis.io/commands/config-resetstat/) <small>(not implemented)</small>
 
 Reset the stats returned by INFO
 
-#### [CONFIG REWRITE](https://redis.io/commands/config-rewrite/)
+#### [CONFIG REWRITE](https://redis.io/commands/config-rewrite/) <small>(not implemented)</small>
 
 Rewrite the configuration file with the in memory configuration
 
-#### [CONFIG SET](https://redis.io/commands/config-set/)
+#### [CONFIG SET](https://redis.io/commands/config-set/) <small>(not implemented)</small>
 
 Set configuration parameters to the given values
 
-#### [DEBUG](https://redis.io/commands/debug/)
+#### [DEBUG](https://redis.io/commands/debug/) <small>(not implemented)</small>
 
 A container for debugging commands
 
-#### [FAILOVER](https://redis.io/commands/failover/)
+#### [FAILOVER](https://redis.io/commands/failover/) <small>(not implemented)</small>
 
 Start a coordinated failover between this server and one of its replicas.
 
-#### [INFO](https://redis.io/commands/info/)
+#### [INFO](https://redis.io/commands/info/) <small>(not implemented)</small>
 
 Get information and statistics about the server
 
-#### [LATENCY](https://redis.io/commands/latency/)
+#### [LATENCY](https://redis.io/commands/latency/) <small>(not implemented)</small>
 
 A container for latency diagnostics commands
 
-#### [LATENCY DOCTOR](https://redis.io/commands/latency-doctor/)
+#### [LATENCY DOCTOR](https://redis.io/commands/latency-doctor/) <small>(not implemented)</small>
 
 Return a human readable latency analysis report.
 
-#### [LATENCY GRAPH](https://redis.io/commands/latency-graph/)
+#### [LATENCY GRAPH](https://redis.io/commands/latency-graph/) <small>(not implemented)</small>
 
 Return a latency graph for the event.
 
-#### [LATENCY HELP](https://redis.io/commands/latency-help/)
+#### [LATENCY HELP](https://redis.io/commands/latency-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands.
 
-#### [LATENCY HISTOGRAM](https://redis.io/commands/latency-histogram/)
+#### [LATENCY HISTOGRAM](https://redis.io/commands/latency-histogram/) <small>(not implemented)</small>
 
 Return the cumulative distribution of latencies of a subset of commands or all.
 
-#### [LATENCY HISTORY](https://redis.io/commands/latency-history/)
+#### [LATENCY HISTORY](https://redis.io/commands/latency-history/) <small>(not implemented)</small>
 
 Return timestamp-latency samples for the event.
 
-#### [LATENCY LATEST](https://redis.io/commands/latency-latest/)
+#### [LATENCY LATEST](https://redis.io/commands/latency-latest/) <small>(not implemented)</small>
 
 Return the latest latency samples for all events.
 
-#### [LATENCY RESET](https://redis.io/commands/latency-reset/)
+#### [LATENCY RESET](https://redis.io/commands/latency-reset/) <small>(not implemented)</small>
 
 Reset latency data for one or more events.
 
-#### [LOLWUT](https://redis.io/commands/lolwut/)
+#### [LOLWUT](https://redis.io/commands/lolwut/) <small>(not implemented)</small>
 
 Display some computer art and the Redis version
 
-#### [MEMORY](https://redis.io/commands/memory/)
+#### [MEMORY](https://redis.io/commands/memory/) <small>(not implemented)</small>
 
 A container for memory diagnostics commands
 
-#### [MEMORY DOCTOR](https://redis.io/commands/memory-doctor/)
+#### [MEMORY DOCTOR](https://redis.io/commands/memory-doctor/) <small>(not implemented)</small>
 
 Outputs memory problems report
 
-#### [MEMORY HELP](https://redis.io/commands/memory-help/)
+#### [MEMORY HELP](https://redis.io/commands/memory-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [MEMORY MALLOC-STATS](https://redis.io/commands/memory-malloc-stats/)
+#### [MEMORY MALLOC-STATS](https://redis.io/commands/memory-malloc-stats/) <small>(not implemented)</small>
 
 Show allocator internal stats
 
-#### [MEMORY PURGE](https://redis.io/commands/memory-purge/)
+#### [MEMORY PURGE](https://redis.io/commands/memory-purge/) <small>(not implemented)</small>
 
 Ask the allocator to release memory
 
-#### [MEMORY STATS](https://redis.io/commands/memory-stats/)
+#### [MEMORY STATS](https://redis.io/commands/memory-stats/) <small>(not implemented)</small>
 
 Show memory usage details
 
-#### [MEMORY USAGE](https://redis.io/commands/memory-usage/)
+#### [MEMORY USAGE](https://redis.io/commands/memory-usage/) <small>(not implemented)</small>
 
 Estimate the memory usage of a key
 
-#### [MODULE](https://redis.io/commands/module/)
+#### [MODULE](https://redis.io/commands/module/) <small>(not implemented)</small>
 
 A container for module commands
 
-#### [MODULE HELP](https://redis.io/commands/module-help/)
+#### [MODULE HELP](https://redis.io/commands/module-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [MODULE LIST](https://redis.io/commands/module-list/)
+#### [MODULE LIST](https://redis.io/commands/module-list/) <small>(not implemented)</small>
 
 List all modules loaded by the server
 
-#### [MODULE LOAD](https://redis.io/commands/module-load/)
+#### [MODULE LOAD](https://redis.io/commands/module-load/) <small>(not implemented)</small>
 
 Load a module
 
-#### [MODULE LOADEX](https://redis.io/commands/module-loadex/)
+#### [MODULE LOADEX](https://redis.io/commands/module-loadex/) <small>(not implemented)</small>
 
 Load a module with extended parameters
 
-#### [MODULE UNLOAD](https://redis.io/commands/module-unload/)
+#### [MODULE UNLOAD](https://redis.io/commands/module-unload/) <small>(not implemented)</small>
 
 Unload a module
 
-#### [MONITOR](https://redis.io/commands/monitor/)
+#### [MONITOR](https://redis.io/commands/monitor/) <small>(not implemented)</small>
 
 Listen for all requests received by the server in real time
 
-#### [PSYNC](https://redis.io/commands/psync/)
+#### [PSYNC](https://redis.io/commands/psync/) <small>(not implemented)</small>
 
 Internal command used for replication
 
-#### [REPLCONF](https://redis.io/commands/replconf/)
+#### [REPLCONF](https://redis.io/commands/replconf/) <small>(not implemented)</small>
 
 An internal command for configuring the replication stream
 
-#### [REPLICAOF](https://redis.io/commands/replicaof/)
+#### [REPLICAOF](https://redis.io/commands/replicaof/) <small>(not implemented)</small>
 
 Make the server a replica of another instance, or promote it as master.
 
-#### [RESTORE-ASKING](https://redis.io/commands/restore-asking/)
+#### [RESTORE-ASKING](https://redis.io/commands/restore-asking/) <small>(not implemented)</small>
 
 An internal command for migrating keys in a cluster
 
-#### [ROLE](https://redis.io/commands/role/)
+#### [ROLE](https://redis.io/commands/role/) <small>(not implemented)</small>
 
 Return the role of the instance in the context of replication
 
-#### [SHUTDOWN](https://redis.io/commands/shutdown/)
+#### [SHUTDOWN](https://redis.io/commands/shutdown/) <small>(not implemented)</small>
 
 Synchronously save the dataset to disk and then shut down the server
 
-#### [SLAVEOF](https://redis.io/commands/slaveof/)
+#### [SLAVEOF](https://redis.io/commands/slaveof/) <small>(not implemented)</small>
 
 Make the server a replica of another instance, or promote it as master.
 
-#### [SLOWLOG](https://redis.io/commands/slowlog/)
+#### [SLOWLOG](https://redis.io/commands/slowlog/) <small>(not implemented)</small>
 
 A container for slow log commands
 
-#### [SLOWLOG GET](https://redis.io/commands/slowlog-get/)
+#### [SLOWLOG GET](https://redis.io/commands/slowlog-get/) <small>(not implemented)</small>
 
 Get the slow log's entries
 
-#### [SLOWLOG HELP](https://redis.io/commands/slowlog-help/)
+#### [SLOWLOG HELP](https://redis.io/commands/slowlog-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [SLOWLOG LEN](https://redis.io/commands/slowlog-len/)
+#### [SLOWLOG LEN](https://redis.io/commands/slowlog-len/) <small>(not implemented)</small>
 
 Get the slow log's length
 
-#### [SLOWLOG RESET](https://redis.io/commands/slowlog-reset/)
+#### [SLOWLOG RESET](https://redis.io/commands/slowlog-reset/) <small>(not implemented)</small>
 
 Clear all entries from the slow log
 
-#### [SYNC](https://redis.io/commands/sync/)
+#### [SYNC](https://redis.io/commands/sync/) <small>(not implemented)</small>
 
 Internal command used for replication
 
@@ -410,127 +410,127 @@ Get a substring of the string stored at a key
 ### Unsupported cluster commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [ASKING](https://redis.io/commands/asking/)
+#### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
 
 Sent by cluster clients after an -ASK redirect
 
-#### [CLUSTER](https://redis.io/commands/cluster/)
+#### [CLUSTER](https://redis.io/commands/cluster/) <small>(not implemented)</small>
 
 A container for cluster commands
 
-#### [CLUSTER ADDSLOTS](https://redis.io/commands/cluster-addslots/)
+#### [CLUSTER ADDSLOTS](https://redis.io/commands/cluster-addslots/) <small>(not implemented)</small>
 
 Assign new hash slots to receiving node
 
-#### [CLUSTER ADDSLOTSRANGE](https://redis.io/commands/cluster-addslotsrange/)
+#### [CLUSTER ADDSLOTSRANGE](https://redis.io/commands/cluster-addslotsrange/) <small>(not implemented)</small>
 
 Assign new hash slots to receiving node
 
-#### [CLUSTER BUMPEPOCH](https://redis.io/commands/cluster-bumpepoch/)
+#### [CLUSTER BUMPEPOCH](https://redis.io/commands/cluster-bumpepoch/) <small>(not implemented)</small>
 
 Advance the cluster config epoch
 
-#### [CLUSTER COUNT-FAILURE-REPORTS](https://redis.io/commands/cluster-count-failure-reports/)
+#### [CLUSTER COUNT-FAILURE-REPORTS](https://redis.io/commands/cluster-count-failure-reports/) <small>(not implemented)</small>
 
 Return the number of failure reports active for a given node
 
-#### [CLUSTER COUNTKEYSINSLOT](https://redis.io/commands/cluster-countkeysinslot/)
+#### [CLUSTER COUNTKEYSINSLOT](https://redis.io/commands/cluster-countkeysinslot/) <small>(not implemented)</small>
 
 Return the number of local keys in the specified hash slot
 
-#### [CLUSTER DELSLOTS](https://redis.io/commands/cluster-delslots/)
+#### [CLUSTER DELSLOTS](https://redis.io/commands/cluster-delslots/) <small>(not implemented)</small>
 
 Set hash slots as unbound in receiving node
 
-#### [CLUSTER DELSLOTSRANGE](https://redis.io/commands/cluster-delslotsrange/)
+#### [CLUSTER DELSLOTSRANGE](https://redis.io/commands/cluster-delslotsrange/) <small>(not implemented)</small>
 
 Set hash slots as unbound in receiving node
 
-#### [CLUSTER FAILOVER](https://redis.io/commands/cluster-failover/)
+#### [CLUSTER FAILOVER](https://redis.io/commands/cluster-failover/) <small>(not implemented)</small>
 
 Forces a replica to perform a manual failover of its master.
 
-#### [CLUSTER FLUSHSLOTS](https://redis.io/commands/cluster-flushslots/)
+#### [CLUSTER FLUSHSLOTS](https://redis.io/commands/cluster-flushslots/) <small>(not implemented)</small>
 
 Delete a node's own slots information
 
-#### [CLUSTER FORGET](https://redis.io/commands/cluster-forget/)
+#### [CLUSTER FORGET](https://redis.io/commands/cluster-forget/) <small>(not implemented)</small>
 
 Remove a node from the nodes table
 
-#### [CLUSTER GETKEYSINSLOT](https://redis.io/commands/cluster-getkeysinslot/)
+#### [CLUSTER GETKEYSINSLOT](https://redis.io/commands/cluster-getkeysinslot/) <small>(not implemented)</small>
 
 Return local key names in the specified hash slot
 
-#### [CLUSTER HELP](https://redis.io/commands/cluster-help/)
+#### [CLUSTER HELP](https://redis.io/commands/cluster-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [CLUSTER INFO](https://redis.io/commands/cluster-info/)
+#### [CLUSTER INFO](https://redis.io/commands/cluster-info/) <small>(not implemented)</small>
 
 Provides info about Redis Cluster node state
 
-#### [CLUSTER KEYSLOT](https://redis.io/commands/cluster-keyslot/)
+#### [CLUSTER KEYSLOT](https://redis.io/commands/cluster-keyslot/) <small>(not implemented)</small>
 
 Returns the hash slot of the specified key
 
-#### [CLUSTER LINKS](https://redis.io/commands/cluster-links/)
+#### [CLUSTER LINKS](https://redis.io/commands/cluster-links/) <small>(not implemented)</small>
 
 Returns a list of all TCP links to and from peer nodes in cluster
 
-#### [CLUSTER MEET](https://redis.io/commands/cluster-meet/)
+#### [CLUSTER MEET](https://redis.io/commands/cluster-meet/) <small>(not implemented)</small>
 
 Force a node cluster to handshake with another node
 
-#### [CLUSTER MYID](https://redis.io/commands/cluster-myid/)
+#### [CLUSTER MYID](https://redis.io/commands/cluster-myid/) <small>(not implemented)</small>
 
 Return the node id
 
-#### [CLUSTER NODES](https://redis.io/commands/cluster-nodes/)
+#### [CLUSTER NODES](https://redis.io/commands/cluster-nodes/) <small>(not implemented)</small>
 
 Get Cluster config for the node
 
-#### [CLUSTER REPLICAS](https://redis.io/commands/cluster-replicas/)
+#### [CLUSTER REPLICAS](https://redis.io/commands/cluster-replicas/) <small>(not implemented)</small>
 
 List replica nodes of the specified master node
 
-#### [CLUSTER REPLICATE](https://redis.io/commands/cluster-replicate/)
+#### [CLUSTER REPLICATE](https://redis.io/commands/cluster-replicate/) <small>(not implemented)</small>
 
 Reconfigure a node as a replica of the specified master node
 
-#### [CLUSTER RESET](https://redis.io/commands/cluster-reset/)
+#### [CLUSTER RESET](https://redis.io/commands/cluster-reset/) <small>(not implemented)</small>
 
 Reset a Redis Cluster node
 
-#### [CLUSTER SAVECONFIG](https://redis.io/commands/cluster-saveconfig/)
+#### [CLUSTER SAVECONFIG](https://redis.io/commands/cluster-saveconfig/) <small>(not implemented)</small>
 
 Forces the node to save cluster state on disk
 
-#### [CLUSTER SET-CONFIG-EPOCH](https://redis.io/commands/cluster-set-config-epoch/)
+#### [CLUSTER SET-CONFIG-EPOCH](https://redis.io/commands/cluster-set-config-epoch/) <small>(not implemented)</small>
 
 Set the configuration epoch in a new node
 
-#### [CLUSTER SETSLOT](https://redis.io/commands/cluster-setslot/)
+#### [CLUSTER SETSLOT](https://redis.io/commands/cluster-setslot/) <small>(not implemented)</small>
 
 Bind a hash slot to a specific node
 
-#### [CLUSTER SHARDS](https://redis.io/commands/cluster-shards/)
+#### [CLUSTER SHARDS](https://redis.io/commands/cluster-shards/) <small>(not implemented)</small>
 
 Get array of cluster slots to node mappings
 
-#### [CLUSTER SLAVES](https://redis.io/commands/cluster-slaves/)
+#### [CLUSTER SLAVES](https://redis.io/commands/cluster-slaves/) <small>(not implemented)</small>
 
 List replica nodes of the specified master node
 
-#### [CLUSTER SLOTS](https://redis.io/commands/cluster-slots/)
+#### [CLUSTER SLOTS](https://redis.io/commands/cluster-slots/) <small>(not implemented)</small>
 
 Get array of Cluster slot to node mappings
 
-#### [READONLY](https://redis.io/commands/readonly/)
+#### [READONLY](https://redis.io/commands/readonly/) <small>(not implemented)</small>
 
 Enables read queries for a connection to a cluster replica node
 
-#### [READWRITE](https://redis.io/commands/readwrite/)
+#### [READWRITE](https://redis.io/commands/readwrite/) <small>(not implemented)</small>
 
 Disables read queries for a connection to a cluster replica node
 
@@ -553,87 +553,87 @@ Change the selected database for the current connection
 ### Unsupported connection commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [AUTH](https://redis.io/commands/auth/)
+#### [AUTH](https://redis.io/commands/auth/) <small>(not implemented)</small>
 
 Authenticate to the server
 
-#### [CLIENT](https://redis.io/commands/client/)
+#### [CLIENT](https://redis.io/commands/client/) <small>(not implemented)</small>
 
 A container for client connection commands
 
-#### [CLIENT CACHING](https://redis.io/commands/client-caching/)
+#### [CLIENT CACHING](https://redis.io/commands/client-caching/) <small>(not implemented)</small>
 
 Instruct the server about tracking or not keys in the next request
 
-#### [CLIENT GETNAME](https://redis.io/commands/client-getname/)
+#### [CLIENT GETNAME](https://redis.io/commands/client-getname/) <small>(not implemented)</small>
 
 Get the current connection name
 
-#### [CLIENT GETREDIR](https://redis.io/commands/client-getredir/)
+#### [CLIENT GETREDIR](https://redis.io/commands/client-getredir/) <small>(not implemented)</small>
 
 Get tracking notifications redirection client ID if any
 
-#### [CLIENT HELP](https://redis.io/commands/client-help/)
+#### [CLIENT HELP](https://redis.io/commands/client-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [CLIENT ID](https://redis.io/commands/client-id/)
+#### [CLIENT ID](https://redis.io/commands/client-id/) <small>(not implemented)</small>
 
 Returns the client ID for the current connection
 
-#### [CLIENT INFO](https://redis.io/commands/client-info/)
+#### [CLIENT INFO](https://redis.io/commands/client-info/) <small>(not implemented)</small>
 
 Returns information about the current client connection.
 
-#### [CLIENT KILL](https://redis.io/commands/client-kill/)
+#### [CLIENT KILL](https://redis.io/commands/client-kill/) <small>(not implemented)</small>
 
 Kill the connection of a client
 
-#### [CLIENT LIST](https://redis.io/commands/client-list/)
+#### [CLIENT LIST](https://redis.io/commands/client-list/) <small>(not implemented)</small>
 
 Get the list of client connections
 
-#### [CLIENT NO-EVICT](https://redis.io/commands/client-no-evict/)
+#### [CLIENT NO-EVICT](https://redis.io/commands/client-no-evict/) <small>(not implemented)</small>
 
 Set client eviction mode for the current connection
 
-#### [CLIENT PAUSE](https://redis.io/commands/client-pause/)
+#### [CLIENT PAUSE](https://redis.io/commands/client-pause/) <small>(not implemented)</small>
 
 Stop processing commands from clients for some time
 
-#### [CLIENT REPLY](https://redis.io/commands/client-reply/)
+#### [CLIENT REPLY](https://redis.io/commands/client-reply/) <small>(not implemented)</small>
 
 Instruct the server whether to reply to commands
 
-#### [CLIENT SETNAME](https://redis.io/commands/client-setname/)
+#### [CLIENT SETNAME](https://redis.io/commands/client-setname/) <small>(not implemented)</small>
 
 Set the current connection name
 
-#### [CLIENT TRACKING](https://redis.io/commands/client-tracking/)
+#### [CLIENT TRACKING](https://redis.io/commands/client-tracking/) <small>(not implemented)</small>
 
 Enable or disable server assisted client side caching support
 
-#### [CLIENT TRACKINGINFO](https://redis.io/commands/client-trackinginfo/)
+#### [CLIENT TRACKINGINFO](https://redis.io/commands/client-trackinginfo/) <small>(not implemented)</small>
 
 Return information about server assisted client side caching for the current connection
 
-#### [CLIENT UNBLOCK](https://redis.io/commands/client-unblock/)
+#### [CLIENT UNBLOCK](https://redis.io/commands/client-unblock/) <small>(not implemented)</small>
 
 Unblock a client blocked in a blocking command from a different connection
 
-#### [CLIENT UNPAUSE](https://redis.io/commands/client-unpause/)
+#### [CLIENT UNPAUSE](https://redis.io/commands/client-unpause/) <small>(not implemented)</small>
 
 Resume processing of clients that were paused
 
-#### [HELLO](https://redis.io/commands/hello/)
+#### [HELLO](https://redis.io/commands/hello/) <small>(not implemented)</small>
 
 Handshake with Redis
 
-#### [QUIT](https://redis.io/commands/quit/)
+#### [QUIT](https://redis.io/commands/quit/) <small>(not implemented)</small>
 
 Close the connection
 
-#### [RESET](https://redis.io/commands/reset/)
+#### [RESET](https://redis.io/commands/reset/) <small>(not implemented)</small>
 
 Reset the connection
 
@@ -664,11 +664,11 @@ Sets or clears the bit at offset in the string value stored at key
 ### Unsupported bitmap commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [BITFIELD](https://redis.io/commands/bitfield/)
+#### [BITFIELD](https://redis.io/commands/bitfield/) <small>(not implemented)</small>
 
 Perform arbitrary bitfield integer operations on strings
 
-#### [BITFIELD_RO](https://redis.io/commands/bitfield_ro/)
+#### [BITFIELD_RO](https://redis.io/commands/bitfield_ro/) <small>(not implemented)</small>
 
 Perform arbitrary bitfield integer operations on strings. Read-only variant of BITFIELD
 
@@ -751,19 +751,19 @@ Append an element to a list, only if the list exists
 ### Unsupported list commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [BLMOVE](https://redis.io/commands/blmove/)
+#### [BLMOVE](https://redis.io/commands/blmove/) <small>(not implemented)</small>
 
 Pop an element from a list, push it to another list and return it; or block until one is available
 
-#### [BLMPOP](https://redis.io/commands/blmpop/)
+#### [BLMPOP](https://redis.io/commands/blmpop/) <small>(not implemented)</small>
 
 Pop elements from a list, or block until one is available
 
-#### [LMPOP](https://redis.io/commands/lmpop/)
+#### [LMPOP](https://redis.io/commands/lmpop/) <small>(not implemented)</small>
 
 Pop elements from a list
 
-#### [LPOS](https://redis.io/commands/lpos/)
+#### [LPOS](https://redis.io/commands/lpos/) <small>(not implemented)</small>
 
 Return the index of matching elements on a list
 
@@ -878,39 +878,39 @@ Add multiple sorted sets and store the resulting sorted set in a new key
 ### Unsupported sorted-set commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [BZMPOP](https://redis.io/commands/bzmpop/)
+#### [BZMPOP](https://redis.io/commands/bzmpop/) <small>(not implemented)</small>
 
 Remove and return members with scores in a sorted set or block until one is available
 
-#### [ZDIFF](https://redis.io/commands/zdiff/)
+#### [ZDIFF](https://redis.io/commands/zdiff/) <small>(not implemented)</small>
 
 Subtract multiple sorted sets
 
-#### [ZDIFFSTORE](https://redis.io/commands/zdiffstore/)
+#### [ZDIFFSTORE](https://redis.io/commands/zdiffstore/) <small>(not implemented)</small>
 
 Subtract multiple sorted sets and store the resulting sorted set in a new key
 
-#### [ZINTER](https://redis.io/commands/zinter/)
+#### [ZINTER](https://redis.io/commands/zinter/) <small>(not implemented)</small>
 
 Intersect multiple sorted sets
 
-#### [ZINTERCARD](https://redis.io/commands/zintercard/)
+#### [ZINTERCARD](https://redis.io/commands/zintercard/) <small>(not implemented)</small>
 
 Intersect multiple sorted sets and return the cardinality of the result
 
-#### [ZMPOP](https://redis.io/commands/zmpop/)
+#### [ZMPOP](https://redis.io/commands/zmpop/) <small>(not implemented)</small>
 
 Remove and return members with scores in a sorted set
 
-#### [ZRANDMEMBER](https://redis.io/commands/zrandmember/)
+#### [ZRANDMEMBER](https://redis.io/commands/zrandmember/) <small>(not implemented)</small>
 
 Get one or multiple random elements from a sorted set
 
-#### [ZRANGESTORE](https://redis.io/commands/zrangestore/)
+#### [ZRANGESTORE](https://redis.io/commands/zrangestore/) <small>(not implemented)</small>
 
 Store a range of members from sorted set into another key
 
-#### [ZUNION](https://redis.io/commands/zunion/)
+#### [ZUNION](https://redis.io/commands/zunion/) <small>(not implemented)</small>
 
 Add multiple sorted sets
 
@@ -1001,55 +1001,55 @@ Delete a key asynchronously in another thread. Otherwise it is just as DEL, but 
 ### Unsupported generic commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [COPY](https://redis.io/commands/copy/)
+#### [COPY](https://redis.io/commands/copy/) <small>(not implemented)</small>
 
 Copy a key
 
-#### [EXPIRETIME](https://redis.io/commands/expiretime/)
+#### [EXPIRETIME](https://redis.io/commands/expiretime/) <small>(not implemented)</small>
 
 Get the expiration Unix timestamp for a key
 
-#### [MIGRATE](https://redis.io/commands/migrate/)
+#### [MIGRATE](https://redis.io/commands/migrate/) <small>(not implemented)</small>
 
 Atomically transfer a key from a Redis instance to another one.
 
-#### [OBJECT](https://redis.io/commands/object/)
+#### [OBJECT](https://redis.io/commands/object/) <small>(not implemented)</small>
 
 A container for object introspection commands
 
-#### [OBJECT ENCODING](https://redis.io/commands/object-encoding/)
+#### [OBJECT ENCODING](https://redis.io/commands/object-encoding/) <small>(not implemented)</small>
 
 Inspect the internal encoding of a Redis object
 
-#### [OBJECT FREQ](https://redis.io/commands/object-freq/)
+#### [OBJECT FREQ](https://redis.io/commands/object-freq/) <small>(not implemented)</small>
 
 Get the logarithmic access frequency counter of a Redis object
 
-#### [OBJECT HELP](https://redis.io/commands/object-help/)
+#### [OBJECT HELP](https://redis.io/commands/object-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [OBJECT IDLETIME](https://redis.io/commands/object-idletime/)
+#### [OBJECT IDLETIME](https://redis.io/commands/object-idletime/) <small>(not implemented)</small>
 
 Get the time since a Redis object was last accessed
 
-#### [OBJECT REFCOUNT](https://redis.io/commands/object-refcount/)
+#### [OBJECT REFCOUNT](https://redis.io/commands/object-refcount/) <small>(not implemented)</small>
 
 Get the number of references to the value of the key
 
-#### [PEXPIRETIME](https://redis.io/commands/pexpiretime/)
+#### [PEXPIRETIME](https://redis.io/commands/pexpiretime/) <small>(not implemented)</small>
 
 Get the expiration Unix timestamp for a key in milliseconds
 
-#### [SORT_RO](https://redis.io/commands/sort_ro/)
+#### [SORT_RO](https://redis.io/commands/sort_ro/) <small>(not implemented)</small>
 
 Sort the elements in a list, set or sorted set. Read-only variant of SORT.
 
-#### [TOUCH](https://redis.io/commands/touch/)
+#### [TOUCH](https://redis.io/commands/touch/) <small>(not implemented)</small>
 
 Alters the last access time of a key(s). Returns the number of existing keys specified.
 
-#### [WAIT](https://redis.io/commands/wait/)
+#### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
 Wait for the synchronous replication of all the write commands sent in the context of the current connection
 
@@ -1115,67 +1115,67 @@ Load the specified Lua script into the script cache.
 ### Unsupported scripting commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [EVALSHA_RO](https://redis.io/commands/evalsha_ro/)
+#### [EVALSHA_RO](https://redis.io/commands/evalsha_ro/) <small>(not implemented)</small>
 
 Execute a read-only Lua script server side
 
-#### [EVAL_RO](https://redis.io/commands/eval_ro/)
+#### [EVAL_RO](https://redis.io/commands/eval_ro/) <small>(not implemented)</small>
 
 Execute a read-only Lua script server side
 
-#### [FCALL](https://redis.io/commands/fcall/)
+#### [FCALL](https://redis.io/commands/fcall/) <small>(not implemented)</small>
 
 Invoke a function
 
-#### [FCALL_RO](https://redis.io/commands/fcall_ro/)
+#### [FCALL_RO](https://redis.io/commands/fcall_ro/) <small>(not implemented)</small>
 
 Invoke a read-only function
 
-#### [FUNCTION](https://redis.io/commands/function/)
+#### [FUNCTION](https://redis.io/commands/function/) <small>(not implemented)</small>
 
 A container for function commands
 
-#### [FUNCTION DELETE](https://redis.io/commands/function-delete/)
+#### [FUNCTION DELETE](https://redis.io/commands/function-delete/) <small>(not implemented)</small>
 
 Delete a function by name
 
-#### [FUNCTION DUMP](https://redis.io/commands/function-dump/)
+#### [FUNCTION DUMP](https://redis.io/commands/function-dump/) <small>(not implemented)</small>
 
 Dump all functions into a serialized binary payload
 
-#### [FUNCTION FLUSH](https://redis.io/commands/function-flush/)
+#### [FUNCTION FLUSH](https://redis.io/commands/function-flush/) <small>(not implemented)</small>
 
 Deleting all functions
 
-#### [FUNCTION HELP](https://redis.io/commands/function-help/)
+#### [FUNCTION HELP](https://redis.io/commands/function-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [FUNCTION KILL](https://redis.io/commands/function-kill/)
+#### [FUNCTION KILL](https://redis.io/commands/function-kill/) <small>(not implemented)</small>
 
 Kill the function currently in execution.
 
-#### [FUNCTION LIST](https://redis.io/commands/function-list/)
+#### [FUNCTION LIST](https://redis.io/commands/function-list/) <small>(not implemented)</small>
 
 List information about all the functions
 
-#### [FUNCTION LOAD](https://redis.io/commands/function-load/)
+#### [FUNCTION LOAD](https://redis.io/commands/function-load/) <small>(not implemented)</small>
 
 Create a function with the given arguments (name, code, description)
 
-#### [FUNCTION RESTORE](https://redis.io/commands/function-restore/)
+#### [FUNCTION RESTORE](https://redis.io/commands/function-restore/) <small>(not implemented)</small>
 
 Restore all the functions on the given payload
 
-#### [FUNCTION STATS](https://redis.io/commands/function-stats/)
+#### [FUNCTION STATS](https://redis.io/commands/function-stats/) <small>(not implemented)</small>
 
 Return information about the function currently running (name, description, duration)
 
-#### [SCRIPT DEBUG](https://redis.io/commands/script-debug/)
+#### [SCRIPT DEBUG](https://redis.io/commands/script-debug/) <small>(not implemented)</small>
 
 Set the debug mode for executed scripts.
 
-#### [SCRIPT KILL](https://redis.io/commands/script-kill/)
+#### [SCRIPT KILL](https://redis.io/commands/script-kill/) <small>(not implemented)</small>
 
 Kill the script currently in execution.
 
@@ -1202,27 +1202,27 @@ Returns longitude and latitude of members of a geospatial index
 ### Unsupported geo commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [GEORADIUS](https://redis.io/commands/georadius/)
+#### [GEORADIUS](https://redis.io/commands/georadius/) <small>(not implemented)</small>
 
 Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a point
 
-#### [GEORADIUSBYMEMBER](https://redis.io/commands/georadiusbymember/)
+#### [GEORADIUSBYMEMBER](https://redis.io/commands/georadiusbymember/) <small>(not implemented)</small>
 
 Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a member
 
-#### [GEORADIUSBYMEMBER_RO](https://redis.io/commands/georadiusbymember_ro/)
+#### [GEORADIUSBYMEMBER_RO](https://redis.io/commands/georadiusbymember_ro/) <small>(not implemented)</small>
 
 A read-only variant for GEORADIUSBYMEMBER
 
-#### [GEORADIUS_RO](https://redis.io/commands/georadius_ro/)
+#### [GEORADIUS_RO](https://redis.io/commands/georadius_ro/) <small>(not implemented)</small>
 
 A read-only variant for GEORADIUS
 
-#### [GEOSEARCH](https://redis.io/commands/geosearch/)
+#### [GEOSEARCH](https://redis.io/commands/geosearch/) <small>(not implemented)</small>
 
 Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle.
 
-#### [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/)
+#### [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/) <small>(not implemented)</small>
 
 Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle, and store the result in another key.
 
@@ -1293,7 +1293,7 @@ Get all the values in a hash
 ### Unsupported hash commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [HRANDFIELD](https://redis.io/commands/hrandfield/)
+#### [HRANDFIELD](https://redis.io/commands/hrandfield/) <small>(not implemented)</small>
 
 Get one or multiple random fields from a hash
 
@@ -1316,11 +1316,11 @@ Merge N different HyperLogLogs into a single one.
 ### Unsupported hyperloglog commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [PFDEBUG](https://redis.io/commands/pfdebug/)
+#### [PFDEBUG](https://redis.io/commands/pfdebug/) <small>(not implemented)</small>
 
 Internal commands for debugging HyperLogLog values
 
-#### [PFSELFTEST](https://redis.io/commands/pfselftest/)
+#### [PFSELFTEST](https://redis.io/commands/pfselftest/) <small>(not implemented)</small>
 
 An internal command for testing HyperLogLog values
 
@@ -1367,27 +1367,27 @@ Stop listening for messages posted to the given channels
 ### Unsupported pubsub commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/)
+#### [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/) <small>(not implemented)</small>
 
 Get the count of unique patterns pattern subscriptions
 
-#### [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/)
+#### [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/) <small>(not implemented)</small>
 
 List active shard channels
 
-#### [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/)
+#### [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/) <small>(not implemented)</small>
 
 Get the count of subscribers for shard channels
 
-#### [SPUBLISH](https://redis.io/commands/spublish/)
+#### [SPUBLISH](https://redis.io/commands/spublish/) <small>(not implemented)</small>
 
 Post a message to a shard channel
 
-#### [SSUBSCRIBE](https://redis.io/commands/ssubscribe/)
+#### [SSUBSCRIBE](https://redis.io/commands/ssubscribe/) <small>(not implemented)</small>
 
 Listen for messages published to the given shard channels
 
-#### [SUNSUBSCRIBE](https://redis.io/commands/sunsubscribe/)
+#### [SUNSUBSCRIBE](https://redis.io/commands/sunsubscribe/) <small>(not implemented)</small>
 
 Stop listening for messages posted to the given shard channels
 
@@ -1493,83 +1493,83 @@ Trims the stream to (approximately if '~' is passed) a certain size
 ### Unsupported stream commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [XACK](https://redis.io/commands/xack/)
+#### [XACK](https://redis.io/commands/xack/) <small>(not implemented)</small>
 
 Marks a pending message as correctly processed, effectively removing it from the pending entries list of the consumer group. Return value of the command is the number of messages successfully acknowledged, that is, the IDs we were actually able to resolve in the PEL.
 
-#### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/)
+#### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/) <small>(not implemented)</small>
 
 Changes (or acquires) ownership of messages in a consumer group, as if the messages were delivered to the specified consumer.
 
-#### [XCLAIM](https://redis.io/commands/xclaim/)
+#### [XCLAIM](https://redis.io/commands/xclaim/) <small>(not implemented)</small>
 
 Changes (or acquires) ownership of a message in a consumer group, as if the message was delivered to the specified consumer.
 
-#### [XDEL](https://redis.io/commands/xdel/)
+#### [XDEL](https://redis.io/commands/xdel/) <small>(not implemented)</small>
 
 Removes the specified entries from the stream. Returns the number of items actually deleted, that may be different from the number of IDs passed in case certain IDs do not exist.
 
-#### [XGROUP](https://redis.io/commands/xgroup/)
+#### [XGROUP](https://redis.io/commands/xgroup/) <small>(not implemented)</small>
 
 A container for consumer groups commands
 
-#### [XGROUP CREATE](https://redis.io/commands/xgroup-create/)
+#### [XGROUP CREATE](https://redis.io/commands/xgroup-create/) <small>(not implemented)</small>
 
 Create a consumer group.
 
-#### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/)
+#### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/) <small>(not implemented)</small>
 
 Create a consumer in a consumer group.
 
-#### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/)
+#### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/) <small>(not implemented)</small>
 
 Delete a consumer from a consumer group.
 
-#### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/)
+#### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/) <small>(not implemented)</small>
 
 Destroy a consumer group.
 
-#### [XGROUP HELP](https://redis.io/commands/xgroup-help/)
+#### [XGROUP HELP](https://redis.io/commands/xgroup-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [XGROUP SETID](https://redis.io/commands/xgroup-setid/)
+#### [XGROUP SETID](https://redis.io/commands/xgroup-setid/) <small>(not implemented)</small>
 
 Set a consumer group to an arbitrary last delivered ID value.
 
-#### [XINFO](https://redis.io/commands/xinfo/)
+#### [XINFO](https://redis.io/commands/xinfo/) <small>(not implemented)</small>
 
 A container for stream introspection commands
 
-#### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/)
+#### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/) <small>(not implemented)</small>
 
 List the consumers in a consumer group
 
-#### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/)
+#### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/) <small>(not implemented)</small>
 
 List the consumer groups of a stream
 
-#### [XINFO HELP](https://redis.io/commands/xinfo-help/)
+#### [XINFO HELP](https://redis.io/commands/xinfo-help/) <small>(not implemented)</small>
 
 Show helpful text about the different subcommands
 
-#### [XINFO STREAM](https://redis.io/commands/xinfo-stream/)
+#### [XINFO STREAM](https://redis.io/commands/xinfo-stream/) <small>(not implemented)</small>
 
 Get information about a stream
 
-#### [XPENDING](https://redis.io/commands/xpending/)
+#### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
 
 Return information and entries from a stream consumer group pending entries list, that are messages fetched but never acknowledged.
 
-#### [XREAD](https://redis.io/commands/xread/)
+#### [XREAD](https://redis.io/commands/xread/) <small>(not implemented)</small>
 
 Return never seen elements in multiple streams, with IDs greater than the ones reported by the caller for each stream. Can block.
 
-#### [XREADGROUP](https://redis.io/commands/xreadgroup/)
+#### [XREADGROUP](https://redis.io/commands/xreadgroup/) <small>(not implemented)</small>
 
 Return new entries from a stream using a consumer group, or access the history of the pending entries for a given consumer. Can block.
 
-#### [XSETID](https://redis.io/commands/xsetid/)
+#### [XSETID](https://redis.io/commands/xsetid/) <small>(not implemented)</small>
 
 An internal command for replicating stream values
 
