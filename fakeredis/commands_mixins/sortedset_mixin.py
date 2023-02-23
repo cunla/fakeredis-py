@@ -395,7 +395,7 @@ class SortedSetCommandsMixin:
     def zinterstore(self, dest, numkeys, *args):
         return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
 
-    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
         """Get the scores associated with the specified members in the sorted set
         stored at key.

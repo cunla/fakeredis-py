@@ -1180,25 +1180,27 @@ Set the debug mode for executed scripts.
 Kill the script currently in execution.
 
 
+## geo commands
 
-### Unsupported geo commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [GEOADD](https://redis.io/commands/geoadd/)
+### [GEOADD](https://redis.io/commands/geoadd/)
 
 Add one or more geospatial items in the geospatial index represented using a sorted set
 
-#### [GEODIST](https://redis.io/commands/geodist/)
+### [GEODIST](https://redis.io/commands/geodist/)
 
 Returns the distance between two members of a geospatial index
 
-#### [GEOHASH](https://redis.io/commands/geohash/)
+### [GEOHASH](https://redis.io/commands/geohash/)
 
 Returns members of a geospatial index as standard geohash strings
 
-#### [GEOPOS](https://redis.io/commands/geopos/)
+### [GEOPOS](https://redis.io/commands/geopos/)
 
 Returns longitude and latitude of members of a geospatial index
+
+
+### Unsupported geo commands 
+> To implement support for a command, see [here](/guides/implement-command/) 
 
 #### [GEORADIUS](https://redis.io/commands/georadius/)
 
