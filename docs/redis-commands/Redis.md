@@ -1198,29 +1198,29 @@ Returns members of a geospatial index as standard geohash strings
 
 Returns longitude and latitude of members of a geospatial index
 
-
-### Unsupported geo commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [GEORADIUS](https://redis.io/commands/georadius/) <small>(not implemented)</small>
+### [GEORADIUS](https://redis.io/commands/georadius/)
 
 Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a point
 
-#### [GEORADIUSBYMEMBER](https://redis.io/commands/georadiusbymember/) <small>(not implemented)</small>
+### [GEORADIUSBYMEMBER](https://redis.io/commands/georadiusbymember/)
 
 Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a member
 
-#### [GEORADIUSBYMEMBER_RO](https://redis.io/commands/georadiusbymember_ro/) <small>(not implemented)</small>
+### [GEORADIUSBYMEMBER_RO](https://redis.io/commands/georadiusbymember_ro/)
 
 A read-only variant for GEORADIUSBYMEMBER
 
-#### [GEORADIUS_RO](https://redis.io/commands/georadius_ro/) <small>(not implemented)</small>
+### [GEORADIUS_RO](https://redis.io/commands/georadius_ro/)
 
 A read-only variant for GEORADIUS
 
-#### [GEOSEARCH](https://redis.io/commands/geosearch/) <small>(not implemented)</small>
+### [GEOSEARCH](https://redis.io/commands/geosearch/)
 
 Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle.
+
+
+### Unsupported geo commands 
+> To implement support for a command, see [here](/guides/implement-command/) 
 
 #### [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/) <small>(not implemented)</small>
 

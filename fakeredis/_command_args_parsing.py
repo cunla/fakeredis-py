@@ -1,13 +1,13 @@
 from typing import Tuple, List, Dict, Any
 
 from . import _msgs as msgs
-from ._commands import Int
+from ._commands import Int, Float
 from ._helpers import SimpleError, null_terminate
 
 
 def _count_params(s: str):
     res = 0
-    while s[res] in '+*~':
+    while s[res] in '.+*~':
         res += 1
     return res
 
@@ -54,6 +54,7 @@ def extract_args(
 
     An expected argument can have parameters:
     - A numerical (Int) parameter is identified with +.
+    - A float (Float) parameter is identified with .
     - A non-numerical parameter is identified with a *.
     - A argument with potentially ~ or = between the
       argument name and the value is identified with a ~.
@@ -110,6 +111,8 @@ def extract_args(
             curr_arg = actual_args[ind + i + 1]
             if argument_name[i] == '+':
                 curr_arg = Int.decode(curr_arg)
+            elif argument_name[i] == '.':
+                curr_arg = Float.decode(curr_arg)
             temp_res.append(curr_arg)
 
         if len(temp_res) == 1:

@@ -142,7 +142,7 @@ class GeoCommandsMixin:
 
     def _search(
             self, key, long, lat, radius, conv,
-            withcoord, withdist, withhash, count, count_any, desc, store, storedist):
+            withcoord, withdist, _, count, count_any, desc, store, storedist):
         zset = key.value
         geo_results = _find_near(zset, lat, long, radius, conv, count, count_any, desc)
 
@@ -188,3 +188,17 @@ class GeoCommandsMixin:
         member_score = key.value.get(member_name)
         lat, long, _, _ = geohash.decode(member_score)
         return self.georadius_ro(key, long, lat, radius, *args)
+
+    @command(name='GEOSEARCH', fixed=(Key(ZSet),), repeat=(bytes,))
+    def geosearch(self, key, *args):
+        (frommember, (long, lat), radius), left_args = extract_args(
+            args, ('*frommember', '..fromlonlat', '.byradius'),
+            error_on_unexpected=False, left_from_first_unexpected=False)
+        if frommember is None and long is None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if frommember is not None and long is not None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if frommember:
+            return self.georadiusbymember_ro(key, frommember, radius, *left_args)
+        else:
+            return self.georadius_ro(key, long, lat, radius, *left_args)
