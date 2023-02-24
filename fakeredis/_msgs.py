@@ -63,3 +63,4 @@ XADD_INVALID_ID = 'Invalid stream ID specified as stream command argument'
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = 'v'
 FLAG_TRANSACTION = 't'
+GEO_UNSUPPORTED_UNIT = 'unsupported unit provided. please use M, KM, FT, MI'

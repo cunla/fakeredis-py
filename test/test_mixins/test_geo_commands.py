@@ -1,5 +1,9 @@
+from typing import Dict, Any
+
 import pytest
 import redis
+
+from test import testtools
 
 
 def test_geoadd(r: redis.Redis):
@@ -10,13 +14,20 @@ def test_geoadd(r: redis.Redis):
 
     values = (2.1909389952632, 41.433791470673, "place1")
     assert r.geoadd("a", values) == 1
+
     values = ((2.1909389952632, 31.433791470673, "place1") +
               (2.1873744593677, 41.406342043777, "place2",))
     assert r.geoadd("a", values, ch=True) == 2
     assert r.zrange("a", 0, -1) == [b"place1", b"place2"]
 
-    with pytest.raises(redis.RedisError):
+    with pytest.raises(redis.DataError):
         r.geoadd("barcelona", (1, 2))
+    with pytest.raises(redis.DataError):
+        r.geoadd("t", values, ch=True, nx=True, xx=True)
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, "geoadd", "barcelona", "1", "2")
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, "geoadd", "barcelona", "nx", "xx", *values, )
 
 
 def test_geoadd_xx(r: redis.Redis):
@@ -91,29 +102,22 @@ def test_geodist_missing_one_member(r: redis.Redis):
     assert r.geodist("barcelona", "place1", "missing_member", "km") is None
 
 
-def test_georadius(r: redis.Redis):
+@pytest.mark.parametrize(
+    "long,lat,radius,extra,expected", [
+        (2.191, 41.433, 1000, {}, [b"place1"]),
+        (2.187, 41.406, 1000, {}, [b"place2"]),
+        (1, 2, 1000, {}, []),
+        (2.191, 41.433, 1, {"unit": "km"}, [b"place1"]),
+        (2.191, 41.433, 3000, {"count": 1}, [b"place1"]),
+    ])
+def test_georadius(
+        r: redis.Redis, long: float, lat: float, radius: float,
+        extra: Dict[str, Any],
+        expected):
     values = ((2.1909389952632, 41.433791470673, "place1") +
-              (2.1873744593677, 41.406342043777, b"\x80place2"))
-
+              (2.1873744593677, 41.406342043777, b"place2"))
     r.geoadd("barcelona", values)
-    assert r.georadius("barcelona", 2.191, 41.433, 1000) == [b"place1"]
-    assert r.georadius("barcelona", 2.187, 41.406, 1000) == [b"\x80place2"]
-
-
-def test_georadius_no_values(r: redis.Redis):
-    values = ((2.1909389952632, 41.433791470673, "place1") +
-              (2.1873744593677, 41.406342043777, "place2",))
-
-    r.geoadd("barcelona", values)
-    assert r.georadius("barcelona", 1, 2, 1000) == []
-
-
-def test_georadius_units(r: redis.Redis):
-    values = ((2.1909389952632, 41.433791470673, "place1") +
-              (2.1873744593677, 41.406342043777, "place2",))
-
-    r.geoadd("barcelona", values)
-    assert r.georadius("barcelona", 2.191, 41.433, 1, unit="km") == [b"place1"]
+    assert r.georadius("barcelona", long, lat, radius, **extra) == expected
 
 
 def test_georadius_with(r: redis.Redis):
@@ -121,26 +125,15 @@ def test_georadius_with(r: redis.Redis):
               (2.1873744593677, 41.406342043777, "place2",))
 
     r.geoadd("barcelona", values)
-
-    # test a bunch of combinations to test the parse response
-    # function.
+    # test a bunch of combinations to test the parse response function.
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True, )
-    assert res == [pytest.approx([
-        b"place1",
-        0.0881,
-        pytest.approx((2.19093829393386841, 41.43379028184083523), 0.0001)
-    ], 0.001)]
+    assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
 
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
-    assert res == [pytest.approx([
-        b"place1",
-        0.0881,
-        pytest.approx((2.19093829393386841, 41.43379028184083523), 0.0001)
-    ], 0.001)]
+    assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
 
-    assert r.georadius(
-        "barcelona", 2.191, 41.433, 1, unit="km", withcoord=True
-    ) == [[b"place1", pytest.approx((2.19093829393386841, 41.43379028184083523), 0.0001)]]
+    res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withcoord=True)
+    assert res == [[b"place1", pytest.approx((2.1909, 41.4337), 0.0001)]]
 
     # test no values.
     assert (r.georadius("barcelona", 2, 1, 1, unit="km", withdist=True, withcoord=True, ) == [])
@@ -151,6 +144,39 @@ def test_georadius_count(r: redis.Redis):
               (2.1873744593677, 41.406342043777, "place2",))
 
     r.geoadd("barcelona", values)
-    assert r.georadius("barcelona", 2.191, 41.433, 3000, count=1) == [b"place1"]
+
+    assert r.georadius("barcelona", 2.191, 41.433, 3000, count=1, store='barcelona') == 1
+    assert r.georadius("barcelona", 2.191, 41.433, 3000, store_dist='extract') == 1
+    assert r.zcard("extract") == 1
     res = r.georadius("barcelona", 2.191, 41.433, 3000, count=1, any=True)
     assert (res == [b"place2"]) or res == [b'place1']
+
+    values = ((13.361389, 38.115556, "Palermo") +
+              (15.087269, 37.502669, "Catania",))
+
+    r.geoadd("Sicily", values)
+    assert testtools.raw_command(
+        r, "GEORADIUS", "Sicily", "15", "37", "200", "km",
+        "STOREDIST", "neardist", "STORE", "near") == 2
+    assert r.zcard("near") == 2
+    assert r.zcard("neardist") == 0
+
+
+def test_georadius_errors(r: redis.Redis):
+    values = ((13.361389, 38.115556, "Palermo") +
+              (15.087269, 37.502669, "Catania",))
+
+    r.geoadd("Sicily", values)
+
+    with pytest.raises(redis.DataError):  # Unsupported unit
+        r.georadius("barcelona", 2.191, 41.433, 3000, unit='dsf')
+    with pytest.raises(redis.ResponseError):  # Unsupported unit
+        testtools.raw_command(
+            r, "GEORADIUS", "Sicily", "15", "37", "200", "ddds",
+            "STOREDIST", "neardist", "STORE", "near")
+
+    bad_values = (13.361389, 38.115556, "Palermo", 15.087269, "Catania",)
+    with pytest.raises(redis.DataError):
+        r.geoadd('newgroup', bad_values)
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'geoadd', 'newgroup', *bad_values)
