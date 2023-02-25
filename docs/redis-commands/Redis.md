@@ -1218,13 +1218,13 @@ A read-only variant for GEORADIUS
 
 Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle.
 
+### [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/)
+
+Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle, and store the result in another key.
+
 
 ### Unsupported geo commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [GEOSEARCHSTORE](https://redis.io/commands/geosearchstore/) <small>(not implemented)</small>
-
-Query a sorted set representing a geospatial index to fetch members inside an area of a box or a circle, and store the result in another key.
 
 
 ## hash commands

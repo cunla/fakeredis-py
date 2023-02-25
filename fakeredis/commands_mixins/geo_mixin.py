@@ -202,3 +202,19 @@ class GeoCommandsMixin:
             return self.georadiusbymember_ro(key, frommember, radius, *left_args)
         else:
             return self.georadius_ro(key, long, lat, radius, *left_args)
+
+    @command(name='GEOSEARCHSTORE', fixed=(bytes, Key(ZSet),), repeat=(bytes,))
+    def geosearchstore(self, dst, src, *args):
+        (frommember, (long, lat), radius, storedist), left_args = extract_args(
+            args, ('*frommember', '..fromlonlat', '.byradius', 'storedist'),
+            error_on_unexpected=False, left_from_first_unexpected=False)
+        if frommember is None and long is None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if frommember is not None and long is not None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        additional = [b'storedist', dst] if storedist else [b'store', dst]
+
+        if frommember:
+            return self.georadiusbymember(src, frommember, radius, *left_args, *additional)
+        else:
+            return self.georadius(src, long, lat, radius, *left_args, *additional)
