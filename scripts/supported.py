@@ -1,5 +1,6 @@
 import json
 import os
+
 import requests
 
 from fakeredis._commands import SUPPORTED_COMMANDS
@@ -45,10 +46,12 @@ def commands_groups(
     implemented, unimplemented = dict(), dict()
     for cmd in all_commands:
         group = all_commands[cmd]['group']
+        unimplemented.setdefault(group, [])
+        implemented.setdefault(group, [])
         if cmd in implemented_set:
-            implemented.setdefault(group, []).append(cmd)
+            implemented[group].append(cmd)
         else:
-            unimplemented.setdefault(group, []).append(cmd)
+            unimplemented[group].append(cmd)
     return implemented, unimplemented
 
 
@@ -87,6 +90,11 @@ def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], 
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)
+    groups = sorted(implemented_dict.keys(), key=lambda x: len(unimplemented_dict[x]))
+    for group in groups:
+        unimplemented_count = len(unimplemented_dict[group])
+        total_count = len(implemented_dict.get(group)) + unimplemented_count
+        print(f'{group} has {unimplemented_count}/{total_count} unimplemented commands')
     return unimplemented_dict, implemented_dict
 
 
