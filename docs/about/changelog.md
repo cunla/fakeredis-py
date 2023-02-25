@@ -1,5 +1,9 @@
 ## Next release
 
+## v2.10.0
+### 🚀 Features
+- All geo commands implemented
+
 ## v2.9.2
 ### 🐛 Bug Fixes
 - Fix bug for `xrange`
