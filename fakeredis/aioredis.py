@@ -12,7 +12,7 @@ else:
 import async_timeout
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 
-from . import _fakesocket
+from . import _fakesocket, FakeServer
 from . import _helpers
 from . import _msgs as msgs
 from . import _server
@@ -100,7 +100,9 @@ class FakeWriter:
 
 class FakeConnection(redis_async.Connection):
     def __init__(self, *args, **kwargs):
-        self._server = kwargs.pop('server')
+        self._server = kwargs.pop('server', None)
+        if self._server is None:
+            self._server = FakeServer()
         self._sock = None
         super().__init__(*args, **kwargs)
 
