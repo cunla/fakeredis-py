@@ -1,6 +1,10 @@
 ## Next release
 
 ## v2.10.0
+### 🐛 Bug Fixes
+- Enable testing django-cache using `FakeConnection`.
+
+## v2.10.0
 ### 🚀 Features
 - All geo commands implemented
 

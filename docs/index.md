@@ -87,6 +87,27 @@ True
 Fakeredis implements the same interface as `redis-py`, the popular
 redis client for python, and models the responses of redis 6.x or 7.x.
 
+### Use to test django cache
+
+Update your cache settings:
+
+```python
+from fakeredis import FakeConnection
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': '...',
+        'OPTIONS': {
+            'connection_class': FakeConnection
+        }
+    }
+}
+```
+
+You can use
+django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
+
 ### Use to test django-rq
 
 There is a need to override `django_rq.queues.get_redis_connection` with
