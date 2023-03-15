@@ -37,7 +37,9 @@ class FakeConnection(redis.Connection):
         self.client_name = None
         self._sock = None
         self._selector = None
-        self._server = kwargs.pop('server')
+        self._server = kwargs.pop('server', None)
+        if self._server is None:
+            self._server = FakeServer()
         super().__init__(*args, **kwargs)
 
     def connect(self):
