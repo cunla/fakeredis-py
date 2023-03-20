@@ -62,7 +62,8 @@ mypy = "^0.991"
 types-redis = "^4"
 twine = "^4.0" # Upload to pypi
 tox = "^4.2.6"
-tox-docker = "^4.0.0a2"
+tox-docker = "^4"
+async_timeout = "^4"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
