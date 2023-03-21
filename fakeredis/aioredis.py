@@ -9,7 +9,11 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import Type, TypedDict
 
-import async_timeout
+if sys.version_info >= (3, 11):
+    from asyncio import timeout as async_timeout
+else:
+    from async_timeout import timeout as async_timeout
+
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 
 from . import _fakesocket, FakeServer
@@ -29,7 +33,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     async def _async_blocking(self, timeout, func, event, callback):
         result = None
         try:
-            async with async_timeout.timeout(timeout if timeout else None):
+            async with async_timeout(timeout if timeout else None):
                 while True:
                     await event.wait()
                     event.clear()
