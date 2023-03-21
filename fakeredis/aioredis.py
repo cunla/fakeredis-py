@@ -9,7 +9,11 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import Type, TypedDict
 
-import async_timeout
+if sys.version_info >= (3, 11):
+    from asyncio import timeout as async_timeout
+else:
+    from async_timeout import timeout as async_timeout
+
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 
 from . import _fakesocket, FakeServer
