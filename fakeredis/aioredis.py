@@ -33,7 +33,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     async def _async_blocking(self, timeout, func, event, callback):
         result = None
         try:
-            async with async_timeout.timeout(timeout if timeout else None):
+            async with async_timeout(timeout if timeout else None):
                 while True:
                     await event.wait()
                     event.clear()
