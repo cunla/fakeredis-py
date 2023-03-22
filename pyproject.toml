@@ -37,6 +37,9 @@ classifiers = [
 homepage = "https://github.com/cunla/fakeredis-py"
 repository = "https://github.com/cunla/fakeredis-py"
 documentation = "https://fakeredis.readthedocs.io/"
+include = [
+     { path = "test", format = "sdist" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
