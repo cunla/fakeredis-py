@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.10.2"
+version = "2.10.3"
 description = "Fake implementation of redis API for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", ]
@@ -43,7 +43,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-redis = "^4"
+redis = ">=4"
 sortedcontainers = "^2.4"
 lupa = { version = "^1.14", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
@@ -53,18 +53,17 @@ lua = ["lupa"]
 json = ["jsonpath-ng"]
 
 [tool.poetry.dev-dependencies]
-invoke = "^1.7"
-hypothesis = "^6.56"
+hypothesis = "^6.70"
 coverage = "^7"
 pytest = "^7.2"
-pytest-asyncio = "^0.20"
+pytest-asyncio = "^0.21"
 pytest-cov = "^4.0"
 pytest-mock = "^3.10"
 flake8 = { version = "^6.0", python = ">=3.8.1" }
-mypy = "^0.991"
-types-redis = "^4"
+mypy = "^1"
+types-redis = ">=4.0"
 twine = "^4.0" # Upload to pypi
-tox = "^4.2.6"
+tox = "^4.4"
 tox-docker = "^4"
 
 [tool.poetry.urls]
