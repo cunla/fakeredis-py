@@ -1,6 +1,13 @@
 ## Next release
 
-## v2.10.0
+## v2.10.3
+### 🧰 Maintenance
+- Support for redis-py 5.0.0b1
+## v2.10.2
+### 🐛 Bug Fixes
+- Fix async_timeout usage on py3.11 (#132)
+
+## v2.10.1
 ### 🐛 Bug Fixes
 - Enable testing django-cache using `FakeConnection`.
 
