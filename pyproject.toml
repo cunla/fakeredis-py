@@ -42,7 +42,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 redis = "^4"
 sortedcontainers = "^2.4"
 lupa = { version = "^1.14", optional = true }
