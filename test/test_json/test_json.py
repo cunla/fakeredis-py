@@ -5,7 +5,6 @@ Tests for `fakeredis-py`'s emulation of Redis's JSON.GET command subset.
 from __future__ import annotations
 
 import json
-
 import pytest
 import redis
 from redis.commands.json.path import Path
@@ -223,7 +222,22 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen('non-existing') is None
 
     r.json().set("str", Path.root_path(), "foo")
-    assert 3 == r.json().strlen("str", Path.root_path())
+    assert r.json().strlen("str", Path.root_path()) == 3
+    # Test multi
+    r.json().set("doc1", "$", {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
+    assert r.json().strlen("doc1", "$..a") == [3, 5, None]
+
+    res2 = r.json().strappend("doc1", "bar", "$..a")
+    res1 = r.json().strlen("doc1", "$..a")
+    assert res1 == res2
+
+    # Test single
+    assert r.json().strlen("doc1", "$.nested1.a") == [8]
+    assert r.json().strlen("doc1", "$.nested2.a") == [None]
+
+    # Test missing key
+    with pytest.raises(redis.ResponseError):
+        r.json().strlen("non_existing_doc", "$..a")
 
 
 def test_toggle(r: redis.Redis) -> None:
@@ -314,3 +328,232 @@ def test_strappend(r: redis.Redis) -> None:
     # Test raw command with no arguments
     with pytest.raises(redis.ResponseError) as e:
         raw_command(r, 'json.strappend', '')
+
+
+@pytest.mark.decode_responses(True)
+def test_decode_null(r: redis.Redis):
+    assert r.json().get("abc") is None
+
+
+def test_decode_response_disabaled_null(r: redis.Redis):
+    assert r.json().get("abc") is None
+
+
+def test_json_get_jset(r: redis.Redis) -> None:
+    assert r.json().set("foo", Path.root_path(), "bar", ) == 1
+    assert "bar" == r.json().get("foo")
+    assert r.json().get("baz") is None
+    assert 1 == r.json().delete("foo")
+    assert r.exists("foo") == 0
+
+
+def test_nonascii_setgetdelete(r: redis.Redis) -> None:
+    assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève", )
+    assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
+    assert 1 == r.json().delete("not-ascii")
+    assert r.exists("not-ascii") == 0
+
+
+def test_json_setbinarykey(r: redis.Redis) -> None:
+    data = {"hello": "world", b"some": "value"}
+
+    with pytest.raises(TypeError):
+        r.json().set("some-key", Path.root_path(), data)
+
+    assert r.json().set("some-key", Path.root_path(), data, decode_keys=True)
+
+
+def test_set_file(r: redis.Redis) -> None:
+    # Standard Library Imports
+    import json
+    import tempfile
+
+    obj = {"hello": "world"}
+    jsonfile = tempfile.NamedTemporaryFile(suffix=".json")
+    with open(jsonfile.name, "w+") as fp:
+        fp.write(json.dumps(obj))
+
+    no_json_file = tempfile.NamedTemporaryFile()
+    no_json_file.write(b"Hello World")
+
+    assert r.json().set_file("test", Path.root_path(), jsonfile.name)
+    assert r.json().get("test") == obj
+    with pytest.raises(json.JSONDecodeError):
+        r.json().set_file("test2", Path.root_path(), no_json_file.name)
+
+
+def test_set_path(r: redis.Redis) -> None:
+    # Standard Library Imports
+    import json
+    import tempfile
+
+    root = tempfile.mkdtemp()
+    sub = tempfile.mkdtemp(dir=root)
+    jsonfile = tempfile.mktemp(suffix=".json", dir=sub)
+    no_json_file = tempfile.mktemp(dir=root)
+
+    with open(jsonfile, "w+") as fp:
+        fp.write(json.dumps({"hello": "world"}))
+    with open(no_json_file, "a+") as fp:
+        fp.write("hello")
+
+    result = {jsonfile: True, no_json_file: False}
+    assert r.json().set_path(Path.root_path(), root) == result
+    assert r.json().get(jsonfile.rsplit(".")[0]) == {"hello": "world"}
+
+
+def test_type(r: redis.Redis) -> None:
+    r.json().set("1", Path.root_path(), 1, )
+
+    assert r.json().type("1", Path.root_path(), ) == b"integer"
+    assert r.json().type("1") == b"integer"
+
+    meta_data = {"object": {}, "array": [], "string": "str", "integer": 42, "number": 1.2, "boolean": False,
+                 "null": None, }
+    data = {k: {'a': meta_data[k]} for k in meta_data}
+    r.json().set("doc1", "$", data)
+    # Test multi
+    assert r.json().type("doc1", "$..a") == [k.encode() for k in meta_data.keys()]
+
+    # Test single
+    assert r.json().type("doc1", f"$.integer.a") == [b'integer']
+    assert r.json().type("doc1") == b'object'
+
+    # Test missing key
+    assert r.json().type("non_existing_doc", "..a") is None
+
+
+def test_objlen(r: redis.Redis) -> None:
+    # Test missing key, and path
+    with pytest.raises(redis.ResponseError):
+        r.json().objlen("non_existing_doc", "$..a")
+
+    obj = {"foo": "bar", "baz": "qaz"}
+
+    r.json().set("obj", Path.root_path(), obj, )
+    assert len(obj) == r.json().objlen("obj", Path.root_path(), )
+
+    r.json().set("obj", Path.root_path(), obj)
+    assert len(obj) == r.json().objlen("obj")
+    r.json().set("doc1", "$", {
+        "a": ["foo"],
+        "nested1": {"a": {"foo": 10, "bar": 20}},
+        "nested2": {"a": {"baz": 50}},
+    })
+    # Test multi
+    assert r.json().objlen("doc1", "$..a") == [None, 2, 1]
+    # Test single
+    assert r.json().objlen("doc1", "$.nested1.a") == [2]
+
+    assert r.json().objlen("doc1", "$.nowhere") == []
+
+    # Test legacy
+    assert r.json().objlen("doc1", ".*.a") == 2
+
+    # Test single
+    assert r.json().objlen("doc1", ".nested2.a") == 1
+
+    # Test missing key
+    assert r.json().objlen("non_existing_doc", "..a") is None
+
+    # Test missing path
+    # with pytest.raises(exceptions.ResponseError):
+    r.json().objlen("doc1", ".nowhere")
+
+
+def test_objkeys(r: redis.Redis):
+    obj = {"foo": "bar", "baz": "qaz"}
+    r.json().set("obj", Path.root_path(), obj)
+    keys = r.json().objkeys("obj", Path.root_path())
+    keys.sort()
+    exp = list(obj.keys())
+    exp.sort()
+    assert exp == keys
+
+    r.json().set("obj", Path.root_path(), obj)
+    assert r.json().objkeys("obj") == list(obj.keys())
+
+    assert r.json().objkeys("fakekey") is None
+
+    r.json().set(
+        "doc1",
+        "$",
+        {
+            "nested1": {"a": {"foo": 10, "bar": 20}},
+            "a": ["foo"],
+            "nested2": {"a": {"baz": 50}},
+        },
+    )
+
+    # Test single
+    assert r.json().objkeys("doc1", "$.nested1.a") == [[b"foo", b"bar"]]
+
+    # Test legacy
+    assert r.json().objkeys("doc1", ".*.a") == ["foo", "bar"]
+    # Test single
+    assert r.json().objkeys("doc1", ".nested2.a") == ["baz"]
+
+    # Test missing key
+    assert r.json().objkeys("non_existing_doc", "..a") is None
+
+    # Test non existing doc
+    with pytest.raises(redis.ResponseError):
+        assert r.json().objkeys("non_existing_doc", "$..a") == []
+
+    assert r.json().objkeys("doc1", "$..nowhere") == []
+
+
+def test_numincrby(r: redis.Redis) -> None:
+    r.json().set("num", Path.root_path(), 1)
+
+    assert 2 == r.json().numincrby("num", Path.root_path(), 1)
+    assert 2.5 == r.json().numincrby("num", Path.root_path(), 0.5)
+    assert 1.25 == r.json().numincrby("num", Path.root_path(), -1.25)
+    # Test NUMINCRBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+    # Test multi
+    assert r.json().numincrby("doc1", "$..a", 2) == [None, 4, 7.0, None]
+
+    assert r.json().numincrby("doc1", "$..a", 2.5) == [None, 6.5, 9.5, None]
+    # Test single
+    assert r.json().numincrby("doc1", "$.b[1].a", 2) == [11.5]
+
+    assert r.json().numincrby("doc1", "$.b[2].a", 2) == [None]
+    assert r.json().numincrby("doc1", "$.b[1].a", 3.5) == [15.0]
+
+
+def test_nummultby(r: redis.Redis) -> None:
+    r.json().set("num", Path.root_path(), 1)
+
+    with pytest.deprecated_call():
+        assert r.json().nummultby("num", Path.root_path(), 2) == 2
+        assert r.json().nummultby("num", Path.root_path(), 2.5) == 5
+        assert r.json().nummultby("num", Path.root_path(), 0.5) == 2.5
+
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    # test list
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", "$..a", 2) == [None, 4, 10, None]
+        assert r.json().nummultby("doc1", "$..a", 2.5) == [None, 10.0, 25.0, None]
+
+    # Test single
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", "$.b[1].a", 2) == [50.0]
+        assert r.json().nummultby("doc1", "$.b[2].a", 2) == [None]
+        assert r.json().nummultby("doc1", "$.b[1].a", 3) == [150.0]
+
+    # test missing keys
+    with pytest.raises(redis.ResponseError):
+        r.json().numincrby("non_existing_doc", "$..a", 2)
+        r.json().nummultby("non_existing_doc", "$..a", 2)
+
+    # Test legacy NUMINCRBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+    assert r.json().numincrby("doc1", ".b[0].a", 3) == 5
+
+    # Test legacy NUMMULTBY
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    with pytest.deprecated_call():
+        assert r.json().nummultby("doc1", ".b[0].a", 3) == 6

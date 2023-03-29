@@ -1,6 +1,8 @@
 INVALID_EXPIRE_MSG = "ERR invalid expire time in {}"
 WRONGTYPE_MSG = "WRONGTYPE Operation against a key holding the wrong kind of value"
 SYNTAX_ERROR_MSG = "ERR syntax error"
+SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
+    "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX")
 INVALID_INT_MSG = "ERR value is not an integer or out of range"
 INVALID_FLOAT_MSG = "ERR value is not a valid float"
 INVALID_OFFSET_MSG = "ERR offset is out of range"
@@ -56,7 +58,9 @@ JSON_PATH_NOT_FOUND_OR_NOT_STRING = "ERR Path '{}' does not exist or not a strin
 JSON_PATH_DOES_NOT_EXIST = "ERR Path '{}' does not exist"
 LCS_CANT_HAVE_BOTH_LEN_AND_IDX = "ERR If you want both the length and indexes, please just use IDX."
 BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
-
+XADD_ID_LOWER_THAN_LAST = "The ID specified in XADD is equal or smaller than the target stream top item"
+XADD_INVALID_ID = 'Invalid stream ID specified as stream command argument'
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = 'v'
 FLAG_TRANSACTION = 't'
+GEO_UNSUPPORTED_UNIT = 'unsupported unit provided. please use M, KM, FT, MI'

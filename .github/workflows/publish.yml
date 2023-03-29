@@ -29,3 +29,11 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           print_hash: true
+      - name: Deploy documentation
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
+        run: |
+          pip install -r docs/requirements.txt
+          mkdocs gh-deploy --force
+          mkdocs --version

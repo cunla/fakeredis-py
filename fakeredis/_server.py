@@ -37,7 +37,9 @@ class FakeConnection(redis.Connection):
         self.client_name = None
         self._sock = None
         self._selector = None
-        self._server = kwargs.pop('server')
+        self._server = kwargs.pop('server', None)
+        if self._server is None:
+            self._server = FakeServer()
         super().__init__(*args, **kwargs)
 
     def connect(self):
@@ -120,10 +122,6 @@ class FakeRedisMixin:
             if server is None:
                 server = FakeServer(version=version)
                 server.connected = connected
-            kwargs = {
-                'connection_class': FakeConnection,
-                'server': server
-            }
             conn_pool_args = {
                 'host',
                 'db',
@@ -139,10 +137,12 @@ class FakeRedisMixin:
                 'health_check_interval',
                 'client_name',
             }
-            for arg in conn_pool_args:
-                if arg in kwds:
-                    kwargs[arg] = kwds[arg]
-            kwds['connection_pool'] = redis.connection.ConnectionPool(**kwargs)
+            connection_kwargs = {
+                'connection_class': FakeConnection,
+                'server': server
+            }
+            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
+            kwds['connection_pool'] = redis.connection.ConnectionPool(**connection_kwargs)
         kwds.pop('server', None)
         kwds.pop('connected', None)
         kwds.pop('version', None)

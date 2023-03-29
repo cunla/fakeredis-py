@@ -89,7 +89,7 @@ class StringCommandsMixin:
         delete_keys(key)
         return res
 
-    @command((Key(bytes), Int, Int))
+    @command(name=['GETRANGE', 'SUBSTR'], fixed=(Key(bytes), Int, Int))
     def getrange(self, key, start, end):
         value = key.get(b'')
         start, end = fix_range_string(start, end, len(value))
@@ -215,11 +215,6 @@ class StringCommandsMixin:
     @command((Key(bytes),))
     def strlen(self, key):
         return len(key.get(b''))
-
-    # substr is a deprecated alias for getrange
-    @command((Key(bytes), Int, Int))
-    def substr(self, key, start, end):
-        return self.getrange(key, start, end)
 
     @command((Key(bytes),), (bytes,))
     def getex(self, key, *args):

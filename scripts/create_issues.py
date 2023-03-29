@@ -6,16 +6,17 @@ import os
 from dotenv import load_dotenv
 from github import Github
 
-from supported import get_unimplemented_and_implemented_commands, download_redis_commands
+from supported import download_redis_commands, implemented_commands
 
 load_dotenv()  # take environment variables from .env.
 
 IGNORE_GROUPS = {
     'server', 'cf', 'cms', 'topk', 'tdigest', 'bf', 'search', 'suggestion', 'timeseries',
     'graph', 'server', 'cluster', 'connection',
-    'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting', 'geo', 'hash',
-    'hyperloglog', 'pubsub', 'stream', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
-    'tdigest', 'json',
+    'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting',
+    'hyperloglog', 'pubsub', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
+    'tdigest',
+    'stream',
 }
 IGNORE_COMMANDS = {
     'PUBSUB HELP',
@@ -28,22 +29,44 @@ IGNORE_COMMANDS = {
     'JSON.DEBUG MEMORY',
     'JSON.DEBUG',
     'JSON.TYPE',
-    'JSON.OBJKEYS',
-    'JSON.OBJLEN',
-    'JSON.ARRTRIM',
-    'JSON.ARRAPPEND',
-    'JSON.ARRINDEX',
-    'JSON.ARRINSERT',
-    'JSON.ARRLEN',
-    'JSON.ARRPOP',
-    'JSON.NUMINCRBY',
-    'JSON.NUMMULTBY',
     'JSON.RESP',
 }
 
 
+def commands_groups(
+        all_commands: dict, implemented_set: set
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    implemented, unimplemented = dict(), dict()
+    for cmd in all_commands:
+        if cmd.upper() in IGNORE_COMMANDS:
+            continue
+        group = all_commands[cmd]['group']
+        unimplemented.setdefault(group, [])
+        implemented.setdefault(group, [])
+        if cmd in implemented_set:
+            implemented[group].append(cmd)
+        else:
+            unimplemented[group].append(cmd)
+    return implemented, unimplemented
+
+
+def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands
+
+    """
+    commands = download_redis_commands()
+    implemented_commands_set = implemented_commands()
+    implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)
+    groups = sorted(implemented_dict.keys(), key=lambda x: len(unimplemented_dict[x]))
+    for group in groups:
+        unimplemented_count = len(unimplemented_dict[group])
+        total_count = len(implemented_dict.get(group)) + unimplemented_count
+        print(f'{group} has {unimplemented_count}/{total_count} unimplemented commands')
+    return unimplemented_dict, implemented_dict
+
+
 class GithubData:
-    def __init__(self, dry=False):
+    def __init__(self, dry=True):
         token = os.getenv('GITHUB_TOKEN', None)
         g = Github(token)
         self.dry = dry or (token is None)

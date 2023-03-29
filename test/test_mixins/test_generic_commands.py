@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
-from time import sleep, time
-
 import pytest
 import redis
+from datetime import datetime, timedelta
 from redis.exceptions import ResponseError
+from time import sleep, time
 
 from test.testtools import raw_command
 
@@ -721,3 +720,24 @@ def test_key_patterns(r):
     assert r.keys('t??') == [b'two']
     assert sorted(r.keys('*')) == [b'four', b'one', b'three', b'two']
     assert sorted(r.keys()) == [b'four', b'one', b'three', b'two']
+
+
+@pytest.mark.min_server('7')
+def test_watch_when_setbit_does_not_change_value(r: redis.Redis):
+    r.set('foo', b'0')
+
+    with r.pipeline() as p:
+        p.watch('foo')
+        assert r.setbit('foo', 0, 0) == 0
+        assert p.multi() is None
+        assert p.execute() == []
+
+
+def test_from_hypothesis_redis7(r: redis.Redis):
+    r.set('foo', b'0')
+    assert r.setbit('foo', 0, 0) == 0
+    assert r.append('foo', b'') == 1
+
+    r.set(b'', b'')
+    assert r.setbit(b'', 0, 0) == 0
+    assert r.get(b'') == b'\x00'

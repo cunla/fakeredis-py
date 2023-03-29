@@ -156,17 +156,15 @@ class SortedSetCommandsMixin:
     def zlexcount(self, key, _min, _max):
         return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)
 
-    def _zrange(self, key, start, stop, reverse, *args):
+    def _zrangebyscore(self, key, _min, _max, reverse, withscores, offset, count):
         zset = key.value
-        withscores = False
-        byscore = False
-        for arg in args:
-            if casematch(arg, b'withscores'):
-                withscores = True
-            elif casematch(arg, b'byscore'):
-                byscore = True
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
+        items = self._limit_items(items, offset, count)
+        items = self._apply_withscores(items, withscores)
+        return items
+
+    def _zrange(self, key, start, stop, reverse, withscores, byscore):
+        zset = key.value
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
         else:
@@ -178,55 +176,74 @@ class SortedSetCommandsMixin:
         items = self._apply_withscores(items, withscores)
         return items
 
-    @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrange(self, key, start, stop, *args):
-        return self._zrange(key, start, stop, False, *args)
-
-    @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrevrange(self, key, start, stop, *args):
-        return self._zrange(key, start, stop, True, *args)
-
-    def _zrangebylex(self, key, _min, _max, reverse, *args):
-        if args:
-            if len(args) != 3 or not casematch(args[0], b'limit'):
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            offset = Int.decode(args[1])
-            count = Int.decode(args[2])
-        else:
-            offset = 0
-            count = -1
+    def _zrangebylex(self, key, _min, _max, reverse, offset, count):
         zset = key.value
+        if reverse:
+            _min, _max = _max, _min
         items = zset.irange_lex(_min.value, _max.value,
                                 inclusive=(not _min.exclusive, not _max.exclusive),
                                 reverse=reverse)
         items = self._limit_items(items, offset, count)
         return items
 
-    @command((Key(ZSet), StringTest, StringTest), (bytes,))
-    def zrangebylex(self, key, _min, _max, *args):
-        return self._zrangebylex(key, _min, _max, False, *args)
+    def _zrange_args(self, key, start, stop, *args):
+        (bylex, byscore, rev, (offset, count), withscores), _ = extract_args(
+            args, ('bylex', 'byscore', 'rev', '++limit', 'withscores'))
+        if offset is not None and not bylex and not byscore:
+            raise SimpleError(msgs.SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG)
+        if bylex and byscore:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-    @command((Key(ZSet), StringTest, StringTest), (bytes,))
-    def zrevrangebylex(self, key, _max, _min, *args):
-        return self._zrangebylex(key, _min, _max, True, *args)
-
-    def _zrangebyscore(self, key, _min, _max, reverse, *args):
-        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
         offset = offset or 0
         count = -1 if count is None else count
-        zset = key.value
-        items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
-        items = self._limit_items(items, offset, count)
-        items = self._apply_withscores(items, withscores)
-        return items
+
+        if bylex:
+            res = self._zrangebylex(
+                key, StringTest.decode(start), StringTest.decode(stop), rev, offset, count)
+        elif byscore:
+            res = self._zrangebyscore(
+                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, offset, count)
+        else:
+            res = self._zrange(
+                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, byscore)
+        return res
+
+    @command((Key(ZSet), bytes, bytes), (bytes,))
+    def zrange(self, key, start, stop, *args):
+        return self._zrange_args(key, start, stop, *args)
+
+    @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
+    def zrevrange(self, key, start, stop, *args):
+        (withscores, byscore), _ = extract_args(args, ('withscores', 'byscore'))
+        return self._zrange(key, start, stop, True, withscores, byscore)
+
+    @command((Key(ZSet), StringTest, StringTest), (bytes,))
+    def zrangebylex(self, key, _min, _max, *args):
+        ((offset, count),), _ = extract_args(args, ('++limit',))
+        offset = offset or 0
+        count = -1 if count is None else count
+        return self._zrangebylex(key, _min, _max, False, offset, count)
+
+    @command((Key(ZSet), StringTest, StringTest), (bytes,))
+    def zrevrangebylex(self, key, _min, _max, *args):
+        ((offset, count),), _ = extract_args(args, ('++limit',))
+        offset = offset or 0
+        count = -1 if count is None else count
+        return self._zrangebylex(key, _min, _max, True, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrangebyscore(self, key, _min, _max, *args):
-        return self._zrangebyscore(key, _min, _max, False, *args)
+        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
+        offset = offset or 0
+        count = -1 if count is None else count
+        return self._zrangebyscore(key, _min, _max, False, withscores, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrangebyscore(self, key, _max, _min, *args):
-        return self._zrangebyscore(key, _min, _max, True, *args)
+        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
+        offset = offset or 0
+        count = -1 if count is None else count
+        return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
 
     @command((Key(ZSet), bytes))
     def zrank(self, key, member):
@@ -386,7 +403,7 @@ class SortedSetCommandsMixin:
     def zinterstore(self, dest, numkeys, *args):
         return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
 
-    @command(name="zmscore", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
         """Get the scores associated with the specified members in the sorted set
         stored at key.

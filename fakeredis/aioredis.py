@@ -4,15 +4,22 @@ import asyncio
 import sys
 from typing import Union, Optional
 
+import redis
+
 if sys.version_info >= (3, 8):
     from typing import Type, TypedDict
 else:
     from typing_extensions import Type, TypedDict
 
-import async_timeout
-import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
+if sys.version_info >= (3, 11):
+    from asyncio import timeout as async_timeout
+else:
+    from async_timeout import timeout as async_timeout
 
-from . import _fakesocket
+import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
+from redis.asyncio.connection import BaseParser
+
+from . import _fakesocket, FakeServer
 from . import _helpers
 from . import _msgs as msgs
 from . import _server
@@ -29,7 +36,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     async def _async_blocking(self, timeout, func, event, callback):
         result = None
         try:
-            async with async_timeout.timeout(timeout if timeout else None):
+            async with async_timeout(timeout if timeout else None):
                 while True:
                     await event.wait()
                     event.clear()
@@ -69,7 +76,8 @@ class FakeSocket(AsyncFakeSocket):
     _connection_error_class = redis_async.ConnectionError
 
     def _decode_error(self, error):
-        return redis_async.connection.BaseParser(1).parse_error(error.value)
+        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
+        return parser.parse_error(error.value)
 
 
 class FakeReader:
@@ -100,7 +108,9 @@ class FakeWriter:
 
 class FakeConnection(redis_async.Connection):
     def __init__(self, *args, **kwargs):
-        self._server = kwargs.pop('server')
+        self._server = kwargs.pop('server', None)
+        if self._server is None:
+            self._server = FakeServer()
         self._sock = None
         super().__init__(*args, **kwargs)
 

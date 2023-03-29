@@ -1,6 +1,5 @@
-from unittest.mock import patch
-
 import redis
+from unittest.mock import patch
 
 from fakeredis import FakeRedis
 

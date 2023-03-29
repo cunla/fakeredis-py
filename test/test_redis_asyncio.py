@@ -1,7 +1,11 @@
 import asyncio
 import re
+import sys
 
-import async_timeout
+if sys.version_info >= (3, 11):
+    from asyncio import timeout as async_timeout
+else:
+    from async_timeout import timeout as async_timeout
 import pytest
 import pytest_asyncio
 import redis
@@ -121,7 +125,7 @@ async def test_pubsub(req_aioredis2, event_loop):
                     break
                 queue.put_nowait(message)
 
-    async with async_timeout.timeout(5), req_aioredis2.pubsub() as ps:
+    async with async_timeout(5), req_aioredis2.pubsub() as ps:
         await ps.subscribe('channel')
         task = event_loop.create_task(reader(ps))
         await req_aioredis2.publish('channel', 'message1')

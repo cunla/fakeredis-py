@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import time
-from datetime import timedelta
-
 import pytest
 import redis
 import redis.client
+import time
+from datetime import timedelta
 from redis.exceptions import ResponseError
 
 from ..testtools import raw_command
