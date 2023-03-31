@@ -459,6 +459,17 @@ def test_pttl_should_return_minus_two_for_non_existent_key(r):
     assert r.pttl('foo') == -2
 
 
+def test_randomkey_returns_none_on_empty_db(r):
+    assert r.randomkey() is None
+
+
+def test_randomkey_returns_existing_key(r):
+    r.set("foo", 1)
+    r.set("bar", 2)
+    r.set("baz", 3)
+    assert r.randomkey().decode() in ("foo", "bar", "baz")
+
+
 def test_persist(r):
     r.set('foo', 'bar', ex=20)
     assert r.persist('foo') == 1
