@@ -1,6 +1,6 @@
 import hashlib
 import pickle
-from random import random
+import random
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
