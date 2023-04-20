@@ -209,7 +209,7 @@ class FakeRedis(redis_async.Redis):
             username: Optional[str] = None,
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
-            **kwargs
+            **kwargs,
     ):
         if not connection_pool:
             # Adapted from aioredis
@@ -218,8 +218,9 @@ class FakeRedis(redis_async.Redis):
                 server.connected = connected
             connection_kwargs: ConnectionKwargs = {
                 "db": db,
-                "username": username,
-                "password": password,
+                # Ignoring because AUTH is not implemented
+                # 'username',
+                # 'password',
                 "socket_timeout": socket_timeout,
                 "encoding": encoding,
                 "encoding_errors": encoding_errors,
@@ -245,7 +246,7 @@ class FakeRedis(redis_async.Redis):
             health_check_interval=health_check_interval,
             client_name=client_name,
             username=username,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -258,4 +259,6 @@ class FakeRedis(redis_async.Redis):
         pool = self.connection_pool
         pool.connection_class = FakeConnection
         pool.connection_kwargs['server'] = server
+        pool.connection_kwargs.pop('username', None)
+        pool.connection_kwargs.pop('password', None)
         return self
