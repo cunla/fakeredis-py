@@ -147,9 +147,7 @@ class FakeConnection(redis_async.Connection):
         if isinstance(response, list):
             return [self._decode(item) for item in response]
         elif isinstance(response, bytes):
-            return self.encoder.decode(
-                response,
-            )
+            return self.encoder.decode(response, )
         else:
             return response
 
@@ -261,6 +259,6 @@ class FakeRedis(redis_async.Redis):
         pool = self.connection_pool
         pool.connection_class = FakeConnection
         pool.connection_kwargs['server'] = server
-        pool.connection_kwargs.pop("username", None)
-        pool.connection_kwargs.pop("password", None)
+        pool.connection_kwargs.pop('username', None)
+        pool.connection_kwargs.pop('password', None)
         return self
