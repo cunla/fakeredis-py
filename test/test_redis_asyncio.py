@@ -311,3 +311,12 @@ async def test_connection_disconnect(nowait):
     await conn.disconnect(nowait=nowait)
 
     assert conn._sock is None
+
+async def test_connection_with_username_and_password():
+    server = FakeServer()
+    r = aioredis.FakeRedis(server=server, username='username', password='password')
+
+    test_value = "this_is_a_test"
+    await r.hset('test:key', "test_hash", test_value)
+    result = await r.hget('test:key', "test_hash")
+    assert result.decode() == test_value 
