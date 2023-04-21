@@ -1,9 +1,16 @@
 ---
 title: Change log
-description: Change log of all fakeredis releases 
+description: Change log of all fakeredis releases
 
 ---
+
 ## Next release
+
+## v2.10.4
+
+### 🧰 Maintenance
+
+- Fix creating fakeredis.aioredis using url with user/password (#139)
 
 ## v2.10.3
 
