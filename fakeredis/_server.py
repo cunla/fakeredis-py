@@ -38,7 +38,6 @@ class FakeServer:
 
 
 class FakeConnection(redis.Connection):
-    description_format = "FakeConnection<db=%(db)s>"
 
     def __init__(self, *args, **kwargs):
         self.client_name = None
@@ -48,11 +47,11 @@ class FakeConnection(redis.Connection):
         path = kwargs.pop('path', None)
         if self._server is None:
             if path:
-                key = path
+                self.server_key = path
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
-                key = 'shared' if host is None or port is None else f'{host}:{port}'
-            self._server = FakeServer.get_server(key)
+                self.server_key = 'shared' if host is None or port is None else f'{host}:{port}'
+            self._server = FakeServer.get_server(self.server_key)
         super().__init__(*args, **kwargs)
 
     def connect(self):
@@ -108,6 +107,9 @@ class FakeConnection(redis.Connection):
         if self.client_name:
             pieces.append(('client_name', self.client_name))
         return pieces
+
+    def __str__(self):
+        return self.server_key
 
 
 class FakeRedisMixin:
