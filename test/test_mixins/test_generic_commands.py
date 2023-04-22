@@ -1,8 +1,9 @@
+from datetime import datetime, timedelta
+from time import sleep, time
+
 import pytest
 import redis
-from datetime import datetime, timedelta
 from redis.exceptions import ResponseError
-from time import sleep, time
 
 from test.testtools import raw_command
 

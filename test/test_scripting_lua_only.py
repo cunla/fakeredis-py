@@ -2,6 +2,7 @@
 Tests will run only if module lupa is installed.
 """
 import logging
+
 import pytest
 import redis
 import redis.client

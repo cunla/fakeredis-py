@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
+from time import sleep
+
 import pytest
 import redis
 import redis.client
-from datetime import timedelta
 from redis.exceptions import ResponseError
-from time import sleep
 
 
 def test_sadd(r):

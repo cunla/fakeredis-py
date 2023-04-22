@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from typing import (Any, Dict, List, Tuple, )
+
 import pytest
 import redis
 from redis.commands.json.path import Path
-from typing import (Any, Dict, List, Tuple, )
 
 json_tests = pytest.importorskip("jsonpath_ng")
 

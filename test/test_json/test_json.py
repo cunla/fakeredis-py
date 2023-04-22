@@ -5,6 +5,7 @@ Tests for `fakeredis-py`'s emulation of Redis's JSON.GET command subset.
 from __future__ import annotations
 
 import json
+
 import pytest
 import redis
 from redis.commands.json.path import Path

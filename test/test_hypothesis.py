@@ -1,11 +1,12 @@
 import functools
+import operator
+import sys
+
 import hypothesis
 import hypothesis.stateful
 import hypothesis.strategies as st
-import operator
 import pytest
 import redis
-import sys
 from hypothesis.stateful import rule, initialize, precondition
 
 import fakeredis
