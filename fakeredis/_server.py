@@ -131,12 +131,9 @@ class FakeRedisMixin:
                 warnings.warn(DeprecationWarning(
                     '"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds['encoding_errors'] = errors
-
-            if server is None:
-                server = FakeServer(version=version)
-                server.connected = connected
             conn_pool_args = {
                 'host',
+                'port',
                 'db',
                 # Ignoring because AUTH is not implemented
                 # 'username',
@@ -169,11 +166,6 @@ class FakeRedisMixin:
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
-        # server = kwargs.pop('server', None)
-        # if server is None:
-        #     server = FakeServer()
-        # pool.connection_kwargs['server'] = server
-
         # Using username and password fails since AUTH is not implemented.
         # https://github.com/cunla/fakeredis-py/issues/9
         pool.connection_kwargs.pop('username', None)

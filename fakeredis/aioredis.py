@@ -217,9 +217,6 @@ class FakeRedis(redis_async.Redis):
     ):
         if not connection_pool:
             # Adapted from aioredis
-            if server is None:
-                server = _server.FakeServer()
-                server.connected = connected
             connection_kwargs: ConnectionKwargs = {
                 "db": db,
                 # Ignoring because AUTH is not implemented
@@ -255,14 +252,9 @@ class FakeRedis(redis_async.Redis):
 
     @classmethod
     def from_url(cls, url: str, **kwargs):
-        server = kwargs.pop('server', None)
-        if server is None:
-            server = _server.FakeServer()
         self = super().from_url(url, **kwargs)
-        # Now override how it creates connections
-        pool = self.connection_pool
+        pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection
-        pool.connection_kwargs['server'] = server
         pool.connection_kwargs.pop('username', None)
         pool.connection_kwargs.pop('password', None)
         return self

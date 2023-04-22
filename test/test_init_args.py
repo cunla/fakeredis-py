@@ -27,7 +27,7 @@ class TestInitArgs:
     def test_singleton(self):
         shared_server = fakeredis.FakeServer()
         r1 = fakeredis.FakeStrictRedis()
-        r2 = fakeredis.FakeStrictRedis()
+        r2 = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer())
         r3 = fakeredis.FakeStrictRedis(server=shared_server)
         r4 = fakeredis.FakeStrictRedis(server=shared_server)
 
@@ -132,7 +132,7 @@ class TestInitArgs:
     def test_same_connection_params(self):
         r1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
         r2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
-        r3 = fakeredis.FakeStrictRedis()
+        r3 = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer())
         r1.set('foo', 'bar')
         assert r2.get('foo') == b'bar'
         assert not r3.exists('foo')
