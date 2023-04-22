@@ -33,26 +33,32 @@ class FakeServer:
         self.version = version
 
     @staticmethod
-    def get_server(key):
-        return FakeServer._servers_map.setdefault(key, FakeServer())
+    def get_server(key, version: int):
+        return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
 
-class FakeConnection(redis.Connection):
-
+class FakeBaseConnectionMixin:
     def __init__(self, *args, **kwargs):
         self.client_name = None
         self._sock = None
         self._selector = None
         self._server = kwargs.pop('server', None)
         path = kwargs.pop('path', None)
+        version = kwargs.pop('version', 7)
+        connected = kwargs.pop('connected', True)
         if self._server is None:
             if path:
                 self.server_key = path
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
                 self.server_key = 'shared' if host is None or port is None else f'{host}:{port}'
-            self._server = FakeServer.get_server(self.server_key)
+            self.server_key += f'v{version}'
+            self._server = FakeServer.get_server(self.server_key, version=version)
+            self._server.connected = connected
         super().__init__(*args, **kwargs)
+
+
+class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
     def connect(self):
         super().connect()
@@ -151,7 +157,8 @@ class FakeRedisMixin:
             }
             connection_kwargs = {
                 'connection_class': FakeConnection,
-                'server': server
+                'server': server,
+                'version': version,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds['connection_pool'] = redis.connection.ConnectionPool(**connection_kwargs)

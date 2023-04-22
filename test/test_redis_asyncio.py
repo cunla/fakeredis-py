@@ -328,7 +328,7 @@ class TestInitArgs:
     async def test_singleton(self):
         shared_server = FakeServer()
         r1 = aioredis.FakeRedis()
-        r2 = aioredis.FakeRedis()
+        r2 = aioredis.FakeRedis(server=FakeServer())
         r3 = aioredis.FakeRedis(server=shared_server)
         r4 = aioredis.FakeRedis(server=shared_server)
 

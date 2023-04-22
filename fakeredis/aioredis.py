@@ -6,6 +6,8 @@ from typing import Union, Optional
 
 import redis
 
+from ._server import FakeBaseConnectionMixin
+
 if sys.version_info >= (3, 8):
     from typing import Type, TypedDict
 else:
@@ -19,7 +21,7 @@ else:
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 from redis.asyncio.connection import BaseParser
 
-from . import _fakesocket, FakeServer
+from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
 from . import _server
@@ -104,19 +106,7 @@ class FakeWriter:
             self._socket.sendall(chunk)
 
 
-class FakeConnection(redis_async.Connection):
-    def __init__(self, *args, **kwargs):
-        self._server = kwargs.pop('server', None)
-        path = kwargs.pop('path', None)
-        if self._server is None:
-            if path:
-                key = path
-            else:
-                host, port = kwargs.get('host'), kwargs.get('port')
-                key = 'shared' if host is None or port is None else f'{host}:{port}'
-            self._server = FakeServer.get_server(key)
-        self._sock = None
-        super().__init__(*args, **kwargs)
+class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
     async def _connect(self):
         if not self._server.connected:
@@ -230,6 +220,7 @@ class FakeRedis(redis_async.Redis):
                 "health_check_interval": health_check_interval,
                 "client_name": client_name,
                 "server": server,
+                "connected": connected,
                 "connection_class": FakeConnection,
                 "max_connections": max_connections,
             }
