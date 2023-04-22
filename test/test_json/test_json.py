@@ -92,10 +92,10 @@ def test_json_et_non_dict_value(r: redis.Redis):
     assert r.json().get('str') == 'str_val'
 
     r.json().set("bool", Path.root_path(), True)
-    assert r.json().get('bool') == True
+    assert r.json().get('bool') is True
 
     r.json().set("bool", Path.root_path(), False)
-    assert r.json().get('bool') == False
+    assert r.json().get('bool') is False
 
 
 def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis) -> None:
@@ -327,7 +327,7 @@ def test_strappend(r: redis.Redis) -> None:
         r.json().strappend("doc1", "add", "piu")
 
     # Test raw command with no arguments
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(redis.ResponseError):
         raw_command(r, 'json.strappend', '')
 
 
@@ -417,7 +417,7 @@ def test_type(r: redis.Redis) -> None:
     assert r.json().type("doc1", "$..a") == [k.encode() for k in meta_data.keys()]
 
     # Test single
-    assert r.json().type("doc1", f"$.integer.a") == [b'integer']
+    assert r.json().type("doc1", "$.integer.a") == [b'integer']
     assert r.json().type("doc1") == b'object'
 
     # Test missing key

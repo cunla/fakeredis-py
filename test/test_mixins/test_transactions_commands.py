@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 import redis
 import redis.client
-from redis.exceptions import ResponseError
 
 import fakeredis
 from .. import testtools

@@ -6,7 +6,13 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.10.4
+## v2.11.0
+
+### 🚀 Features
+
+- connection parameters awareness:
+  Creating multiple clients with the same connection parameters will result in
+  the same server datastructure.
 
 ### 🧰 Maintenance
 

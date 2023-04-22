@@ -4,7 +4,6 @@ from time import sleep
 import pytest
 import redis
 import redis.client
-import redis.client
 
 from .. import testtools
 
