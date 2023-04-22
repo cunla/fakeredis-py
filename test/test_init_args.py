@@ -128,3 +128,11 @@ class TestInitArgs:
         db = fakeredis.FakeStrictRedis.from_url('unix://a/b/c')
         db.set('foo', 'bar')
         assert db.get('foo') == b'bar'
+
+    def test_same_connection_params(self):
+        r1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
+        r2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
+        r3 = fakeredis.FakeStrictRedis()
+        r1.set('foo', 'bar')
+        assert r2.get('foo') == b'bar'
+        assert not r3.exists('foo')
