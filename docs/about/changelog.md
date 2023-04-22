@@ -12,9 +12,9 @@ description: Change log of all fakeredis releases
 
 - connection parameters awareness:
   Creating multiple clients with the same connection parameters will result in
-  the same server datastructure.
+  the same server data structure.
 
-### 🧰 Maintenance
+### 🧰 Bug Fixes
 
 - Fix creating fakeredis.aioredis using url with user/password (#139)
 
