@@ -33,11 +33,11 @@ def _extract_command(fields):
 class BaseFakeSocket:
     _connection_error_class = redis.ConnectionError
 
-    def __init__(self, server, *args, **kwargs):
+    def __init__(self, server, db, *args, **kwargs):
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         self._server = server
-        self._db = server.dbs[0]
-        self._db_num = 0
+        self._db_num = db
+        self._db = server.dbs[self._db_num]
         self.responses = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed

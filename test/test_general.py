@@ -4,7 +4,7 @@ import redis
 import fakeredis
 from test.testtools import raw_command
 
-
+@pytest.mark.fake
 def test_singleton():
     conn_generator = fakeredis.FakeRedisConnSingleton()
     conn1 = conn_generator(dict(), False)

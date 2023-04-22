@@ -26,9 +26,15 @@ from . import _server
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
+    _connection_error_class = redis_async.ConnectionError
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responses = asyncio.Queue()
+
+    def _decode_error(self, error):
+        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
+        return parser.parse_error(error.value)
 
     def put_response(self, msg):
         self.responses.put_nowait(msg)
@@ -72,16 +78,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         return _helpers.NoResponse()
 
 
-class FakeSocket(AsyncFakeSocket):
-    _connection_error_class = redis_async.ConnectionError
-
-    def _decode_error(self, error):
-        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
-        return parser.parse_error(error.value)
-
-
 class FakeReader:
-    def __init__(self, socket: FakeSocket) -> None:
+    def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket = socket
 
     async def read(self, length: int) -> bytes:
@@ -89,7 +87,7 @@ class FakeReader:
 
 
 class FakeWriter:
-    def __init__(self, socket: FakeSocket) -> None:
+    def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket = socket
 
     def close(self):
@@ -109,15 +107,21 @@ class FakeWriter:
 class FakeConnection(redis_async.Connection):
     def __init__(self, *args, **kwargs):
         self._server = kwargs.pop('server', None)
+        path = kwargs.pop('path', None)
         if self._server is None:
-            self._server = FakeServer()
+            if path:
+                key = path
+            else:
+                host, port = kwargs.get('host'), kwargs.get('port')
+                key = 'shared' if host is None or port is None else f'{host}:{port}'
+            self._server = FakeServer.get_server(key)
         self._sock = None
         super().__init__(*args, **kwargs)
 
     async def _connect(self):
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        self._sock = FakeSocket(self._server)
+        self._sock = AsyncFakeSocket(self._server, self.db)
         self._reader = FakeReader(self._sock)
         self._writer = FakeWriter(self._sock)
 
