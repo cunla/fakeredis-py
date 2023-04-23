@@ -404,10 +404,8 @@ class TestString(BaseTest):
 
 
 class TestHash(BaseTest):
-    # TODO: add a test for hincrbyfloat. See incrbyfloat for why this is
-    # problematic.
     hash_commands = (
-            commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values)))
+            commands(st.just('hset'), keys, st.lists(st.tuples(fields, values)))
             | commands(st.just('hdel'), keys, st.lists(fields))
             | commands(st.just('hexists'), keys, fields)
             | commands(st.just('hget'), keys, fields)
@@ -415,12 +413,12 @@ class TestHash(BaseTest):
             | commands(st.just('hincrby'), keys, fields, st.integers())
             | commands(st.just('hlen'), keys)
             | commands(st.just('hmget'), keys, st.lists(fields))
-            | commands(st.sampled_from(['hset', 'hmset']), keys, st.lists(st.tuples(fields, values)))
+            | commands(st.just('hset'), keys, st.lists(st.tuples(fields, values)))
             | commands(st.just('hsetnx'), keys, fields, values)
             | commands(st.just('hstrlen'), keys, fields)
     )
     create_command_strategy = (
-        commands(st.just('hmset'), keys, st.lists(st.tuples(fields, values), min_size=1))
+        commands(st.just('hset'), keys, st.lists(st.tuples(fields, values), min_size=1))
     )
     command_strategy = hash_commands | common_commands
 
