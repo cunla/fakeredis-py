@@ -229,6 +229,3 @@ New contribution guides are welcome.
 fakeredis-py is developed for free.
 
 You can support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
-
-Alternatively, you can buy me coffee using this
-link: [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/danielmoran)
