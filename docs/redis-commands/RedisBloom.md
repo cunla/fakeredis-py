@@ -42,6 +42,10 @@ Restores a filter previously saved using SCANDUMP
 
 Returns information about a Bloom Filter
 
+#### [BF.CARD](https://redis.io/commands/bf.card/) <small>(not implemented)</small>
+
+Returns the cardinality of a Bloom filter
+
 
 
 ### Unsupported cf commands 

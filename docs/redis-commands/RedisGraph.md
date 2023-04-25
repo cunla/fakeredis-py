@@ -42,4 +42,12 @@ Updates a RedisGraph configuration
 
 Lists all graph keys in the keyspace
 
+#### [GRAPH.CONSTRAINT DROP](https://redis.io/commands/graph.constraint-drop/) <small>(not implemented)</small>
+
+Deletes a constraint from specified graph
+
+#### [GRAPH.CONSTRAINT CREATE](https://redis.io/commands/graph.constraint-create/) <small>(not implemented)</small>
+
+Creates a constraint on specified graph
+
 

@@ -60,11 +60,11 @@ Query a range across multiple time-series by filters in reverse direction
 
 #### [TS.GET](https://redis.io/commands/ts.get/) <small>(not implemented)</small>
 
-Get the last sample
+Get the sample with the highest timestamp from a given time series
 
 #### [TS.MGET](https://redis.io/commands/ts.mget/) <small>(not implemented)</small>
 
-Get the last samples matching a specific filter
+Get the sample with the highest timestamp from each time series matching a specific filter
 
 #### [TS.INFO](https://redis.io/commands/ts.info/) <small>(not implemented)</small>
 
