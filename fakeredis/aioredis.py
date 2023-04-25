@@ -6,6 +6,8 @@ from typing import Union, Optional
 
 import redis
 
+from ._server import FakeBaseConnectionMixin
+
 if sys.version_info >= (3, 8):
     from typing import Type, TypedDict
 else:
@@ -19,16 +21,22 @@ else:
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 from redis.asyncio.connection import BaseParser
 
-from . import _fakesocket, FakeServer
+from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
 from . import _server
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
+    _connection_error_class = redis_async.ConnectionError
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responses = asyncio.Queue()
+
+    def _decode_error(self, error):
+        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
+        return parser.parse_error(error.value)
 
     def put_response(self, msg):
         self.responses.put_nowait(msg)
@@ -72,16 +80,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         return _helpers.NoResponse()
 
 
-class FakeSocket(AsyncFakeSocket):
-    _connection_error_class = redis_async.ConnectionError
-
-    def _decode_error(self, error):
-        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
-        return parser.parse_error(error.value)
-
-
 class FakeReader:
-    def __init__(self, socket: FakeSocket) -> None:
+    def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket = socket
 
     async def read(self, length: int) -> bytes:
@@ -89,7 +89,7 @@ class FakeReader:
 
 
 class FakeWriter:
-    def __init__(self, socket: FakeSocket) -> None:
+    def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket = socket
 
     def close(self):
@@ -106,18 +106,12 @@ class FakeWriter:
             self._socket.sendall(chunk)
 
 
-class FakeConnection(redis_async.Connection):
-    def __init__(self, *args, **kwargs):
-        self._server = kwargs.pop('server', None)
-        if self._server is None:
-            self._server = FakeServer()
-        self._sock = None
-        super().__init__(*args, **kwargs)
+class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
     async def _connect(self):
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        self._sock = FakeSocket(self._server)
+        self._sock = AsyncFakeSocket(self._server, self.db)
         self._reader = FakeReader(self._sock)
         self._writer = FakeWriter(self._sock)
 
@@ -209,17 +203,15 @@ class FakeRedis(redis_async.Redis):
             username: Optional[str] = None,
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
-            **kwargs
+            **kwargs,
     ):
         if not connection_pool:
             # Adapted from aioredis
-            if server is None:
-                server = _server.FakeServer()
-                server.connected = connected
             connection_kwargs: ConnectionKwargs = {
                 "db": db,
-                "username": username,
-                "password": password,
+                # Ignoring because AUTH is not implemented
+                # 'username',
+                # 'password',
                 "socket_timeout": socket_timeout,
                 "encoding": encoding,
                 "encoding_errors": encoding_errors,
@@ -228,6 +220,7 @@ class FakeRedis(redis_async.Redis):
                 "health_check_interval": health_check_interval,
                 "client_name": client_name,
                 "server": server,
+                "connected": connected,
                 "connection_class": FakeConnection,
                 "max_connections": max_connections,
             }
@@ -245,17 +238,14 @@ class FakeRedis(redis_async.Redis):
             health_check_interval=health_check_interval,
             client_name=client_name,
             username=username,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
     def from_url(cls, url: str, **kwargs):
-        server = kwargs.pop('server', None)
-        if server is None:
-            server = _server.FakeServer()
         self = super().from_url(url, **kwargs)
-        # Now override how it creates connections
-        pool = self.connection_pool
+        pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection
-        pool.connection_kwargs['server'] = server
+        pool.connection_kwargs.pop('username', None)
+        pool.connection_kwargs.pop('password', None)
         return self

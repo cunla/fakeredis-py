@@ -1,5 +1,6 @@
-import redis
 from unittest.mock import patch
+
+import redis
 
 from fakeredis import FakeRedis
 
@@ -7,8 +8,7 @@ from fakeredis import FakeRedis
 def test_mock():
     # Mock Redis connection
     def bar(redis_host: str, redis_port: int):
-        redis_con = redis.Redis(redis_host, redis_port)
-        pass
+        redis.Redis(redis_host, redis_port)
 
     with patch('redis.Redis', FakeRedis):
         # Call function

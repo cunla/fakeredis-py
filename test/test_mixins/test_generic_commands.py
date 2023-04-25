@@ -1,8 +1,9 @@
+from datetime import datetime, timedelta
+from time import sleep, time
+
 import pytest
 import redis
-from datetime import datetime, timedelta
 from redis.exceptions import ResponseError
-from time import sleep, time
 
 from test.testtools import raw_command
 
@@ -457,6 +458,17 @@ def test_pttl_should_return_minus_one_for_non_expiring_key(r):
 def test_pttl_should_return_minus_two_for_non_existent_key(r):
     assert r.get('foo') is None
     assert r.pttl('foo') == -2
+
+
+def test_randomkey_returns_none_on_empty_db(r):
+    assert r.randomkey() is None
+
+
+def test_randomkey_returns_existing_key(r):
+    r.set("foo", 1)
+    r.set("bar", 2)
+    r.set("baz", 3)
+    assert r.randomkey().decode() in ("foo", "bar", "baz")
 
 
 def test_persist(r):

@@ -1,9 +1,9 @@
+import threading
+from time import sleep
+
 import pytest
 import redis
 import redis.client
-import redis.client
-import threading
-from time import sleep
 
 from .. import testtools
 

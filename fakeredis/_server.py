@@ -6,6 +6,7 @@ import time
 import warnings
 import weakref
 from collections import defaultdict
+from typing import Dict
 
 import redis
 
@@ -17,6 +18,8 @@ LOGGER = logging.getLogger('fakeredis')
 
 
 class FakeServer:
+    _servers_map: Dict[str, 'FakeServer'] = dict()
+
     def __init__(self, version=7):
         self.lock = threading.Lock()
         self.dbs = defaultdict(lambda: Database(self.lock))
@@ -29,18 +32,33 @@ class FakeServer:
         self.closed_sockets = []
         self.version = version
 
+    @staticmethod
+    def get_server(key, version: int):
+        return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
-class FakeConnection(redis.Connection):
-    description_format = "FakeConnection<db=%(db)s>"
 
+class FakeBaseConnectionMixin:
     def __init__(self, *args, **kwargs):
         self.client_name = None
         self._sock = None
         self._selector = None
         self._server = kwargs.pop('server', None)
+        path = kwargs.pop('path', None)
+        version = kwargs.pop('version', 7)
+        connected = kwargs.pop('connected', True)
         if self._server is None:
-            self._server = FakeServer()
+            if path:
+                self.server_key = path
+            else:
+                host, port = kwargs.get('host'), kwargs.get('port')
+                self.server_key = 'shared' if host is None or port is None else f'{host}:{port}'
+            self.server_key += f'v{version}'
+            self._server = FakeServer.get_server(self.server_key, version=version)
+            self._server.connected = connected
         super().__init__(*args, **kwargs)
+
+
+class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
     def connect(self):
         super().connect()
@@ -50,7 +68,7 @@ class FakeConnection(redis.Connection):
     def _connect(self):
         if not self._server.connected:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        return FakeSocket(self._server)
+        return FakeSocket(self._server, db=self.db)
 
     def can_read(self, timeout=0):
         if not self._server.connected:
@@ -96,6 +114,9 @@ class FakeConnection(redis.Connection):
             pieces.append(('client_name', self.client_name))
         return pieces
 
+    def __str__(self):
+        return self.server_key
+
 
 class FakeRedisMixin:
     def __init__(self, *args, server=None, connected=True, version=7, **kwargs):
@@ -118,12 +139,9 @@ class FakeRedisMixin:
                 warnings.warn(DeprecationWarning(
                     '"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds['encoding_errors'] = errors
-
-            if server is None:
-                server = FakeServer(version=version)
-                server.connected = connected
             conn_pool_args = {
                 'host',
+                'port',
                 'db',
                 # Ignoring because AUTH is not implemented
                 # 'username',
@@ -139,7 +157,8 @@ class FakeRedisMixin:
             }
             connection_kwargs = {
                 'connection_class': FakeConnection,
-                'server': server
+                'server': server,
+                'version': version,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds['connection_pool'] = redis.connection.ConnectionPool(**connection_kwargs)
@@ -153,16 +172,9 @@ class FakeRedisMixin:
 
     @classmethod
     def from_url(cls, *args, **kwargs):
-        server = kwargs.pop('server', None)
-        if server is None:
-            server = FakeServer()
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
-        pool.connection_kwargs['server'] = server
-        # FakeConnection cannot handle the path kwarg (present when from_url
-        # is called with a unix socket)
-        pool.connection_kwargs.pop('path', None)
         # Using username and password fails since AUTH is not implemented.
         # https://github.com/cunla/fakeredis-py/issues/9
         pool.connection_kwargs.pop('username', None)

@@ -1,10 +1,10 @@
+import threading
 import uuid
+from queue import Queue
+from time import sleep
 
 import pytest
 import redis
-import threading
-from queue import Queue
-from time import sleep
 
 import fakeredis
 from .. import testtools
