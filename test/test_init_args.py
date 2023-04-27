@@ -26,10 +26,10 @@ def test_multidb(r, create_redis):
 class TestInitArgs:
     def test_singleton(self):
         shared_server = fakeredis.FakeServer()
-        r1 = fakeredis.FakeStrictRedis()
-        r2 = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer())
-        r3 = fakeredis.FakeStrictRedis(server=shared_server)
-        r4 = fakeredis.FakeStrictRedis(server=shared_server)
+        r1 = fakeredis.FakeRedis()
+        r2 = fakeredis.FakeRedis(server=fakeredis.FakeServer())
+        r3 = fakeredis.FakeRedis(server=shared_server)
+        r4 = fakeredis.FakeRedis(server=shared_server)
 
         r1.set('foo', 'bar')
         r3.set('bar', 'baz')
@@ -66,13 +66,9 @@ class TestInitArgs:
         assert db.get('foo') == b'bar'
 
     def test_from_url_with_db_arg(self):
-        db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/0')
-        db1 = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/1')
-        db2 = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/',
-            db=2)
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/0')
+        db1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/1')
+        db2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/', db=2)
         db.set('foo', 'foo0')
         db1.set('foo', 'foo1')
         db2.set('foo', 'foo2')
@@ -82,14 +78,11 @@ class TestInitArgs:
 
     def test_from_url_db_value_error(self):
         # In case of ValueError, should default to 0, or be absent in redis-py 4.0
-        db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/a')
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/a')
         assert db.connection_pool.connection_kwargs.get('db', 0) == 0
 
     def test_can_pass_through_extra_args(self):
-        db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/0',
-            decode_responses=True)
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/0', decode_responses=True)
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
