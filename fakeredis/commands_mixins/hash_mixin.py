@@ -33,7 +33,8 @@ class HashCommandsMixin:
     @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key, field, amount):
         amount = Int.decode(amount)
-        c = Int.decode(key.value.get(field, b'0')) + amount
+        field_value = Int.decode(key.value.get(field, b'0'), decode_error=msgs.INVALID_HASH_MSG)
+        c = field_value + amount
         key.value[field] = self._encodeint(c)
         key.updated()
         return c

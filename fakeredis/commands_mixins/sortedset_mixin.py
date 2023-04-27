@@ -321,10 +321,6 @@ class SortedSetCommandsMixin:
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b'sum'
-        sets = []
-        for i in range(numkeys):
-            item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
-            sets.append(self._get_zset(item.value))
         weights = [1.0] * numkeys
 
         i = numkeys
@@ -343,6 +339,11 @@ class SortedSetCommandsMixin:
                 i += 2
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        sets = []
+        for i in range(numkeys):
+            item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
+            sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
         for s in sets[1:]:
