@@ -316,7 +316,7 @@ class Signature:
         if len(args) != len(self.fixed):
             delta = len(args) - len(self.fixed)
             if delta < 0 or not self.repeat:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= 7 else msgs.WRONG_ARGS_MSG6.format(self.name)
+                msg = msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
 
     def apply(self, args, db, version):

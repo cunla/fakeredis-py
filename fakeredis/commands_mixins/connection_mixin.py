@@ -16,7 +16,7 @@ class ConnectionCommandsMixin:
     @command((), (bytes,))
     def ping(self, *args):
         if len(args) > 1:
-            msg = msgs.WRONG_ARGS_MSG7 if self.version >= 7 else msgs.WRONG_ARGS_MSG6.format('ping')
+            msg = msgs.WRONG_ARGS_MSG6.format('ping')
             raise SimpleError(msg)
         if self._pubsub:
             return [b'pong', args[0] if args else b'']
