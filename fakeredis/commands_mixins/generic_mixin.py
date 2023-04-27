@@ -207,7 +207,7 @@ class GenericCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         # TODO: force sorting if the object is a set and either in Lua or
-        # storing to a key, to match redis behaviour.
+        #  storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
         # These transformations are based on the redis implementation, but

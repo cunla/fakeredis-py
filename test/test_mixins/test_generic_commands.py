@@ -5,6 +5,7 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
+from fakeredis import _msgs as msgs
 from test.testtools import raw_command
 
 
@@ -318,6 +319,8 @@ def test_exists(r):
     assert 'foo' not in r
     r.set('foo', 'bar')
     assert 'foo' in r
+    with pytest.raises(redis.ResponseError, match=msgs.WRONG_ARGS_MSG6.format('exists')[4:]):
+        raw_command(r, 'exists')
 
 
 @pytest.mark.slow

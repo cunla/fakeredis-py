@@ -3,12 +3,16 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
+from fakeredis import _msgs as msgs
 from test import testtools
+from test.testtools import raw_command
 
 
 def test_ping(r):
     assert r.ping()
     assert testtools.raw_command(r, 'ping', 'test') == b'test'
+    with pytest.raises(redis.ResponseError, match=msgs.WRONG_ARGS_MSG6.format('ping')[4:]):
+        raw_command(r, 'ping', 'arg1', 'arg2')
 
 
 def test_echo(r):

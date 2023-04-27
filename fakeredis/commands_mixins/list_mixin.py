@@ -19,9 +19,9 @@ def _list_pop(get_slice, key, *args):
     if len(args) > 1:
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     elif len(args) == 1:
-        count = args[0]
+        count = Int.decode(args[0], msgs.INDEX_NEGATIVE_ERROR_MSG)
         if count < 0:
-            raise SimpleError(msgs.INDEX_ERROR_MSG)
+            raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
     if not key:
         return None
     elif type(key.value) != list:
@@ -131,7 +131,7 @@ class ListCommandsMixin:
         self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
         return el
 
-    @command((Key(),), (Int(),))
+    @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key, *args):
         return _list_pop(lambda count: slice(None, count), key, *args)
 
@@ -174,10 +174,11 @@ class ListCommandsMixin:
             key.updated()
         return len(indices_to_remove)
 
-    @command((Key(list), Int, bytes))
+    @command((Key(list), bytes, bytes))
     def lset(self, key, index, value):
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
+        index = Int.decode(index)
         try:
             key.value[index] = value
             key.updated()
@@ -198,7 +199,7 @@ class ListCommandsMixin:
                 key.update(new_value)
         return OK
 
-    @command((Key(),), (Int(),))
+    @command(fixed=(Key(),), repeat=(bytes,))
     def rpop(self, key, *args):
         return _list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
 
