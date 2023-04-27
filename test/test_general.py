@@ -23,3 +23,14 @@ def test_asyncioio_is_used():
 def test_unknown_command(r):
     with pytest.raises(redis.ResponseError):
         raw_command(r, '0 3 3')
+
+
+def test_new_server_when_no_params():
+    from fakeredis import FakeRedis
+
+    fake_redis_1 = FakeRedis()
+    fake_redis_2 = FakeRedis()
+
+    fake_redis_1.set("foo", "bar")
+
+    assert fake_redis_2.get("foo") is None
