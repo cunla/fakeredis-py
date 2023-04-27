@@ -30,8 +30,9 @@ class HashCommandsMixin:
     def hgetall(self, key):
         return list(itertools.chain(*key.value.items()))
 
-    @command((Key(Hash), bytes, Int))
+    @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key, field, amount):
+        amount = Int.decode(amount)
         c = Int.decode(key.value.get(field, b'0')) + amount
         key.value[field] = self._encodeint(c)
         key.updated()

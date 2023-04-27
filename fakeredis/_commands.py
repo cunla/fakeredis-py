@@ -181,7 +181,8 @@ class Float:
                allow_leading_whitespace=False,
                allow_erange=False,
                allow_empty=False,
-               crop_null=False):
+               crop_null=False,
+               decode_error=None):
         # redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
         try:
@@ -204,7 +205,7 @@ class Float:
                     raise ValueError
             return out
         except ValueError:
-            raise SimpleError(cls.DECODE_ERROR)
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
 
     @classmethod
     def encode(cls, value, humanfriendly):
