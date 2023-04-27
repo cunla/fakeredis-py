@@ -2,7 +2,7 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List
+from typing import List, Any, Tuple
 
 import redis
 
@@ -20,7 +20,7 @@ from ._helpers import (
     compile_pattern, QUEUED, encode_command)
 
 
-def _extract_command(fields):
+def _extract_command(fields) -> Tuple[Any, List[Any]]:
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
         cmd += ' ' + encode_command(fields[1])
