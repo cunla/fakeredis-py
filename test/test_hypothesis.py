@@ -78,9 +78,7 @@ class WrappedException:
             return NotImplemented
         if type(self.wrapped) != type(other.wrapped):  # noqa: E721
             return False
-        # TODO: re-enable after more carefully handling order of error checks
-        # return self.wrapped.args == other.wrapped.args
-        return True
+        return self.wrapped.args == other.wrapped.args
 
     def __ne__(self, other):
         if not isinstance(other, WrappedException):

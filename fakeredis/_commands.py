@@ -103,6 +103,7 @@ class CommandItem:
 
 
 class Hash(dict):
+    DECODE_ERROR = msgs.INVALID_HASH_MSG
     redis_type = b'hash'
 
 
@@ -119,13 +120,13 @@ class Int:
         return cls.MIN_VALUE <= value <= cls.MAX_VALUE
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value, decode_error=None):
         try:
             out = int(value)
             if not cls.valid(out) or str(out).encode() != value:
                 raise ValueError
         except ValueError:
-            raise SimpleError(cls.DECODE_ERROR)
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
         return out
 
     @classmethod

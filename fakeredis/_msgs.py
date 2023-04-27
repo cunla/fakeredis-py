@@ -3,6 +3,7 @@ WRONGTYPE_MSG = "WRONGTYPE Operation against a key holding the wrong kind of val
 SYNTAX_ERROR_MSG = "ERR syntax error"
 SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
     "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX")
+INVALID_HASH_MSG = "ERR hash value is not an integer"
 INVALID_INT_MSG = "ERR value is not an integer or out of range"
 INVALID_FLOAT_MSG = "ERR value is not a valid float"
 INVALID_OFFSET_MSG = "ERR offset is out of range"
@@ -20,6 +21,7 @@ INVALID_SORT_FLOAT_MSG = "ERR One or more scores can't be converted into double"
 SRC_DST_SAME_MSG = "ERR source and destination objects are the same"
 NO_KEY_MSG = "ERR no such key"
 INDEX_ERROR_MSG = "ERR index out of range"
+INDEX_NEGATIVE_ERROR_MSG = "ERR value is out of range, must be positive"
 ZADD_NX_XX_ERROR_MSG = "ERR ZADD allows either 'nx' or 'xx', not both"
 ZADD_INCR_LEN_ERROR_MSG = "ERR INCR option supports a single increment-element pair"
 ZADD_NX_GT_LT_ERROR_MSG = "ERR GT, LT, and/or NX options at the same time are not compatible"
