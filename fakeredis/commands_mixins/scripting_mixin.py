@@ -84,6 +84,8 @@ class ScriptingCommandsMixin:
             ]
             return lua_runtime.table_from(converted)
         elif isinstance(result, SimpleError):
+            if result.value.startswith('ERR wrong number of arguments'):
+                raise SimpleError(msgs.WRONG_ARGS_MSG7)
             raise result
         else:
             raise RuntimeError("Unexpected return type from redis: {}".format(type(result)))
@@ -177,8 +179,6 @@ class ScriptingCommandsMixin:
         except SimpleError as ex:
             if self.version <= 6:
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
-            if ex.value.startswith('ERR wrong number of arguments'):
-                raise SimpleError('Wrong number of args calling Redis command from script')
             raise SimpleError(ex.value)
         except LuaError as ex:
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
