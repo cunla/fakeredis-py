@@ -1,6 +1,6 @@
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex
-from fakeredis._helpers import SimpleError, OK, SimpleString
+from fakeredis._commands import (command, DbIndex)
+from fakeredis._helpers import (SimpleError, OK, SimpleString)
 
 PONG = SimpleString(b'PONG')
 

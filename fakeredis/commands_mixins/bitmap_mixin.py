@@ -4,7 +4,6 @@ from fakeredis._helpers import SimpleError, casematch
 
 
 class BitmapCommandsMixin:
-    # BITMAP commands
     # TODO: bitfield, bitfield_ro, bitpos
     @staticmethod
     def _bytes_as_bin_string(value):

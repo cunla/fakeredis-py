@@ -1,17 +1,14 @@
 import functools
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (
-    Key, command, Int, CommandItem, Timeout, fix_range)
-from fakeredis._helpers import (
-    OK, SimpleError, SimpleString, casematch)
+from fakeredis._commands import (Key, command, Int, CommandItem, Timeout, fix_range)
+from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch)
 
 
 def _list_pop(get_slice, key, *args):
     """Implements lpop and rpop.
 
-    `get_slice` must take a count and return a slice expression for the
-    range to pop.
+    `get_slice` must take a count and return a slice expression for the range to pop.
     """
     # This implementation is somewhat contorted to match the odd
     # behaviours described in https://github.com/redis/redis/issues/9680.

@@ -4,8 +4,8 @@ import itertools
 import logging
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, SimpleString, null_terminate, OK, encode_command
+from fakeredis._commands import (command, Int)
+from fakeredis._helpers import (SimpleError, SimpleString, null_terminate, OK, encode_command)
 
 LOGGER = logging.getLogger('fakeredis')
 REDIS_LOG_LEVELS = {

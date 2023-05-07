@@ -2,8 +2,8 @@ import itertools
 import math
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Hash, Int, Float
-from fakeredis._helpers import SimpleError, OK
+from fakeredis._commands import (command, Key, Hash, Int, Float)
+from fakeredis._helpers import (SimpleError, OK)
 
 
 class HashCommandsMixin:

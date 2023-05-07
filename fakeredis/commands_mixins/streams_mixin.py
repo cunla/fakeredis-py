@@ -110,4 +110,3 @@ class StreamsCommandsMixin:
             return self._xread(stream_start_id_list, count, False)
         else:
             return self._blocking(timeout, functools.partial(self._xread(stream_start_id_list, count)))
-
