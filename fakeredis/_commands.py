@@ -103,6 +103,7 @@ class CommandItem:
 
 
 class Hash(dict):
+    DECODE_ERROR = msgs.INVALID_HASH_MSG
     redis_type = b'hash'
 
 
@@ -119,13 +120,13 @@ class Int:
         return cls.MIN_VALUE <= value <= cls.MAX_VALUE
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value, decode_error=None):
         try:
             out = int(value)
             if not cls.valid(out) or str(out).encode() != value:
                 raise ValueError
         except ValueError:
-            raise SimpleError(cls.DECODE_ERROR)
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
         return out
 
     @classmethod
@@ -180,7 +181,8 @@ class Float:
                allow_leading_whitespace=False,
                allow_erange=False,
                allow_empty=False,
-               crop_null=False):
+               crop_null=False,
+               decode_error=None):
         # redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
         try:
@@ -203,7 +205,7 @@ class Float:
                     raise ValueError
             return out
         except ValueError:
-            raise SimpleError(cls.DECODE_ERROR)
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
 
     @classmethod
     def encode(cls, value, humanfriendly):
@@ -316,7 +318,7 @@ class Signature:
         if len(args) != len(self.fixed):
             delta = len(args) - len(self.fixed)
             if delta < 0 or not self.repeat:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= 7 else msgs.WRONG_ARGS_MSG6.format(self.name)
+                msg = msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
 
     def apply(self, args, db, version):

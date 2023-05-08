@@ -211,3 +211,45 @@ def test_xrange(r: redis.Redis):
 
     results = r.xrange(stream, max=m2, count=1)
     assert get_ids(results) == [m1]
+
+
+def get_stream_message(client, stream, message_id):
+    """Fetch a stream message and format it as a (message_id, fields) pair"""
+    response = client.xrange(stream, min=message_id, max=message_id)
+    assert len(response) == 1
+    return response[0]
+
+
+def test_xread(r):
+    stream = "stream"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"bing": "baz"})
+
+    expected = [
+        [
+            stream.encode(),
+            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+        ]
+    ]
+    # xread starting at 0 returns both messages
+    assert r.xread(streams={stream: 0}) == expected
+
+    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
+    # xread starting at 0 and count=1 returns only the first message
+    assert r.xread(streams={stream: 0}, count=1) == expected
+
+    expected = [[stream.encode(), [get_stream_message(r, stream, m2)]]]
+    # xread starting at m1 returns only the second message
+    assert r.xread(streams={stream: m1}) == expected
+
+    # xread starting at the last message returns an empty list
+    assert r.xread(streams={stream: m2}) == []
+
+
+def test_xread_bad_commands(r):
+    with pytest.raises(redis.ResponseError) as exc_info:
+        testtools.raw_command(r, 'xread', 'foo', '11-1')
+    print(exc_info)
+    with pytest.raises(redis.ResponseError) as ex2:
+        testtools.raw_command(r, 'xread', 'streams', 'foo', )
+    print(ex2)

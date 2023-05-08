@@ -3,6 +3,7 @@ import logging
 import queue
 import threading
 import time
+import uuid
 import warnings
 import weakref
 from collections import defaultdict
@@ -51,7 +52,7 @@ class FakeBaseConnectionMixin:
                 self.server_key = path
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
-                self.server_key = 'shared' if host is None or port is None else f'{host}:{port}'
+                self.server_key = uuid.uuid4().hex if host is None or port is None else f'{host}:{port}'
             self.server_key += f'v{version}'
             self._server = FakeServer.get_server(self.server_key, version=version)
             self._server.connected = connected
@@ -125,7 +126,11 @@ class FakeRedisMixin:
         parameters = inspect.signature(redis.Redis.__init__).parameters
         parameter_names = list(parameters.keys())
         default_args = parameters.values()
-        kwds = {p.name: p.default for p in default_args if p.default != inspect.Parameter.empty}
+        ignore_default_param_values = {'host', 'port', 'db'}
+        kwds = {p.name: p.default
+                for p in default_args
+                if (p.default != inspect.Parameter.empty
+                    and p.name not in ignore_default_param_values)}
         kwds.update(kwargs)
         if not kwds.get('connection_pool', None):
             charset = kwds.get('charset', None)

@@ -92,7 +92,7 @@ Searches the index with a textual query, returning either documents or just ids
 
 #### [FT.AGGREGATE](https://redis.io/commands/ft.aggregate/) <small>(not implemented)</small>
 
-Adds terms to a dictionary
+Run a search query on an index and perform aggregate transformations on the results
 
 #### [FT.PROFILE](https://redis.io/commands/ft.profile/) <small>(not implemented)</small>
 

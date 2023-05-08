@@ -84,13 +84,13 @@ class SortedSetCommandsMixin:
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
             args, ('nx', 'xx', 'ch', 'incr', 'gt', 'lt',), error_on_unexpected=False)
 
+        elements = left_args
+        if not elements or len(elements) % 2 != 0:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and xx:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
         if [nx, gt, lt].count(True) > 1:
             raise SimpleError(msgs.ZADD_NX_GT_LT_ERROR_MSG)
-        elements = left_args
-        if not elements or len(elements) % 2 != 0:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if incr and len(elements) != 2:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
@@ -325,21 +325,20 @@ class SortedSetCommandsMixin:
 
     def _zunioninter(self, func, dest, numkeys, *args):
         if numkeys < 1:
-            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG)
+            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b'sum'
-        sets = []
-        for i in range(numkeys):
-            item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
-            sets.append(self._get_zset(item.value))
         weights = [1.0] * numkeys
 
         i = numkeys
         while i < len(args):
             arg = args[i]
             if casematch(arg, b'weights') and i + numkeys < len(args):
-                weights = [Float.decode(x) for x in args[i + 1:i + numkeys + 1]]
+                weights = [
+                    Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG)
+                    for x in args[i + 1:i + numkeys + 1]
+                ]
                 i += numkeys + 1
             elif casematch(arg, b'aggregate') and i + 1 < len(args):
                 aggregate = null_terminate(args[i + 1])
@@ -348,6 +347,11 @@ class SortedSetCommandsMixin:
                 i += 2
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        sets = []
+        for i in range(numkeys):
+            item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
+            sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
         for s in sets[1:]:

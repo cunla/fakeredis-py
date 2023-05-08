@@ -23,14 +23,14 @@ class StreamRangeTest:
         return timestamp, sequence
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value, exclusive=False):
         if value == b'-':
             return cls(BeforeAny(), True)
         elif value == b'+':
             return cls(AfterAny(), True)
         elif value[:1] == b'(':
             return cls(cls.parse_id(value[1:]), True)
-        return cls(cls.parse_id(value), False)
+        return cls(cls.parse_id(value), exclusive)
 
 
 class XStream:
@@ -89,9 +89,13 @@ class XStream:
         return ind, self._values[ind][0] == ts_seq
 
     @staticmethod
+    def _encode_id(record):
+        return f'{record[0][0]}-{record[0][1]}'.encode()
+
+    @staticmethod
     def _format_record(record):
         results = list(record[1:][0])
-        return [f'{record[0][0]}-{record[0][1]}'.encode(), results]
+        return [XStream._encode_id(record), results]
 
     def trim(self,
              maxlen: Optional[int] = None,
@@ -125,3 +129,6 @@ class XStream:
         if reverse:
             return list(reversed(tuple(matches)))
         return list(matches)
+
+    def last_item_key(self):
+        XStream._encode_id(self._values[-1])

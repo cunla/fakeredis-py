@@ -7,7 +7,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
     command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat,
     delete_keys, key_value_type, )
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch
+from fakeredis._helpers import (compile_pattern, SimpleError, OK, casematch)
 from fakeredis._zset import ZSet
 
 
@@ -215,7 +215,7 @@ class GenericCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         # TODO: force sorting if the object is a set and either in Lua or
-        # storing to a key, to match redis behaviour.
+        #  storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
         # These transformations are based on the redis implementation, but

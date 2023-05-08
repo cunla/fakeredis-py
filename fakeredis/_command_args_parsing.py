@@ -126,7 +126,7 @@ def extract_args(
     while i < len(actual_args):
         found = False
         for key in args_info:
-            if null_terminate(actual_args[i]).lower() == key:
+            if null_terminate(actual_args[i]) == key:
                 arg_position, _ = args_info[key]
                 results[arg_position], parsed = _parse_params(key, i, actual_args)
                 i += parsed

@@ -17,45 +17,45 @@ def _lcs(s1, s2):
     pi = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
 
     # Algorithm to calculate the length of the longest common subsequence
-    for i in range(1, l1 + 1):
-        for j in range(1, l2 + 1):
-            if s1[i - 1] == s2[j - 1]:
-                opt[i][j] = opt[i - 1][j - 1] + 1
-                pi[i][j] = 0
-            elif opt[i][j - 1] >= opt[i - 1][j]:
-                opt[i][j] = opt[i][j - 1]
-                pi[i][j] = 1
+    for r in range(1, l1 + 1):
+        for c in range(1, l2 + 1):
+            if s1[r - 1] == s2[c - 1]:
+                opt[r][c] = opt[r - 1][c - 1] + 1
+                pi[r][c] = 0
+            elif opt[r][c - 1] >= opt[r - 1][c]:
+                opt[r][c] = opt[r][c - 1]
+                pi[r][c] = 1
             else:
-                opt[i][j] = opt[i - 1][j]
-                pi[i][j] = 2
+                opt[r][c] = opt[r - 1][c]
+                pi[r][c] = 2
     # Length of the longest common subsequence is saved at opt[n][m]
 
     # Algorithm to calculate the longest common subsequence using the Pi array
     # Also calculate the list of matches
-    i, j = l1, l2
+    r, c = l1, l2
     result = ''
     matches = list()
     s1ind, s2ind, curr_length = None, None, 0
 
-    while i > 0 and j > 0:
-        if pi[i][j] == 0:
-            result = chr(s1[i - 1]) + result
-            i -= 1
-            j -= 1
+    while r > 0 and c > 0:
+        if pi[r][c] == 0:
+            result = chr(s1[r - 1]) + result
+            r -= 1
+            c -= 1
             curr_length += 1
-        elif pi[i][j] == 2:
-            i -= 1
+        elif pi[r][c] == 2:
+            r -= 1
         else:
-            j -= 1
+            c -= 1
 
-        if pi[i][j] == 0 and curr_length == 1:
-            s1ind = i
-            s2ind = j
-        elif pi[i][j] > 0 and curr_length > 0:
-            matches.append([[i, s1ind], [j, s2ind], curr_length])
+        if pi[r][c] == 0 and curr_length == 1:
+            s1ind = r
+            s2ind = c
+        elif pi[r][c] > 0 and curr_length > 0:
+            matches.append([[r, s1ind], [c, s2ind], curr_length])
             s1ind, s2ind, curr_length = None, None, 0
     if curr_length:
-        matches.append([[s1ind, i], [s2ind, j], curr_length])
+        matches.append([[s1ind, r], [s2ind, c], curr_length])
 
     return opt[l1][l2], result.encode(), matches
 

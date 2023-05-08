@@ -6,6 +6,24 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.12.0
+
+### 🚀 Features
+- Implement `XREAD` #147
+
+## v2.11.2
+
+### 🧰 Bug Fixes
+
+- Unique FakeServer when no connection params are provided (#142)
+
+## v2.11.1
+
+### 🧰 Maintenance
+
+- Minor fixes supporting multiple connections
+- Update documentation
+
 ## v2.11.0
 
 ### 🚀 Features

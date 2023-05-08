@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - master
-  pull_request:
+  pull_request_target:
     branches:
       - master
 
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           cache-dependency-path: poetry.lock
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install dependencies
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
@@ -51,17 +51,17 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image: [ "redis:6.2.10", "redis:7.0.7" ]
+        redis-image: [ "redis:6.2.12", "redis:7.0.11" ]
         python-version: [ "3.7", "3.8", "3.10", "3.11" ]
-        redis-py: [ "4.3.6", "4.4.4", "4.5.4" ]
+        redis-py: [ "4.3.6", "4.4.4", "4.5.5" ]
         include:
-          - python-version: "3.10"
+          - python-version: "3.11"
             redis-image: "redis:6.2.10"
-            redis-py: "4.5.4"
+            redis-py: "4.5.5"
             lupa: true
-          - python-version: "3.10"
+          - python-version: "3.11"
             redis-image: "redis/redis-stack:7.0.6-RC3"
-            redis-py: "4.5.4"
+            redis-py: "4.5.5"
             lupa: true
             json: true
             coverage: true

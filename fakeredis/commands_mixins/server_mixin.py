@@ -46,9 +46,9 @@ class ServerCommandsMixin:
 
     @command(())
     def time(self):
-        now_us = round(time.time() * 1000000)
-        now_s = now_us // 1000000
-        now_us %= 1000000
+        now_us = round(time.time() * 1_000_000)
+        now_s = now_us // 1_000_000
+        now_us %= 1_000_000
         return [str(now_s).encode(), str(now_us).encode()]
 
     @command((DbIndex, DbIndex))

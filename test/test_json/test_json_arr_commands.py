@@ -2,6 +2,8 @@ import pytest
 import redis
 from redis.commands.json.path import Path
 
+from test.testtools import raw_command
+
 json_tests = pytest.importorskip("jsonpath_ng")
 
 
@@ -210,9 +212,8 @@ def test_arrinsert(r: redis.Redis) -> None:
 
 
 def test_arrpop(r: redis.Redis) -> None:
-    # todo fix failing raw_command
-    # r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
-    # assert raw_command(r, 'json.arrpop', 'arr') == b'4'
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
+    assert raw_command(r, 'json.arrpop', 'arr') == b'4'
 
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
     assert r.json().arrpop("arr", Path.root_path(), 4, ) == 4
