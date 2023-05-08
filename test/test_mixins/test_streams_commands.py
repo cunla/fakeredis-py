@@ -220,7 +220,6 @@ def get_stream_message(client, stream, message_id):
     return response[0]
 
 
-@pytest.mark.xfail  # TODO
 def test_xread(r):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -245,3 +244,12 @@ def test_xread(r):
 
     # xread starting at the last message returns an empty list
     assert r.xread(streams={stream: m2}) == []
+
+
+def test_xread_bad_commands(r):
+    with pytest.raises(redis.ResponseError) as exc_info:
+        testtools.raw_command(r, 'xread', 'foo', '11-1')
+    print(exc_info)
+    with pytest.raises(redis.ResponseError) as ex2:
+        testtools.raw_command(r, 'xread', 'streams', 'foo', )
+    print(ex2)

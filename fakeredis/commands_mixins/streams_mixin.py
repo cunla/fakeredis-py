@@ -1,14 +1,16 @@
+import functools
+from typing import List
+
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command
-from fakeredis._helpers import SimpleError
+from fakeredis._commands import Key, command, CommandItem
+from fakeredis._helpers import SimpleError, casematch
 from fakeredis._stream import XStream, StreamRangeTest
 
 
 class StreamsCommandsMixin:
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,), )
     def xadd(self, key, *args):
-
         (nomkstream, limit, maxlen, minid), left_args = extract_args(
             args, ('nomkstream', '+limit', '~+maxlen', '~minid'), error_on_unexpected=False)
         if nomkstream and key.value is None:
@@ -71,3 +73,40 @@ class StreamsCommandsMixin:
     def xrevrange(self, key, _min, _max, *args):
         (count,), _ = extract_args(args, ('+count',))
         return self._xrange(key, _max, _min, True, count)
+
+    def _xread(self, stream_start_id_list: List, count: int, first_pass: bool):
+        max_inf = StreamRangeTest.decode(b'+')
+        res = list()
+        for (item, start_id) in stream_start_id_list:
+            stream_results = self._xrange(item, start_id, max_inf, False, count)
+            if first_pass and (count is None or len(stream_results) < count):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
+            if len(stream_results) > 0:
+                res.append([item.key, stream_results])
+        return res
+
+    @staticmethod
+    def _parse_start_id(key: CommandItem, s: bytes) -> StreamRangeTest:
+        if s == b'$':
+            return StreamRangeTest.decode(key.value.last_item_key(), exclusive=True)
+        return StreamRangeTest.decode(s, exclusive=True)
+
+    @command(name="XREAD", fixed=(bytes,), repeat=(bytes,))
+    def xread(self, *args):
+        (count, timeout,), left_args = extract_args(args, ('+count', '+block',), error_on_unexpected=False)
+        if (len(left_args) < 3
+                or not casematch(left_args[0], b'STREAMS')
+                or len(left_args) % 2 != 1):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        left_args = left_args[1:]
+        num_streams = int(len(left_args) / 2)
+
+        stream_start_id_list = list()
+        for i in range(num_streams):
+            item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
+            start_id = self._parse_start_id(item, left_args[i + num_streams])
+            stream_start_id_list.append((item, start_id,))
+        if timeout is None:
+            return self._xread(stream_start_id_list, count, False)
+        else:
+            return self._blocking(timeout, functools.partial(self._xread, stream_start_id_list, count))

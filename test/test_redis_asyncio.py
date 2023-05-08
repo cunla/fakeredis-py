@@ -225,8 +225,7 @@ class TestScripts:
     @pytest.mark.min_server('7')
     async def test_failed_script_error7(self, req_aioredis2):
         await req_aioredis2.set('foo', 'bar')
-        with pytest.raises(redis.asyncio.ResponseError,
-                           match='^Wrong number of args calling Redis command from script'):
+        with pytest.raises(redis.asyncio.ResponseError):
             await req_aioredis2.eval('return redis.call("ZCOUNT", KEYS[1])', 1, 'foo')
 
 

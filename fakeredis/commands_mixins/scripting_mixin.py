@@ -4,8 +4,8 @@ import itertools
 import logging
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, SimpleString, null_terminate, OK, encode_command
+from fakeredis._commands import (command, Int)
+from fakeredis._helpers import (SimpleError, SimpleString, null_terminate, OK, encode_command)
 
 LOGGER = logging.getLogger('fakeredis')
 REDIS_LOG_LEVELS = {
@@ -84,6 +84,8 @@ class ScriptingCommandsMixin:
             ]
             return lua_runtime.table_from(converted)
         elif isinstance(result, SimpleError):
+            if result.value.startswith('ERR wrong number of arguments'):
+                raise SimpleError(msgs.WRONG_ARGS_MSG7)
             raise result
         else:
             raise RuntimeError("Unexpected return type from redis: {}".format(type(result)))
@@ -175,7 +177,7 @@ class ScriptingCommandsMixin:
         try:
             result = lua_runtime.execute(script)
         except SimpleError as ex:
-            if self.version == 6:
+            if self.version <= 6:
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(ex.value)
         except LuaError as ex:
