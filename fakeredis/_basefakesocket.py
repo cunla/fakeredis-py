@@ -30,6 +30,13 @@ def _extract_command(fields) -> Tuple[Any, List[Any]]:
     return cmd, cmd_arguments
 
 
+def _next_power_of_2(n):
+    """
+    Return next power of 2 greater than or equal to n
+    """
+    return 2 ** (n - 1).bit_length()
+
+
 class BaseFakeSocket:
     _connection_error_class = redis.ConnectionError
 
@@ -301,7 +308,7 @@ class BaseFakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [result_cursor, result_data]
+        return [str(result_cursor).encode(), result_data]
 
     def _ttl(self, key, scale):
         if not key:

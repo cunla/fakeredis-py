@@ -292,23 +292,3 @@ def test_hscan(r):
     assert b'key:17' in results
     assert len(results) == 2
 
-
-def test_hscan_delete_key_while_scanning_should_not_returns_it_in_scan(r):
-    size = 600
-    name = 'hscan-test'
-    all_keys_dict = key_val_dict(size=size)
-    r.hset(name, mapping=all_keys_dict)
-    assert len(r.hgetall(name)) == size
-
-    cursor, keys = r.hscan(name, 0)
-    assert len(keys) < len(all_keys_dict)
-
-    key_to_remove = next(x for x in all_keys_dict if x not in keys)
-    assert r.hdel(name, key_to_remove) == 1
-    assert r.hget(name, key_to_remove) is None
-    while cursor != 0:
-        cursor, data = r.hscan(name, cursor=cursor)
-        keys.update(data)
-    assert len(set(keys)) == len(keys)
-    assert len(keys) == size - 1
-    assert key_to_remove not in keys

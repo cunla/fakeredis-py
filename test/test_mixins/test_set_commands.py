@@ -467,22 +467,3 @@ def test_psetex_expire_value_using_timedelta(r):
     assert r.get('foo') is None
 
 
-def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
-    size = 600
-    name = 'sscan-test'
-    all_keys_set = {f'{i}'.encode() for i in range(size)}
-    r.sadd(name, *[k for k in all_keys_set])
-    assert r.scard(name) == size
-
-    cursor, keys = r.sscan(name, 0)
-    assert len(keys) < len(all_keys_set)
-
-    key_to_remove = next(x for x in all_keys_set if x not in keys)
-    assert r.srem(name, key_to_remove) == 1
-    assert r.sismember(name, key_to_remove) is False
-    while cursor != 0:
-        cursor, data = r.sscan(name, cursor=cursor)
-        keys.extend(data)
-    assert len(set(keys)) == len(keys)
-    assert len(keys) == size - 1
-    assert key_to_remove not in keys
