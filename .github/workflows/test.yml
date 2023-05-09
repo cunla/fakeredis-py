@@ -53,7 +53,7 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.12", "redis:7.0.11" ]
         python-version: [ "3.7", "3.10" ]
-        redis-py: [ "4.3.6", "4.5.5" ]
+        redis-py: [ "4.3.6", "4.5.5" , "5.0.0b3"]
         include:
           - python-version: "3.11"
             redis-image: "redis:6.2.12"
@@ -112,7 +112,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
-        run: |          
+        run: |
           poetry run pytest -v -m "not slow"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
