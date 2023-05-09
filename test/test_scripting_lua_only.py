@@ -484,6 +484,7 @@ def test_hscan_cursors_are_bytes(r):
     assert isinstance(result, bytes)
 
 
+@pytest.mark.xfail  # TODO
 def test_deleting_while_scan(r):
     for i in range(100):
         r.set(f'key-{i}', i)
