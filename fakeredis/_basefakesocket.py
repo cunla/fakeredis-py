@@ -46,8 +46,6 @@ class BaseFakeSocket:
         self._parser = self._parse_commands()
         self._parser.send(None)
         self.version = server.version
-        # Save data snapshot for each type of scan
-        self._scan_snapshot = {}
 
     def put_response(self, msg):
         # redis.Connection.__del__ might call self.close at any time, which
