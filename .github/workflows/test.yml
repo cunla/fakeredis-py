@@ -56,15 +56,17 @@ jobs:
         redis-py: [ "4.3.6", "4.5.5" ]
         include:
           - python-version: "3.11"
-            redis-image: "redis:6.2.10"
+            redis-image: "redis:6.2.12"
             redis-py: "4.5.5"
             lupa: true
+            hypothesis: true
           - python-version: "3.11"
             redis-image: "redis/redis-stack:7.0.6-RC3"
             redis-py: "4.5.5"
             lupa: true
             json: true
             coverage: true
+            hypothesis: true
 
     permissions:
       pull-requests: write
@@ -108,10 +110,13 @@ jobs:
         run: |
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      - name: Set tests to run
+        run: echo "PYTEST_PARAMS=-m \"not slow\"" >> $GITHUB_ENV
+        if: ${{ !matrix.hypothesis }}
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
-        run: |
-          poetry run pytest -v
+        run: |          
+          poetry run pytest -v $PYTEST_PARAMS
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
