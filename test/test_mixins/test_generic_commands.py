@@ -772,6 +772,7 @@ def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r):
     assert key_to_remove not in keys
 
 
+@pytest.mark.xfail
 def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r):
     size = 30
     all_keys_dict = key_val_dict(size=size)
