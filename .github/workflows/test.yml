@@ -52,19 +52,21 @@ jobs:
       fail-fast: false
       matrix:
         redis-image: [ "redis:6.2.12", "redis:7.0.11" ]
-        python-version: [ "3.7", "3.8", "3.10", "3.11" ]
-        redis-py: [ "4.3.6", "4.4.4", "4.5.5" ]
+        python-version: [ "3.7", "3.10" ]
+        redis-py: [ "4.3.6", "4.5.5" , "5.0.0b3"]
         include:
           - python-version: "3.11"
-            redis-image: "redis:6.2.10"
+            redis-image: "redis:6.2.12"
             redis-py: "4.5.5"
             lupa: true
+            hypothesis: true
           - python-version: "3.11"
             redis-image: "redis/redis-stack:7.0.6-RC3"
             redis-py: "4.5.5"
             lupa: true
             json: true
             coverage: true
+            hypothesis: true
 
     permissions:
       pull-requests: write
@@ -111,7 +113,7 @@ jobs:
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
         run: |
-          poetry run pytest -v
+          poetry run pytest -v -m "not slow"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage

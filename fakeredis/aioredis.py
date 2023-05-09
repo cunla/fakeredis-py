@@ -150,6 +150,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             try:
                 response = self._sock.responses.get_nowait()
             except asyncio.QueueEmpty:
+                if kwargs.get('disconnect_on_error', True):
+                    await self.disconnect()
                 raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             timeout = kwargs.pop('timeout', None)

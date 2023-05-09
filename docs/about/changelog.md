@@ -6,9 +6,21 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.12.1
+
+### 🧰 Bug Fixes
+
+- Add support for `Connection.read_response` arguments used in redis-py 4.5.5 and 5.0.0
+
+### 🧰 Maintenance
+
+- Improved documentation (added async sample, etc.)
+- Add redis-py 5.0.0b3 to GitHub workflow
+
 ## v2.12.0
 
 ### 🚀 Features
+
 - Implement `XREAD` #147
 
 ## v2.11.2

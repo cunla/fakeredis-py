@@ -91,17 +91,19 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         else:
             return response
 
-    def read_response(self, disable_decoding=False):
+    def read_response(self, **kwargs):
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except queue.Empty:
+                if kwargs.get('disconnect_on_error', True):
+                    self.disconnect()
                 raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
         if isinstance(response, redis.ResponseError):
             raise response
-        if disable_decoding:
+        if kwargs.get('disable_decoding', False):
             return response
         else:
             return self._decode(response)
