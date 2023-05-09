@@ -111,7 +111,7 @@ jobs:
           VERSION=$(poetry version -s --no-ansi -n)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Set tests to run
-        run: echo "PYTEST_PARAMS=-m \"not slow\"" >> $GITHUB_ENV
+        run: echo 'PYTEST_PARAMS=-m "not slow"' >> $GITHUB_ENV
         if: ${{ !matrix.hypothesis }}
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
