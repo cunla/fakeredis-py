@@ -13,13 +13,16 @@ Documentation is now hosted in https://fakeredis.readthedocs.io/
 
 # Intro
 
-fakeredis is a pure-Python implementation of the redis-py python client
-that simulates talking to a redis server. 
+fakeredis is a pure-Python implementation of the Redis key-value store.
 
-This was created originally for a single purpose: **to write tests**.
+This module is a reasonable substiture to running a redis-server. 
+It allows running tests requiring redis server without an actual server.
 
-This module now allows tests to simply use this
-module as a reasonable substitute for redis.
+It provides enhanced versions of the redis-py Python bindings for Redis. That provide the following added functionality:
+* **Easy to use** - It provides a built in Redis server that is automatically installed, configured and managed when the Redis bindings are used.
+* **Flexible** - Create a single server shared by multiple programs or multiple independent servers. All the servers provided by Redislite support all Redis  functionality including advanced features such as replication and clustering.
+* **Compatible** - It provides enhanced versions of the Redis-Py python Redis bindings as well as functions to patch them to allow most existing code that uses them   to run with little or no modifications.
+* **Secure** - It uses a secure default Redis configuraton that is only accessible by the creating user on the computer system it is run on.
 
 # Sponsor
 
