@@ -74,20 +74,6 @@ class HashCommandsMixin:
             items.append(k)
             items.append(key.value[k])
         return [cursor, items]
-        # cursor = int(cursor)
-        # # When starting a new scan, saves snapshot of the keys
-        # if cursor == 0:
-        #     self._scan_snapshot['hscan'] = list(key.value)
-        # next_cursor, keys = self._scan(self._scan_snapshot['hscan'], cursor, *args)
-        # # When scan is finished remove the snapshot
-        # if next_cursor == 0:
-        #     del self._scan_snapshot['hscan']
-        # items = []
-        # for k in keys:
-        #     if k in key.value:
-        #         items.append(k)
-        #         items.append(key.value[k])
-        # return [str(next_cursor).encode(), items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
     def hset(self, key, *args):
