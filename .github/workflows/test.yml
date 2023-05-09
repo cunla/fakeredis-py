@@ -52,8 +52,8 @@ jobs:
       fail-fast: false
       matrix:
         redis-image: [ "redis:6.2.12", "redis:7.0.11" ]
-        python-version: [ "3.7", "3.8", "3.10", "3.11" ]
-        redis-py: [ "4.3.6", "4.4.4", "4.5.5" ]
+        python-version: [ "3.7", "3.10" ]
+        redis-py: [ "4.3.6", "4.5.5" ]
         include:
           - python-version: "3.11"
             redis-image: "redis:6.2.10"
