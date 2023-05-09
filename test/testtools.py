@@ -7,6 +7,11 @@ from packaging.version import Version
 REDIS_VERSION = Version(redis.__version__)
 
 
+def key_val_dict(size=100):
+    return {f'key:{i}'.encode(): f'val:{i}'.encode()
+            for i in range(size)}
+
+
 def raw_command(r, *args):
     """Like execute_command, but does not do command-specific response parsing"""
     response_callbacks = r.response_callbacks

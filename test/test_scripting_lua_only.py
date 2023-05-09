@@ -482,3 +482,27 @@ def test_hscan_cursors_are_bytes(r):
 
     assert result == b'0'
     assert isinstance(result, bytes)
+
+
+def test_deleting_while_scan(r):
+    for i in range(100):
+        r.set(f'key-{i}', i)
+
+    assert len(r.keys()) == 100
+
+    script = """
+        local cursor = 0
+        local seen = {}
+        repeat
+            local result = redis.call('SCAN', cursor)
+            for _,key in ipairs(result[2]) do
+                seen[#seen+1] = key
+                redis.call('DEL', key)
+            end
+            cursor = tonumber(result[1])
+        until cursor == 0
+        return seen
+    """
+
+    assert len(r.register_script(script)()) == 100
+    assert len(r.keys()) == 0

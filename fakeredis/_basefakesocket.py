@@ -301,7 +301,7 @@ class BaseFakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [str(result_cursor).encode(), result_data]
+        return [result_cursor, result_data]
 
     def _ttl(self, key, scale):
         if not key:
