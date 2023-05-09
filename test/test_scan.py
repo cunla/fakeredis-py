@@ -80,6 +80,8 @@ def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: redis.Red
     while cursor != 0:
         cursor, data = r.scan(cursor=cursor)
         keys.extend(data)
+
     assert len(set(keys)) == len(keys)
-    assert len(keys) == size
+    keys = set(keys)
+    assert len(keys) == size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
     assert key_to_remove in keys
