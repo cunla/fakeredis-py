@@ -168,7 +168,8 @@ bugs in GitHub.
 
 - SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are
   deleted or renamed during iteration. They also won't necessarily iterate in
-  the same chunk sizes or the same order as redis.
+  the same chunk sizes or the same order as redis. This is aligned with redis behavior as
+  can be seen in tests `test_scan_delete_key_while_scanning_should_not_returns_it_in_scan`.
 
 - DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
   `pickle` module is used to mimic an opaque and non-standard format.

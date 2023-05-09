@@ -6,12 +6,7 @@ import redis
 from redis.exceptions import ResponseError
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command
-
-
-def key_val_dict(size=100):
-    return {b'key:' + bytes([i]): b'val:' + bytes([i])
-            for i in range(size)}
+from test.testtools import raw_command, key_val_dict
 
 
 @pytest.mark.slow
@@ -756,3 +751,22 @@ def test_from_hypothesis_redis7(r: redis.Redis):
     r.set(b'', b'')
     assert r.setbit(b'', 0, 0) == 0
     assert r.get(b'') == b'\x00'
+
+
+def test_scan_delete_key_while_scanning_should_not_returns_it_in_scan(r):
+    size = 30
+    all_keys_dict = key_val_dict(size=size)
+    assert all(r.set(k, v) for k, v in all_keys_dict.items())
+    assert len(r.keys()) == size
+
+    cursor, keys = r.scan()
+
+    key_to_remove = next(x for x in all_keys_dict if x not in keys)
+    assert r.delete(key_to_remove) == 1
+    assert r.get(key_to_remove) is None
+    while cursor != 0:
+        cursor, data = r.scan(cursor=cursor)
+        keys.extend(data)
+    assert len(set(keys)) == len(keys)
+    assert len(keys) == size - 1
+    assert key_to_remove not in keys
