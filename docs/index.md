@@ -1,11 +1,18 @@
 ## fakeredis: A python implementation of redis server
 
-fakeredis is a pure-Python implementation of the redis-py python client
-that simulates talking to a redis server. This was created for a single
-purpose: **to write tests**. Setting up redis is not hard, but
-many times you want to write tests that do not talk to an external server
-(such as redis). This module now allows tests to simply use this
-module as a reasonable substitute for redis.
+fakeredis is a pure-Python implementation of the Redis key-value store.
+
+This module is a reasonable substitute to running a redis-server.
+It allows running tests requiring redis server without an actual server.
+
+It provides enhanced versions of the redis-py Python bindings for Redis.
+
+That provide the following added functionality:
+
+It provides a built-in Redis server that is automatically installed, configured and managed when the
+Redis bindings are used. Create a single server shared by multiple programs or multiple independent servers. All the
+servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson,
+GeoCommands.
 
 For a list of supported/unsupported redis commands, see [Supported commands](./redis-commands/implemented_commands.md).
 
