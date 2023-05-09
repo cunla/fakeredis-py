@@ -87,6 +87,19 @@ True
 Fakeredis implements the same interface as `redis-py`, the popular
 redis client for python, and models the responses of redis 6.x or 7.x.
 
+### async Redis
+
+async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
+
+```pycon
+>>> from fakeredis import aioredis
+>>> r1 = aioredis.FakeRedis()
+>>> await r1.set('foo', 'bar')
+True
+>>> await r1.get('foo')
+'bar'
+```
+
 ### Use to test django cache
 
 Update your cache settings:
