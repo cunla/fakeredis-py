@@ -268,10 +268,11 @@ class BaseFakeSocket:
         This implementation is KNOWN to be un-performant, as it requires
         grabbing the full set of keys over which we are investigating subsets.
 
-        It also doesn't allow for nested scans of the same type, since we are using a global state on the connection
-        to track the data currently scanned. Doing nested scans will result in unexpected behavior.
+        It also doesn't adhere to the guarantee that every key will be iterated
+        at least once even if the database is modified during the scan.
+        However, provided the database is not modified, every key will be
+        returned exactly once.
         """
-
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ('*match', '*type', '+count'))
         count = 10 if count is None else count
