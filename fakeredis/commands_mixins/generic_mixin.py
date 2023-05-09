@@ -180,7 +180,7 @@ class GenericCommandsMixin:
         key.expireat = expireat
         return OK
 
-    @command((Int,), (Int, bytes))
+    @command((Int,), (bytes, bytes))
     def scan(self, cursor, *args):
         return self._scan(list(self._db), cursor, *args)
 
