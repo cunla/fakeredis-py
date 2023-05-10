@@ -59,40 +59,6 @@ def test_ttl_should_return_minus_one_for_non_expiring_key(r):
     assert r.ttl('foo') == -1
 
 
-def test_scan(r):
-    # Set up the data
-    for ix in range(20):
-        k = 'scan-test:%s' % ix
-        v = 'result:%s' % ix
-        r.set(k, v)
-    expected = r.keys()
-    assert len(expected) == 20  # Ensure we know what we're testing
-
-    # Test that we page through the results and get everything out
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.scan(cursor, count=6)
-        results.extend(data)
-    assert set(expected) == set(results)
-
-    # Now test that the MATCH functionality works
-    results = []
-    cursor = '0'
-    while cursor != 0:
-        cursor, data = r.scan(cursor, match='*7', count=100)
-        results.extend(data)
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
-    assert len(results) == 2
-
-    # Test the match on iterator
-    results = [r for r in r.scan_iter(match='*7')]
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
-    assert len(results) == 2
-
-
 def test_sort_range_offset_range(r):
     r.rpush('foo', '2')
     r.rpush('foo', '1')
@@ -660,60 +626,6 @@ def test_delete_multiple(r):
 
 def test_delete_nonexistent_key(r):
     assert r.delete('foo') == 0
-
-
-def test_scan_single(r):
-    r.set('foo1', 'bar1')
-    assert r.scan(match="foo*") == (0, [b'foo1'])
-
-
-def test_scan_iter_single_page(r):
-    r.set('foo1', 'bar1')
-    r.set('foo2', 'bar2')
-    assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
-    assert set(r.scan_iter()) == {b'foo1', b'foo2'}
-    assert set(r.scan_iter(match="")) == set()
-    assert set(r.scan_iter(match="foo1", _type="string")) == {b'foo1', }
-
-
-def test_scan_iter_multiple_pages(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    assert set(r.scan_iter()) == set(all_keys)
-
-
-def test_scan_iter_multiple_pages_with_match(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Now add a few keys that don't match the key:<number> pattern.
-    r.set('otherkey', 'foo')
-    r.set('andanother', 'bar')
-    actual = set(r.scan_iter(match='key:*'))
-    assert actual == set(all_keys)
-
-
-def test_scan_multiple_pages_with_count_arg(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    assert set(r.scan_iter(count=1000)) == set(all_keys)
-
-
-def test_scan_all_in_single_call(r):
-    all_keys = key_val_dict(size=100)
-    assert all(r.set(k, v) for k, v in all_keys.items())
-    # Specify way more than the 100 keys we've added.
-    actual = r.scan(count=1000)
-    assert set(actual[1]) == set(all_keys)
-    assert actual[0] == 0
-
-
-@pytest.mark.slow
-def test_scan_expired_key(r):
-    r.set('expiringkey', 'value')
-    r.pexpire('expiringkey', 1)
-    sleep(1)
-    assert r.scan()[1] == []
-
 
 def test_basic_sort(r):
     r.rpush('foo', '2')

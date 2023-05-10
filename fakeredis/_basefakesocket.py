@@ -302,7 +302,7 @@ class BaseFakeSocket:
         cursor = bin_reverse(cursor, bits_len)
         if cursor >= len(keys):
             return [0, []]
-        result_cursor = bin_reverse(cursor + count, bits_len)
+        result_cursor = cursor + count
         result_data = []
 
         regex = compile_pattern(pattern) if pattern is not None else None
@@ -325,7 +325,7 @@ class BaseFakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [str(result_cursor).encode(), result_data]
+        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
 
     def _ttl(self, key, scale):
         if not key:
