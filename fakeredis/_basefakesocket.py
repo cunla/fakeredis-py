@@ -274,16 +274,16 @@ class BaseFakeSocket:
         This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
         we are investigating subsets.
 
-        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
-        associated to full iterations.
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of
+        guarantees associated to full iterations.
 
         - A full iteration always retrieves all the elements that were present in the collection from the start to the
           end of a full iteration. This means that if a given element is inside the collection when an iteration is
           started, and is still there when an iteration terminates, then at some point SCAN returned it to the user.
 
-        - A full iteration never returns any element that was NOT present in the collection from the start to the end of
-          a full iteration. So if an element was removed before the start of an iteration, and is never added back to the
-          collection for all the time an iteration lasts, SCAN ensures that this element will never be returned.
+        - A full iteration never returns any element that was NOT present in the collection from the start to the end
+          of a full iteration. So if an element was removed before the start of an iteration, and is never added back
+          to the collection for all the time an iteration lasts, SCAN ensures that this element will never be returned.
 
         However because SCAN has very little state associated (just the cursor) it has the following drawbacks:
 
