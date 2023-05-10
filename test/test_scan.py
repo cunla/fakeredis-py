@@ -85,3 +85,21 @@ def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: redis.Red
     keys = set(keys)
     assert len(keys) == size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
     assert key_to_remove in keys
+
+
+def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
+    size = 30
+    all_keys_dict = key_val_dict(size=size)
+    assert all(r.set(k, v) for k, v in all_keys_dict.items())
+    assert len(r.keys()) == size
+
+    cursor, keys = r.scan()
+
+    r.set('new_key', 'new val')
+    while cursor != 0:
+        cursor, data = r.scan(cursor=cursor)
+        keys.extend(data)
+
+    # assert len(set(keys)) == len(keys)
+    keys = set(keys)
+    assert len(keys) == size+1, f"{set(all_keys_dict).difference(keys)} is not empty but should be"

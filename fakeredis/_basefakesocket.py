@@ -30,11 +30,12 @@ def _extract_command(fields) -> Tuple[Any, List[Any]]:
     return cmd, cmd_arguments
 
 
-def _next_power_of_2(n):
-    """
-    Return next power of 2 greater than or equal to n
-    """
-    return 2 ** (n - 1).bit_length()
+def bin_reverse(x, bits_count):
+    result = 0
+    for i in range(bits_count):
+        if (x >> i) & 1:
+            result |= 1 << (bits_count - 1 - i)
+    return result
 
 
 class BaseFakeSocket:
@@ -270,22 +271,38 @@ class BaseFakeSocket:
     def _scan(self, keys, cursor, *args):
         """This is the basis of most of the ``scan`` methods.
 
-        This implementation is KNOWN to be un-performant, as it requires
-        grabbing the full set of keys over which we are investigating subsets.
+        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
+        we are investigating subsets.
 
-        It also doesn't adhere to the guarantee that every key will be iterated
-        at least once even if the database is modified during the scan.
-        However, provided the database is not modified, every key will be
-        returned exactly once.
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
+        associated to full iterations.
+
+        - A full iteration always retrieves all the elements that were present in the collection from the start to the
+          end of a full iteration. This means that if a given element is inside the collection when an iteration is
+          started, and is still there when an iteration terminates, then at some point SCAN returned it to the user.
+
+        - A full iteration never returns any element that was NOT present in the collection from the start to the end of
+          a full iteration. So if an element was removed before the start of an iteration, and is never added back to the
+          collection for all the time an iteration lasts, SCAN ensures that this element will never be returned.
+
+        However because SCAN has very little state associated (just the cursor) it has the following drawbacks:
+
+        - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
+          elements, for example only using the returned elements in order to perform operations that are safe when
+          re-applied multiple times.
+        - Elements that were not constantly present in the collection during a full iteration, may be returned or not:
+          it is undefined.
+
         """
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ('*match', '*type', '+count'))
         count = 10 if count is None else count
-
+        data = sorted(keys)
+        bits_len = (len(keys) - 1).bit_length()
+        cursor = bin_reverse(cursor, bits_len)
         if cursor >= len(keys):
             return [0, []]
-        data = sorted(keys)
-        result_cursor = cursor + count
+        result_cursor = bin_reverse(cursor + count, bits_len)
         result_data = []
 
         regex = compile_pattern(pattern) if pattern is not None else None
@@ -299,12 +316,12 @@ class BaseFakeSocket:
             return True
 
         if pattern is not None or _type is not None:
-            for val in itertools.islice(data, cursor, result_cursor):
+            for val in itertools.islice(data, cursor, cursor + count):
                 compare_val = val[0] if isinstance(val, tuple) else val
                 if match_key(compare_val) and match_type(compare_val):
                     result_data.append(val)
         else:
-            result_data = data[cursor:result_cursor]
+            result_data = data[cursor:cursor + count]
 
         if result_cursor >= len(data):
             result_cursor = 0
