@@ -11,6 +11,7 @@ description: Change log of all fakeredis releases
 ### 🧰 Bug Fixes
 
 - Add support for `Connection.read_response` arguments used in redis-py 4.5.5 and 5.0.0
+- Adding state for scan commands (#99)
 
 ### 🧰 Maintenance
 
