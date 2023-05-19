@@ -49,7 +49,10 @@ def r(request, create_redis) -> redis.Redis:
 
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
-    return (None, None) if marker_value is None else (marker_value, Version(marker_value.args[0]))
+    if marker_value is None:
+        val = str(sys.maxsize if marker_name == 'min_server' else 0)
+        return None, Version(val)
+    return marker_value, Version(marker_value.args[0])
 
 
 @pytest_asyncio.fixture(
