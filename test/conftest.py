@@ -49,9 +49,8 @@ def r(request, create_redis) -> redis.Redis:
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
     if marker_value is None:
-        val = str(100 if marker_name == 'min_server' else 0)
-        return None, Version(val)
-    return marker_value, Version(marker_value.args[0])
+        return Version(str(0 if marker_name == 'min_server' else 100))
+    return Version(marker_value.args[0])
 
 
 @pytest_asyncio.fixture(
@@ -66,8 +65,8 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     if (not cls_name.startswith('Fake')
             and not request.getfixturevalue('is_redis_running')):
         pytest.skip('Redis is not running')
-    min_version, min_server_marker = _marker_version_value(request, 'min_server')
-    max_version, max_server_marker = _marker_version_value(request, 'max_server')
+    min_server = _marker_version_value(request, 'min_server')
+    max_server = _marker_version_value(request, 'max_server')
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
 
     def factory(db=0):
@@ -80,10 +79,10 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
         cls = getattr(redis, cls_name)
         conn = cls('localhost', port=6379, db=db, decode_responses=decode_responses)
         server_version = conn.info()['redis_version']
-        if Version(server_version) < min_server_marker:
-            pytest.skip(f'Redis server {min_version} or more required but {server_version} found')
-        if Version(server_version) > max_server_marker:
-            pytest.skip(f'Redis server {max_version} or less required but {server_version} found')
+        if Version(server_version) < min_server:
+            pytest.skip(f'Redis server {min_server.base_version} or more required but {server_version} found')
+        if Version(server_version) > max_server:
+            pytest.skip(f'Redis server {max_server.base_version} or less required but {server_version} found')
         return conn
 
     return factory
