@@ -48,7 +48,7 @@ class XStream:
             id_str = id_str.decode()
 
         if id_str is None or id_str == '*':
-            ts, seq = int(time.time() + 1), 0
+            ts, seq = int(1000 * time.time()), 0
             if (len(self._values) > 0
                     and self._values[-1][0][0] == ts
                     and self._values[-1][0][1] >= seq):
