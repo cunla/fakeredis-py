@@ -27,7 +27,6 @@ fake_only = pytest.mark.parametrize(
 pytestmark.extend([
     pytest.mark.asyncio,
 ])
-server_version = None
 
 
 @pytest_asyncio.fixture(
@@ -38,21 +37,20 @@ server_version = None
     ]
 )
 async def _req_aioredis2(request) -> redis.asyncio.Redis:
-    global server_version
+    server_version = request.getfixturevalue('real_redis_version')
     min_server_marker = _marker_version_value(request, 'min_server')
     max_server_marker = _marker_version_value(request, 'max_server')
+    if Version(server_version) < min_server_marker:
+        pytest.skip(f'Redis server {min_server_marker.base_version} or more required but {server_version} found')
+    if Version(server_version) > max_server_marker:
+        pytest.skip(f'Redis server {max_server_marker.base_version} or less required but {server_version} found')
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
         ret = aioredis.FakeRedis(server=fake_server)
     else:
-        if not request.getfixturevalue('is_redis_running'):
+        if not server_version:
             pytest.skip('Redis is not running')
         ret = redis.asyncio.Redis()
-        server_version = server_version or (await ret.info())['redis_version']
-        if Version(server_version) < min_server_marker:
-            pytest.skip(f'Redis server {min_server_marker.base_version} or more required but {server_version} found')
-        if Version(server_version) > max_server_marker:
-            pytest.skip(f'Redis server {max_server_marker.base_version} or less required but {server_version} found')
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()

@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Union
 
 import pytest
 import pytest_asyncio
@@ -9,14 +9,15 @@ import fakeredis
 
 
 @pytest_asyncio.fixture(scope="session")
-def is_redis_running():
+def real_redis_version() -> Union[None, str]:
+    """Returns server version or None if server is not running"""
     client = None
     try:
         client = redis.StrictRedis('localhost', port=6379)
-        client.ping()
-        return True
+        server_version = client.info()['redis_version']
+        return server_version
     except redis.ConnectionError:
-        return False
+        return None
     finally:
         if hasattr(client, 'close'):
             client.close()  # Absent in older versions of redis-py
@@ -62,11 +63,15 @@ def _marker_version_value(request, marker_name: str):
 )
 def _create_redis(request) -> Callable[[int], redis.Redis]:
     cls_name = request.param
-    if (not cls_name.startswith('Fake')
-            and not request.getfixturevalue('is_redis_running')):
+    server_version = request.getfixturevalue('real_redis_version')
+    if not cls_name.startswith('Fake') and not server_version:
         pytest.skip('Redis is not running')
     min_server = _marker_version_value(request, 'min_server')
     max_server = _marker_version_value(request, 'max_server')
+    if Version(server_version) < min_server:
+        pytest.skip(f'Redis server {min_server.base_version} or more required but {server_version} found')
+    if Version(server_version) > max_server:
+        pytest.skip(f'Redis server {max_server.base_version} or less required but {server_version} found')
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
 
     def factory(db=0):
@@ -74,15 +79,8 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
             fake_server = request.getfixturevalue('fake_server')
             cls = getattr(fakeredis, cls_name)
             return cls(db=db, decode_responses=decode_responses, server=fake_server)
-
         # Real
         cls = getattr(redis, cls_name)
-        conn = cls('localhost', port=6379, db=db, decode_responses=decode_responses)
-        server_version = conn.info()['redis_version']
-        if Version(server_version) < min_server:
-            pytest.skip(f'Redis server {min_server.base_version} or more required but {server_version} found')
-        if Version(server_version) > max_server:
-            pytest.skip(f'Redis server {max_server.base_version} or less required but {server_version} found')
-        return conn
+        return cls('localhost', port=6379, db=db, decode_responses=decode_responses)
 
     return factory
