@@ -383,24 +383,21 @@ def test_set_file(r: redis.Redis) -> None:
         r.json().set_file("test2", Path.root_path(), no_json_file.name)
 
 
-def test_set_path(r: redis.Redis) -> None:
+def test_set_path(r: redis.Redis):
     # Standard Library Imports
     import json
     import tempfile
 
     root = tempfile.mkdtemp()
-    sub = tempfile.mkdtemp(dir=root)
-    jsonfile = tempfile.mktemp(suffix=".json", dir=sub)
-    no_json_file = tempfile.mktemp(dir=root)
+    jsonfile = tempfile.NamedTemporaryFile(mode="w+", dir=root, delete=False)
+    no_json_file = tempfile.NamedTemporaryFile(mode="a+", dir=root, delete=False)
+    jsonfile.write(json.dumps({"hello": "world"}))
+    jsonfile.close()
+    no_json_file.write("hello")
 
-    with open(jsonfile, "w+") as fp:
-        fp.write(json.dumps({"hello": "world"}))
-    with open(no_json_file, "a+") as fp:
-        fp.write("hello")
-
-    result = {jsonfile: True, no_json_file: False}
+    result = {jsonfile.name: True, no_json_file.name: False}
     assert r.json().set_path(Path.root_path(), root) == result
-    assert r.json().get(jsonfile.rsplit(".")[0]) == {"hello": "world"}
+    assert r.json().get(jsonfile.name.rsplit(".")[0]) == {"hello": "world"}
 
 
 def test_type(r: redis.Redis) -> None:
