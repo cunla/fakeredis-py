@@ -72,8 +72,8 @@ def test_xadd_redis7(r: redis.Redis):
     before = time.time()
     m1 = r.xadd(stream, {"some": "other"})
     after = time.time()
-    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
     ts1, seq1 = m1.decode().split('-')
+    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
     ts2, seq2 = m2.decode().split('-')
     assert int(1000 * before) <= int(ts1) <= int(1000 * after)
     assert ts1 == ts2
