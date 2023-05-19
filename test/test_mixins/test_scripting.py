@@ -8,7 +8,7 @@ from test.testtools import raw_command
 
 
 @pytest.mark.min_server('7')
-def test_script_exists_redis7(r):
+def test_script_exists_redis7(r: redis.Redis):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
     with pytest.raises(redis.ResponseError):
@@ -30,7 +30,7 @@ def test_script_exists_redis7(r):
 
 
 @pytest.mark.max_server('6.2.7')
-def test_script_exists_redis6(r):
+def test_script_exists_redis6(r: redis.Redis):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
     assert raw_command(r, "SCRIPT EXISTS") == []
@@ -56,7 +56,7 @@ def test_script_flush_errors_with_args(r, args):
         raw_command(r, "SCRIPT FLUSH %s" % " ".join(args))
 
 
-def test_script_flush(r):
+def test_script_flush(r: redis.Redis):
     # generate/load six unique scripts and store their sha1 hash values
     sha1_values = [r.script_load("return '%s'" % char) for char in "abcdef"]
 
@@ -70,12 +70,12 @@ def test_script_flush(r):
     assert r.script_exists(*sha1_values) == [0] * len(sha1_values)
 
 
-def test_script_no_subcommands(r):
+def test_script_no_subcommands(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         raw_command(r, "SCRIPT")
 
 
-def test_script_help(r):
+def test_script_help(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b'SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
         b'DEBUG (YES|SYNC|NO)',

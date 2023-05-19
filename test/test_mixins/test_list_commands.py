@@ -8,14 +8,14 @@ import redis.client
 from .. import testtools
 
 
-def test_lpush_then_lrange_all(r):
+def test_lpush_then_lrange_all(r: redis.Redis):
     assert r.lpush('foo', 'bar') == 1
     assert r.lpush('foo', 'baz') == 2
     assert r.lpush('foo', 'bam', 'buzz') == 4
     assert r.lrange('foo', 0, -1) == [b'buzz', b'bam', b'baz', b'bar']
 
 
-def test_lpush_then_lrange_portion(r):
+def test_lpush_then_lrange_portion(r: redis.Redis):
     r.lpush('foo', 'one')
     r.lpush('foo', 'two')
     r.lpush('foo', 'three')
@@ -24,17 +24,17 @@ def test_lpush_then_lrange_portion(r):
     assert r.lrange('foo', 0, 3) == [b'four', b'three', b'two', b'one']
 
 
-def test_lrange_negative_indices(r):
+def test_lrange_negative_indices(r: redis.Redis):
     r.rpush('foo', 'a', 'b', 'c')
     assert r.lrange('foo', -1, -2) == []
     assert r.lrange('foo', -2, -1) == [b'b', b'c']
 
 
-def test_lpush_key_does_not_exist(r):
+def test_lpush_key_does_not_exist(r: redis.Redis):
     assert r.lrange('foo', 0, -1) == []
 
 
-def test_lpush_with_nonstr_key(r):
+def test_lpush_with_nonstr_key(r: redis.Redis):
     r.lpush(1, 'one')
     r.lpush(1, 'two')
     r.lpush(1, 'three')
@@ -42,30 +42,30 @@ def test_lpush_with_nonstr_key(r):
     assert r.lrange('1', 0, 2) == [b'three', b'two', b'one']
 
 
-def test_lpush_wrong_type(r):
+def test_lpush_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lpush('foo', 'element')
 
 
-def test_llen(r):
+def test_llen(r: redis.Redis):
     r.lpush('foo', 'one')
     r.lpush('foo', 'two')
     r.lpush('foo', 'three')
     assert r.llen('foo') == 3
 
 
-def test_llen_no_exist(r):
+def test_llen_no_exist(r: redis.Redis):
     assert r.llen('foo') == 0
 
 
-def test_llen_wrong_type(r):
+def test_llen_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.llen('foo')
 
 
-def test_lrem_positive_count(r):
+def test_lrem_positive_count(r: redis.Redis):
     r.lpush('foo', 'same')
     r.lpush('foo', 'same')
     r.lpush('foo', 'different')
@@ -73,7 +73,7 @@ def test_lrem_positive_count(r):
     assert r.lrange('foo', 0, -1) == [b'different']
 
 
-def test_lrem_negative_count(r):
+def test_lrem_negative_count(r: redis.Redis):
     r.lpush('foo', 'removeme')
     r.lpush('foo', 'three')
     r.lpush('foo', 'two')
@@ -85,7 +85,7 @@ def test_lrem_negative_count(r):
     assert r.lrange('foo', 0, -1) == [b'removeme', b'one', b'two', b'three']
 
 
-def test_lrem_zero_count(r):
+def test_lrem_zero_count(r: redis.Redis):
     r.lpush('foo', 'one')
     r.lpush('foo', 'one')
     r.lpush('foo', 'one')
@@ -93,7 +93,7 @@ def test_lrem_zero_count(r):
     assert r.lrange('foo', 0, -1) == []
 
 
-def test_lrem_default_value(r):
+def test_lrem_default_value(r: redis.Redis):
     r.lpush('foo', 'one')
     r.lpush('foo', 'one')
     r.lpush('foo', 'one')
@@ -101,7 +101,7 @@ def test_lrem_default_value(r):
     assert r.lrange('foo', 0, -1) == []
 
 
-def test_lrem_does_not_exist(r):
+def test_lrem_does_not_exist(r: redis.Redis):
     r.lpush('foo', 'one')
     r.lrem('foo', 0, 'one')
     # These should be noops.
@@ -109,20 +109,20 @@ def test_lrem_does_not_exist(r):
     r.lrem('foo', 2, 'one')
 
 
-def test_lrem_return_value(r):
+def test_lrem_return_value(r: redis.Redis):
     r.lpush('foo', 'one')
     count = r.lrem('foo', 0, 'one')
     assert count == 1
     assert r.lrem('foo', 0, 'one') == 0
 
 
-def test_lrem_wrong_type(r):
+def test_lrem_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lrem('foo', 0, 'element')
 
 
-def test_rpush(r):
+def test_rpush(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     r.rpush('foo', 'three')
@@ -130,13 +130,13 @@ def test_rpush(r):
     assert r.lrange('foo', 0, -1) == [b'one', b'two', b'three', b'four', b'five']
 
 
-def test_rpush_wrong_type(r):
+def test_rpush_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.rpush('foo', 'element')
 
 
-def test_lpop(r):
+def test_lpop(r: redis.Redis):
     assert r.rpush('foo', 'one') == 1
     assert r.rpush('foo', 'two') == 2
     assert r.rpush('foo', 'three') == 3
@@ -145,7 +145,7 @@ def test_lpop(r):
     assert r.lpop('foo') == b'three'
 
 
-def test_lpop_empty_list(r):
+def test_lpop_empty_list(r: redis.Redis):
     r.rpush('foo', 'one')
     r.lpop('foo')
     assert r.lpop('foo') is None
@@ -154,29 +154,29 @@ def test_lpop_empty_list(r):
     assert r.lpop('noexists') is None
 
 
-def test_lpop_zero_elem(r):
+def test_lpop_zero_elem(r: redis.Redis):
     r.rpush(b'\x00', b'')
     assert r.lpop(b'\x00', 0) == []
 
 
-def test_lpop_zero_non_existing_list(r):
+def test_lpop_zero_non_existing_list(r: redis.Redis):
     assert r.lpop(b'', 0) is None
 
 
-def test_lpop_zero_wrong_type(r):
+def test_lpop_zero_wrong_type(r: redis.Redis):
     r.set(b'', b'')
     with pytest.raises(redis.ResponseError):
         r.lpop(b'', 0)
 
 
-def test_lpop_wrong_type(r):
+def test_lpop_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lpop('foo')
 
 
 @pytest.mark.min_server('6.2')
-def test_lpop_count(r):
+def test_lpop_count(r: redis.Redis):
     assert r.rpush('foo', 'one') == 1
     assert r.rpush('foo', 'two') == 2
     assert r.rpush('foo', 'three') == 3
@@ -187,12 +187,12 @@ def test_lpop_count(r):
 
 
 @pytest.mark.min_server('6.2')
-def test_lpop_count_negative(r):
+def test_lpop_count_negative(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, 'lpop', 'foo', -1)
 
 
-def test_lset(r):
+def test_lset(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     r.rpush('foo', 'three')
@@ -201,19 +201,19 @@ def test_lset(r):
     assert r.lrange('foo', 0, -1) == [b'four', b'five', b'three']
 
 
-def test_lset_index_out_of_range(r):
+def test_lset_index_out_of_range(r: redis.Redis):
     r.rpush('foo', 'one')
     with pytest.raises(redis.ResponseError):
         r.lset('foo', 3, 'three')
 
 
-def test_lset_wrong_type(r):
+def test_lset_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lset('foo', 0, 'element')
 
 
-def test_rpushx(r):
+def test_rpushx(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpushx('foo', 'two')
     r.rpushx('bar', 'three')
@@ -221,13 +221,13 @@ def test_rpushx(r):
     assert r.lrange('bar', 0, -1) == []
 
 
-def test_rpushx_wrong_type(r):
+def test_rpushx_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.rpushx('foo', 'element')
 
 
-def test_ltrim(r):
+def test_ltrim(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     r.rpush('foo', 'three')
@@ -239,24 +239,24 @@ def test_ltrim(r):
     assert r.lrange('foo', 0, -1) == [b'three', b'four']
 
 
-def test_ltrim_with_non_existent_key(r):
+def test_ltrim_with_non_existent_key(r: redis.Redis):
     assert r.ltrim('foo', 0, -1)
 
 
-def test_ltrim_expiry(r):
+def test_ltrim_expiry(r: redis.Redis):
     r.rpush('foo', 'one', 'two', 'three')
     r.expire('foo', 10)
     r.ltrim('foo', 1, 2)
     assert r.ttl('foo') > 0
 
 
-def test_ltrim_wrong_type(r):
+def test_ltrim_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.ltrim('foo', 1, -1)
 
 
-def test_lindex(r):
+def test_lindex(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     assert r.lindex('foo', 0) == b'one'
@@ -264,13 +264,13 @@ def test_lindex(r):
     assert r.lindex('bar', 4) is None
 
 
-def test_lindex_wrong_type(r):
+def test_lindex_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lindex('foo', 0)
 
 
-def test_lpushx(r):
+def test_lpushx(r: redis.Redis):
     r.lpush('foo', 'two')
     r.lpushx('foo', 'one')
     r.lpushx('bar', 'one')
@@ -278,13 +278,13 @@ def test_lpushx(r):
     assert r.lrange('bar', 0, -1) == []
 
 
-def test_lpushx_wrong_type(r):
+def test_lpushx_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.lpushx('foo', 'element')
 
 
-def test_rpop(r):
+def test_rpop(r: redis.Redis):
     assert r.rpop('foo') is None
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
@@ -293,14 +293,14 @@ def test_rpop(r):
     assert r.rpop('foo') is None
 
 
-def test_rpop_wrong_type(r):
+def test_rpop_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.rpop('foo')
 
 
 @pytest.mark.min_server('6.2')
-def test_rpop_count(r):
+def test_rpop_count(r: redis.Redis):
     assert r.rpush('foo', 'one') == 1
     assert r.rpush('foo', 'two') == 2
     assert r.rpush('foo', 'three') == 3
@@ -311,39 +311,39 @@ def test_rpop_count(r):
 
 
 @pytest.mark.min_server('6.2')
-def test_rpop_count_negative(r):
+def test_rpop_count_negative(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, 'rpop', 'foo', -1)
 
 
-def test_linsert_before(r):
+def test_linsert_before(r: redis.Redis):
     r.rpush('foo', 'hello')
     r.rpush('foo', 'world')
     assert r.linsert('foo', 'before', 'world', 'there') == 3
     assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
 
 
-def test_linsert_after(r):
+def test_linsert_after(r: redis.Redis):
     r.rpush('foo', 'hello')
     r.rpush('foo', 'world')
     assert r.linsert('foo', 'after', 'hello', 'there') == 3
     assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
 
 
-def test_linsert_no_pivot(r):
+def test_linsert_no_pivot(r: redis.Redis):
     r.rpush('foo', 'hello')
     r.rpush('foo', 'world')
     assert r.linsert('foo', 'after', 'goodbye', 'bar') == -1
     assert r.lrange('foo', 0, -1) == [b'hello', b'world']
 
 
-def test_linsert_wrong_type(r):
+def test_linsert_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.linsert('foo', 'after', 'bar', 'element')
 
 
-def test_rpoplpush(r):
+def test_rpoplpush(r: redis.Redis):
     assert r.rpoplpush('foo', 'bar') is None
     assert r.lpop('bar') is None
     r.rpush('foo', 'one')
@@ -359,13 +359,13 @@ def test_rpoplpush(r):
     assert r.lrem('bar', -1, 'two') == 1
 
 
-def test_rpoplpush_to_nonexistent_destination(r):
+def test_rpoplpush_to_nonexistent_destination(r: redis.Redis):
     r.rpush('foo', 'one')
     assert r.rpoplpush('foo', 'bar') == b'one'
     assert r.rpop('bar') == b'one'
 
 
-def test_rpoplpush_expiry(r):
+def test_rpoplpush_expiry(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('bar', 'two')
     r.expire('bar', 10)
@@ -373,13 +373,13 @@ def test_rpoplpush_expiry(r):
     assert r.ttl('bar') > 0
 
 
-def test_rpoplpush_one_to_self(r):
+def test_rpoplpush_one_to_self(r: redis.Redis):
     r.rpush('list', 'element')
     assert r.brpoplpush('list', 'list') == b'element'
     assert r.lrange('list', 0, -1) == [b'element']
 
 
-def test_rpoplpush_wrong_type(r):
+def test_rpoplpush_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     r.rpush('list', 'element')
     with pytest.raises(redis.ResponseError):
@@ -392,14 +392,14 @@ def test_rpoplpush_wrong_type(r):
     assert r.lrange('list', 0, -1) == [b'element']
 
 
-def test_blpop_single_list(r):
+def test_blpop_single_list(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     r.rpush('foo', 'three')
     assert r.blpop(['foo'], timeout=1) == (b'foo', b'one')
 
 
-def test_blpop_test_multiple_lists(r):
+def test_blpop_test_multiple_lists(r: redis.Redis):
     r.rpush('baz', 'zero')
     assert r.blpop(['foo', 'baz'], timeout=1) == (b'baz', b'zero')
     assert not r.exists('baz')
@@ -416,14 +416,14 @@ def test_blpop_test_multiple_lists(r):
     assert r.blpop(['bar', 'foo'], timeout=1) == (b'foo', b'two')
 
 
-def test_blpop_allow_single_key(r):
+def test_blpop_allow_single_key(r: redis.Redis):
     # blpop converts single key arguments to a one element list.
     r.rpush('foo', 'one')
     assert r.blpop('foo', timeout=1) == (b'foo', b'one')
 
 
 @pytest.mark.slow
-def test_blpop_block(r):
+def test_blpop_block(r: redis.Redis):
     def push_thread():
         sleep(0.5)
         r.rpush('foo', 'value1')
@@ -441,13 +441,13 @@ def test_blpop_block(r):
         thread.join()
 
 
-def test_blpop_wrong_type(r):
+def test_blpop_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.blpop('foo', timeout=1)
 
 
-def test_blpop_transaction(r):
+def test_blpop_transaction(r: redis.Redis):
     p = r.pipeline()
     p.multi()
     p.blpop('missing', timeout=1000)
@@ -456,7 +456,7 @@ def test_blpop_transaction(r):
     assert result == [None]
 
 
-def test_brpop_test_multiple_lists(r):
+def test_brpop_test_multiple_lists(r: redis.Redis):
     r.rpush('baz', 'zero')
     assert r.brpop(['foo', 'baz'], timeout=1) == (b'baz', b'zero')
     assert not r.exists('baz')
@@ -466,14 +466,14 @@ def test_brpop_test_multiple_lists(r):
     assert r.brpop(['bar', 'foo'], timeout=1) == (b'foo', b'two')
 
 
-def test_brpop_single_key(r):
+def test_brpop_single_key(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     assert r.brpop('foo', timeout=1) == (b'foo', b'two')
 
 
 @pytest.mark.slow
-def test_brpop_block(r):
+def test_brpop_block(r: redis.Redis):
     def push_thread():
         sleep(0.5)
         r.rpush('foo', 'value1')
@@ -491,13 +491,13 @@ def test_brpop_block(r):
         thread.join()
 
 
-def test_brpop_wrong_type(r):
+def test_brpop_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.brpop('foo', timeout=1)
 
 
-def test_brpoplpush_multi_keys(r):
+def test_brpoplpush_multi_keys(r: redis.Redis):
     assert r.lpop('bar') is None
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
@@ -509,7 +509,7 @@ def test_brpoplpush_multi_keys(r):
     assert r.lrem('bar', -1, 'two') == 1
 
 
-def test_brpoplpush_wrong_type(r):
+def test_brpoplpush_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     r.rpush('list', 'element')
     with pytest.raises(redis.ResponseError):
@@ -523,26 +523,26 @@ def test_brpoplpush_wrong_type(r):
 
 
 @pytest.mark.slow
-def test_blocking_operations_when_empty(r):
+def test_blocking_operations_when_empty(r: redis.Redis):
     assert r.blpop(['foo'], timeout=1) is None
     assert r.blpop(['bar', 'foo'], timeout=1) is None
     assert r.brpop('foo', timeout=1) is None
     assert r.brpoplpush('foo', 'bar', timeout=1) is None
 
 
-def test_empty_list(r):
+def test_empty_list(r: redis.Redis):
     r.rpush('foo', 'bar')
     r.rpop('foo')
     assert not r.exists('foo')
 
 
-def test_lmove_to_nonexistent_destination(r):
+def test_lmove_to_nonexistent_destination(r: redis.Redis):
     r.rpush('foo', 'one')
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') == b'one'
     assert r.rpop('bar') == b'one'
 
 
-def test_lmove_expiry(r):
+def test_lmove_expiry(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('bar', 'two')
     r.expire('bar', 10)
@@ -550,7 +550,7 @@ def test_lmove_expiry(r):
     assert r.ttl('bar') > 0
 
 
-def test_lmove_wrong_type(r):
+def test_lmove_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     r.rpush('list', 'element')
     with pytest.raises(redis.ResponseError):
@@ -563,7 +563,7 @@ def test_lmove_wrong_type(r):
     assert r.lrange('list', 0, -1) == [b'element']
 
 
-def test_lmove(r):
+def test_lmove(r: redis.Redis):
     assert r.lmove('foo', 'bar', 'RIGHT', 'LEFT') is None
     assert r.lpop('bar') is None
     r.rpush('foo', 'one')
@@ -594,6 +594,6 @@ def test_lmove(r):
 
 @pytest.mark.disconnected
 @testtools.fake_only
-def test_lmove_disconnected_raises_connection_error(r):
+def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
     with pytest.raises(redis.ConnectionError):
         r.lmove(1, 2, 'LEFT', 'RIGHT')

@@ -10,7 +10,7 @@ import redis.client
 from redis.exceptions import ResponseError
 
 
-def test_sadd(r):
+def test_sadd(r: redis.Redis):
     assert r.sadd('foo', 'member1') == 1
     assert r.sadd('foo', 'member1') == 0
     assert r.smembers('foo') == {b'member1'}
@@ -20,31 +20,31 @@ def test_sadd(r):
     assert r.smembers('foo') == {b'member1', b'member2', b'member3', b'member4'}
 
 
-def test_sadd_as_str_type(r):
+def test_sadd_as_str_type(r: redis.Redis):
     assert r.sadd('foo', *range(3)) == 3
     assert r.smembers('foo') == {b'0', b'1', b'2'}
 
 
-def test_sadd_wrong_type(r):
+def test_sadd_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.sadd('foo', 'member2')
 
 
-def test_scard(r):
+def test_scard(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('foo', 'member2')
     assert r.scard('foo') == 2
 
 
-def test_scard_wrong_type(r):
+def test_scard_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.scard('foo')
 
 
-def test_sdiff(r):
+def test_sdiff(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -55,17 +55,17 @@ def test_sdiff(r):
     assert r.smembers('bar') == {b'member2', b'member3'}
 
 
-def test_sdiff_one_key(r):
+def test_sdiff_one_key(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     assert r.sdiff('foo') == {b'member1', b'member2'}
 
 
-def test_sdiff_empty(r):
+def test_sdiff_empty(r: redis.Redis):
     assert r.sdiff('foo') == set()
 
 
-def test_sdiff_wrong_type(r):
+def test_sdiff_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -74,7 +74,7 @@ def test_sdiff_wrong_type(r):
         r.sdiff('bar', 'foo')
 
 
-def test_sdiffstore(r):
+def test_sdiffstore(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -87,7 +87,7 @@ def test_sdiffstore(r):
     assert r.scard('baz') == 1
 
 
-def test_sinter(r):
+def test_sinter(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -96,7 +96,7 @@ def test_sinter(r):
     assert r.sinter('foo') == {b'member1', b'member2'}
 
 
-def test_sinter_bytes_keys(r):
+def test_sinter_bytes_keys(r: redis.Redis):
     foo = os.urandom(10)
     bar = os.urandom(10)
     r.sadd(foo, 'member1')
@@ -107,7 +107,7 @@ def test_sinter_bytes_keys(r):
     assert r.sinter(foo) == {b'member1', b'member2'}
 
 
-def test_sinter_wrong_type(r):
+def test_sinter_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -116,7 +116,7 @@ def test_sinter_wrong_type(r):
         r.sinter('bar', 'foo')
 
 
-def test_sinterstore(r):
+def test_sinterstore(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -129,13 +129,13 @@ def test_sinterstore(r):
     assert r.scard('baz') == 1
 
 
-def test_sismember(r):
+def test_sismember(r: redis.Redis):
     assert r.sismember('foo', 'member1') is False
     r.sadd('foo', 'member1')
     assert r.sismember('foo', 'member1') is True
 
 
-def test_smismember(r):
+def test_smismember(r: redis.Redis):
     assert r.smismember('foo', ['member1', 'member2', 'member3']) == [0, 0, 0]
     r.sadd('foo', 'member1', 'member2', 'member3')
     assert r.smismember('foo', ['member1', 'member2', 'member3']) == [1, 1, 1]
@@ -145,7 +145,7 @@ def test_smismember(r):
     assert r.smismember('foo', 'member4', 'member2', 'member3') == [0, 1, 1]
 
 
-def test_smismember_wrong_type(r):
+def test_smismember_wrong_type(r: redis.Redis):
     # verify that command fails when the key itself is not a SET
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
@@ -157,47 +157,47 @@ def test_smismember_wrong_type(r):
         r.smismember('foo2', [["member1", "member2"]])
 
 
-def test_sismember_wrong_type(r):
+def test_sismember_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.sismember('foo', 'member')
 
 
-def test_smembers(r):
+def test_smembers(r: redis.Redis):
     assert r.smembers('foo') == set()
 
 
-def test_smembers_copy(r):
+def test_smembers_copy(r: redis.Redis):
     r.sadd('foo', 'member1')
     ret = r.smembers('foo')
     r.sadd('foo', 'member2')
     assert r.smembers('foo') != ret
 
 
-def test_smembers_wrong_type(r):
+def test_smembers_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.smembers('foo')
 
 
-def test_smembers_runtime_error(r):
+def test_smembers_runtime_error(r: redis.Redis):
     r.sadd('foo', 'member1', 'member2')
     for member in r.smembers('foo'):
         r.srem('foo', member)
 
 
-def test_smove(r):
+def test_smove(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     assert r.smove('foo', 'bar', 'member1') is True
     assert r.smembers('bar') == {b'member1'}
 
 
-def test_smove_non_existent_key(r):
+def test_smove_non_existent_key(r: redis.Redis):
     assert r.smove('foo', 'bar', 'member1') is False
 
 
-def test_smove_wrong_type(r):
+def test_smove_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -208,27 +208,27 @@ def test_smove_wrong_type(r):
         r.smove('foo', 'bar', 'member')
 
 
-def test_spop(r):
+def test_spop(r: redis.Redis):
     # This is tricky because it pops a random element.
     r.sadd('foo', 'member1')
     assert r.spop('foo') == b'member1'
     assert r.spop('foo') is None
 
 
-def test_spop_wrong_type(r):
+def test_spop_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.spop('foo')
 
 
-def test_srandmember(r):
+def test_srandmember(r: redis.Redis):
     r.sadd('foo', 'member1')
     assert r.srandmember('foo') == b'member1'
     # Shouldn't be removed from the set.
     assert r.srandmember('foo') == b'member1'
 
 
-def test_srandmember_number(r):
+def test_srandmember_number(r: redis.Redis):
     """srandmember works with the number argument."""
     assert r.srandmember('foo', 2) == []
     r.sadd('foo', b'member1')
@@ -242,13 +242,13 @@ def test_srandmember_number(r):
         assert e in {b'member1', b'member2', b'member3'}
 
 
-def test_srandmember_wrong_type(r):
+def test_srandmember_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.srandmember('foo')
 
 
-def test_srem(r):
+def test_srem(r: redis.Redis):
     r.sadd('foo', 'member1', 'member2', 'member3', 'member4')
     assert r.smembers('foo') == {b'member1', b'member2', b'member3', b'member4'}
     assert r.srem('foo', 'member1') == 1
@@ -262,13 +262,13 @@ def test_srem(r):
     assert r.srem('foo', 'member3', 'member4') == 0
 
 
-def test_srem_wrong_type(r):
+def test_srem_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     with pytest.raises(redis.ResponseError):
         r.srem('foo', 'member')
 
 
-def test_sunion(r):
+def test_sunion(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -276,7 +276,7 @@ def test_sunion(r):
     assert r.sunion('foo', 'bar') == {b'member1', b'member2', b'member3'}
 
 
-def test_sunion_wrong_type(r):
+def test_sunion_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -285,7 +285,7 @@ def test_sunion_wrong_type(r):
         r.sunion('bar', 'foo')
 
 
-def test_sunionstore(r):
+def test_sunionstore(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -299,13 +299,13 @@ def test_sunionstore(r):
     assert r.scard('baz') == 3
 
 
-def test_empty_set(r):
+def test_empty_set(r: redis.Redis):
     r.sadd('foo', 'bar')
     r.srem('foo', 'bar')
     assert not r.exists('foo')
 
 
-def test_sscan(r):
+def test_sscan(r: redis.Redis):
     # Set up the data
     name = 'sscan-test'
     for ix in range(20):
@@ -344,7 +344,7 @@ def test_sscan(r):
 
 
 @pytest.mark.min_server('7')
-def test_sintercard(r):
+def test_sintercard(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -354,7 +354,7 @@ def test_sintercard(r):
 
 
 @pytest.mark.min_server('7')
-def test_sintercard_key_doesnt_exist(r):
+def test_sintercard_key_doesnt_exist(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
     r.sadd('bar', 'member2')
@@ -366,7 +366,7 @@ def test_sintercard_key_doesnt_exist(r):
 
 
 @pytest.mark.min_server('7')
-def test_sintercard_bytes_keys(r):
+def test_sintercard_bytes_keys(r: redis.Redis):
     foo = os.urandom(10)
     bar = os.urandom(10)
     r.sadd(foo, 'member1')
@@ -379,7 +379,7 @@ def test_sintercard_bytes_keys(r):
 
 
 @pytest.mark.min_server('7')
-def test_sintercard_wrong_type(r):
+def test_sintercard_wrong_type(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -389,7 +389,7 @@ def test_sintercard_wrong_type(r):
 
 
 @pytest.mark.min_server('7')
-def test_sintercard_syntax_error(r):
+def test_sintercard_syntax_error(r: redis.Redis):
     r.zadd('foo', {'member': 1})
     r.sadd('bar', 'member')
     with pytest.raises(redis.ResponseError):
@@ -400,13 +400,13 @@ def test_sintercard_syntax_error(r):
         r.sintercard(1, ['bar', 'foo'], limit='x')
 
 
-def test_pfadd(r):
+def test_pfadd(r: redis.Redis):
     key = "hll-pfadd"
     assert r.pfadd(key, "a", "b", "c", "d", "e", "f", "g") == 1
     assert r.pfcount(key) == 7
 
 
-def test_pfcount(r):
+def test_pfcount(r: redis.Redis):
     key1 = "hll-pfcount01"
     key2 = "hll-pfcount02"
     key3 = "hll-pfcount03"
@@ -423,7 +423,7 @@ def test_pfcount(r):
     assert r.pfcount(key1, key2, key3) == 7
 
 
-def test_pfmerge(r):
+def test_pfmerge(r: redis.Redis):
     key1 = "hll-pfmerge01"
     key2 = "hll-pfmerge02"
     key3 = "hll-pfmerge03"
@@ -434,7 +434,7 @@ def test_pfmerge(r):
 
 
 @pytest.mark.slow
-def test_set_ex_should_expire_value(r):
+def test_set_ex_should_expire_value(r: redis.Redis):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
     r.set('foo', 'bar', ex=1)
@@ -443,14 +443,14 @@ def test_set_ex_should_expire_value(r):
 
 
 @pytest.mark.slow
-def test_set_px_should_expire_value(r):
+def test_set_px_should_expire_value(r: redis.Redis):
     r.set('foo', 'bar', px=500)
     sleep(1.5)
     assert r.get('foo') is None
 
 
 @pytest.mark.slow
-def test_psetex_expire_value(r):
+def test_psetex_expire_value(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.psetex('foo', 0, 'bar')
     r.psetex('foo', 500, 'bar')
@@ -459,11 +459,9 @@ def test_psetex_expire_value(r):
 
 
 @pytest.mark.slow
-def test_psetex_expire_value_using_timedelta(r):
+def test_psetex_expire_value_using_timedelta(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.psetex('foo', timedelta(seconds=0), 'bar')
     r.psetex('foo', timedelta(seconds=0.5), 'bar')
     sleep(1.5)
     assert r.get('foo') is None
-
-

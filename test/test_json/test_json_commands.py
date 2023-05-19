@@ -63,7 +63,7 @@ def json_data() -> Dict[str, Any]:
 
 
 @pytest.mark.xfail
-def test_debug(r: redis.Redis) -> None:
+def test_debug(r: redis.Redis):
     r.json().set("str", Path.root_path(), "foo")
     assert 24 == r.json().debug("MEMORY", "str", Path.root_path())
     assert 24 == r.json().debug("MEMORY", "str")
@@ -73,7 +73,7 @@ def test_debug(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_resp(r: redis.Redis) -> None:
+def test_resp(r: redis.Redis):
     obj = {"foo": "bar", "baz": 1, "qaz": True, }
     r.json().set("obj", Path.root_path(), obj, )
 
@@ -107,7 +107,7 @@ def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
 
 
 @pytest.mark.xfail
-def test_debug_dollar(r: redis.Redis) -> None:
+def test_debug_dollar(r: redis.Redis):
     jdata, jtypes = load_types_data("a")
 
     r.json().set("doc1", "$", jdata)
@@ -129,7 +129,7 @@ def test_debug_dollar(r: redis.Redis) -> None:
 
 
 @pytest.mark.xfail
-def test_resp_dollar(r: redis.Redis, json_data: Dict[str, Any]) -> None:
+def test_resp_dollar(r: redis.Redis, json_data: Dict[str, Any]):
     r.json().set("doc1", "$", json_data)
 
     # Test multi

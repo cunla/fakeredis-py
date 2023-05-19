@@ -5,7 +5,6 @@ import logging
 
 import pytest
 import redis
-import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
@@ -14,19 +13,19 @@ from test import testtools
 lupa = pytest.importorskip("lupa")
 
 
-def test_eval_blpop(r):
+def test_eval_blpop(r: redis.Redis):
     r.rpush('foo', 'bar')
     with pytest.raises(redis.ResponseError, match='This Redis command is not allowed from script'):
         r.eval('return redis.pcall("BLPOP", KEYS[1], 1)', 1, 'foo')
 
 
-def test_eval_set_value_to_arg(r):
+def test_eval_set_value_to_arg(r: redis.Redis):
     r.eval('redis.call("SET", KEYS[1], ARGV[1])', 1, 'foo', 'bar')
     val = r.get('foo')
     assert val == b'bar'
 
 
-def test_eval_conditional(r):
+def test_eval_conditional(r: redis.Redis):
     lua = """
     local val = redis.call("GET", KEYS[1])
     if val == ARGV[1] then
@@ -43,7 +42,7 @@ def test_eval_conditional(r):
     assert val == b'baz'
 
 
-def test_eval_table(r):
+def test_eval_table(r: redis.Redis):
     lua = """
     local a = {}
     a[1] = "foo"
@@ -55,7 +54,7 @@ def test_eval_table(r):
     assert val == [b'foo', b'bar']
 
 
-def test_eval_table_with_nil(r):
+def test_eval_table_with_nil(r: redis.Redis):
     lua = """
     local a = {}
     a[1] = "foo"
@@ -67,7 +66,7 @@ def test_eval_table_with_nil(r):
     assert val == [b'foo']
 
 
-def test_eval_table_with_numbers(r):
+def test_eval_table_with_numbers(r: redis.Redis):
     lua = """
     local a = {}
     a[1] = 42
@@ -77,7 +76,7 @@ def test_eval_table_with_numbers(r):
     assert val == [42]
 
 
-def test_eval_nested_table(r):
+def test_eval_nested_table(r: redis.Redis):
     lua = """
     local a = {}
     a[1] = {}
@@ -88,7 +87,7 @@ def test_eval_nested_table(r):
     assert val == [[b'foo']]
 
 
-def test_eval_iterate_over_argv(r):
+def test_eval_iterate_over_argv(r: redis.Redis):
     lua = """
     for i, v in ipairs(ARGV) do
     end
@@ -98,7 +97,7 @@ def test_eval_iterate_over_argv(r):
     assert val == [b"a", b"b", b"c"]
 
 
-def test_eval_iterate_over_keys(r):
+def test_eval_iterate_over_keys(r: redis.Redis):
     lua = """
     for i, v in ipairs(KEYS) do
     end
@@ -108,19 +107,19 @@ def test_eval_iterate_over_keys(r):
     assert val == [b"a", b"b"]
 
 
-def test_eval_mget(r):
+def test_eval_mget(r: redis.Redis):
     r.set('foo1', 'bar1')
     r.set('foo2', 'bar2')
     val = r.eval('return redis.call("mget", "foo1", "foo2")', 2, 'foo1', 'foo2')
     assert val == [b'bar1', b'bar2']
 
 
-def test_eval_mget_not_set(r):
+def test_eval_mget_not_set(r: redis.Redis):
     val = r.eval('return redis.call("mget", "foo1", "foo2")', 2, 'foo1', 'foo2')
     assert val == [None, None]
 
 
-def test_eval_hgetall(r):
+def test_eval_hgetall(r: redis.Redis):
     r.hset('foo', 'k1', 'bar')
     r.hset('foo', 'k2', 'baz')
     val = r.eval('return redis.call("hgetall", "foo")', 1, 'foo')
@@ -128,7 +127,7 @@ def test_eval_hgetall(r):
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
 
 
-def test_eval_hgetall_iterate(r):
+def test_eval_hgetall_iterate(r: redis.Redis):
     r.hset('foo', 'k1', 'bar')
     r.hset('foo', 'k2', 'baz')
     lua = """
@@ -142,7 +141,7 @@ def test_eval_hgetall_iterate(r):
     assert sorted_val == [[b'k1', b'bar'], [b'k2', b'baz']]
 
 
-def test_eval_invalid_command(r):
+def test_eval_invalid_command(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval(
             'return redis.call("FOO")',
@@ -150,48 +149,48 @@ def test_eval_invalid_command(r):
         )
 
 
-def test_eval_syntax_error(r):
+def test_eval_syntax_error(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return "', 0)
 
 
-def test_eval_runtime_error(r):
+def test_eval_runtime_error(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('error("CRASH")', 0)
 
 
-def test_eval_more_keys_than_args(r):
+def test_eval_more_keys_than_args(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return 1', 42)
 
 
-def test_eval_numkeys_float_string(r):
+def test_eval_numkeys_float_string(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return KEYS[1]', '0.7', 'foo')
 
 
-def test_eval_numkeys_integer_string(r):
+def test_eval_numkeys_integer_string(r: redis.Redis):
     val = r.eval('return KEYS[1]', "1", "foo")
     assert val == b'foo'
 
 
-def test_eval_numkeys_negative(r):
+def test_eval_numkeys_negative(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return KEYS[1]', -1, "foo")
 
 
-def test_eval_numkeys_float(r):
+def test_eval_numkeys_float(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return KEYS[1]', 0.7, "foo")
 
 
-def test_eval_global_variable(r):
+def test_eval_global_variable(r: redis.Redis):
     # Redis doesn't allow script to define global variables
     with pytest.raises(ResponseError):
         r.eval('a=10', 0)
 
 
-def test_eval_global_and_return_ok(r):
+def test_eval_global_and_return_ok(r: redis.Redis):
     # Redis doesn't allow script to define global variables
     with pytest.raises(ResponseError):
         r.eval(
@@ -203,7 +202,7 @@ def test_eval_global_and_return_ok(r):
         )
 
 
-def test_eval_convert_number(r):
+def test_eval_convert_number(r: redis.Redis):
     # Redis forces all Lua numbers to integer
     val = r.eval('return 3.2', 0)
     assert val == 3
@@ -213,7 +212,7 @@ def test_eval_convert_number(r):
     assert val == -3
 
 
-def test_eval_convert_bool(r):
+def test_eval_convert_bool(r: redis.Redis):
     # Redis converts true to 1 and false to nil (which redis-py converts to None)
     assert r.eval('return false', 0) is None
     val = r.eval('return true', 0)
@@ -222,7 +221,7 @@ def test_eval_convert_bool(r):
 
 
 @pytest.mark.max_server('6.2.7')
-def test_eval_call_bool6(r):
+def test_eval_call_bool6(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(redis.ResponseError,
                        match=r'Lua redis\(\) command arguments must be strings or integers'):
@@ -230,14 +229,14 @@ def test_eval_call_bool6(r):
 
 
 @pytest.mark.min_server('7')
-def test_eval_call_bool7(r):
+def test_eval_call_bool7(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(redis.ResponseError,
                        match=r'Lua redis lib command arguments must be strings or integers'):
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
 
 
-def test_eval_return_error(r):
+def test_eval_return_error(r: redis.Redis):
     with pytest.raises(redis.ResponseError, match='Testing') as exc_info:
         r.eval('return {err="Testing"}', 0)
     assert isinstance(exc_info.value.args[0], str)
@@ -246,20 +245,20 @@ def test_eval_return_error(r):
     assert isinstance(exc_info.value.args[0], str)
 
 
-def test_eval_return_redis_error(r):
+def test_eval_return_redis_error(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as exc_info:
         r.eval('return redis.pcall("BADCOMMAND")', 0)
     assert isinstance(exc_info.value.args[0], str)
 
 
-def test_eval_return_ok(r):
+def test_eval_return_ok(r: redis.Redis):
     val = r.eval('return {ok="Testing"}', 0)
     assert val == b'Testing'
     val = r.eval('return redis.status_reply("Testing")', 0)
     assert val == b'Testing'
 
 
-def test_eval_return_ok_nested(r):
+def test_eval_return_ok_nested(r: redis.Redis):
     val = r.eval(
         '''
         local a = {}
@@ -271,12 +270,12 @@ def test_eval_return_ok_nested(r):
     assert val == [b'Testing']
 
 
-def test_eval_return_ok_wrong_type(r):
+def test_eval_return_ok_wrong_type(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         r.eval('return redis.status_reply(123)', 0)
 
 
-def test_eval_pcall(r):
+def test_eval_pcall(r: redis.Redis):
     val = r.eval(
         '''
         local a = {}
@@ -290,12 +289,12 @@ def test_eval_pcall(r):
     assert isinstance(val[0], ResponseError)
 
 
-def test_eval_pcall_return_value(r):
+def test_eval_pcall_return_value(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.eval('return redis.pcall("foo")', 0)
 
 
-def test_eval_delete(r):
+def test_eval_delete(r: redis.Redis):
     r.set('foo', 'bar')
     val = r.get('foo')
     assert val == b'bar'
@@ -303,12 +302,12 @@ def test_eval_delete(r):
     assert val is None
 
 
-def test_eval_exists(r):
+def test_eval_exists(r: redis.Redis):
     val = r.eval('return redis.call("exists", KEYS[1]) == 0', 1, 'foo')
     assert val == 1
 
 
-def test_eval_flushdb(r):
+def test_eval_flushdb(r: redis.Redis):
     r.set('foo', 'bar')
     val = r.eval(
         '''
@@ -338,7 +337,7 @@ def test_eval_flushall(r, create_redis):
     assert 'r2' not in r2
 
 
-def test_eval_incrbyfloat(r):
+def test_eval_incrbyfloat(r: redis.Redis):
     r.set('foo', 0.5)
     val = r.eval(
         '''
@@ -349,7 +348,7 @@ def test_eval_incrbyfloat(r):
     assert val == 1
 
 
-def test_eval_lrange(r):
+def test_eval_lrange(r: redis.Redis):
     r.rpush('foo', 'a', 'b')
     val = r.eval(
         '''
@@ -360,7 +359,7 @@ def test_eval_lrange(r):
     assert val == 1
 
 
-def test_eval_ltrim(r):
+def test_eval_ltrim(r: redis.Redis):
     r.rpush('foo', 'a', 'b', 'c', 'd')
     val = r.eval(
         '''
@@ -372,7 +371,7 @@ def test_eval_ltrim(r):
     assert r.lrange('foo', 0, -1) == [b'b', b'c']
 
 
-def test_eval_lset(r):
+def test_eval_lset(r: redis.Redis):
     r.rpush('foo', 'a', 'b')
     val = r.eval(
         '''
@@ -384,7 +383,7 @@ def test_eval_lset(r):
     assert r.lrange('foo', 0, -1) == [b'z', b'b']
 
 
-def test_eval_sdiff(r):
+def test_eval_sdiff(r: redis.Redis):
     r.sadd('foo', 'a', 'b', 'c', 'f', 'e', 'd')
     r.sadd('bar', 'b')
     val = r.eval(
@@ -403,7 +402,7 @@ def test_eval_sdiff(r):
     assert sorted(val) == [b'a', b'c', b'd', b'e', b'f']
 
 
-def test_script(r):
+def test_script(r: redis.Redis):
     script = r.register_script('return ARGV[1]')
     result = script(args=[42])
     assert result == b'42'
@@ -429,7 +428,7 @@ def test_lua_log(r, caplog):
     ]
 
 
-def test_lua_log_no_message(r):
+def test_lua_log_no_message(r: redis.Redis):
     script = "redis.log(redis.LOG_DEBUG)"
     script = r.register_script(script)
     with pytest.raises(redis.ResponseError):
@@ -448,7 +447,7 @@ def test_lua_log_different_types(r, caplog):
     ]
 
 
-def test_lua_log_wrong_level(r):
+def test_lua_log_wrong_level(r: redis.Redis):
     script = "redis.log(10, 'string')"
     script = r.register_script(script)
     with pytest.raises(redis.ResponseError):
@@ -468,7 +467,7 @@ def test_lua_log_defined_vars(r, caplog):
     assert caplog.record_tuples == [(logger.name, logging.DEBUG, 'string')]
 
 
-def test_hscan_cursors_are_bytes(r):
+def test_hscan_cursors_are_bytes(r: redis.Redis):
     r.hset('hkey', 'foo', 1)
 
     result = r.eval(
@@ -485,7 +484,7 @@ def test_hscan_cursors_are_bytes(r):
 
 
 @pytest.mark.xfail  # TODO
-def test_deleting_while_scan(r):
+def test_deleting_while_scan(r: redis.Redis):
     for i in range(100):
         r.set(f'key-{i}', i)
 

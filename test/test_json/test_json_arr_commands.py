@@ -7,7 +7,7 @@ from test.testtools import raw_command
 json_tests = pytest.importorskip("jsonpath_ng")
 
 
-def test_arrlen(r: redis.Redis) -> None:
+def test_arrlen(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
     assert r.json().arrlen("arr", Path.root_path(), ) == 5
     assert r.json().arrlen("arr") == 5
@@ -93,7 +93,7 @@ def test_arrappend(r: redis.Redis):
         r.json().arrappend("non_existing_doc", "$..a")
 
 
-def test_arrindex(r: redis.Redis) -> None:
+def test_arrindex(r: redis.Redis):
     r.json().set("foo", Path.root_path(), [0, 1, 2, 3, 4], )
 
     assert r.json().arrindex("foo", Path.root_path(), 1) == 1
@@ -183,7 +183,7 @@ def test_arrindex(r: redis.Redis) -> None:
     assert r.json().arrindex("test_None", "..nested2_not_found.arr", "None") == 0
 
 
-def test_arrinsert(r: redis.Redis) -> None:
+def test_arrinsert(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 4], )
 
     assert r.json().arrinsert("arr", Path.root_path(), 1, *[1, 2, 3], ) == 5
@@ -211,7 +211,7 @@ def test_arrinsert(r: redis.Redis) -> None:
         r.json().arrappend("non_existing_doc", "$..a")
 
 
-def test_arrpop(r: redis.Redis) -> None:
+def test_arrpop(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
     assert raw_command(r, 'json.arrpop', 'arr') == b'4'
 
@@ -251,7 +251,7 @@ def test_arrpop(r: redis.Redis) -> None:
         r.json().arrpop("non_existing_doc", "..a")
 
 
-def test_arrtrim(r: redis.Redis) -> None:
+def test_arrtrim(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
 
     assert r.json().arrtrim("arr", Path.root_path(), 1, 3, ) == 3

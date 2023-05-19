@@ -5,7 +5,7 @@ import redis.client
 from test.testtools import raw_command
 
 
-def test_getbit(r):
+def test_getbit(r: redis.Redis):
     r.setbit('foo', 3, 1)
     assert r.getbit('foo', 0) == 0
     assert r.getbit('foo', 1) == 0
@@ -15,13 +15,13 @@ def test_getbit(r):
     assert r.getbit('foo', 100) == 0
 
 
-def test_getbit_wrong_type(r):
+def test_getbit_wrong_type(r: redis.Redis):
     r.rpush('foo', b'x')
     with pytest.raises(redis.ResponseError):
         r.getbit('foo', 1)
 
 
-def test_multiple_bits_set(r):
+def test_multiple_bits_set(r: redis.Redis):
     r.setbit('foo', 1, 1)
     r.setbit('foo', 3, 1)
     r.setbit('foo', 5, 1)
@@ -35,7 +35,7 @@ def test_multiple_bits_set(r):
     assert r.getbit('foo', 6) == 0
 
 
-def test_unset_bits(r):
+def test_unset_bits(r: redis.Redis):
     r.setbit('foo', 1, 1)
     r.setbit('foo', 2, 0)
     r.setbit('foo', 3, 1)
@@ -46,7 +46,7 @@ def test_unset_bits(r):
     assert r.getbit('foo', 3) == 0
 
 
-def test_get_set_bits(r):
+def test_get_set_bits(r: redis.Redis):
     # set bit 5
     assert not r.setbit('a', 5, True)
     assert r.getbit('a', 5)
@@ -61,7 +61,7 @@ def test_get_set_bits(r):
     assert r.getbit('a', 5)
 
 
-def test_setbits_and_getkeys(r):
+def test_setbits_and_getkeys(r: redis.Redis):
     # The bit operations and the get commands
     # should play nicely with each other.
     r.setbit('foo', 1, 1)
@@ -76,19 +76,19 @@ def test_setbits_and_getkeys(r):
     assert r.get('foo') == b'p@\x00\x00\x00\x00\x02'
 
 
-def test_setbit_wrong_type(r):
+def test_setbit_wrong_type(r: redis.Redis):
     r.rpush('foo', b'x')
     with pytest.raises(redis.ResponseError):
         r.setbit('foo', 0, 1)
 
 
-def test_setbit_expiry(r):
+def test_setbit_expiry(r: redis.Redis):
     r.set('foo', b'0x00', ex=10)
     r.setbit('foo', 1, 1)
     assert r.ttl('foo') > 0
 
 
-def test_bitcount(r):
+def test_bitcount(r: redis.Redis):
     r.delete('foo')
     assert r.bitcount('foo') == 0
     r.setbit('foo', 1, 1)
@@ -109,7 +109,7 @@ def test_bitcount(r):
 
 
 @pytest.mark.max_server('6.2.7')
-def test_bitcount_mode_redis6(r):
+def test_bitcount_mode_redis6(r: redis.Redis):
     r.set('key', 'foobar')
     with pytest.raises(redis.ResponseError):
         r.bitcount('key', start=1, end=1, mode='byte')
@@ -130,13 +130,13 @@ def test_bitcount_mode_redis7(r: redis.Redis):
         raw_command(r, 'bitcount', 'key', '1', '2', 'dsd', 'cd')
 
 
-def test_bitcount_wrong_type(r):
+def test_bitcount_wrong_type(r: redis.Redis):
     r.rpush('foo', b'x')
     with pytest.raises(redis.ResponseError):
         r.bitcount('foo')
 
 
-def test_bitop(r):
+def test_bitop(r: redis.Redis):
     r.set('key1', 'foobar')
     r.set('key2', 'abcdef')
 
@@ -153,7 +153,7 @@ def test_bitop(r):
     assert r.get('dest-xor') == b'\x07\r\x0c\x06\x04\x14'
 
 
-def test_bitop_errors(r):
+def test_bitop_errors(r: redis.Redis):
     r.set('key1', 'foobar')
     r.set('key2', 'abcdef')
     r.sadd('key-set', 'member1')

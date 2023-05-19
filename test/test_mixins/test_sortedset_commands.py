@@ -23,7 +23,7 @@ def zincrby(r, key, amount, value):
     return r.zincrby(key, amount, value)
 
 
-def test_zpopmin(r):
+def test_zpopmin(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -31,14 +31,14 @@ def test_zpopmin(r):
     assert r.zpopmin('foo', count=2) == [(b'three', 3.0)]
 
 
-def test_zpopmin_too_many(r):
+def test_zpopmin_too_many(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
     assert r.zpopmin('foo', count=5) == [(b'one', 1.0), (b'two', 2.0), (b'three', 3.0)]
 
 
-def test_zpopmax(r):
+def test_zpopmax(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -46,7 +46,7 @@ def test_zpopmax(r):
     assert r.zpopmax('foo', count=2) == [(b'one', 1.0)]
 
 
-def test_zrange_same_score(r):
+def test_zrange_same_score(r: redis.Redis):
     r.zadd('foo', {'two_a': 2})
     r.zadd('foo', {'two_b': 2})
     r.zadd('foo', {'two_c': 2})
@@ -89,7 +89,7 @@ def test_zrange_with_rev_and_bylex(r: redis.Redis):
     assert r.zrange('foo', b'-', b'[o', desc=True, bylex=True) == []
 
 
-def test_zrange_with_bylex(r):
+def test_zrange_with_bylex(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -111,7 +111,7 @@ def test_zrange_with_bylex(r):
     assert r.zrange('foo', b'[o', b'-', bylex=True) == []
 
 
-def test_zrange_with_byscore(r):
+def test_zrange_with_byscore(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_a_also': 2})
@@ -134,23 +134,23 @@ def test_zrange_with_byscore(r):
     )
 
 
-def test_zcard(r):
+def test_zcard(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     assert r.zcard('foo') == 2
 
 
-def test_zcard_non_existent_key(r):
+def test_zcard_non_existent_key(r: redis.Redis):
     assert r.zcard('foo') == 0
 
 
-def test_zcard_wrong_type(r):
+def test_zcard_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zcard('foo')
 
 
-def test_zcount(r):
+def test_zcount(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'three': 2})
     r.zadd('foo', {'five': 5})
@@ -162,7 +162,7 @@ def test_zcount(r):
     assert r.zcount('foo', '-inf', '+inf') == 3
 
 
-def test_zcount_exclusive(r):
+def test_zcount_exclusive(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'three': 2})
     r.zadd('foo', {'five': 5})
@@ -175,32 +175,32 @@ def test_zcount_exclusive(r):
     assert r.zcount('foo', 2, '(5') == 1
 
 
-def test_zcount_wrong_type(r):
+def test_zcount_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zcount('foo', '-inf', '+inf')
 
 
-def test_zincrby(r):
+def test_zincrby(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     assert zincrby(r, 'foo', 10, 'one') == 11
     assert r.zrange('foo', 0, -1, withscores=True) == [(b'one', 11)]
 
 
-def test_zincrby_wrong_type(r):
+def test_zincrby_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         zincrby(r, 'foo', 10, 'one')
 
 
-def test_zrange_descending(r):
+def test_zrange_descending(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
     assert r.zrange('foo', 0, -1, desc=True) == [b'three', b'two', b'one']
 
 
-def test_zrange_descending_with_scores(r):
+def test_zrange_descending_with_scores(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -210,20 +210,20 @@ def test_zrange_descending_with_scores(r):
     )
 
 
-def test_zrange_with_positive_indices(r):
+def test_zrange_with_positive_indices(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
     assert r.zrange('foo', 0, 1) == [b'one', b'two']
 
 
-def test_zrange_wrong_type(r):
+def test_zrange_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrange('foo', 0, -1)
 
 
-def test_zrange_score_cast(r):
+def test_zrange_score_cast(r: redis.Redis):
     r.zadd('foo', {'one': 1.2})
     r.zadd('foo', {'two': 2.2})
 
@@ -236,7 +236,7 @@ def test_zrange_score_cast(r):
     )
 
 
-def test_zrank(r):
+def test_zrank(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -245,17 +245,17 @@ def test_zrank(r):
     assert r.zrank('foo', 'three') == 2
 
 
-def test_zrank_non_existent_member(r):
+def test_zrank_non_existent_member(r: redis.Redis):
     assert r.zrank('foo', 'one') is None
 
 
-def test_zrank_wrong_type(r):
+def test_zrank_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrank('foo', 'one')
 
 
-def test_zrem(r):
+def test_zrem(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -270,38 +270,38 @@ def test_zrem(r):
     assert r.zrem('foo', 'three', 'four') == 0
 
 
-def test_zrem_non_existent_member(r):
+def test_zrem_non_existent_member(r: redis.Redis):
     assert not r.zrem('foo', 'one')
 
 
-def test_zrem_numeric_member(r):
+def test_zrem_numeric_member(r: redis.Redis):
     r.zadd('foo', {'128': 13.0, '129': 12.0})
     assert r.zrem('foo', 128) == 1
     assert r.zrange('foo', 0, -1) == [b'129']
 
 
-def test_zrem_wrong_type(r):
+def test_zrem_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrem('foo', 'bar')
 
 
-def test_zscore(r):
+def test_zscore(r: redis.Redis):
     r.zadd('foo', {'one': 54})
     assert r.zscore('foo', 'one') == 54
 
 
-def test_zscore_non_existent_member(r):
+def test_zscore_non_existent_member(r: redis.Redis):
     assert r.zscore('foo', 'one') is None
 
 
-def test_zscore_wrong_type(r):
+def test_zscore_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zscore('foo', 'one')
 
 
-def test_zmscore(r: redis.Redis) -> None:
+def test_zmscore(r: redis.Redis):
     """When all the requested sorted-set members are in the cache, a valid
     float value should be returned for each requested member.
 
@@ -321,7 +321,7 @@ def test_zmscore(r: redis.Redis) -> None:
     assert all(cached_scores[idx] == score for idx, score in enumerate(scores))
 
 
-def test_zmscore_missing_members(r: redis.Redis) -> None:
+def test_zmscore_missing_members(r: redis.Redis):
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
     cache_key: str = "scored-set-members"
@@ -336,7 +336,7 @@ def test_zmscore_missing_members(r: redis.Redis) -> None:
     assert all(score is None for score in cached_scores)
 
 
-def test_zmscore_mixed_membership(r: redis.Redis) -> None:
+def test_zmscore_mixed_membership(r: redis.Redis):
     """When only some requested sorted-set members are in the cache, a
     valid float value should be returned for each present member and `None` for
     each missing member.
@@ -359,7 +359,7 @@ def test_zmscore_mixed_membership(r: redis.Redis) -> None:
     assert all(cached_scores[idx] == score for (idx, score) in enumerate(scores) if idx % 2 != 0)
 
 
-def test_zrevrank(r):
+def test_zrevrank(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -368,17 +368,17 @@ def test_zrevrank(r):
     assert r.zrevrank('foo', 'three') == 0
 
 
-def test_zrevrank_non_existent_member(r):
+def test_zrevrank_non_existent_member(r: redis.Redis):
     assert r.zrevrank('foo', 'one') is None
 
 
-def test_zrevrank_wrong_type(r):
+def test_zrevrank_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrevrank('foo', 'one')
 
 
-def test_zrevrange(r):
+def test_zrevrange(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -386,7 +386,7 @@ def test_zrevrange(r):
     assert r.zrevrange('foo', 0, -1) == [b'three', b'two', b'one']
 
 
-def test_zrevrange_sorted_keys(r):
+def test_zrevrange_sorted_keys(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_b': 2})
@@ -395,13 +395,13 @@ def test_zrevrange_sorted_keys(r):
     assert r.zrevrange('foo', 0, -1) == [b'three', b'two_b', b'two', b'one']
 
 
-def test_zrevrange_wrong_type(r):
+def test_zrevrange_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrevrange('foo', 0, 2)
 
 
-def test_zrevrange_score_cast(r):
+def test_zrevrange_score_cast(r: redis.Redis):
     r.zadd('foo', {'one': 1.2})
     r.zadd('foo', {'two': 2.2})
 
@@ -414,14 +414,14 @@ def test_zrevrange_score_cast(r):
     )
 
 
-def test_zrange_with_large_int(r):
+def test_zrange_with_large_int(r: redis.Redis):
     with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
         r.zrange('', 0, 9223372036854775808)
     with pytest.raises(redis.ResponseError, match='value is not an integer or out of range'):
         r.zrange('', 0, -9223372036854775809)
 
 
-def test_zrangebyscore(r):
+def test_zrangebyscore(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_a_also': 2})
@@ -444,7 +444,7 @@ def test_zrangebyscore(r):
     )
 
 
-def test_zrangebysore_exclusive(r):
+def test_zrangebysore_exclusive(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'four': 4})
@@ -454,7 +454,7 @@ def test_zrangebysore_exclusive(r):
     assert r.zrangebyscore('foo', 0, '(4') == [b'zero', b'two']
 
 
-def test_zrangebyscore_raises_error(r):
+def test_zrangebyscore_raises_error(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -468,13 +468,13 @@ def test_zrangebyscore_raises_error(r):
         r.zrangebyscore('foo', 2, '3)', 0, None)
 
 
-def test_zrangebyscore_wrong_type(r):
+def test_zrangebyscore_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrangebyscore('foo', '(1', '(2')
 
 
-def test_zrangebyscore_slice(r):
+def test_zrangebyscore_slice(r: redis.Redis):
     r.zadd('foo', {'two_a': 2})
     r.zadd('foo', {'two_b': 2})
     r.zadd('foo', {'two_c': 2})
@@ -483,14 +483,14 @@ def test_zrangebyscore_slice(r):
     assert r.zrangebyscore('foo', 0, 4, 1, 3) == [b'two_b', b'two_c', b'two_d']
 
 
-def test_zrangebyscore_withscores(r):
+def test_zrangebyscore_withscores(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
     assert r.zrangebyscore('foo', 1, 3, 0, 2, True) == [(b'one', 1), (b'two', 2)]
 
 
-def test_zrangebyscore_cast_scores(r):
+def test_zrangebyscore_cast_scores(r: redis.Redis):
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_a_also': 2.2})
 
@@ -507,7 +507,7 @@ def test_zrangebyscore_cast_scores(r):
     )
 
 
-def test_zrevrangebyscore(r):
+def test_zrevrangebyscore(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -517,7 +517,7 @@ def test_zrevrangebyscore(r):
     assert r.zrevrangebyscore('foo', 3, 1, 1, 2) == [b'two', b'one']
 
 
-def test_zrevrangebyscore_exclusive(r):
+def test_zrevrangebyscore_exclusive(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -529,7 +529,7 @@ def test_zrevrangebyscore_exclusive(r):
     assert r.zrevrangebyscore('foo', '(3', '(0', 1, 2) == [b'one']
 
 
-def test_zrevrangebyscore_raises_error(r):
+def test_zrevrangebyscore_raises_error(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -543,13 +543,13 @@ def test_zrevrangebyscore_raises_error(r):
         r.zrevrangebyscore('foo', '((3', '1)')
 
 
-def test_zrevrangebyscore_wrong_type(r):
+def test_zrevrangebyscore_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrevrangebyscore('foo', '(3', '(1')
 
 
-def test_zrevrangebyscore_cast_scores(r):
+def test_zrevrangebyscore_cast_scores(r: redis.Redis):
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_a_also': 2.2})
 
@@ -566,7 +566,7 @@ def test_zrevrangebyscore_cast_scores(r):
     )
 
 
-def test_zrangebylex(r):
+def test_zrangebylex(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -588,13 +588,13 @@ def test_zrangebylex(r):
     assert r.zrangebylex('foo', b'[o', b'-') == []
 
 
-def test_zrangebylex_wrong_type(r):
+def test_zrangebylex_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrangebylex('foo', b'-', b'+')
 
 
-def test_zlexcount(r):
+def test_zlexcount(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -613,13 +613,13 @@ def test_zlexcount(r):
     assert r.zlexcount('foo', b'[o', b'-') == 0
 
 
-def test_zlexcount_wrong_type(r):
+def test_zlexcount_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zlexcount('foo', b'-', b'+')
 
 
-def test_zrangebylex_with_limit(r):
+def test_zrangebylex_with_limit(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -638,7 +638,7 @@ def test_zrangebylex_with_limit(r):
     assert r.zrangebylex('foo', b'+', b'-', 1, 1) == []
 
 
-def test_zrangebylex_raises_error(r):
+def test_zrangebylex_raises_error(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -663,7 +663,7 @@ def test_zrangebylex_raises_error(r):
         r.zrangebylex('foo', b'(two_a', b'[two_b', 1)
 
 
-def test_zrevrangebylex(r):
+def test_zrevrangebylex(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -688,7 +688,7 @@ def test_zrevrangebylex(r):
     assert r.zrevrangebylex('foo', b'-', b'[o') == []
 
 
-def test_zrevrangebylex_with_limit(r):
+def test_zrevrangebylex_with_limit(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -696,7 +696,7 @@ def test_zrevrangebylex_with_limit(r):
     assert r.zrevrangebylex('foo', b'+', b'-', 1, 2) == [b'two_a', b'three_a']
 
 
-def test_zrevrangebylex_raises_error(r):
+def test_zrevrangebylex_raises_error(r: redis.Redis):
     r.zadd('foo', {'one_a': 0})
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
@@ -721,13 +721,13 @@ def test_zrevrangebylex_raises_error(r):
         r.zrevrangebylex('foo', b'[two_a', b'(two_b', 1)
 
 
-def test_zrevrangebylex_wrong_type(r):
+def test_zrevrangebylex_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zrevrangebylex('foo', b'+', b'-')
 
 
-def test_zremrangebyrank(r):
+def test_zremrangebyrank(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -735,7 +735,7 @@ def test_zremrangebyrank(r):
     assert r.zrange('foo', 0, -1) == [b'three']
 
 
-def test_zremrangebyrank_negative_indices(r):
+def test_zremrangebyrank_negative_indices(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
@@ -743,18 +743,18 @@ def test_zremrangebyrank_negative_indices(r):
     assert r.zrange('foo', 0, -1) == [b'one']
 
 
-def test_zremrangebyrank_out_of_bounds(r):
+def test_zremrangebyrank_out_of_bounds(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     assert r.zremrangebyrank('foo', 1, 3) == 0
 
 
-def test_zremrangebyrank_wrong_type(r):
+def test_zremrangebyrank_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zremrangebyrank('foo', 1, 3)
 
 
-def test_zremrangebyscore(r):
+def test_zremrangebyscore(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'four': 4})
@@ -770,7 +770,7 @@ def test_zremrangebyscore(r):
     assert r.zrange('foo', 0, -1) == []
 
 
-def test_zremrangebyscore_exclusive(r):
+def test_zremrangebyscore_exclusive(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'four': 4})
@@ -786,7 +786,7 @@ def test_zremrangebyscore_exclusive(r):
     assert r.zrange('foo', 0, -1) == []
 
 
-def test_zremrangebyscore_raises_error(r):
+def test_zremrangebyscore_raises_error(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'four': 4})
@@ -800,17 +800,17 @@ def test_zremrangebyscore_raises_error(r):
         r.zremrangebyscore('foo', '((3', '1)')
 
 
-def test_zremrangebyscore_badkey(r):
+def test_zremrangebyscore_badkey(r: redis.Redis):
     assert r.zremrangebyscore('foo', 0, 2) == 0
 
 
-def test_zremrangebyscore_wrong_type(r):
+def test_zremrangebyscore_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zremrangebyscore('foo', 0, 2)
 
 
-def test_zremrangebylex(r):
+def test_zremrangebylex(r: redis.Redis):
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
     r.zadd('foo', {'one_a': 0})
@@ -824,7 +824,7 @@ def test_zremrangebylex(r):
     assert r.zremrangebylex('foo', b'[t', b'+') == 0
 
 
-def test_zremrangebylex_error(r):
+def test_zremrangebylex_error(r: redis.Redis):
     r.zadd('foo', {'two_a': 0})
     r.zadd('foo', {'two_b': 0})
     r.zadd('foo', {'one_a': 0})
@@ -839,17 +839,17 @@ def test_zremrangebylex_error(r):
         r.zremrangebylex('foo', b'[two_a', b'')
 
 
-def test_zremrangebylex_badkey(r):
+def test_zremrangebylex_badkey(r: redis.Redis):
     assert r.zremrangebylex('foo', b'(three_a', b'[two_b') == 0
 
 
-def test_zremrangebylex_wrong_type(r):
+def test_zremrangebylex_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zremrangebylex('foo', b'bar', b'baz')
 
 
-def test_zunionstore(r):
+def test_zunionstore(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('bar', {'one': 1})
@@ -862,7 +862,7 @@ def test_zunionstore(r):
     )
 
 
-def test_zunionstore_sum(r):
+def test_zunionstore_sum(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('bar', {'one': 1})
@@ -875,7 +875,7 @@ def test_zunionstore_sum(r):
     )
 
 
-def test_zunionstore_max(r):
+def test_zunionstore_max(r: redis.Redis):
     r.zadd('foo', {'one': 0})
     r.zadd('foo', {'two': 0})
     r.zadd('bar', {'one': 1})
@@ -888,7 +888,7 @@ def test_zunionstore_max(r):
     )
 
 
-def test_zunionstore_min(r):
+def test_zunionstore_min(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('bar', {'one': 0})
@@ -901,7 +901,7 @@ def test_zunionstore_min(r):
     )
 
 
-def test_zunionstore_weights(r):
+def test_zunionstore_weights(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('bar', {'one': 1})
@@ -914,7 +914,7 @@ def test_zunionstore_weights(r):
     )
 
 
-def test_zunionstore_nan_to_zero(r):
+def test_zunionstore_nan_to_zero(r: redis.Redis):
     r.zadd('foo', {'x': math.inf})
     r.zadd('foo2', {'x': math.inf})
     r.zunionstore('bar', OrderedDict([('foo', 1.0), ('foo2', 0.0)]))
@@ -923,7 +923,7 @@ def test_zunionstore_nan_to_zero(r):
     assert r.zscore('bar', 'x') == math.inf
 
 
-def test_zunionstore_nan_to_zero2(r):
+def test_zunionstore_nan_to_zero2(r: redis.Redis):
     r.zadd('foo', {'zero': 0})
     r.zadd('foo2', {'one': 1})
     r.zadd('foo3', {'one': 1})
@@ -933,14 +933,14 @@ def test_zunionstore_nan_to_zero2(r):
     assert r.zrange('bar', 0, -1, withscores=True) == [(b'one', 0)]
 
 
-def test_zunionstore_nan_to_zero_ordering(r):
+def test_zunionstore_nan_to_zero_ordering(r: redis.Redis):
     r.zadd('foo', {'e1': math.inf})
     r.zadd('bar', {'e1': -math.inf, 'e2': 0.0})
     r.zunionstore('baz', ['foo', 'bar', 'foo'])
     assert r.zscore('baz', 'e1') == 0.0
 
 
-def test_zunionstore_mixed_set_types(r):
+def test_zunionstore_mixed_set_types(r: redis.Redis):
     # No score, redis will use 1.0.
     r.sadd('foo', 'one')
     r.sadd('foo', 'two')
@@ -954,7 +954,7 @@ def test_zunionstore_mixed_set_types(r):
     )
 
 
-def test_zunionstore_badkey(r):
+def test_zunionstore_badkey(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zunionstore('baz', ['foo', 'bar'], aggregate='SUM')
@@ -963,13 +963,13 @@ def test_zunionstore_badkey(r):
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1), (b'two', 2)]
 
 
-def test_zunionstore_wrong_type(r):
+def test_zunionstore_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zunionstore('baz', ['foo', 'bar'])
 
 
-def test_zinterstore(r):
+def test_zinterstore(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('bar', {'one': 1})
@@ -979,7 +979,7 @@ def test_zinterstore(r):
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 2), (b'two', 4)]
 
 
-def test_zinterstore_mixed_set_types(r):
+def test_zinterstore_mixed_set_types(r: redis.Redis):
     r.sadd('foo', 'one')
     r.sadd('foo', 'two')
     r.zadd('bar', {'one': 1})
@@ -989,7 +989,7 @@ def test_zinterstore_mixed_set_types(r):
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 2), (b'two', 3)]
 
 
-def test_zinterstore_max(r):
+def test_zinterstore_max(r: redis.Redis):
     r.zadd('foo', {'one': 0})
     r.zadd('foo', {'two': 0})
     r.zadd('bar', {'one': 1})
@@ -999,49 +999,49 @@ def test_zinterstore_max(r):
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1), (b'two', 2)]
 
 
-def test_zinterstore_onekey(r):
+def test_zinterstore_onekey(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zinterstore('baz', ['foo'], aggregate='MAX')
     assert r.zrange('baz', 0, -1, withscores=True) == [(b'one', 1)]
 
 
-def test_zinterstore_nokey(r):
+def test_zinterstore_nokey(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         r.zinterstore('baz', [], aggregate='MAX')
 
 
-def test_zinterstore_nan_to_zero(r):
+def test_zinterstore_nan_to_zero(r: redis.Redis):
     r.zadd('foo', {'x': math.inf})
     r.zadd('foo2', {'x': math.inf})
     r.zinterstore('bar', OrderedDict([('foo', 1.0), ('foo2', 0.0)]))
     assert r.zscore('bar', 'x') == 0.0
 
 
-def test_zunionstore_nokey(r):
+def test_zunionstore_nokey(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         r.zunionstore('baz', [], aggregate='MAX')
 
 
-def test_zinterstore_wrong_type(r):
+def test_zinterstore_wrong_type(r: redis.Redis):
     r.set('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zinterstore('baz', ['foo', 'bar'])
 
 
-def test_empty_zset(r):
+def test_empty_zset(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zrem('foo', 'one')
     assert not r.exists('foo')
 
 
-def test_zpopmax_too_many(r):
+def test_zpopmax_too_many(r: redis.Redis):
     r.zadd('foo', {'one': 1})
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'three': 3})
     assert r.zpopmax('foo', count=5) == [(b'three', 3.0), (b'two', 2.0), (b'one', 1.0), ]
 
 
-def test_bzpopmin(r):
+def test_bzpopmin(r: redis.Redis):
     r.zadd('foo', {'one': 1, 'two': 2, 'three': 3})
     r.zadd('bar', {'a': 1.5, 'b': 2, 'c': 3})
     assert r.bzpopmin(['foo', 'bar'], 0) == (b'foo', b'one', 1.0)
@@ -1050,7 +1050,7 @@ def test_bzpopmin(r):
     assert r.bzpopmin(['foo', 'bar'], 0) == (b'bar', b'a', 1.5)
 
 
-def test_bzpopmax(r):
+def test_bzpopmax(r: redis.Redis):
     r.zadd('foo', {'one': 1, 'two': 2, 'three': 3})
     r.zadd('bar', {'a': 1.5, 'b': 2.5, 'c': 3.5})
     assert r.bzpopmax(['foo', 'bar'], 0) == (b'foo', b'three', 3.0)
@@ -1059,7 +1059,7 @@ def test_bzpopmax(r):
     assert r.bzpopmax(['foo', 'bar'], 0) == (b'bar', b'c', 3.5)
 
 
-def test_zscan(r):
+def test_zscan(r: redis.Redis):
     # Set up the data
     name = 'zscan-test'
     for ix in range(20):

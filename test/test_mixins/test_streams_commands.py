@@ -1,6 +1,7 @@
+import time
+
 import pytest
 import redis
-import time
 
 from fakeredis._stream import XStream
 from test import testtools
@@ -17,7 +18,7 @@ def add_items(r: redis.Redis, stream: str, n: int):
     return id_list
 
 
-def test_xstream(r):
+def test_xstream(r: redis.Redis):
     stream = XStream()
     stream.add([0, 0, 1, 1, 2, 2, 3, 3], '0-1')
     stream.add([1, 1, 2, 2, 3, 3, 4, 4], '1-2')
@@ -227,7 +228,7 @@ def get_stream_message(client, stream, message_id):
     return response[0]
 
 
-def test_xread(r):
+def test_xread(r: redis.Redis):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
@@ -253,7 +254,7 @@ def test_xread(r):
     assert r.xread(streams={stream: m2}) == []
 
 
-def test_xread_bad_commands(r):
+def test_xread_bad_commands(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as exc_info:
         testtools.raw_command(r, 'xread', 'foo', '11-1')
     print(exc_info)

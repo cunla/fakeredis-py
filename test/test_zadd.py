@@ -8,7 +8,7 @@ from test.testtools import raw_command
 REDIS_VERSION = Version(redis.__version__)
 
 
-def test_zadd(r):
+def test_zadd(r: redis.Redis):
     r.zadd('foo', {'four': 4})
     r.zadd('foo', {'three': 3})
     assert r.zadd('foo', {'two': 2, 'one': 1, 'zero': 0}) == 3
@@ -20,14 +20,14 @@ def test_zadd(r):
     )
 
 
-def test_zadd_empty(r):
+def test_zadd_empty(r: redis.Redis):
     # Have to add at least one key/value pair
     with pytest.raises(redis.RedisError):
         r.zadd('foo', {})
 
 
 @pytest.mark.max_server('6.2.7')
-def test_zadd_minus_zero_redis6(r):
+def test_zadd_minus_zero_redis6(r: redis.Redis):
     # Changing -0 to +0 is ignored
     r.zadd('foo', {'a': -0.0})
     r.zadd('foo', {'a': 0.0})
@@ -35,19 +35,19 @@ def test_zadd_minus_zero_redis6(r):
 
 
 @pytest.mark.min_server('7')
-def test_zadd_minus_zero_redis7(r):
+def test_zadd_minus_zero_redis7(r: redis.Redis):
     r.zadd('foo', {'a': -0.0})
     r.zadd('foo', {'a': 0.0})
     assert raw_command(r, 'zscore', 'foo', 'a') == b'0'
 
 
-def test_zadd_wrong_type(r):
+def test_zadd_wrong_type(r: redis.Redis):
     r.sadd('foo', 'bar')
     with pytest.raises(redis.ResponseError):
         r.zadd('foo', {'two': 2})
 
 
-def test_zadd_multiple(r):
+def test_zadd_multiple(r: redis.Redis):
     r.zadd('foo', {'one': 1, 'two': 2})
     assert r.zrange('foo', 0, 0) == [b'one']
     assert r.zrange('foo', 1, 1) == [b'two']
@@ -142,7 +142,7 @@ def test_zadd_incr(r, ch):
     assert r.zadd('foo', {'three': 1.0}, incr=True, xx=True, ch=ch) == 4.0
 
 
-def test_zadd_with_xx_and_gt_and_ch(r):
+def test_zadd_with_xx_and_gt_and_ch(r: redis.Redis):
     r.zadd('test', {"one": 1})
     assert r.zscore("test", "one") == 1.0
     assert r.zadd("test", {"one": 4}, xx=True, gt=True, ch=True) == 1
@@ -151,7 +151,7 @@ def test_zadd_with_xx_and_gt_and_ch(r):
     assert r.zscore("test", "one") == 4.0
 
 
-def test_zadd_and_zrangebyscore(r):
+def test_zadd_and_zrangebyscore(r: redis.Redis):
     raw_command(r, 'zadd', '', 0.0, '')
     assert raw_command(r, 'zrangebyscore', '', 0.0, 0.0, 'limit', 0, 0) == []
     with pytest.raises(redis.RedisError):

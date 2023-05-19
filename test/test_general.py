@@ -20,7 +20,7 @@ def test_asyncioio_is_used():
     assert not hasattr(aioredis, "__version__")
 
 
-def test_unknown_command(r):
+def test_unknown_command(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         raw_command(r, '0 3 3')
 

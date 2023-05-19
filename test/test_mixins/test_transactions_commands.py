@@ -8,7 +8,7 @@ import fakeredis
 from .. import testtools
 
 
-def test_multiple_successful_watch_calls(r):
+def test_multiple_successful_watch_calls(r: redis.Redis):
     p = r.pipeline()
     p.watch('bam')
     p.multi()
@@ -25,7 +25,7 @@ def test_multiple_successful_watch_calls(r):
     assert p.execute() == [True]
 
 
-def test_watch_state_is_cleared_after_abort(r):
+def test_watch_state_is_cleared_after_abort(r: redis.Redis):
     # redis-py's pipeline handling and connection pooling interferes with this
     # test, so raw commands are used instead.
     testtools.raw_command(r, 'watch', 'foo')
@@ -43,7 +43,7 @@ def test_watch_state_is_cleared_after_abort(r):
     assert r.get('abc') == b'done'
 
 
-def test_pipeline_transaction_shortcut(r):
+def test_pipeline_transaction_shortcut(r: redis.Redis):
     # This example taken pretty much from the redis-py documentation.
     r.set('OUR-SEQUENCE-KEY', 13)
     calls = []
@@ -67,7 +67,7 @@ def test_pipeline_transaction_shortcut(r):
     assert len(calls) == 3
 
 
-def test_pipeline_transaction_value_from_callable(r):
+def test_pipeline_transaction_value_from_callable(r: redis.Redis):
     def callback(pipe):
         # No need to do anything here since we only want the return value
         return 'OUR-RETURN-VALUE'
@@ -76,18 +76,18 @@ def test_pipeline_transaction_value_from_callable(r):
     assert res == 'OUR-RETURN-VALUE'
 
 
-def test_pipeline_empty(r):
+def test_pipeline_empty(r: redis.Redis):
     p = r.pipeline()
     assert len(p) == 0
 
 
-def test_pipeline_length(r):
+def test_pipeline_length(r: redis.Redis):
     p = r.pipeline()
     p.set('baz', 'quux').get('baz')
     assert len(p) == 2
 
 
-def test_pipeline_no_commands(r):
+def test_pipeline_no_commands(r: redis.Redis):
     # Prior to 3.4, redis-py's execute is a nop if there are no commands
     # queued, so it succeeds even if watched keys have been changed.
     r.set('foo', '1')
@@ -98,7 +98,7 @@ def test_pipeline_no_commands(r):
         p.execute()
 
 
-def test_pipeline_failed_transaction(r):
+def test_pipeline_failed_transaction(r: redis.Redis):
     p = r.pipeline()
     p.multi()
     p.set('foo', 'bar')
@@ -111,7 +111,7 @@ def test_pipeline_failed_transaction(r):
     assert not r.exists('foo')
 
 
-def test_pipeline_srem_no_change(r):
+def test_pipeline_srem_no_change(r: redis.Redis):
     # A regression test for a case picked up by hypothesis tests.
     p = r.pipeline()
     p.watch('foo')
@@ -124,7 +124,7 @@ def test_pipeline_srem_no_change(r):
 
 # The behaviour changed in redis 6.0 (see https://github.com/redis/redis/issues/6594).
 @pytest.mark.min_server('6.0')
-def test_pipeline_move(r):
+def test_pipeline_move(r: redis.Redis):
     # A regression test for a case picked up by hypothesis tests.
     r.set('foo', 'bar')
     p = r.pipeline()
@@ -139,7 +139,7 @@ def test_pipeline_move(r):
 
 
 @pytest.mark.min_server('6.0.6')
-def test_exec_bad_arguments(r):
+def test_exec_bad_arguments(r: redis.Redis):
     # Redis 6.0.6 changed the behaviour of exec so that it always fails with
     # EXECABORT, even when it's just bad syntax.
     with pytest.raises(redis.exceptions.ExecAbortError):
@@ -147,7 +147,7 @@ def test_exec_bad_arguments(r):
 
 
 @pytest.mark.min_server('6.0.6')
-def test_exec_bad_arguments_abort(r):
+def test_exec_bad_arguments_abort(r: redis.Redis):
     r.execute_command('multi')
     with pytest.raises(redis.exceptions.ExecAbortError):
         r.execute_command('exec', 'blahblah')
@@ -159,7 +159,7 @@ def test_exec_bad_arguments_abort(r):
     assert r.get('bar') == b'baz'
 
 
-def test_pipeline(r):
+def test_pipeline(r: redis.Redis):
     # The pipeline method returns an object for
     # issuing multiple commands in a batch.
     p = r.pipeline()
@@ -180,7 +180,7 @@ def test_pipeline(r):
     assert p.execute() == []
 
 
-def test_pipeline_ignore_errors(r):
+def test_pipeline_ignore_errors(r: redis.Redis):
     """Test the pipeline ignoring errors when asked."""
     with r.pipeline() as p:
         p.set('foo', 'bar')
@@ -199,7 +199,7 @@ def test_pipeline_ignore_errors(r):
         assert isinstance(res[1], redis.exceptions.ResponseError)
 
 
-def test_pipeline_non_transactional(r):
+def test_pipeline_non_transactional(r: redis.Redis):
     # For our simple-minded model I don't think
     # there is any observable difference.
     p = r.pipeline(transaction=False)
@@ -208,7 +208,7 @@ def test_pipeline_non_transactional(r):
     assert res == [True, b'quux']
 
 
-def test_pipeline_raises_when_watched_key_changed(r):
+def test_pipeline_raises_when_watched_key_changed(r: redis.Redis):
     r.set('foo', 'bar')
     r.rpush('greet', 'hello')
     p = r.pipeline()
@@ -227,7 +227,7 @@ def test_pipeline_raises_when_watched_key_changed(r):
         p.reset()
 
 
-def test_pipeline_succeeds_despite_unwatched_key_changed(r):
+def test_pipeline_succeeds_despite_unwatched_key_changed(r: redis.Redis):
     # Same setup as before except for the params to the WATCH command.
     r.set('foo', 'bar')
     r.rpush('greet', 'hello')
@@ -248,7 +248,7 @@ def test_pipeline_succeeds_despite_unwatched_key_changed(r):
         p.reset()
 
 
-def test_pipeline_succeeds_when_watching_nonexistent_key(r):
+def test_pipeline_succeeds_when_watching_nonexistent_key(r: redis.Redis):
     r.set('foo', 'bar')
     r.rpush('greet', 'hello')
     p = r.pipeline()
@@ -268,7 +268,7 @@ def test_pipeline_succeeds_when_watching_nonexistent_key(r):
         p.reset()
 
 
-def test_watch_state_is_cleared_across_multiple_watches(r):
+def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
     r.set('foo', 'one')
     r.set('bar', 'baz')
     p = r.pipeline()

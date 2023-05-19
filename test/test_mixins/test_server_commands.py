@@ -2,6 +2,7 @@ from datetime import datetime
 from time import sleep
 
 import pytest
+import redis
 from redis.exceptions import ResponseError
 
 
@@ -20,15 +21,15 @@ def test_swapdb(r, create_redis):
     assert r1.get('baz') is None
 
 
-def test_swapdb_same_db(r):
+def test_swapdb_same_db(r: redis.Redis):
     assert r.swapdb(1, 1)
 
 
-def test_save(r):
+def test_save(r: redis.Redis):
     assert r.save()
 
 
-def test_bgsave(r):
+def test_bgsave(r: redis.Redis):
     assert r.bgsave()
     with pytest.raises(ResponseError):
         r.execute_command('BGSAVE', 'SCHEDULE', 'FOO')
@@ -36,12 +37,12 @@ def test_bgsave(r):
         r.execute_command('BGSAVE', 'FOO')
 
 
-def test_lastsave(r):
+def test_lastsave(r: redis.Redis):
     assert isinstance(r.lastsave(), datetime)
 
 
 @pytest.mark.slow
-def test_bgsave_timestamp_update(r):
+def test_bgsave_timestamp_update(r: redis.Redis):
     early_timestamp = r.lastsave()
     sleep(1)
     assert r.bgsave()
@@ -51,7 +52,7 @@ def test_bgsave_timestamp_update(r):
 
 
 @pytest.mark.slow
-def test_save_timestamp_update(r):
+def test_save_timestamp_update(r: redis.Redis):
     early_timestamp = r.lastsave()
     sleep(1)
     assert r.save()
@@ -59,14 +60,14 @@ def test_save_timestamp_update(r):
     assert early_timestamp < late_timestamp
 
 
-def test_dbsize(r):
+def test_dbsize(r: redis.Redis):
     assert r.dbsize() == 0
     r.set('foo', 'bar')
     r.set('bar', 'foo')
     assert r.dbsize() == 2
 
 
-def test_flushdb(r):
+def test_flushdb(r: redis.Redis):
     r.set('foo', 'bar')
     assert r.keys() == [b'foo']
     assert r.flushdb() is True

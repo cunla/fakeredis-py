@@ -11,7 +11,7 @@ from .. import testtools
 from ..testtools import raw_command
 
 
-def test_ping_pubsub(r):
+def test_ping_pubsub(r: redis.Redis):
     p = r.pubsub()
     p.subscribe('channel')
     p.parse_response()  # Consume the subscribe command reply
@@ -22,7 +22,7 @@ def test_ping_pubsub(r):
 
 
 @pytest.mark.slow
-def test_pubsub_subscribe(r):
+def test_pubsub_subscribe(r: redis.Redis):
     pubsub = r.pubsub()
     pubsub.subscribe("channel")
     sleep(1)
@@ -41,7 +41,7 @@ def test_pubsub_subscribe(r):
 
 
 @pytest.mark.slow
-def test_pubsub_psubscribe(r):
+def test_pubsub_psubscribe(r: redis.Redis):
     pubsub = r.pubsub()
     pubsub.psubscribe("channel.*")
     sleep(1)
@@ -55,7 +55,7 @@ def test_pubsub_psubscribe(r):
 
 
 @pytest.mark.slow
-def test_pubsub_unsubscribe(r):
+def test_pubsub_unsubscribe(r: redis.Redis):
     pubsub = r.pubsub()
     pubsub.subscribe('channel-1', 'channel-2', 'channel-3')
     sleep(1)
@@ -84,7 +84,7 @@ def test_pubsub_unsubscribe(r):
 
 
 @pytest.mark.slow
-def test_pubsub_punsubscribe(r):
+def test_pubsub_punsubscribe(r: redis.Redis):
     pubsub = r.pubsub()
     pubsub.psubscribe('channel-1.*', 'channel-2.*', 'channel-3.*')
     sleep(1)
@@ -112,7 +112,7 @@ def test_pubsub_punsubscribe(r):
 
 
 @pytest.mark.slow
-def test_pubsub_listen(r):
+def test_pubsub_listen(r: redis.Redis):
     def _listen(pubsub, q):
         count = 0
         for message in pubsub.listen():
@@ -162,7 +162,7 @@ def test_pubsub_listen(r):
 
 
 @pytest.mark.slow
-def test_pubsub_listen_handler(r):
+def test_pubsub_listen_handler(r: redis.Redis):
     def _handler(message):
         calls.append(message)
 
@@ -193,7 +193,7 @@ def test_pubsub_listen_handler(r):
 
 
 @pytest.mark.slow
-def test_pubsub_ignore_sub_messages_listen(r):
+def test_pubsub_ignore_sub_messages_listen(r: redis.Redis):
     def _listen(pubsub, q):
         count = 0
         for message in pubsub.listen():
@@ -235,7 +235,7 @@ def test_pubsub_ignore_sub_messages_listen(r):
 
 
 @pytest.mark.slow
-def test_pubsub_binary(r):
+def test_pubsub_binary(r: redis.Redis):
     def _listen(pubsub, q):
         for message in pubsub.listen():
             q.put(message)
@@ -257,7 +257,7 @@ def test_pubsub_binary(r):
 
 
 @pytest.mark.slow
-def test_pubsub_run_in_thread(r):
+def test_pubsub_run_in_thread(r: redis.Redis):
     q = Queue()
 
     pubsub = r.pubsub()
@@ -334,26 +334,26 @@ def test_socket_cleanup_pubsub(fake_server):
     r2.publish('test', 'foo')
 
 
-def test_pubsub_channels(r):
+def test_pubsub_channels(r: redis.Redis):
     p = r.pubsub()
     p.subscribe("foo", "bar", "baz", "test")
     expected = {b"foo", b"bar", b"baz", b"test"}
     assert set(r.pubsub_channels()) == expected
 
 
-def test_pubsub_channels_pattern(r):
+def test_pubsub_channels_pattern(r: redis.Redis):
     p = r.pubsub()
     p.subscribe("foo", "bar", "baz", "test")
     assert set(r.pubsub_channels("b*")) == {b"bar", b"baz", }
 
 
-def test_pubsub_no_subcommands(r):
+def test_pubsub_no_subcommands(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         raw_command(r, "PUBSUB")
 
 
 @pytest.mark.min_server('7')
-def test_pubsub_help_redis7(r):
+def test_pubsub_help_redis7(r: redis.Redis):
     assert raw_command(r, "PUBSUB HELP") == [
         b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
         b'CHANNELS [<pattern>]',
@@ -376,7 +376,7 @@ def test_pubsub_help_redis7(r):
 
 
 @pytest.mark.max_server('6.2.7')
-def test_pubsub_help_redis6(r):
+def test_pubsub_help_redis6(r: redis.Redis):
     assert raw_command(r, "PUBSUB HELP") == [
         b'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
         b'CHANNELS [<pattern>]',
@@ -392,7 +392,7 @@ def test_pubsub_help_redis6(r):
     ]
 
 
-def test_pubsub_numsub(r):
+def test_pubsub_numsub(r: redis.Redis):
     a = uuid.uuid4().hex
     b = uuid.uuid4().hex
     c = uuid.uuid4().hex

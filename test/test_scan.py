@@ -106,7 +106,7 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
     assert len(keys) >= size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
 
 
-def test_scan(r):
+def test_scan(r: redis.Redis):
     # Set up the data
     for ix in range(20):
         k = 'scan-test:%s' % ix
@@ -140,12 +140,12 @@ def test_scan(r):
     assert len(set(results)) == 2
 
 
-def test_scan_single(r):
+def test_scan_single(r: redis.Redis):
     r.set('foo1', 'bar1')
     assert r.scan(match="foo*") == (0, [b'foo1'])
 
 
-def test_scan_iter_single_page(r):
+def test_scan_iter_single_page(r: redis.Redis):
     r.set('foo1', 'bar1')
     r.set('foo2', 'bar2')
     assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
@@ -154,13 +154,13 @@ def test_scan_iter_single_page(r):
     assert set(r.scan_iter(match="foo1", _type="string")) == {b'foo1', }
 
 
-def test_scan_iter_multiple_pages(r):
+def test_scan_iter_multiple_pages(r: redis.Redis):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     assert set(r.scan_iter()) == set(all_keys)
 
 
-def test_scan_iter_multiple_pages_with_match(r):
+def test_scan_iter_multiple_pages_with_match(r: redis.Redis):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     # Now add a few keys that don't match the key:<number> pattern.
@@ -170,13 +170,13 @@ def test_scan_iter_multiple_pages_with_match(r):
     assert actual == set(all_keys)
 
 
-def test_scan_multiple_pages_with_count_arg(r):
+def test_scan_multiple_pages_with_count_arg(r: redis.Redis):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     assert set(r.scan_iter(count=1000)) == set(all_keys)
 
 
-def test_scan_all_in_single_call(r):
+def test_scan_all_in_single_call(r: redis.Redis):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     # Specify way more than the 100 keys we've added.
@@ -186,7 +186,7 @@ def test_scan_all_in_single_call(r):
 
 
 @pytest.mark.slow
-def test_scan_expired_key(r):
+def test_scan_expired_key(r: redis.Redis):
     r.set('expiringkey', 'value')
     r.pexpire('expiringkey', 1)
     sleep(1)

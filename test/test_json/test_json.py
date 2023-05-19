@@ -38,7 +38,7 @@ def test_jsonget(r: redis.Redis):
     assert r.json().get("foo", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
 
 
-def test_json_setgetdeleteforget(r: redis.Redis) -> None:
+def test_json_setgetdeleteforget(r: redis.Redis):
     data = {'x': "bar"}
     assert r.json().set("foo", Path.root_path(), data) == 1
     assert r.json().get("foo") == data
@@ -48,7 +48,7 @@ def test_json_setgetdeleteforget(r: redis.Redis) -> None:
     assert r.exists("foo") == 0
 
 
-def test_json_delete_with_dollar(r: redis.Redis) -> None:
+def test_json_delete_with_dollar(r: redis.Redis):
     doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
     assert r.json().set("doc1", Path.root_path(), doc1)
     assert r.json().delete("doc1", "$..a") == 2
@@ -98,7 +98,7 @@ def test_json_et_non_dict_value(r: redis.Redis):
     assert r.json().get('bool') is False
 
 
-def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis) -> None:
+def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
     obj = {"foo": "bar"}
     assert r.json().set("obj", Path.root_path(), obj)
 
@@ -154,7 +154,7 @@ def test_jsonmget(r: redis.Redis):
     assert r.json().mget(["missing_doc1", "missing_doc2"], "$..a") == [None, None]
 
 
-def test_jsonmget_should_succeed(r: redis.Redis) -> None:
+def test_jsonmget_should_succeed(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1)
     r.json().set("2", Path.root_path(), 2)
 
@@ -163,14 +163,14 @@ def test_jsonmget_should_succeed(r: redis.Redis) -> None:
     assert r.json().mget([1, 2], Path.root_path()) == [1, 2]
 
 
-def test_jsonclear(r: redis.Redis) -> None:
+def test_jsonclear(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4], )
 
     assert 1 == r.json().clear("arr", Path.root_path(), )
     assert [] == r.json().get("arr")
 
 
-def test_jsonclear_dollar(r: redis.Redis) -> None:
+def test_jsonclear_dollar(r: redis.Redis):
     data = {
         "nested1": {"a": {"foo": 10, "bar": 20}},
         "a": ["foo"],
@@ -202,7 +202,7 @@ def test_jsonclear_dollar(r: redis.Redis) -> None:
     assert r.json().get("doc1", "$") == [{}]
 
 
-def test_jsonclear_no_doc(r: redis.Redis) -> None:
+def test_jsonclear_no_doc(r: redis.Redis):
     # Test missing key
     with pytest.raises(redis.ResponseError):
         r.json().clear("non_existing_doc", "$..a")
@@ -241,7 +241,7 @@ def test_jsonstrlen(r: redis.Redis):
         r.json().strlen("non_existing_doc", "$..a")
 
 
-def test_toggle(r: redis.Redis) -> None:
+def test_toggle(r: redis.Redis):
     r.json().set("bool", Path.root_path(), False)
     assert r.json().toggle("bool", Path.root_path())
     assert r.json().toggle("bool", Path.root_path()) is False
@@ -252,7 +252,7 @@ def test_toggle(r: redis.Redis) -> None:
         r.json().toggle("num", Path.root_path())
 
 
-def test_toggle_dollar(r: redis.Redis) -> None:
+def test_toggle_dollar(r: redis.Redis):
     data = {
         "a": ["foo"],
         "nested1": {"a": False},
@@ -271,7 +271,7 @@ def test_toggle_dollar(r: redis.Redis) -> None:
         r.json().toggle("non_existing_doc", "$..a")
 
 
-def test_json_commands_in_pipeline(r: redis.Redis) -> None:
+def test_json_commands_in_pipeline(r: redis.Redis):
     p = r.json().pipeline()
     p.set("foo", Path.root_path(), "bar")
     p.get("foo")
@@ -297,7 +297,7 @@ def test_json_commands_in_pipeline(r: redis.Redis) -> None:
     assert r.get("foo") is None
 
 
-def test_strappend(r: redis.Redis) -> None:
+def test_strappend(r: redis.Redis):
     # Test single
     r.json().set("json-key", Path.root_path(), "foo")
     assert r.json().strappend("json-key", "bar") == 6
@@ -340,7 +340,7 @@ def test_decode_response_disabaled_null(r: redis.Redis):
     assert r.json().get("abc") is None
 
 
-def test_json_get_jset(r: redis.Redis) -> None:
+def test_json_get_jset(r: redis.Redis):
     assert r.json().set("foo", Path.root_path(), "bar", ) == 1
     assert "bar" == r.json().get("foo")
     assert r.json().get("baz") is None
@@ -348,14 +348,14 @@ def test_json_get_jset(r: redis.Redis) -> None:
     assert r.exists("foo") == 0
 
 
-def test_nonascii_setgetdelete(r: redis.Redis) -> None:
+def test_nonascii_setgetdelete(r: redis.Redis):
     assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève", )
     assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True, )
     assert 1 == r.json().delete("not-ascii")
     assert r.exists("not-ascii") == 0
 
 
-def test_json_setbinarykey(r: redis.Redis) -> None:
+def test_json_setbinarykey(r: redis.Redis):
     data = {"hello": "world", b"some": "value"}
 
     with pytest.raises(TypeError):
@@ -364,7 +364,7 @@ def test_json_setbinarykey(r: redis.Redis) -> None:
     assert r.json().set("some-key", Path.root_path(), data, decode_keys=True)
 
 
-def test_set_file(r: redis.Redis) -> None:
+def test_set_file(r: redis.Redis):
     # Standard Library Imports
     import json
     import tempfile
@@ -400,7 +400,7 @@ def test_set_path(r: redis.Redis):
     assert r.json().get(jsonfile.name.rsplit(".")[0]) == {"hello": "world"}
 
 
-def test_type(r: redis.Redis) -> None:
+def test_type(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1, )
 
     assert r.json().type("1", Path.root_path(), ) == b"integer"
@@ -421,7 +421,7 @@ def test_type(r: redis.Redis) -> None:
     assert r.json().type("non_existing_doc", "..a") is None
 
 
-def test_objlen(r: redis.Redis) -> None:
+def test_objlen(r: redis.Redis):
     # Test missing key, and path
     with pytest.raises(redis.ResponseError):
         r.json().objlen("non_existing_doc", "$..a")
@@ -501,7 +501,7 @@ def test_objkeys(r: redis.Redis):
     assert r.json().objkeys("doc1", "$..nowhere") == []
 
 
-def test_numincrby(r: redis.Redis) -> None:
+def test_numincrby(r: redis.Redis):
     r.json().set("num", Path.root_path(), 1)
 
     assert 2 == r.json().numincrby("num", Path.root_path(), 1)
@@ -520,7 +520,7 @@ def test_numincrby(r: redis.Redis) -> None:
     assert r.json().numincrby("doc1", "$.b[1].a", 3.5) == [15.0]
 
 
-def test_nummultby(r: redis.Redis) -> None:
+def test_nummultby(r: redis.Redis):
     r.json().set("num", Path.root_path(), 1)
 
     with pytest.deprecated_call():

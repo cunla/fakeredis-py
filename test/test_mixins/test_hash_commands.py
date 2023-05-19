@@ -2,40 +2,38 @@ import pytest
 import redis
 import redis.client
 
-from test.testtools import key_val_dict
-
 
 # Tests for the hash type.
 
-def test_hstrlen_missing(r):
+def test_hstrlen_missing(r: redis.Redis):
     assert r.hstrlen('foo', 'doesnotexist') == 0
 
     r.hset('foo', 'key', 'value')
     assert r.hstrlen('foo', 'doesnotexist') == 0
 
 
-def test_hstrlen(r):
+def test_hstrlen(r: redis.Redis):
     r.hset('foo', 'key', 'value')
     assert r.hstrlen('foo', 'key') == 5
 
 
-def test_hset_then_hget(r):
+def test_hset_then_hget(r: redis.Redis):
     assert r.hset('foo', 'key', 'value') == 1
     assert r.hget('foo', 'key') == b'value'
 
 
-def test_hset_update(r):
+def test_hset_update(r: redis.Redis):
     assert r.hset('foo', 'key', 'value') == 1
     assert r.hset('foo', 'key', 'value') == 0
 
 
-def test_hset_wrong_type(r):
+def test_hset_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hset('foo', 'key', 'value')
 
 
-def test_hgetall(r):
+def test_hgetall(r: redis.Redis):
     assert r.hset('foo', 'k1', 'v1') == 1
     assert r.hset('foo', 'k2', 'v2') == 1
     assert r.hset('foo', 'k3', 'v3') == 1
@@ -46,68 +44,68 @@ def test_hgetall(r):
     }
 
 
-def test_hgetall_empty_key(r):
+def test_hgetall_empty_key(r: redis.Redis):
     assert r.hgetall('foo') == {}
 
 
-def test_hgetall_wrong_type(r):
+def test_hgetall_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hgetall('foo')
 
 
-def test_hexists(r):
+def test_hexists(r: redis.Redis):
     r.hset('foo', 'bar', 'v1')
     assert r.hexists('foo', 'bar') == 1
     assert r.hexists('foo', 'baz') == 0
     assert r.hexists('bar', 'bar') == 0
 
 
-def test_hexists_wrong_type(r):
+def test_hexists_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hexists('foo', 'key')
 
 
-def test_hkeys(r):
+def test_hkeys(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     r.hset('foo', 'k2', 'v2')
     assert set(r.hkeys('foo')) == {b'k1', b'k2'}
     assert set(r.hkeys('bar')) == set()
 
 
-def test_hkeys_wrong_type(r):
+def test_hkeys_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hkeys('foo')
 
 
-def test_hlen(r):
+def test_hlen(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     r.hset('foo', 'k2', 'v2')
     assert r.hlen('foo') == 2
 
 
-def test_hlen_wrong_type(r):
+def test_hlen_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hlen('foo')
 
 
-def test_hvals(r):
+def test_hvals(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     r.hset('foo', 'k2', 'v2')
     assert set(r.hvals('foo')) == {b'v1', b'v2'}
     assert set(r.hvals('bar')) == set()
 
 
-def test_hvals_wrong_type(r):
+def test_hvals_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hvals('foo')
 
 
-def test_hmget(r):
+def test_hmget(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     r.hset('foo', 'k2', 'v2')
     r.hset('foo', 'k3', 'v3')
@@ -122,13 +120,13 @@ def test_hmget(r):
     assert r.hmget('foo', 'k1', 'k500') == [b'v1', None]
 
 
-def test_hmget_wrong_type(r):
+def test_hmget_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hmget('foo', 'key1', 'key2')
 
 
-def test_hdel(r):
+def test_hdel(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     r.hset('foo', 'k2', 'v2')
     r.hset('foo', 'k3', 'v3')
@@ -143,114 +141,114 @@ def test_hdel(r):
     assert r.hdel('foo', 'k2', 'k3') == 0
 
 
-def test_hdel_wrong_type(r):
+def test_hdel_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hdel('foo', 'key')
 
 
-def test_hincrby(r):
+def test_hincrby(r: redis.Redis):
     r.hset('foo', 'counter', 0)
     assert r.hincrby('foo', 'counter') == 1
     assert r.hincrby('foo', 'counter') == 2
     assert r.hincrby('foo', 'counter') == 3
 
 
-def test_hincrby_with_no_starting_value(r):
+def test_hincrby_with_no_starting_value(r: redis.Redis):
     assert r.hincrby('foo', 'counter') == 1
     assert r.hincrby('foo', 'counter') == 2
     assert r.hincrby('foo', 'counter') == 3
 
 
-def test_hincrby_with_range_param(r):
+def test_hincrby_with_range_param(r: redis.Redis):
     assert r.hincrby('foo', 'counter', 2) == 2
     assert r.hincrby('foo', 'counter', 2) == 4
     assert r.hincrby('foo', 'counter', 2) == 6
 
 
-def test_hincrby_wrong_type(r):
+def test_hincrby_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hincrby('foo', 'key', 2)
 
 
-def test_hincrbyfloat(r):
+def test_hincrbyfloat(r: redis.Redis):
     r.hset('foo', 'counter', 0.0)
     assert r.hincrbyfloat('foo', 'counter') == 1.0
     assert r.hincrbyfloat('foo', 'counter') == 2.0
     assert r.hincrbyfloat('foo', 'counter') == 3.0
 
 
-def test_hincrbyfloat_with_no_starting_value(r):
+def test_hincrbyfloat_with_no_starting_value(r: redis.Redis):
     assert r.hincrbyfloat('foo', 'counter') == 1.0
     assert r.hincrbyfloat('foo', 'counter') == 2.0
     assert r.hincrbyfloat('foo', 'counter') == 3.0
 
 
-def test_hincrbyfloat_with_range_param(r):
+def test_hincrbyfloat_with_range_param(r: redis.Redis):
     assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.1)
     assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.2)
     assert r.hincrbyfloat('foo', 'counter', 0.1) == pytest.approx(0.3)
 
 
-def test_hincrbyfloat_on_non_float_value_raises_error(r):
+def test_hincrbyfloat_on_non_float_value_raises_error(r: redis.Redis):
     r.hset('foo', 'counter', 'cat')
     with pytest.raises(redis.ResponseError):
         r.hincrbyfloat('foo', 'counter')
 
 
-def test_hincrbyfloat_with_non_float_amount_raises_error(r):
+def test_hincrbyfloat_with_non_float_amount_raises_error(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         r.hincrbyfloat('foo', 'counter', 'cat')
 
 
-def test_hincrbyfloat_wrong_type(r):
+def test_hincrbyfloat_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hincrbyfloat('foo', 'key', 0.1)
 
 
-def test_hincrbyfloat_precision(r):
+def test_hincrbyfloat_precision(r: redis.Redis):
     x = 1.23456789123456789
     assert r.hincrbyfloat('foo', 'bar', x) == x
     assert float(r.hget('foo', 'bar')) == x
 
 
-def test_hsetnx(r):
+def test_hsetnx(r: redis.Redis):
     assert r.hsetnx('foo', 'newkey', 'v1') == 1
     assert r.hsetnx('foo', 'newkey', 'v1') == 0
     assert r.hget('foo', 'newkey') == b'v1'
 
 
-def test_hmset_empty_raises_error(r):
+def test_hmset_empty_raises_error(r: redis.Redis):
     with pytest.raises(redis.DataError):
         r.hmset('foo', {})
 
 
-def test_hmset(r):
+def test_hmset(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     assert r.hmset('foo', {'k2': 'v2', 'k3': 'v3'}) is True
 
 
-def test_hmset_wrong_type(r):
+def test_hmset_wrong_type(r: redis.Redis):
     r.zadd('foo', {'bar': 1})
     with pytest.raises(redis.ResponseError):
         r.hmset('foo', {'key': 'value'})
 
 
-def test_empty_hash(r):
+def test_empty_hash(r: redis.Redis):
     r.hset('foo', 'bar', 'baz')
     r.hdel('foo', 'bar')
     assert not r.exists('foo')
 
 
-def test_hset_removing_last_field_delete_key(r):
+def test_hset_removing_last_field_delete_key(r: redis.Redis):
     r.hset(b'3L', b'f1', b'v1')
     r.hdel(b'3L', b'f1')
     assert r.keys('*') == []
 
 
-def test_hscan(r):
+def test_hscan(r: redis.Redis):
     # Set up the data
     name = 'hscan-test'
     for ix in range(20):
@@ -291,4 +289,3 @@ def test_hscan(r):
     assert b'key:7' in results
     assert b'key:17' in results
     assert len(results) == 2
-

@@ -12,7 +12,7 @@ def key_val_dict(size=100):
             for i in range(size)}
 
 
-def raw_command(r, *args):
+def raw_command(r: redis.Redis, *args):
     """Like execute_command, but does not do command-specific response parsing"""
     response_callbacks = r.response_callbacks
     try:
