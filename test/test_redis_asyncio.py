@@ -245,6 +245,21 @@ async def test_disconnect_server(req_aioredis2, fake_server):
     fake_server.connected = True
 
 
+async def test_xdel(req_aioredis2: redis.asyncio.Redis):
+    stream = "stream"
+
+    # deleting from an empty stream doesn't do anything
+    assert await req_aioredis2.xdel(stream, 1) == 0
+
+    m1 = await req_aioredis2.xadd(stream, {"foo": "bar"})
+    m2 = await req_aioredis2.xadd(stream, {"foo": "bar"})
+    m3 = await req_aioredis2.xadd(stream, {"foo": "bar"})
+
+    # xdel returns the number of deleted elements
+    assert await req_aioredis2.xdel(stream, m1) == 1
+    assert await req_aioredis2.xdel(stream, m2, m3) == 2
+
+
 @pytest.mark.fake
 async def test_from_url():
     r0 = aioredis.FakeRedis.from_url('redis://localhost?db=0')

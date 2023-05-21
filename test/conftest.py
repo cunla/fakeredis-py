@@ -66,6 +66,7 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     server_version = request.getfixturevalue('real_redis_version')
     if not cls_name.startswith('Fake') and not server_version:
         pytest.skip('Redis is not running')
+    server_version = server_version or '6'
     min_server = _marker_version_value(request, 'min_server')
     max_server = _marker_version_value(request, 'max_server')
     if Version(server_version) < min_server:
