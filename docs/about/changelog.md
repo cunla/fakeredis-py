@@ -6,7 +6,7 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.12.2
+## v2.13.0
 
 ### 🧰 Bug Fixes
 
