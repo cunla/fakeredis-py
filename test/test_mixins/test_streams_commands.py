@@ -3,6 +3,7 @@ import time
 import pytest
 import redis
 
+from fakeredis import _msgs as msgs
 from fakeredis._stream import XStream
 from test import testtools
 
@@ -41,6 +42,12 @@ def test_xstream(r: redis.Redis):
 
     lst = stream.irange((0, 2), (3, 0))
     assert len(lst) == 4
+
+    stream = XStream()
+    assert stream.delete(['1']) == 0
+    id_str = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
+    assert stream.delete([id_str, ]) == 1
+    assert len(stream) == 0
 
 
 @pytest.mark.max_server('6.3')
@@ -261,3 +268,23 @@ def test_xread_bad_commands(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as ex2:
         testtools.raw_command(r, 'xread', 'streams', 'foo', )
     print(ex2)
+
+
+def test_xdel(r: redis.Redis):
+    stream = "stream"
+
+    # deleting from an empty stream doesn't do anything
+    assert r.xdel(stream, 1) == 0
+
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    m3 = r.xadd(stream, {"foo": "bar"})
+
+    # xdel returns the number of deleted elements
+    assert r.xdel(stream, m1) == 1
+    assert r.xdel(stream, m2, m3) == 2
+
+    with pytest.raises(redis.ResponseError) as ex:
+        testtools.raw_command(r, 'XDEL', stream)
+    assert ex.value.args[0] == msgs.WRONG_ARGS_MSG6.format('xdel')[4:]
+    assert r.xdel('non-existing-key', '1-1') == 0

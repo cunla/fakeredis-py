@@ -42,6 +42,20 @@ class XStream:
         # ]
         self._values = list()
 
+    def delete(self, lst: List[str]) -> int:
+        """Delete items from stream
+
+        :param lst: list of IDs to delete, in the form of timestamp-sequence.
+        :returns: Number of items deleted
+        """
+        res = 0
+        for item in lst:
+            ind, found = self.find_index(item)
+            if found:
+                del self._values[ind]
+                res += 1
+        return res
+
     def add(self, fields: List, id_str: str = '*') -> Union[None, bytes]:
         assert len(fields) % 2 == 0
         if isinstance(id_str, bytes):
@@ -84,6 +98,8 @@ class XStream:
         return gen()
 
     def find_index(self, id_str: str) -> Tuple[int, bool]:
+        if len(self._values) == 0:
+            return 0, False
         ts_seq = StreamRangeTest.parse_id(id_str)
         ind = bisect.bisect_left(list(map(lambda x: x[0], self._values)), ts_seq)
         return ind, self._values[ind][0] == ts_seq

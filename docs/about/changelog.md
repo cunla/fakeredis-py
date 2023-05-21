@@ -11,6 +11,7 @@ description: Change log of all fakeredis releases
 ### 🧰 Bug Fixes
 
 - Fixed xadd timestamp (fixes #151) (#152)
+- Implement XDEL #153
 
 ### 🧰 Maintenance
 

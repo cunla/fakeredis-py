@@ -110,3 +110,12 @@ class StreamsCommandsMixin:
             return self._xread(stream_start_id_list, count, False)
         else:
             return self._blocking(timeout, functools.partial(self._xread, stream_start_id_list, count))
+
+    @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,), )
+    def xdel(self, key, *args):
+        if len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
+        if key.value is None:
+            return 0
+        res = key.value.delete(args)
+        return res
