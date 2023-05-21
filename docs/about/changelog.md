@@ -15,6 +15,7 @@ description: Change log of all fakeredis releases
 ### 🧰 Maintenance
 
 - Improve test code
+- Fix reported security issue
 
 ## v2.12.1
 
