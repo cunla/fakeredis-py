@@ -6,6 +6,16 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.12.2
+
+### 🧰 Bug Fixes
+
+- Fixed xadd timestamp (fixes #151) (#152)
+
+### 🧰 Maintenance
+
+- Improve test code
+
 ## v2.12.1
 
 ### 🧰 Bug Fixes
