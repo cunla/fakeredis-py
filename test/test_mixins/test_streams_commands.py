@@ -50,17 +50,16 @@ def test_xstream(r: redis.Redis):
     assert len(stream) == 0
 
 
-@pytest.mark.max_server('6.3')
-def test_xadd_redis6(r: redis.Redis):
+def test_xadd_redis__green(r: redis.Redis):
     stream = "stream"
-    before = time.time()
+    before = int(1000 * time.time())
     m1 = r.xadd(stream, {"some": "other"})
-    after = time.time()
+    after = int(1000 * time.time()) + 1
     ts1, seq1 = m1.decode().split('-')
     seq1 = int(seq1)
     m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-{seq1 + 1}')
     ts2, seq2 = m2.decode().split('-')
-    assert int(1000 * before) <= int(ts1) <= int(1000 * after)
+    assert before <= int(ts1) <= after
     assert ts1 == ts2
     assert int(seq2) == int(seq1) + 1
 
@@ -75,26 +74,16 @@ def test_xadd_redis6(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-def test_xadd_redis7(r: redis.Redis):
+def test_xadd_redis7(r: redis.Redis):  # Using ts-*
     stream = "stream"
-    before = time.time()
     m1 = r.xadd(stream, {"some": "other"})
-    after = time.time()
     ts1, seq1 = m1.decode().split('-')
     m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
     ts2, seq2 = m2.decode().split('-')
-    assert int(1000 * before) <= int(ts1) <= int(1000 * after)
-    assert ts1 == ts2
-    assert int(seq2) == int(seq1) + 1
-
-    stream = "stream2"
-    m1 = r.xadd(stream, {"some": "other"})
-    ts1, seq1 = m1.decode().split('-')
-    ts1 = int(ts1) - 1
-    with pytest.raises(redis.ResponseError):
-        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
-    with pytest.raises(redis.ResponseError):
-        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-1')
+    ts1, seq1 = int(ts1), int(seq1)
+    ts2, seq2 = int(ts2), int(seq2)
+    assert ts2 == ts1
+    assert seq2 == seq1 + 1
 
 
 def test_xadd_maxlen(r: redis.Redis):

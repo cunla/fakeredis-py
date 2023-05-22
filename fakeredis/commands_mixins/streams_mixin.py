@@ -28,7 +28,7 @@ class StreamsCommandsMixin:
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
         if maxlen is not None or minid is not None:
-            stream.trim(maxlen=maxlen, minid=minid, limit=limit)
+            stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
         key.update(stream)
         return id_str
 
@@ -41,9 +41,7 @@ class StreamsCommandsMixin:
         if maxlen is None and minid is None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         stream = key.value or XStream()
-
-        res = stream.trim(maxlen=maxlen, minid=minid, limit=limit)
-
+        res = stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
         key.update(stream)
         return res
 
