@@ -16,7 +16,6 @@ IGNORE_GROUPS = {
     'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting',
     'hyperloglog', 'pubsub', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
     'tdigest',
-    'stream',
 }
 IGNORE_COMMANDS = {
     'PUBSUB HELP',
@@ -66,7 +65,7 @@ def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], 
 
 
 class GithubData:
-    def __init__(self, dry=True):
+    def __init__(self, dry=False):
         token = os.getenv('GITHUB_TOKEN', None)
         g = Github(token)
         self.dry = dry or (token is None)
@@ -87,10 +86,9 @@ class GithubData:
         link = f"https://redis.io/commands/{cmd.replace(' ', '-')}/"
         title = f"Implement support for `{cmd.upper()}` ({group} command)"
         filename = f'{group}_mixin.py'
-        body = f"""
-Implement support for command `{cmd.upper()}` in {filename}.
+        body = f"""Implement support for command `{cmd.upper()}` in {filename}.
         
-{summary}. 
+{summary}.
         
 Here is the [Official documentation]({link})"""
         labels = [f'{group}-commands', 'enhancement', 'help wanted']
