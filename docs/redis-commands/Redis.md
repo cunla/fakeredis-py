@@ -1477,6 +1477,10 @@ Stores the union of multiple sets in a key.
 
 Appends a new message to a stream. Creates the key if it doesn't exist.
 
+### [XDEL](https://redis.io/commands/xdel/)
+
+Returns the number of messages after removing them from a stream.
+
 ### [XLEN](https://redis.io/commands/xlen/)
 
 Return the number of messages in a stream.
@@ -1512,10 +1516,6 @@ Changes, or acquires, ownership of messages in a consumer group, as if the messa
 #### [XCLAIM](https://redis.io/commands/xclaim/) <small>(not implemented)</small>
 
 Changes, or acquires, ownership of a message in a consumer group, as if the message was delivered a consumer group member.
-
-#### [XDEL](https://redis.io/commands/xdel/) <small>(not implemented)</small>
-
-Returns the number of messages after removing them from a stream.
 
 #### [XGROUP](https://redis.io/commands/xgroup/) <small>(not implemented)</small>
 
