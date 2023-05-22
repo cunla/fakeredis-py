@@ -38,6 +38,9 @@ pytestmark.extend([
 )
 async def _req_aioredis2(request) -> redis.asyncio.Redis:
     server_version = request.getfixturevalue('real_redis_version')
+    if request.param != 'fake' and not server_version:
+        pytest.skip('Redis is not running')
+    server_version = server_version or '6'
     min_server_marker = _marker_version_value(request, 'min_server')
     max_server_marker = _marker_version_value(request, 'max_server')
     if Version(server_version) < min_server_marker:
@@ -48,8 +51,6 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
         fake_server = request.getfixturevalue('fake_server')
         ret = aioredis.FakeRedis(server=fake_server)
     else:
-        if not server_version:
-            pytest.skip('Redis is not running')
         ret = redis.asyncio.Redis()
         fake_server = None
     if not fake_server or fake_server.connected:
