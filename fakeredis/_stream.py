@@ -52,7 +52,7 @@ class XStream:
     """
 
     def __init__(self):
-        self._values = list()
+        self._values: List[StreamEntry] = list()
 
     def delete(self, lst: List[str]) -> int:
         """Delete items from stream
@@ -93,8 +93,8 @@ class XStream:
         if id_str is None or id_str == '*':
             ts, seq = int(1000 * time.time()), 0
             if (len(self._values) > 0
-                    and self._values[-1][0].ts == ts
-                    and self._values[-1][0].seq >= seq):
+                    and self._values[-1].key.ts == ts
+                    and self._values[-1].key.seq >= seq):
                 seq = self._values[-1][0].seq + 1
             ts_seq = StreamEntryKey(ts, seq)
         elif id_str[-1] == '*':  # id_str has `timestamp-*` structure
@@ -102,8 +102,8 @@ class XStream:
             if len(split) != 2:
                 return None
             ts, seq = int(split[0]), split[1]
-            if len(self._values) > 0 and ts == self._values[-1][0].ts:
-                seq = self._values[-1][0].seq + 1
+            if len(self._values) > 0 and ts == self._values[-1].key.ts:
+                seq = self._values[-1].key.seq + 1
             else:
                 seq = 0
             ts_seq = StreamEntryKey(ts, seq)
@@ -126,10 +126,16 @@ class XStream:
 
         return gen()
 
-    def find_index(self, id_str: str) -> Tuple[int, bool]:
+    def find_index(self, entry_key_str: str) -> Tuple[int, bool]:
+        """Find the closest index to entry_key_str in the stream
+        :param entry_key_str: key for the entry, formatted as 'timestamp-sequence'.
+        :returns: A tuple of
+            ( index of entry with the closest (from the left) key to entry_key_str,
+              Whether the entry key is equal )
+        """
         if len(self._values) == 0:
             return 0, False
-        ts_seq = StreamRangeTest.parse_id(id_str)
+        ts_seq = StreamRangeTest.parse_id(entry_key_str)
         ind = bisect.bisect_left(list(map(lambda x: x.key, self._values)), ts_seq)
         return ind, self._values[ind].key == ts_seq
 
@@ -172,7 +178,8 @@ class XStream:
                start, stop,
                exclusive: Tuple[bool, bool] = (True, True),
                reverse=False):
-        """Returns a range of the stream from start to stop
+        """Returns a range of the stream from start to stop.
+
         :param start: start key
         :param stop: stop key
         :param exclusive: whether start/stop should be excluded
