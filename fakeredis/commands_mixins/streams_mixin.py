@@ -20,11 +20,11 @@ class StreamsCommandsMixin:
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('XADD'))
         stream = key.value or XStream()
-        if self.version < 7 and id_str != b'*' and StreamRangeTest.parse_id(id_str) == (-1, -1):
+        if self.version < 7 and id_str != b'*' and not StreamRangeTest.valid_key(id_str):
             raise SimpleError(msgs.XADD_INVALID_ID)
         id_str = stream.add(elements, id_str=id_str)
         if id_str is None:
-            if StreamRangeTest.parse_id(left_args[0]) == (-1, -1):
+            if not StreamRangeTest.valid_key(left_args[0]):
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
         if maxlen is not None or minid is not None:
@@ -47,8 +47,6 @@ class StreamsCommandsMixin:
 
     @command(name="XLEN", fixed=(Key(XStream),))
     def xlen(self, key):
-        if key.value is None:
-            return 0
         return len(key.value)
 
     def _xrange(self, key, _min, _max, reverse, count, ):
@@ -113,7 +111,5 @@ class StreamsCommandsMixin:
     def xdel(self, key, *args):
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
-        if key.value is None:
-            return 0
         res = key.value.delete(args)
         return res

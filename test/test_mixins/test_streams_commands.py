@@ -19,7 +19,8 @@ def add_items(r: redis.Redis, stream: str, n: int):
     return id_list
 
 
-def test_xstream(r: redis.Redis):
+@pytest.mark.fake
+def test_xstream():
     stream = XStream()
     stream.add([0, 0, 1, 1, 2, 2, 3, 3], '0-1')
     stream.add([1, 1, 2, 2, 3, 3, 4, 4], '1-2')
@@ -27,7 +28,10 @@ def test_xstream(r: redis.Redis):
     stream.add([3, 3, 4, 4], '2-1')
     stream.add([3, 3, 4, 4], '2-2')
     stream.add([3, 3, 4, 4], '3-1')
-    assert len(stream) == 6
+    assert stream.add([3, 3, 4, 4], '4-*') == b'4-0'
+    assert stream.last_item_key() == b'4-0'
+    assert stream.add([3, 3, 4, 4], '4-*-*') is None
+    assert len(stream) == 7
     i = iter(stream)
     assert next(i) == [b'0-1', [0, 0, 1, 1, 2, 2, 3, 3]]
     assert next(i) == [b'1-2', [1, 1, 2, 2, 3, 3, 4, 4]]
@@ -45,7 +49,8 @@ def test_xstream(r: redis.Redis):
 
     stream = XStream()
     assert stream.delete(['1']) == 0
-    id_str = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
+    id_str: bytes = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
+    assert len(stream) == 1
     assert stream.delete([id_str, ]) == 1
     assert len(stream) == 0
 
@@ -56,10 +61,10 @@ def test_xadd_redis__green(r: redis.Redis):
     m1 = r.xadd(stream, {"some": "other"})
     after = int(1000 * time.time()) + 1
     ts1, seq1 = m1.decode().split('-')
+    assert before <= int(ts1) <= after
     seq1 = int(seq1)
     m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-{seq1 + 1}')
     ts2, seq2 = m2.decode().split('-')
-    assert before <= int(ts1) <= after
     assert ts1 == ts2
     assert int(seq2) == int(seq1) + 1
 
@@ -98,6 +103,9 @@ def test_xadd_maxlen(r: redis.Redis):
         testtools.raw_command(
             r, 'xadd', stream,
             'maxlen', '3', 'minid', 'sometestvalue', 'field', 'value')
+    assert r.set('non-a-stream', 1) == 1
+    with pytest.raises(redis.ResponseError):
+        r.xlen('non-a-stream')
 
 
 def test_xadd_minid(r: redis.Redis):
@@ -117,8 +125,7 @@ def test_xtrim(r: redis.Redis):
     assert r.xtrim(stream, 1000) == 0
     add_items(r, stream, 4)
 
-    # trimming an amount large than the number of messages
-    # doesn't do anything
+    # trimming an amount larger than the number of messages doesn't do anything
     assert r.xtrim(stream, 5, approximate=False) == 0
 
     # 1 message is trimmed
@@ -168,12 +175,16 @@ def test_xadd_nomkstream(r: redis.Redis):
     assert r.xlen(stream) == 3
 
 
+def _add_to_stream(r: redis.Redis, stream_name: str, n: int):
+    res = []
+    for _ in range(n):
+        res.append(r.xadd(stream_name, {"foo": "bar"}))
+    return res
+
+
 def test_xrevrange(r: redis.Redis):
     stream = "stream"
-    m1 = r.xadd(stream, {"foo": "bar"})
-    m2 = r.xadd(stream, {"foo": "bar"})
-    m3 = r.xadd(stream, {"foo": "bar"})
-    m4 = r.xadd(stream, {"foo": "bar"})
+    m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
 
     results = r.xrevrange(stream, max=m4)
     assert get_ids(results) == [m4, m3, m2, m1]
@@ -199,10 +210,7 @@ def test_xrange(r: redis.Redis):
     assert results == [(m, {b'field': b'value', b'foo': b'bar'}), ]
 
     stream = "stream"
-    m1 = r.xadd(stream, {"foo": "bar"})
-    m2 = r.xadd(stream, {"foo": "bar"})
-    m3 = r.xadd(stream, {"foo": "bar"})
-    m4 = r.xadd(stream, {"foo": "bar"})
+    m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
 
     results = r.xrange(stream, min=m1)
     assert get_ids(results) == [m1, m2, m3, m4]

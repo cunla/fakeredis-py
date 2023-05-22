@@ -1,12 +1,33 @@
 import bisect
 import time
-from collections import namedtuple
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Tuple, Optional, NamedTuple
 
 from fakeredis._commands import BeforeAny, AfterAny
 
-StreamEntryKey = namedtuple('StreamEntryKey', ['ts', 'seq'])
-StreamEntry = namedtuple('StreamEntry', ['key', 'fields'])
+
+class StreamEntryKey(NamedTuple):
+    ts: int
+    seq: int
+
+    def encode(self) -> bytes:
+        return f'{self.ts}-{self.seq}'.encode()
+
+    @staticmethod
+    def parse_str(entry_key_str: Union[bytes, str]) -> 'StreamEntryKey':
+        if isinstance(entry_key_str, bytes):
+            entry_key_str = entry_key_str.decode()
+        s = entry_key_str.split('-')
+        (timestamp, sequence) = (int(s[0]), 0) if len(s) == 1 else (int(s[0]), int(s[1]))
+        return StreamEntryKey(timestamp, sequence)
+
+
+class StreamEntry(NamedTuple):
+    key: StreamEntryKey
+    fields: List
+
+    def format_record(self):
+        results = list(self.fields)
+        return [self.key.encode(), results]
 
 
 class StreamRangeTest:
@@ -17,14 +38,12 @@ class StreamRangeTest:
         self.exclusive = exclusive
 
     @staticmethod
-    def parse_id(id_str: Union[bytes, str]) -> StreamEntryKey:
-        if isinstance(id_str, bytes):
-            id_str = id_str.decode()
+    def valid_key(entry_key: Union[bytes, str]) -> bool:
         try:
-            timestamp, sequence = (int(x) for x in id_str.split('-'))
+            StreamEntryKey.parse_str(entry_key)
+            return True
         except ValueError:
-            return -1, -1
-        return StreamEntryKey(timestamp, sequence)
+            return False
 
     @classmethod
     def decode(cls, value: bytes, exclusive=False):
@@ -33,8 +52,8 @@ class StreamRangeTest:
         elif value == b'+':
             return cls(AfterAny(), True)
         elif value[:1] == b'(':
-            return cls(cls.parse_id(value[1:]), True)
-        return cls(cls.parse_id(value), exclusive)
+            return cls(StreamEntryKey.parse_str(value[1:]), True)
+        return cls(StreamEntryKey.parse_str(value), exclusive)
 
 
 class XStream:
@@ -54,7 +73,7 @@ class XStream:
     def __init__(self):
         self._values: List[StreamEntry] = list()
 
-    def delete(self, lst: List[str]) -> int:
+    def delete(self, lst: List[Union[str, bytes]]) -> int:
         """Delete items from stream
 
         :param lst: list of IDs to delete, in the form of `timestamp-sequence`.
@@ -108,13 +127,13 @@ class XStream:
                 seq = 0
             ts_seq = StreamEntryKey(ts, seq)
         else:
-            ts_seq = StreamRangeTest.parse_id(id_str)
+            ts_seq = StreamEntryKey.parse_str(id_str)
 
-        if len(self._values) > 0 and self._values[-1][0] > ts_seq:
+        if len(self._values) > 0 and self._values[-1].key > ts_seq:
             return None
         entry = StreamEntry(ts_seq, list(fields))
         self._values.append(entry)
-        return XStream._encode_id(entry)
+        return entry.key.encode()
 
     def __len__(self):
         return len(self._values)
@@ -122,7 +141,7 @@ class XStream:
     def __iter__(self):
         def gen():
             for record in self._values:
-                yield self._format_record(record)
+                yield record.format_record()
 
         return gen()
 
@@ -135,18 +154,9 @@ class XStream:
         """
         if len(self._values) == 0:
             return 0, False
-        ts_seq = StreamRangeTest.parse_id(entry_key_str)
+        ts_seq = StreamEntryKey.parse_str(entry_key_str)
         ind = bisect.bisect_left(list(map(lambda x: x.key, self._values)), ts_seq)
         return ind, self._values[ind].key == ts_seq
-
-    @staticmethod
-    def _encode_id(entry: StreamEntry):
-        return f'{entry.key.ts}-{entry.key.seq}'.encode()
-
-    @staticmethod
-    def _format_record(entry: StreamEntry):
-        results = list(entry.fields)
-        return [XStream._encode_id(entry), results]
 
     def trim(self,
              max_length: Optional[int] = None,
@@ -193,10 +203,10 @@ class XStream:
             result = result or (not exclusive[1] and record.key == stop)  # equal to stop and inclusive
             return result
 
-        matches = map(self._format_record, filter(match, self._values))
+        matches = map(lambda x: x.format_record(), filter(match, self._values))
         if reverse:
             return list(reversed(tuple(matches)))
         return list(matches)
 
-    def last_item_key(self):
-        XStream._encode_id(self._values[-1])
+    def last_item_key(self) -> bytes:
+        return self._values[-1].key.encode()
