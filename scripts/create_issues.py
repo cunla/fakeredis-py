@@ -1,5 +1,9 @@
 """
 Script to create issue for every unsupported command.
+To run this:
+- Install pygithub: pip install pygithub
+- Set environment variable `GITHUB_TOKEN` to a github token with permissions to create issues.
+  - Another option is to create `.env` file with `GITHUB_TOKEN`.
 """
 import os
 
