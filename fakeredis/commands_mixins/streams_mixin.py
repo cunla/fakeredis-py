@@ -15,22 +15,22 @@ class StreamsCommandsMixin:
             args, ('nomkstream', '+limit', '~+maxlen', '~minid'), error_on_unexpected=False)
         if nomkstream and key.value is None:
             return None
-        id_str = left_args[0]
+        entry_key = left_args[0]
         elements = left_args[1:]
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('XADD'))
         stream = key.value or XStream()
-        if self.version < 7 and id_str != b'*' and not StreamRangeTest.valid_key(id_str):
+        if self.version < 7 and entry_key != b'*' and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
-        id_str = stream.add(elements, id_str=id_str)
-        if id_str is None:
+        entry_key = stream.add(elements, entry_key=entry_key)
+        if entry_key is None:
             if not StreamRangeTest.valid_key(left_args[0]):
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
         if maxlen is not None or minid is not None:
             stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
         key.update(stream)
-        return id_str
+        return entry_key
 
     @command(name='XTRIM', fixed=(Key(XStream),), repeat=(bytes,), )
     def xtrim(self, key, *args):
@@ -49,7 +49,8 @@ class StreamsCommandsMixin:
     def xlen(self, key):
         return len(key.value)
 
-    def _xrange(self, key, _min, _max, reverse, count, ):
+    @staticmethod
+    def _xrange(key, _min, _max, reverse, count, ):
         if key.value is None:
             return None
         if count is None:

@@ -87,18 +87,18 @@ class XStream:
                 res += 1
         return res
 
-    def add(self, fields: List, id_str: str = '*') -> Union[None, bytes]:
+    def add(self, fields: List, entry_key: str = '*') -> Union[None, bytes]:
         """Add entry to a stream.
 
-        If the id_str can not be added (because its timestamp is before the last entry, etc.),
+        If the entry_key can not be added (because its timestamp is before the last entry, etc.),
         nothing is added.
 
         :param fields: list of fields to add, must [key1, value1, key2, value2, ... ]
-        :param id_str:
+        :param entry_key:
             key for the entry, formatted as 'timestamp-sequence'
-            If id_str is '*', the timestamp will be calculated as current time and the sequence based
+            If entry_key is '*', the timestamp will be calculated as current time and the sequence based
             on the last entry key of the stream.
-            If id_str is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
+            If entry_key is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
             then the sequence will be calculated accordingly.
         :returns:
             The key of the added entry.
@@ -106,18 +106,18 @@ class XStream:
         :raises AssertionError: if len(fields) is not even.
         """
         assert len(fields) % 2 == 0
-        if isinstance(id_str, bytes):
-            id_str = id_str.decode()
+        if isinstance(entry_key, bytes):
+            entry_key = entry_key.decode()
 
-        if id_str is None or id_str == '*':
+        if entry_key is None or entry_key == '*':
             ts, seq = int(1000 * time.time()), 0
             if (len(self._values) > 0
                     and self._values[-1].key.ts == ts
                     and self._values[-1].key.seq >= seq):
                 seq = self._values[-1][0].seq + 1
             ts_seq = StreamEntryKey(ts, seq)
-        elif id_str[-1] == '*':  # id_str has `timestamp-*` structure
-            split = id_str.split('-')
+        elif entry_key[-1] == '*':  # entry_key has `timestamp-*` structure
+            split = entry_key.split('-')
             if len(split) != 2:
                 return None
             ts, seq = int(split[0]), split[1]
@@ -127,7 +127,7 @@ class XStream:
                 seq = 0
             ts_seq = StreamEntryKey(ts, seq)
         else:
-            ts_seq = StreamEntryKey.parse_str(id_str)
+            ts_seq = StreamEntryKey.parse_str(entry_key)
 
         if len(self._values) > 0 and self._values[-1].key > ts_seq:
             return None

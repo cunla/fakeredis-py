@@ -29,9 +29,3 @@ See [official documentation](https://fakeredis.readthedocs.io/) for list of supp
 fakeredis-py is developed for free.
 
 You can support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
-
-## Security contact information
-
-To report a security vulnerability, please use the
-[Tidelift security contact](https://tidelift.com/security).
-Tidelift will coordinate the fix and disclosure.
