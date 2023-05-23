@@ -49,9 +49,9 @@ def test_xstream():
 
     stream = XStream()
     assert stream.delete(['1']) == 0
-    id_str: bytes = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
+    entry_key: bytes = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
     assert len(stream) == 1
-    assert stream.delete([id_str, ]) == 1
+    assert stream.delete([entry_key, ]) == 1
     assert len(stream) == 0
 
 
