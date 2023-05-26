@@ -6,6 +6,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.14.0
+
+### 🚀 Features
+
+- Implement `HRANDFIELD` #156
+
 ## v2.13.0
 
 ### 🧰 Bug Fixes
