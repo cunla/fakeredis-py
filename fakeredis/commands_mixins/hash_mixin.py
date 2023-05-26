@@ -1,9 +1,10 @@
 import itertools
 import math
+import random
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Key, Hash, Int, Float)
-from fakeredis._helpers import (SimpleError, OK)
+from fakeredis._helpers import (SimpleError, OK, casematch)
 
 
 class HashCommandsMixin:
@@ -98,3 +99,25 @@ class HashCommandsMixin:
     @command((Key(Hash),))
     def hvals(self, key):
         return list(key.value.values())
+
+    @command(name='HRANDFIELD', fixed=(Key(Hash),), repeat=(bytes,))
+    def hrandfield(self, key, *args):
+        if len(args) > 2:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if key.value is None or len(key.value) == 0:
+            return None
+        count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
+        withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
+        if count == 0:
+            return list()
+
+        if count < 0:  # Allow repetitions
+            res = random.choices(sorted(key.value.items()), k=-count)
+        else:  # Unique values from hash
+            res = random.sample(sorted(key.value.items()), count)
+
+        if withvalues:
+            res = [item for t in res for item in t]
+        else:
+            res = [t[0] for t in res]
+        return res

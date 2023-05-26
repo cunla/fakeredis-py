@@ -1276,6 +1276,10 @@ Returns the values of all fields in a hash.
 
 Sets the values of multiple fields.
 
+### [HRANDFIELD](https://redis.io/commands/hrandfield/)
+
+Returns one or more random fields from a hash.
+
 ### [HSCAN](https://redis.io/commands/hscan/)
 
 Iterates over fields and values of a hash.
@@ -1296,13 +1300,6 @@ Returns the length of the value of a field.
 
 Returns all values in a hash.
 
-
-### Unsupported hash commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [HRANDFIELD](https://redis.io/commands/hrandfield/) <small>(not implemented)</small>
-
-Returns one or more random fields from a hash.
 
 
 ## hyperloglog commands

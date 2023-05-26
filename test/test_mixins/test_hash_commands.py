@@ -2,6 +2,8 @@ import pytest
 import redis
 import redis.client
 
+from test import testtools
+
 
 # Tests for the hash type.
 
@@ -289,3 +291,29 @@ def test_hscan(r: redis.Redis):
     assert b'key:7' in results
     assert b'key:17' in results
     assert len(results) == 2
+
+
+def test_hrandfield(r: redis.Redis):
+    assert r.hrandfield("key") is None
+    hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
+    r.hset("key", mapping=hash)
+    assert r.hrandfield("key") is not None
+    assert len(r.hrandfield("key", 0)) == 0
+    res = r.hrandfield("key", 2)
+    assert len(res) == 2
+    assert res[0] in set(hash.keys())
+    assert res[1] in set(hash.keys())
+    # with values
+    res = r.hrandfield("key", 2, True)
+    assert len(res) == 4
+    assert res[0] in set(hash.keys())
+    assert res[1] in {str(x).encode() for x in hash.values()}
+    assert res[2] in set(hash.keys())
+    assert res[3] in {str(x).encode() for x in hash.values()}
+    # without duplications
+    assert len(r.hrandfield("key", 10)) == 5
+    # with duplications
+    assert len(r.hrandfield("key", -10)) == 10
+
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'HRANDFIELD', 'key', 3, 'WITHVALUES', 3)
