@@ -285,3 +285,366 @@ def test_xdel(r: redis.Redis):
         testtools.raw_command(r, 'XDEL', stream)
     assert ex.value.args[0] == msgs.WRONG_ARGS_MSG6.format('xdel')[4:]
     assert r.xdel('non-existing-key', '1-1') == 0
+
+
+@pytest.mark.xfail
+def test_xack(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer = "consumer"
+    # xack on a stream that doesn't exist
+    assert r.xack(stream, group, "0-0") == 0
+
+    m1 = r.xadd(stream, {"one": "one"})
+    m2 = r.xadd(stream, {"two": "two"})
+    m3 = r.xadd(stream, {"three": "three"})
+
+    # xack on a group that doesn't exist
+    assert r.xack(stream, group, m1) == 0
+
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    # xack returns the number of ack'd elements
+    assert r.xack(stream, group, m1) == 1
+    assert r.xack(stream, group, m2, m3) == 2
+
+
+@pytest.mark.xfail
+def test_xautoclaim(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer1 = "consumer1"
+    consumer2 = "consumer2"
+
+    message_id1 = r.xadd(stream, {"john": "wick"})
+    message_id2 = r.xadd(stream, {"johny": "deff"})
+    message = get_stream_message(r, stream, message_id1)
+    r.xgroup_create(stream, group, 0)
+
+    # trying to claim a message that isn't already pending doesn't
+    # do anything
+    response = r.xautoclaim(stream, group, consumer2, min_idle_time=0)
+    assert response == [b"0-0", []]
+
+    # read the group as consumer1 to initially claim the messages
+    r.xreadgroup(group, consumer1, streams={stream: ">"})
+
+    # claim one message as consumer2
+    response = r.xautoclaim(stream, group, consumer2, min_idle_time=0, count=1)
+    assert response[1] == [message]
+
+    # reclaim the messages as consumer1, but use the justid argument
+    # which only returns message ids
+    assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
+        message_id1, message_id2]
+    assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
+
+
+@pytest.mark.xfail
+def test_xclaim_trimmed(r: redis.Redis):
+    # xclaim should not raise an exception if the item is not there
+    stream = "stream"
+    group = "group"
+
+    r.xgroup_create(stream, group, id="$", mkstream=True)
+
+    # add a couple of new items
+    sid1 = r.xadd(stream, {"item": 0})
+    sid2 = r.xadd(stream, {"item": 0})
+
+    # read them from consumer1
+    r.xreadgroup(group, "consumer1", {stream: ">"})
+
+    # add a 3rd and trim the stream down to 2 items
+    r.xadd(stream, {"item": 3}, maxlen=2, approximate=False)
+
+    # xclaim them from consumer2
+    # the item that is still in the stream should be returned
+    item = r.xclaim(stream, group, "consumer2", 0, [sid1, sid2])
+    assert len(item) == 1
+    assert item[0][0] == sid2
+
+
+@pytest.mark.xfail
+def test_xgroup_delconsumer(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer = "consumer"
+    r.xadd(stream, {"foo": "bar"})
+    r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+
+    # a consumer that hasn't yet read any messages doesn't do anything
+    assert r.xgroup_delconsumer(stream, group, consumer) == 0
+
+    # read all messages from the group
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    # deleting the consumer should return 2 pending messages
+    assert r.xgroup_delconsumer(stream, group, consumer) == 2
+
+
+@pytest.mark.xfail
+def test_xgroup_createconsumer(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer = "consumer"
+    r.xadd(stream, {"foo": "bar"})
+    r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    assert r.xgroup_createconsumer(stream, group, consumer) == 1
+
+    # read all messages from the group
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    # deleting the consumer should return 2 pending messages
+    assert r.xgroup_delconsumer(stream, group, consumer) == 2
+
+
+@pytest.mark.xfail
+def test_xgroup_destroy(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    r.xadd(stream, {"foo": "bar"})
+
+    # destroying a nonexistent group returns False
+    assert not r.xgroup_destroy(stream, group)
+
+    r.xgroup_create(stream, group, 0)
+    assert r.xgroup_destroy(stream, group)
+
+
+@pytest.mark.xfail
+def test_xgroup_setid(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    message_id = r.xadd(stream, {"foo": "bar"})
+
+    r.xgroup_create(stream, group, 0)
+    # advance the last_delivered_id to the message_id
+    r.xgroup_setid(stream, group, message_id, entries_read=2)
+    expected = [
+        {
+            "name": group.encode(),
+            "consumers": 0,
+            "pending": 0,
+            "last-delivered-id": message_id,
+            "entries-read": 2,
+            "lag": -1,
+        }
+    ]
+    assert r.xinfo_groups(stream) == expected
+
+
+@pytest.mark.xfail
+def test_xinfo_consumers(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer1 = "consumer1"
+    consumer2 = "consumer2"
+    r.xadd(stream, {"foo": "bar"})
+    r.xadd(stream, {"foo": "bar"})
+    r.xadd(stream, {"foo": "bar"})
+
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer1, streams={stream: ">"}, count=1)
+    r.xreadgroup(group, consumer2, streams={stream: ">"})
+    info = r.xinfo_consumers(stream, group)
+    assert len(info) == 2
+    expected = [
+        {"name": consumer1.encode(), "pending": 1},
+        {"name": consumer2.encode(), "pending": 2},
+    ]
+
+    # we can't determine the idle time, so just make sure it's an int
+    assert isinstance(info[0].pop("idle"), int)
+    assert isinstance(info[1].pop("idle"), int)
+    assert info == expected
+
+
+@pytest.mark.xfail
+def test_xinfo_stream(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    info = r.xinfo_stream(stream)
+
+    assert info["length"] == 2
+    assert info["first-entry"] == get_stream_message(r, stream, m1)
+    assert info["last-entry"] == get_stream_message(r, stream, m2)
+    assert info["max-deleted-entry-id"] == b"0-0"
+    assert info["entries-added"] == 2
+    assert info["recorded-first-entry-id"] == m1
+
+
+@pytest.mark.xfail
+def test_xinfo_stream_full(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    info = r.xinfo_stream(stream, full=True)
+
+    assert info["length"] == 1
+    assert m1 in info["entries"]
+    assert len(info["groups"]) == 1
+
+
+@pytest.mark.xfail
+def test_xpending(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer1 = "consumer1"
+    consumer2 = "consumer2"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+
+    # xpending on a group that has no consumers yet
+    expected = {"pending": 0, "min": None, "max": None, "consumers": []}
+    assert r.xpending(stream, group) == expected
+
+    # read 1 message from the group with each consumer
+    r.xreadgroup(group, consumer1, streams={stream: ">"}, count=1)
+    r.xreadgroup(group, consumer2, streams={stream: ">"}, count=1)
+
+    expected = {
+        "pending": 2,
+        "min": m1,
+        "max": m2,
+        "consumers": [
+            {"name": consumer1.encode(), "pending": 1},
+            {"name": consumer2.encode(), "pending": 1},
+        ],
+    }
+    assert r.xpending(stream, group) == expected
+
+
+@pytest.mark.xfail
+def test_xpending_range(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer1 = "consumer1"
+    consumer2 = "consumer2"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+
+    # xpending range on a group that has no consumers yet
+    assert r.xpending_range(stream, group, min="-", max="+", count=5) == []
+
+    # read 1 message from the group with each consumer
+    r.xreadgroup(group, consumer1, streams={stream: ">"}, count=1)
+    r.xreadgroup(group, consumer2, streams={stream: ">"}, count=1)
+
+    response = r.xpending_range(stream, group, min="-", max="+", count=5)
+    assert len(response) == 2
+    assert response[0]["message_id"] == m1
+    assert response[0]["consumer"] == consumer1.encode()
+    assert response[1]["message_id"] == m2
+    assert response[1]["consumer"] == consumer2.encode()
+
+    # test with consumer name
+    response = r.xpending_range(
+        stream, group, min="-", max="+", count=5, consumername=consumer1
+    )
+    assert response[0]["message_id"] == m1
+    assert response[0]["consumer"] == consumer1.encode()
+
+
+@pytest.mark.xfail
+def test_xpending_range_idle(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer1 = "consumer1"
+    consumer2 = "consumer2"
+    r.xadd(stream, {"foo": "bar"})
+    r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+
+    # read 1 message from the group with each consumer
+    r.xreadgroup(group, consumer1, streams={stream: ">"}, count=1)
+    r.xreadgroup(group, consumer2, streams={stream: ">"}, count=1)
+
+    response = r.xpending_range(stream, group, min="-", max="+", count=5)
+    assert len(response) == 2
+    response = r.xpending_range(stream, group, min="-", max="+", count=5, idle=1000)
+    assert len(response) == 0
+
+
+@pytest.mark.xfail
+def test_xpending_range_negative(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    with pytest.raises(redis.DataError):
+        r.xpending_range(stream, group, min="-", max="+", count=None)
+    with pytest.raises(ValueError):
+        r.xpending_range(stream, group, min="-", max="+", count="one")
+    with pytest.raises(redis.DataError):
+        r.xpending_range(stream, group, min="-", max="+", count=-1)
+    with pytest.raises(ValueError):
+        r.xpending_range(stream, group, min="-", max="+", count=5, idle="one")
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.xpending_range(stream, group, min="-", max="+", count=5, idle=1.5)
+    with pytest.raises(redis.DataError):
+        r.xpending_range(stream, group, min="-", max="+", count=5, idle=-1)
+    with pytest.raises(redis.DataError):
+        r.xpending_range(stream, group, min=None, max=None, count=None, idle=0)
+    with pytest.raises(redis.DataError):
+        r.xpending_range(
+            stream, group, min=None, max=None, count=None, consumername=0
+        )
+
+
+@pytest.mark.xfail
+def test_xreadgroup(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    consumer = "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"bing": "baz"})
+    r.xgroup_create(stream, group, 0)
+
+    expected = [
+        [
+            stream.encode(),
+            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+        ]
+    ]
+    # xread starting at 0 returns both messages
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
+
+    r.xgroup_destroy(stream, group)
+    r.xgroup_create(stream, group, 0)
+
+    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
+    # xread with count=1 returns only the first message
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}, count=1) == expected
+
+    r.xgroup_destroy(stream, group)
+
+    # create the group using $ as the last id meaning subsequent reads
+    # will only find messages added after this
+    r.xgroup_create(stream, group, "$")
+
+    expected = []
+    # xread starting after the last message returns an empty message list
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
+
+    # xreadgroup with noack does not have any items in the PEL
+    r.xgroup_destroy(stream, group)
+    r.xgroup_create(stream, group, "0")
+    assert (
+            len(r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)[0][1])
+            == 2
+    )
+    # now there should be nothing pending
+    assert len(r.xreadgroup(group, consumer, streams={stream: "0"})[0][1]) == 0
+
+    r.xgroup_destroy(stream, group)
+    r.xgroup_create(stream, group, "0")
+    # delete all the messages in the stream
+    expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    r.xtrim(stream, 0)
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
