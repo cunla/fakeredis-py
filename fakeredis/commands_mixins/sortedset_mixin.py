@@ -97,7 +97,8 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
-            (0.0 + Float.decode(elements[j]) if self.version >= Version('7') else Float.decode(elements[j]), elements[j + 1])
+            ((0.0 + Float.decode(elements[j]) if self.version >= Version('7')
+              else Float.decode(elements[j]), elements[j + 1]))
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)

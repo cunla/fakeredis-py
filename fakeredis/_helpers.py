@@ -5,8 +5,6 @@ import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
 
-from packaging.version import Version
-
 
 class SimpleString:
     def __init__(self, value):
@@ -232,4 +230,3 @@ class FakeSelector(object):
     @staticmethod
     def check_is_ready_for_command(timeout):
         return True
-

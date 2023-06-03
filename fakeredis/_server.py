@@ -10,13 +10,13 @@ from collections import defaultdict
 from typing import Dict
 
 import redis
+from packaging.version import Version
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (Database, FakeSelector)
 from . import _msgs as msgs
 
 LOGGER = logging.getLogger('fakeredis')
-from packaging.version import Version
 
 
 def _create_version(v) -> Version:
