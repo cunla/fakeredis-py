@@ -3,16 +3,16 @@
 # Future Imports
 from __future__ import annotations
 
-from json import JSONDecodeError
-
 import copy
 # Standard Library Imports
 import json
+from json import JSONDecodeError
+from typing import Any, Union
+
 from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 from redis.commands.json.commands import JsonType
-from typing import Any, Optional, Union
 
 from fakeredis import _helpers as helpers, _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -180,12 +180,8 @@ class JSONCommandsMixin:
         key.update(curr_value)
         return res
 
-    @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_set(self, key, path_str: bytes, value: JsonType, *args) -> Optional[helpers.SimpleString]:
-        """Set the JSON value at key `name` under the `path` to `obj`.
-
-        For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
-        """
+    @staticmethod
+    def _json_set(key: CommandItem, path_str: bytes, value: JsonType, *args):
         path = _parse_jsonpath(path_str)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
@@ -197,8 +193,15 @@ class JSONCommandsMixin:
             return None
         new_value = path.update_or_create(key.value, value)
         key.update(new_value)
-
         return helpers.OK
+
+    @command(name="JSON.SET", fixed=(Key(), bytes, JSONObject), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_set(self, key, path_str: bytes, value: JsonType, *args):
+        """Set the JSON value at key `name` under the `path` to `obj`.
+
+        For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
+        """
+        return JSONCommandsMixin._json_set(key, path_str, value, *args)
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key, *args) -> bytes:
@@ -425,3 +428,17 @@ class JSONCommandsMixin:
     def json_objkeys(self, key, *args):
         return _json_read_iterate(
             lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)
+
+    @command(name="JSON.MSET", fixed=(), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_mset(self, *args):
+        if len(args) < 3 or len(args) % 3 != 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.mset'))
+        for i in range(0, len(args), 3):
+            key, path_str, value = args[i], args[i + 1], args[i + 2]
+            JSONCommandsMixin._json_set(
+                CommandItem(key, self._db, item=self._db.get(key), default=[]), path_str, value)
+        return helpers.OK
+
+    # @command(name="JSON.MERGE", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    # def json_merge(self, key, path_str, mult_by, *args):
+    #     pass  # TODO

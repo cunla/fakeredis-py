@@ -86,6 +86,14 @@ Returns the type of the JSON value at path
 ### Unsupported json commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
+#### [JSON.MSET](https://redis.io/commands/json.mset/) <small>(not implemented)</small>
+
+Sets or updates the JSON value of one or more keys
+
+#### [JSON.MERGE](https://redis.io/commands/json.merge/) <small>(not implemented)</small>
+
+Merges a given JSON value into matching paths. Consequently, JSON values at matching paths are updated, deleted, or expanded with new children
+
 #### [JSON.RESP](https://redis.io/commands/json.resp/) <small>(not implemented)</small>
 
 Returns the JSON value at path in Redis Serialization Protocol (RESP)

@@ -108,7 +108,7 @@ Returns a count of commands.
 
 #### [COMMAND DOCS](https://redis.io/commands/command-docs/) <small>(not implemented)</small>
 
-Returns documentary information about a command.
+Returns documentary information about one, multiple or all commands.
 
 #### [COMMAND GETKEYS](https://redis.io/commands/command-getkeys/) <small>(not implemented)</small>
 
@@ -1568,7 +1568,7 @@ Returns the information and entries from a stream consumer group's pending entri
 
 #### [XREADGROUP](https://redis.io/commands/xreadgroup/) <small>(not implemented)</small>
 
-Returns new or historical messages from a stream for a consumer in agroup. Blocks until a message is available otherwise.
+Returns new or historical messages from a stream for a consumer in a group. Blocks until a message is available otherwise.
 
 #### [XSETID](https://redis.io/commands/xsetid/) <small>(not implemented)</small>
 

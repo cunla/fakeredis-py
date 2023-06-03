@@ -10,7 +10,7 @@ import pytest
 import redis
 from redis.commands.json.path import Path
 
-from test.testtools import raw_command
+from test import testtools
 
 json_tests = pytest.importorskip("jsonpath_ng")
 
@@ -116,7 +116,7 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
 
     # Test with raw
     obj = {"foo": "bar"}
-    raw_command(r, 'json.set', 'obj', '$', json.dumps(obj))
+    testtools.raw_command(r, 'json.set', 'obj', '$', json.dumps(obj))
     assert r.json().get('obj') == obj
 
 
@@ -124,12 +124,12 @@ def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
     with pytest.raises(Exception):
         r.json().set("obj", Path("foo"), "baz", nx=True, xx=True)
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'NX', 'XX')
+        testtools.raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'NX', 'XX')
 
 
 def test_json_unknown_param(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'unknown')
+        testtools.raw_command(r, 'json.set', 'obj', '$', json.dumps({"foo": "bar"}), 'unknown')
 
 
 def test_jsonmget(r: redis.Redis):
@@ -328,7 +328,7 @@ def test_strappend(r: redis.Redis):
 
     # Test raw command with no arguments
     with pytest.raises(redis.ResponseError):
-        raw_command(r, 'json.strappend', '')
+        testtools.raw_command(r, 'json.strappend', '')
 
 
 @pytest.mark.decode_responses(True)
@@ -555,3 +555,29 @@ def test_nummultby(r: redis.Redis):
 
     with pytest.deprecated_call():
         assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
+
+
+@testtools.run_test_if_redispy_ver('above', '5')
+def test_json_merge(r: redis.Redis):
+    # Test with root path $
+    key = "person_data"
+    r.json().set(key, Path.root_path(), {"person1": {"personal_data": {"name": "John"}}}, )
+    r.json().merge(key, Path.root_path(), {"person1": {"personal_data": {"hobbies": "reading"}}})
+    assert r.json().get(key) == {"person1": {"personal_data": {"name": "John", "hobbies": "reading"}}}
+
+    # Test with root path path $.person1.personal_data
+    r.json().merge(key, "$.person1.personal_data", {"country": "Israel"})
+    assert r.json().get(key) == {
+        "person1": {"personal_data": {"name": "John", "hobbies": "reading", "country": "Israel"}}}
+
+    # Test with null value to delete a value
+    r.json().merge("person_data", "$.person1.personal_data", {"name": None})
+    assert r.json().get(key) == {"person1": {"personal_data": {"country": "Israel", "hobbies": "reading"}}}
+
+
+@testtools.run_test_if_redispy_ver('above', '5')
+def test_mset(r: redis.Redis):
+    r.json().mset("1", Path.root_path(), 1, "2", Path.root_path(), 2)
+
+    assert r.json().mget(["1"], Path.root_path()) == [1]
+    assert r.json().mget(["1", "2"], Path.root_path()) == [1, 2]

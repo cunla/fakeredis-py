@@ -12,6 +12,10 @@ description: Change log of all fakeredis releases
 
 - Implement `HRANDFIELD` #156
 
+### 🧰 Maintenance
+
+- Improve streams code
+
 ## v2.13.0
 
 ### 🧰 Bug Fixes
@@ -277,11 +281,11 @@ We'd like to thank all the contributors who worked on this release!
 
 #### What's Changed
 
-* Implement support for `zmscore` by @the-wondersmith in [#67](https://github.com/cunla/fakeredis-py/pull/67)
+* Implement support for `zmscore` by @the-wondersmith in #67
 
 #### New Contributors
 
-* @the-wondersmith made their first contribution in [#67](https://github.com/cunla/fakeredis-py/pull/67)
+* @the-wondersmith made their first contribution in #67
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.10.0...v1.10.1
 
@@ -289,9 +293,9 @@ We'd like to thank all the contributors who worked on this release!
 
 #### What's Changed
 
-* implement `GETDEL` and `SINTERCARD` support in [#57](https://github.com/cunla/fakeredis-py/pull/57)
-* Test get float-type behavior in [#59](https://github.com/cunla/fakeredis-py/pull/59)
-* Implement `BZPOPMIN`/`BZPOPMAX` support in [#60](https://github.com/cunla/fakeredis-py/pull/60)
+* implement `GETDEL` and `SINTERCARD` support in #57
+* Test get float-type behavior in #59
+* Implement `BZPOPMIN`/`BZPOPMAX` support in #60
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.4...v1.10.0
 
@@ -372,28 +376,17 @@ We'd like to thank all the contributors who worked on this release!
 
 * Fix handling url with username and password in [#27](https://github.com/dsoftwareinc/fakeredis-py/pull/27)
 * Refactor tests in [#28](https://github.com/dsoftwareinc/fakeredis-py/pull/28)
-
-**Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.7.6.1...v1.8
-
-## v1.7.6.1
-
-#### What's Changed
-
 * 23 - Re-add dependencies lost during switch to poetry by @xkortex
   in [#26](https://github.com/dsoftwareinc/fakeredis-py/pull/26)
 
-#### New Contributors
-
-* @xkortex made their first contribution in https://github.com/dsoftwareinc/fakeredis-py/pull/26
-
-**Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.7.6...v1.7.6.1
+**Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.7.6.1...v1.8
 
 ## v1.7.6
 
 #### Added
 
-* add IMOVE operation by @BGroever in [#11](https://github.com/dsoftwareinc/fakeredis-py/pull/11)
-* Add SMISMEMBER command by @OlegZv in [#20](https://github.com/dsoftwareinc/fakeredis-py/pull/20)
+* add `IMOVE` operation by @BGroever in [#11](https://github.com/dsoftwareinc/fakeredis-py/pull/11)
+* Add `SMISMEMBER` command by @OlegZv in [#20](https://github.com/dsoftwareinc/fakeredis-py/pull/20)
 
 #### Removed
 
