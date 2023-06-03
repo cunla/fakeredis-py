@@ -11,6 +11,7 @@ description: Change log of all fakeredis releases
 ### 🚀 Features
 
 - Implement `HRANDFIELD` #156
+- Implement `JSON.MSET`
 
 ### 🧰 Maintenance
 
