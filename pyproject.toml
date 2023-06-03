@@ -65,6 +65,7 @@ types-redis = ">=4.0"
 twine = "^4.0" # Upload to pypi
 tox = "^4.4"
 tox-docker = "^4"
+flake8-pyproject = "^1.2"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
@@ -92,3 +93,11 @@ packages = ['fakeredis', ]
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
+
+[tool.flake8]
+max-line-length = 119
+exclude = [
+    '.venv',
+    '.github',
+    '__pycache__',
+]

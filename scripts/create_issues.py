@@ -91,9 +91,9 @@ class GithubData:
         title = f"Implement support for `{cmd.upper()}` ({group} command)"
         filename = f'{group}_mixin.py'
         body = f"""Implement support for command `{cmd.upper()}` in {filename}.
-        
+
 {summary}.
-        
+
 Here is the [Official documentation]({link})"""
         labels = [f'{group}-commands', 'enhancement', 'help wanted']
         for label in labels:
