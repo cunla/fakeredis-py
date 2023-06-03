@@ -26,6 +26,10 @@ Clears all values from an array or an object and sets numeric values to `0`
 
 Sets or updates the JSON value at a path
 
+### [JSON.MSET](https://redis.io/commands/json.mset/)
+
+Sets or updates the JSON value of one or more keys
+
 ### [JSON.MGET](https://redis.io/commands/json.mget/)
 
 Returns the values at a path from one or more keys
@@ -85,10 +89,6 @@ Returns the type of the JSON value at path
 
 ### Unsupported json commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [JSON.MSET](https://redis.io/commands/json.mset/) <small>(not implemented)</small>
-
-Sets or updates the JSON value of one or more keys
 
 #### [JSON.MERGE](https://redis.io/commands/json.merge/) <small>(not implemented)</small>
 
