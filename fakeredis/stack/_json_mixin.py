@@ -429,14 +429,13 @@ class JSONCommandsMixin:
         return _json_read_iterate(
             lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)
 
-    @command(name="JSON.MSET", fixed=(), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(name="JSON.MSET", fixed=(), repeat=(Key(), bytes, JSONObject), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mset(self, *args):
         if len(args) < 3 or len(args) % 3 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('json.mset'))
         for i in range(0, len(args), 3):
             key, path_str, value = args[i], args[i + 1], args[i + 2]
-            JSONCommandsMixin._json_set(
-                CommandItem(key, self._db, item=self._db.get(key), default=[]), path_str, value)
+            JSONCommandsMixin._json_set(key, path_str, value)
         return helpers.OK
 
     # @command(name="JSON.MERGE", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
