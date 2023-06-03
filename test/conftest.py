@@ -26,9 +26,7 @@ def real_redis_version() -> Union[None, str]:
 @pytest_asyncio.fixture(name='fake_server')
 def _fake_server(request):
     min_server_marker = request.node.get_closest_marker('min_server')
-    server_version = 6
-    if min_server_marker and min_server_marker.args[0].startswith('7'):
-        server_version = 7
+    server_version = Version(min_server_marker.args[0]) if min_server_marker else Version('6.2')
     server = fakeredis.FakeServer(version=server_version)
     server.connected = request.node.get_closest_marker('disconnected') is None
     return server

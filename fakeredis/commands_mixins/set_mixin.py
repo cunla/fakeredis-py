@@ -1,5 +1,7 @@
 import random
 
+from packaging.version import Version
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Key, Int, CommandItem)
 from fakeredis._helpers import (OK, SimpleError, casematch)
@@ -67,7 +69,7 @@ class SetCommandsMixin:
 
     @command((Int, bytes), (bytes,))
     def sintercard(self, numkeys, *args):
-        if self.version < 7:
+        if self.version < Version('7'):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format('sintercard'))
         if numkeys < 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)

@@ -1,3 +1,5 @@
+from packaging.version import Version
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string, fix_range)
 from fakeredis._helpers import SimpleError, casematch
@@ -15,10 +17,10 @@ class BitmapCommandsMixin:
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version < 7:
+        if len(args) == 3 and self.version < Version('7'):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         bit_mode = False
-        if len(args) == 3 and self.version >= 7:
+        if len(args) == 3 and self.version >= Version('7'):
             bit_mode = casematch(args[2], b'bit')
             if not bit_mode and not casematch(args[2], b'byte'):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -54,9 +56,9 @@ class BitmapCommandsMixin:
         start = Int.decode(args[0])
         end = Int.decode(args[1])
         bit_mode = False
-        if len(args) == 3 and self.version < 7:
+        if len(args) == 3 and self.version < Version('7'):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version >= 7:
+        if len(args) == 3 and self.version >= Version('7'):
             bit_mode = casematch(args[2], b'bit')
             if not bit_mode and not casematch(args[2], b'byte'):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

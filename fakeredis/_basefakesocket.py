@@ -5,6 +5,7 @@ import weakref
 from typing import List, Any, Tuple
 
 import redis
+from packaging.version import Version
 
 if redis.VERSION >= (5, 0):
     from redis.parsers import BaseParser
@@ -336,11 +337,11 @@ class BaseFakeSocket:
             return int(round((key.expireat - self._db.time) * scale))
 
     def _encodefloat(self, value, humanfriendly):
-        if self.version >= 7:
+        if self.version >= Version('7'):
             value = 0 + value
         return Float.encode(value, humanfriendly)
 
     def _encodeint(self, value):
-        if self.version >= 7:
+        if self.version >= Version('7'):
             value = 0 + value
         return Int.encode(value)

@@ -158,7 +158,7 @@ class StringCommandsMixin:
 
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if nx and get and self.version < 7:
+        if nx and get and self.version < Version('7'):
             # The command docs say this is allowed from Redis 7.0.
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 

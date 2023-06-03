@@ -2,6 +2,8 @@ import hashlib
 import pickle
 import random
 
+from packaging.version import Version
+
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
@@ -56,7 +58,7 @@ class GenericCommandsMixin:
                 lt = True
             else:
                 raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
-        if self.version < 7 and any((nx, xx, gt, lt)):
+        if self.version < Version('7') and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
         counter = (nx, gt, lt).count(True)
         if (counter > 1) or (nx and xx):

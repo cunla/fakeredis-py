@@ -75,6 +75,7 @@ def test_script_no_subcommands(r: redis.Redis):
         raw_command(r, "SCRIPT")
 
 
+@pytest.mark.max_server('7')
 def test_script_help(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b'SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
@@ -96,4 +97,29 @@ def test_script_help(r: redis.Redis):
         b'    Load a script into the scripts cache without executing it.',
         b'HELP',
         b'    Prints this help.'
+    ]
+
+
+@pytest.mark.min_server('7.1')
+def test_script_help71(r: redis.Redis):
+    assert raw_command(r, "SCRIPT HELP") == [
+        b'SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
+        b'DEBUG (YES|SYNC|NO)',
+        b'    Set the debug mode for subsequent scripts executed.',
+        b'EXISTS <sha1> [<sha1> ...]',
+        b'    Return information about the existence of the scripts in the script cach'
+        b'e.',
+        b'FLUSH [ASYNC|SYNC]',
+        b'    Flush the Lua scripts cache. Very dangerous on replicas.',
+        b'    When called without the optional mode argument, the behavior is determin'
+        b'ed by the',
+        b'    lazyfree-lazy-user-flush configuration directive. Valid modes are:',
+        b'    * ASYNC: Asynchronously flush the scripts cache.',
+        b'    * SYNC: Synchronously flush the scripts cache.',
+        b'KILL',
+        b'    Kill the currently executing Lua script.',
+        b'LOAD <script>',
+        b'    Load a script into the scripts cache without executing it.',
+        b'HELP',
+        b'    Print this help.'
     ]
