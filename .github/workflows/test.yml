@@ -61,7 +61,7 @@ jobs:
             lupa: true
             hypothesis: true
           - python-version: "3.11"
-            redis-image: "redis/redis-stack-server:7.0.6-RC8"
+            redis-image: "redis/redis-stack-server:7.0.6-RC3"
             redis-py: "4.5.5"
             lupa: true
             json: true
