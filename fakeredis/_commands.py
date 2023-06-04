@@ -6,6 +6,8 @@ import functools
 import math
 import re
 
+from packaging.version import Version
+
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
 from ._zset import ZSet
@@ -330,7 +332,7 @@ class Signature:
         if self.repeat:
             delta = len(args) - len(self.fixed)
             if delta % len(self.repeat) != 0:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= 7 else msgs.WRONG_ARGS_MSG6.format(self.name)
+                msg = msgs.WRONG_ARGS_MSG7 if version >= Version('7') else msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
 
         types = list(self.fixed)
