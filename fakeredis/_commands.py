@@ -309,18 +309,22 @@ class StringTest:
 
 
 class Signature:
-    def __init__(self, name, func_name, fixed, repeat=(), flags=""):
+    def __init__(self, name, func_name, fixed, repeat=(), args=(), flags=""):
         self.name = name
         self.func_name = func_name
         self.fixed = fixed
         self.repeat = repeat
         self.flags = set(flags)
+        self.command_args = args
 
     def check_arity(self, args, version):
         if len(args) != len(self.fixed):
             delta = len(args) - len(self.fixed)
             if delta < 0 or not self.repeat:
                 msg = msgs.WRONG_ARGS_MSG6.format(self.name)
+                raise SimpleError(msg)
+            if delta % len(self.repeat) != 0:
+                msg = msgs.WRONG_ARGS_MSG7 if version >= Version('7') else msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
 
     def apply(self, args, db, version):
@@ -329,11 +333,6 @@ class Signature:
         - a single containing a short-circuit return value
         """
         self.check_arity(args, version)
-        if self.repeat:
-            delta = len(args) - len(self.fixed)
-            if delta % len(self.repeat) != 0:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= Version('7') else msgs.WRONG_ARGS_MSG6.format(self.name)
-                raise SimpleError(msg)
 
         types = list(self.fixed)
         for i in range(len(args) - len(types)):
@@ -354,12 +353,14 @@ class Signature:
             if isinstance(type_, Key):
                 item = db.get(arg)
                 default = None
-                if type_.type_ is not None:
-                    if item is not None and type(item.value) != type_.type_:
-                        raise SimpleError(msgs.WRONGTYPE_MSG)
-                    if item is None:
-                        if type_.type_ is not bytes:
-                            default = type_.type_()
+                if (type_.type_ is not None
+                        and item is not None
+                        and type(item.value) != type_.type_):
+                    raise SimpleError(msgs.WRONGTYPE_MSG)
+                if (type_.type_ is not None
+                        and item is None
+                        and type_.type_ is not bytes):
+                    default = type_.type_()
                 args[i] = CommandItem(arg, db, item, default=default)
                 command_items.append(args[i])
 
