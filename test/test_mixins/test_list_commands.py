@@ -321,6 +321,7 @@ def test_linsert_before(r: redis.Redis):
     r.rpush('foo', 'world')
     assert r.linsert('foo', 'before', 'world', 'there') == 3
     assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
+    assert r.linsert('empty_list', 'before', 'world', 'there') == 0
 
 
 def test_linsert_after(r: redis.Redis):
@@ -333,8 +334,6 @@ def test_linsert_after(r: redis.Redis):
 def test_linsert_bad_command(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, 'LINSERT', 'x', 'NOT_BEFORE', 'pivot', 'val')
-    with pytest.raises(redis.ResponseError):
-        testtools.raw_command(r, 'LINSERT', 'x', 'BEFORE', 'pivot', 'val')
 
 
 def test_linsert_no_pivot(r: redis.Redis):
