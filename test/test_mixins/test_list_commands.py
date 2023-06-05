@@ -330,6 +330,13 @@ def test_linsert_after(r: redis.Redis):
     assert r.lrange('foo', 0, -1) == [b'hello', b'there', b'world']
 
 
+def test_linsert_bad_command(r: redis.Redis):
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'LINSERT', 'x', 'NOT_BEFORE', 'pivot', 'val')
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'LINSERT', 'x', 'BEFORE', 'pivot', 'val')
+
+
 def test_linsert_no_pivot(r: redis.Redis):
     r.rpush('foo', 'hello')
     r.rpush('foo', 'world')
@@ -551,6 +558,11 @@ def test_lmove_expiry(r: redis.Redis):
 
 
 def test_lmove_wrong_type(r: redis.Redis):
+    r.rpush('foo', 'one')
+    r.rpush('bar', 'two')
+    with pytest.raises(redis.ResponseError):
+        testtools.raw_command(r, 'LMOVE', 'foo', 'bar', 'left', 'NOT_LEFT_OR_RIGHT')
+
     r.set('foo', 'bar')
     r.rpush('list', 'element')
     with pytest.raises(redis.ResponseError):

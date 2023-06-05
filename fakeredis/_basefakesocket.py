@@ -40,6 +40,7 @@ def bin_reverse(x, bits_count):
 
 
 class BaseFakeSocket:
+    ACCEPTED_COMMANDS_WHILE_PUBSUB = {'ping', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe', 'quit', }
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server, db, *args, **kwargs):
@@ -142,21 +143,14 @@ class BaseFakeSocket:
         command_items = {}
         try:
             ret = sig.apply(args, self._db, self.version)
+            if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
+                raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
+            if self._pubsub and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB:
+                raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
             if len(ret) == 1:
                 result = ret[0]
             else:
                 args, command_items = ret
-                if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
-                    raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
-                if self._pubsub and sig.name not in [
-                    'ping',
-                    'subscribe',
-                    'unsubscribe',
-                    'psubscribe',
-                    'punsubscribe',
-                    'quit'
-                ]:
-                    raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
                 result = func(*args)
                 assert valid_response_type(result)
         except SimpleError as exc:

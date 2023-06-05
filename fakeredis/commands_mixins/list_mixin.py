@@ -83,7 +83,7 @@ class ListCommandsMixin:
             dst.writeback()
         return el
 
-    @command((bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
+    @command(name='BRPOPLPUSH', fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
     def brpoplpush(self, source, destination, timeout):
         return self._blocking(timeout,
                               functools.partial(self._brpoplpush_pass, source, destination))
@@ -118,10 +118,10 @@ class ListCommandsMixin:
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString))
     def lmove(self, first_list, second_list, src, dst):
-        if src not in [b'LEFT', b'RIGHT']:
+        if ((not casematch(src, b'left') and not casematch(src, b'right'))
+                or (not casematch(dst, b'left') and not casematch(dst, b'right'))):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if dst not in [b'LEFT', b'RIGHT']:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
         el = self.rpop(first_list) if src == b'RIGHT' else self.lpop(first_list)
         self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
         return el
