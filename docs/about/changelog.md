@@ -6,6 +6,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.14.1
+
+### 🧰 Bug Fixes
+
+- Fix requirement for packaging.Version #177
+
 ## v2.14.0
 
 ### 🚀 Features
