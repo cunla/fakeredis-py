@@ -67,7 +67,7 @@ class ScriptingCommandsMixin:
             return '{:.17g}'.format(value).encode()
         else:
             # TODO: add the context
-            msg = msgs.LUA_COMMAND_ARG_MSG6 if self.version < Version('7') else msgs.LUA_COMMAND_ARG_MSG
+            msg = msgs.LUA_COMMAND_ARG_MSG6 if self.version < (7,) else msgs.LUA_COMMAND_ARG_MSG
             raise SimpleError(msg)
 
     def _convert_redis_result(self, lua_runtime, result):

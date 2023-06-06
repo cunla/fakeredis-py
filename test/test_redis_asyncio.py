@@ -13,7 +13,6 @@ import pytest
 import pytest_asyncio
 import redis
 import redis.asyncio
-from packaging.version import Version
 
 from fakeredis import FakeServer, aioredis
 from test import testtools
