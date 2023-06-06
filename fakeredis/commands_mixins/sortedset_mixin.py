@@ -5,8 +5,6 @@ import itertools
 import math
 from typing import Union, Optional
 
-from packaging.version import Version
-
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout, ScoreTest, StringTest, fix_range)
@@ -97,7 +95,7 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
-            ((0.0 + Float.decode(elements[j]) if self.version >= Version('7')
+            ((0.0 + Float.decode(elements[j]) if self.version >= (7,)
               else Float.decode(elements[j]), elements[j + 1]))
             for j in range(0, len(elements), 2)
         ]

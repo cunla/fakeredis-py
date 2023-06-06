@@ -3,8 +3,6 @@ import hashlib
 import itertools
 import logging
 
-from packaging.version import Version
-
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Int)
 from fakeredis._helpers import (SimpleError, SimpleString, null_terminate, OK, encode_command)
@@ -179,7 +177,7 @@ class ScriptingCommandsMixin:
         try:
             result = lua_runtime.execute(script)
         except SimpleError as ex:
-            if self.version <= Version('6'):
+            if self.version < (7,):
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(ex.value)
         except LuaError as ex:
@@ -208,7 +206,7 @@ class ScriptingCommandsMixin:
 
     @command(name='script exists', fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT, )
     def script_exists(self, *args):
-        if self.version >= Version('7') and len(args) == 0:
+        if self.version >= (7,) and len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         return [int(sha1 in self.script_cache) for sha1 in args]
 
@@ -244,7 +242,7 @@ class ScriptingCommandsMixin:
             'LOAD <script>',
             '    Load a script into the scripts cache without executing it.',
             'HELP',
-            ('    Prints this help.' if self.version < Version('7.1') else '    Print this help.'),
+            ('    Prints this help.' if self.version < (7, 1) else '    Print this help.'),
         ]
 
         return [s.encode() for s in help_strings]

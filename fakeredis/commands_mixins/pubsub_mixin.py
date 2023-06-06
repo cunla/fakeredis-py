@@ -1,5 +1,3 @@
-from packaging.version import Version
-
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command)
 from fakeredis._helpers import (NoResponse, compile_pattern, SimpleError)
@@ -93,7 +91,7 @@ class PubSubCommandsMixin:
 
     @command(name='PUBSUB HELP', fixed=())
     def pubsub_help(self, *args):
-        if self.version >= Version('7'):
+        if self.version >= (7,):
             help_strings = [
                 'PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:',
                 'CHANNELS [<pattern>]',
@@ -111,7 +109,7 @@ class PubSubCommandsMixin:
                 '    Return the number of subscribers for the specified shard level channel(s'
                 ')',
                 'HELP',
-                ('    Prints this help.' if self.version < Version('7.1') else '    Print this help.'),
+                ('    Prints this help.' if self.version < (7, 1) else '    Print this help.'),
             ]
         else:
             help_strings = [

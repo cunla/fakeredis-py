@@ -5,8 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-
-from packaging.version import Version
+from typing import Tuple
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
@@ -317,14 +316,14 @@ class Signature:
         self.flags = set(flags)
         self.command_args = args
 
-    def check_arity(self, args, version):
+    def check_arity(self, args, version: Tuple[int]):
         if len(args) != len(self.fixed):
             delta = len(args) - len(self.fixed)
             if delta < 0 or not self.repeat:
                 msg = msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
             if delta % len(self.repeat) != 0:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= Version('7') else msgs.WRONG_ARGS_MSG6.format(self.name)
+                msg = msgs.WRONG_ARGS_MSG7 if version >= (7,) else msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
 
     def apply(self, args, db, version):

@@ -33,6 +33,7 @@ def extract_args(
         expected: Tuple[str, ...],
         error_on_unexpected: bool = True,
         left_from_first_unexpected: bool = True,
+        exception=None
 ) -> Tuple[List, List]:
     """Parse argument values
 
@@ -135,7 +136,10 @@ def extract_args(
 
         if not found:
             if error_on_unexpected:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+                raise (
+                    SimpleError(msgs.SYNTAX_ERROR_MSG)
+                    if exception is None
+                    else SimpleError(exception.format(actual_args[i])))
             if left_from_first_unexpected:
                 return results, actual_args[i:]
             left_args.append(actual_args[i])

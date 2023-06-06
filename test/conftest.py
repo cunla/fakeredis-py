@@ -3,9 +3,9 @@ from typing import Callable, Union
 import pytest
 import pytest_asyncio
 import redis
-from packaging.version import Version
 
 import fakeredis
+from fakeredis._server import _create_version
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -26,7 +26,7 @@ def real_redis_version() -> Union[None, str]:
 @pytest_asyncio.fixture(name='fake_server')
 def _fake_server(request):
     min_server_marker = request.node.get_closest_marker('min_server')
-    server_version = Version(min_server_marker.args[0]) if min_server_marker else Version('6.2')
+    server_version = min_server_marker.args[0] if min_server_marker else '6.2'
     server = fakeredis.FakeServer(version=server_version)
     server.connected = request.node.get_closest_marker('disconnected') is None
     return server
@@ -48,8 +48,8 @@ def r(request, create_redis) -> redis.Redis:
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
     if marker_value is None:
-        return Version(str(0 if marker_name == 'min_server' else 100))
-    return Version(marker_value.args[0])
+        return (0,) if marker_name == 'min_server' else (100,)
+    return _create_version(marker_value.args[0])
 
 
 @pytest_asyncio.fixture(
@@ -64,13 +64,13 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     server_version = request.getfixturevalue('real_redis_version')
     if not cls_name.startswith('Fake') and not server_version:
         pytest.skip('Redis is not running')
-    server_version = server_version or '6'
+    server_version = _create_version(server_version) or (6,)
     min_server = _marker_version_value(request, 'min_server')
     max_server = _marker_version_value(request, 'max_server')
-    if Version(server_version) < min_server:
-        pytest.skip(f'Redis server {min_server.base_version} or more required but {server_version} found')
-    if Version(server_version) > max_server:
-        pytest.skip(f'Redis server {max_server.base_version} or less required but {server_version} found')
+    if server_version < min_server:
+        pytest.skip(f'Redis server {min_server} or more required but {server_version} found')
+    if server_version > max_server:
+        pytest.skip(f'Redis server {max_server} or less required but {server_version} found')
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
 
     def factory(db=0):

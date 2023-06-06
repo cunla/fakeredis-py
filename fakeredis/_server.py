@@ -7,10 +7,9 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Tuple
 
 import redis
-from packaging.version import Version
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import (Database, FakeSelector)
@@ -19,18 +18,21 @@ from . import _msgs as msgs
 LOGGER = logging.getLogger('fakeredis')
 
 
-def _create_version(v) -> Version:
-    if isinstance(v, Version):
+def _create_version(v) -> Tuple[int]:
+    if isinstance(v, tuple):
         return v
     if isinstance(v, int):
-        return Version(str(v))
-    return Version(v)
+        return (v,)
+    if isinstance(v, str):
+        v = v.split('.')
+        return tuple(int(x) for x in v)
+    return v
 
 
 class FakeServer:
     _servers_map: Dict[str, 'FakeServer'] = dict()
 
-    def __init__(self, version: Version = Version("7")):
+    def __init__(self, version: Tuple[int] = (7,)):
         self.lock = threading.Lock()
         self.dbs = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to weak set of sockets
@@ -43,7 +45,7 @@ class FakeServer:
         self.version = _create_version(version)
 
     @staticmethod
-    def get_server(key, version: Version):
+    def get_server(key, version: Tuple[int]):
         return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
 
@@ -54,7 +56,7 @@ class FakeBaseConnectionMixin:
         self._selector = None
         self._server = kwargs.pop('server', None)
         path = kwargs.pop('path', None)
-        version = kwargs.pop('version', Version('7.0'))
+        version = kwargs.pop('version', (7, 0))
         connected = kwargs.pop('connected', True)
         if self._server is None:
             if path:
@@ -131,7 +133,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
 
 class FakeRedisMixin:
-    def __init__(self, *args, server=None, connected=True, version=Version('7'), **kwargs):
+    def __init__(self, *args, server=None, connected=True, version=(7,), **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = inspect.signature(redis.Redis.__init__).parameters

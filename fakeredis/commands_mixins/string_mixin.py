@@ -1,6 +1,6 @@
 import math
 
-from packaging.version import Version
+
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -160,7 +160,7 @@ class StringCommandsMixin:
 
         if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if nx and get and self.version < Version('7'):
+        if nx and get and self.version < (7,):
             # The command docs say this is allowed from Redis 7.0.
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 

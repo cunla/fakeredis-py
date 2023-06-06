@@ -1,8 +1,6 @@
 import functools
 from typing import List
 
-from packaging.version import Version
-
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem
@@ -22,7 +20,7 @@ class StreamsCommandsMixin:
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('XADD'))
         stream = key.value or XStream()
-        if self.version < Version('7') and entry_key != b'*' and not StreamRangeTest.valid_key(entry_key):
+        if self.version < (7,) and entry_key != b'*' and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
         entry_key = stream.add(elements, entry_key=entry_key)
         if entry_key is None:

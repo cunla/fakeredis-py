@@ -2,8 +2,6 @@ import hashlib
 import pickle
 import random
 
-from packaging.version import Version
-
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
@@ -43,22 +41,9 @@ class GenericCommandsMixin:
             return item.value
 
     def _expireat(self, key, timestamp, *args):
-        nx = False
-        xx = False
-        gt = False
-        lt = False
-        for arg in args:
-            if casematch(b'nx', arg):
-                nx = True
-            elif casematch(b'xx', arg):
-                xx = True
-            elif casematch(b'gt', arg):
-                gt = True
-            elif casematch(b'lt', arg):
-                lt = True
-            else:
-                raise SimpleError(msgs.EXPIRE_UNSUPPORTED_OPTION.format(arg))
-        if self.version < Version('7') and any((nx, xx, gt, lt)):
+        (nx, xx, gt, lt,), _ = extract_args(
+            args, ('nx', 'xx', 'gt', 'lt',), exception=msgs.EXPIRE_UNSUPPORTED_OPTION,)
+        if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
         counter = (nx, gt, lt).count(True)
         if (counter > 1) or (nx and xx):
