@@ -6,6 +6,13 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.14.2
+
+### 🧰 Bug Fixes
+
+- Fix documentation link 
+
+
 ## v2.14.1
 
 ### 🧰 Bug Fixes
