@@ -36,7 +36,7 @@ Returns the server time.
 
 
 ### Unsupported server commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [ACL](https://redis.io/commands/acl/) <small>(not implemented)</small>
 
@@ -405,7 +405,7 @@ Returns a substring from a string value.
 
 
 ### Unsupported cluster commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
 
@@ -552,7 +552,7 @@ Changes the selected database.
 
 
 ### Unsupported connection commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [AUTH](https://redis.io/commands/auth/) <small>(not implemented)</small>
 
@@ -671,7 +671,7 @@ Sets or clears the bit at offset of the string value. Creates the key if it does
 
 
 ### Unsupported bitmap commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [BITFIELD](https://redis.io/commands/bitfield/) <small>(not implemented)</small>
 
@@ -758,7 +758,7 @@ Appends an element to a list only when the list exists.
 
 
 ### Unsupported list commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [BLMOVE](https://redis.io/commands/blmove/) <small>(not implemented)</small>
 
@@ -885,7 +885,7 @@ Stores the union of multiple sorted sets in a key.
 
 
 ### Unsupported sorted-set commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [BZMPOP](https://redis.io/commands/bzmpop/) <small>(not implemented)</small>
 
@@ -1008,7 +1008,7 @@ Asynchronously deletes one or more keys.
 
 
 ### Unsupported generic commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [COPY](https://redis.io/commands/copy/) <small>(not implemented)</small>
 
@@ -1123,7 +1123,7 @@ Loads a server-side Lua script to the script cache.
 
 
 ### Unsupported scripting commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [EVALSHA_RO](https://redis.io/commands/evalsha_ro/) <small>(not implemented)</small>
 
@@ -1318,7 +1318,7 @@ Merges one or more HyperLogLog values into a single key.
 
 
 ### Unsupported hyperloglog commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [PFDEBUG](https://redis.io/commands/pfdebug/) <small>(not implemented)</small>
 
@@ -1369,7 +1369,7 @@ Stops listening to messages posted to channels.
 
 
 ### Unsupported pubsub commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/) <small>(not implemented)</small>
 
@@ -1500,7 +1500,7 @@ Deletes messages from the beginning of a stream.
 
 
 ### Unsupported stream commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [XACK](https://redis.io/commands/xack/) <small>(not implemented)</small>
 

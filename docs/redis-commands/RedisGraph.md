@@ -4,7 +4,7 @@ Module currently not implemented in fakeredis.
 
 
 ### Unsupported graph commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [GRAPH.QUERY](https://redis.io/commands/graph.query/) <small>(not implemented)</small>
 

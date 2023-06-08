@@ -88,7 +88,7 @@ Returns the type of the JSON value at path
 
 
 ### Unsupported json commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [JSON.MERGE](https://redis.io/commands/json.merge/) <small>(not implemented)</small>
 

@@ -4,7 +4,7 @@ Module currently not implemented in fakeredis.
 
 
 ### Unsupported search commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [FT.CREATE](https://redis.io/commands/ft.create/) <small>(not implemented)</small>
 
@@ -109,7 +109,7 @@ Deletes a cursor
 
 
 ### Unsupported suggestion commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [FT.SUGADD](https://redis.io/commands/ft.sugadd/) <small>(not implemented)</small>
 
