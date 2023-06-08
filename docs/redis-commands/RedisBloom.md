@@ -4,7 +4,7 @@ Module currently not implemented in fakeredis.
 
 
 ### Unsupported bf commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [BF.RESERVE](https://redis.io/commands/bf.reserve/) <small>(not implemented)</small>
 
@@ -49,7 +49,7 @@ Returns the cardinality of a Bloom filter
 
 
 ### Unsupported cf commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [CF.RESERVE](https://redis.io/commands/cf.reserve/) <small>(not implemented)</small>
 
@@ -102,7 +102,7 @@ Returns information about a Cuckoo Filter
 
 
 ### Unsupported cms commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [CMS.INITBYDIM](https://redis.io/commands/cms.initbydim/) <small>(not implemented)</small>
 
@@ -131,7 +131,7 @@ Returns information about a sketch
 
 
 ### Unsupported topk commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [TOPK.RESERVE](https://redis.io/commands/topk.reserve/) <small>(not implemented)</small>
 
@@ -164,7 +164,7 @@ Returns information about a sketch
 
 
 ### Unsupported tdigest commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [TDIGEST.CREATE](https://redis.io/commands/tdigest.create/) <small>(not implemented)</small>
 

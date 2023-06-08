@@ -4,7 +4,7 @@ Module currently not implemented in fakeredis.
 
 
 ### Unsupported timeseries commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [TS.CREATE](https://redis.io/commands/ts.create/) <small>(not implemented)</small>
 
