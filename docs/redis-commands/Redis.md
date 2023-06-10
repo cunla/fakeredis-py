@@ -1478,6 +1478,22 @@ Appends a new message to a stream. Creates the key if it doesn't exist.
 
 Returns the number of messages after removing them from a stream.
 
+### [XGROUP CREATE](https://redis.io/commands/xgroup-create/)
+
+Creates a consumer group.
+
+### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/)
+
+Destroys a consumer group.
+
+### [XGROUP SETID](https://redis.io/commands/xgroup-setid/)
+
+Sets the last-delivered ID of a consumer group.
+
+### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/)
+
+Returns a list of the consumer groups of a stream.
+
 ### [XLEN](https://redis.io/commands/xlen/)
 
 Return the number of messages in a stream.
@@ -1518,10 +1534,6 @@ Changes, or acquires, ownership of a message in a consumer group, as if the mess
 
 A container for consumer groups commands.
 
-#### [XGROUP CREATE](https://redis.io/commands/xgroup-create/) <small>(not implemented)</small>
-
-Creates a consumer group.
-
 #### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/) <small>(not implemented)</small>
 
 Creates a consumer in a consumer group.
@@ -1530,17 +1542,9 @@ Creates a consumer in a consumer group.
 
 Deletes a consumer from a consumer group.
 
-#### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/) <small>(not implemented)</small>
-
-Destroys a consumer group.
-
 #### [XGROUP HELP](https://redis.io/commands/xgroup-help/) <small>(not implemented)</small>
 
 Returns helpful text about the different subcommands.
-
-#### [XGROUP SETID](https://redis.io/commands/xgroup-setid/) <small>(not implemented)</small>
-
-Sets the last-delivered ID of a consumer group.
 
 #### [XINFO](https://redis.io/commands/xinfo/) <small>(not implemented)</small>
 
@@ -1549,10 +1553,6 @@ A container for stream introspection commands.
 #### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/) <small>(not implemented)</small>
 
 Returns a list of the consumers in a consumer group.
-
-#### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/) <small>(not implemented)</small>
-
-Returns a list of the consumer groups of a stream.
 
 #### [XINFO HELP](https://redis.io/commands/xinfo-help/) <small>(not implemented)</small>
 
