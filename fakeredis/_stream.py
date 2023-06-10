@@ -31,13 +31,13 @@ class StreamEntry(NamedTuple):
 
 
 class StreamGroup(object):
-    def __init__(self, name: bytes, start: StreamEntryKey, entries_read: int = None):
+    def __init__(self, name: bytes, start_index: int, entries_read: int = None):
         self.name = name
-        self.start = start
+        self.start_index = start_index
         self.entries_read = entries_read
         self.consumers = list()
-        self.last_delivered_id = StreamEntryKey(0, 0)
-        self.last_ack_id = StreamEntryKey(0, 0)
+        self.last_delivered_index = start_index
+        self.last_ack_index = start_index
 
 
 class StreamRangeTest:
@@ -91,10 +91,9 @@ class XStream:
         :param start_key_str: start_key in `timestamp-sequence` format, or $ listen from last.
         :param entries_read: number of entries read.
         """
-        start_key = StreamEntryKey.parse_str(
-            self.last_item_key() if start_key_str == b'$' else start_key_str)
-        entries_read = entries_read or 0
-        self._groups[name] = StreamGroup(name, start_key, entries_read=entries_read)
+        start_index, found = self.find_index_key_as_str(start_key_str)
+        start_index -= (0 if found else -1)
+        self._groups[name] = StreamGroup(name, start_index, entries_read)
 
     def group_delete(self, group_name: bytes) -> int:
         if group_name in self._groups:
@@ -102,7 +101,7 @@ class XStream:
             return 1
         return 0
 
-    def group_set_id(self, group_name: bytes, last_delivered_str: bytes, entries_read: int) -> bool:
+    def group_set_id(self, group_name: bytes, last_delivered_str: bytes, entries_read: Union[int, None]) -> bool:
         """Set last_delivered_id for group
 
         :returns: True if successful, False if the group is not found.
@@ -110,23 +109,21 @@ class XStream:
         group = self._groups.get(group_name, None)
         if group is None:
             return False
-        group.last_delivered_id = StreamEntryKey.parse_str(
-            self.last_item_key() if last_delivered_str == b'$' else last_delivered_str)
+        group.start_index, _ = self.find_index_key_as_str(last_delivered_str)
         group.entries_read = entries_read
         return True
 
     def groups_info(self):
         res = []
         for group in self._groups.values():
-            last_delivered_index = self.find_index(group.last_delivered_id)[0]
-            last_ack_index = self.find_index(group.last_ack_id)[0]
+            last_delivered_id = self._values[min(group.last_delivered_index, len(self._values) - 1)].key.encode()
             group_res = [
                 b'name', group.name,
                 b'consumers', len(group.consumers),
-                b'pending', last_delivered_index - last_ack_index,
-                b'last-delivered-id', group.last_delivered_id.encode(),
+                b'pending', group.last_delivered_index - group.last_ack_index,
+                b'last-delivered-id', last_delivered_id,
                 b'entries-read', group.entries_read,
-                b'lag', last_delivered_index - len(self._values),
+                b'lag', len(self._values) - 1 - group.last_delivered_index,
             ]
             res.append(group_res)
         return res
@@ -215,13 +212,15 @@ class XStream:
         ind = bisect.bisect_left(list(map(lambda x: x.key, self._values)), entry_key)
         return ind, self._values[ind].key == entry_key
 
-    def find_index_key_as_str(self, entry_key_str: str) -> Tuple[int, bool]:
+    def find_index_key_as_str(self, entry_key_str: Union[str, bytes]) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
         :param entry_key_str: key for the entry, formatted as 'timestamp-sequence'.
         :returns: A tuple of
             ( index of entry with the closest (from the left) key to entry_key_str,
               Whether the entry key is equal )
         """
+        if entry_key_str == b'$':
+            return len(self._values) - 1, True
         ts_seq = StreamEntryKey.parse_str(entry_key_str)
         return self.find_index(ts_seq)
 
