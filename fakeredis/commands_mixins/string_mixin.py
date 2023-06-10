@@ -148,7 +148,7 @@ class StringCommandsMixin:
         key.expireat = self._db.time + ms / 1000.0
         return OK
 
-    @command(name="set", fixed=(Key(), bytes), repeat=(bytes,))
+    @command(name="SET", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
         (ex, px, xx, nx, keepttl, get), _ = extract_args(args, ('+ex', '+px', 'xx', 'nx', 'keepttl', 'get'))
         if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):

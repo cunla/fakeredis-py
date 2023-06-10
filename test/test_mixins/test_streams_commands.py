@@ -39,10 +39,10 @@ def test_xstream():
     assert next(i) == [b'2-1', [3, 3, 4, 4]]
     assert next(i) == [b'2-2', [3, 3, 4, 4]]
 
-    assert stream.find_index('1-2') == (1, True)
-    assert stream.find_index('0-1') == (0, True)
-    assert stream.find_index('2-1') == (3, True)
-    assert stream.find_index('1-4') == (3, False)
+    assert stream.find_index_key_as_str('1-2') == (1, True)
+    assert stream.find_index_key_as_str('0-1') == (0, True)
+    assert stream.find_index_key_as_str('2-1') == (3, True)
+    assert stream.find_index_key_as_str('1-4') == (3, False)
 
     lst = stream.irange((0, 2), (3, 0))
     assert len(lst) == 4
@@ -414,7 +414,6 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group)
 
 
-@pytest.mark.xfail
 def test_xgroup_setid(r: redis.Redis):
     stream = "stream"
     group = "group"

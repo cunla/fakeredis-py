@@ -55,6 +55,7 @@ LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
 RESTORE_KEY_EXISTS = "BUSYKEY Target key name already exists."
 RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
+
 RESTORE_INVALID_TTL_MSG = "ERR Invalid TTL value, must be >= 0"
 JSON_WRONG_REDIS_TYPE = "ERR Existing key has wrong Redis type"
 JSON_KEY_NOT_FOUND = "ERR could not perform this operation on a key that doesn't exist"
@@ -62,8 +63,12 @@ JSON_PATH_NOT_FOUND_OR_NOT_STRING = "ERR Path '{}' does not exist or not a strin
 JSON_PATH_DOES_NOT_EXIST = "ERR Path '{}' does not exist"
 LCS_CANT_HAVE_BOTH_LEN_AND_IDX = "ERR If you want both the length and indexes, please just use IDX."
 BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
-XADD_ID_LOWER_THAN_LAST = "The ID specified in XADD is equal or smaller than the target stream top item"
-XADD_INVALID_ID = 'Invalid stream ID specified as stream command argument'
+XADD_ID_LOWER_THAN_LAST = "ERR The ID specified in XADD is equal or smaller than the target stream top item"
+XADD_INVALID_ID = 'ERR Invalid stream ID specified as stream command argument'
+XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '%s' for key name '%s'"
+XGROUP_KEY_NOT_FOUND_MSG = (
+    "ERR The XGROUP subcommand requires the key to exist."
+    " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.")
 FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = 'v'
 FLAG_TRANSACTION = 't'

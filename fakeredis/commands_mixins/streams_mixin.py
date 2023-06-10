@@ -4,7 +4,7 @@ from typing import List
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem
-from fakeredis._helpers import SimpleError, casematch
+from fakeredis._helpers import SimpleError, casematch, OK
 from fakeredis._stream import XStream, StreamRangeTest
 
 
@@ -114,3 +114,27 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
         res = key.value.delete(args)
         return res
+
+    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
+    def xgroup_create(self, key, group_name, start_key, *args):
+        (mkstream, entries_read,), _ = extract_args(args, ('mkstream', '+entriesread'))
+        if key.value is None and not mkstream:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        key.value.group_add(group_name, start_key, entries_read)
+        return OK
+
+    @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
+    def xgroup_setid(self, key, group_name, start_key, *args):
+        (entries_read,), _ = extract_args(args, ('+entriesread',))
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        res = key.value.group_set_id(group_name, start_key, entries_read)
+        if not res:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+        return OK
+
+    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), )
+    def xinfo_groups(self, key,):
+        if key.value is None:
+            raise SimpleError(msgs.NO_KEY_MSG)
+        return key.value.groups_info()

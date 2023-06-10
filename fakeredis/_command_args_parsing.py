@@ -7,7 +7,7 @@ from ._helpers import SimpleError, null_terminate
 
 def _count_params(s: str):
     res = 0
-    while s[res] in '.+*~':
+    while res < len(s) and s[res] in '.+*~':
         res += 1
     return res
 
