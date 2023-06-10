@@ -302,6 +302,26 @@ def test_xgroup_setid(r: redis.Redis):
     stream = "stream"
     group = "group"
     message_id = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, message_id)
+    r.xadd(stream, {"foo": "bar"})
+    expected = [
+        {
+            "name": group.encode(),
+            "consumers": 0,
+            "pending": 0,
+            "last-delivered-id": message_id,
+            "entries-read": None,
+            "lag": 1,
+        }
+    ]
+    assert r.xinfo_groups(stream) == expected
+
+
+@pytest.mark.min_server('7')
+def test_xgroup_setid_redis7(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    message_id = r.xadd(stream, {"foo": "bar"})
 
     r.xgroup_create(stream, group, 0)
     # advance the last_delivered_id to the message_id

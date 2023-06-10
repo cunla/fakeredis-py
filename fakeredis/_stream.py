@@ -84,7 +84,7 @@ class XStream:
         self._values: List[StreamEntry] = list()
         self._groups: Dict[bytes, StreamGroup] = dict()
 
-    def group_add(self, name: bytes, start_key_str: bytes, entries_read: int) -> None:
+    def group_add(self, name: bytes, start_key_str: bytes, entries_read: Union[int, None]) -> None:
         """Add a group listening to stream
 
         :param name: group name
