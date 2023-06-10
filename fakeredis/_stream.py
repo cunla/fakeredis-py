@@ -1,6 +1,6 @@
 import bisect
 import time
-from typing import List, Union, Tuple, Optional, NamedTuple
+from typing import List, Union, Tuple, Optional, NamedTuple, Dict
 
 from fakeredis._commands import BeforeAny, AfterAny
 
@@ -28,6 +28,16 @@ class StreamEntry(NamedTuple):
     def format_record(self):
         results = list(self.fields)
         return [self.key.encode(), results]
+
+
+class StreamGroup(object):
+    def __init__(self, name: bytes, start: StreamEntryKey, entries_read: int = None):
+        self.name = name
+        self.start = start
+        self.entries_read = entries_read
+        self.consumers = list()
+        self.last_delivered_id = StreamEntryKey(0, 0)
+        self.last_ack_id = StreamEntryKey(0, 0)
 
 
 class StreamRangeTest:
@@ -72,6 +82,54 @@ class XStream:
 
     def __init__(self):
         self._values: List[StreamEntry] = list()
+        self._groups: Dict[bytes, StreamGroup] = dict()
+
+    def group_add(self, name: bytes, start_key_str: bytes, entries_read: int) -> None:
+        """Add a group listening to stream
+
+        :param name: group name
+        :param start_key_str: start_key in `timestamp-sequence` format, or $ listen from last.
+        :param entries_read: number of entries read.
+        """
+        start_key = StreamEntryKey.parse_str(
+            self.last_item_key() if start_key_str == b'$' else start_key_str)
+        entries_read = entries_read or 0
+        self._groups[name] = StreamGroup(name, start_key, entries_read=entries_read)
+
+    def group_delete(self, group_name: bytes) -> int:
+        if group_name in self._groups:
+            del self._groups[group_name]
+            return 1
+        return 0
+
+    def group_set_id(self, group_name: bytes, last_delivered_str: bytes, entries_read: int) -> bool:
+        """Set last_delivered_id for group
+
+        :returns: True if successful, False if the group is not found.
+        """
+        group = self._groups.get(group_name, None)
+        if group is None:
+            return False
+        group.last_delivered_id = StreamEntryKey.parse_str(
+            self.last_item_key() if last_delivered_str == b'$' else last_delivered_str)
+        group.entries_read = entries_read
+        return True
+
+    def groups_info(self):
+        res = []
+        for group in self._groups.values():
+            last_delivered_index = self.find_index(group.last_delivered_id)[0]
+            last_ack_index = self.find_index(group.last_ack_id)[0]
+            group_res = [
+                b'name', group.name,
+                b'consumers', len(group.consumers),
+                b'pending', last_delivered_index - last_ack_index,
+                b'last-delivered-id', group.last_delivered_id.encode(),
+                b'entries-read', group.entries_read,
+                b'lag', last_delivered_index - len(self._values),
+            ]
+            res.append(group_res)
+        return res
 
     def delete(self, lst: List[Union[str, bytes]]) -> int:
         """Delete items from stream
@@ -81,7 +139,7 @@ class XStream:
         """
         res = 0
         for item in lst:
-            ind, found = self.find_index(item)
+            ind, found = self.find_index_key_as_str(item)
             if found:
                 del self._values[ind]
                 res += 1
@@ -145,18 +203,27 @@ class XStream:
 
         return gen()
 
-    def find_index(self, entry_key_str: str) -> Tuple[int, bool]:
+    def find_index(self, entry_key: StreamEntryKey) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
-        :param entry_key_str: key for the entry, formatted as 'timestamp-sequence'.
+        :param entry_key: key for the entry.
         :returns: A tuple of
             ( index of entry with the closest (from the left) key to entry_key_str,
               Whether the entry key is equal )
         """
         if len(self._values) == 0:
             return 0, False
+        ind = bisect.bisect_left(list(map(lambda x: x.key, self._values)), entry_key)
+        return ind, self._values[ind].key == entry_key
+
+    def find_index_key_as_str(self, entry_key_str: str) -> Tuple[int, bool]:
+        """Find the closest index to entry_key_str in the stream
+        :param entry_key_str: key for the entry, formatted as 'timestamp-sequence'.
+        :returns: A tuple of
+            ( index of entry with the closest (from the left) key to entry_key_str,
+              Whether the entry key is equal )
+        """
         ts_seq = StreamEntryKey.parse_str(entry_key_str)
-        ind = bisect.bisect_left(list(map(lambda x: x.key, self._values)), ts_seq)
-        return ind, self._values[ind].key == ts_seq
+        return self.find_index(ts_seq)
 
     def trim(self,
              max_length: Optional[int] = None,
@@ -176,7 +243,7 @@ class XStream:
         if max_length is not None:
             start_ind = len(self._values) - max_length
         elif start_entry_key is not None:
-            ind, exact = self.find_index(start_entry_key)
+            ind, exact = self.find_index_key_as_str(start_entry_key)
             start_ind = ind
         res = max(start_ind, 0)
         if limit is not None:
@@ -209,4 +276,4 @@ class XStream:
         return list(matches)
 
     def last_item_key(self) -> bytes:
-        return self._values[-1].key.encode()
+        return self._values[-1].key.encode() if len(self._values) > 0 else '0-0'.encode()

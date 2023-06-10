@@ -6,12 +6,20 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.15.0
+
+### 🚀 Features
+
+- Implement `XGROUP CREATE` #161
+- Implement `XGROUP DESTROY` #164
+- Implement `XGROUP SETID` #165
+- Implement `XINFO GROUPS` #168
+
 ## v2.14.2
 
 ### 🧰 Bug Fixes
 
-- Fix documentation link 
-
+- Fix documentation link
 
 ## v2.14.1
 

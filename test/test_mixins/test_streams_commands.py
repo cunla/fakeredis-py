@@ -39,10 +39,10 @@ def test_xstream():
     assert next(i) == [b'2-1', [3, 3, 4, 4]]
     assert next(i) == [b'2-2', [3, 3, 4, 4]]
 
-    assert stream.find_index('1-2') == (1, True)
-    assert stream.find_index('0-1') == (0, True)
-    assert stream.find_index('2-1') == (3, True)
-    assert stream.find_index('1-4') == (3, False)
+    assert stream.find_index_key_as_str('1-2') == (1, True)
+    assert stream.find_index_key_as_str('0-1') == (0, True)
+    assert stream.find_index_key_as_str('2-1') == (3, True)
+    assert stream.find_index_key_as_str('1-4') == (3, False)
 
     lst = stream.irange((0, 2), (3, 0))
     assert len(lst) == 4
@@ -287,6 +287,38 @@ def test_xdel(r: redis.Redis):
     assert r.xdel('non-existing-key', '1-1') == 0
 
 
+def test_xgroup_destroy(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    r.xadd(stream, {"foo": "bar"})
+
+    assert r.xgroup_destroy(stream, group) == 0
+
+    r.xgroup_create(stream, group, 0)
+    assert r.xgroup_destroy(stream, group) == 1
+
+
+def test_xgroup_setid(r: redis.Redis):
+    stream = "stream"
+    group = "group"
+    message_id = r.xadd(stream, {"foo": "bar"})
+
+    r.xgroup_create(stream, group, 0)
+    # advance the last_delivered_id to the message_id
+    r.xgroup_setid(stream, group, message_id, entries_read=2)
+    expected = [
+        {
+            "name": group.encode(),
+            "consumers": 0,
+            "pending": 0,
+            "last-delivered-id": message_id,
+            "entries-read": 2,
+            "lag": -1,
+        }
+    ]
+    assert r.xinfo_groups(stream) == expected
+
+
 @pytest.mark.xfail
 def test_xack(r: redis.Redis):
     stream = "stream"
@@ -399,41 +431,6 @@ def test_xgroup_createconsumer(r: redis.Redis):
 
     # deleting the consumer should return 2 pending messages
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
-
-
-@pytest.mark.xfail
-def test_xgroup_destroy(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    r.xadd(stream, {"foo": "bar"})
-
-    # destroying a nonexistent group returns False
-    assert not r.xgroup_destroy(stream, group)
-
-    r.xgroup_create(stream, group, 0)
-    assert r.xgroup_destroy(stream, group)
-
-
-@pytest.mark.xfail
-def test_xgroup_setid(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    message_id = r.xadd(stream, {"foo": "bar"})
-
-    r.xgroup_create(stream, group, 0)
-    # advance the last_delivered_id to the message_id
-    r.xgroup_setid(stream, group, message_id, entries_read=2)
-    expected = [
-        {
-            "name": group.encode(),
-            "consumers": 0,
-            "pending": 0,
-            "last-delivered-id": message_id,
-            "entries-read": 2,
-            "lag": -1,
-        }
-    ]
-    assert r.xinfo_groups(stream) == expected
 
 
 @pytest.mark.xfail
