@@ -133,6 +133,13 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
         return OK
 
+    @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes,), repeat=(), )
+    def xgroup_destroy(self, key, group_name,):
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        res = key.value.group_delete(group_name)
+        return res
+
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), )
     def xinfo_groups(self, key,):
         if key.value is None:

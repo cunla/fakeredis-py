@@ -96,6 +96,12 @@ class XStream:
         entries_read = entries_read or 0
         self._groups[name] = StreamGroup(name, start_key, entries_read=entries_read)
 
+    def group_delete(self, group_name: bytes) -> int:
+        if group_name in self._groups:
+            del self._groups[group_name]
+            return 1
+        return 0
+
     def group_set_id(self, group_name: bytes, last_delivered_str: bytes, entries_read: int) -> bool:
         """Set last_delivered_id for group
 

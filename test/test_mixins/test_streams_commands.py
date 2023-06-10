@@ -401,17 +401,15 @@ def test_xgroup_createconsumer(r: redis.Redis):
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
 
-@pytest.mark.xfail
 def test_xgroup_destroy(r: redis.Redis):
     stream = "stream"
     group = "group"
     r.xadd(stream, {"foo": "bar"})
 
-    # destroying a nonexistent group returns False
-    assert not r.xgroup_destroy(stream, group)
+    assert r.xgroup_destroy(stream, group) == 0
 
     r.xgroup_create(stream, group, 0)
-    assert r.xgroup_destroy(stream, group)
+    assert r.xgroup_destroy(stream, group) == 1
 
 
 def test_xgroup_setid(r: redis.Redis):
