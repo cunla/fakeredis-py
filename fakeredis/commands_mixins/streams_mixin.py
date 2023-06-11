@@ -5,7 +5,7 @@ import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem
 from fakeredis._helpers import SimpleError, casematch, OK
-from fakeredis._stream import XStream, StreamRangeTest
+from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
 
 class StreamsCommandsMixin:
@@ -128,20 +128,48 @@ class StreamsCommandsMixin:
         (entries_read,), _ = extract_args(args, ('+entriesread',))
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        res = key.value.group_set_id(group_name, start_key, entries_read)
-        if not res:
+        group = key.value.group_get(group_name)
+        if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+        group.set_id(start_key, entries_read)
         return OK
 
     @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes,), repeat=(), )
-    def xgroup_destroy(self, key, group_name,):
+    def xgroup_destroy(self, key, group_name, ):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         res = key.value.group_delete(group_name)
         return res
 
+    @command(name="XGROUP CREATECONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=(), )
+    def xgroup_createconsumer(self, key, group_name, consumer_name):
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        group: StreamGroup = key.value.group_get(group_name)
+        if not group:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+        return group.add_consumer(consumer_name)
+
+    @command(name="XGROUP DELCONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=(), )
+    def xgroup_delconsumer(self, key, group_name, consumer_name):
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        group: StreamGroup = key.value.group_get(group_name)
+        if not group:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+        return group.del_consumer(consumer_name)
+
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), )
-    def xinfo_groups(self, key,):
+    def xinfo_groups(self, key, ):
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.groups_info()
+
+    @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=(), )
+    def xinfo_consumers(self, key, group_name, ):
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        group: StreamGroup = key.value.group_get(group_name)
+        if not group:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+        return group.consumers_info()

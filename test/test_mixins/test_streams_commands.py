@@ -416,7 +416,6 @@ def test_xclaim_trimmed(r: redis.Redis):
     assert item[0][0] == sid2
 
 
-@pytest.mark.xfail
 def test_xgroup_delconsumer(r: redis.Redis):
     stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
@@ -433,7 +432,6 @@ def test_xgroup_delconsumer(r: redis.Redis):
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
 
-@pytest.mark.xfail
 def test_xgroup_createconsumer(r: redis.Redis):
     stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
@@ -448,7 +446,6 @@ def test_xgroup_createconsumer(r: redis.Redis):
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
 
-@pytest.mark.xfail
 def test_xinfo_consumers(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})

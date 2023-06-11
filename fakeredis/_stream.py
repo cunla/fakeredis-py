@@ -1,5 +1,6 @@
 import bisect
 import time
+from dataclasses import dataclass
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict
 
 from fakeredis._commands import BeforeAny, AfterAny
@@ -30,14 +31,58 @@ class StreamEntry(NamedTuple):
         return [self.key.encode(), results]
 
 
+current_time = lambda: int(time.time() * 1000)
+
+
+@dataclass
+class StreamConsumerInfo(object):
+    name: bytes
+    pending: int = 0
+    last_attempt: int = current_time()
+    last_success: int = current_time()
+
+    def info(self) -> List[bytes]:
+        curr_time = current_time()
+        return [
+            b'name', self.name,
+            b'pending', self.pending,
+            b'idle', curr_time - self.last_attempt,
+            b'inactive', curr_time - self.last_success,
+        ]
+
+
 class StreamGroup(object):
-    def __init__(self, name: bytes, start_index: int, entries_read: int = None):
+    def __init__(self, stream: 'XStream', name: bytes, start_index: int, entries_read: int = None):
+        self.stream = stream
         self.name = name
         self.start_index = start_index
         self.entries_read = entries_read
-        self.consumers = list()
+        # consumer_name -> #pending_messages
+        self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
         self.last_delivered_index = start_index
         self.last_ack_index = start_index
+
+    def set_id(self, last_delivered_str: bytes, entries_read: Union[int, None]) -> None:
+        """Set last_delivered_id for group
+        """
+        self.start_index, _ = self.stream.find_index_key_as_str(last_delivered_str)
+        self.entries_read = entries_read
+
+    def add_consumer(self, consumer_name: bytes) -> int:
+        if consumer_name in self.consumers:
+            return 0
+        self.consumers[consumer_name] = StreamConsumerInfo()
+        return 1
+
+    def del_consumer(self, consumer_name: bytes) -> int:
+        if consumer_name not in self.consumers:
+            return 0
+        res = self.consumers[consumer_name].pending
+        del self.consumers[consumer_name]
+        return res
+
+    def consumers_info(self):
+        return [self.consumers[k].info() for k in self.consumers]
 
 
 class StreamRangeTest:
@@ -84,6 +129,9 @@ class XStream:
         self._values: List[StreamEntry] = list()
         self._groups: Dict[bytes, StreamGroup] = dict()
 
+    def group_get(self, group_name: bytes) -> StreamGroup:
+        return self._groups.get(group_name, None)
+
     def group_add(self, name: bytes, start_key_str: bytes, entries_read: Union[int, None]) -> None:
         """Add a group listening to stream
 
@@ -93,25 +141,13 @@ class XStream:
         """
         start_index, found = self.find_index_key_as_str(start_key_str)
         start_index -= (0 if found else -1)
-        self._groups[name] = StreamGroup(name, start_index, entries_read)
+        self._groups[name] = StreamGroup(self, name, start_index, entries_read)
 
     def group_delete(self, group_name: bytes) -> int:
         if group_name in self._groups:
             del self._groups[group_name]
             return 1
         return 0
-
-    def group_set_id(self, group_name: bytes, last_delivered_str: bytes, entries_read: Union[int, None]) -> bool:
-        """Set last_delivered_id for group
-
-        :returns: True if successful, False if the group is not found.
-        """
-        group = self._groups.get(group_name, None)
-        if group is None:
-            return False
-        group.start_index, _ = self.find_index_key_as_str(last_delivered_str)
-        group.entries_read = entries_read
-        return True
 
     def groups_info(self):
         res = []
