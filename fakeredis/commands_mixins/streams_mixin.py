@@ -1,5 +1,5 @@
 import functools
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -56,10 +56,7 @@ class StreamsCommandsMixin:
             return None
         if count is None:
             count = len(stream)
-        res = stream.irange(
-            _min.value, _max.value,
-            exclusive=(_min.exclusive, _max.exclusive),
-            reverse=reverse)
+        res = stream.irange(_min, _max,reverse=reverse)
         return res[:count]
 
     @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
@@ -84,17 +81,16 @@ class StreamsCommandsMixin:
         return res
 
     def _xreadgroup(
-            self, group_name: bytes, consumer_name: bytes,
-            stream_start_id_list: List, count: int, noack: bool,
+            self, consumer_name: bytes,
+            group_params: List[Tuple[StreamGroup, bytes, bytes]], count: int, noack: bool,
             first_pass: bool):
         res = list()
-        for (item, start_id) in stream_start_id_list:
-            stream: XStream = item.value
-            stream_results = stream.readgroup(group_name, consumer_name, start_id, count, noack)
+        for (group, stream_name, start_id) in group_params:
+            stream_results = group.group_read(consumer_name, start_id, count, noack)
             if first_pass and (count is None or len(stream_results) < count):
                 raise SimpleError(msgs.WRONGTYPE_MSG)
             if len(stream_results) > 0:
-                res.append([item.key, stream_results])
+                res.append([stream_name, stream_results])
         return res
 
     @staticmethod
@@ -134,15 +130,21 @@ class StreamsCommandsMixin:
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
-        stream_start_id_list = list()
+        # List of (group, stream_name, stream start-id)
+        group_params: List[Tuple[StreamGroup, bytes, bytes]] = list()
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
-            stream_start_id_list.append((item, left_args[i + num_streams],))
+            if item.value is None:
+                raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+            group: StreamGroup = item.value.group_get(group_name)
+            if not group:
+                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(left_args[i], group_name))
+            group_params.append((group, item.key, left_args[i + num_streams],))
         if timeout is None:
-            return self._xreadgroup(group_name, consumer_name, stream_start_id_list, count, noack, False)
+            return self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
             return self._blocking(timeout, functools.partial(
-                self._xreadgroup, group_name, consumer_name, stream_start_id_list, count, noack))
+                self._xreadgroup, consumer_name, group_params, count, noack))
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,), )
     def xdel(self, key, *args):
@@ -200,6 +202,12 @@ class StreamsCommandsMixin:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.groups_info()
+
+    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(), )
+    def xinfo_stream(self, key, ):
+        if key.value is None:
+            raise SimpleError(msgs.NO_KEY_MSG)
+        return key.value.stream_info()
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=(), )
     def xinfo_consumers(self, key, group_name, ):
