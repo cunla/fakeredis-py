@@ -1,5 +1,5 @@
 import functools
-from typing import List
+from typing import List, Union
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -50,12 +50,13 @@ class StreamsCommandsMixin:
         return len(key.value)
 
     @staticmethod
-    def _xrange(key, _min, _max, reverse, count, ):
-        if key.value is None:
+    def _xrange(stream: XStream, _min: StreamRangeTest, _max: StreamRangeTest, reverse: bool,
+                count: Union[int, None], ) -> List:
+        if stream is None:
             return None
         if count is None:
-            count = len(key.value)
-        res = key.value.irange(
+            count = len(stream)
+        res = stream.irange(
             _min.value, _max.value,
             exclusive=(_min.exclusive, _max.exclusive),
             reverse=reverse)
@@ -64,18 +65,32 @@ class StreamsCommandsMixin:
     @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrange(self, key, _min, _max, *args):
         (count,), _ = extract_args(args, ('+count',))
-        return self._xrange(key, _min, _max, False, count)
+        return self._xrange(key.value, _min, _max, False, count)
 
     @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrevrange(self, key, _min, _max, *args):
         (count,), _ = extract_args(args, ('+count',))
-        return self._xrange(key, _max, _min, True, count)
+        return self._xrange(key.value, _max, _min, True, count)
 
     def _xread(self, stream_start_id_list: List, count: int, first_pass: bool):
         max_inf = StreamRangeTest.decode(b'+')
         res = list()
         for (item, start_id) in stream_start_id_list:
-            stream_results = self._xrange(item, start_id, max_inf, False, count)
+            stream_results = self._xrange(item.value, start_id, max_inf, False, count)
+            if first_pass and (count is None or len(stream_results) < count):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
+            if len(stream_results) > 0:
+                res.append([item.key, stream_results])
+        return res
+
+    def _xreadgroup(
+            self, group_name: bytes, consumer_name: bytes,
+            stream_start_id_list: List, count: int, noack: bool,
+            first_pass: bool):
+        res = list()
+        for (item, start_id) in stream_start_id_list:
+            stream: XStream = item.value
+            stream_results = stream.readgroup(group_name, consumer_name, start_id, count, noack)
             if first_pass and (count is None or len(stream_results) < count):
                 raise SimpleError(msgs.WRONGTYPE_MSG)
             if len(stream_results) > 0:
@@ -107,6 +122,27 @@ class StreamsCommandsMixin:
             return self._xread(stream_start_id_list, count, False)
         else:
             return self._blocking(timeout, functools.partial(self._xread, stream_start_id_list, count))
+
+    @command(name="XREADGROUP", fixed=(bytes, bytes), repeat=(bytes,))
+    def xreadgroup(self, group_name, consumer_name, *args):
+        (count, timeout, noack), left_args = extract_args(
+            args, ('+count', '+block', 'noack'), error_on_unexpected=False)
+        if (len(left_args) < 3
+                or not casematch(left_args[0], b'STREAMS')
+                or len(left_args) % 2 != 1):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        left_args = left_args[1:]
+        num_streams = int(len(left_args) / 2)
+
+        stream_start_id_list = list()
+        for i in range(num_streams):
+            item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
+            stream_start_id_list.append((item, left_args[i + num_streams],))
+        if timeout is None:
+            return self._xreadgroup(group_name, consumer_name, stream_start_id_list, count, noack, False)
+        else:
+            return self._blocking(timeout, functools.partial(
+                self._xreadgroup, group_name, consumer_name, stream_start_id_list, count, noack))
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,), )
     def xdel(self, key, *args):

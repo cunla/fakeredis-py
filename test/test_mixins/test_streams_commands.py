@@ -438,6 +438,8 @@ def test_xgroup_createconsumer(r: redis.Redis):
     r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
     assert r.xgroup_createconsumer(stream, group, consumer) == 1
+    # Adding consumer with existing consumer name does nothing
+    assert r.xgroup_createconsumer(stream, group, consumer) == 0
 
     # read all messages from the group
     r.xreadgroup(group, consumer, streams={stream: ">"})

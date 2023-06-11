@@ -1,7 +1,7 @@
 import bisect
 import time
 from dataclasses import dataclass
-from typing import List, Union, Tuple, Optional, NamedTuple, Dict
+from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any
 
 from fakeredis._commands import BeforeAny, AfterAny
 
@@ -290,7 +290,7 @@ class XStream:
     def irange(self,
                start, stop,
                exclusive: Tuple[bool, bool] = (True, True),
-               reverse=False):
+               reverse=False) -> List[Any]:
         """Returns a range of the stream from start to stop.
 
         :param start: start key
@@ -313,3 +313,6 @@ class XStream:
 
     def last_item_key(self) -> bytes:
         return self._values[-1].key.encode() if len(self._values) > 0 else '0-0'.encode()
+
+    def readgroup(self, group_name: bytes, consumer_name: bytes, start_id: bytes, count: int, noack: bool):
+        pass  # TODO

@@ -78,12 +78,11 @@ def extract_args(
         for (i, k) in enumerate(expected)
     }
 
-    def _parse_params(
-            key: str,
-            ind: int,
-            actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
-        """
-        Parse an argument from actual args.
+    def _parse_params(key: str, ind: int, actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
+        """Parse an argument from actual args.
+        :param key: argument name to parse
+        :param ind: index of argument in actual_args
+        :param actual_args: actual args
         """
         pos, expected_following = args_info[key]
         argument_name = expected[pos]
