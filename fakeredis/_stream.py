@@ -87,7 +87,7 @@ class StreamGroup(object):
     def consumers_info(self):
         return [self.consumers[k].info() for k in self.consumers]
 
-    def group_info(self) -> Dict:
+    def group_info(self) -> List[bytes]:
         last_delivered_id = self.stream[min(self.last_delivered_index, len(self.stream) - 1)].key.encode()
         res = {
             b'name': self.name,
@@ -97,13 +97,13 @@ class StreamGroup(object):
             b'entries-read': self.entries_read,
             b'lag': len(self.stream) - 1 - self.last_delivered_index,
         }
-        return res
+        return list(itertools.chain(*res.items()))
 
     def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool):
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
-        if start_id == b'>':
-            ind = self.last_delivered_index
+        # if start_id == b'>':
+        #     ind = self.last_delivered_index
         pass  # TODO
 
 
@@ -177,10 +177,10 @@ class XStream:
         res = []
         for group in self._groups.values():
             group_res = group.group_info()
-            res.append(list(itertools.chain(*group_res.items())))
+            res.append(group_res)
         return res
 
-    def stream_info(self) -> List[bytes]:
+    def stream_info(self, full: bool) -> List[bytes]:
         res = {
             b'length': len(self._values),
             b'groups': len(self._groups),
@@ -189,6 +189,9 @@ class XStream:
             b'max-deleted-entry-id': self._max_deleted_id.encode(),
             b'entries-added': self._entries_added,
         }
+        if full:
+            res[b'entries'] = [i.format_record() for i in self._values]
+            res[b'groups'] = [g.group_info() for g in self._groups.values()]
         return list(itertools.chain(*res.items()))
 
     def delete(self, lst: List[Union[str, bytes]]) -> int:

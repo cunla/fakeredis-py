@@ -472,7 +472,6 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     # assert info["recorded-first-entry-id"] == m1
 
 
-@pytest.mark.xfail
 def test_xinfo_stream_full(r: redis.Redis):
     stream, group = "stream", "group"
     m1 = r.xadd(stream, {"foo": "bar"})

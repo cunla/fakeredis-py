@@ -56,7 +56,7 @@ class StreamsCommandsMixin:
             return None
         if count is None:
             count = len(stream)
-        res = stream.irange(_min, _max,reverse=reverse)
+        res = stream.irange(_min, _max, reverse=reverse)
         return res[:count]
 
     @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
@@ -203,11 +203,12 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.groups_info()
 
-    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(), )
-    def xinfo_stream(self, key, ):
+    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), )
+    def xinfo_stream(self, key, *args):
+        (full,), _ = extract_args(args, ('full',))
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        return key.value.stream_info()
+        return key.value.stream_info(full)
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=(), )
     def xinfo_consumers(self, key, group_name, ):
