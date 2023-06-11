@@ -1506,6 +1506,10 @@ Returns a list of the consumers in a consumer group.
 
 Returns a list of the consumer groups of a stream.
 
+### [XINFO STREAM](https://redis.io/commands/xinfo-stream/)
+
+Returns information about a stream.
+
 ### [XLEN](https://redis.io/commands/xlen/)
 
 Return the number of messages in a stream.
@@ -1561,10 +1565,6 @@ A container for stream introspection commands.
 #### [XINFO HELP](https://redis.io/commands/xinfo-help/) <small>(not implemented)</small>
 
 Returns helpful text about the different subcommands.
-
-#### [XINFO STREAM](https://redis.io/commands/xinfo-stream/) <small>(not implemented)</small>
-
-Returns information about a stream.
 
 #### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
 

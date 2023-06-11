@@ -12,7 +12,7 @@ description: Change log of all fakeredis releases
 
 - Implement `XGROUP CREATE` #161, `XGROUP DESTROY` #164, `XGROUP SETID` #165
 - Implement `XGROUP DELCONSUMER` #162, `XGROUP CREATECONSUMER` #163
-- Implement `XINFO GROUPS` #168, `XINFO CONSUMERS` #168
+- Implement `XINFO GROUPS` #168, `XINFO CONSUMERS` #168, `XINFO STREAM` #169
 - Implement `XREADGROUP` #171
 
 ## v2.14.2
