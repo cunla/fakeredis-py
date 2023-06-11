@@ -296,7 +296,7 @@ def test_xgroup_destroy(r: redis.Redis):
 
 
 @pytest.mark.max_server('6.3')
-def test_xgroup_setid_redis6(r: redis.Redis):
+def test_xgroup_create_redis6(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
@@ -310,7 +310,7 @@ def test_xgroup_setid_redis6(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-def test_xgroup_setid_redis7(r: redis.Redis):
+def test_xgroup_create_redis7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)

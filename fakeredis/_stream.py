@@ -31,7 +31,8 @@ class StreamEntry(NamedTuple):
         return [self.key.encode(), results]
 
 
-current_time = lambda: int(time.time() * 1000)
+def current_time():
+    return int(time.time() * 1000)
 
 
 @dataclass

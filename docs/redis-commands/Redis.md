@@ -1482,6 +1482,14 @@ Returns the number of messages after removing them from a stream.
 
 Creates a consumer group.
 
+### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/)
+
+Creates a consumer in a consumer group.
+
+### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/)
+
+Deletes a consumer from a consumer group.
+
 ### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/)
 
 Destroys a consumer group.
@@ -1489,6 +1497,10 @@ Destroys a consumer group.
 ### [XGROUP SETID](https://redis.io/commands/xgroup-setid/)
 
 Sets the last-delivered ID of a consumer group.
+
+### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/)
+
+Returns a list of the consumers in a consumer group.
 
 ### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/)
 
@@ -1534,14 +1546,6 @@ Changes, or acquires, ownership of a message in a consumer group, as if the mess
 
 A container for consumer groups commands.
 
-#### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/) <small>(not implemented)</small>
-
-Creates a consumer in a consumer group.
-
-#### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/) <small>(not implemented)</small>
-
-Deletes a consumer from a consumer group.
-
 #### [XGROUP HELP](https://redis.io/commands/xgroup-help/) <small>(not implemented)</small>
 
 Returns helpful text about the different subcommands.
@@ -1549,10 +1553,6 @@ Returns helpful text about the different subcommands.
 #### [XINFO](https://redis.io/commands/xinfo/) <small>(not implemented)</small>
 
 A container for stream introspection commands.
-
-#### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/) <small>(not implemented)</small>
-
-Returns a list of the consumers in a consumer group.
 
 #### [XINFO HELP](https://redis.io/commands/xinfo-help/) <small>(not implemented)</small>
 
