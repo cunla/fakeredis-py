@@ -205,9 +205,8 @@ def test_xrange(r: redis.Redis):
 
     stream = 'stream2'
     m = testtools.raw_command(r, 'xadd', stream, '*', b'field', b'value', b'foo', b'bar')
-    results = r.xrevrange(stream)
 
-    assert results == [(m, {b'field': b'value', b'foo': b'bar'}), ]
+    assert r.xrevrange(stream) == [(m, {b'field': b'value', b'foo': b'bar'}), ]
 
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
@@ -237,12 +236,10 @@ def test_xread(r: redis.Redis):
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
 
-    expected = [
-        [
-            stream.encode(),
-            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-        ]
-    ]
+    expected = [[
+        stream.encode(),
+        [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+    ]]
     # xread starting at 0 returns both messages
     assert r.xread(streams={stream: 0}) == expected
 
@@ -300,8 +297,7 @@ def test_xgroup_destroy(r: redis.Redis):
 
 @pytest.mark.max_server('6.3')
 def test_xgroup_setid_redis6(r: redis.Redis):
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
     r.xadd(stream, {"foo": "bar"})
@@ -315,51 +311,43 @@ def test_xgroup_setid_redis6(r: redis.Redis):
 
 @pytest.mark.min_server('7')
 def test_xgroup_setid_redis7(r: redis.Redis):
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
     r.xadd(stream, {"foo": "bar"})
-    expected = [
-        {
-            "name": group.encode(),
-            "consumers": 0,
-            "pending": 0,
-            "last-delivered-id": message_id,
-            "entries-read": None,
-            "lag": 1,
-        }
-    ]
+    expected = [{
+        "name": group.encode(),
+        "consumers": 0,
+        "pending": 0,
+        "last-delivered-id": message_id,
+        "entries-read": None,
+        "lag": 1,
+    }]
     assert r.xinfo_groups(stream) == expected
 
 
 @pytest.mark.min_server('7')
 def test_xgroup_setid_redis7(r: redis.Redis):
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
 
     r.xgroup_create(stream, group, 0)
     # advance the last_delivered_id to the message_id
     r.xgroup_setid(stream, group, message_id, entries_read=2)
-    expected = [
-        {
-            "name": group.encode(),
-            "consumers": 0,
-            "pending": 0,
-            "last-delivered-id": message_id,
-            "entries-read": 2,
-            "lag": -1,
-        }
-    ]
+    expected = [{
+        "name": group.encode(),
+        "consumers": 0,
+        "pending": 0,
+        "last-delivered-id": message_id,
+        "entries-read": 2,
+        "lag": -1,
+    }]
     assert r.xinfo_groups(stream) == expected
 
 
 @pytest.mark.xfail
 def test_xack(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer = "consumer"
+    stream, group, consumer = "stream", "group", "consumer"
     # xack on a stream that doesn't exist
     assert r.xack(stream, group, "0-0") == 0
 
@@ -379,10 +367,7 @@ def test_xack(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xautoclaim(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer1 = "consumer1"
-    consumer2 = "consumer2"
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
     message_id1 = r.xadd(stream, {"john": "wick"})
     message_id2 = r.xadd(stream, {"johny": "deff"})
@@ -391,8 +376,7 @@ def test_xautoclaim(r: redis.Redis):
 
     # trying to claim a message that isn't already pending doesn't
     # do anything
-    response = r.xautoclaim(stream, group, consumer2, min_idle_time=0)
-    assert response == [b"0-0", []]
+    assert r.xautoclaim(stream, group, consumer2, min_idle_time=0) == [b"0-0", []]
 
     # read the group as consumer1 to initially claim the messages
     r.xreadgroup(group, consumer1, streams={stream: ">"})
@@ -411,8 +395,7 @@ def test_xautoclaim(r: redis.Redis):
 @pytest.mark.xfail
 def test_xclaim_trimmed(r: redis.Redis):
     # xclaim should not raise an exception if the item is not there
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
 
     r.xgroup_create(stream, group, id="$", mkstream=True)
 
@@ -435,9 +418,7 @@ def test_xclaim_trimmed(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xgroup_delconsumer(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer = "consumer"
+    stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -454,9 +435,7 @@ def test_xgroup_delconsumer(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xgroup_createconsumer(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer = "consumer"
+    stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -471,10 +450,7 @@ def test_xgroup_createconsumer(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xinfo_consumers(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer1 = "consumer1"
-    consumer2 = "consumer2"
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
@@ -512,8 +488,7 @@ def test_xinfo_stream(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xinfo_stream_full(r: redis.Redis):
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
     m1 = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
     info = r.xinfo_stream(stream, full=True)
@@ -525,10 +500,7 @@ def test_xinfo_stream_full(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xpending(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer1 = "consumer1"
-    consumer2 = "consumer2"
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -555,10 +527,7 @@ def test_xpending(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xpending_range(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer1 = "consumer1"
-    consumer2 = "consumer2"
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -578,19 +547,14 @@ def test_xpending_range(r: redis.Redis):
     assert response[1]["consumer"] == consumer2.encode()
 
     # test with consumer name
-    response = r.xpending_range(
-        stream, group, min="-", max="+", count=5, consumername=consumer1
-    )
+    response = r.xpending_range(stream, group, min="-", max="+", count=5, consumername=consumer1)
     assert response[0]["message_id"] == m1
     assert response[0]["consumer"] == consumer1.encode()
 
 
 @pytest.mark.xfail
 def test_xpending_range_idle(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer1 = "consumer1"
-    consumer2 = "consumer2"
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -607,8 +571,7 @@ def test_xpending_range_idle(r: redis.Redis):
 
 @pytest.mark.xfail
 def test_xpending_range_negative(r: redis.Redis):
-    stream = "stream"
-    group = "group"
+    stream, group = "stream", "group"
     with pytest.raises(redis.DataError):
         r.xpending_range(stream, group, min="-", max="+", count=None)
     with pytest.raises(ValueError):
@@ -624,26 +587,20 @@ def test_xpending_range_negative(r: redis.Redis):
     with pytest.raises(redis.DataError):
         r.xpending_range(stream, group, min=None, max=None, count=None, idle=0)
     with pytest.raises(redis.DataError):
-        r.xpending_range(
-            stream, group, min=None, max=None, count=None, consumername=0
-        )
+        r.xpending_range(stream, group, min=None, max=None, count=None, consumername=0)
 
 
 @pytest.mark.xfail
 def test_xreadgroup(r: redis.Redis):
-    stream = "stream"
-    group = "group"
-    consumer = "consumer"
+    stream, group, consumer = "stream", "group", "consumer1"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
     r.xgroup_create(stream, group, 0)
 
-    expected = [
-        [
-            stream.encode(),
-            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-        ]
-    ]
+    expected = [[
+        stream.encode(),
+        [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+    ]]
     # xread starting at 0 returns both messages
     assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
 
@@ -667,10 +624,7 @@ def test_xreadgroup(r: redis.Redis):
     # xreadgroup with noack does not have any items in the PEL
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, "0")
-    assert (
-            len(r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)[0][1])
-            == 2
-    )
+    assert len(r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)[0][1]) == 2
     # now there should be nothing pending
     assert len(r.xreadgroup(group, consumer, streams={stream: "0"})[0][1]) == 0
 
