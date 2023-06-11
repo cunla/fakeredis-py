@@ -1518,6 +1518,10 @@ Returns the messages from a stream within a range of IDs.
 
 Returns messages from multiple streams with IDs greater than the ones requested. Blocks until a message is available otherwise.
 
+### [XREADGROUP](https://redis.io/commands/xreadgroup/)
+
+Returns new or historical messages from a stream for a consumer in a group. Blocks until a message is available otherwise.
+
 ### [XREVRANGE](https://redis.io/commands/xrevrange/)
 
 Returns the messages from a stream within a range of IDs in reverse order.
@@ -1565,10 +1569,6 @@ Returns information about a stream.
 #### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
 
 Returns the information and entries from a stream consumer group's pending entries list.
-
-#### [XREADGROUP](https://redis.io/commands/xreadgroup/) <small>(not implemented)</small>
-
-Returns new or historical messages from a stream for a consumer in a group. Blocks until a message is available otherwise.
 
 #### [XSETID](https://redis.io/commands/xsetid/) <small>(not implemented)</small>
 
