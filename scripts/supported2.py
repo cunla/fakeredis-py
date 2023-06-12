@@ -38,7 +38,7 @@ def download_single_stack_commands(filename, url) -> dict:
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
     if 'json.type' not in res:
-        raise ValueError('Make sure jsonpath_ng is installed to get accurate documenentation')
+        raise ValueError('Make sure jsonpath_ng is installed to get accurate documentation')
     return res
 
 
