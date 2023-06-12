@@ -5,6 +5,7 @@ from collections import namedtuple
 import requests
 
 from fakeredis._commands import SUPPORTED_COMMANDS
+from create_issues import IGNORE_COMMANDS
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 CommandsMeta = namedtuple('CommandsMeta', ['local_filename', 'stack', 'title', 'url', ])
@@ -22,7 +23,6 @@ METADATA = [
     CommandsMeta('.bloom.commands.json', 'RedisBloom', 'Probabilistic',
                  'https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json', ),
 ]
-
 
 def download_single_stack_commands(filename, url) -> dict:
     full_filename = os.path.join(THIS_DIR, filename)
@@ -68,7 +68,8 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
             f.write(f"### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
             f.write(f"{commands[cmd]['summary']}\n\n")
         f.write("\n")
-        unimplemented_in_group = list(filter(lambda cmd: cmd not in implemented_commands, groups[group]))
+        unimplemented_in_group = list(filter(
+            lambda cmd: cmd not in implemented_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group]))
         if len(unimplemented_in_group) > 0:
             f.write(f'### Unsupported {group} commands \n')
             f.write('> To implement support for a command, see [here](../../guides/implement-command/) \n\n')
