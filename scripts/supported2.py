@@ -4,8 +4,8 @@ from collections import namedtuple
 
 import requests
 
-from fakeredis._commands import SUPPORTED_COMMANDS
 from create_issues import IGNORE_COMMANDS
+from fakeredis._commands import SUPPORTED_COMMANDS
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 CommandsMeta = namedtuple('CommandsMeta', ['local_filename', 'stack', 'title', 'url', ])
@@ -23,6 +23,7 @@ METADATA = [
     CommandsMeta('.bloom.commands.json', 'RedisBloom', 'Probabilistic',
                  'https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json', ),
 ]
+
 
 def download_single_stack_commands(filename, url) -> dict:
     full_filename = os.path.join(THIS_DIR, filename)
