@@ -325,7 +325,8 @@ class XStream:
         ts_seq = StreamEntryKey.parse_str(entry_key_str)
         return self.find_index(ts_seq)
 
-    def parse_ts_seq(self, ts_seq_str: Union[str, bytes]) -> StreamEntryKey:
+    @staticmethod
+    def parse_ts_seq(ts_seq_str: Union[str, bytes]) -> StreamEntryKey:
         if ts_seq_str == b'$':
             return StreamEntryKey(0, 0)
         return StreamEntryKey.parse_str(ts_seq_str)
@@ -361,7 +362,6 @@ class XStream:
 
         :param start: start key
         :param stop: stop key
-        :param exclusive: whether start/stop should be excluded
         :param reverse: Should the range be in reverse order?
         :returns: the range between start and stop
         """
