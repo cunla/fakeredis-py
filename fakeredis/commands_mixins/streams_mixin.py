@@ -32,7 +32,7 @@ class StreamsCommandsMixin:
         key.update(stream)
         return entry_key
 
-    @command(name='XTRIM', fixed=(Key(XStream),), repeat=(bytes,), )
+    @command(name='XTRIM', fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def xtrim(self, key, *args):
         (limit, maxlen, minid), _ = extract_args(
             args, ('+limit', '~+maxlen', '~minid'))
@@ -89,7 +89,7 @@ class StreamsCommandsMixin:
             stream_results = group.group_read(consumer_name, start_id, count, noack)
             if first_pass and (count is None or len(stream_results) < count):
                 raise SimpleError(msgs.WRONGTYPE_MSG)
-            if len(stream_results) > 0:
+            if len(stream_results) > 0 or start_id != b'>':
                 res.append([stream_name, stream_results])
         return res
 
@@ -119,8 +119,10 @@ class StreamsCommandsMixin:
         else:
             return self._blocking(timeout, functools.partial(self._xread, stream_start_id_list, count))
 
-    @command(name="XREADGROUP", fixed=(bytes, bytes), repeat=(bytes,))
-    def xreadgroup(self, group_name, consumer_name, *args):
+    @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
+    def xreadgroup(self, group_const, group_name, consumer_name, *args):
+        if not casematch(b'GROUP', group_const):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         (count, timeout, noack), left_args = extract_args(
             args, ('+count', '+block', 'noack'), error_on_unexpected=False)
         if (len(left_args) < 3

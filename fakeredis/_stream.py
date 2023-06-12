@@ -54,22 +54,24 @@ class StreamConsumerInfo(object):
 
 
 class StreamGroup(object):
-    def __init__(self, stream: 'XStream', name: bytes, start_index: int, entries_read: int = None):
+    def __init__(self, stream: 'XStream', name: bytes, start_key: StreamEntryKey, entries_read: int = None):
         self.stream = stream
         self.name = name
-        self.start_index = start_index
+        self.start_key = start_key
         self.entries_read = entries_read
         # consumer_name -> #pending_messages
         self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
-        self.last_delivered_index = start_index
-        self.last_ack_index = start_index
+        self.last_delivered_key = start_key
+        self.last_ack_key = start_key
         self.pel = set()  # Pending Entries List, see https://redis.io/commands/xreadgroup/
 
     def set_id(self, last_delivered_str: bytes, entries_read: Union[int, None]) -> None:
         """Set last_delivered_id for group
         """
-        self.start_index, _ = self.stream.find_index_key_as_str(last_delivered_str)
+        self.start_key = self.stream.parse_ts_seq(last_delivered_str)
+        start_index, _ = self.stream.find_index(self.start_key)
         self.entries_read = entries_read
+        self.last_delivered_key = self.stream[min(start_index + (entries_read or 0), len(self.stream) - 1)].key
 
     def add_consumer(self, consumer_name: bytes) -> int:
         if consumer_name in self.consumers:
@@ -88,23 +90,42 @@ class StreamGroup(object):
         return [self.consumers[k].info() for k in self.consumers]
 
     def group_info(self) -> List[bytes]:
-        last_delivered_id = self.stream[min(self.last_delivered_index, len(self.stream) - 1)].key.encode()
+        start_index, _ = self.stream.find_index(self.start_key)
+        last_delivered_index, _ = self.stream.find_index(self.last_delivered_key)
+        last_ack_index, _ = self.stream.find_index(self.last_ack_key)
+        if start_index + (self.entries_read or 0) > len(self.stream):
+            lag = len(self.stream) - start_index - self.entries_read
+        else:
+            lag = len(self.stream) - 1 - last_delivered_index
         res = {
             b'name': self.name,
             b'consumers': len(self.consumers),
-            b'pending': self.last_delivered_index - self.last_ack_index,
-            b'last-delivered-id': last_delivered_id,
+            b'pending': last_delivered_index - last_ack_index,
+            b'last-delivered-id': self.last_delivered_key.encode(),
             b'entries-read': self.entries_read,
-            b'lag': len(self.stream) - 1 - self.last_delivered_index,
+            b'lag': lag,
         }
         return list(itertools.chain(*res.items()))
 
-    def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool):
+    def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool) -> List:
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
-        # if start_id == b'>':
-        #     ind = self.last_delivered_index
-        pass  # TODO
+        if start_id == b'>':
+            start_key = self.last_delivered_key
+        else:
+            start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
+        items = self.stream.stream_read(start_key, count)
+        if not noack:
+            self.pel.update({item.key for item in items})
+        if len(items) > 0:
+            self.last_delivered_key = max(self.last_delivered_key, items[-1].key)
+            self.entries_read = (self.entries_read or 0) + len(items)
+
+        consumer = self.consumers[consumer_name]
+        consumer.last_attempt = current_time()
+        consumer.last_success = current_time()
+        consumer.pending += len(items)
+        return [x.format_record() for x in items]
 
 
 class StreamRangeTest:
@@ -163,9 +184,11 @@ class XStream:
         :param start_key_str: start_key in `timestamp-sequence` format, or $ listen from last.
         :param entries_read: number of entries read.
         """
-        start_index, found = self.find_index_key_as_str(start_key_str)
-        start_index -= (0 if found else -1)
-        self._groups[name] = StreamGroup(self, name, start_index, entries_read)
+        if start_key_str == b'$':
+            start_key = self._values[len(self._values) - 1].key if len(self._values) > 0 else StreamEntryKey(0, 0)
+        else:
+            start_key = StreamEntryKey.parse_str(start_key_str)
+        self._groups[name] = StreamGroup(self, name, start_key, entries_read)
 
     def group_delete(self, group_name: bytes) -> int:
         if group_name in self._groups:
@@ -184,10 +207,11 @@ class XStream:
         res = {
             b'length': len(self._values),
             b'groups': len(self._groups),
-            b'first-entry': self._values[0].format_record() if len(self._values) >= 1 else None,
-            b'last-entry': self._values[-1].format_record() if len(self._values) >= 1 else None,
+            b'first-entry': self._values[0].format_record() if len(self._values) > 0 else None,
+            b'last-entry': self._values[-1].format_record() if len(self._values) > 0 else None,
             b'max-deleted-entry-id': self._max_deleted_id.encode(),
             b'entries-added': self._entries_added,
+            b'recorded-first-entry-id': self._values[0].key.encode() if len(self._values) > 0 else b'0-0',
         }
         if full:
             res[b'entries'] = [i.format_record() for i in self._values]
@@ -204,8 +228,8 @@ class XStream:
         for item in lst:
             ind, found = self.find_index_key_as_str(item)
             if found:
+                self._max_deleted_id = max(self._values[ind].key, self._max_deleted_id)
                 del self._values[ind]
-                self._max_deleted_id = max(item, self._max_deleted_id)
                 res += 1
         return res
 
@@ -271,10 +295,12 @@ class XStream:
     def __getitem__(self, item):
         if isinstance(item, int):
             return self._values[item]
+        return None
 
     def find_index(self, entry_key: StreamEntryKey, from_left=True) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
         :param entry_key: key for the entry.
+        :param from_left: if not found exact match, return index of last smaller element
         :returns: A tuple of
             ( index of entry with the closest (from the left) key to entry_key_str,
               Whether the entry key is equal )
@@ -295,9 +321,14 @@ class XStream:
               Whether the entry key is equal )
         """
         if entry_key_str == b'$':
-            return len(self._values) - 1, True
+            return max(len(self._values) - 1, 0), True
         ts_seq = StreamEntryKey.parse_str(entry_key_str)
         return self.find_index(ts_seq)
+
+    def parse_ts_seq(self, ts_seq_str: Union[str, bytes]) -> StreamEntryKey:
+        if ts_seq_str == b'$':
+            return StreamEntryKey(0, 0)
+        return StreamEntryKey.parse_str(ts_seq_str)
 
     def trim(self,
              max_length: Optional[int] = None,
@@ -354,3 +385,12 @@ class XStream:
 
     def last_item_key(self) -> bytes:
         return self._values[-1].key.encode() if len(self._values) > 0 else '0-0'.encode()
+
+    def stream_read(self, start_key: StreamEntryKey, count: Union[int, None]) -> List[StreamEntry]:
+        start_ind, found = self.find_index(start_key)
+        if found:
+            start_ind += 1
+        if start_ind >= len(self):
+            return []
+        end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
+        return self._values[start_ind:end_ind]
