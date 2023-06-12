@@ -155,6 +155,17 @@ class StreamsCommandsMixin:
         res = key.value.delete(args)
         return res
 
+    @command(name="XACK", fixed=(Key(XStream), bytes), repeat=(bytes,), )
+    def xack(self, key, group_name, *args):
+        if len(args) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
+        if key.value is None:
+            return 0
+        group:StreamGroup = key.value.group_get(group_name)
+        if not group:
+            return 0
+        return group.ack(args)
+
     @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
     def xgroup_create(self, key, group_name, start_key, *args):
         (mkstream, entries_read,), _ = extract_args(args, ('mkstream', '+entriesread'))

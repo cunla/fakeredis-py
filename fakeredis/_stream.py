@@ -116,7 +116,7 @@ class StreamGroup(object):
             start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
         items = self.stream.stream_read(start_key, count)
         if not noack:
-            self.pel.update({item.key for item in items})
+            self.pel.update({item.key.encode() for item in items})
         if len(items) > 0:
             self.last_delivered_key = max(self.last_delivered_key, items[-1].key)
             self.entries_read = (self.entries_read or 0) + len(items)
@@ -126,6 +126,12 @@ class StreamGroup(object):
         consumer.last_success = current_time()
         consumer.pending += len(items)
         return [x.format_record() for x in items]
+
+    def ack(self, args: Tuple[bytes]) -> int:
+        args_set = set(args)
+        prev_len = len(self.pel)
+        self.pel = self.pel - args_set
+        return prev_len - len(self.pel)
 
 
 class StreamRangeTest:
