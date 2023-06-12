@@ -461,6 +461,19 @@ def test_xinfo_stream(r: redis.Redis):
     assert info["length"] == 2
     assert info["first-entry"] == get_stream_message(r, stream, m1)
     assert info["last-entry"] == get_stream_message(r, stream, m2)
+    assert info.get("max-deleted-entry-id", b"0-0") == b"0-0"
+
+
+@pytest.mark.min_server('7')
+def test_xinfo_stream_redis7(r: redis.Redis):
+    stream = "stream"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    info = r.xinfo_stream(stream)
+
+    assert info["length"] == 2
+    assert info["first-entry"] == get_stream_message(r, stream, m1)
+    assert info["last-entry"] == get_stream_message(r, stream, m2)
     assert info["max-deleted-entry-id"] == b"0-0"
 
 
