@@ -9,7 +9,7 @@ fakeredis: A fake version of a redis-py
 [![Open Source Helpers](https://www.codetriage.com/cunla/fakeredis-py/badges/users.svg)](https://www.codetriage.com/cunla/fakeredis-py)
 --------------------
 
-Documentation is now hosted in https://fakeredis.readthedocs.io/
+Documentation is hosted in https://fakeredis.readthedocs.io/
 
 # Intro
 

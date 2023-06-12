@@ -30,9 +30,9 @@ See the [Table of Contents](#table-of-contents) for different ways to help and d
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the
-[fakeredis Code of Conduct](https://github.com/cunla/fakeredis-py/blob/main/CODE_OF_CONDUCT.md).
+[fakeredis Code of Conduct](https://github.com/cunla/fakeredis-py/blob/master/CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior
-to <daniel.maruani@gmail.com>.
+to <daniel@moransoftware.ca>.
 
 
 ## I Have a Question
@@ -98,7 +98,7 @@ Please complete the following steps in advance to help us fix any potential bug 
 
 > You must never report security related issues, vulnerabilities or bugs including sensitive information
 > to the issue tracker, or elsewhere in public.
-> Instead sensitive bugs must be sent by email to <daniel.maruani@gmail.com>.
+> Instead sensitive bugs must be sent by email to <daniel@moransoftware.ca>.
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
 
@@ -185,7 +185,7 @@ Taken from [The seven rules of a great Git commit message](https://cbea.ms/git-c
 
 ## Join The Project Team
 If you wish to be added to the project team as a collaborator, please send 
-a message to daniel.maruani@gmail.com with explanation.
+a message to daniel@moransoftware.ca with explanation.
 
 <!-- omit in toc -->
 ## Attribution
