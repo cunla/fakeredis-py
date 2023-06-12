@@ -1,8 +1,3 @@
----
-navigation_depth: 4
-toc_depth: 4
----
-
 Contributing to fakeredis
 =========================
 
