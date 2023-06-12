@@ -161,7 +161,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
         if key.value is None:
             return 0
-        group:StreamGroup = key.value.group_get(group_name)
+        group: StreamGroup = key.value.group_get(group_name)
         if not group:
             return 0
         return group.ack(args)

@@ -63,7 +63,7 @@ class StreamGroup(object):
         self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
-        self.pel = set()  # Pending Entries List, see https://redis.io/commands/xreadgroup/
+        self.pel = dict()  # Pending Entries List, see https://redis.io/commands/xreadgroup/
 
     def set_id(self, last_delivered_str: bytes, entries_read: Union[int, None]) -> None:
         """Set last_delivered_id for group
@@ -116,7 +116,9 @@ class StreamGroup(object):
             start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
         items = self.stream.stream_read(start_key, count)
         if not noack:
-            self.pel.update({item.key.encode() for item in items})
+            keys = {item.key.encode() for item in items}
+            for k in keys:
+                self.pel[k] = consumer_name
         if len(items) > 0:
             self.last_delivered_key = max(self.last_delivered_key, items[-1].key)
             self.entries_read = (self.entries_read or 0) + len(items)
@@ -128,10 +130,13 @@ class StreamGroup(object):
         return [x.format_record() for x in items]
 
     def ack(self, args: Tuple[bytes]) -> int:
-        args_set = set(args)
-        prev_len = len(self.pel)
-        self.pel = self.pel - args_set
-        return prev_len - len(self.pel)
+        res = 0
+        for k in args:
+            if k in self.pel:
+                self.consumers[self.pel[k]].pending -= 1
+                del self.pel[k]
+                res += 1
+        return res
 
 
 class StreamRangeTest:
