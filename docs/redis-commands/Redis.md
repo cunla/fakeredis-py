@@ -62,10 +62,6 @@ Generates a pseudorandom, secure password that can be used to identify ACL users
 
 Lists the ACL rules of a user.
 
-#### [ACL HELP](https://redis.io/commands/acl-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
 #### [ACL LIST](https://redis.io/commands/acl-list/) <small>(not implemented)</small>
 
 Dumps the effective rules in ACL file format.
@@ -118,10 +114,6 @@ Extracts the key names from an arbitrary command.
 
 Extracts the key names and access flags for an arbitrary command.
 
-#### [COMMAND HELP](https://redis.io/commands/command-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
 #### [COMMAND INFO](https://redis.io/commands/command-info/) <small>(not implemented)</small>
 
 Returns information about one, multiple or all commands.
@@ -138,10 +130,6 @@ A container for server configuration commands.
 
 Returns the effective values of configuration parameters.
 
-#### [CONFIG HELP](https://redis.io/commands/config-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
 #### [CONFIG RESETSTAT](https://redis.io/commands/config-resetstat/) <small>(not implemented)</small>
 
 Resets the server's statistics.
@@ -153,10 +141,6 @@ Persists the effective configuration to file.
 #### [CONFIG SET](https://redis.io/commands/config-set/) <small>(not implemented)</small>
 
 Sets configuration parameters in-flight.
-
-#### [DEBUG](https://redis.io/commands/debug/) <small>(not implemented)</small>
-
-A container for debugging commands.
 
 #### [FAILOVER](https://redis.io/commands/failover/) <small>(not implemented)</small>
 
@@ -210,10 +194,6 @@ A container for memory diagnostics commands.
 
 Outputs a memory problems report.
 
-#### [MEMORY HELP](https://redis.io/commands/memory-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
 #### [MEMORY MALLOC-STATS](https://redis.io/commands/memory-malloc-stats/) <small>(not implemented)</small>
 
 Returns the allocator statistics.
@@ -233,10 +213,6 @@ Estimates the memory usage of a key.
 #### [MODULE](https://redis.io/commands/module/) <small>(not implemented)</small>
 
 A container for module commands.
-
-#### [MODULE HELP](https://redis.io/commands/module-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
 
 #### [MODULE LIST](https://redis.io/commands/module-list/) <small>(not implemented)</small>
 
@@ -573,10 +549,6 @@ Returns the name of the connection.
 #### [CLIENT GETREDIR](https://redis.io/commands/client-getredir/) <small>(not implemented)</small>
 
 Returns the client ID to which the connection's tracking notifications are redirected.
-
-#### [CLIENT HELP](https://redis.io/commands/client-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
 
 #### [CLIENT ID](https://redis.io/commands/client-id/) <small>(not implemented)</small>
 
@@ -1034,10 +1006,6 @@ Returns the internal encoding of a Redis object.
 
 Returns the logarithmic access frequency counter of a Redis object.
 
-#### [OBJECT HELP](https://redis.io/commands/object-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
 #### [OBJECT IDLETIME](https://redis.io/commands/object-idletime/) <small>(not implemented)</small>
 
 Returns the time since the last access to a Redis object.
@@ -1156,10 +1124,6 @@ Dumps all libraries into a serialized binary payload.
 #### [FUNCTION FLUSH](https://redis.io/commands/function-flush/) <small>(not implemented)</small>
 
 Deletes all libraries and functions.
-
-#### [FUNCTION HELP](https://redis.io/commands/function-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
 
 #### [FUNCTION KILL](https://redis.io/commands/function-kill/) <small>(not implemented)</small>
 
@@ -1482,6 +1446,14 @@ Returns the number of messages after removing them from a stream.
 
 Creates a consumer group.
 
+### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/)
+
+Creates a consumer in a consumer group.
+
+### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/)
+
+Deletes a consumer from a consumer group.
+
 ### [XGROUP DESTROY](https://redis.io/commands/xgroup-destroy/)
 
 Destroys a consumer group.
@@ -1490,9 +1462,17 @@ Destroys a consumer group.
 
 Sets the last-delivered ID of a consumer group.
 
+### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/)
+
+Returns a list of the consumers in a consumer group.
+
 ### [XINFO GROUPS](https://redis.io/commands/xinfo-groups/)
 
 Returns a list of the consumer groups of a stream.
+
+### [XINFO STREAM](https://redis.io/commands/xinfo-stream/)
+
+Returns information about a stream.
 
 ### [XLEN](https://redis.io/commands/xlen/)
 
@@ -1505,6 +1485,10 @@ Returns the messages from a stream within a range of IDs.
 ### [XREAD](https://redis.io/commands/xread/)
 
 Returns messages from multiple streams with IDs greater than the ones requested. Blocks until a message is available otherwise.
+
+### [XREADGROUP](https://redis.io/commands/xreadgroup/)
+
+Returns new or historical messages from a stream for a consumer in a group. Blocks until a message is available otherwise.
 
 ### [XREVRANGE](https://redis.io/commands/xrevrange/)
 
@@ -1530,45 +1514,9 @@ Changes, or acquires, ownership of messages in a consumer group, as if the messa
 
 Changes, or acquires, ownership of a message in a consumer group, as if the message was delivered a consumer group member.
 
-#### [XGROUP](https://redis.io/commands/xgroup/) <small>(not implemented)</small>
-
-A container for consumer groups commands.
-
-#### [XGROUP CREATECONSUMER](https://redis.io/commands/xgroup-createconsumer/) <small>(not implemented)</small>
-
-Creates a consumer in a consumer group.
-
-#### [XGROUP DELCONSUMER](https://redis.io/commands/xgroup-delconsumer/) <small>(not implemented)</small>
-
-Deletes a consumer from a consumer group.
-
-#### [XGROUP HELP](https://redis.io/commands/xgroup-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
-#### [XINFO](https://redis.io/commands/xinfo/) <small>(not implemented)</small>
-
-A container for stream introspection commands.
-
-#### [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/) <small>(not implemented)</small>
-
-Returns a list of the consumers in a consumer group.
-
-#### [XINFO HELP](https://redis.io/commands/xinfo-help/) <small>(not implemented)</small>
-
-Returns helpful text about the different subcommands.
-
-#### [XINFO STREAM](https://redis.io/commands/xinfo-stream/) <small>(not implemented)</small>
-
-Returns information about a stream.
-
 #### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
 
 Returns the information and entries from a stream consumer group's pending entries list.
-
-#### [XREADGROUP](https://redis.io/commands/xreadgroup/) <small>(not implemented)</small>
-
-Returns new or historical messages from a stream for a consumer in a group. Blocks until a message is available otherwise.
 
 #### [XSETID](https://redis.io/commands/xsetid/) <small>(not implemented)</small>
 

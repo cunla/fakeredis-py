@@ -2,8 +2,8 @@
 
 ## RedisJson support
 
-Currently, Redis Json module is partially implemented (
-see [supported commands](./redis-commands/implemented_commands.md#json-commands)).
+Currently, Redis Json module is fully implemented (
+see [supported commands](./redis-commands/RedisJson/)).
 Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
 [jsonpath-ng](https://github.com/h2non/jsonpath-ng), you can simply install it using `pip install 'fakeredis[json]'`.
 

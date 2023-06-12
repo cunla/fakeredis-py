@@ -4,6 +4,7 @@ from collections import namedtuple
 
 import requests
 
+from create_issues import IGNORE_COMMANDS
 from fakeredis._commands import SUPPORTED_COMMANDS
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -37,7 +38,7 @@ def download_single_stack_commands(filename, url) -> dict:
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
     if 'json.type' not in res:
-        raise ValueError('Make sure jsonpath_ng is installed to get accurate documenentation')
+        raise ValueError('Make sure jsonpath_ng is installed to get accurate documentation')
     return res
 
 
@@ -68,7 +69,8 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
             f.write(f"### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
             f.write(f"{commands[cmd]['summary']}\n\n")
         f.write("\n")
-        unimplemented_in_group = list(filter(lambda cmd: cmd not in implemented_commands, groups[group]))
+        unimplemented_in_group = list(filter(
+            lambda cmd: cmd not in implemented_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group]))
         if len(unimplemented_in_group) > 0:
             f.write(f'### Unsupported {group} commands \n')
             f.write('> To implement support for a command, see [here](../../guides/implement-command/) \n\n')

@@ -9,7 +9,7 @@ A built-in Redis server that is automatically installed, configured and managed 
 single server shared by multiple programs or multiple independent servers. All the servers provided by
 FakeRedis support all Redis functionality including advanced features such as RedisJson, GeoCommands.
 
-For a list of supported/unsupported redis commands, see [Supported commands](./redis-commands/implemented_commands.md).
+For a list of supported/unsupported redis commands, see [Supported commands](./redis-commands/Redis.md).
 
 ## Installation
 
@@ -227,18 +227,17 @@ poetry run pytest -m "not slow"
 
 ## Contributing
 
-Contributions are welcome.
-You can contribute in many ways:
-Open issues for bugs you found, implementing a command which is not yet implemented,
-implement a test for scenario that is not covered yet, write a guide how to use fakeredis, etc.
+Contributions are welcome. You can contribute in many ways:
 
-Please see the [contributing guide](./about/contributing.md) for more details.
-If you'd like to help out, you can start with any of the issues labeled with `Help wanted`.
+- Report bugs you found.
+- Check out issues
+  with [`Help wanted`](https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+  label.
+- Implement commands which are not yet implemented. Follow
+  the [guide how to implement a new command](./guides/implement-command/).
+- Write additional test cases. Follow the [guide how to write a test-case](./guides/test-case/)
 
-There are guides how to [implement a new command](#implementing-support-for-a-command) and
-how to [write new test cases](#write-a-new-test-case).
-
-New contribution guides are welcome.
+Please follow coding standards listed in the [contributing guide](./about/contributing.md).
 
 ## Sponsor
 

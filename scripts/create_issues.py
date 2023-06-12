@@ -15,24 +15,19 @@ from supported import download_redis_commands, implemented_commands
 load_dotenv()  # take environment variables from .env.
 
 IGNORE_GROUPS = {
-    'server', 'cf', 'cms', 'topk', 'tdigest', 'bf', 'search', 'suggestion', 'timeseries',
-    'graph', 'server', 'cluster', 'connection',
-    'server', 'cluster', 'list', 'connection', 'bitmap', 'sorted-set', 'generic', 'scripting',
-    'hyperloglog', 'pubsub', 'graph', 'timeseries', 'search', 'suggestion', 'bf', 'cf', 'cms', 'topk',
-    'tdigest',
+    'suggestion', 'tdigest', 'scripting', 'cf', 'topk',
+    'hyperloglog', 'graph', 'timeseries', 'connection',
+    'server', 'generic', 'cms', 'bf', 'cluster',
+    'search', 'bitmap',
 }
 IGNORE_COMMANDS = {
-    'PUBSUB HELP',
-    'OBJECT HELP',
-    'FUNCTION HELP',
+    'PUBSUB HELP', 'OBJECT HELP', 'FUNCTION HELP',
     'SCRIPT HELP',
-    'XGROUP HELP',
-    'XINFO HELP',
-    'JSON.DEBUG HELP',
-    'JSON.DEBUG MEMORY',
-    'JSON.DEBUG',
-    'JSON.TYPE',
+    'JSON.DEBUG', 'JSON.DEBUG HELP', 'JSON.DEBUG MEMORY',
     'JSON.RESP',
+    'XINFO', 'XINFO HELP', 'XGROUP', 'XGROUP HELP', 'XSETID',
+    'ACL HELP', 'COMMAND HELP', 'CONFIG HELP', 'DEBUG',
+    'MEMORY HELP', 'MODULE HELP', 'CLIENT HELP',
 }
 
 
