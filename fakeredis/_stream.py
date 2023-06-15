@@ -1,6 +1,7 @@
 import bisect
 import itertools
 import time
+from collections import Counter
 from dataclasses import dataclass
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any
 
@@ -40,8 +41,8 @@ def current_time():
 class StreamConsumerInfo(object):
     name: bytes
     pending: int = 0
-    last_attempt: int = current_time()
-    last_success: int = current_time()
+    last_attempt: int = current_time()  # Impacted by XREADGROUP, XCLAIM, XAUTOCLAIM
+    last_success: int = current_time()  # Impacted by XREADGROUP, XCLAIM, XAUTOCLAIM
 
     def info(self) -> List[bytes]:
         curr_time = current_time()
@@ -108,35 +109,49 @@ class StreamGroup(object):
         return list(itertools.chain(*res.items()))
 
     def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool) -> List:
+        _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
+        consumer = self.consumers[consumer_name]
+        consumer.last_attempt = _time
         if start_id == b'>':
             start_key = self.last_delivered_key
         else:
             start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
         items = self.stream.stream_read(start_key, count)
         if not noack:
-            keys = {item.key.encode() for item in items}
+            keys = {item.key for item in items}
             for k in keys:
                 self.pel[k] = consumer_name
         if len(items) > 0:
             self.last_delivered_key = max(self.last_delivered_key, items[-1].key)
             self.entries_read = (self.entries_read or 0) + len(items)
-
-        consumer = self.consumers[consumer_name]
-        consumer.last_attempt = current_time()
-        consumer.last_success = current_time()
+        consumer.last_success = _time
         consumer.pending += len(items)
         return [x.format_record() for x in items]
 
     def ack(self, args: Tuple[bytes]) -> int:
         res = 0
         for k in args:
-            if k in self.pel:
-                self.consumers[self.pel[k]].pending -= 1
-                del self.pel[k]
+            try:
+                parsed = StreamEntryKey.parse_str(k)
+            except Exception:
+                continue
+            if parsed in self.pel:
+                self.consumers[self.pel[parsed]].pending -= 1
+                del self.pel[parsed]
                 res += 1
         return res
+
+    def pending(self) -> List[bytes]:
+        counter = Counter(self.pel.values())
+        data = [
+            len(self.pel),
+            min(self.pel).encode() if len(self.pel) > 0 else None,
+            max(self.pel).encode() if len(self.pel) > 0 else None,
+            [[i, counter[i]] for i in counter],
+        ]
+        return data
 
 
 class StreamRangeTest:

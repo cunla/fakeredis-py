@@ -519,7 +519,6 @@ def test_xinfo_stream_full(r: redis.Redis):
     assert len(info["groups"]) == 1
 
 
-@pytest.mark.xfail
 def test_xpending(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})

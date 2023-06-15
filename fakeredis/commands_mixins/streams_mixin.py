@@ -158,13 +158,22 @@ class StreamsCommandsMixin:
     @command(name="XACK", fixed=(Key(XStream), bytes), repeat=(bytes,), )
     def xack(self, key, group_name, *args):
         if len(args) == 0:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xdel'))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('xack'))
         if key.value is None:
             return 0
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
             return 0
         return group.ack(args)
+
+    @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,), )
+    def xpending(self, key, group_name, *args):
+        if key.value is None:
+            return 0
+        group: StreamGroup = key.value.group_get(group_name)
+        if not group:
+            return 0
+        return group.pending()
 
     @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
     def xgroup_create(self, key, group_name, start_key, *args):
