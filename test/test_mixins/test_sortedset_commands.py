@@ -1091,3 +1091,58 @@ def test_zrandemember(r: redis.Redis):
     assert len(r.zrandmember("a", 10)) == 5
     # with duplications
     assert len(r.zrandmember("a", -10)) == 10
+
+
+def test_zdiffstore(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
+    r.zadd("b", {"a1": 1, "a2": 2})
+    assert r.zdiffstore("out", ["a", "b"])
+    assert r.zrange("out", 0, -1) == [b"a3"]
+    assert r.zrange("out", 0, -1, withscores=True) == [(b"a3", 3.0)]
+
+
+def test_zdiff(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
+    r.zadd("b", {"a1": 1, "a2": 2})
+    assert r.zdiff(["a", "b"]) == [b"a3"]
+    assert r.zdiff(["a", "b"], withscores=True) == [b"a3", b"3"]
+
+
+def test_zunion(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 1, "a3": 1})
+    r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
+    r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
+    # sum
+    assert r.zunion(["a", "b", "c"]) == [b"a2", b"a4", b"a3", b"a1"]
+    assert r.zunion(["a", "b", "c"], withscores=True) == [
+        (b"a2", 3), (b"a4", 4), (b"a3", 8), (b"a1", 9), ]
+    # max
+    assert r.zunion(["a", "b", "c"], aggregate="MAX", withscores=True) == [
+        (b"a2", 2), (b"a4", 4), (b"a3", 5), (b"a1", 6), ]
+    # min
+    assert r.zunion(["a", "b", "c"], aggregate="MIN", withscores=True) == [
+        (b"a1", 1), (b"a2", 1), (b"a3", 1), (b"a4", 4), ]
+    # with weight
+    assert r.zunion({"a": 1, "b": 2, "c": 3}, withscores=True) == [
+        (b"a2", 5), (b"a4", 12), (b"a3", 20), (b"a1", 23), ]
+
+
+def test_zinter(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
+    r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
+    r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
+    assert r.zinter(["a", "b", "c"]) == [b"a3", b"a1"]
+    # invalid aggregation
+    with pytest.raises(redis.DataError):
+        r.zinter(["a", "b", "c"], aggregate="foo", withscores=True)
+    # aggregate with SUM
+    assert r.zinter(["a", "b", "c"], withscores=True) == [(b"a3", 8), (b"a1", 9)]
+    # aggregate with MAX
+    assert r.zinter(["a", "b", "c"], aggregate="MAX", withscores=True) == [
+        (b"a3", 5), (b"a1", 6), ]
+    # aggregate with MIN
+    assert r.zinter(["a", "b", "c"], aggregate="MIN", withscores=True) == [
+        (b"a1", 1), (b"a3", 1), ]
+    # with weights
+    assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == [
+        (b"a3", 20), (b"a1", 23), ]

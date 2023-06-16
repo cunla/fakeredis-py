@@ -771,9 +771,21 @@ Returns the number of members in a sorted set.
 
 Returns the count of members in a sorted set that have scores within a range.
 
+### [ZDIFF](https://redis.io/commands/zdiff/)
+
+Returns the difference between multiple sorted sets.
+
+### [ZDIFFSTORE](https://redis.io/commands/zdiffstore/)
+
+Stores the difference of multiple sorted sets in a key.
+
 ### [ZINCRBY](https://redis.io/commands/zincrby/)
 
 Increments the score of a member in a sorted set.
+
+### [ZINTER](https://redis.io/commands/zinter/)
+
+Returns the intersect of multiple sorted sets.
 
 ### [ZINTERSTORE](https://redis.io/commands/zinterstore/)
 
@@ -855,6 +867,10 @@ Iterates over members and scores of a sorted set.
 
 Returns the score of a member in a sorted set.
 
+### [ZUNION](https://redis.io/commands/zunion/)
+
+Returns the union of multiple sorted sets.
+
 ### [ZUNIONSTORE](https://redis.io/commands/zunionstore/)
 
 Stores the union of multiple sorted sets in a key.
@@ -867,18 +883,6 @@ Stores the union of multiple sorted sets in a key.
 
 Removes and returns a member by score from one or more sorted sets. Blocks until a member is available otherwise. Deletes the sorted set if the last element was popped.
 
-#### [ZDIFF](https://redis.io/commands/zdiff/) <small>(not implemented)</small>
-
-Returns the difference between multiple sorted sets.
-
-#### [ZDIFFSTORE](https://redis.io/commands/zdiffstore/) <small>(not implemented)</small>
-
-Stores the difference of multiple sorted sets in a key.
-
-#### [ZINTER](https://redis.io/commands/zinter/) <small>(not implemented)</small>
-
-Returns the intersect of multiple sorted sets.
-
 #### [ZINTERCARD](https://redis.io/commands/zintercard/) <small>(not implemented)</small>
 
 Returns the number of members of the intersect of multiple sorted sets.
@@ -890,10 +894,6 @@ Returns the highest- or lowest-scoring members from one or more sorted sets afte
 #### [ZRANGESTORE](https://redis.io/commands/zrangestore/) <small>(not implemented)</small>
 
 Stores a range of members from sorted set in a key.
-
-#### [ZUNION](https://redis.io/commands/zunion/) <small>(not implemented)</small>
-
-Returns the union of multiple sorted sets.
 
 
 ## generic commands

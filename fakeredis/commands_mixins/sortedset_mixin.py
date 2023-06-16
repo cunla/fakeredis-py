@@ -12,6 +12,15 @@ from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout,
 from fakeredis._helpers import (SimpleError, casematch, null_terminate, )
 from fakeredis._zset import ZSet
 
+SORTED_SET_METHODS = {
+    'ZUNIONSTORE': lambda s1, s2: s1 | s2,
+    'ZUNION': lambda s1, s2: s1 | s2,
+    'ZINTERSTORE': lambda s1, s2: s1.intersection(s2),
+    'ZINTER': lambda s1, s2: s1.intersection(s2),
+    'ZDIFFSTORE': lambda s1, s2: s1 - s2,
+    'ZDIFF': lambda s1, s2: s1 - s2,
+}
+
 
 class SortedSetCommandsMixin:
     # Sorted set commands
@@ -317,7 +326,7 @@ class SortedSetCommandsMixin:
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
-    def _zunioninter(self, func, dest, numkeys, *args):
+    def _zunioninterdiff(self, func, dest, numkeys, *args):
         if numkeys < 1:
             raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
         if numkeys > len(args):
@@ -348,11 +357,9 @@ class SortedSetCommandsMixin:
             sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
+        method = SORTED_SET_METHODS[func]
         for s in sets[1:]:
-            if func == 'ZUNIONSTORE':
-                out_members |= set(s)
-            else:
-                out_members.intersection_update(s)
+            out_members = method(out_members, set(s))
 
         # We first build a regular dict and turn it into a ZSet. The
         # reason is subtle: a ZSet won't update a score from -0 to +0
@@ -366,7 +373,7 @@ class SortedSetCommandsMixin:
                 score *= w
                 # Redis only does this step for ZUNIONSTORE. See
                 # https://github.com/antirez/redis/issues/3954.
-                if func == 'ZUNIONSTORE' and math.isnan(score):
+                if func in {'ZUNIONSTORE', 'ZUNION'} and math.isnan(score):
                     score = 0.0
                 if member not in out_members:
                     continue
@@ -390,16 +397,59 @@ class SortedSetCommandsMixin:
         for member, score in out.items():
             out_zset[member] = score
 
+        if dest is None:
+            return out_zset
+
         dest.value = out_zset
         return len(out_zset)
 
     @command((Key(), Int, bytes), (bytes,))
     def zunionstore(self, dest, numkeys, *args):
-        return self._zunioninter('ZUNIONSTORE', dest, numkeys, *args)
+        return self._zunioninterdiff('ZUNIONSTORE', dest, numkeys, *args)
 
     @command((Key(), Int, bytes), (bytes,))
     def zinterstore(self, dest, numkeys, *args):
-        return self._zunioninter('ZINTERSTORE', dest, numkeys, *args)
+        return self._zunioninterdiff('ZINTERSTORE', dest, numkeys, *args)
+
+    @command((Key(), Int, bytes), (bytes,))
+    def zdiffstore(self, dest, numkeys, *args):
+        return self._zunioninterdiff('ZDIFFSTORE', dest, numkeys, *args)
+
+    @command((Int, bytes,), (bytes,))
+    def zdiff(self, numkeys, *args):
+        withscores = casematch(b'withscores', args[-1])
+        sets = args[:-1] if withscores else args
+        res = self._zunioninterdiff('ZDIFF', None, numkeys, *sets)
+
+        if withscores:
+            res = [item for t in res for item in (t, Float.encode(res[t], False))]
+        else:
+            res = [t for t in res]
+        return res
+
+    @command((Int, bytes,), (bytes,))
+    def zunion(self, numkeys, *args):
+        withscores = casematch(b'withscores', args[-1])
+        sets = args[:-1] if withscores else args
+        res = self._zunioninterdiff('ZUNION', None, numkeys, *sets)
+
+        if withscores:
+            res = [item for t in res for item in (t, Float.encode(res[t], False))]
+        else:
+            res = [t for t in res]
+        return res
+
+    @command((Int, bytes,), (bytes,))
+    def zinter(self, numkeys, *args):
+        withscores = casematch(b'withscores', args[-1])
+        sets = args[:-1] if withscores else args
+        res = self._zunioninterdiff('ZINTER', None, numkeys, *sets)
+
+        if withscores:
+            res = [item for t in res for item in (t, Float.encode(res[t], False))]
+        else:
+            res = [t for t in res]
+        return res
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
