@@ -3,7 +3,7 @@ from typing import List, Union, Tuple
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, CommandItem
+from fakeredis._commands import Key, command, CommandItem, Int
 from fakeredis._helpers import SimpleError, casematch, OK
 from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
@@ -170,10 +170,25 @@ class StreamsCommandsMixin:
     def xpending(self, key, group_name, *args):
         if key.value is None:
             return 0
+        idle, start, end, count, consumer = None, None, None, None, None
+
+        if len(args) > 4 and casematch(b'idle', args[0]):  # Idle
+            idle = Int.decode(args[1])
+            args = args[2:]
+        if 0 < len(args) < 3:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        elif len(args) >= 3:
+            start, end, count = StreamRangeTest.decode(args[0]), StreamRangeTest.decode(args[1]), Int.decode(args[2])
+            if len(args) > 3:
+                consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            return 0
-        return group.pending()
+            return 0 if start is not None else []
+
+        if start is not None:
+            return group.pending(idle, start, end, count, consumer)
+        else:
+            return group.pending_summary()
 
     @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
     def xgroup_create(self, key, group_name, start_key, *args):

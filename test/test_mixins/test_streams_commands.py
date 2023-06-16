@@ -545,7 +545,6 @@ def test_xpending(r: redis.Redis):
     assert r.xpending(stream, group) == expected
 
 
-@pytest.mark.xfail
 def test_xpending_range(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -572,7 +571,6 @@ def test_xpending_range(r: redis.Redis):
     assert response[0]["consumer"] == consumer1.encode()
 
 
-@pytest.mark.xfail
 def test_xpending_range_idle(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
@@ -589,7 +587,6 @@ def test_xpending_range_idle(r: redis.Redis):
     assert len(response) == 0
 
 
-@pytest.mark.xfail
 def test_xpending_range_negative(r: redis.Redis):
     stream, group = "stream", "group"
     with pytest.raises(redis.DataError):
