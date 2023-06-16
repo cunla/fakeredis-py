@@ -427,7 +427,7 @@ class SortedSetCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         zset = key.value
         if zset is None:
-            return None if len(args) == 0 is None else []
+            return None if len(args) == 0 else []
         if count < 0:  # Allow repetitions
             res = random.choices(sorted(key.value.items()), k=-count)
         else:  # Unique values from hash
