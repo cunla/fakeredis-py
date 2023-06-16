@@ -1079,3 +1079,15 @@ def test_zscan(r: redis.Redis):
         cursor, data = r.zscan(name, cursor, match='*7', count=6)
         results.update(data)
     assert results == {b'key:7': 7.0, b'key:17': 17.0}
+
+
+def test_zrandemember(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3, "a4": 4, "a5": 5})
+    assert r.zrandmember("a") is not None
+    assert len(r.zrandmember("a", 2)) == 2
+    # with scores
+    assert len(r.zrandmember("a", 2, True)) == 4
+    # without duplications
+    assert len(r.zrandmember("a", 10)) == 5
+    # with duplications
+    assert len(r.zrandmember("a", -10)) == 10

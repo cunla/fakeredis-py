@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import itertools
 import math
+import random
 from typing import Union, Optional
 
 from fakeredis import _msgs as msgs
@@ -413,6 +414,31 @@ class SortedSetCommandsMixin:
             map(key.value.get, members),
         )
         return list(scores)
+
+    @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
+    def zrandmember(self, key: CommandItem, *args) -> list[Optional[float]]:
+        count, withscores = 1, None
+        if len(args) > 0:
+            count = Int.decode(args[0])
+        if len(args) > 1:
+            if casematch(b'withscores', args[1]):
+                withscores = True
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        zset = key.value
+        if zset is None:
+            return None if len(args) == 0 is None else []
+        if count < 0:  # Allow repetitions
+            res = random.choices(sorted(key.value.items()), k=-count)
+        else:  # Unique values from hash
+            count = min(count, len(key.value))
+            res = random.sample(sorted(key.value.items()), count)
+
+        if withscores:
+            res = [item for t in res for item in t]
+        else:
+            res = [t[0] for t in res]
+        return res
 
     def _encodefloat(self, value, humanfriendly):
         raise NotImplementedError  # Implemented in BaseFakeSocket
