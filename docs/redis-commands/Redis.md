@@ -795,6 +795,10 @@ Returns the highest-scoring members from a sorted set after removing them. Delet
 
 Returns the lowest-scoring members from a sorted set after removing them. Deletes the sorted set if the last member was popped.
 
+### [ZRANDMEMBER](https://redis.io/commands/zrandmember/)
+
+Returns one or more random members from a sorted set.
+
 ### [ZRANGE](https://redis.io/commands/zrange/)
 
 Returns members in a sorted set within a range of indexes.
@@ -882,10 +886,6 @@ Returns the number of members of the intersect of multiple sorted sets.
 #### [ZMPOP](https://redis.io/commands/zmpop/) <small>(not implemented)</small>
 
 Returns the highest- or lowest-scoring members from one or more sorted sets after removing them. Deletes the sorted set if the last member was popped.
-
-#### [ZRANDMEMBER](https://redis.io/commands/zrandmember/) <small>(not implemented)</small>
-
-Returns one or more random members from a sorted set.
 
 #### [ZRANGESTORE](https://redis.io/commands/zrangestore/) <small>(not implemented)</small>
 
@@ -1482,6 +1482,10 @@ Returns information about a stream.
 
 Return the number of messages in a stream.
 
+### [XPENDING](https://redis.io/commands/xpending/)
+
+Returns the information and entries from a stream consumer group's pending entries list.
+
 ### [XRANGE](https://redis.io/commands/xrange/)
 
 Returns the messages from a stream within a range of IDs.
@@ -1513,9 +1517,5 @@ Changes, or acquires, ownership of messages in a consumer group, as if the messa
 #### [XCLAIM](https://redis.io/commands/xclaim/) <small>(not implemented)</small>
 
 Changes, or acquires, ownership of a message in a consumer group, as if the message was delivered a consumer group member.
-
-#### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
-
-Returns the information and entries from a stream consumer group's pending entries list.
 
 
