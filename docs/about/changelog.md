@@ -10,6 +10,7 @@ description: Change log of all fakeredis releases
 - Implemented support for various stream groups commands:
     - `XGROUP CREATE` #161, `XGROUP DESTROY` #164, `XGROUP SETID` #165, `XGROUP DELCONSUMER` #162,
       `XGROUP CREATECONSUMER` #163, `XINFO GROUPS` #168, `XINFO CONSUMERS` #168, `XINFO STREAM` #169, `XREADGROUP` #171,
+      `XACK` #157,
 
 ### 🧰 Maintenance
 

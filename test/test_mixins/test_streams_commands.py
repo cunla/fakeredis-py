@@ -463,6 +463,25 @@ def test_xinfo_stream(r: redis.Redis):
     assert info["last-entry"] == get_stream_message(r, stream, m2)
 
 
+def test_xack(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer"
+    # xack on a stream that doesn't exist
+    assert r.xack(stream, group, "0-0") == 0
+
+    m1 = r.xadd(stream, {"one": "one"})
+    m2 = r.xadd(stream, {"two": "two"})
+    m3 = r.xadd(stream, {"three": "three"})
+
+    # xack on a group that doesn't exist
+    assert r.xack(stream, group, m1) == 0
+
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    # xack returns the number of ack'd elements
+    assert r.xack(stream, group, m1) == 1
+    assert r.xack(stream, group, m2, m3) == 2
+
+
 @pytest.mark.min_server('7')
 def test_xinfo_stream_redis7(r: redis.Redis):
     stream = "stream"
@@ -500,7 +519,6 @@ def test_xinfo_stream_full(r: redis.Redis):
     assert len(info["groups"]) == 1
 
 
-@pytest.mark.xfail
 def test_xpending(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -527,7 +545,6 @@ def test_xpending(r: redis.Redis):
     assert r.xpending(stream, group) == expected
 
 
-@pytest.mark.xfail
 def test_xpending_range(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -554,7 +571,6 @@ def test_xpending_range(r: redis.Redis):
     assert response[0]["consumer"] == consumer1.encode()
 
 
-@pytest.mark.xfail
 def test_xpending_range_idle(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
@@ -571,7 +587,6 @@ def test_xpending_range_idle(r: redis.Redis):
     assert len(response) == 0
 
 
-@pytest.mark.xfail
 def test_xpending_range_negative(r: redis.Redis):
     stream, group = "stream", "group"
     with pytest.raises(redis.DataError):
@@ -590,26 +605,6 @@ def test_xpending_range_negative(r: redis.Redis):
         r.xpending_range(stream, group, min=None, max=None, count=None, idle=0)
     with pytest.raises(redis.DataError):
         r.xpending_range(stream, group, min=None, max=None, count=None, consumername=0)
-
-
-@pytest.mark.xfail
-def test_xack(r: redis.Redis):
-    stream, group, consumer = "stream", "group", "consumer"
-    # xack on a stream that doesn't exist
-    assert r.xack(stream, group, "0-0") == 0
-
-    m1 = r.xadd(stream, {"one": "one"})
-    m2 = r.xadd(stream, {"two": "two"})
-    m3 = r.xadd(stream, {"three": "three"})
-
-    # xack on a group that doesn't exist
-    assert r.xack(stream, group, m1) == 0
-
-    r.xgroup_create(stream, group, 0)
-    r.xreadgroup(group, consumer, streams={stream: ">"})
-    # xack returns the number of ack'd elements
-    assert r.xack(stream, group, m1) == 1
-    assert r.xack(stream, group, m2, m3) == 2
 
 
 @pytest.mark.xfail

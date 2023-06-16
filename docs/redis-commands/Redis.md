@@ -1434,6 +1434,10 @@ Stores the union of multiple sets in a key.
 
 ## stream commands
 
+### [XACK](https://redis.io/commands/xack/)
+
+Returns the number of messages that were successfully acknowledged by the consumer group member of a stream.
+
 ### [XADD](https://redis.io/commands/xadd/)
 
 Appends a new message to a stream. Creates the key if it doesn't exist.
@@ -1502,10 +1506,6 @@ Deletes messages from the beginning of a stream.
 ### Unsupported stream commands 
 > To implement support for a command, see [here](../../guides/implement-command/) 
 
-#### [XACK](https://redis.io/commands/xack/) <small>(not implemented)</small>
-
-Returns the number of messages that were successfully acknowledged by the consumer group member of a stream.
-
 #### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/) <small>(not implemented)</small>
 
 Changes, or acquires, ownership of messages in a consumer group, as if the messages were delivered to as consumer group member.
@@ -1517,9 +1517,5 @@ Changes, or acquires, ownership of a message in a consumer group, as if the mess
 #### [XPENDING](https://redis.io/commands/xpending/) <small>(not implemented)</small>
 
 Returns the information and entries from a stream consumer group's pending entries list.
-
-#### [XSETID](https://redis.io/commands/xsetid/) <small>(not implemented)</small>
-
-An internal command for replicating stream values.
 
 

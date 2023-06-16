@@ -1,6 +1,7 @@
 import bisect
 import itertools
 import time
+from collections import Counter
 from dataclasses import dataclass
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any
 
@@ -23,6 +24,32 @@ class StreamEntryKey(NamedTuple):
         return StreamEntryKey(timestamp, sequence)
 
 
+class StreamRangeTest:
+    """Argument converter for sorted set LEX endpoints."""
+
+    def __init__(self, value: Union[StreamEntryKey, BeforeAny, AfterAny], exclusive: bool):
+        self.value = value
+        self.exclusive = exclusive
+
+    @staticmethod
+    def valid_key(entry_key: Union[bytes, str]) -> bool:
+        try:
+            StreamEntryKey.parse_str(entry_key)
+            return True
+        except ValueError:
+            return False
+
+    @classmethod
+    def decode(cls, value: bytes, exclusive=False):
+        if value == b'-':
+            return cls(BeforeAny(), True)
+        elif value == b'+':
+            return cls(AfterAny(), True)
+        elif value[:1] == b'(':
+            return cls(StreamEntryKey.parse_str(value[1:]), True)
+        return cls(StreamEntryKey.parse_str(value), exclusive)
+
+
 class StreamEntry(NamedTuple):
     key: StreamEntryKey
     fields: List
@@ -32,7 +59,7 @@ class StreamEntry(NamedTuple):
         return [self.key.encode(), results]
 
 
-def current_time():
+def _current_time():
     return int(time.time() * 1000)
 
 
@@ -40,11 +67,11 @@ def current_time():
 class StreamConsumerInfo(object):
     name: bytes
     pending: int = 0
-    last_attempt: int = current_time()
-    last_success: int = current_time()
+    last_attempt: int = _current_time()  # Impacted by XREADGROUP, XCLAIM, XAUTOCLAIM
+    last_success: int = _current_time()  # Impacted by XREADGROUP, XCLAIM, XAUTOCLAIM
 
     def info(self) -> List[bytes]:
-        curr_time = current_time()
+        curr_time = _current_time()
         return [
             b'name', self.name,
             b'pending', self.pending,
@@ -63,7 +90,7 @@ class StreamGroup(object):
         self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
-        self.pel = set()  # Pending Entries List, see https://redis.io/commands/xreadgroup/
+        self.pel = dict()  # Pending Entries List, see https://redis.io/commands/xreadgroup/
 
     def set_id(self, last_delivered_str: bytes, entries_read: Union[int, None]) -> None:
         """Set last_delivered_id for group
@@ -108,50 +135,75 @@ class StreamGroup(object):
         return list(itertools.chain(*res.items()))
 
     def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool) -> List:
+        _time = _current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
+        consumer = self.consumers[consumer_name]
+        consumer.last_attempt = _time
         if start_id == b'>':
             start_key = self.last_delivered_key
         else:
             start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
         items = self.stream.stream_read(start_key, count)
         if not noack:
-            self.pel.update({item.key for item in items})
+            keys = {item.key for item in items}
+            for k in keys:
+                self.pel[k] = (consumer_name, _time)
         if len(items) > 0:
             self.last_delivered_key = max(self.last_delivered_key, items[-1].key)
             self.entries_read = (self.entries_read or 0) + len(items)
-
-        consumer = self.consumers[consumer_name]
-        consumer.last_attempt = current_time()
-        consumer.last_success = current_time()
+        consumer.last_success = _time
         consumer.pending += len(items)
         return [x.format_record() for x in items]
 
+    def ack(self, args: Tuple[bytes]) -> int:
+        res = 0
+        for k in args:
+            try:
+                parsed = StreamEntryKey.parse_str(k)
+            except Exception:
+                continue
+            if parsed in self.pel:
+                self.consumers[self.pel[parsed][0]].pending -= 1
+                del self.pel[parsed]
+                res += 1
+        return res
 
-class StreamRangeTest:
-    """Argument converter for sorted set LEX endpoints."""
+    def pending(self, idle: Optional[int],
+                start: Optional[StreamRangeTest],
+                end: Optional[StreamRangeTest],
+                count: Optional[int],
+                consumer: Optional[str]):
+        _time = _current_time()
+        relevent_ids = list(self.pel.keys())
+        if consumer is not None:
+            relevent_ids = [k for k in relevent_ids
+                            if self.pel[k][0] == consumer]
+        if idle is not None:
+            relevent_ids = [
+                k for k in relevent_ids
+                if self.pel[k][1] + idle < _time
+            ]
+        if start is not None and end is not None:
+            relevent_ids = [
+                k for k in relevent_ids
+                if (((start.value < k) or (start.value == k and not start.exclusive))
+                    and ((end.value > k) or (end.value == k and not end.exclusive)))
+            ]
+        if count is not None:
+            relevent_ids = sorted(relevent_ids)[:count]
 
-    def __init__(self, value: Union[StreamEntryKey, BeforeAny, AfterAny], exclusive: bool):
-        self.value = value
-        self.exclusive = exclusive
+        return [[k.encode(), self.pel[k][0]] for k in relevent_ids]
 
-    @staticmethod
-    def valid_key(entry_key: Union[bytes, str]) -> bool:
-        try:
-            StreamEntryKey.parse_str(entry_key)
-            return True
-        except ValueError:
-            return False
-
-    @classmethod
-    def decode(cls, value: bytes, exclusive=False):
-        if value == b'-':
-            return cls(BeforeAny(), True)
-        elif value == b'+':
-            return cls(AfterAny(), True)
-        elif value[:1] == b'(':
-            return cls(StreamEntryKey.parse_str(value[1:]), True)
-        return cls(StreamEntryKey.parse_str(value), exclusive)
+    def pending_summary(self) -> List[bytes]:
+        counter = Counter([self.pel[k][0] for k in self.pel])
+        data = [
+            len(self.pel),
+            min(self.pel).encode() if len(self.pel) > 0 else None,
+            max(self.pel).encode() if len(self.pel) > 0 else None,
+            [[i, counter[i]] for i in counter],
+        ]
+        return data
 
 
 class XStream:
