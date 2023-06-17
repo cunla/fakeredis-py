@@ -9,7 +9,7 @@ them. Please make sure to read the relevant section before making your contribut
 the maintainers and smooth out the experience for all involved. The community looks forward to your contributions. 🎉
 
 > And if you like the project, but just don't have time to contribute, that's fine.
-> 
+>
 > There are other easy ways to support the project and show your appreciation, which we would also be very happy about:
 >
 > - Star the project
@@ -187,15 +187,32 @@ tutorials:
 
 ### Commit Messages
 
-Taken from [The seven rules of a great Git commit message](https://cbea.ms/git-commit/):
+Taken from [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
 
-1. Separate subject from body with a blank line
-2. Limit the subject line to 50 characters
-3. Capitalize the subject line
-4. Do not end the subject line with a period
-5. Use the imperative mood in the subject line
-6. Wrap the body at 72 characters
-7. Use the body to explain what and why vs. how
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+The commit contains the following structural elements, to communicate intent to the consumers of your library:
+
+* `fix:` a commit of the type fix patches a bug in your codebase (this correlates with `PATCH` in Semantic Versioning).
+* `feat:` a commit of the type feat introduces a new feature to the codebase (this correlates with `MINOR` in Semantic
+  Versioning).
+* `BREAKING CHANGE:` a commit that has a footer BREAKING CHANGE:, or appends a ! after the type/scope, introduces a
+  breaking API change (correlating with MAJOR in Semantic Versioning). A BREAKING CHANGE can be part of commits of any
+  type.
+* types other than `fix:` and `feat:` are allowed, for example @commitlint/config-conventional (based on the Angular
+  convention) recommends `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:`, and others.
+* footers other than `BREAKING CHANGE: <description>` may be provided and follow a convention similar to
+  [git trailer format](https://git-scm.com/docs/git-interpret-trailers).
+
+Additional types are not mandated by the Conventional Commits specification, and have no implicit effect in Semantic
+Versioning (unless they include a BREAKING CHANGE). A scope may be provided to a commit’s type, to provide additional
+contextual information and is contained within parenthesis, e.g., feat(parser): add ability to parse arrays.
 
 ## Join The Project Team
 
