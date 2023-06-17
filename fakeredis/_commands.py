@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple
+from typing import Tuple, Union
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
@@ -251,7 +251,7 @@ class AfterAny:
 class ScoreTest:
     """Argument converter for sorted set score endpoints."""
 
-    def __init__(self, value, exclusive=False, bytes_val=None):
+    def __init__(self, value: float, exclusive: bool = False, bytes_val: bytes = None):
         self.value = value
         self.exclusive = exclusive
         self.bytes_val = bytes_val
@@ -289,12 +289,12 @@ class ScoreTest:
 class StringTest:
     """Argument converter for sorted set LEX endpoints."""
 
-    def __init__(self, value, exclusive):
+    def __init__(self, value: Union[bytes, BeforeAny, AfterAny], exclusive: bool):
         self.value = value
         self.exclusive = exclusive
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value: bytes) -> 'StringTest':
         if value == b'-':
             return cls(BeforeAny(), True)
         elif value == b'+':
@@ -305,6 +305,13 @@ class StringTest:
             return cls(value[1:], False)
         else:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
+
+    def to_scoretest(self, zset: ZSet):
+        if isinstance(self.value, BeforeAny):
+            return ScoreTest(float('-inf'), False)
+        if isinstance(self.value, AfterAny):
+            return ScoreTest(float('inf'), False)
+        return ScoreTest(zset.get(self.value, None), self.exclusive)
 
 
 class Signature:

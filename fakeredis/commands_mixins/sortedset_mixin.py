@@ -5,7 +5,7 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -78,7 +78,7 @@ class SortedSetCommandsMixin:
             out.append(item)
         return out
 
-    def _apply_withscores(self, items, withscores):
+    def _apply_withscores(self, items, withscores: bool) -> List[bytes]:
         if withscores:
             out = []
             for item in items:
@@ -168,14 +168,16 @@ class SortedSetCommandsMixin:
     def zlexcount(self, key, _min, _max):
         return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)
 
-    def _zrangebyscore(self, key, _min, _max, reverse, withscores, offset, count):
+    def _zrangebyscore(self, key, _min, _max, reverse, withscores, offset, count) -> List[bytes]:
         zset = key.value
+        if reverse:
+            _min, _max = _max, _min
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
         items = self._apply_withscores(items, withscores)
         return items
 
-    def _zrange(self, key, start, stop, reverse, withscores, byscore):
+    def _zrange(self, key, start, stop, reverse, withscores, byscore) -> List[bytes]:
         zset = key.value
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
@@ -188,7 +190,7 @@ class SortedSetCommandsMixin:
         items = self._apply_withscores(items, withscores)
         return items
 
-    def _zrangebylex(self, key, _min, _max, reverse, offset, count):
+    def _zrangebylex(self, key, _min, _max, reverse, offset, count) -> List[bytes]:
         zset = key.value
         if reverse:
             _min, _max = _max, _min
@@ -224,6 +226,15 @@ class SortedSetCommandsMixin:
     def zrange(self, key, start, stop, *args):
         return self._zrange_args(key, start, stop, *args)
 
+    @command((Key(ZSet), Key(ZSet), bytes, bytes), (bytes,))
+    def zrangestore(self, dest: CommandItem, src, start, stop, *args):
+        results_list = self._zrange_args(src, start, stop, *args)
+        res = ZSet()
+        for item in results_list:
+            res.add(item, src.value.get(item))
+        dest.update(res)
+        return len(res)
+
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrange(self, key, start, stop, *args):
         (withscores, byscore), _ = extract_args(args, ('withscores', 'byscore'))
@@ -251,7 +262,7 @@ class SortedSetCommandsMixin:
         return self._zrangebyscore(key, _min, _max, False, withscores, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrevrangebyscore(self, key, _max, _min, *args):
+    def zrevrangebyscore(self, key, _min, _max, *args):
         (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
         offset = offset or 0
         count = -1 if count is None else count
@@ -283,8 +294,8 @@ class SortedSetCommandsMixin:
 
     @command((Key(ZSet), StringTest, StringTest))
     def zremrangebylex(self, key, _min, _max):
-        items = key.value.irange_lex(_min.value, _max.value,
-                                     inclusive=(not _min.exclusive, not _max.exclusive))
+        items = key.value.irange_lex(
+            _min.value, _max.value, inclusive=(not _min.exclusive, not _max.exclusive))
         return self.zrem(key, *items)
 
     @command((Key(ZSet), ScoreTest, ScoreTest))

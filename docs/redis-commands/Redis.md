@@ -827,6 +827,10 @@ Returns members in a sorted set within a lexicographical range.
 
 Returns members in a sorted set within a range of scores.
 
+### [ZRANGESTORE](https://redis.io/commands/zrangestore/)
+
+Stores a range of members from sorted set in a key.
+
 ### [ZRANK](https://redis.io/commands/zrank/)
 
 Returns the index of a member in a sorted set ordered by ascending scores.
@@ -890,10 +894,6 @@ Removes and returns a member by score from one or more sorted sets. Blocks until
 #### [ZMPOP](https://redis.io/commands/zmpop/) <small>(not implemented)</small>
 
 Returns the highest- or lowest-scoring members from one or more sorted sets after removing them. Deletes the sorted set if the last member was popped.
-
-#### [ZRANGESTORE](https://redis.io/commands/zrangestore/) <small>(not implemented)</small>
-
-Stores a range of members from sorted set in a key.
 
 
 ## generic commands

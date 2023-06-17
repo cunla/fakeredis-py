@@ -553,17 +553,10 @@ def test_zrevrangebyscore_cast_scores(r: redis.Redis):
     r.zadd('foo', {'two': 2})
     r.zadd('foo', {'two_a_also': 2.2})
 
-    expected_without_cast_round = [(b'two_a_also', 2.2), (b'two', 2.0)]
-    expected_with_cast_round = [(b'two_a_also', 2.0), (b'two', 2.0)]
-    assert (
-            r.zrevrangebyscore('foo', 3, 2, withscores=True)
-            == expected_without_cast_round
-    )
-    assert (
-            r.zrevrangebyscore('foo', 3, 2, withscores=True,
-                               score_cast_func=round_str)
-            == expected_with_cast_round
-    )
+    assert r.zrevrangebyscore('foo', 3, 2, withscores=True) == [(b'two_a_also', 2.2), (b'two', 2.0)]
+
+    assert r.zrevrangebyscore(
+        'foo', 3, 2, withscores=True, score_cast_func=round_str) == [(b'two_a_also', 2.0), (b'two', 2.0)]
 
 
 def test_zrangebylex(r: redis.Redis):
@@ -1155,3 +1148,23 @@ def test_zintercard(r: redis.Redis):
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
     assert r.zintercard(3, ["a", "b", "c"]) == 2
     assert r.zintercard(3, ["a", "b", "c"], limit=1) == 1
+
+
+def test_zrangestore(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
+    assert r.zrangestore("b", "a", 0, 1)
+    assert r.zrange("b", 0, -1) == [b"a1", b"a2"]
+    assert r.zrangestore("b", "a", 1, 2)
+    assert r.zrange("b", 0, -1) == [b"a2", b"a3"]
+    assert r.zrange("b", 0, -1, withscores=True) == [(b"a2", 2), (b"a3", 3)]
+    # reversed order
+    assert r.zrangestore("b", "a", 1, 2, desc=True)
+    assert r.zrange("b", 0, -1) == [b"a1", b"a2"]
+    # by score
+    assert r.zrangestore("b", "a", 2, 1, byscore=True, offset=0, num=1, desc=True)
+    assert r.zrange("b", 0, -1) == [b"a2"]
+    # by lex
+    # TODO: fix
+    # assert r.zrange("a", "[a2", "(a3", bylex=True, offset=0, num=1) == [b"a2"]
+    # assert r.zrangestore("b", "a", "[a2", "(a3", bylex=True, offset=0, num=1)
+    # assert r.zrange("b", 0, -1) == [b"a2"]

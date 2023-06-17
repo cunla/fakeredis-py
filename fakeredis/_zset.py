@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 import sortedcontainers
 
 
@@ -77,7 +79,7 @@ class ZSet:
                                   inclusive=inclusive, reverse=reverse)
         return (item[1] for item in it)
 
-    def irange_score(self, start, stop, reverse=False):
+    def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse:bool=False):
         return self._byscore.irange(start, stop, reverse=reverse)
 
     def rank(self, member):
