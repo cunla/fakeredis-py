@@ -1146,3 +1146,12 @@ def test_zinter(r: redis.Redis):
     # with weights
     assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == [
         (b"a3", 20), (b"a1", 23), ]
+
+
+@pytest.mark.min_server('7')
+def test_zintercard(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
+    r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
+    r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
+    assert r.zintercard(3, ["a", "b", "c"]) == 2
+    assert r.zintercard(3, ["a", "b", "c"], limit=1) == 1

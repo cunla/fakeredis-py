@@ -4,6 +4,7 @@ import functools
 import itertools
 import math
 import random
+import sys
 from typing import Union, Optional
 
 from fakeredis import _msgs as msgs
@@ -450,6 +451,14 @@ class SortedSetCommandsMixin:
         else:
             res = [t for t in res]
         return res
+
+    @command(name="ZINTERCARD", fixed=(Int, bytes,), repeat=(bytes,))
+    def zintercard(self, numkeys, *args):
+        (limit,), left_args = extract_args(
+            args, ('+limit',), error_on_unexpected=False, left_from_first_unexpected=False)
+        limit = limit if limit != 0 else sys.maxsize
+        res = self._zunioninterdiff('ZINTER', None, numkeys, *left_args)
+        return min(limit, len(res))
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:

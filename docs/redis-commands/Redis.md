@@ -787,6 +787,10 @@ Increments the score of a member in a sorted set.
 
 Returns the intersect of multiple sorted sets.
 
+### [ZINTERCARD](https://redis.io/commands/zintercard/)
+
+Returns the number of members of the intersect of multiple sorted sets.
+
 ### [ZINTERSTORE](https://redis.io/commands/zinterstore/)
 
 Stores the intersect of multiple sorted sets in a key.
@@ -882,10 +886,6 @@ Stores the union of multiple sorted sets in a key.
 #### [BZMPOP](https://redis.io/commands/bzmpop/) <small>(not implemented)</small>
 
 Removes and returns a member by score from one or more sorted sets. Blocks until a member is available otherwise. Deletes the sorted set if the last element was popped.
-
-#### [ZINTERCARD](https://redis.io/commands/zintercard/) <small>(not implemented)</small>
-
-Returns the number of members of the intersect of multiple sorted sets.
 
 #### [ZMPOP](https://redis.io/commands/zmpop/) <small>(not implemented)</small>
 

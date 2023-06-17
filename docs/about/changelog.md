@@ -12,7 +12,8 @@ description: Change log of all fakeredis releases
     `XGROUP CREATECONSUMER` #163, `XINFO GROUPS` #168, `XINFO CONSUMERS` #168, `XINFO STREAM` #169, `XREADGROUP` #171,
     `XACK` #157, `XPENDING` #170
 - Implemented sorted set commands: 
-  - `ZRANDMEMBER` #192, `ZDIFF` #187, `ZINTER` #189, `ZUNION` #194, `ZDIFFSTORE` #188
+  - `ZRANDMEMBER` #192, `ZDIFF` #187, `ZINTER` #189, `ZUNION` #194, `ZDIFFSTORE` #188,
+    `ZINTERCARD` #190
 
 ### 🧰 Maintenance
 
