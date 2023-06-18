@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 import pytest
 import redis
@@ -463,6 +464,19 @@ def test_xinfo_stream(r: redis.Redis):
     assert info["last-entry"] == get_stream_message(r, stream, m2)
 
 
+def assert_consumer_info(
+        r: redis.Redis, stream: str, group: str, equal_keys: List) -> List:
+    res = r.xinfo_consumers(stream, group)
+    assert len(res) == len(equal_keys)
+    for i in range(len(equal_keys)):
+        for k in res[i]:
+            if k in equal_keys[i]:
+                assert res[i][k] == equal_keys[i][k], f'res[{i}][{k}] mismatch, {res}!={equal_keys}'
+            else:
+                print(f'res[{i}][{k}]={res[i][k]}')
+    return res
+
+
 def test_xack(r: redis.Redis):
     stream, group, consumer = "stream", "group", "consumer"
     # xack on a stream that doesn't exist
@@ -477,9 +491,13 @@ def test_xack(r: redis.Redis):
 
     r.xgroup_create(stream, group, 0)
     r.xreadgroup(group, consumer, streams={stream: ">"})
-    # xack returns the number of ack'd elements
+    assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 3}])
     assert r.xack(stream, group, m1) == 1
+    time.sleep(0.01)
+    res = assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 2}])
+    assert 'idle' in res[0] and res[0]['idle'] > 0
     assert r.xack(stream, group, m2, m3) == 2
+    assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 0}])
 
 
 @pytest.mark.min_server('7')

@@ -255,3 +255,21 @@ class StreamsCommandsMixin:
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
         return group.consumers_info()
+
+    @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,), )
+    def xclaim(self, key, group_name, consumer_name, min_idle_ms, *args):
+        if key.value is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        group: StreamGroup = key.value.group_get(group_name)
+        if not group:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+
+        (idle, _time, retry, force, justid), msg_ids = extract_args(
+            args, ('+idle', '+time', '+retrycount', 'force', 'justid'),
+            error_on_unexpected=False,
+            left_from_first_unexpected=False)
+
+        msgs_claimed = group.claim(min_idle_ms, msg_ids, consumer_name, idle, _time, force)
+        if justid:
+            return msgs_claimed
+        key.value.get

@@ -14,7 +14,6 @@ description: Change log of all fakeredis releases
 - Implemented sorted set commands:
     - `ZRANDMEMBER` #192, `ZDIFF` #187, `ZINTER` #189, `ZUNION` #194, `ZDIFFSTORE` #188,
       `ZINTERCARD` #190, `ZRANGESTORE` #193
-
 - Implemented list commands:
     - `BLMOVE` #182,
 
