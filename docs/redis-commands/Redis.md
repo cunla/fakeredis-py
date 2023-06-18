@@ -656,6 +656,10 @@ Performs arbitrary read-only bitfield integer operations on strings.
 
 ## list commands
 
+### [BLMOVE](https://redis.io/commands/blmove/)
+
+Pops an element from a list, pushes it to another list and returns it. Blocks until an element is available otherwise. Deletes the list if the last element was moved.
+
 ### [BLPOP](https://redis.io/commands/blpop/)
 
 Removes and returns the first element in a list. Blocks until an element is available otherwise. Deletes the list if the last element was popped.
@@ -731,10 +735,6 @@ Appends an element to a list only when the list exists.
 
 ### Unsupported list commands 
 > To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [BLMOVE](https://redis.io/commands/blmove/) <small>(not implemented)</small>
-
-Pops an element from a list, pushes it to another list and returns it. Blocks until an element is available otherwise. Deletes the list if the last element was moved.
 
 #### [BLMPOP](https://redis.io/commands/blmpop/) <small>(not implemented)</small>
 

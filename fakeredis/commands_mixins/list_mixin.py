@@ -116,15 +116,23 @@ class ListCommandsMixin:
     def llen(self, key):
         return len(key.value)
 
-    @command((Key(list, None), Key(list), SimpleString, SimpleString))
-    def lmove(self, first_list, second_list, src, dst):
+    def _lmove(self, first_list, second_list, src, dst, first_pass):
         if ((not casematch(src, b'left') and not casematch(src, b'right'))
                 or (not casematch(dst, b'left') and not casematch(dst, b'right'))):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        el = self.rpop(first_list) if src == b'RIGHT' else self.lpop(first_list)
-        self.lpush(second_list, el) if dst == b'LEFT' else self.rpush(second_list, el)
+        el = self.rpop(first_list) if casematch(src, b'RIGHT') else self.lpop(first_list)
+        self.lpush(second_list, el) if casematch(dst, b'LEFT') else self.rpush(second_list, el)
         return el
+
+    @command((Key(list, None), Key(list), SimpleString, SimpleString))
+    def lmove(self, first_list, second_list, src, dst):
+        return self._lmove(first_list, second_list, src, dst, False)
+
+    @command((Key(list, None), Key(list), SimpleString, SimpleString, Timeout))
+    def blmove(self, first_list, second_list, src, dst, timeout):
+        return self._blocking(
+            timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
 
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key, *args):
