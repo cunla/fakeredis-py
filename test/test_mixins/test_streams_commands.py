@@ -626,6 +626,7 @@ def test_xpending_range_negative(r: redis.Redis):
 
 
 @pytest.mark.max_server('6.3')
+@testtools.run_test_if_redispy_ver('above', '4.4')
 def test_xautoclaim_redis6(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
@@ -653,6 +654,7 @@ def test_xautoclaim_redis6(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '4.4')
 def test_xautoclaim_redis7(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
