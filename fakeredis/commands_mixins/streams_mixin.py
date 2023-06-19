@@ -4,7 +4,7 @@ from typing import List, Union, Tuple
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
-from fakeredis._helpers import SimpleError, casematch, OK
+from fakeredis._helpers import SimpleError, casematch, OK, current_time
 from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
 
@@ -19,7 +19,7 @@ class StreamsCommandsMixin:
         elements = left_args[1:]
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('XADD'))
-        stream = key.value or XStream()
+        stream = key.value if key.value is not None else XStream()
         if self.version < (7,) and entry_key != b'*' and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
         entry_key = stream.add(elements, entry_key=entry_key)
@@ -141,7 +141,7 @@ class StreamsCommandsMixin:
             group: StreamGroup = item.value.group_get(group_name)
             if not group:
                 raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(left_args[i], group_name))
-            group_params.append((group, item.key, left_args[i + num_streams],))
+            group_params.append((group, left_args[i], left_args[i + num_streams],))
         if timeout is None:
             return self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
@@ -190,12 +190,15 @@ class StreamsCommandsMixin:
         else:
             return group.pending_summary()
 
-    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
+    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def xgroup_create(self, key, group_name, start_key, *args):
         (mkstream, entries_read,), _ = extract_args(args, ('mkstream', '+entriesread'))
         if key.value is None and not mkstream:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        if key.value.group_get(group_name) is not None:
+            raise SimpleError(msgs.XGROUP_BUSYGROUP)
         key.value.group_add(group_name, start_key, entries_read)
+        key.updated()
         return OK
 
     @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), )
@@ -258,9 +261,10 @@ class StreamsCommandsMixin:
 
     @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,), )
     def xclaim(self, key, group_name, consumer_name, min_idle_ms, *args):
-        if key.value is None:
+        stream = key.value
+        if stream is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        group: StreamGroup = key.value.group_get(group_name)
+        group: StreamGroup = stream.group_get(group_name)
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
 
@@ -269,7 +273,9 @@ class StreamsCommandsMixin:
             error_on_unexpected=False,
             left_from_first_unexpected=False)
 
-        msgs_claimed = group.claim(min_idle_ms, msg_ids, consumer_name, idle, _time, force)
+        if idle is not None and idle > 0 and _time is None:
+            _time = current_time() - idle
+        msgs_claimed = sorted(group.claim(min_idle_ms, msg_ids, consumer_name, _time, force))
         if justid:
-            return msgs_claimed
-        key.value.get
+            return [msg.encode() for msg in msgs_claimed]
+        return [stream.format_record(msg) for msg in msgs_claimed]

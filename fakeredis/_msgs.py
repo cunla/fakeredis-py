@@ -65,6 +65,7 @@ LCS_CANT_HAVE_BOTH_LEN_AND_IDX = "ERR If you want both the length and indexes, p
 BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
 XADD_ID_LOWER_THAN_LAST = "ERR The ID specified in XADD is equal or smaller than the target stream top item"
 XADD_INVALID_ID = 'ERR Invalid stream ID specified as stream command argument'
+XGROUP_BUSYGROUP = 'ERR BUSYGROUP Consumer Group name already exists'
 XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '%s' for key name '%s'"
 XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."

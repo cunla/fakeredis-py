@@ -7,6 +7,7 @@ from operator import itemgetter
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any
 
 from fakeredis._commands import BeforeAny, AfterAny
+from fakeredis._helpers import current_time
 
 
 class StreamEntryKey(NamedTuple):
@@ -51,10 +52,6 @@ class StreamRangeTest:
         return cls(StreamEntryKey.parse_str(value), exclusive)
 
 
-def _current_time():
-    return int(time.time() * 1000)
-
-
 @dataclass
 class StreamConsumerInfo(object):
     name: bytes
@@ -65,7 +62,7 @@ class StreamConsumerInfo(object):
     def __init__(self, name):
         self.name = name
         self.pending = 0
-        _time = _current_time()
+        _time = current_time()
         self.last_attempt = _time
         self.last_success = _time
 
@@ -114,7 +111,7 @@ class StreamGroup(object):
         return res
 
     def consumers_info(self):
-        return [self.consumers[k].info(_current_time()) for k in self.consumers]
+        return [self.consumers[k].info(current_time()) for k in self.consumers]
 
     def group_info(self) -> List[bytes]:
         start_index, _ = self.stream.find_index(self.start_key)
@@ -135,7 +132,7 @@ class StreamGroup(object):
         return list(itertools.chain(*res.items()))
 
     def group_read(self, consumer_name: bytes, start_id: bytes, count: int, noack: bool) -> List:
-        _time = _current_time()
+        _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
 
@@ -155,6 +152,14 @@ class StreamGroup(object):
         self.consumers[consumer_name].pending += len(ids_read)
         return [self.stream.format_record(x) for x in ids_read]
 
+    def _calc_consumer_last_time(self):
+        new_last_success_map = {k: min(v)[1] for k, v in itertools.groupby(self.pel.values(), key=itemgetter(0))}
+        for consumer in new_last_success_map:
+            if consumer not in self.consumers:
+                self.consumers[consumer] = StreamConsumerInfo(consumer)
+            self.consumers[consumer].last_attempt = new_last_success_map[consumer]
+            self.consumers[consumer].last_success = new_last_success_map[consumer]
+
     def ack(self, args: Tuple[bytes]) -> int:
         res = 0
         for k in args:
@@ -167,10 +172,7 @@ class StreamGroup(object):
                 self.consumers[consumer_name].pending -= 1
                 del self.pel[parsed]
                 res += 1
-        new_last_success_map = {k: min(v)[1] for k, v in itertools.groupby(self.pel.values(), key=itemgetter(0))}
-        for k in new_last_success_map:
-            self.consumers[k].last_attempt = new_last_success_map[k]
-            self.consumers[k].last_success = new_last_success_map[k]
+        self._calc_consumer_last_time()
         return res
 
     def pending(self, idle: Optional[int],
@@ -178,7 +180,7 @@ class StreamGroup(object):
                 end: Optional[StreamRangeTest],
                 count: Optional[int],
                 consumer: Optional[str]):
-        _time = _current_time()
+        _time = current_time()
         relevent_ids = list(self.pel.keys())
         if consumer is not None:
             relevent_ids = [k for k in relevent_ids
@@ -209,6 +211,32 @@ class StreamGroup(object):
         ]
         return data
 
+    def claim(self, min_idle_ms: int, msgs: List[bytes], consumer_name: bytes, _time: Optional[int],
+              force: bool) -> List:
+        curr_time = current_time()
+        if _time is None:
+            _time = curr_time
+        self.consumers.get(consumer_name, StreamConsumerInfo(consumer_name)).last_attempt = curr_time
+        claimed_msgs = []
+        for msg in msgs:
+            try:
+                key = StreamEntryKey.parse_str(msg)
+            except Exception:
+                continue
+            if key not in self.pel:
+                if force:
+                    self.pel[key] = (consumer_name, _time)  # Force claim msg
+                    if key in self.stream:
+                        claimed_msgs.append(key)
+                continue
+            if curr_time - self.pel[key][1] < min_idle_ms:
+                continue  # Not idle enough time to be claimed
+            self.pel[key] = (consumer_name, _time)
+            if key in self.stream:
+                claimed_msgs.append(key)
+        self._calc_consumer_last_time()
+        return claimed_msgs
+
 
 class XStream:
     """Class representing stream.
@@ -231,7 +259,7 @@ class XStream:
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
 
-    def group_get(self, group_name: bytes) -> StreamGroup:
+    def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
         return self._groups.get(group_name, None)
 
     def group_add(self, name: bytes, start_key_str: bytes, entries_read: Union[int, None]) -> None:
@@ -356,6 +384,9 @@ class XStream:
         if isinstance(key, bytes):
             return self._values_dict[StreamEntryKey.parse_str(key)]
         return None
+
+    def __contains__(self, key: StreamEntryKey):
+        return key in self._values_dict
 
     def find_index(self, entry_key: StreamEntryKey, from_left=True) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream

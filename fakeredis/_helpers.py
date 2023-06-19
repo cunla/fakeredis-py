@@ -34,6 +34,10 @@ QUEUED = SimpleString(b'QUEUED')
 BGSAVE_STARTED = SimpleString(b'Background saving started')
 
 
+def current_time():
+    return int(time.time() * 1000)
+
+
 def null_terminate(s):
     # Redis uses C functions on some strings, which means they stop at the
     # first NULL.

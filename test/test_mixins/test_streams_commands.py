@@ -652,7 +652,6 @@ def test_xautoclaim(r: redis.Redis):
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.xfail
 def test_xclaim_trimmed(r: redis.Redis):
     # xclaim should not raise an exception if the item is not there
     stream, group = "stream", "group"
@@ -674,3 +673,36 @@ def test_xclaim_trimmed(r: redis.Redis):
     item = r.xclaim(stream, group, "consumer2", 0, [sid1, sid2])
     assert len(item) == 1
     assert item[0][0] == sid2
+
+
+def test_xclaim(r: redis.Redis):
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
+
+    message_id = r.xadd(stream, {"john": "wick"})
+    message = get_stream_message(r, stream, message_id)
+    r.xgroup_create(stream, group, 0)
+
+    # trying to claim a message that isn't already pending doesn't
+    # do anything
+    assert r.xclaim(
+        stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)
+    ) == []
+
+    # read the group as consumer1 to initially claim the messages
+    r.xreadgroup(group, consumer1, streams={stream: ">"})
+
+    # claim the message as consumer2
+    assert r.xclaim(
+        stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)
+    ) == [message, ]
+
+    # reclaim the message as consumer1, but use the justid argument
+    # which only returns message ids
+    assert r.xclaim(
+        stream,
+        group,
+        consumer1,
+        min_idle_time=0,
+        message_ids=(message_id,),
+        justid=True,
+    ) == [message_id, ]
