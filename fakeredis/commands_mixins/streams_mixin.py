@@ -276,7 +276,31 @@ class StreamsCommandsMixin:
 
         if idle is not None and idle > 0 and _time is None:
             _time = current_time() - idle
-        msgs_claimed = sorted(group.claim(min_idle_ms, msg_ids, consumer_name, _time, force))
+        msgs_claimed, _ = group.claim(min_idle_ms, msg_ids, consumer_name, _time, force)
+
         if justid:
             return [msg.encode() for msg in msgs_claimed]
         return [stream.format_record(msg) for msg in msgs_claimed]
+
+    @command(name="XAUTOCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,), )
+    def xautoclaim(self, key, group_name, consumer_name, min_idle_ms, start, *args):
+        (count, justid), _ = extract_args(args, ('+count', 'justid'))
+        count = count or 100
+        stream = key.value
+        if stream is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        group: StreamGroup = stream.group_get(group_name)
+        if not group:
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+
+        keys = group.read_pel_msgs(min_idle_ms, start, count)
+        msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
+
+        res = [
+            max(msgs_claimed).encode() if len(msgs_claimed) > 0 else start,
+            [msg.encode() for msg in msgs_claimed] if justid
+            else [stream.format_record(msg) for msg in msgs_claimed],
+        ]
+        if self.version >= (7,):
+            res.append([msg.encode() for msg in msgs_removed])
+        return res

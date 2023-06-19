@@ -211,16 +211,20 @@ class StreamGroup(object):
         ]
         return data
 
-    def claim(self, min_idle_ms: int, msgs: List[bytes], consumer_name: bytes, _time: Optional[int],
-              force: bool) -> List:
+    def claim(self,
+              min_idle_ms: int,
+              msgs: List[bytes],
+              consumer_name: bytes,
+              _time: Optional[int],
+              force: bool) -> Tuple[List, List]:
         curr_time = current_time()
         if _time is None:
             _time = curr_time
         self.consumers.get(consumer_name, StreamConsumerInfo(consumer_name)).last_attempt = curr_time
-        claimed_msgs = []
+        claimed_msgs, deleted_msgs = [], []
         for msg in msgs:
             try:
-                key = StreamEntryKey.parse_str(msg)
+                key = StreamEntryKey.parse_str(msg) if isinstance(msg, bytes) else msg
             except Exception:
                 continue
             if key not in self.pel:
@@ -228,14 +232,29 @@ class StreamGroup(object):
                     self.pel[key] = (consumer_name, _time)  # Force claim msg
                     if key in self.stream:
                         claimed_msgs.append(key)
+                    else:
+                        deleted_msgs.append(key)
+                        del self.pel[key]
                 continue
             if curr_time - self.pel[key][1] < min_idle_ms:
                 continue  # Not idle enough time to be claimed
             self.pel[key] = (consumer_name, _time)
             if key in self.stream:
                 claimed_msgs.append(key)
+            else:
+                deleted_msgs.append(key)
+                del self.pel[key]
         self._calc_consumer_last_time()
-        return claimed_msgs
+        return sorted(claimed_msgs), sorted(deleted_msgs)
+
+    def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int):
+        start_key = StreamEntryKey.parse_str(start)
+        curr_time = current_time()
+        msgs = sorted([k for k in self.pel
+                       if (curr_time - self.pel[k][1] >= min_idle_ms)
+                       and k >= start_key])
+        count = min(count, len(msgs))
+        return msgs[:count]
 
 
 class XStream:

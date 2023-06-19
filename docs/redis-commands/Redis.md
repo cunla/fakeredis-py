@@ -1442,6 +1442,10 @@ Returns the number of messages that were successfully acknowledged by the consum
 
 Appends a new message to a stream. Creates the key if it doesn't exist.
 
+### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/)
+
+Changes, or acquires, ownership of messages in a consumer group, as if the messages were delivered to as consumer group member.
+
 ### [XCLAIM](https://redis.io/commands/xclaim/)
 
 Changes, or acquires, ownership of a message in a consumer group, as if the message was delivered a consumer group member.
@@ -1510,12 +1514,5 @@ Returns the messages from a stream within a range of IDs in reverse order.
 
 Deletes messages from the beginning of a stream.
 
-
-### Unsupported stream commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [XAUTOCLAIM](https://redis.io/commands/xautoclaim/) <small>(not implemented)</small>
-
-Changes, or acquires, ownership of messages in a consumer group, as if the messages were delivered to as consumer group member.
 
 
