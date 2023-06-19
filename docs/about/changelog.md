@@ -3,7 +3,9 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
-## Next release v2.15.0
+## Next release
+
+## v2.15.0
 
 ### 🚀 Features
 
