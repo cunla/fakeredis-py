@@ -190,7 +190,8 @@ class StreamsCommandsMixin:
         else:
             return group.pending_summary()
 
-    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,),
+             flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def xgroup_create(self, key, group_name, start_key, *args):
         (mkstream, entries_read,), _ = extract_args(args, ('mkstream', '+entriesread'))
         if key.value is None and not mkstream:
