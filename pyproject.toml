@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.15.0"
+version = "2.15.1"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", ]
@@ -44,7 +44,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.7"
 redis = ">=4"
-sortedcontainers = "^2.4"
+sortedcontainers = "^2"
 lupa = { version = "^1.14", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
 
@@ -53,20 +53,20 @@ lua = ["lupa"]
 json = ["jsonpath-ng"]
 
 [tool.poetry.dev-dependencies]
-hypothesis = "^6.70"
 coverage = "^7"
-pytest = "^7.2"
+flake8 = { version = "^6", python = ">=3.8.1" }
+flake8-pyproject = { version = "^1", python = ">=3.8.1" }
+hypothesis = "^6.70"
+mypy = "^1"
+pygithub = "^1.58.2"
+pytest = "^7.4"
 pytest-asyncio = "^0.21"
 pytest-cov = "^4.0"
 pytest-mock = "^3.10"
-mypy = "^1"
 types-redis = "^4.5"
 twine = "^4.0"
-tox = "^4.4"
+tox = "^4.6"
 tox-docker = "^4"
-flake8 = { version = "^6.0", python = ">=3.8.1" }
-flake8-pyproject = { version = "^1.2", python = ">=3.8.1" }
-pygithub = "^1.58.2"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
