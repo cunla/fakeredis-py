@@ -36,6 +36,7 @@ def test_jsonget(r: redis.Redis):
     r.json().set("foo", Path.root_path(), {'x': "bar"}, )
     assert r.json().get("foo") == {'x': "bar"}
     assert r.json().get("foo", Path("$.a"), Path("$.x")) == {'$.a': [], '$.x': ['bar']}
+    assert r.json().get("unknown", "$") is None
 
 
 def test_json_setgetdeleteforget(r: redis.Redis):
