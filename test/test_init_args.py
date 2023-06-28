@@ -1,9 +1,11 @@
 import pytest
 
 import fakeredis
+from test import testtools
 
 
-def test_multidb(r, create_redis):
+@testtools.run_test_if_redispy_ver('below', '4.6')
+def test_multidb_redispy4(r, create_redis):
     r1 = create_redis(db=0)
     r2 = create_redis(db=1)
 
@@ -17,6 +19,26 @@ def test_multidb(r, create_redis):
     assert r2['r2'] == b'r2'
 
     assert r1.flushall() is True
+
+    assert 'r1' not in r1
+    assert 'r2' not in r2
+
+
+@testtools.run_test_if_redispy_ver('above', '5')
+def test_multidb_redispy4(r, create_redis):
+    r1 = create_redis(db=0)
+    r2 = create_redis(db=1)
+
+    r1['r1'] = 'r1'
+    r2['r2'] = 'r2'
+
+    assert 'r2' not in r1
+    assert 'r1' not in r2
+
+    assert r1['r1'] == b'r1'
+    assert r2['r2'] == b'r2'
+
+    assert r1.flushall() == b'OK'
 
     assert 'r1' not in r1
     assert 'r2' not in r2

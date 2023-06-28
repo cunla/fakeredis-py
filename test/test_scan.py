@@ -18,7 +18,7 @@ def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.
 
     key_to_remove = next(x for x in all_keys_set if x not in keys)
     assert r.srem(name, key_to_remove) == 1
-    assert r.sismember(name, key_to_remove) is False
+    assert not r.sismember(name, key_to_remove)
     while cursor != 0:
         cursor, data = r.sscan(name, cursor=cursor)
         keys.extend(data)
