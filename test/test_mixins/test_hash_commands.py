@@ -227,7 +227,8 @@ def test_hmset_empty_raises_error(r: redis.Redis):
         r.hmset('foo', {})
 
 
-def test_hmset(r: redis.Redis):
+@testtools.run_test_if_redispy_ver('below', '4.6')
+def test_hmset_redispy4(r: redis.Redis):
     r.hset('foo', 'k1', 'v1')
     assert r.hmset('foo', {'k2': 'v2', 'k3': 'v3'}) is True
 

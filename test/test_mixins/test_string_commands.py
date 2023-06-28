@@ -8,6 +8,7 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
+from .. import testtools
 from ..testtools import raw_command
 
 
@@ -208,18 +209,32 @@ def test_mset(r: redis.Redis):
 
 
 def test_msetnx(r: redis.Redis):
-    assert r.msetnx({'foo': 'one', 'bar': 'two'}) is True
-    assert r.msetnx({'bar': 'two', 'baz': 'three'}) is False
+    assert r.msetnx({'foo': 'one', 'bar': 'two'})
+    assert not r.msetnx({'bar': 'two', 'baz': 'three'})
     assert r.mget('foo', 'bar', 'baz') == [b'one', b'two', None]
 
 
-def test_setex(r: redis.Redis):
+@testtools.run_test_if_redispy_ver('above', '5')
+def test_setex_redispy5(r: redis.Redis):
+    assert r.setex('foo', 100, 'bar') == b'OK'
+    assert r.get('foo') == b'bar'
+
+
+@testtools.run_test_if_redispy_ver('below', '4.6')
+def test_setex_redispy4(r: redis.Redis):
     assert r.setex('foo', 100, 'bar') is True
     assert r.get('foo') == b'bar'
 
 
-def test_setex_using_timedelta(r: redis.Redis):
+@testtools.run_test_if_redispy_ver('below', '4.6')
+def test_setex_using_timedelta_redispy4(r: redis.Redis):
     assert r.setex('foo', timedelta(seconds=100), 'bar') is True
+    assert r.get('foo') == b'bar'
+
+
+@testtools.run_test_if_redispy_ver('above', '5')
+def test_setex_using_timedelta_redispy5(r: redis.Redis):
+    assert r.setex('foo', timedelta(seconds=100), 'bar') == b'OK'
     assert r.get('foo') == b'bar'
 
 
@@ -318,9 +333,9 @@ def test_setex_using_timedelta_raises_wrong_ex(r: redis.Redis):
 
 
 def test_setnx(r: redis.Redis):
-    assert r.setnx('foo', 'bar') is True
+    assert r.setnx('foo', 'bar')
     assert r.get('foo') == b'bar'
-    assert r.setnx('foo', 'baz') is False
+    assert not r.setnx('foo', 'baz')
     assert r.get('foo') == b'bar'
 
 

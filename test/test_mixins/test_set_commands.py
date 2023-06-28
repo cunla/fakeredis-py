@@ -130,9 +130,9 @@ def test_sinterstore(r: redis.Redis):
 
 
 def test_sismember(r: redis.Redis):
-    assert r.sismember('foo', 'member1') is False
+    assert not r.sismember('foo', 'member1')
     r.sadd('foo', 'member1')
-    assert r.sismember('foo', 'member1') is True
+    assert r.sismember('foo', 'member1')
 
 
 def test_smismember(r: redis.Redis):
@@ -189,12 +189,12 @@ def test_smembers_runtime_error(r: redis.Redis):
 def test_smove(r: redis.Redis):
     r.sadd('foo', 'member1')
     r.sadd('foo', 'member2')
-    assert r.smove('foo', 'bar', 'member1') is True
+    assert r.smove('foo', 'bar', 'member1')
     assert r.smembers('bar') == {b'member1'}
 
 
 def test_smove_non_existent_key(r: redis.Redis):
-    assert r.smove('foo', 'bar', 'member1') is False
+    assert not r.smove('foo', 'bar', 'member1')
 
 
 def test_smove_wrong_type(r: redis.Redis):
