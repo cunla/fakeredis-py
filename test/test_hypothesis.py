@@ -1,4 +1,5 @@
 import functools
+import math
 import operator
 import sys
 
@@ -105,7 +106,8 @@ def sort_list(lst):
 
 def normalize_if_number(x):
     try:
-        return float(x)
+        res = float(x)
+        return x if math.isnan(res) else res
     except ValueError:
         return x
 
@@ -194,8 +196,8 @@ common_commands = (
         | commands(st.just('move'), keys, dbnums)
         | commands(st.sampled_from(['rename', 'renamenx']), keys, keys)
         # TODO: find a better solution to sort instability than throwing
-        # away the sort entirely with normalize. This also prevents us
-        # using LIMIT.
+        #  away the sort entirely with normalize. This also prevents us
+        #  using LIMIT.
         | commands(st.just('sort'), keys,
                    st.none() | st.just('asc'),
                    st.none() | st.just('desc'),
@@ -313,10 +315,10 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 assert n(f) == n(r)
             self.transaction_normalize = []
         else:
-            if fake_result != real_result:
-                print('{}!={} when running {}'.format(fake_result, real_result, command),
-                      file=sys.stderr)
-            assert fake_result == real_result, "Discrepancy when running command {}".format(command)
+            assert ((type(fake_result) == float and fake_result == pytest.approx(real_result))
+                    or fake_result == real_result,
+                    "Discrepancy when running command {}, fake({}) != real({})".format(
+                        command, fake_result, real_result))
             if real_result == b'QUEUED':
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
@@ -382,11 +384,7 @@ class TestString(BaseTest):
             | commands(st.just('bitcount'), keys, values, values)
             | commands(st.sampled_from(['incr', 'decr']), keys)
             | commands(st.sampled_from(['incrby', 'decrby']), keys, values)
-            # Disabled for now because Python can't exactly model the long doubles.
-            # TODO: make a more targeted test that checks the basics.
-            # TODO: check how it gets stringified, without relying on hypothesis
-            # to get generate a get call before it gets overwritten.
-            # | commands(st.just('incrbyfloat'), keys, st.floats(width=32))
+            | commands(st.just('incrbyfloat'), keys, st.floats(width=32, allow_nan=False))
             | commands(st.just('get'), keys)
             | commands(st.just('getbit'), keys, counts)
             | commands(st.just('setbit'), keys, counts,
