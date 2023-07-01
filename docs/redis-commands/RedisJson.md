@@ -30,6 +30,10 @@ Sets or updates the JSON value at a path
 
 Sets or updates the JSON value of one or more keys
 
+### [JSON.MERGE](https://redis.io/commands/json.merge/)
+
+Merges a given JSON value into matching paths. Consequently, JSON values at matching paths are updated, deleted, or expanded with new children
+
 ### [JSON.MGET](https://redis.io/commands/json.mget/)
 
 Returns the values at a path from one or more keys
@@ -86,12 +90,5 @@ Returns the number of keys of the object at path
 
 Returns the type of the JSON value at path
 
-
-### Unsupported json commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [JSON.MERGE](https://redis.io/commands/json.merge/) <small>(not implemented)</small>
-
-Merges a given JSON value into matching paths. Consequently, JSON values at matching paths are updated, deleted, or expanded with new children
 
 

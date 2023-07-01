@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.16.0
+
+### 🚀 Features
+
+- Implemented support for `JSON.MSET` #174, `JSON.MERGE` #181
+
 ## v2.15.0
 
 ### 🚀 Features
