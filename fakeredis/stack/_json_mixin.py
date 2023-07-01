@@ -7,7 +7,7 @@ import copy
 # Standard Library Imports
 import json
 from json import JSONDecodeError
-from typing import Any, Union
+from typing import Any, Union, Dict
 
 from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
@@ -44,6 +44,21 @@ def _parse_jsonpath(path: Union[str, bytes]):
 
 def _path_is_root(path: JSONPath) -> bool:
     return path == Root()
+
+
+def _dict_deep_merge(source: Dict, destination: Dict) -> Dict:
+    """Deep merge of two dictionaries
+    """
+    for key, value in source.items():
+        if value is None and key in destination:
+            del destination[key]
+        elif isinstance(value, dict):
+            node = destination.setdefault(key, {})
+            _dict_deep_merge(value, node)
+        else:
+            destination[key] = value
+
+    return destination
 
 
 class JSONObject:
@@ -440,6 +455,15 @@ class JSONCommandsMixin:
             JSONCommandsMixin._json_set(key, path_str, value)
         return helpers.OK
 
-    # @command(name="JSON.MERGE", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    # def json_merge(self, key, path_str, mult_by, *args):
-    #     pass  # TODO
+    @command(name="JSON.MERGE", fixed=(Key(), bytes, JSONObject), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def json_merge(self, key, path_str: bytes, value: JsonType):
+        path: JSONPath = _parse_jsonpath(path_str)
+        if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
+            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
+        matching = path.find(key.value)
+        for item in matching:
+            prev_value = item.value if item is not None else dict()
+            _dict_deep_merge(value, prev_value)
+        if len(matching) > 0:
+            key.updated()
+        return helpers.OK

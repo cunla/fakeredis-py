@@ -558,27 +558,31 @@ def test_nummultby(r: redis.Redis):
         assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
 
 
-@testtools.run_test_if_redispy_ver('above', '5')
+@testtools.run_test_if_redispy_ver('above', '4.6')
+@pytest.mark.min_server('7.1')
 def test_json_merge(r: redis.Redis):
     # Test with root path $
-    key = "person_data"
-    r.json().set(key, Path.root_path(), {"person1": {"personal_data": {"name": "John"}}}, )
-    r.json().merge(key, Path.root_path(), {"person1": {"personal_data": {"hobbies": "reading"}}})
-    assert r.json().get(key) == {"person1": {"personal_data": {"name": "John", "hobbies": "reading"}}}
+    assert r.json().set("person_data", "$", {"person1": {"personal_data": {"name": "John"}}}, )
+    assert r.json().merge("person_data", "$", {"person1": {"personal_data": {"hobbies": "reading"}}})
+    assert r.json().get("person_data") == {"person1": {"personal_data": {"name": "John", "hobbies": "reading"}}}
 
     # Test with root path path $.person1.personal_data
-    r.json().merge(key, "$.person1.personal_data", {"country": "Israel"})
-    assert r.json().get(key) == {
-        "person1": {"personal_data": {"name": "John", "hobbies": "reading", "country": "Israel"}}}
+    assert r.json().merge("person_data", "$.person1.personal_data", {"country": "Israel"})
+    assert r.json().get("person_data") == {"person1": {
+        "personal_data": {"name": "John", "hobbies": "reading", "country": "Israel"}
+    }}
 
     # Test with null value to delete a value
-    r.json().merge("person_data", "$.person1.personal_data", {"name": None})
-    assert r.json().get(key) == {"person1": {"personal_data": {"country": "Israel", "hobbies": "reading"}}}
+    assert r.json().merge("person_data", "$.person1.personal_data", {"name": None})
+    assert r.json().get("person_data") == {
+        "person1": {"personal_data": {"country": "Israel", "hobbies": "reading"}}
+    }
 
 
-@testtools.run_test_if_redispy_ver('above', '5')
+@testtools.run_test_if_redispy_ver('above', '4.6')
+@pytest.mark.min_server('7.1')
 def test_mset(r: redis.Redis):
-    r.json().mset("1", Path.root_path(), 1, "2", Path.root_path(), 2)
+    r.json().mset([("1", Path.root_path(), 1), ("2", Path.root_path(), 2)])
 
     assert r.json().mget(["1"], Path.root_path()) == [1]
     assert r.json().mget(["1", "2"], Path.root_path()) == [1, 2]
