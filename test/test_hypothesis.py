@@ -103,6 +103,13 @@ def sort_list(lst):
         return lst
 
 
+def normalize_if_number(x):
+    try:
+        return float(x)
+    except ValueError:
+        return x
+
+
 def flatten(args):
     if isinstance(args, (list, tuple)):
         for arg in args:
@@ -147,7 +154,7 @@ class Command:
         if command in unordered:
             return sort_list
         else:
-            return lambda x: x
+            return normalize_if_number
 
     @property
     def testable(self):
