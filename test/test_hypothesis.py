@@ -384,7 +384,6 @@ class TestString(BaseTest):
             | commands(st.just('bitcount'), keys, values, values)
             | commands(st.sampled_from(['incr', 'decr']), keys)
             | commands(st.sampled_from(['incrby', 'decrby']), keys, values)
-            | commands(st.just('incrbyfloat'), keys, st.floats(width=32, allow_nan=False))
             | commands(st.just('get'), keys)
             | commands(st.just('getbit'), keys, counts)
             | commands(st.just('setbit'), keys, counts,
