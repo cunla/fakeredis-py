@@ -13,6 +13,7 @@ from test import testtools
 lupa = pytest.importorskip("lupa")
 
 
+@pytest.mark.max_server('7.1')
 def test_eval_blpop(r: redis.Redis):
     r.rpush('foo', 'bar')
     with pytest.raises(redis.ResponseError, match='This Redis command is not allowed from script'):
