@@ -129,9 +129,10 @@ There is a need to override `django_rq.queues.get_redis_connection` with
 a method returning the same connection.
 
 ```python
-from fakeredis import FakeRedisConnSingleton
+import django_rq
+from fakeredis import get_fake_connection
 
-django_rq.queues.get_redis_connection = FakeRedisConnSingleton()
+django_rq.queues.get_redis_connection = get_fake_connection
 ```
 
 ## Known Limitations

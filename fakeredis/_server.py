@@ -7,7 +7,7 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 import redis
 
@@ -213,13 +213,17 @@ class FakeRedis(FakeRedisMixin, redis.Redis):
 # Set up the connection before RQ Django reads the settings.
 # The connection must be the same because in fakeredis connections
 # do not share the state. Therefore, we define a singleton object to reuse it.
-class FakeRedisConnSingleton:
-    """Singleton FakeRedis connection."""
-
-    def __init__(self):
-        self.conn = None
-
-    def __call__(self, _, strict):
-        if not self.conn:
-            self.conn = FakeStrictRedis() if strict else FakeRedis()
-        return self.conn
+def get_fake_connection(config: Dict[str, Any], strict: bool):
+    redis_cls = FakeStrictRedis if strict else FakeRedis
+    if 'URL' in config:
+        return redis_cls.from_url(
+            config['URL'],
+            db=config.get('DB'),
+        )
+    return redis_cls(
+        host=config['HOST'],
+        port=config['PORT'],
+        db=config.get('DB', 0),
+        username=config.get('USERNAME', None),
+        password=config.get('PASSWORD'),
+    )
