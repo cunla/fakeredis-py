@@ -63,14 +63,17 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
         f.write('Module currently not implemented in fakeredis.\n\n')
     for group in groups:
         implemented_in_group = list(filter(lambda cmd: cmd in implemented_commands, groups[group]))
+        unimplemented_in_group = list(filter(
+            lambda cmd: cmd not in implemented_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group]))
         if len(implemented_in_group) > 0:
-            f.write(f'## {group} commands\n\n')
+            f.write(f'## `{group}` commands '
+                    f'({len(implemented_in_group)}/{len(unimplemented_in_group) + len(implemented_in_group)} '
+                    f'implemented)\n\n')
         for cmd in implemented_in_group:
             f.write(f"### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
             f.write(f"{commands[cmd]['summary']}\n\n")
         f.write("\n")
-        unimplemented_in_group = list(filter(
-            lambda cmd: cmd not in implemented_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group]))
+
         if len(unimplemented_in_group) > 0:
             f.write(f'### Unsupported {group} commands \n')
             f.write('> To implement support for a command, see [here](../../guides/implement-command/) \n\n')

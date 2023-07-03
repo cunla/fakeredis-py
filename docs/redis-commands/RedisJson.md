@@ -1,6 +1,6 @@
 # JSON commands
 
-## json commands
+## `json` commands (22/22 implemented)
 
 ### [JSON.DEL](https://redis.io/commands/json.del/)
 

@@ -1,6 +1,6 @@
 # Redis commands
 
-## server commands
+## `server` commands (8/70 implemented)
 
 ### [BGSAVE](https://redis.io/commands/bgsave/)
 
@@ -287,7 +287,7 @@ Clears all entries from the slow log.
 An internal command used in replication.
 
 
-## string commands
+## `string` commands (22/22 implemented)
 
 ### [APPEND](https://redis.io/commands/append/)
 
@@ -512,7 +512,7 @@ Enables read-only queries for a connection to a Redis Cluster replica node.
 Enables read-write queries for a connection to a Reids Cluster replica node.
 
 
-## connection commands
+## `connection` commands (3/25 implemented)
 
 ### [ECHO](https://redis.io/commands/echo/)
 
@@ -619,7 +619,7 @@ Closes the connection.
 Resets the connection.
 
 
-## bitmap commands
+## `bitmap` commands (5/7 implemented)
 
 ### [BITCOUNT](https://redis.io/commands/bitcount/)
 
@@ -654,7 +654,7 @@ Performs arbitrary bitfield integer operations on strings.
 Performs arbitrary read-only bitfield integer operations on strings.
 
 
-## list commands
+## `list` commands (19/22 implemented)
 
 ### [BLMOVE](https://redis.io/commands/blmove/)
 
@@ -749,7 +749,7 @@ Returns multiple elements from a list after removing them. Deletes the list if t
 Returns the index of matching elements in a list.
 
 
-## sorted-set commands
+## `sorted-set` commands (33/35 implemented)
 
 ### [BZPOPMAX](https://redis.io/commands/bzpopmax/)
 
@@ -896,7 +896,7 @@ Removes and returns a member by score from one or more sorted sets. Blocks until
 Returns the highest- or lowest-scoring members from one or more sorted sets after removing them. Deletes the sorted set if the last member was popped.
 
 
-## generic commands
+## `generic` commands (20/33 implemented)
 
 ### [DEL](https://redis.io/commands/del/)
 
@@ -1035,7 +1035,7 @@ Blocks until the asynchronous replication of all preceding write commands sent b
 Blocks until all of the preceding write commands sent by the connection are written to the append-only file of the master and/or replicas.
 
 
-## transactions commands
+## `transactions` commands (5/5 implemented)
 
 ### [DISCARD](https://redis.io/commands/discard/)
 
@@ -1059,7 +1059,7 @@ Monitors changes to keys to determine the execution of a transaction.
 
 
 
-## scripting commands
+## `scripting` commands (7/22 implemented)
 
 ### [EVAL](https://redis.io/commands/eval/)
 
@@ -1154,7 +1154,7 @@ Sets the debug mode of server-side Lua scripts.
 Terminates a server-side Lua script during execution.
 
 
-## geo commands
+## `geo` commands (10/10 implemented)
 
 ### [GEOADD](https://redis.io/commands/geoadd/)
 
@@ -1198,7 +1198,7 @@ Queries a geospatial index for members inside an area of a box or a circle, opti
 
 
 
-## hash commands
+## `hash` commands (16/16 implemented)
 
 ### [HDEL](https://redis.io/commands/hdel/)
 
@@ -1266,7 +1266,7 @@ Returns all values in a hash.
 
 
 
-## hyperloglog commands
+## `hyperloglog` commands (3/5 implemented)
 
 ### [PFADD](https://redis.io/commands/pfadd/)
 
@@ -1293,7 +1293,7 @@ Internal commands for debugging HyperLogLog values.
 An internal command for testing HyperLogLog values.
 
 
-## pubsub commands
+## `pubsub` commands (9/15 implemented)
 
 ### [PSUBSCRIBE](https://redis.io/commands/psubscribe/)
 
@@ -1360,7 +1360,7 @@ Listens for messages published to shard channels.
 Stops listening to messages posted to shard channels.
 
 
-## set commands
+## `set` commands (17/17 implemented)
 
 ### [SADD](https://redis.io/commands/sadd/)
 
@@ -1432,7 +1432,7 @@ Stores the union of multiple sets in a key.
 
 
 
-## stream commands
+## `stream` commands (20/20 implemented)
 
 ### [XACK](https://redis.io/commands/xack/)
 
