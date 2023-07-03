@@ -8,11 +8,6 @@ import redis
 
 from ._server import FakeBaseConnectionMixin
 
-if sys.version_info >= (3, 8):
-    from typing import Type, TypedDict
-else:
-    from typing_extensions import Type, TypedDict
-
 if sys.version_info >= (3, 11):
     from asyncio import timeout as async_timeout
 else:
@@ -171,22 +166,6 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         return pieces
 
 
-class ConnectionKwargs(TypedDict, total=False):
-    db: Union[str, int]
-    username: Optional[str]
-    password: Optional[str]
-    socket_timeout: Optional[float]
-    encoding: str
-    encoding_errors: str
-    decode_responses: bool
-    retry_on_timeout: bool
-    health_check_interval: int
-    client_name: Optional[str]
-    server: Optional[_server.FakeServer]
-    connection_class: Type[redis_async.Connection]
-    max_connections: Optional[int]
-
-
 class FakeRedis(redis_async.Redis):
     def __init__(
             self,
@@ -205,27 +184,29 @@ class FakeRedis(redis_async.Redis):
             username: Optional[str] = None,
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
+            version=(7,),
             **kwargs,
     ):
         if not connection_pool:
             # Adapted from aioredis
-            connection_kwargs: ConnectionKwargs = {
-                "db": db,
+            connection_kwargs = dict(
+                db=db,
                 # Ignoring because AUTH is not implemented
                 # 'username',
                 # 'password',
-                "socket_timeout": socket_timeout,
-                "encoding": encoding,
-                "encoding_errors": encoding_errors,
-                "decode_responses": decode_responses,
-                "retry_on_timeout": retry_on_timeout,
-                "health_check_interval": health_check_interval,
-                "client_name": client_name,
-                "server": server,
-                "connected": connected,
-                "connection_class": FakeConnection,
-                "max_connections": max_connections,
-            }
+                socket_timeout=socket_timeout,
+                encoding=encoding,
+                encoding_errors=encoding_errors,
+                decode_responses=decode_responses,
+                retry_on_timeout=retry_on_timeout,
+                health_check_interval=health_check_interval,
+                client_name=client_name,
+                server=server,
+                connected=connected,
+                connection_class=FakeConnection,
+                max_connections=max_connections,
+                version=version,
+            )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)
         super().__init__(
             db=db,

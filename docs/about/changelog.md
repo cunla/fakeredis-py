@@ -11,6 +11,10 @@ description: Change log of all fakeredis releases
 
 - Implemented support for `JSON.MSET` #174, `JSON.MERGE` #181
 
+### 🧰 Bug Fixes
+
+- Add support for version for async FakeRedis #205
+
 ### 🧰 Maintenance
 
 - Updated how to test django_rq #204

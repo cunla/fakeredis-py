@@ -274,6 +274,19 @@ async def test_from_url():
     await r1.connection_pool.disconnect()
 
 
+@pytest.mark.fake
+async def test_from_url_with_version():
+    r0 = aioredis.FakeRedis.from_url('redis://localhost?db=0', version=(6,))
+    r1 = aioredis.FakeRedis.from_url('redis://localhost?db=1', version=(6,))
+    # Check that they are indeed different databases
+    await r0.set('foo', 'a')
+    await r1.set('foo', 'b')
+    assert await r0.get('foo') == b'a'
+    assert await r1.get('foo') == b'b'
+    await r0.connection_pool.disconnect()
+    await r1.connection_pool.disconnect()
+
+
 @fake_only
 async def test_from_url_with_server(req_aioredis2, fake_server):
     r2 = aioredis.FakeRedis.from_url('redis://localhost', server=fake_server)
