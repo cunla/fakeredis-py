@@ -1,6 +1,7 @@
 import functools
 
 from fakeredis import _msgs as msgs
+from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (Key, command, Int, CommandItem, Timeout, fix_range)
 from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch)
 
@@ -224,3 +225,31 @@ class ListCommandsMixin:
         if not key:
             return 0
         return self.rpush(key, *values)
+
+    @command(fixed=(Key(list), bytes,), repeat=(bytes,))
+    def lpos(self, key, elem, *args):
+        (rank, count, maxlen), _ = extract_args(args, ('+rank', '+count', '+maxlen',))
+        if rank == 0:
+            raise SimpleError(msgs.LPOS_RANK_CAN_NOT_BE_ZERO)
+        rank = rank or 1
+        ind, direction = (0, 1) if rank > 0 else (len(key.value) - 1, -1)
+        rank = abs(rank)
+        parse_count = len(key.value) if count == 0 else (count or 1)
+        maxlen = maxlen or len(key.value)
+        res = []
+        comparisons = 0
+        while (0 <= ind <= len(key.value) - 1
+               and len(res) < parse_count
+               and comparisons < maxlen):
+            comparisons += 1
+            if key.value[ind] == elem:
+                if rank > 1:
+                    rank -= 1
+                else:
+                    res.append(ind)
+            ind += direction
+        if len(res) == 0 and count is None:
+            return None
+        if len(res) == 1 and count is None:
+            return res[0]
+        return res

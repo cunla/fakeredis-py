@@ -5,6 +5,14 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.17.0
+
+### 🚀 Features
+
+- Implement `LPOS` #207
+
+### 🧰 Bug Fixes
+
 ## v2.16.0
 
 ### 🚀 Features

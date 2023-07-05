@@ -614,3 +614,35 @@ def test_blmove(r: redis.Redis):
 def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
     with pytest.raises(redis.ConnectionError):
         r.lmove(1, 2, 'LEFT', 'RIGHT')
+
+
+def test_lpos(r):
+    assert r.rpush("a", "a", "b", "c", "1", "2", "3", "c", "c") == 8
+    assert r.lpos("a", "a") == 0
+    assert r.lpos("a", "c") == 2
+
+    assert r.lpos("a", "c", rank=1) == 2
+    assert r.lpos("a", "c", rank=2) == 6
+    assert r.lpos("a", "c", rank=4) is None
+    assert r.lpos("a", "c", rank=-1) == 7
+    assert r.lpos("a", "c", rank=-2) == 6
+
+    assert r.lpos("a", "c", count=0) == [2, 6, 7]
+    assert r.lpos("a", "c", count=1) == [2]
+    assert r.lpos("a", "c", count=2) == [2, 6]
+    assert r.lpos("a", "c", count=100) == [2, 6, 7]
+
+    assert r.lpos("a", "c", count=0, rank=2) == [6, 7]
+    assert r.lpos("a", "c", count=2, rank=-1) == [7, 6]
+
+    assert r.lpos("axxx", "c", count=0, rank=2) == []
+    assert r.lpos("axxx", "c") is None
+
+    assert r.lpos("a", "x", count=2) == []
+    assert r.lpos("a", "x") is None
+
+    assert r.lpos("a", "a", count=0, maxlen=1) == [0]
+    assert r.lpos("a", "c", count=0, maxlen=1) == []
+    assert r.lpos("a", "c", count=0, maxlen=3) == [2]
+    assert r.lpos("a", "c", count=0, maxlen=3, rank=-1) == [7, 6]
+    assert r.lpos("a", "c", count=0, maxlen=7, rank=2) == [6]
