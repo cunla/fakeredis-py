@@ -1,7 +1,6 @@
 import pytest
 import redis
 
-import fakeredis
 from test.testtools import raw_command
 
 

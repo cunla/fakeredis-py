@@ -315,10 +315,10 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 assert n(f) == n(r)
             self.transaction_normalize = []
         else:
-            assert ((type(fake_result) == float and fake_result == pytest.approx(real_result))
-                    or fake_result == real_result,
-                    "Discrepancy when running command {}, fake({}) != real({})".format(
-                        command, fake_result, real_result))
+            assert (fake_result == real_result
+                    or (type(fake_result) == float and fake_result == pytest.approx(real_result))), (
+                "Discrepancy when running command {}, fake({}) != real({})".format(
+                    command, fake_result, real_result))
             if real_result == b'QUEUED':
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a

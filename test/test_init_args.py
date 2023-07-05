@@ -25,7 +25,7 @@ def test_multidb_redispy4(r, create_redis):
 
 
 @testtools.run_test_if_redispy_ver('above', '5')
-def test_multidb_redispy4(r, create_redis):
+def test_multidb_redispy5(r, create_redis):
     r1 = create_redis(db=0)
     r2 = create_redis(db=1)
 

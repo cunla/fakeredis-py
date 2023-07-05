@@ -146,9 +146,9 @@ class ListCommandsMixin:
 
     def _lmpop(self, keys, count, direction_left, first_pass):
         if direction_left:
-            op = lambda count: slice(None, count)
+            op = lambda count: slice(None, count)  # noqa:E731
         else:
-            op = lambda count: slice(None, -count - 1, -1)
+            op = lambda count: slice(None, -count - 1, -1)  # noqa:E731
 
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
