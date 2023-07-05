@@ -654,7 +654,7 @@ Performs arbitrary bitfield integer operations on strings.
 Performs arbitrary read-only bitfield integer operations on strings.
 
 
-## `list` commands (19/22 implemented)
+## `list` commands (20/22 implemented)
 
 ### [BLMOVE](https://redis.io/commands/blmove/)
 
@@ -691,6 +691,10 @@ Returns an element after popping it from one list and pushing it to another. Del
 ### [LPOP](https://redis.io/commands/lpop/)
 
 Returns the first elements in a list after removing it. Deletes the list if the last element was popped.
+
+### [LPOS](https://redis.io/commands/lpos/)
+
+Returns the index of matching elements in a list.
 
 ### [LPUSH](https://redis.io/commands/lpush/)
 
@@ -743,10 +747,6 @@ Pops the first element from one of multiple lists. Blocks until an element is av
 #### [LMPOP](https://redis.io/commands/lmpop/) <small>(not implemented)</small>
 
 Returns multiple elements from a list after removing them. Deletes the list if the last element was popped.
-
-#### [LPOS](https://redis.io/commands/lpos/) <small>(not implemented)</small>
-
-Returns the index of matching elements in a list.
 
 
 ## `sorted-set` commands (33/35 implemented)

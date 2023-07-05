@@ -9,7 +9,7 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
-- Implement `LPOS`
+- Implement `LPOS` #207
 
 ### 🧰 Bug Fixes
 
