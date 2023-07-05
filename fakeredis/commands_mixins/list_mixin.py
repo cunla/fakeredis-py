@@ -6,6 +6,18 @@ from fakeredis._commands import (Key, command, Int, CommandItem, Timeout, fix_ra
 from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch)
 
 
+def _list_pop_count(get_slice, key, count):
+    if not key:
+        return None
+    elif type(key.value) != list:
+        raise SimpleError(msgs.WRONGTYPE_MSG)
+    slc = get_slice(count)
+    ret = key.value[slc]
+    del key.value[slc]
+    key.updated()
+    return ret
+
+
 def _list_pop(get_slice, key, *args):
     """Implements lpop and rpop.
 
@@ -20,15 +32,8 @@ def _list_pop(get_slice, key, *args):
         count = Int.decode(args[0], msgs.INDEX_NEGATIVE_ERROR_MSG)
         if count < 0:
             raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
-    if not key:
-        return None
-    elif type(key.value) != list:
-        raise SimpleError(msgs.WRONGTYPE_MSG)
-    slc = get_slice(count)
-    ret = key.value[slc]
-    del key.value[slc]
-    key.updated()
-    if not args:
+    ret = _list_pop_count(get_slice, key, count)
+    if ret and not args:
         ret = ret[0]
     return ret
 
@@ -138,6 +143,47 @@ class ListCommandsMixin:
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key, *args):
         return _list_pop(lambda count: slice(None, count), key, *args)
+
+    def _lmpop(self, keys, count, direction_left, first_pass):
+        if direction_left:
+            op = lambda count: slice(None, count)
+        else:
+            op = lambda count: slice(None, -count - 1, -1)
+
+        for key in keys:
+            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            res = _list_pop_count(op, item, count)
+            if res:
+                return [key, res]
+        return None
+
+    @command(fixed=(Int,), repeat=(bytes,))
+    def lmpop(self, numkeys, *args):
+        if numkeys == 0:
+            raise SimpleError('numkeys should be greater than 0')
+        if casematch(args[-2], b'count'):
+            count = Int.decode(args[-1])
+            args = args[:-2]
+        else:
+            count = 1
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        return self._lmpop(args[:-1], count, casematch(args[-1], b'left'), False)
+
+    @command(fixed=(Timeout, Int,), repeat=(bytes,))
+    def blmpop(self, timeout, numkeys, *args):
+        if numkeys == 0:
+            raise SimpleError('numkeys should be greater than 0')
+        if casematch(args[-2], b'count'):
+            count = Int.decode(args[-1])
+            args = args[:-2]
+        else:
+            count = 1
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        return self._blocking(timeout, functools.partial(self._lmpop, args[:-1], count, casematch(args[-1], b'left')))
 
     @command((Key(list), bytes), (bytes,))
     def lpush(self, key, *values):

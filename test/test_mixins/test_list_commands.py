@@ -616,7 +616,7 @@ def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
         r.lmove(1, 2, 'LEFT', 'RIGHT')
 
 
-def test_lpos(r):
+def test_lpos(r: redis.Redis):
     assert r.rpush("a", "a", "b", "c", "1", "2", "3", "c", "c") == 8
     assert r.lpos("a", "a") == 0
     assert r.lpos("a", "c") == 2
@@ -646,3 +646,26 @@ def test_lpos(r):
     assert r.lpos("a", "c", count=0, maxlen=3) == [2]
     assert r.lpos("a", "c", count=0, maxlen=3, rank=-1) == [7, 6]
     assert r.lpos("a", "c", count=0, maxlen=7, rank=2) == [6]
+
+
+@pytest.mark.min_server('7')
+def test_blmpop(r: redis.Redis):
+    r.rpush("a", "1", "2", "3", "4", "5")
+    res = [b"a", [b"1", b"2"]]
+    assert r.blmpop(1, "2", "b", "a", direction="LEFT", count=2) == res
+    with pytest.raises(TypeError):
+        r.blmpop(1, "2", "b", "a", count=2)
+    r.rpush("b", "6", "7", "8", "9")
+    assert r.blmpop(0, "2", "b", "a", direction="LEFT") == [b"b", [b"6"]]
+    assert r.blmpop(1, "2", "foo", "bar", direction="RIGHT") is None
+
+
+@pytest.mark.min_server('7')
+def test_lmpop(r: redis.Redis):
+    r.rpush("foo", "1", "2", "3", "4", "5")
+    result = [b"foo", [b"1", b"2"]]
+    assert r.lmpop("2", "bar", "foo", direction="LEFT", count=2) == result
+    with pytest.raises(redis.ResponseError):
+        r.lmpop("2", "bar", "foo", direction="up", count=2)
+    r.rpush("bar", "a", "b", "c", "d")
+    assert r.lmpop("2", "bar", "foo", direction="LEFT") == [b"bar", [b"a"]]

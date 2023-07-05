@@ -654,11 +654,15 @@ Performs arbitrary bitfield integer operations on strings.
 Performs arbitrary read-only bitfield integer operations on strings.
 
 
-## `list` commands (20/22 implemented)
+## `list` commands (22/22 implemented)
 
 ### [BLMOVE](https://redis.io/commands/blmove/)
 
 Pops an element from a list, pushes it to another list and returns it. Blocks until an element is available otherwise. Deletes the list if the last element was moved.
+
+### [BLMPOP](https://redis.io/commands/blmpop/)
+
+Pops the first element from one of multiple lists. Blocks until an element is available otherwise. Deletes the list if the last element was popped.
 
 ### [BLPOP](https://redis.io/commands/blpop/)
 
@@ -687,6 +691,10 @@ Returns the length of a list.
 ### [LMOVE](https://redis.io/commands/lmove/)
 
 Returns an element after popping it from one list and pushing it to another. Deletes the list if the last element was moved.
+
+### [LMPOP](https://redis.io/commands/lmpop/)
+
+Returns multiple elements from a list after removing them. Deletes the list if the last element was popped.
 
 ### [LPOP](https://redis.io/commands/lpop/)
 
@@ -736,17 +744,6 @@ Appends one or more elements to a list. Creates the key if it doesn't exist.
 
 Appends an element to a list only when the list exists.
 
-
-### Unsupported list commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [BLMPOP](https://redis.io/commands/blmpop/) <small>(not implemented)</small>
-
-Pops the first element from one of multiple lists. Blocks until an element is available otherwise. Deletes the list if the last element was popped.
-
-#### [LMPOP](https://redis.io/commands/lmpop/) <small>(not implemented)</small>
-
-Returns multiple elements from a list after removing them. Deletes the list if the last element was popped.
 
 
 ## `sorted-set` commands (33/35 implemented)
