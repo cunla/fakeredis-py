@@ -13,6 +13,14 @@ description: Change log of all fakeredis releases
 
 ### 🧰 Bug Fixes
 
+- Fix incorrect error msg for group not found #210
+
+### Contributors
+
+We'd like to thank all the contributors who worked on this release!
+
+@sjjessop
+
 ## v2.16.0
 
 ### 🚀 Features
