@@ -746,7 +746,11 @@ Appends an element to a list only when the list exists.
 
 
 
-## `sorted-set` commands (33/35 implemented)
+## `sorted-set` commands (35/35 implemented)
+
+### [BZMPOP](https://redis.io/commands/bzmpop/)
+
+Removes and returns a member by score from one or more sorted sets. Blocks until a member is available otherwise. Deletes the sorted set if the last element was popped.
 
 ### [BZPOPMAX](https://redis.io/commands/bzpopmax/)
 
@@ -795,6 +799,10 @@ Stores the intersect of multiple sorted sets in a key.
 ### [ZLEXCOUNT](https://redis.io/commands/zlexcount/)
 
 Returns the number of members in a sorted set within a lexicographical range.
+
+### [ZMPOP](https://redis.io/commands/zmpop/)
+
+Returns the highest- or lowest-scoring members from one or more sorted sets after removing them. Deletes the sorted set if the last member was popped.
 
 ### [ZMSCORE](https://redis.io/commands/zmscore/)
 
@@ -880,17 +888,6 @@ Returns the union of multiple sorted sets.
 
 Stores the union of multiple sorted sets in a key.
 
-
-### Unsupported sorted-set commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [BZMPOP](https://redis.io/commands/bzmpop/) <small>(not implemented)</small>
-
-Removes and returns a member by score from one or more sorted sets. Blocks until a member is available otherwise. Deletes the sorted set if the last element was popped.
-
-#### [ZMPOP](https://redis.io/commands/zmpop/) <small>(not implemented)</small>
-
-Returns the highest- or lowest-scoring members from one or more sorted sets after removing them. Deletes the sorted set if the last member was popped.
 
 
 ## `generic` commands (20/33 implemented)

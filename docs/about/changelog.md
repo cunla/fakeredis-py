@@ -9,7 +9,8 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
-- Implement `LPOS` #207, `LMPOP` and `BLMPOP`
+- Implement `LPOS` #207, `LMPOP` #184, and `BLMPOP` #183
+- Implement `ZMPOP` #191, `BZMPOP` #186
 
 ### 🧰 Bug Fixes
 
