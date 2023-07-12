@@ -66,7 +66,8 @@ BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
 XADD_ID_LOWER_THAN_LAST = "ERR The ID specified in XADD is equal or smaller than the target stream top item"
 XADD_INVALID_ID = 'ERR Invalid stream ID specified as stream command argument'
 XGROUP_BUSYGROUP = 'ERR BUSYGROUP Consumer Group name already exists'
-XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG = "NOGROUP No such key '{0}' or consumer group '{1}' in XREADGROUP with GROUP option"
+XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG = (
+    "NOGROUP No such key '{0}' or consumer group '{1}' in XREADGROUP with GROUP option")
 XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '{0}' for key name '{1}'"
 XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
