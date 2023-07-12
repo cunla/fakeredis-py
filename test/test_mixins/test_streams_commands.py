@@ -408,7 +408,9 @@ def test_xreadgroup(r: redis.Redis):
         r.xreadgroup(group, consumer, streams={stream: ">"})
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
-    with pytest.raises(redis.exceptions.ResponseError, match="NOGROUP.*group 'group'.*key name 'stream'"):
+    with pytest.raises(
+            redis.exceptions.ResponseError,
+            match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)):
         r.xreadgroup(group, consumer, streams={stream: ">"})
     r.xgroup_create(stream, group, 0)
 
