@@ -159,8 +159,8 @@ class ListCommandsMixin:
 
     @command(fixed=(Int,), repeat=(bytes,))
     def lmpop(self, numkeys, *args):
-        if numkeys == 0:
-            raise SimpleError('numkeys should be greater than 0')
+        if numkeys <= 0:
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         if casematch(args[-2], b'count'):
             count = Int.decode(args[-1])
             args = args[:-2]
@@ -173,8 +173,8 @@ class ListCommandsMixin:
 
     @command(fixed=(Timeout, Int,), repeat=(bytes,))
     def blmpop(self, timeout, numkeys, *args):
-        if numkeys == 0:
-            raise SimpleError('numkeys should be greater than 0')
+        if numkeys <= 0:
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         if casematch(args[-2], b'count'):
             count = Int.decode(args[-1])
             args = args[:-2]

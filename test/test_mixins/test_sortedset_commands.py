@@ -1168,3 +1168,27 @@ def test_zrangestore(r: redis.Redis):
     # assert r.zrange("a", "[a2", "(a3", bylex=True, offset=0, num=1) == [b"a2"]
     # assert r.zrangestore("b", "a", "[a2", "(a3", bylex=True, offset=0, num=1)
     # assert r.zrange("b", 0, -1) == [b"a2"]
+
+
+@pytest.mark.min_server('7')
+def test_zmpop(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
+    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    assert r.zmpop("2", ["b", "a"], min=True, count=2) == res
+    with pytest.raises(redis.DataError):
+        r.zmpop("2", ["b", "a"], count=2)
+    r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
+    assert r.zmpop("2", ["b", "a"], max=True) == [b"b", [[b"b1", b"10"]]]
+
+
+@pytest.mark.min_server('7')
+def test_bzmpop(r: redis.Redis):
+    r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
+    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == res
+    with pytest.raises(redis.DataError):
+        r.bzmpop(1, "2", ["b", "a"], count=2)
+    r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
+    res = [b"b", [[b"b1", b"10"]]]
+    assert r.bzmpop(0, "2", ["b", "a"], max=True) == res
+    assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None

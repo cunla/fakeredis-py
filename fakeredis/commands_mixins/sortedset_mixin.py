@@ -512,3 +512,43 @@ class SortedSetCommandsMixin:
 
     def _encodefloat(self, value, humanfriendly):
         raise NotImplementedError  # Implemented in BaseFakeSocket
+
+    def _zmpop(self, keys, count, direction_left, first_pass):
+        if direction_left:
+            op = lambda count: slice(None, count)  # noqa:E731
+        else:
+            op = lambda count: slice(None, -count - 1, -1)  # noqa:E731
+
+        for key in keys:
+            item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            res = _list_pop_count(op, item, count)
+            if res:
+                return [key, res]
+        return None
+    @command(fixed=(Int,), repeat=(bytes,))
+    def zmpop(self, numkeys, *args):
+        if numkeys == 0:
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+        if casematch(args[-2], b'count'):
+            count = Int.decode(args[-1])
+            args = args[:-2]
+        else:
+            count = 1
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        return self._zmpop(args[:-1], count, casematch(args[-1], b'left'), False)
+
+    @command(fixed=(Timeout, Int,), repeat=(bytes,))
+    def bzmpop(self, timeout, numkeys, *args):
+        if numkeys == 0:
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+        if casematch(args[-2], b'count'):
+            count = Int.decode(args[-1])
+            args = args[:-2]
+        else:
+            count = 1
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        return self._blocking(timeout, functools.partial(self._zmpop, args[:-1], count, casematch(args[-1], b'left')))
