@@ -66,7 +66,7 @@ BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
 XADD_ID_LOWER_THAN_LAST = "ERR The ID specified in XADD is equal or smaller than the target stream top item"
 XADD_INVALID_ID = 'ERR Invalid stream ID specified as stream command argument'
 XGROUP_BUSYGROUP = 'ERR BUSYGROUP Consumer Group name already exists'
-XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '%s' for key name '%s'"
+XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '{1}' for key name '{0}'"
 XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
     " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.")

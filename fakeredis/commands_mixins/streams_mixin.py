@@ -140,7 +140,7 @@ class StreamsCommandsMixin:
                 raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
             group: StreamGroup = item.value.group_get(group_name)
             if not group:
-                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(left_args[i], group_name))
+                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(left_args[i].decode(), group_name.decode()))
             group_params.append((group, left_args[i], left_args[i + num_streams],))
         if timeout is None:
             return self._xreadgroup(consumer_name, group_params, count, noack, False)
@@ -226,7 +226,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name.decode()))
         return group.add_consumer(consumer_name)
 
     @command(name="XGROUP DELCONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=(), )
@@ -235,7 +235,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name.decode()))
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), )
@@ -257,7 +257,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name.decode()))
         return group.consumers_info()
 
     @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,), )
@@ -267,7 +267,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = stream.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name.decode()))
 
         (idle, _time, retry, force, justid), msg_ids = extract_args(
             args, ('+idle', '+time', '+retrycount', 'force', 'justid'),
@@ -291,7 +291,7 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = stream.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(key, group_name.decode()))
 
         keys = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
