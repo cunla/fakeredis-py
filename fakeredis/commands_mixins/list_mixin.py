@@ -40,6 +40,7 @@ def _list_pop(get_slice, key, *args):
 
 class ListCommandsMixin:
     _db: Database
+
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
