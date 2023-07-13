@@ -5,12 +5,12 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Tuple
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout, ScoreTest, StringTest, fix_range)
-from fakeredis._helpers import (SimpleError, casematch, null_terminate, )
+from fakeredis._helpers import (SimpleError, casematch, null_terminate, Database, )
 from fakeredis._zset import ZSet
 
 SORTED_SET_METHODS = {
@@ -24,6 +24,9 @@ SORTED_SET_METHODS = {
 
 
 class SortedSetCommandsMixin:
+    _db: Database
+    version: Tuple[int]
+
     # Sorted set commands
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[bytes]:
         zset = key.value
@@ -38,7 +41,7 @@ class SortedSetCommandsMixin:
             zset.discard(item)
         return res
 
-    def _bzpop(self, keys: List[CommandItem], reverse: bool, first_pass: bool) -> List[bytes]:
+    def _bzpop(self, keys: List[CommandItem], reverse: bool, first_pass: bool) -> Optional[List[bytes]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse, True)
@@ -47,11 +50,11 @@ class SortedSetCommandsMixin:
         return None
 
     @command((Key(ZSet),), (Int,))
-    def zpopmin(self, key, count=1):
+    def zpopmin(self, key, count: int = 1):
         return self._zpop(key, count, reverse=False, flatten_list=True)
 
     @command((Key(ZSet),), (Int,))
-    def zpopmax(self, key, count=1):
+    def zpopmax(self, key, count: int = 1):
         return self._zpop(key, count, reverse=True, flatten_list=True)
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
@@ -67,7 +70,7 @@ class SortedSetCommandsMixin:
         return self._blocking(timeout, functools.partial(self._bzpop, keys, True))
 
     @staticmethod
-    def _limit_items(items, offset, count):
+    def _limit_items(items: List, offset: int, count: int):
         out = []
         for item in items:
             if offset:  # Note: not offset > 0, in order to match redis
@@ -305,7 +308,7 @@ class SortedSetCommandsMixin:
         return self.zrem(key, *[item[1] for item in items])
 
     @command((Key(ZSet), Int, Int))
-    def zremrangebyrank(self, key, start, stop):
+    def zremrangebyrank(self, key, start: int, stop: int):
         zset = key.value
         start, stop = fix_range(start, stop, len(zset))
         items = zset.islice_score(start, stop)
@@ -511,9 +514,6 @@ class SortedSetCommandsMixin:
             res = [t[0] for t in res]
         return res
 
-    def _encodefloat(self, value, humanfriendly):
-        raise NotImplementedError  # Implemented in BaseFakeSocket
-
     def _zmpop(self, keys, count, reverse, first_pass):
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
@@ -523,7 +523,7 @@ class SortedSetCommandsMixin:
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
-    def zmpop(self, numkeys, *args):
+    def zmpop(self, numkeys: int, *args):
         if numkeys == 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         if casematch(args[-2], b'count'):
@@ -537,7 +537,7 @@ class SortedSetCommandsMixin:
         return self._zmpop(args[:-1], count, casematch(args[-1], b'max'), False)
 
     @command(fixed=(Timeout, Int,), repeat=(bytes,))
-    def bzmpop(self, timeout, numkeys, *args):
+    def bzmpop(self, timeout, numkeys: int, *args):
         if numkeys == 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         if casematch(args[-2], b'count'):
@@ -549,3 +549,6 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         return self._blocking(timeout, functools.partial(self._zmpop, args[:-1], count, casematch(args[-1], b'max')))
+
+    def _encodefloat(self, value, humanfriendly):
+        raise NotImplementedError  # Implemented in BaseFakeSocket

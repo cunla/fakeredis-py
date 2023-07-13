@@ -3,7 +3,7 @@ import functools
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (Key, command, Int, CommandItem, Timeout, fix_range)
-from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch)
+from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch, Database)
 
 
 def _list_pop_count(get_slice, key, count):
@@ -39,6 +39,7 @@ def _list_pop(get_slice, key, *args):
 
 
 class ListCommandsMixin:
+    _db: Database
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])

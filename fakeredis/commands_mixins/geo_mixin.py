@@ -5,7 +5,7 @@ from typing import List, Any
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Float, CommandItem
-from fakeredis._helpers import SimpleError
+from fakeredis._helpers import SimpleError, Database
 from fakeredis._zset import ZSet
 from fakeredis.geo import geohash
 from fakeredis.geo.haversine import distance
@@ -79,6 +79,7 @@ def _find_near(
 
 
 class GeoCommandsMixin:
+    _db: Database
     def _store_geo_results(self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool) -> int:
         db_item = CommandItem(item_name, self._db, item=self._db.get(item_name), default=ZSet())
         db_item.value = ZSet()
@@ -216,3 +217,6 @@ class GeoCommandsMixin:
             return self.georadiusbymember(src, frommember, radius, *left_args, *additional)
         else:
             return self.georadius(src, long, lat, radius, *left_args, *additional)
+
+    def _encodefloat(self, value, humanfriendly):
+        raise NotImplementedError  # Implemented in BaseFakeSocket

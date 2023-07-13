@@ -121,3 +121,12 @@ class HashCommandsMixin:
         else:
             res = [t[0] for t in res]
         return res
+
+    def _encodefloat(self, value, humanfriendly):
+        raise NotImplementedError  # Implemented in BaseFakeSocket
+
+    def _encodeint(self, value):
+        raise NotImplementedError  # Implemented in BaseFakeSocket
+
+    def _scan(self, keys, cursor, *args):
+        raise NotImplementedError  # Implemented in BaseFakeSocket

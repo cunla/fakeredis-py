@@ -1,11 +1,18 @@
+from typing import Any
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, DbIndex)
-from fakeredis._helpers import (SimpleError, OK, SimpleString)
+from fakeredis._helpers import (SimpleError, OK, SimpleString, Database)
 
 PONG = SimpleString(b'PONG')
 
 
 class ConnectionCommandsMixin:
+    _server: Any
+    _db: Database
+    _db_num: int
+    _pubsub: int
+
     # Connection commands
     # TODO: auth, quit
 

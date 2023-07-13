@@ -1,9 +1,13 @@
+from typing import Tuple
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command, Key, Int, BitOffset, BitValue, fix_range_string, fix_range)
 from fakeredis._helpers import SimpleError, casematch
 
 
 class BitmapCommandsMixin:
+    version: Tuple[int]
+
     # TODO: bitfield, bitfield_ro, bitpos
     @staticmethod
     def _bytes_as_bin_string(value):

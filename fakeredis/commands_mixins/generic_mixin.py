@@ -1,17 +1,23 @@
 import hashlib
 import pickle
 import random
+from typing import Tuple, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
     command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat,
     delete_keys, key_value_type, )
-from fakeredis._helpers import (compile_pattern, SimpleError, OK, casematch)
+from fakeredis._helpers import (compile_pattern, SimpleError, OK, casematch, Database)
 from fakeredis._zset import ZSet
 
 
 class GenericCommandsMixin:
+    version: Tuple[int]
+    _server: Any
+    _db: Database
+    _db_num: int
+
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b'#':
@@ -42,7 +48,7 @@ class GenericCommandsMixin:
 
     def _expireat(self, key, timestamp, *args):
         (nx, xx, gt, lt,), _ = extract_args(
-            args, ('nx', 'xx', 'gt', 'lt',), exception=msgs.EXPIRE_UNSUPPORTED_OPTION,)
+            args, ('nx', 'xx', 'gt', 'lt',), exception=msgs.EXPIRE_UNSUPPORTED_OPTION, )
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
         counter = (nx, gt, lt).count(True)
