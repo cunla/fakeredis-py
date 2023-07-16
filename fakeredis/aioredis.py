@@ -4,8 +4,6 @@ import asyncio
 import sys
 from typing import Union, Optional
 
-import redis
-
 from ._server import FakeBaseConnectionMixin
 
 if sys.version_info >= (3, 11):
@@ -14,7 +12,7 @@ else:
     from async_timeout import timeout as async_timeout
 
 import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
-from redis.asyncio.connection import BaseParser
+from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket
 from . import _helpers
@@ -30,7 +28,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self.responses = asyncio.Queue()
 
     def _decode_error(self, error):
-        parser = BaseParser(1) if redis.VERSION < (5, 0) else BaseParser()
+        parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
     def put_response(self, msg):
