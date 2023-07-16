@@ -5,12 +5,7 @@ import weakref
 from typing import List, Any, Tuple
 
 import redis
-
-
-if redis.VERSION >= (5, 0):
-    from redis.parsers import BaseParser
-else:
-    from redis.connection import BaseParser
+from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
@@ -160,7 +155,7 @@ class BaseFakeSocket:
         return result
 
     def _decode_error(self, error):
-        return BaseParser().parse_error(error.value)
+        return DefaultParser(socket_read_size=65536).parse_error(error.value)
 
     def _decode_result(self, result):
         """Convert SimpleString and SimpleError, recursively"""
