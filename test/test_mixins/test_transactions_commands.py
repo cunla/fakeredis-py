@@ -320,3 +320,14 @@ def test_get_within_pipeline():
         p.watch("test")
         assert set(fake_redis.keys()) == expected_keys
 
+def test_get_within_pipeline_w_host():
+    from fakeredis import FakeRedis
+
+    fake_redis = FakeRedis('localhost')
+    fake_redis.set("test", "foo")
+    fake_redis.set("test2", "foo2")
+    expected_keys = set(fake_redis.keys())
+    with fake_redis.pipeline() as p:
+        assert set(fake_redis.keys()) == expected_keys
+        p.watch("test")
+        assert set(fake_redis.keys()) == expected_keys

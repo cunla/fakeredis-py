@@ -24,3 +24,38 @@ def test_new_server_when_no_params():
     fake_redis_1.set("foo", "bar")
 
     assert fake_redis_2.get("foo") is None
+
+def test_new_server_with_positional_args():
+    from fakeredis import FakeRedis
+
+    # same host, default port and db index
+    fake_redis_1 = FakeRedis('localhost')
+    fake_redis_2 = FakeRedis('localhost')
+
+    fake_redis_1.set("foo", "bar")
+
+    assert fake_redis_2.get("foo") == b'bar'
+
+    # same host and port
+    fake_redis_1 = FakeRedis('localhost', 6000)
+    fake_redis_2 = FakeRedis('localhost', 6000)
+
+    fake_redis_1.set("foo", "bar")
+
+    assert fake_redis_2.get("foo") == b'bar'
+
+    # same connection parameters, but different db index
+    fake_redis_1 = FakeRedis('localhost', 6000, 0)
+    fake_redis_2 = FakeRedis('localhost', 6000, 1)
+
+    fake_redis_1.set("foo", "bar")
+
+    assert fake_redis_2.get("foo") is None
+
+    # mix of positional arguments and keyword args
+    fake_redis_1 = FakeRedis('localhost', port=6000, db=0)
+    fake_redis_2 = FakeRedis('localhost', port=6000, db=1)
+
+    fake_redis_1.set("foo", "bar")
+
+    assert fake_redis_2.get("foo") is None
