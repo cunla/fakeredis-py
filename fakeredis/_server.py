@@ -137,8 +137,10 @@ class FakeRedisMixin:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
+        # Convert args => kwargs
+        kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
         kwargs.setdefault('host', uuid.uuid4().hex)
-        kwds = {p.name: args[ind] if ind < len(args) else kwargs.get(p.name, p.default)
+        kwds = {p.name: kwargs.get(p.name, p.default)
                 for ind, p in enumerate(parameters)
                 if p.default != inspect.Parameter.empty}
         if not kwds.get('connection_pool', None):
