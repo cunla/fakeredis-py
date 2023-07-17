@@ -307,3 +307,16 @@ def test_socket_cleanup_watch(fake_server):
         sock = pipeline.connection._sock  # noqa: F841
         pipeline.connection.disconnect()
     r2.set('test', 'foo')
+
+def test_get_within_pipeline():
+    from fakeredis import FakeRedis
+
+    fake_redis = FakeRedis()
+    fake_redis.set("test", "foo")
+    fake_redis.set("test2", "foo2")
+    expected_keys = set(fake_redis.keys())
+    with fake_redis.pipeline() as p:
+        assert set(fake_redis.keys()) == expected_keys
+        p.watch("test")
+        assert set(fake_redis.keys()) == expected_keys
+

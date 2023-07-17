@@ -63,7 +63,7 @@ class FakeBaseConnectionMixin:
                 self.server_key = path
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
-                self.server_key = uuid.uuid4().hex if host is None or port is None else f'{host}:{port}'
+                self.server_key = f'{host}:{port}'
             self.server_key += f'v{version}'
             self._server = FakeServer.get_server(self.server_key, version=version)
             self._server.connected = connected
@@ -139,12 +139,20 @@ class FakeRedisMixin:
         parameters = inspect.signature(redis.Redis.__init__).parameters
         parameter_names = list(parameters.keys())
         default_args = parameters.values()
-        ignore_default_param_values = {'host', 'port', 'db'}
+        ignore_default_param_values = ['host', 'port', 'db']
         kwds = {p.name: p.default
                 for p in default_args
                 if (p.default != inspect.Parameter.empty
                     and p.name not in ignore_default_param_values)}
         kwds.update(kwargs)
+        # the host can be provided in the args or in the kwargs. If both  are provided, redis.__init__ will produce an error
+        # the following few lines transfer host, port, db values from args into kwargs (if provided),
+        # if not provided in args, will try getting from kwargs, otherwise use default values.
+        args_defaults = [uuid.uuid4().hex, 0, 0]
+        for arg_idx, arg_name in enumerate(ignore_default_param_values):
+            kwds[arg_name] = args[arg_idx] if len(args)>arg_idx else \
+                kwargs.get(arg_name) if kwds.get(arg_name) is not None else args_defaults[arg_idx]
+        args = ()
         if not kwds.get('connection_pool', None):
             charset = kwds.get('charset', None)
             errors = kwds.get('errors', None)
