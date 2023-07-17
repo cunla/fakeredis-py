@@ -308,26 +308,23 @@ def test_socket_cleanup_watch(fake_server):
         pipeline.connection.disconnect()
     r2.set('test', 'foo')
 
-def test_get_within_pipeline():
-    from fakeredis import FakeRedis
 
-    fake_redis = FakeRedis()
-    fake_redis.set("test", "foo")
-    fake_redis.set("test2", "foo2")
-    expected_keys = set(fake_redis.keys())
-    with fake_redis.pipeline() as p:
-        assert set(fake_redis.keys()) == expected_keys
+def test_get_within_pipeline(r: redis.Redis):
+    r.set("test", "foo")
+    r.set("test2", "foo2")
+    expected_keys = set(r.keys())
+    with r.pipeline() as p:
+        assert set(r.keys()) == expected_keys
         p.watch("test")
-        assert set(fake_redis.keys()) == expected_keys
+        assert set(r.keys()) == expected_keys
+
 
 def test_get_within_pipeline_w_host():
-    from fakeredis import FakeRedis
-
-    fake_redis = FakeRedis('localhost')
-    fake_redis.set("test", "foo")
-    fake_redis.set("test2", "foo2")
-    expected_keys = set(fake_redis.keys())
-    with fake_redis.pipeline() as p:
-        assert set(fake_redis.keys()) == expected_keys
+    r = fakeredis.FakeRedis('localhost')
+    r.set("test", "foo")
+    r.set("test2", "foo2")
+    expected_keys = set(r.keys())
+    with r.pipeline() as p:
+        assert set(r.keys()) == expected_keys
         p.watch("test")
-        assert set(fake_redis.keys()) == expected_keys
+        assert set(r.keys()) == expected_keys
