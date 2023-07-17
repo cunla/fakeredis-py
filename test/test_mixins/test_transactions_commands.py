@@ -318,9 +318,20 @@ def test_get_within_pipeline(r: redis.Redis):
         p.watch("test")
         assert set(r.keys()) == expected_keys
 
-
+@pytest.mark.fake
 def test_get_within_pipeline_w_host():
     r = fakeredis.FakeRedis('localhost')
+    r.set("test", "foo")
+    r.set("test2", "foo2")
+    expected_keys = set(r.keys())
+    with r.pipeline() as p:
+        assert set(r.keys()) == expected_keys
+        p.watch("test")
+        assert set(r.keys()) == expected_keys
+
+@pytest.mark.fake
+def test_get_within_pipeline_no_args():
+    r = fakeredis.FakeRedis()
     r.set("test", "foo")
     r.set("test2", "foo2")
     expected_keys = set(r.keys())
