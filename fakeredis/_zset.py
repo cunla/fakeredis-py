@@ -74,8 +74,10 @@ class ZSet:
     def irange_lex(self, start, stop, inclusive=(True, True), reverse=False):
         if not self._byscore:
             return iter([])
-        score = self._byscore[0][0]
-        it = self._byscore.irange((score, start), (score, stop),
+        default_score = self._byscore[0][0]
+        start_score = self._bylex.get(start, default_score)
+        stop_score = self._bylex.get(stop, default_score)
+        it = self._byscore.irange((start_score, start), (stop_score, stop),
                                   inclusive=inclusive, reverse=reverse)
         return (item[1] for item in it)
 

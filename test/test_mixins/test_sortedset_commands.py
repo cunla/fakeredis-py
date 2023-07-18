@@ -1164,10 +1164,9 @@ def test_zrangestore(r: redis.Redis):
     assert r.zrangestore("b", "a", 2, 1, byscore=True, offset=0, num=1, desc=True)
     assert r.zrange("b", 0, -1) == [b"a2"]
     # by lex
-    # TODO: fix
-    # assert r.zrange("a", "[a2", "(a3", bylex=True, offset=0, num=1) == [b"a2"]
-    # assert r.zrangestore("b", "a", "[a2", "(a3", bylex=True, offset=0, num=1)
-    # assert r.zrange("b", 0, -1) == [b"a2"]
+    assert r.zrange("a", "[a2", "(a3", bylex=True, offset=0, num=1) == [b"a2"]
+    assert r.zrangestore("b", "a", "[a2", "(a3", bylex=True, offset=0, num=1)
+    assert r.zrange("b", 0, -1) == [b"a2"]
 
 
 @pytest.mark.min_server('7')
