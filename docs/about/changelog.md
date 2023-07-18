@@ -15,12 +15,14 @@ description: Change log of all fakeredis releases
 ### 🧰 Bug Fixes
 
 - Fix incorrect error msg for group not found #210
+- fix: use same server_key within pipeline when issued watch #213
+- issue with ZRANGE and ZRANGESTORE with BYLEX #214
 
 ### Contributors
 
 We'd like to thank all the contributors who worked on this release!
 
-@sjjessop
+@OlegZv, @sjjessop
 
 ## v2.16.0
 
