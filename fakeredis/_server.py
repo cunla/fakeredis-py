@@ -63,7 +63,7 @@ class FakeBaseConnectionMixin:
                 self.server_key = path
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
-                self.server_key = uuid.uuid4().hex if host is None or port is None else f'{host}:{port}'
+                self.server_key = f'{host}:{port}'
             self.server_key += f'v{version}'
             self._server = FakeServer.get_server(self.server_key, version=version)
             self._server.connected = connected
@@ -136,15 +136,13 @@ class FakeRedisMixin:
     def __init__(self, *args, server=None, connected=True, version=(7,), **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
-        parameters = inspect.signature(redis.Redis.__init__).parameters
-        parameter_names = list(parameters.keys())
-        default_args = parameters.values()
-        ignore_default_param_values = {'host', 'port', 'db'}
-        kwds = {p.name: p.default
-                for p in default_args
-                if (p.default != inspect.Parameter.empty
-                    and p.name not in ignore_default_param_values)}
-        kwds.update(kwargs)
+        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
+        # Convert args => kwargs
+        kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
+        kwargs.setdefault('host', uuid.uuid4().hex)
+        kwds = {p.name: kwargs.get(p.name, p.default)
+                for ind, p in enumerate(parameters)
+                if p.default != inspect.Parameter.empty}
         if not kwds.get('connection_pool', None):
             charset = kwds.get('charset', None)
             errors = kwds.get('errors', None)
@@ -183,10 +181,7 @@ class FakeRedisMixin:
         kwds.pop('server', None)
         kwds.pop('connected', None)
         kwds.pop('version', None)
-        parameter_names_to_cut = parameter_names[1:len(args) + 1]
-        for param in parameter_names_to_cut:
-            kwds.pop(param, None)
-        super().__init__(*args, **kwds)
+        super().__init__(**kwds)
 
     @classmethod
     def from_url(cls, *args, **kwargs):
