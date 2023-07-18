@@ -238,6 +238,9 @@ class BeforeAny:
     def __eq__(self, other):
         return isinstance(other, BeforeAny)
 
+    def __hash__(self):
+        return 1
+
 
 @functools.total_ordering
 class AfterAny:
@@ -246,6 +249,9 @@ class AfterAny:
 
     def __eq__(self, other):
         return isinstance(other, AfterAny)
+
+    def __hash__(self):
+        return 1
 
 
 class ScoreTest:
