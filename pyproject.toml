@@ -45,7 +45,7 @@ include = [
 python = "^3.7"
 redis = ">=4"
 sortedcontainers = "^2"
-lupa = { version = "^1.14", optional = true }
+lupa = { version = ">=1.14,<3.0", optional = true }
 jsonpath-ng = { version = "^1.5", optional = true }
 
 [tool.poetry.extras]
