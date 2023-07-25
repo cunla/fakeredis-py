@@ -1,6 +1,7 @@
 fakeredis: A fake version of a redis-py
 =======================================
 
+
 [![badge](https://img.shields.io/pypi/v/fakeredis)](https://pypi.org/project/fakeredis/)
 [![CI](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml/badge.svg)](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml)
 [![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/cunla/b756396efb895f0e34558c980f1ca0c7/raw/fakeredis-py.json)](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml)
