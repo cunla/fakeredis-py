@@ -133,7 +133,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
 
 class FakeRedisMixin:
-    def __init__(self, *args, server=None, connected=True, version=(7,), **kwargs):
+    def __init__(self, *args, server=None, version=(7,), **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
@@ -170,6 +170,7 @@ class FakeRedisMixin:
                 'max_connections',
                 'health_check_interval',
                 'client_name',
+                'connected',
             }
             connection_kwargs = {
                 'connection_class': FakeConnection,
