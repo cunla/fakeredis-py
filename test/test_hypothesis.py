@@ -2,6 +2,7 @@ import functools
 import math
 import operator
 import sys
+from typing import Tuple, Any
 
 import hypothesis
 import hypothesis.stateful
@@ -9,19 +10,21 @@ import hypothesis.strategies as st
 import pytest
 import redis
 from hypothesis.stateful import rule, initialize, precondition
+from hypothesis.strategies import SearchStrategy
 
 import fakeredis
+from fakeredis._server import _create_version
 
 self_strategy = st.runner()
 
 
-def get_redis_version():
+def get_redis_version() -> Tuple[int]:
     try:
         r = redis.StrictRedis('localhost', port=6379)
         r.ping()
-        return int(r.info()['redis_version'][0])
+        return _create_version(r.info()['redis_version'])
     except redis.ConnectionError:
-        return 6
+        return (6,)
     finally:
         if hasattr(r, 'close'):
             r.close()  # Absent in older versions of redis-py
@@ -120,8 +123,8 @@ def flatten(args):
         yield args
 
 
-def default_normalize(x):
-    if redis_ver >= 7 and (isinstance(x, float) or isinstance(x, int)):
+def default_normalize(x: Any) -> Any:
+    if redis_ver >= (7,) and (isinstance(x, float) or isinstance(x, int)):
         return 0 + x
 
     return x
@@ -353,7 +356,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
 
 class BaseTest:
     """Base class for test classes."""
-
+    command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
 
     @pytest.mark.slow
