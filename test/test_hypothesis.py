@@ -2,6 +2,7 @@ import functools
 import math
 import operator
 import sys
+from typing import Tuple, Any
 
 import hypothesis
 import hypothesis.stateful
@@ -9,19 +10,21 @@ import hypothesis.strategies as st
 import pytest
 import redis
 from hypothesis.stateful import rule, initialize, precondition
+from hypothesis.strategies import SearchStrategy
 
 import fakeredis
+from fakeredis._server import _create_version
 
 self_strategy = st.runner()
 
 
-def get_redis_version():
+def get_redis_version() -> Tuple[int]:
     try:
         r = redis.StrictRedis('localhost', port=6379)
         r.ping()
-        return int(r.info()['redis_version'][0])
+        return _create_version(r.info()['redis_version'])
     except redis.ConnectionError:
-        return 6
+        return (6,)
     finally:
         if hasattr(r, 'close'):
             r.close()  # Absent in older versions of redis-py
@@ -120,8 +123,8 @@ def flatten(args):
         yield args
 
 
-def default_normalize(x):
-    if redis_ver >= 7 and (isinstance(x, float) or isinstance(x, int)):
+def default_normalize(x: Any) -> Any:
+    if redis_ver >= (7,) and (isinstance(x, float) or isinstance(x, int)):
         return 0 + x
 
     return x
@@ -173,9 +176,9 @@ class Command:
             return False
         if command == b'keys' and N == 2 and self.args[1] != b'*':
             return False
-        # redis will ignore a NUL character in some commands but not others
-        # e.g. it recognises EXEC\0 but not MULTI\00. Rather than try to
-        # reproduce this quirky behaviour, just skip these tests.
+        # Redis will ignore a NULL character in some commands but not others,
+        # e.g., it recognises EXEC\0 but not MULTI\00.
+        # Rather than try to reproduce this quirky behavior, just skip these tests.
         if b'\0' in command:
             return False
         return True
@@ -316,7 +319,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             self.transaction_normalize = []
         else:
             assert (fake_result == real_result
-                    or (type(fake_result) == float and fake_result == pytest.approx(real_result))), (
+                    or (type(fake_result) is float and fake_result == pytest.approx(real_result))), (
                 "Discrepancy when running command {}, fake({}) != real({})".format(
                     command, fake_result, real_result))
             if real_result == b'QUEUED':
@@ -353,7 +356,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
 
 class BaseTest:
     """Base class for test classes."""
-
+    command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
 
     @pytest.mark.slow

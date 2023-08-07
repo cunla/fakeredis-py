@@ -400,7 +400,7 @@ class TestInitArgs:
         assert await db2.get('foo') == b'foo2'
 
     async def test_from_url_db_value_error(self):
-        # In case of ValueError, should default to 0, or be absent in redis-py 4.0
+        # In the case of ValueError, should default to 0, or be absent in redis-py 4.0
         db = aioredis.FakeRedis.from_url(
             'redis://localhost:6379/a')
         assert db.connection_pool.connection_kwargs.get('db', 0) == 0

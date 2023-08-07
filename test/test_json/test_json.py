@@ -405,18 +405,18 @@ def test_type(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1, )
 
     assert r.json().type("1", Path.root_path(), ) == b"integer"
-    assert r.json().type("1") == b"integer"
+    assert r.json().type("1") == b"integer"  # noqa: E721
 
     meta_data = {"object": {}, "array": [], "string": "str", "integer": 42, "number": 1.2, "boolean": False,
                  "null": None, }
     data = {k: {'a': meta_data[k]} for k in meta_data}
     r.json().set("doc1", "$", data)
     # Test multi
-    assert r.json().type("doc1", "$..a") == [k.encode() for k in meta_data.keys()]
+    assert r.json().type("doc1", "$..a") == [k.encode() for k in meta_data.keys()]  # noqa: E721
 
     # Test single
-    assert r.json().type("doc1", "$.integer.a") == [b'integer']
-    assert r.json().type("doc1") == b'object'
+    assert r.json().type("doc1", "$.integer.a") == [b'integer']  # noqa: E721
+    assert r.json().type("doc1") == b'object'  # noqa: E721
 
     # Test missing key
     assert r.json().type("non_existing_doc", "..a") is None

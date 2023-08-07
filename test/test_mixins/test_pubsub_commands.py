@@ -32,7 +32,7 @@ def test_pubsub_subscribe(r: redis.Redis):
     keys = list(pubsub.channels.keys())
 
     key = keys[0]
-    key = (key if type(key) == bytes
+    key = (key if type(key) is bytes
            else bytes(key, encoding='utf-8'))
 
     assert len(keys) == 1

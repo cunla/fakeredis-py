@@ -86,7 +86,7 @@ def test_resp(r: redis.Redis):
     assert isinstance(r.json().resp("obj"), list)
 
 
-def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[str]]:
+def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[bytes]]:
     """Generate a structure with sample of all types
     """
     type_samples = {
@@ -193,8 +193,8 @@ def test_resp_dollar(r: redis.Redis, json_data: Dict[str, Any]):
     ]
 
     # Test single
-    resSingle = r.json().resp("doc1", "$.L1.a")
-    assert resSingle == [
+    res_single = r.json().resp("doc1", "$.L1.a")
+    assert res_single == [
         [
             "{",
             "A1_B1",

@@ -208,12 +208,12 @@ def test_type(r: redis.Redis):
     r.zadd("zset_key", {"value": 1})
     r.hset('hset_key', 'key', 'value')
 
-    assert r.type('string_key') == b'string'
-    assert r.type('list_key') == b'list'
-    assert r.type('set_key') == b'set'
-    assert r.type('zset_key') == b'zset'
-    assert r.type('hset_key') == b'hash'
-    assert r.type('none_key') == b'none'
+    assert r.type('string_key') == b'string'  # noqa: E721
+    assert r.type('list_key') == b'list'  # noqa: E721
+    assert r.type('set_key') == b'set'  # noqa: E721
+    assert r.type('zset_key') == b'zset'  # noqa: E721
+    assert r.type('hset_key') == b'hash'  # noqa: E721
+    assert r.type('none_key') == b'none'  # noqa: E721
 
 
 def test_unlink(r: redis.Redis):

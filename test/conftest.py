@@ -10,7 +10,7 @@ from fakeredis._server import _create_version
 
 @pytest_asyncio.fixture(scope="session")
 def real_redis_version() -> Union[None, str]:
-    """Returns server version or None if server is not running"""
+    """Returns server's version or None if server is not running"""
     client = None
     try:
         client = redis.StrictRedis('localhost', port=6379)

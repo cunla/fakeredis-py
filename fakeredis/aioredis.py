@@ -77,7 +77,7 @@ class FakeReader:
     def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket = socket
 
-    async def read(self, length: int) -> bytes:
+    async def read(self, _: int) -> bytes:
         return await self._socket.responses.get()
 
 

@@ -54,7 +54,7 @@ json = ["jsonpath-ng"]
 
 [tool.poetry.dev-dependencies]
 coverage = "^7"
-flake8 = { version = "^6", python = ">=3.8.1" }
+flake8 = { version = "^6.1", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
 hypothesis = "^6.70"
 mypy = "^1"
