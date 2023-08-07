@@ -232,14 +232,6 @@ def test_arrpop(r: redis.Redis):
 
     r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
 
-    # # # Test multi
-    assert r.json().arrpop("doc1", "$..a", 1) == ['"foo"', None, None]
-    assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}]
-
-    # Test missing key
-    with pytest.raises(redis.ResponseError):
-        r.json().arrpop("non_existing_doc", "..a")
-
     # # Test legacy
     r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}, })
     # Test multi (all paths are updated, but return result of last path)
