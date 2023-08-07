@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.17.1
+
+### 🧰 Bug Fixes
+
+- Fix All aio.FakeRedis instances share the same server #218
+
 ## v2.17.0
 
 ### 🚀 Features
