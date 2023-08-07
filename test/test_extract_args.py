@@ -16,7 +16,7 @@ def test_extract_args():
 def test_extract_args__should_raise_error():
     args = (b'nx', b'ex', b'324', b'xx', b'something')
     with pytest.raises(SimpleError):
-        (xx, nx, ex, keepttl), _ = extract_args(args, ('nx', 'xx', '+ex', 'keepttl'))
+        _, _ = extract_args(args, ('nx', 'xx', '+ex', 'keepttl'))
 
 
 def test_extract_args__should_return_something():

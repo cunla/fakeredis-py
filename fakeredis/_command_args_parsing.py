@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Sequence
 
 from . import _msgs as msgs
 from ._commands import Int, Float
@@ -33,36 +33,31 @@ def extract_args(
         expected: Tuple[str, ...],
         error_on_unexpected: bool = True,
         left_from_first_unexpected: bool = True,
-        exception=None
-) -> Tuple[List, List]:
-    """Parse argument values
+        exception: str = None
+) -> Tuple[List, Sequence]:
+    """Parse argument values.
 
     Extract from actual arguments which arguments exist and their value if relevant.
 
-    Parameters:
-    - actual_args:
-        The actual arguments to parse
-    - expected:
-        Arguments to look for, see below explanation.
-    - error_on_unexpected:
-        Should an error be raised when actual_args contain an unexpected argument?
-    - left_from_first_unexpected:
-        Once reaching an unexpected argument in actual_args,
-        Should parsing stop?
-    Returns:
-    - List of values for expected arguments.
-    - List of remaining args.
+    :param actual_args: The actual arguments to parse
+    :param expected: Arguments to look for, see below explanation.
+    :param error_on_unexpected: Should an error be raised when actual_args contain an unexpected argument?
+    :param left_from_first_unexpected: Once reaching an unexpected argument in actual_args, Should parsing stop?
+    :param exception: What exception msg to raise
+    :returns:
+        - List of values for expected arguments.
+        - List of remaining args.
 
     An expected argument can have parameters:
-    - A numerical (Int) parameter is identified with +.
-    - A float (Float) parameter is identified with .
-    - A non-numerical parameter is identified with a *.
-    - A argument with potentially ~ or = between the
-      argument name and the value is identified with a ~.
+    - A numerical (Int) parameter is identified with '+'
+    - A float (Float) parameter is identified with '.'
+    - A non-numerical parameter is identified with a '*'
+    - An argument with potentially ~ or = between the
+      argument name and the value is identified with a '~'
     - A numberical argument with potentially ~ or = between the
-      argument name and the value is identified with a ~+.
+      argument name and the value marked with a '~+'
 
-    e.g.
+    E.g.
     '++limit' will translate as an argument with 2 int parameters.
 
     >>> extract_args((b'nx', b'ex', b'324', b'xx',), ('nx', 'xx', '+ex', 'keepttl'))
@@ -78,37 +73,37 @@ def extract_args(
         for (i, k) in enumerate(expected)
     }
 
-    def _parse_params(key: str, ind: int, actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
+    def _parse_params(key: bytes, ind: int, _actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
         """Parse an argument from actual args.
-        :param key: argument name to parse
+        :param key: Argument name to parse
         :param ind: index of argument in actual_args
-        :param actual_args: actual args
+        :param _actual_args: actual args
         """
         pos, expected_following = args_info[key]
         argument_name = expected[pos]
 
         # Deal with parameters with optional ~/= before numerical value.
         if argument_name[0] == '~':
-            if ind + 1 >= len(actual_args):
+            if ind + 1 >= len(_actual_args):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            if actual_args[ind + 1] != b'~' and actual_args[ind + 1] != b'=':
-                arg, parsed = actual_args[ind + 1], 1
-            elif ind + 2 >= len(actual_args):
+            if _actual_args[ind + 1] != b'~' and _actual_args[ind + 1] != b'=':
+                arg, _parsed = _actual_args[ind + 1], 1
+            elif ind + 2 >= len(_actual_args):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             else:
-                arg, parsed = actual_args[ind + 2], 2
+                arg, _parsed = _actual_args[ind + 2], 2
             if argument_name[1] == '+':
                 arg = Int.decode(arg)
-            return arg, parsed
+            return arg, _parsed
         # Boolean parameters
         if expected_following == 0:
             return True, 0
 
-        if ind + expected_following >= len(actual_args):
+        if ind + expected_following >= len(_actual_args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         temp_res = []
         for i in range(expected_following):
-            curr_arg = actual_args[ind + i + 1]
+            curr_arg = _actual_args[ind + i + 1]
             if argument_name[i] == '+':
                 curr_arg = Int.decode(curr_arg)
             elif argument_name[i] == '.':

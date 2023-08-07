@@ -85,12 +85,12 @@ class StreamGroup(object):
         self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
-        # Pending Entries List, see https://redis.io/commands/xreadgroup/
+        # Pending entry List, see https://redis.io/commands/xreadgroup/
         # msg_id -> consumer_name, time read
         self.pel = dict()
 
     def set_id(self, last_delivered_str: bytes, entries_read: Union[int, None]) -> None:
-        """Set last_delivered_id for group
+        """Set last_delivered_id for the group
         """
         self.start_key = self.stream.parse_ts_seq(last_delivered_str)
         start_index, _ = self.stream.find_index(self.start_key)
@@ -264,10 +264,10 @@ class XStream:
     This implementation has them as a sorted list of tuples, the first value in the tuple
     is the key (timestamp, sequence).
 
-    Structure of _values list:
+    The structure of _values list is:
     [
-       ((timestamp,sequence), [field1, value1, field2, value2, ...])
-       ((timestamp,sequence), [field1, value1, field2, value2, ...])
+       ((timestamp, sequence), [field1, value1, field2, value2, ...]),
+       ((timestamp, sequence), [field1, value1, field2, value2, ...]),
     ]
     """
 
@@ -284,9 +284,9 @@ class XStream:
     def group_add(self, name: bytes, start_key_str: bytes, entries_read: Union[int, None]) -> None:
         """Add a group listening to stream
 
-        :param name: group name
+        :param name: Group name
         :param start_key_str: start_key in `timestamp-sequence` format, or $ listen from last.
-        :param entries_read: number of entries read.
+        :param entries_read: Number of entries read.
         """
         if start_key_str == b'$':
             start_key = self._ids[-1] if len(self._ids) > 0 else StreamEntryKey(0, 0)
@@ -325,7 +325,7 @@ class XStream:
     def delete(self, lst: List[Union[str, bytes]]) -> int:
         """Delete items from stream
 
-        :param lst: list of IDs to delete, in the form of `timestamp-sequence`.
+        :param lst: List of IDs to delete, in the form of `timestamp-sequence`.
         :returns: Number of items deleted
         """
         res = 0
@@ -344,9 +344,9 @@ class XStream:
         If the entry_key can not be added (because its timestamp is before the last entry, etc.),
         nothing is added.
 
-        :param fields: list of fields to add, must [key1, value1, key2, value2, ... ]
+        :param fields: List of fields to add, must [key1, value1, key2, value2, ... ]
         :param entry_key:
-            key for the entry, formatted as 'timestamp-sequence'
+            Key for the entry, formatted as 'timestamp-sequence'
             If entry_key is '*', the timestamp will be calculated as current time and the sequence based
             on the last entry key of the stream.
             If entry_key is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
@@ -354,7 +354,7 @@ class XStream:
         :returns:
             The key of the added entry.
             None if nothing was added.
-        :raises AssertionError: if len(fields) is not even.
+        :raises AssertionError: If len(fields) is not even.
         """
         assert len(fields) % 2 == 0
         if isinstance(entry_key, bytes):
@@ -409,11 +409,11 @@ class XStream:
 
     def find_index(self, entry_key: StreamEntryKey, from_left=True) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
-        :param entry_key: key for the entry.
-        :param from_left: if not found exact match, return index of last smaller element
-        :returns: A tuple of
-            ( index of entry with the closest (from the left) key to entry_key_str,
-              Whether the entry key is equal )
+        :param entry_key: Key for the entry.
+        :param from_left: If not found exact match, return index of last smaller element
+        :returns: A tuple
+            (index of entry with the closest (from the left) key to entry_key_str,
+             whether the entry key is equal)
         """
         if len(self._ids) == 0:
             return 0, False
@@ -425,10 +425,10 @@ class XStream:
 
     def find_index_key_as_str(self, entry_key_str: Union[str, bytes]) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
-        :param entry_key_str: key for the entry, formatted as 'timestamp-sequence'.
-        :returns: A tuple of
-            ( index of entry with the closest (from the left) key to entry_key_str,
-              Whether the entry key is equal )
+        :param entry_key_str: key for the entry, formatted as 'timestamp-sequence.'
+        :returns: A tuple
+            (index of entry with the closest (from the left) key to entry_key_str,
+             whether the entry key is equal)
         """
         if entry_key_str == b'$':
             return max(len(self._ids) - 1, 0), True
@@ -447,9 +447,9 @@ class XStream:
              limit: Optional[int] = None) -> int:
         """Trim a stream
 
-        :param max_length: max length of resulting stream after trimming (number of last values to keep)
-        :param start_entry_key: min entry-key to keep, can not be given together with max_length.
-        :param limit: number of entries to keep from minid.
+        :param max_length: Max length of the resulting stream after trimming (number of last values to keep)
+        :param start_entry_key: Min entry-key to keep, can not be given together with max_length.
+        :param limit: Number of entries to keep from minid.
         :returns: The resulting stream after trimming.
         :raises ValueError: When both max_length and start_entry_key are passed.
         """
@@ -470,12 +470,12 @@ class XStream:
         return res
 
     def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse=False) -> List[Any]:
-        """Returns a range of the stream from start to stop.
+        """Returns a range of the stream values from start to stop.
 
-        :param start: start key
-        :param stop: stop key
+        :param start: Start key
+        :param stop: Stop key
         :param reverse: Should the range be in reverse order?
-        :returns: the range between start and stop
+        :returns: The range between start and stop
         """
 
         def _find_index(elem: StreamRangeTest, from_left=True) -> int:
