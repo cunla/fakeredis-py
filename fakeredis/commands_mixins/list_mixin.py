@@ -9,7 +9,7 @@ from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch, Databa
 def _list_pop_count(get_slice, key, count):
     if not key:
         return None
-    elif type(key.value) != list:
+    elif type(key.value) is not list:
         raise SimpleError(msgs.WRONGTYPE_MSG)
     slc = get_slice(count)
     ret = key.value[slc]

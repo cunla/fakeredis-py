@@ -316,7 +316,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             self.transaction_normalize = []
         else:
             assert (fake_result == real_result
-                    or (type(fake_result) == float and fake_result == pytest.approx(real_result))), (
+                    or (type(fake_result) is float and fake_result == pytest.approx(real_result))), (
                 "Discrepancy when running command {}, fake({}) != real({})".format(
                     command, fake_result, real_result))
             if real_result == b'QUEUED':

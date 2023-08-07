@@ -263,7 +263,7 @@ class JSONCommandsMixin:
         curr_value = copy.deepcopy(key.value)
         res = list()
         for item in found_matches:
-            if type(item.value) == bool:
+            if type(item.value) is bool:
                 curr_value = item.full_path.update(curr_value, not item.value)
                 res.append(not item.value)
             else:
@@ -302,7 +302,7 @@ class JSONCommandsMixin:
         addition = JSONObject.decode(args[0])
 
         def strappend(val):
-            if type(val) == str:
+            if type(val) is str:
                 new_value = val + addition
                 return new_value, len(new_value), True
             else:
@@ -318,7 +318,7 @@ class JSONCommandsMixin:
         addition = [JSONObject.decode(item) for item in args]
 
         def arrappend(val):
-            if type(val) == list:
+            if type(val) is list:
                 new_value = val + addition
                 return new_value, len(new_value), True
             else:
@@ -334,7 +334,7 @@ class JSONCommandsMixin:
         addition = [JSONObject.decode(item) for item in args]
 
         def arrinsert(val):
-            if type(val) == list:
+            if type(val) is list:
                 new_value = val[:index] + addition + val[index:]
                 return new_value, len(new_value), True
             else:
@@ -348,7 +348,7 @@ class JSONCommandsMixin:
         index = Int.decode(args[1]) if len(args) > 1 else -1
 
         def arrpop(val):
-            if type(val) == list and len(val) > 0:
+            if type(val) is list and len(val) > 0:
                 ind = index if index < len(val) else -1
                 res = val.pop(ind)
                 return val, JSONObject.encode(res), True
@@ -364,7 +364,7 @@ class JSONCommandsMixin:
         stop = Int.decode(args[2]) if len(args) > 2 else None
 
         def arrtrim(val):
-            if type(val) == list:
+            if type(val) is list:
                 start_ind = min(start, len(val))
                 stop_ind = len(val) if stop is None or stop == -1 else stop + 1
                 if stop_ind < 0:
@@ -409,11 +409,11 @@ class JSONCommandsMixin:
         expected_value = JSONObject.decode(encoded_value)
 
         def check_index(value):
-            if type(value) != list:
+            if type(value) is not list:
                 return None
             try:
                 ind = next(filter(
-                    lambda x: x[1] == expected_value and type(x[1]) == type(expected_value),
+                    lambda x: x[1] == expected_value and type(x[1]) is type(expected_value),
                     enumerate(value[start:end])))
                 return ind[0] + start
             except StopIteration:
@@ -424,17 +424,17 @@ class JSONCommandsMixin:
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key, *args):
         return _json_read_iterate(
-            lambda val: len(val) if type(val) == str else None, key, *args)
+            lambda val: len(val) if type(val) is str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key, *args):
         return _json_read_iterate(
-            lambda val: len(val) if type(val) == list else None, key, *args)
+            lambda val: len(val) if type(val) is list else None, key, *args)
 
     @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
     def json_objlen(self, key, *args):
         return _json_read_iterate(
-            lambda val: len(val) if type(val) == dict else None, key, *args)
+            lambda val: len(val) if type(val) is dict else None, key, *args)
 
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key, *args, ):
@@ -444,7 +444,7 @@ class JSONCommandsMixin:
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key, *args):
         return _json_read_iterate(
-            lambda val: [i.encode() for i in val.keys()] if type(val) == dict else None, key, *args)
+            lambda val: [i.encode() for i in val.keys()] if type(val) is dict else None, key, *args)
 
     @command(name="JSON.MSET", fixed=(), repeat=(Key(), bytes, JSONObject), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mset(self, *args):

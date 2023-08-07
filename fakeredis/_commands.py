@@ -367,7 +367,7 @@ class Signature:
                 default = None
                 if (type_.type_ is not None
                         and item is not None
-                        and type(item.value) != type_.type_):
+                        and type(item.value) is not type_.type_):
                     raise SimpleError(msgs.WRONGTYPE_MSG)
                 if (type_.type_ is not None
                         and item is None
