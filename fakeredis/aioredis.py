@@ -163,11 +163,16 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             pieces.append(('client_name', self.client_name))
         return pieces
 
+    def __str__(self):
+        return self.server_key
+
 
 class FakeRedis(redis_async.Redis):
     def __init__(
             self,
             *,
+            host: str = "localhost",
+            port: int = 6379,
             db: Union[str, int] = 0,
             password: Optional[str] = None,
             socket_timeout: Optional[float] = None,
@@ -188,6 +193,8 @@ class FakeRedis(redis_async.Redis):
         if not connection_pool:
             # Adapted from aioredis
             connection_kwargs = dict(
+                host=host,
+                port=port,
                 db=db,
                 # Ignoring because AUTH is not implemented
                 # 'username',

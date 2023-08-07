@@ -64,7 +64,7 @@ class FakeBaseConnectionMixin:
             else:
                 host, port = kwargs.get('host'), kwargs.get('port')
                 self.server_key = f'{host}:{port}'
-            self.server_key += f'v{version}'
+            self.server_key += f':v{version}'
             self._server = FakeServer.get_server(self.server_key, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)

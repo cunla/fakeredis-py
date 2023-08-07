@@ -447,3 +447,9 @@ class TestInitArgs:
         db = aioredis.FakeRedis.from_url('unix://a/b/c')
         await db.set('foo', 'bar')
         assert await db.get('foo') == b'bar'
+
+    async def test_connection_different_server(self):
+        conn1 = aioredis.FakeRedis(host="host_one", port=1000)
+        await conn1.set("30", "30")
+        conn2 = aioredis.FakeRedis(host="host_two", port=2000)
+        assert await conn2.get("30") is None
