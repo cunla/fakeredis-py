@@ -65,7 +65,7 @@ pytest-cov = "^4.0"
 pytest-mock = "^3.10"
 types-redis = "^4.5"
 twine = "^4.0"
-tox = "^4.6"
+tox = "^4.7"
 tox-docker = "^4"
 
 [tool.poetry.urls]
