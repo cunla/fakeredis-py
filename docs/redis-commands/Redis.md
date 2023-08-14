@@ -1287,7 +1287,7 @@ Internal commands for debugging HyperLogLog values.
 An internal command for testing HyperLogLog values.
 
 
-## `pubsub` commands (13/15 implemented)
+## `pubsub` commands (15/15 implemented)
 
 ### [PSUBSCRIBE](https://redis.io/commands/psubscribe/)
 
@@ -1317,6 +1317,14 @@ Returns a count of unique pattern subscriptions.
 
 Returns a count of subscribers to channels.
 
+### [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/)
+
+Returns the active shard channels.
+
+### [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/)
+
+Returns the count of subscribers of shard channels.
+
 ### [PUNSUBSCRIBE](https://redis.io/commands/punsubscribe/)
 
 Stops listening to messages published to channels that match one or more patterns.
@@ -1341,17 +1349,6 @@ Stops listening to messages posted to shard channels.
 
 Stops listening to messages posted to channels.
 
-
-### Unsupported pubsub commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/) <small>(not implemented)</small>
-
-Returns the active shard channels.
-
-#### [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/) <small>(not implemented)</small>
-
-Returns the count of subscribers of shard channels.
 
 
 ## `set` commands (17/17 implemented)

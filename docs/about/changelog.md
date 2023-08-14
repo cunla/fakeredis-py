@@ -8,9 +8,9 @@ description: Change log of all fakeredis releases
 ## v2.18.0
 
 ### 🚀 Features
- 
+
 - Implement `PUBSUB NUMPAT` #195, `SSUBSCRIBE` #199, `SPUBLISH` #198,
-  `SUNSUBSCRIBE` #200,
+  `SUNSUBSCRIBE` #200, `PUBSUB SHARDCHANNELS` #196, `PUBSUB SHARDNUMSUB` #197
 
 ### 🧰 Bug Fixes
 
