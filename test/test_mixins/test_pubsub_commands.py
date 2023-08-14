@@ -1,14 +1,31 @@
 import threading
+import time
 import uuid
 from queue import Queue
 from time import sleep
+from typing import Optional, Dict, Any
 
 import pytest
 import redis
+from redis.client import PubSub
 
 import fakeredis
 from .. import testtools
 from ..testtools import raw_command
+
+
+def wait_for_message(
+        pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False
+) -> Optional[Dict[str, Any]]:
+    now = time.time()
+    timeout = now + timeout
+    while now < timeout:
+        message = pubsub.get_message(ignore_subscribe_messages=ignore_subscribe_messages)
+        if message is not None:
+            return message
+        time.sleep(0.01)
+        now = time.time()
+    return None
 
 
 def test_ping_pubsub(r: redis.Redis):
@@ -38,6 +55,15 @@ def test_pubsub_subscribe(r: redis.Redis):
     assert len(keys) == 1
     assert key == b'channel'
     assert message == expected_message
+
+
+@pytest.mark.slow
+def test_pubsub_numpat(r: redis.Redis):
+    p = r.pubsub()
+    p.psubscribe("*oo", "*ar", "b*z")
+    for i in range(3):
+        assert wait_for_message(p)["type"] == "psubscribe"
+    assert r.pubsub_numpat() == 3
 
 
 @pytest.mark.slow

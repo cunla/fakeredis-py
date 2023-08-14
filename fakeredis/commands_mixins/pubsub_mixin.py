@@ -73,6 +73,10 @@ class PubSubCommandsMixin:
                     receivers += 1
         return receivers
 
+    @command(name='PUBSUB NUMPAT', fixed=(), repeat=())
+    def pubsub_numpat(self, *_):
+        return len(self._server.psubscribers)
+
     @command(name='PUBSUB CHANNELS', fixed=(), repeat=(bytes,))
     def pubsub_channels(self, *args):
         channels = list(self._server.subscribers.keys())
