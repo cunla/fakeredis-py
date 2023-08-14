@@ -5,7 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.17.1
+## v2.18.0
+
+### 🚀 Features
+
+- Implement `PUBSUB NUMPAT` #195
 
 ### 🧰 Bug Fixes
 

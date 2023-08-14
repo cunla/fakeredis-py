@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.17.1"
+version = "2.18.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", ]
