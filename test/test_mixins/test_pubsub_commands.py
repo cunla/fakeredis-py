@@ -465,7 +465,7 @@ def test_pubsub_numsub(r: redis.Redis):
     assert r.pubsub_numsub() == []
     assert r.pubsub_numsub(a, "non-existing") == [(a.encode(), 2), (b"non-existing", 0)]
 
-
+@pytest.mark.min_server('7')
 @testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
 def test_published_message_to_shard_channel(r: redis.Redis):
     p = r.pubsub()
@@ -477,7 +477,7 @@ def test_published_message_to_shard_channel(r: redis.Redis):
     assert isinstance(message, dict)
     assert message == make_message("smessage", "foo", "test message")
 
-
+@pytest.mark.min_server('7')
 @testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
 def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
     p = r.pubsub()
