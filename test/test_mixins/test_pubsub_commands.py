@@ -523,3 +523,13 @@ def test_pubsub_shardnumsub(r: redis.Redis):
 
     channels = [b"foo", 1, b"bar", 2, b"baz", 3]
     assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels
+
+
+@pytest.mark.min_server('7')
+def test_pubsub_shardchannels(r: redis.Redis):
+    p = r.pubsub()
+    p.ssubscribe("foo", "bar", "baz", "quux")
+    for i in range(4):
+        assert wait_for_message(p)["type"] == "ssubscribe"
+    expected = [b"bar", b"baz", b"foo", b"quux"]
+    assert all([channel in r.pubsub_shardchannels() for channel in expected])

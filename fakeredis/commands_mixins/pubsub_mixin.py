@@ -109,13 +109,20 @@ class PubSubCommandsMixin:
     def pubsub_numpat(self, *_):
         return len(self._server.psubscribers)
 
-    @command(name='PUBSUB CHANNELS', fixed=(), repeat=(bytes,))
-    def pubsub_channels(self, *args):
-        channels = list(self._server.subscribers.keys())
-        if len(args) > 0:
-            regex = compile_pattern(args[0])
+    def _channels(self, subscribers_dict: Dict[bytes, Any], *patterns):
+        channels = list(subscribers_dict.keys())
+        if len(patterns) > 0:
+            regex = compile_pattern(patterns[0])
             channels = [ch for ch in channels if regex.match(ch)]
         return channels
+
+    @command(name='PUBSUB CHANNELS', fixed=(), repeat=(bytes,))
+    def pubsub_channels(self, *args):
+        return self._channels(self._server.subscribers, *args)
+
+    @command(name='PUBSUB SHARDCHANNELS', fixed=(), repeat=(bytes,))
+    def pubsub_shardchannels(self, *args):
+        return self._channels(self._server.ssubscribers, *args)
 
     @command(name='PUBSUB NUMSUB', fixed=(), repeat=(bytes,))
     def pubsub_numsub(self, *args):
