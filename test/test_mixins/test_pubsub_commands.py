@@ -507,6 +507,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
 def test_pubsub_shardnumsub(r: redis.Redis):
     channels = {b"foo", b"bar", b"baz"}
     p1 = r.pubsub()
@@ -526,6 +527,7 @@ def test_pubsub_shardnumsub(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
+@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
 def test_pubsub_shardchannels(r: redis.Redis):
     p = r.pubsub()
     p.ssubscribe("foo", "bar", "baz", "quux")
