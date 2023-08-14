@@ -162,14 +162,10 @@ def test_pubsub_listen(r: redis.Redis):
     pubsub.subscribe(channel)
     pubsub.psubscribe(*patterns)
     sleep(1)
-    msg1 = pubsub.get_message()
-    msg2 = pubsub.get_message()
-    msg3 = pubsub.get_message()
-    msg4 = pubsub.get_message()
-    assert msg1['type'] == 'subscribe'
-    assert msg2['type'] == 'psubscribe'
-    assert msg3['type'] == 'psubscribe'
-    assert msg4['type'] == 'psubscribe'
+    msgs = [pubsub.get_message() for _ in range(4)]
+    assert msgs[0]['type'] == 'subscribe'
+    for i in range(1, 4):
+        assert msgs[i]['type'] == 'psubscribe'
 
     q = Queue()
     t = threading.Thread(target=_listen, args=(pubsub, q))
@@ -178,22 +174,14 @@ def test_pubsub_listen(r: redis.Redis):
     r.publish(channel, msg)
     t.join()
 
-    msg1 = q.get()
-    msg2 = q.get()
-    msg3 = q.get()
-    msg4 = q.get()
+    msgs = [q.get() for _ in range(4)]
 
     bpatterns = [pattern.encode() for pattern in patterns]
     bpatterns.append(channel.encode())
     msg = msg.encode()
-    assert msg1['data'] == msg
-    assert msg1['channel'] in bpatterns
-    assert msg2['data'] == msg
-    assert msg2['channel'] in bpatterns
-    assert msg3['data'] == msg
-    assert msg3['channel'] in bpatterns
-    assert msg4['data'] == msg
-    assert msg4['channel'] in bpatterns
+    for item in msgs:
+        assert item['data'] == msg
+        assert item['channel'] in bpatterns
 
 
 @pytest.mark.slow
@@ -325,16 +313,9 @@ def test_pubsub_run_in_thread(r: redis.Redis):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "timeout_value",
-    [
-        1,
-        pytest.param(
-            None,
-            marks=testtools.run_test_if_redispy_ver('above', '3.2')
-        )
-    ]
-)
+@pytest.mark.parametrize("timeout_value", [
+    1, pytest.param(None, marks=testtools.run_test_if_redispy_ver('above', '3.2'))
+])
 def test_pubsub_timeout(r, timeout_value):
     def publish():
         sleep(0.1)
