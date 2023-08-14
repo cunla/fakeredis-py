@@ -504,3 +504,22 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
     assert wait_for_message(p) == make_message("sunsubscribe", keys[1], 0)
     # now we're finally unsubscribed
     assert p.subscribed is False
+
+
+@pytest.mark.min_server('7')
+def test_pubsub_shardnumsub(r: redis.Redis):
+    channels = {b"foo", b"bar", b"baz"}
+    p1 = r.pubsub()
+    p1.ssubscribe(*channels)
+    for node in channels:
+        assert wait_for_message(p1)["type"] == "ssubscribe"
+    p2 = r.pubsub()
+    p2.ssubscribe("bar", "baz")
+    for i in range(2):
+        assert (wait_for_message(p2)["type"] == "ssubscribe")
+    p3 = r.pubsub()
+    p3.ssubscribe("baz")
+    assert wait_for_message(p3)["type"] == "ssubscribe"
+
+    channels = [b"foo", 1, b"bar", 2, b"baz", 3]
+    assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels

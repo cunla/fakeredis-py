@@ -1,4 +1,4 @@
-from typing import Tuple, Any
+from typing import Tuple, Any, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (command)
@@ -39,6 +39,13 @@ class PubSubCommandsMixin:
             msg = [mtype, channel, self._pubsub]
             self.put_response(msg)
         return NoResponse()
+
+    def _numsub(self, subscribers: Dict[bytes, Any], *channels):
+        tuples_list = [
+            (ch, len(subscribers.get(ch, [])))
+            for ch in channels
+        ]
+        return [item for sublist in tuples_list for item in sublist]
 
     @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def psubscribe(self, *patterns):
@@ -112,12 +119,11 @@ class PubSubCommandsMixin:
 
     @command(name='PUBSUB NUMSUB', fixed=(), repeat=(bytes,))
     def pubsub_numsub(self, *args):
-        channels = args
-        tuples_list = [
-            (ch, len(self._server.subscribers.get(ch, [])))
-            for ch in channels
-        ]
-        return [item for sublist in tuples_list for item in sublist]
+        return self._numsub(self._server.subscribers, *args)
+
+    @command(name='PUBSUB SHARDNUMSUB', fixed=(), repeat=(bytes,))
+    def pubsub_shardnumsub(self, *args):
+        return self._numsub(self._server.ssubscribers, *args)
 
     @command(name='PUBSUB', fixed=())
     def pubsub(self, *args):
