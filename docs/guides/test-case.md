@@ -8,10 +8,10 @@ That way parity of real Redis and FakeRedis is ensured.
 To write a new test case for a command:
 
 - Determine which mixin the command belongs to and the test file for
-  the mixin (eg, `string_mixin.py` => `test_string_commands.py`).
+  the mixin (e.g., `string_mixin.py` => `test_string_commands.py`).
 - Tests should support python 3.7 and above.
 - Determine when support for the command was introduced
-    - To limit the redis-server versions it will run on use:
+    - To limit the redis-server versions, it will run on use:
       `@pytest.mark.max_server(version)` and `@pytest.mark.min_server(version)`
     - To limit the redis-py version use `@run_test_if_redispy_ver(above/below, version)`
 - pytest will inject a redis connection to the argument `r` of the test.

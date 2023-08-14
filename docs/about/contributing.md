@@ -14,7 +14,7 @@ the maintainers and smooth out the experience for all involved. The community lo
 >
 > - Star the project
 > - Tweet about it
-> - Refer this project in your project's readme
+> - Refer to this project in your project's readme
 > - Mention the project at local meetups and tell your friends/colleagues
 
 ## Code of Conduct
@@ -45,7 +45,7 @@ We will then take care of the issue as soon as possible.
 You might want to create a separate issue tag for questions and include it in this description. 
 People should then tag their issues accordingly.
 
-Depending on how large the project is, you may want to outsource the questioning, e.g. to Stack Overflow or Gitter. 
+Depending on how large the project is, you may want to outsource the questioning, e.g., to Stack Overflow or Gitter. 
 You may add additional contact and information possibilities:
 - IRC
 - Slack
@@ -73,7 +73,7 @@ Therefore, we ask you to investigate carefully, collect information and describe
 Please complete the following steps in advance to help us fix any potential bug as fast as possible.
 
 - Make sure that you are using the latest version.
-- Determine if your bug is really a bug and not an error on your side e.g. using incompatible
+- Determine if your bug is really a bug and not an error on your side, e.g., using incompatible
   environment components/versions (Make sure that you have read
   the [documentation](https://github.com/cunla/fakeredis-py).
   If you are looking for support, you might want to check [this section](#i-have-a-question)).
@@ -91,9 +91,9 @@ Please complete the following steps in advance to help us fix any potential bug 
 
 ### How Do I Submit a Good Bug Report?
 
-> You must never report security related issues, vulnerabilities or bugs including sensitive information
+> You must never report security related issues, vulnerabilities or bugs, including sensitive information
 > to the issue tracker, or elsewhere in public.
-> Instead sensitive bugs must be sent by email to <daniel@moransoftware.ca>.
+> Instead, sensitive bugs must be sent by email to <daniel@moransoftware.ca>.
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
 
@@ -103,7 +103,7 @@ We use GitHub issues to track bugs and errors. If you run into an issue with the
 - Follow the issue template and provide as much context as possible and describe the *reproduction steps* that someone
   else can follow to recreate the issue on their own.
   This usually includes your code.
-  For good bug reports you should isolate the problem and create a reduced test case.
+  For good bug reports, you should isolate the problem and create a reduced test case.
 - Provide the information you collected in the previous section.
 
 Once it's filed:
@@ -197,7 +197,7 @@ Taken from [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/
 [optional footer(s)]
 ```
 
-The commit contains the following structural elements, to communicate intent to the consumers of your library:
+The commit contains the following structural elements to communicate intent to the consumers of your library:
 
 * `fix:` a commit of the type fix patches a bug in your codebase (this correlates with `PATCH` in Semantic Versioning).
 * `feat:` a commit of the type feat introduces a new feature to the codebase (this correlates with `MINOR` in Semantic
@@ -205,7 +205,7 @@ The commit contains the following structural elements, to communicate intent to 
 * `BREAKING CHANGE:` a commit that has a footer BREAKING CHANGE:, or appends a ! after the type/scope, introduces a
   breaking API change (correlating with MAJOR in Semantic Versioning). A BREAKING CHANGE can be part of commits of any
   type.
-* types other than `fix:` and `feat:` are allowed, for example @commitlint/config-conventional (based on the Angular
+* types other than `fix:` and `feat:` are allowed, for example, `@commitlint/config-conventional` (based on the Angular
   convention) recommends `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:`, and others.
 * footers other than `BREAKING CHANGE: <description>` may be provided and follow a convention similar to
   [git trailer format](https://git-scm.com/docs/git-interpret-trailers).

@@ -4,7 +4,9 @@ FakeRedis is a pure-Python implementation of the Redis key-value store.
 
 It enables running tests requiring redis server without an actual server.
 
-It provides enhanced versions of the redis-py Python bindings for Redis. That provide the following added functionality:
+It provides enhanced versions of the redis-py Python bindings for Redis.
+
+That provides the following added functionality:
 A built-in Redis server that is automatically installed, configured and managed when the Redis bindings are used. A
 single server shared by multiple programs or multiple independent servers. All the servers provided by
 FakeRedis support all Redis functionality including advanced features such as RedisJson, GeoCommands.
@@ -31,7 +33,8 @@ FakeRedis can imitate Redis server version 6.x or 7.x.
 If you do not specify the version, version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real
-redis server. It does this by storing state internally.
+redis server.
+It does this by storing the state internally.
 For example:
 
 ```pycon
@@ -91,7 +94,7 @@ redis client for python, and models the responses of redis 6.x or 7.x.
 
 ### async Redis
 
-async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
+Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
 
 ```pycon
 >>> from fakeredis import aioredis
@@ -156,13 +159,14 @@ bugs in GitHub.
   type.
 
 - Redis makes guarantees about the order in which clients blocked on blocking
-  commands are woken up. Fakeredis does not honour these guarantees.
+  commands are woken up.
+  Fakeredis does not honor these guarantees.
 
 - Where redis contains bugs, fakeredis generally does not try to provide exact
-  bug-compatibility. It's not practical for fakeredis to try to match the set
-  of bugs in your specific version of redis.
+  bug compatibility.
+  It's not practical for fakeredis to try to match the set of bugs in your specific version of redis.
 
-- There are a number of cases where the behaviour of redis is undefined, such
+- There are a number of cases where the behavior of redis is undefined, such
   as the order of elements returned by set and hash commands. Fakeredis will
   generally not produce the same results, and in Python versions before 3.6
   may produce different results each time the process is re-run.
@@ -182,7 +186,7 @@ bugs in GitHub.
 To ensure parity with the real redis, there are a set of integration tests
 that mirror the unittests. For every unittest that is written, the same
 test is run against a real redis instance using a real redis-py client
-instance. In order to run these tests you must have a redis server running
+instance. In order to run these tests, you must have a redis server running
 on localhost, port 6379 (the default settings). **WARNING**: the tests will
 completely wipe your database!
 
@@ -207,9 +211,9 @@ poetry run pytest -m fake
 
 Because this module is attempting to provide the same interface as `redis-py`,
 the python bindings to redis, a reasonable way to test this to take each
-unittest and run it against a real redis server. fakeredis and the real redis
-server should give the same result. To run tests against a real redis instance
-instead:
+unittest and run it against a real redis server.
+Fakeredis and the real redis server should give the same result.
+To run tests against a real redis instance instead:
 
 ```bash
 poetry run pytest -m real
@@ -219,8 +223,9 @@ If redis is not running, and you try to run tests against a real redis server,
 these tests will have a result of 's' for skipped.
 
 There are some tests that test redis blocking operations that are somewhat
-slow. If you want to skip these tests during day to day development,
-they have all been tagged as 'slow' so you can skip them by running:
+slow.
+If you want to skip these tests during day-to-day development, they have all been tagged as 'slow' so you can skip them
+by running:
 
 ```bash
 poetry run pytest -m "not slow"

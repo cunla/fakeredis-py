@@ -25,8 +25,8 @@ description: Change log of all fakeredis releases
 
 ### 🧰 Bug Fixes
 
-- Fix incorrect error msg for group not found #210
-- fix: use same server_key within pipeline when issued watch #213
+- Fix incorrect error msg for the group not found #210
+- fix: use the same server_key within the pipeline when issued watch #213
 - issue with ZRANGE and ZRANGESTORE with BYLEX #214
 
 ### Contributors
@@ -43,7 +43,7 @@ We'd like to thank all the contributors who worked on this release!
 
 ### 🧰 Bug Fixes
 
-- Add support for version for async FakeRedis #205
+- Add support for `version` for async FakeRedis #205
 
 ### 🧰 Maintenance
 
@@ -253,7 +253,7 @@ We'd like to thank all the contributors who worked on this release!
 #### 🐛 Bug Fixes
 
 - Fix json mget when dict is returned (#114)
-- fix: properly export (#116)
+- fix: proper export (#116)
 
 #### 🧰 Maintenance
 
@@ -275,7 +275,7 @@ We'd like to thank all the contributors who worked on this release!
 
 #### 🐛 Bug Fixes
 
-- Fix bug checking type in scan\_iter (#109)
+- Fix a bug the checking type in scan\_iter (#109)
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.3.0...v2.4.0
 
@@ -341,7 +341,7 @@ We'd like to thank all the contributors who worked on this release!
 #### 🚀 Features
 
 - Add support for redis-py v4.4rc4 (#73)
-- Add mypy support  (#74)
+- Add mypy support (#74)
 
 #### 🧰 Maintenance
 
@@ -393,7 +393,7 @@ We'd like to thank all the contributors who worked on this release!
 #### What's Changed
 
 * zadd support for GT/LT in [#49](https://github.com/cunla/fakeredis-py/pull/49)
-* Remove six dependency in [#51](https://github.com/cunla/fakeredis-py/pull/51)
+* Remove `six` dependency in [#51](https://github.com/cunla/fakeredis-py/pull/51)
 * Add host to `conn_pool_args`  in [#51](https://github.com/cunla/fakeredis-py/pull/51)
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.1...v1.9.2
@@ -419,12 +419,12 @@ We'd like to thank all the contributors who worked on this release!
 
 #### What's Changed
 
-* Update publish GitHub action to create an issue on failure by @terencehonles
+* Update the `publish` GitHub action to create an issue on failure by @terencehonles
   in [#33](https://github.com/dsoftwareinc/fakeredis-py/pull/33)
-* Add release draft job in [#37](https://github.com/dsoftwareinc/fakeredis-py/pull/37)
+* Add `release draft` job in [#37](https://github.com/dsoftwareinc/fakeredis-py/pull/37)
 * Fix input and output type of cursors for SCAN commands by @tohin
   in [#40](https://github.com/dsoftwareinc/fakeredis-py/pull/40)
-* Fix passing params in args - Fix #36 in [#41](https://github.com/dsoftwareinc/fakeredis-py/pull/41)
+* Fix passing params in args—Fix #36 in [#41](https://github.com/dsoftwareinc/fakeredis-py/pull/41)
 
 #### New Contributors
 
@@ -468,7 +468,7 @@ We'd like to thank all the contributors who worked on this release!
 
 #### What's Changed
 
-* fix: work with redis.asyncio by @zhongkechen in [#10](https://github.com/dsoftwareinc/fakeredis-py/pull/10)
+* fix: work with `redis.asyncio` by @zhongkechen in [#10](https://github.com/dsoftwareinc/fakeredis-py/pull/10)
 * Migrate to poetry in [#12](https://github.com/dsoftwareinc/fakeredis-py/pull/12)
 * Create annotation for redis4+ tests in [#14](https://github.com/dsoftwareinc/fakeredis-py/pull/14)
 * Make aioredis and lupa optional dependencies in [#16](https://github.com/dsoftwareinc/fakeredis-py/pull/16)

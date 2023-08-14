@@ -2,10 +2,9 @@
 
 ## RedisJson support
 
-Currently, Redis Json module is fully implemented (
-see [supported commands](./redis-commands/RedisJson/)).
-Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
-[jsonpath-ng](https://github.com/h2non/jsonpath-ng), you can simply install it using `pip install 'fakeredis[json]'`.
+Currently, Redis Json module is fully implemented (see [supported commands](./redis-commands/RedisJson/)).
+Support for JSON commands (e.g., [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
+[jsonpath-ng,](https://github.com/h2non/jsonpath-ng) you can simply install it using `pip install 'fakeredis[json]'`.
 
 ```pycon
 >>> import fakeredis
@@ -21,4 +20,5 @@ Support for JSON commands (eg, [`JSON.GET`](https://redis.io/commands/json.get/)
 ## Lua support
 
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
-Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it using `pip install 'fakeredis[lua]'`
+Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it
+using `pip install 'fakeredis[lua]'`

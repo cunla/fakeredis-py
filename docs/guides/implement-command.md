@@ -17,25 +17,29 @@ class FakeSocket(BaseFakeSocket, FakeLuaSocket):
 ```
 
 ## Parsing command arguments
-The `extract_args` method should help extracting arguments from `*args`. 
+
+The `extract_args` method should help to extract arguments from `*args`.
 It extracts from actual arguments which arguments exist and their value if relevant.
 
 Parameters `extract_args` expect:
+
 - `actual_args`
-    The actual arguments to parse
+  The actual arguments to parse
 - `expected`
-    Arguments to look for, see below explanation.
+  Arguments to look for, see below explanation.
 - `error_on_unexpected` (default: True)
-    Should an error be raised when actual_args contain an unexpected argument?
+  Should an error be raised when actual_args contain an unexpected argument?
 - `left_from_first_unexpected` (default: True)
-    Once reaching an unexpected argument in actual_args,
-    Should parsing stop?
+  Once reaching an unexpected argument in actual_args,
+  Should parsing stop?
 
 It returns two lists:
+
 - List of values for expected arguments.
 - List of remaining args.
 
 ### Expected argument structure:
+
 - If expected argument has only a name, it will be parsed as boolean
   (Whether it exists in actual `*args` or not).
 - In order to parse a numerical value following the expected argument,
@@ -53,11 +57,11 @@ method will be triggered to check the validity of syntax and analyze the command
 
 By default, it takes the name of the method as the command name.
 
-If the method implements a subcommand (eg, `SCRIPT LOAD`), a Redis module command (eg, `JSON.GET`),
-or a python reserve word where you can not use it as the method name (eg, `EXEC`), then you can supply
-explicitly the name parameter.
+If the method implements a subcommand (e.g., `SCRIPT LOAD`), a Redis module command (e.g., `JSON.GET`),
+or a python reserve word where you can not use it as the method name (e.g., `EXEC`), then you can explicitly supply
+the name parameter.
 
-If the command implemented require certain arguments, they can be supplied in the first parameter as a tuple.
+If the command implemented requires certain arguments, they can be supplied in the first parameter as a tuple.
 When receiving the command through the socket, the bytes will be converted to the argument types
 supplied or remain as `bytes`.
 
@@ -82,8 +86,8 @@ The tests not only assert the validity of output but runs the same test on a rea
 to the real server output.
 
 - Create tests in the relevant test file.
-- If support for the command was introduced in a certain version of redis-py (
-  see [redis-py release notes](https://github.com/redis/redis-py/releases/tag/v4.3.4)) you can use the
+- If support for the command was introduced in a certain version of redis-py
+  (see [redis-py release notes](https://github.com/redis/redis-py/releases/tag/v4.3.4)) you can use the
   decorator `@testtools.run_test_if_redispy_ver` on your tests. example:
 
 ```python
