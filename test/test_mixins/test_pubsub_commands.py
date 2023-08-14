@@ -28,6 +28,15 @@ def wait_for_message(
     return None
 
 
+def make_message(_type, channel, data, pattern=None):
+    return {
+        "type": _type,
+        "pattern": pattern and pattern.encode("utf-8") or None,
+        "channel": channel and channel.encode("utf-8") or None,
+        "data": data.encode("utf-8") if isinstance(data, str) else data,
+    }
+
+
 def test_ping_pubsub(r: redis.Redis):
     p = r.pubsub()
     p.subscribe('channel')
@@ -455,3 +464,60 @@ def test_pubsub_numsub(r: redis.Redis):
     assert r.pubsub_numsub(a, b, c) == [(a.encode(), 2), (b.encode(), 2), (c.encode(), 1), ]
     assert r.pubsub_numsub() == []
     assert r.pubsub_numsub(a, "non-existing") == [(a.encode(), 2), (b"non-existing", 0)]
+
+
+@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+def test_published_message_to_shard_channel(r: redis.Redis):
+    p = r.pubsub()
+    p.ssubscribe("foo")
+    assert wait_for_message(p) == make_message("ssubscribe", "foo", 1)
+    assert r.spublish("foo", "test message") == 1
+
+    message = wait_for_message(p)
+    assert isinstance(message, dict)
+    assert message == make_message("smessage", "foo", "test message")
+
+
+@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
+    p = r.pubsub()
+    keys = ["foo", "bar", "uni" + chr(4456) + "code"]
+    assert p.subscribed is False
+    p.ssubscribe(keys[0])
+    # we're now subscribed even though we haven't processed the reply from the server just yet
+    assert p.subscribed is True
+    assert wait_for_message(p) == make_message("ssubscribe", keys[0], 1)
+    # we're still subscribed
+    assert p.subscribed is True
+
+    # unsubscribe from all shard_channels
+    p.sunsubscribe()
+    # we're still technically subscribed until we process the response messages from the server
+    assert p.subscribed is True
+    assert wait_for_message(p) == make_message("sunsubscribe", keys[0], 0)
+    # now we're no longer subscribed as no more messages can be delivered to any channels we were listening to
+    assert p.subscribed is False
+
+    # subscribing again flips the flag back
+    p.ssubscribe(keys[0])
+    assert p.subscribed is True
+    assert wait_for_message(p) == make_message("ssubscribe", keys[0], 1)
+
+    # unsubscribe again
+    p.sunsubscribe()
+    assert p.subscribed is True
+    # subscribe to another shard_channel before reading the unsubscribe response
+    p.ssubscribe(keys[1])
+    assert p.subscribed is True
+    # read the unsubscribe for key1
+    assert wait_for_message(p) == make_message("sunsubscribe", keys[0], 0)
+    # we're still subscribed to key2, so subscribed should still be True
+    assert p.subscribed is True
+    # read the key2 subscribe message
+    assert wait_for_message(p) == make_message("ssubscribe", keys[1], 1)
+    p.sunsubscribe()
+    # haven't read the message yet, so we're still subscribed
+    assert p.subscribed is True
+    assert wait_for_message(p) == make_message("sunsubscribe", keys[1], 0)
+    # now we're finally unsubscribed
+    assert p.subscribed is False

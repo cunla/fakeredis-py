@@ -38,6 +38,7 @@ class FakeServer:
         # Maps channel/pattern to weak set of sockets
         self.subscribers = defaultdict(weakref.WeakSet)
         self.psubscribers = defaultdict(weakref.WeakSet)
+        self.ssubscribers = defaultdict(weakref.WeakSet)
         self.lastsave = int(time.time())
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily

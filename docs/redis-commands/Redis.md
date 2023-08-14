@@ -1287,7 +1287,7 @@ Internal commands for debugging HyperLogLog values.
 An internal command for testing HyperLogLog values.
 
 
-## `pubsub` commands (9/15 implemented)
+## `pubsub` commands (13/15 implemented)
 
 ### [PSUBSCRIBE](https://redis.io/commands/psubscribe/)
 
@@ -1309,6 +1309,10 @@ Returns the active channels.
 
 Returns helpful text about the different subcommands.
 
+### [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/)
+
+Returns a count of unique pattern subscriptions.
+
 ### [PUBSUB NUMSUB](https://redis.io/commands/pubsub-numsub/)
 
 Returns a count of subscribers to channels.
@@ -1317,9 +1321,21 @@ Returns a count of subscribers to channels.
 
 Stops listening to messages published to channels that match one or more patterns.
 
+### [SPUBLISH](https://redis.io/commands/spublish/)
+
+Post a message to a shard channel
+
+### [SSUBSCRIBE](https://redis.io/commands/ssubscribe/)
+
+Listens for messages published to shard channels.
+
 ### [SUBSCRIBE](https://redis.io/commands/subscribe/)
 
 Listens for messages published to channels.
+
+### [SUNSUBSCRIBE](https://redis.io/commands/sunsubscribe/)
+
+Stops listening to messages posted to shard channels.
 
 ### [UNSUBSCRIBE](https://redis.io/commands/unsubscribe/)
 
@@ -1329,10 +1345,6 @@ Stops listening to messages posted to channels.
 ### Unsupported pubsub commands 
 > To implement support for a command, see [here](../../guides/implement-command/) 
 
-#### [PUBSUB NUMPAT](https://redis.io/commands/pubsub-numpat/) <small>(not implemented)</small>
-
-Returns a count of unique pattern subscriptions.
-
 #### [PUBSUB SHARDCHANNELS](https://redis.io/commands/pubsub-shardchannels/) <small>(not implemented)</small>
 
 Returns the active shard channels.
@@ -1340,18 +1352,6 @@ Returns the active shard channels.
 #### [PUBSUB SHARDNUMSUB](https://redis.io/commands/pubsub-shardnumsub/) <small>(not implemented)</small>
 
 Returns the count of subscribers of shard channels.
-
-#### [SPUBLISH](https://redis.io/commands/spublish/) <small>(not implemented)</small>
-
-Post a message to a shard channel
-
-#### [SSUBSCRIBE](https://redis.io/commands/ssubscribe/) <small>(not implemented)</small>
-
-Listens for messages published to shard channels.
-
-#### [SUNSUBSCRIBE](https://redis.io/commands/sunsubscribe/) <small>(not implemented)</small>
-
-Stops listening to messages posted to shard channels.
 
 
 ## `set` commands (17/17 implemented)

@@ -48,6 +48,10 @@ class PubSubCommandsMixin:
     def subscribe(self, *channels):
         return self._subscribe(channels, self._server.subscribers, b'subscribe')
 
+    @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
+    def ssubscribe(self, *channels):
+        return self._subscribe(channels, self._server.ssubscribers, b'ssubscribe')
+
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def punsubscribe(self, *patterns):
         return self._unsubscribe(patterns, self._server.psubscribers, b'punsubscribe')
@@ -56,11 +60,32 @@ class PubSubCommandsMixin:
     def unsubscribe(self, *channels):
         return self._unsubscribe(channels, self._server.subscribers, b'unsubscribe')
 
+    @command(fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
+    def sunsubscribe(self, *channels):
+        return self._unsubscribe(channels, self._server.ssubscribers, b'sunsubscribe')
+
     @command((bytes, bytes))
     def publish(self, channel, message):
         receivers = 0
         msg = [b'message', channel, message]
         subs = self._server.subscribers.get(channel, set())
+        for sock in subs:
+            sock.put_response(msg)
+            receivers += 1
+        for (pattern, socks) in self._server.psubscribers.items():
+            regex = compile_pattern(pattern)
+            if regex.match(channel):
+                msg = [b'pmessage', pattern, channel, message]
+                for sock in socks:
+                    sock.put_response(msg)
+                    receivers += 1
+        return receivers
+
+    @command((bytes, bytes))
+    def spublish(self, channel, message):
+        receivers = 0
+        msg = [b'smessage', channel, message]
+        subs = self._server.ssubscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1

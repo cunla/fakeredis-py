@@ -35,7 +35,10 @@ def bin_reverse(x, bits_count):
 
 
 class BaseFakeSocket:
-    ACCEPTED_COMMANDS_WHILE_PUBSUB = {'ping', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe', 'quit', }
+    ACCEPTED_COMMANDS_WHILE_PUBSUB = {
+        'ping', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe', 'quit',
+        'ssubscribe', 'sunsubscribe',
+    }
     _connection_error_class = redis.ConnectionError
 
     def __init__(self, server, db, *args, **kwargs):
