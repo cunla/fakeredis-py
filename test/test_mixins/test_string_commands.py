@@ -213,7 +213,7 @@ def test_msetnx(r: redis.Redis):
     assert r.mget('foo', 'bar', 'baz') == [b'one', b'two', None]
 
 
-def test_setex_redispy4(r: redis.Redis):
+def test_setex(r: redis.Redis):
     assert r.setex('foo', 100, 'bar') is True
     assert r.get('foo') == b'bar'
 
