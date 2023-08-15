@@ -8,7 +8,6 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
-from .. import testtools
 from ..testtools import raw_command
 
 
@@ -214,27 +213,13 @@ def test_msetnx(r: redis.Redis):
     assert r.mget('foo', 'bar', 'baz') == [b'one', b'two', None]
 
 
-@testtools.run_test_if_redispy_ver('above', '5')
-def test_setex_redispy5(r: redis.Redis):
-    assert r.setex('foo', 100, 'bar') == b'OK'
-    assert r.get('foo') == b'bar'
-
-
-@testtools.run_test_if_redispy_ver('below', '4.6')
 def test_setex_redispy4(r: redis.Redis):
     assert r.setex('foo', 100, 'bar') is True
     assert r.get('foo') == b'bar'
 
 
-@testtools.run_test_if_redispy_ver('below', '4.6')
-def test_setex_using_timedelta_redispy4(r: redis.Redis):
+def test_setex_using_timedelta(r: redis.Redis):
     assert r.setex('foo', timedelta(seconds=100), 'bar') is True
-    assert r.get('foo') == b'bar'
-
-
-@testtools.run_test_if_redispy_ver('above', '5')
-def test_setex_using_timedelta_redispy5(r: redis.Redis):
-    assert r.setex('foo', timedelta(seconds=100), 'bar') == b'OK'
     assert r.get('foo') == b'bar'
 
 
