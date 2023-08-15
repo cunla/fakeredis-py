@@ -507,7 +507,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+@testtools.run_test_if_redispy_ver('above', '5.0.0')
 def test_pubsub_shardnumsub(r: redis.Redis):
     channels = {b"foo", b"bar", b"baz"}
     p1 = r.pubsub()
@@ -522,7 +522,7 @@ def test_pubsub_shardnumsub(r: redis.Redis):
     p3.ssubscribe("baz")
     assert wait_for_message(p3)["type"] == "ssubscribe"
 
-    channels = [b"foo", 1, b"bar", 2, b"baz", 3]
+    channels = [(b"foo", 1), (b"bar", 2), (b"baz", 3)]
     assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels
 
 

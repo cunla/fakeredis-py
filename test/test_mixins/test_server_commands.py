@@ -69,17 +69,8 @@ def test_dbsize(r: redis.Redis):
     assert r.dbsize() == 2
 
 
-@testtools.run_test_if_redispy_ver('below', '4.6')
 def test_flushdb_redispy4(r: redis.Redis):
     r.set('foo', 'bar')
     assert r.keys() == [b'foo']
     assert r.flushdb() is True
-    assert r.keys() == []
-
-
-@testtools.run_test_if_redispy_ver('above', '5')
-def test_flushdb_redispy5(r: redis.Redis):
-    r.set('foo', 'bar')
-    assert r.keys() == [b'foo']
-    assert r.flushdb() == b'OK'
     assert r.keys() == []
