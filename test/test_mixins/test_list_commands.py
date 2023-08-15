@@ -8,6 +8,20 @@ import redis.client
 from .. import testtools
 
 
+def _push_thread(r: redis.Redis) -> threading.Thread:
+    def run():
+        sleep(0.5)
+        r.rpush('foo', 'value1')
+        sleep(0.5)
+        # Will wake the condition variable
+        r.set('bar', 'go back to sleep some more')
+        r.rpush('foo', 'value2')
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    return thread
+
+
 def test_lpush_then_lrange_all(r: redis.Redis):
     assert r.lpush('foo', 'bar') == 1
     assert r.lpush('foo', 'baz') == 2
@@ -430,19 +444,20 @@ def test_blpop_allow_single_key(r: redis.Redis):
 
 @pytest.mark.slow
 def test_blpop_block(r: redis.Redis):
-    def push_thread():
-        sleep(0.5)
-        r.rpush('foo', 'value1')
-        sleep(0.5)
-        # Will wake the condition variable
-        r.set('bar', 'go back to sleep some more')
-        r.rpush('foo', 'value2')
-
-    thread = threading.Thread(target=push_thread)
-    thread.start()
+    thread = _push_thread(r)
     try:
         assert r.blpop('foo') == (b'foo', b'value1')
         assert r.blpop('foo', timeout=5) == (b'foo', b'value2')
+    finally:
+        thread.join()
+
+
+@pytest.mark.slow
+def test_brpop_block(r: redis.Redis):
+    thread = _push_thread(r)
+    try:
+        assert r.brpop('foo') == (b'foo', b'value1')
+        assert r.brpop('foo', timeout=5) == (b'foo', b'value2')
     finally:
         thread.join()
 
@@ -476,25 +491,6 @@ def test_brpop_single_key(r: redis.Redis):
     r.rpush('foo', 'one')
     r.rpush('foo', 'two')
     assert r.brpop('foo', timeout=1) == (b'foo', b'two')
-
-
-@pytest.mark.slow
-def test_brpop_block(r: redis.Redis):
-    def push_thread():
-        sleep(0.5)
-        r.rpush('foo', 'value1')
-        sleep(0.5)
-        # Will wake the condition variable
-        r.set('bar', 'go back to sleep some more')
-        r.rpush('foo', 'value2')
-
-    thread = threading.Thread(target=push_thread)
-    thread.start()
-    try:
-        assert r.brpop('foo') == (b'foo', b'value1')
-        assert r.brpop('foo', timeout=5) == (b'foo', b'value2')
-    finally:
-        thread.join()
 
 
 def test_brpop_wrong_type(r: redis.Redis):
