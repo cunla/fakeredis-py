@@ -5,8 +5,6 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
-from test import testtools
-
 
 def test_swapdb(r, create_redis):
     r1 = create_redis(1)
