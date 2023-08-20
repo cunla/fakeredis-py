@@ -1,4 +1,5 @@
 import functools
+from typing import Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -40,6 +41,7 @@ def _list_pop(get_slice, key, *args):
 
 class ListCommandsMixin:
     _db: Database
+    _blocking: Callable
 
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:
@@ -131,7 +133,7 @@ class ListCommandsMixin:
 
     def _lmove(self, first_list, second_list, src, dst, first_pass):
         if (not casematch(src, b"left") and not casematch(src, b"right")) or (
-            not casematch(dst, b"left") and not casematch(dst, b"right")
+                not casematch(dst, b"left") and not casematch(dst, b"right")
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -180,7 +182,7 @@ class ListCommandsMixin:
         else:
             count = 1
         if len(args) != numkeys + 1 or (
-            not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
+                not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -188,8 +190,8 @@ class ListCommandsMixin:
 
     @command(
         fixed=(
-            Timeout,
-            Int,
+                Timeout,
+                Int,
         ),
         repeat=(bytes,),
     )
@@ -202,7 +204,7 @@ class ListCommandsMixin:
         else:
             count = 1
         if len(args) != numkeys + 1 or (
-            not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
+                not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -302,8 +304,8 @@ class ListCommandsMixin:
 
     @command(
         fixed=(
-            Key(list),
-            bytes,
+                Key(list),
+                bytes,
         ),
         repeat=(bytes,),
     )
@@ -326,9 +328,9 @@ class ListCommandsMixin:
         res = []
         comparisons = 0
         while (
-            0 <= ind <= len(key.value) - 1
-            and len(res) < parse_count
-            and comparisons < maxlen
+                0 <= ind <= len(key.value) - 1
+                and len(res) < parse_count
+                and comparisons < maxlen
         ):
             comparisons += 1
             if key.value[ind] == elem:

@@ -58,9 +58,9 @@ def encode_command(s: bytes) -> str:
 
 
 def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
-    """Compile a glob pattern (e.g., for keys) to a bytes regex.
+    """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
-    fnmatch.fnmatchcase doesn't work for this, because it uses different
+    `fnmatch.fnmatchcase` doesn't work for this because it uses different
     escaping rules to redis, uses ! instead of ^ to negate a character set,
     and handles invalid cases (such as a [ without a ]) differently. This
     implementation was written by studying the redis implementation.
@@ -130,9 +130,7 @@ class Database(MutableMapping):
     def __init__(self, lock, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
         self.time = 0.0
-        self._watches: Dict[bytes, weakref.WeakSet] = defaultdict(
-            weakref.WeakSet
-        )  # key to set of connections
+        self._watches: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)  # key to the set of connections
         self.condition = threading.Condition(lock)
         self._change_callbacks: Set[Callable] = set()
 
@@ -239,5 +237,5 @@ class FakeSelector(object):
                 return False
 
     @staticmethod
-    def check_is_ready_for_command(timeout) -> bool:
+    def check_is_ready_for_command(_) -> bool:
         return True

@@ -1,14 +1,18 @@
 import functools
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Callable
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
-from fakeredis._helpers import SimpleError, casematch, OK, current_time
+from fakeredis._helpers import SimpleError, casematch, OK, current_time, Database
 from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
 
 class StreamsCommandsMixin:
+    _db: Database
+    version: Tuple[int]
+    _blocking: Callable
+
     @command(
         name="XADD",
         fixed=(Key(),),
@@ -28,9 +32,9 @@ class StreamsCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XADD"))
         stream = key.value if key.value is not None else XStream()
         if (
-            self.version < (7,)
-            and entry_key != b"*"
-            and not StreamRangeTest.valid_key(entry_key)
+                self.version < (7,)
+                and entry_key != b"*"
+                and not StreamRangeTest.valid_key(entry_key)
         ):
             raise SimpleError(msgs.XADD_INVALID_ID)
         entry_key = stream.add(elements, entry_key=entry_key)
@@ -66,14 +70,14 @@ class StreamsCommandsMixin:
 
     @staticmethod
     def _xrange(
-        stream: XStream,
-        _min: StreamRangeTest,
-        _max: StreamRangeTest,
-        reverse: bool,
-        count: Union[int, None],
+            stream: XStream,
+            _min: StreamRangeTest,
+            _max: StreamRangeTest,
+            reverse: bool,
+            count: Union[int, None],
     ) -> List:
         if stream is None:
-            return None
+            return []
         if count is None:
             count = len(stream)
         res = stream.irange(_min, _max, reverse=reverse)
@@ -109,12 +113,12 @@ class StreamsCommandsMixin:
         return res
 
     def _xreadgroup(
-        self,
-        consumer_name: bytes,
-        group_params: List[Tuple[StreamGroup, bytes, bytes]],
-        count: int,
-        noack: bool,
-        first_pass: bool,
+            self,
+            consumer_name: bytes,
+            group_params: List[Tuple[StreamGroup, bytes, bytes]],
+            count: int,
+            noack: bool,
+            first_pass: bool,
     ):
         res = list()
         for group, stream_name, start_id in group_params:
@@ -145,9 +149,9 @@ class StreamsCommandsMixin:
             error_on_unexpected=False,
         )
         if (
-            len(left_args) < 3
-            or not casematch(left_args[0], b"STREAMS")
-            or len(left_args) % 2 != 1
+                len(left_args) < 3
+                or not casematch(left_args[0], b"STREAMS")
+                or len(left_args) % 2 != 1
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -180,9 +184,9 @@ class StreamsCommandsMixin:
             args, ("+count", "+block", "noack"), error_on_unexpected=False
         )
         if (
-            len(left_args) < 3
-            or not casematch(left_args[0], b"STREAMS")
-            or len(left_args) % 2 != 1
+                len(left_args) < 3
+                or not casematch(left_args[0], b"STREAMS")
+                or len(left_args) % 2 != 1
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -244,7 +248,7 @@ class StreamsCommandsMixin:
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
             return 0
-        return group.ack(args)
+        return group.ack(args)  # type: ignore
 
     @command(
         name="XPENDING",
@@ -317,15 +321,15 @@ class StreamsCommandsMixin:
     @command(
         name="XGROUP DESTROY",
         fixed=(
-            Key(XStream),
-            bytes,
+                Key(XStream),
+                bytes,
         ),
         repeat=(),
     )
     def xgroup_destroy(
-        self,
-        key,
-        group_name,
+            self,
+            key,
+            group_name,
     ):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
@@ -368,8 +372,8 @@ class StreamsCommandsMixin:
         repeat=(),
     )
     def xinfo_groups(
-        self,
-        key,
+            self,
+            key,
     ):
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
@@ -392,9 +396,9 @@ class StreamsCommandsMixin:
         repeat=(),
     )
     def xinfo_consumers(
-        self,
-        key,
-        group_name,
+            self,
+            key,
+            group_name,
     ):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)

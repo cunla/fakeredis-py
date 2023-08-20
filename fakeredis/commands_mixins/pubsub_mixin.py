@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Dict
+from typing import Tuple, Any, Dict, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
@@ -8,6 +8,7 @@ from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
 class PubSubCommandsMixin:
     _server: Any
     version: Tuple[int]
+    put_response: Callable
 
     def __init__(self, *args, **kwargs):
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)

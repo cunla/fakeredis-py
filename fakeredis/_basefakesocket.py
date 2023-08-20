@@ -2,7 +2,7 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable
+from typing import List, Any, Tuple, Optional, Callable, Union, Match
 
 import redis
 from redis.connection import DefaultParser
@@ -62,7 +62,7 @@ class BaseFakeSocket:
         self._server = server
         self._db_num = db
         self._db = server.dbs[self._db_num]
-        self.responses = queue.Queue()
+        self.responses: Optional[queue.Queue] = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed
         # while handling a blocking command.
@@ -86,7 +86,7 @@ class BaseFakeSocket:
         self._paused = False
         self._parser.send(b"")
 
-    def shutdown(self, flags):
+    def shutdown(self, _):
         self._parser.close()
 
     @staticmethod
@@ -179,7 +179,7 @@ class BaseFakeSocket:
         return result
 
     def _decode_error(self, error):
-        return DefaultParser(socket_read_size=65536).parse_error(error.value)
+        return DefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
 
     def _decode_result(self, result):
         """Convert SimpleString and SimpleError, recursively"""
@@ -197,11 +197,11 @@ class BaseFakeSocket:
 
         The timeout must be an integer, and 0 means infinite. The function
         is called with a boolean to indicate whether this is the first call.
-        If it returns None it is considered to have "failed" and is retried
+        If it returns None, it is considered to have "failed" and is retried
         each time the condition variable is notified, until the timeout is
         reached.
 
-        Returns the function return value, or None if the timeout was reached.
+        Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)
         if ret is not None or self._in_transaction:
@@ -293,22 +293,25 @@ class BaseFakeSocket:
         we are investigating subsets.
 
         The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of
-        guarantees associated to full iterations.
+        guarantees associated with full iterations.
 
         - A full iteration always retrieves all the elements that were present in the collection from the start to the
           end of a full iteration. This means that if a given element is inside the collection when an iteration is
-          started, and is still there when an iteration terminates, then at some point SCAN returned it to the user.
+          started, and is still there when an iteration terminates, then at some point the SCAN command returned it to
+          the user.
 
         - A full iteration never returns any element that was NOT present in the collection from the start to the end
           of a full iteration. So if an element was removed before the start of an iteration, and is never added back
-          to the collection for all the time an iteration lasts, SCAN ensures that this element will never be returned.
+          to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
+          be returned.
 
-        However because SCAN has very little state associated (just the cursor) it has the following drawbacks:
+        However, because the SCAN command has very little state associated (just the cursor),
+        it has the following drawbacks:
 
         - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
-          elements, for example only using the returned elements in order to perform operations that are safe when
+          elements, for example, only using the returned elements in order to perform operations that are safe when
           re-applied multiple times.
-        - Elements that were not constantly present in the collection during a full iteration, may be returned or not:
+        - Elements that were not constantly present in the collection during a full iteration may be returned or not:
           it is undefined.
 
         """
@@ -325,8 +328,8 @@ class BaseFakeSocket:
 
         regex = compile_pattern(pattern) if pattern is not None else None
 
-        def match_key(key):
-            return regex.match(key) if pattern is not None else True
+        def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
+            return regex.match(key) if regex is not None else True
 
         def match_type(key):
             if _type is not None:

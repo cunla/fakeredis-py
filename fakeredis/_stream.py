@@ -5,7 +5,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any
+from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence
 
 from fakeredis._commands import BeforeAny, AfterAny
 from fakeredis._helpers import current_time
@@ -90,7 +90,7 @@ class StreamGroup(object):
             stream: "XStream",
             name: bytes,
             start_key: StreamEntryKey,
-            entries_read: int = 0,
+            entries_read: Optional[int] = None,
     ):
         self.stream = stream
         self.name = name
@@ -133,8 +133,8 @@ class StreamGroup(object):
         start_index, _ = self.stream.find_index(self.start_key)
         last_delivered_index, _ = self.stream.find_index(self.last_delivered_key)
         last_ack_index, _ = self.stream.find_index(self.last_ack_key)
-        if start_index + self.entries_read > len(self.stream):
-            lag = len(self.stream) - start_index - self.entries_read
+        if start_index + (self.entries_read or 0) > len(self.stream):
+            lag = len(self.stream) - start_index - (self.entries_read or 0)
         else:
             lag = len(self.stream) - 1 - last_delivered_index
         res = {
@@ -165,7 +165,7 @@ class StreamGroup(object):
                 self.pel[k] = (consumer_name, _time)
         if len(ids_read) > 0:
             self.last_delivered_key = max(self.last_delivered_key, ids_read[-1])
-            self.entries_read = self.entries_read + len(ids_read)
+            self.entries_read = (self.entries_read or 0) + len(ids_read)
         self.consumers[consumer_name].last_success = _time
         self.consumers[consumer_name].pending += len(ids_read)
         return [self.stream.format_record(x) for x in ids_read]
@@ -237,7 +237,7 @@ class StreamGroup(object):
     def claim(
             self,
             min_idle_ms: int,
-            msgs: List[bytes],
+            msgs: Sequence[bytes],
             consumer_name: bytes,
             _time: Optional[int],
             force: bool,
@@ -325,7 +325,7 @@ class XStream:
             start_key = self._ids[-1] if len(self._ids) > 0 else StreamEntryKey(0, 0)
         else:
             start_key = StreamEntryKey.parse_str(start_key_str)
-        self._groups[name] = StreamGroup(self, name, start_key, entries_read or 0)
+        self._groups[name] = StreamGroup(self, name, start_key, entries_read)
 
     def group_delete(self, group_name: bytes) -> int:
         if group_name in self._groups:
@@ -412,7 +412,7 @@ class XStream:
             split = entry_key.split("-")
             if len(split) != 2:
                 return None
-            ts, seq = int(split[0]), split[1]
+            ts, seq = int(split[0]), split[1]  # type: ignore
             if len(self._ids) > 0 and ts == self._ids[-1].ts:
                 seq = self._ids[-1].seq + 1
             else:

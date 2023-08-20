@@ -1,7 +1,7 @@
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any
+from typing import Tuple, Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -25,6 +25,8 @@ class GenericCommandsMixin:
     _server: Any
     _db: Database
     _db_num: int
+    _ttl: Callable
+    _scan: Callable
 
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""
