@@ -43,8 +43,10 @@ def _path_is_root(path: JSONPath) -> bool:
     return path == Root()
 
 
-def _dict_deep_merge(source: Dict, destination: Dict) -> Dict:
+def _dict_deep_merge(source: JsonType, destination: Dict) -> Dict:
     """Deep merge of two dictionaries"""
+    if not isinstance(source, dict):
+        return destination
     for key, value in source.items():
         if value is None and key in destination:
             del destination[key]
@@ -72,7 +74,7 @@ class JSONObject:
             raise helpers.SimpleError(cls.DECODE_ERROR)
 
     @classmethod
-    def encode(cls, value: Any) -> bytes:
+    def encode(cls, value: Any) -> Optional[bytes]:
         """Serialize the supplied Python object into a valid, JSON-formatted
         byte-encoded string."""
         return json.dumps(value, default=str).encode() if value is not None else None
@@ -167,18 +169,18 @@ class JSONCommandsMixin:
 
     @staticmethod
     def _get_single(
-        key,
-        path_str: str,
-        always_return_list: bool = False,
-        empty_list_as_none: bool = False,
-    ):
+            key,
+            path_str: str,
+            always_return_list: bool = False,
+            empty_list_as_none: bool = False,
+    ) -> Any:
         path = _parse_jsonpath(path_str)
         path_value = path.find(key.value)
         val = [i.value for i in path_value]
         if empty_list_as_none and len(val) == 0:
-            val = None
+            return None
         elif len(val) == 1 and not always_return_list:
-            val = val[0]
+            return val[0]
         return val
 
     @command(
@@ -212,9 +214,9 @@ class JSONCommandsMixin:
     def _json_set(key: CommandItem, path_str: bytes, value: JsonType, *args):
         path = _parse_jsonpath(path_str)
         if (
-            key.value is not None
-            and (type(key.value) is not dict)
-            and not _path_is_root(path)
+                key.value is not None
+                and (type(key.value) is not dict)
+                and not _path_is_root(path)
         ):
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value = path.find(key.value)
@@ -264,7 +266,7 @@ class JSONCommandsMixin:
         #   - if only one path was supplied => return a single value
         #   - if more than one path was specified => return one value for each specified path
         if no_wrapping_array or (
-            len(path_values) == 1 and isinstance(path_values[0], list)
+                len(path_values) == 1 and isinstance(path_values[0], list)
         ):
             return JSONObject.encode(path_values[0])
         if len(path_values) == 1:
@@ -306,7 +308,7 @@ class JSONCommandsMixin:
         found_matches = path.find(key.value)
 
         curr_value = copy.deepcopy(key.value)
-        res = list()
+        res: List[Optional[bool]] = list()
         for item in found_matches:
             if type(item.value) is bool:
                 curr_value = item.full_path.update(curr_value, not item.value)
@@ -329,9 +331,9 @@ class JSONCommandsMixin:
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
     def json_clear(
-        self,
-        key,
-        *args,
+            self,
+            key,
+            *args,
     ):
         if key.value is None:
             raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
@@ -372,8 +374,8 @@ class JSONCommandsMixin:
     @command(
         name="JSON.ARRAPPEND",
         fixed=(
-            Key(),
-            bytes,
+                Key(),
+                bytes,
         ),
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
@@ -510,7 +512,7 @@ class JSONCommandsMixin:
                 ind = next(
                     filter(
                         lambda x: x[1] == expected_value
-                        and type(x[1]) is type(expected_value),
+                                  and type(x[1]) is type(expected_value),
                         enumerate(value[start:end]),
                     )
                 )
@@ -547,9 +549,9 @@ class JSONCommandsMixin:
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
     def json_type(
-        self,
-        key,
-        *args,
+            self,
+            key,
+            *args,
     ):
         return _json_read_iterate(
             lambda val: self.TYPE_NAMES.get(type(val), None), key, *args
@@ -586,9 +588,9 @@ class JSONCommandsMixin:
     def json_merge(self, key, path_str: bytes, value: JsonType):
         path: JSONPath = _parse_jsonpath(path_str)
         if (
-            key.value is not None
-            and (type(key.value) is not dict)
-            and not _path_is_root(path)
+                key.value is not None
+                and (type(key.value) is not dict)
+                and not _path_is_root(path)
         ):
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         matching = path.find(key.value)
