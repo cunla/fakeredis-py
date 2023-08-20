@@ -234,7 +234,7 @@ class FakeRedis(redis_async.Redis):
         )
 
     @classmethod
-    def from_url(cls, url: str, **kwargs):
+    def from_url(cls, url: str, **kwargs) -> redis_async.Redis:
         self = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection

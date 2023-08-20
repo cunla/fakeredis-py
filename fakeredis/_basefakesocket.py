@@ -22,7 +22,17 @@ from ._helpers import (
 )
 
 
-def _extract_command(fields) -> Tuple[Any, List[Any]]:
+def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
+    """Extracts the command and command arguments from a list of bytes fields.
+
+    :param fields: A list of bytes fields containing the command and command arguments.
+    :return: A tuple of the command and command arguments.
+
+    Example:
+        fields = [b'GET', b'key1']
+        result = _extract_command(fields)
+        print(result)  # ('GET', ['key1'])
+    """
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
         cmd += " " + encode_command(fields[1])
@@ -71,7 +81,11 @@ class BaseFakeSocket:
         self._parser.send(None)
         self.version = server.version
 
-    def put_response(self, msg):
+    def put_response(self, msg: Any) -> None:
+        """Put a response message into the responses queue.
+
+        :param msg: The response message.
+        """
         # redis.Connection.__del__ might call self.close at any time, which
         # will set self.responses to None. We assume this will happen
         # atomically, and the code below then protects us against this.
@@ -79,24 +93,24 @@ class BaseFakeSocket:
         if responses:
             responses.put(msg)
 
-    def pause(self):
+    def pause(self) -> None:
         self._paused = True
 
-    def resume(self):
+    def resume(self) -> None:
         self._paused = False
         self._parser.send(b"")
 
-    def shutdown(self, _):
+    def shutdown(self, _) -> None:
         self._parser.close()
 
     @staticmethod
-    def fileno():
+    def fileno() -> int:
         # Our fake socket must return an integer from `FakeSocket.fileno()` since a real selector
         # will be created. The value does not matter since we replace the selector with our own
         # `FakeSelector` before it is ever used.
         return 0
 
-    def _cleanup(self, server):
+    def _cleanup(self, server: "FakeServer") -> None:
         """Remove all the references to `self` from `server`.
 
         This is called with the server lock held, but it may be some time after
@@ -331,10 +345,8 @@ class BaseFakeSocket:
         def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
             return regex.match(key) if regex is not None else True
 
-        def match_type(key):
-            if _type is not None:
-                return casematch(key_value_type(self._db[key]).value, _type)
-            return True
+        def match_type(key) -> bool:
+            return _type is None or casematch(key_value_type(self._db[key]).value, _type)
 
         if pattern is not None or _type is not None:
             for val in itertools.islice(data, cursor, cursor + count):
@@ -348,7 +360,7 @@ class BaseFakeSocket:
             result_cursor = 0
         return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
 
-    def _ttl(self, key, scale):
+    def _ttl(self, key, scale) -> int:
         if not key:
             return -2
         elif key.expireat is None:
@@ -356,12 +368,12 @@ class BaseFakeSocket:
         else:
             return int(round((key.expireat - self._db.time) * scale))
 
-    def _encodefloat(self, value, humanfriendly):
+    def _encodefloat(self, value: float, humanfriendly: bool) -> bytes:
         if self.version >= (7,):
             value = 0 + value
         return Float.encode(value, humanfriendly)
 
-    def _encodeint(self, value):
+    def _encodeint(self, value: int) -> bytes:
         if self.version >= (7,):
             value = 0 + value
         return Int.encode(value)

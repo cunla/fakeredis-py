@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any
+from typing import Tuple, Union, Optional, Any, Sequence
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
@@ -21,7 +21,7 @@ class Key:
 
     UNSPECIFIED = object()
 
-    def __init__(self, type_=None, missing_return=UNSPECIFIED):
+    def __init__(self, type_=None, missing_return=UNSPECIFIED) -> None:
         self.type_ = type_
         self.missing_return = missing_return
 
@@ -42,7 +42,7 @@ class CommandItem:
     It wraps an Item but has extra fields to manage updates and notifications.
     """
 
-    def __init__(self, key, db, item=None, default=None):
+    def __init__(self, key, db, item=None, default=None) -> None:
         if item is None:
             self._value = default
             self._expireat = None
@@ -123,14 +123,14 @@ class Int:
         return cls.MIN_VALUE <= value <= cls.MAX_VALUE
 
     @classmethod
-    def decode(cls, value, decode_error=None):
+    def decode(cls, value: bytes, decode_error=None) -> int:
         try:
             out = int(value)
             if not cls.valid(out) or str(out).encode() != value:
                 raise ValueError
+            return out
         except ValueError:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
-        return out
 
     @classmethod
     def encode(cls, value):
@@ -188,7 +188,7 @@ class Float:
             allow_empty=False,
             crop_null=False,
             decode_error=None,
-    ):
+    ) -> float:
         # redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
         try:
@@ -207,9 +207,7 @@ class Float:
                 # Values that over- or underflow- are explicitly rejected by
                 # redis. This is a crude hack to determine whether the input
                 # may have been such a value.
-                if out in (math.inf, -math.inf, 0.0) and re.match(
-                        b"^[^a-zA-Z]*[1-9]", value
-                ):
+                if out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
                     raise ValueError
             return out
         except ValueError:
@@ -423,7 +421,7 @@ def command(*args, **kwargs):
     return decorator
 
 
-def delete_keys(*keys):
+def delete_keys(*keys: Item) -> int:
     ans = 0
     done = set()
     for key in keys:
@@ -434,7 +432,7 @@ def delete_keys(*keys):
     return ans
 
 
-def fix_range(start, end, length):
+def fix_range(start: int, end: int, length: int) -> Tuple[int, int]:
     # Redis handles negative slightly differently for zrange
     if start < 0:
         start = max(0, start + length)
@@ -446,7 +444,7 @@ def fix_range(start, end, length):
     return start, end + 1
 
 
-def fix_range_string(start, end, length):
+def fix_range_string(start: int, end: int, length: int) -> Tuple[int, int]:
     # Negative number handling is based on the redis source code
     if 0 > start > end and end < 0:
         return -1, -1
@@ -458,7 +456,7 @@ def fix_range_string(start, end, length):
     return start, end + 1
 
 
-def key_value_type(key):
+def key_value_type(key: Item) -> SimpleString:
     if key.value is None:
         return SimpleString(b"none")
     elif isinstance(key.value, bytes):

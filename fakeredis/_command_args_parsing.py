@@ -5,18 +5,18 @@ from ._commands import Int, Float
 from ._helpers import SimpleError, null_terminate
 
 
-def _count_params(s: str):
+def _count_params(s: str) -> int:
     res = 0
     while res < len(s) and s[res] in '.+*~':
         res += 1
     return res
 
 
-def _encode_arg(s: str):
+def _encode_arg(s: str) -> bytes:
     return s[_count_params(s):].encode()
 
 
-def _default_value(s: str):
+def _default_value(s: str) -> Any:
     if s[0] == '~':
         return None
     ind = _count_params(s)
@@ -34,7 +34,7 @@ def extract_args(
         error_on_unexpected: bool = True,
         left_from_first_unexpected: bool = True,
         exception: Optional[str] = None
-) -> Tuple[List, Sequence]:
+) -> Tuple[List[Any], Sequence[Any]]:
     """Parse argument values.
 
     Extract from actual arguments which arguments exist and their value if relevant.
@@ -83,6 +83,7 @@ def extract_args(
         argument_name = expected[pos]
 
         # Deal with parameters with optional ~/= before numerical value.
+        arg: Any
         if argument_name[0] == '~':
             if ind + 1 >= len(_actual_args):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -103,7 +104,7 @@ def extract_args(
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         temp_res = []
         for i in range(expected_following):
-            curr_arg = _actual_args[ind + i + 1]
+            curr_arg: Any = _actual_args[ind + i + 1]
             if argument_name[i] == '+':
                 curr_arg = Int.decode(curr_arg)
             elif argument_name[i] == '.':
@@ -115,7 +116,7 @@ def extract_args(
         else:
             return temp_res, expected_following
 
-    results: List = [_default_value(key) for key in expected]
+    results: List[Any] = [_default_value(key) for key in expected]
     left_args = []
     i = 0
     while i < len(actual_args):
