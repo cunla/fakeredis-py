@@ -6,6 +6,5 @@ except ImportError as e:
     if e.name == "fakeredis.stack._json_mixin":
         raise e
 
-
     class JSONCommandsMixin:  # type: ignore
         pass
