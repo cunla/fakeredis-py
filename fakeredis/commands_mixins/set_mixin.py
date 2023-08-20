@@ -1,8 +1,8 @@
 import random
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Int, CommandItem)
-from fakeredis._helpers import (OK, SimpleError, casematch)
+from fakeredis._commands import command, Key, Int, CommandItem
+from fakeredis._helpers import OK, SimpleError, casematch
 
 
 def _calc_setop(op, stop_if_missing, key, *keys):
@@ -68,17 +68,19 @@ class SetCommandsMixin:
     @command((Int, bytes), (bytes,))
     def sintercard(self, numkeys, *args):
         if self.version < (7,):
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format('sintercard'))
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
         if numkeys < 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         limit = 0
-        if casematch(args[-2], b'limit'):
+        if casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
             args = args[:-2]
         if numkeys != len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        keys = [CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
-                for i in range(numkeys)]
+        keys = [
+            CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
+            for i in range(numkeys)
+        ]
 
         res = _setop(lambda a, b: a & b, False, None, *keys)
         return len(res) if limit == 0 else min(limit, len(res))

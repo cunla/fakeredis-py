@@ -34,6 +34,5 @@ class FakeSocket(
     JSONCommandsMixin,
     GeoCommandsMixin,
 ):
-
     def __init__(self, server, db):
         super(FakeSocket, self).__init__(server, db)

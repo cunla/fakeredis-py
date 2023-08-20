@@ -2,8 +2,8 @@ import functools
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import (Key, command, Int, CommandItem, Timeout, fix_range)
-from fakeredis._helpers import (OK, SimpleError, SimpleString, casematch, Database)
+from fakeredis._commands import Key, command, Int, CommandItem, Timeout, fix_range
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, Database
 
 
 def _list_pop_count(get_slice, key, count):
@@ -78,7 +78,9 @@ class ListCommandsMixin:
                 return None
         if not src.value:
             return None  # Empty list
-        dst = CommandItem(destination, self._db, item=self._db.get(destination), default=[])
+        dst = CommandItem(
+            destination, self._db, item=self._db.get(destination), default=[]
+        )
         if not isinstance(dst.value, list):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         el = src.value.pop()
@@ -91,10 +93,13 @@ class ListCommandsMixin:
             dst.writeback()
         return el
 
-    @command(name='BRPOPLPUSH', fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
+    @command(
+        name="BRPOPLPUSH", fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT
+    )
     def brpoplpush(self, source, destination, timeout):
-        return self._blocking(timeout,
-                              functools.partial(self._brpoplpush_pass, source, destination))
+        return self._blocking(
+            timeout, functools.partial(self._brpoplpush_pass, source, destination)
+        )
 
     @command((Key(list, None), Int))
     def lindex(self, key, index):
@@ -105,7 +110,7 @@ class ListCommandsMixin:
 
     @command((Key(list), bytes, bytes, bytes))
     def linsert(self, key, where, pivot, value):
-        if not casematch(where, b'before') and not casematch(where, b'after'):
+        if not casematch(where, b"before") and not casematch(where, b"after"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if not key:
             return 0
@@ -114,7 +119,7 @@ class ListCommandsMixin:
                 index = key.value.index(pivot)
             except ValueError:
                 return -1
-            if casematch(where, b'after'):
+            if casematch(where, b"after"):
                 index += 1
             key.value.insert(index, value)
             key.updated()
@@ -125,12 +130,17 @@ class ListCommandsMixin:
         return len(key.value)
 
     def _lmove(self, first_list, second_list, src, dst, first_pass):
-        if ((not casematch(src, b'left') and not casematch(src, b'right'))
-                or (not casematch(dst, b'left') and not casematch(dst, b'right'))):
+        if (not casematch(src, b"left") and not casematch(src, b"right")) or (
+            not casematch(dst, b"left") and not casematch(dst, b"right")
+        ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        el = self.rpop(first_list) if casematch(src, b'RIGHT') else self.lpop(first_list)
-        self.lpush(second_list, el) if casematch(dst, b'LEFT') else self.rpush(second_list, el)
+        el = (
+            self.rpop(first_list) if casematch(src, b"RIGHT") else self.lpop(first_list)
+        )
+        self.lpush(second_list, el) if casematch(dst, b"LEFT") else self.rpush(
+            second_list, el
+        )
         return el
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString))
@@ -140,7 +150,8 @@ class ListCommandsMixin:
     @command((Key(list, None), Key(list), SimpleString, SimpleString, Timeout))
     def blmove(self, first_list, second_list, src, dst, timeout):
         return self._blocking(
-            timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
+            timeout, functools.partial(self._lmove, first_list, second_list, src, dst)
+        )
 
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key, *args):
@@ -163,29 +174,44 @@ class ListCommandsMixin:
     def lmpop(self, numkeys, *args):
         if numkeys <= 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b'count'):
+        if casematch(args[-2], b"count"):
             count = Int.decode(args[-1])
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+        if len(args) != numkeys + 1 or (
+            not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
+        ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        return self._lmpop(args[:-1], count, casematch(args[-1], b'left'), False)
+        return self._lmpop(args[:-1], count, casematch(args[-1], b"left"), False)
 
-    @command(fixed=(Timeout, Int,), repeat=(bytes,))
+    @command(
+        fixed=(
+            Timeout,
+            Int,
+        ),
+        repeat=(bytes,),
+    )
     def blmpop(self, timeout, numkeys, *args):
         if numkeys <= 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b'count'):
+        if casematch(args[-2], b"count"):
             count = Int.decode(args[-1])
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b'left') and not casematch(args[-1], b'right')):
+        if len(args) != numkeys + 1 or (
+            not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
+        ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        return self._blocking(timeout, functools.partial(self._lmpop, args[:-1], count, casematch(args[-1], b'left')))
+        return self._blocking(
+            timeout,
+            functools.partial(
+                self._lmpop, args[:-1], count, casematch(args[-1], b"left")
+            ),
+        )
 
     @command((Key(list), bytes), (bytes,))
     def lpush(self, key, *values):
@@ -274,9 +300,22 @@ class ListCommandsMixin:
             return 0
         return self.rpush(key, *values)
 
-    @command(fixed=(Key(list), bytes,), repeat=(bytes,))
+    @command(
+        fixed=(
+            Key(list),
+            bytes,
+        ),
+        repeat=(bytes,),
+    )
     def lpos(self, key, elem, *args):
-        (rank, count, maxlen), _ = extract_args(args, ('+rank', '+count', '+maxlen',))
+        (rank, count, maxlen), _ = extract_args(
+            args,
+            (
+                "+rank",
+                "+count",
+                "+maxlen",
+            ),
+        )
         if rank == 0:
             raise SimpleError(msgs.LPOS_RANK_CAN_NOT_BE_ZERO)
         rank = rank or 1
@@ -286,9 +325,11 @@ class ListCommandsMixin:
         maxlen = maxlen or len(key.value)
         res = []
         comparisons = 0
-        while (0 <= ind <= len(key.value) - 1
-               and len(res) < parse_count
-               and comparisons < maxlen):
+        while (
+            0 <= ind <= len(key.value) - 1
+            and len(res) < parse_count
+            and comparisons < maxlen
+        ):
             comparisons += 1
             if key.value[ind] == elem:
                 if rank > 1:

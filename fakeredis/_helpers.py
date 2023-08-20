@@ -4,59 +4,61 @@ import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
+from typing import AnyStr, Any, Set, Callable, Dict
 
 
 class SimpleString:
-    def __init__(self, value):
+    def __init__(self, value: bytes):
         assert isinstance(value, bytes)
         self.value = value
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value: bytes):
         return value
 
 
 class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""
 
-    def __init__(self, value):
+    def __init__(self, value: str):
         assert isinstance(value, str)
         self.value = value
 
 
 class NoResponse:
     """Returned by pub/sub commands to indicate that no response should be returned"""
+
     pass
 
 
-OK = SimpleString(b'OK')
-QUEUED = SimpleString(b'QUEUED')
-BGSAVE_STARTED = SimpleString(b'Background saving started')
+OK = SimpleString(b"OK")
+QUEUED = SimpleString(b"QUEUED")
+BGSAVE_STARTED = SimpleString(b"Background saving started")
 
 
-def current_time():
+def current_time() -> int:
     return int(time.time() * 1000)
 
 
-def null_terminate(s):
+def null_terminate(s: bytes) -> bytes:
     # Redis uses C functions on some strings, which means they stop at the
     # first NULL.
-    ind = s.find(b'\0')
+    ind = s.find(b"\0")
     if ind > -1:
         return s[:ind].lower()
     return s.lower()
 
 
-def casematch(a, b):
+def casematch(a: bytes, b: bytes) -> bool:
     return null_terminate(a) == null_terminate(b)
 
 
-def encode_command(s):
-    return s.decode(encoding='utf-8', errors='replace').lower()
+def encode_command(s: bytes) -> str:
+    return s.decode(encoding="utf-8", errors="replace").lower()
 
 
-def compile_pattern(pattern):
-    """Compile a glob pattern (e.g. for keys) to a bytes regex.
+def compile_pattern(pattern_bytes: bytes) -> re.Pattern[AnyStr]:
+    """Compile a glob pattern (e.g., for keys) to a bytes regex.
 
     fnmatch.fnmatchcase doesn't work for this, because it uses different
     escaping rules to redis, uses ! instead of ^ to negate a character set,
@@ -65,83 +67,87 @@ def compile_pattern(pattern):
     """
     # It's easier to work with text than bytes, because indexing bytes
     # doesn't behave the same in Python 3. Latin-1 will round-trip safely.
-    pattern = pattern.decode('latin-1', )
-    parts = ['^']
+    pattern: str = pattern_bytes.decode(
+        "latin-1",
+    )
+    parts = ["^"]
     i = 0
     pattern_len = len(pattern)
     while i < pattern_len:
         c = pattern[i]
         i += 1
-        if c == '?':
-            parts.append('.')
-        elif c == '*':
-            parts.append('.*')
-        elif c == '\\':
+        if c == "?":
+            parts.append(".")
+        elif c == "*":
+            parts.append(".*")
+        elif c == "\\":
             if i == pattern_len:
                 i -= 1
             parts.append(re.escape(pattern[i]))
             i += 1
-        elif c == '[':
-            parts.append('[')
-            if i < pattern_len and pattern[i] == '^':
+        elif c == "[":
+            parts.append("[")
+            if i < pattern_len and pattern[i] == "^":
                 i += 1
-                parts.append('^')
+                parts.append("^")
             parts_len = len(parts)  # To detect if anything was added
             while i < pattern_len:
-                if pattern[i] == '\\' and i + 1 < pattern_len:
+                if pattern[i] == "\\" and i + 1 < pattern_len:
                     i += 1
                     parts.append(re.escape(pattern[i]))
-                elif pattern[i] == ']':
+                elif pattern[i] == "]":
                     i += 1
                     break
-                elif i + 2 < pattern_len and pattern[i + 1] == '-':
+                elif i + 2 < pattern_len and pattern[i + 1] == "-":
                     start = pattern[i]
                     end = pattern[i + 2]
                     if start > end:
                         start, end = end, start
-                    parts.append(re.escape(start) + '-' + re.escape(end))
+                    parts.append(re.escape(start) + "-" + re.escape(end))
                     i += 2
                 else:
                     parts.append(re.escape(pattern[i]))
                 i += 1
             if len(parts) == parts_len:
-                if parts[-1] == '[':
+                if parts[-1] == "[":
                     # Empty group - will never match
-                    parts[-1] = '(?:$.)'
+                    parts[-1] = "(?:$.)"
                 else:
                     # Negated empty group - matches any character
-                    assert parts[-1] == '^'
+                    assert parts[-1] == "^"
                     parts.pop()
-                    parts[-1] = '.'
+                    parts[-1] = "."
             else:
-                parts.append(']')
+                parts.append("]")
         else:
             parts.append(re.escape(c))
-    parts.append('\\Z')
-    regex = ''.join(parts).encode('latin-1')
-    return re.compile(regex, re.S)
+    parts.append("\\Z")
+    regex: bytes = "".join(parts).encode("latin-1")
+    return re.compile(regex, flags=re.S)  # type: ignore
 
 
 class Database(MutableMapping):
     def __init__(self, lock, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
         self.time = 0.0
-        self._watches = defaultdict(weakref.WeakSet)  # key to set of connections
+        self._watches: Dict[bytes, weakref.WeakSet] = defaultdict(
+            weakref.WeakSet
+        )  # key to set of connections
         self.condition = threading.Condition(lock)
-        self._change_callbacks = set()
+        self._change_callbacks: Set[Callable] = set()
 
-    def swap(self, other):
+    def swap(self, other: "Database"):
         self._dict, other._dict = other._dict, self._dict
         self.time, other.time = other.time, self.time
 
-    def notify_watch(self, key):
+    def notify_watch(self, key: bytes):
         for sock in self._watches.get(key, set()):
             sock.notify_watch()
         self.condition.notify_all()
         for callback in self._change_callbacks:
             callback()
 
-    def add_watch(self, key, sock):
+    def add_watch(self, key: bytes, sock):
         self._watches[key].add(sock)
 
     def remove_watch(self, key, sock):
@@ -150,27 +156,27 @@ class Database(MutableMapping):
         if not watches:
             del self._watches[key]
 
-    def add_change_callback(self, callback):
+    def add_change_callback(self, callback: Callable) -> None:
         self._change_callbacks.add(callback)
 
-    def remove_change_callback(self, callback):
+    def remove_change_callback(self, callback: Callable) -> None:
         self._change_callbacks.remove(callback)
 
-    def clear(self):
+    def clear(self) -> None:
         for key in self:
             self.notify_watch(key)
         self._dict.clear()
 
-    def expired(self, item):
+    def expired(self, item: Any) -> bool:
         return item.expireat is not None and item.expireat < self.time
 
-    def _remove_expired(self):
+    def _remove_expired(self) -> None:
         for key in list(self._dict):
             item = self._dict[key]
             if self.expired(item):
                 del self._dict[key]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: AnyStr) -> Any:
         item = self._dict[key]
         if self.expired(item):
             del self._dict[key]
@@ -198,11 +204,12 @@ class Database(MutableMapping):
         return super(object, self) == other
 
 
-def valid_response_type(value, nested=False):
+def valid_response_type(value: Any, nested=False) -> bool:
     if isinstance(value, NoResponse) and not nested:
         return True
-    if (value is not None
-            and not isinstance(value, (bytes, SimpleString, SimpleError, float, int, list))):
+    if value is not None and not isinstance(
+            value, (bytes, SimpleString, SimpleError, float, int, list)
+    ):
         return False
     if isinstance(value, list):
         if any(not valid_response_type(item, True) for item in value):
@@ -214,7 +221,7 @@ class FakeSelector(object):
     def __init__(self, sock):
         self.sock = sock
 
-    def check_can_read(self, timeout):
+    def check_can_read(self, timeout) -> bool:
         if self.sock.responses.qsize():
             return True
         if timeout is not None and timeout <= 0:
@@ -232,5 +239,5 @@ class FakeSelector(object):
                 return False
 
     @staticmethod
-    def check_is_ready_for_command(timeout):
+    def check_is_ready_for_command(timeout) -> bool:
         return True

@@ -1,6 +1,6 @@
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key)
-from fakeredis._helpers import (OK, SimpleError)
+from fakeredis._commands import command, Key
+from fakeredis._helpers import OK, SimpleError
 
 
 class TransactionsCommandsMixin:
@@ -24,16 +24,21 @@ class TransactionsCommandsMixin:
     @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def discard(self):
         if self._transaction is None:
-            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('DISCARD'))
+            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("DISCARD"))
         self._transaction = None
         self._transaction_failed = False
         self._clear_watches()
         return OK
 
-    @command(name='exec', fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
+    @command(
+        name="exec",
+        fixed=(),
+        repeat=(),
+        flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION],
+    )
     def exec_(self):
         if self._transaction is None:
-            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format('EXEC'))
+            raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("EXEC"))
         if self._transaction_failed:
             self._transaction = None
             self._clear_watches()

@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional, Any
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
@@ -18,6 +18,7 @@ COMMANDS_WITH_SUB = set()  # Commands with sub-commands
 
 class Key:
     """Marker to indicate that argument in signature is a key"""
+
     UNSPECIFIED = object()
 
     def __init__(self, type_=None, missing_return=UNSPECIFIED):
@@ -28,7 +29,7 @@ class Key:
 class Item:
     """An item stored in the database"""
 
-    __slots__ = ['value', 'expireat']
+    __slots__ = ["value", "expireat"]
 
     def __init__(self, value):
         self.value = value
@@ -86,8 +87,9 @@ class CommandItem:
     def writeback(self, remove_empty_val=True):
         if self._modified:
             self.db.notify_watch(self.key)
-            if (not isinstance(self.value, bytes) and (
-                    self.value is None or (not self.value and remove_empty_val))):
+            if not isinstance(self.value, bytes) and (
+                    self.value is None or (not self.value and remove_empty_val)
+            ):
                 self.db.pop(self.key, None)
                 return
             else:
@@ -105,7 +107,7 @@ class CommandItem:
 
 class Hash(dict):
     DECODE_ERROR = msgs.INVALID_HASH_MSG
-    redis_type = b'hash'
+    redis_type = b"hash"
 
 
 class Int:
@@ -113,7 +115,7 @@ class Int:
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
     ENCODE_ERROR = msgs.OVERFLOW_MSG
-    MIN_VALUE = -2 ** 63
+    MIN_VALUE = -(2 ** 63)
     MAX_VALUE = 2 ** 63 - 1
 
     @classmethod
@@ -178,19 +180,22 @@ class Float:
     DECODE_ERROR = msgs.INVALID_FLOAT_MSG
 
     @classmethod
-    def decode(cls, value,
-               allow_leading_whitespace=False,
-               allow_erange=False,
-               allow_empty=False,
-               crop_null=False,
-               decode_error=None):
+    def decode(
+            cls,
+            value,
+            allow_leading_whitespace=False,
+            allow_erange=False,
+            allow_empty=False,
+            crop_null=False,
+            decode_error=None,
+    ):
         # redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
         try:
             if crop_null:
                 value = null_terminate(value)
-            if allow_empty and value == b'':
-                value = b'0.0'
+            if allow_empty and value == b"":
+                value = b"0.0"
             if not allow_leading_whitespace and value[:1].isspace():
                 raise ValueError
             if value[-1:].isspace():
@@ -202,23 +207,25 @@ class Float:
                 # Values that over- or underflow- are explicitly rejected by
                 # redis. This is a crude hack to determine whether the input
                 # may have been such a value.
-                if out in (math.inf, -math.inf, 0.0) and re.match(b'^[^a-zA-Z]*[1-9]', value):
+                if out in (math.inf, -math.inf, 0.0) and re.match(
+                        b"^[^a-zA-Z]*[1-9]", value
+                ):
                     raise ValueError
             return out
         except ValueError:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
 
     @classmethod
-    def encode(cls, value, humanfriendly):
+    def encode(cls, value: float, humanfriendly: bool) -> bytes:
         if math.isinf(value):
             return str(value).encode()
         elif humanfriendly:
             # Algorithm from ld2string in redis
-            out = '{:.17f}'.format(value)
-            out = re.sub(r'\.?0+$', '', out)
+            out = "{:.17f}".format(value)
+            out = re.sub(r"\.?0+$", "", out)
             return out.encode()
         else:
-            return '{:.17g}'.format(value).encode()
+            return "{:.17g}".format(value).encode()
 
 
 class SortFloat(Float):
@@ -227,15 +234,16 @@ class SortFloat(Float):
     @classmethod
     def decode(cls, value, **kwargs):
         return super().decode(
-            value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
+            value, allow_leading_whitespace=True, allow_empty=True, crop_null=True
+        )
 
 
 @functools.total_ordering
 class BeforeAny:
-    def __gt__(self, other):
+    def __gt__(self, other: Any):
         return False
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
         return isinstance(other, BeforeAny)
 
     def __hash__(self):
@@ -244,10 +252,10 @@ class BeforeAny:
 
 @functools.total_ordering
 class AfterAny:
-    def __lt__(self, other):
+    def __lt__(self, other: Any):
         return False
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
         return isinstance(other, AfterAny)
 
     def __hash__(self):
@@ -257,7 +265,7 @@ class AfterAny:
 class ScoreTest:
     """Argument converter for sorted set score endpoints."""
 
-    def __init__(self, value: float, exclusive: bool = False, bytes_val: bytes = None):
+    def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
         self.value = value
         self.exclusive = exclusive
         self.bytes_val = bytes_val
@@ -267,19 +275,23 @@ class ScoreTest:
         try:
             original_value = value
             exclusive = False
-            if value[:1] == b'(':
+            if value[:1] == b"(":
                 exclusive = True
                 value = value[1:]
             value = Float.decode(
-                value, allow_leading_whitespace=True, allow_erange=True,
-                allow_empty=True, crop_null=True)
+                value,
+                allow_leading_whitespace=True,
+                allow_erange=True,
+                allow_empty=True,
+                crop_null=True,
+            )
             return cls(value, exclusive, original_value)
         except SimpleError:
             raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
 
     def __str__(self):
         if self.exclusive:
-            return '({!r}'.format(self.value)
+            return "({!r}".format(self.value)
         else:
             return repr(self.value)
 
@@ -300,23 +312,23 @@ class StringTest:
         self.exclusive = exclusive
 
     @classmethod
-    def decode(cls, value: bytes) -> 'StringTest':
-        if value == b'-':
+    def decode(cls, value: bytes) -> "StringTest":
+        if value == b"-":
             return cls(BeforeAny(), True)
-        elif value == b'+':
+        elif value == b"+":
             return cls(AfterAny(), True)
-        elif value[:1] == b'(':
+        elif value[:1] == b"(":
             return cls(value[1:], True)
-        elif value[:1] == b'[':
+        elif value[:1] == b"[":
             return cls(value[1:], False)
         else:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
 
     def to_scoretest(self, zset: ZSet):
         if isinstance(self.value, BeforeAny):
-            return ScoreTest(float('-inf'), False)
+            return ScoreTest(float("-inf"), False)
         if isinstance(self.value, AfterAny):
-            return ScoreTest(float('inf'), False)
+            return ScoreTest(float("inf"), False)
         return ScoreTest(zset.get(self.value, None), self.exclusive)
 
 
@@ -336,7 +348,11 @@ class Signature:
                 msg = msgs.WRONG_ARGS_MSG6.format(self.name)
                 raise SimpleError(msg)
             if delta % len(self.repeat) != 0:
-                msg = msgs.WRONG_ARGS_MSG7 if version >= (7,) else msgs.WRONG_ARGS_MSG6.format(self.name)
+                msg = (
+                    msgs.WRONG_ARGS_MSG7
+                    if version >= (7,)
+                    else msgs.WRONG_ARGS_MSG6.format(self.name)
+                )
                 raise SimpleError(msg)
 
     def apply(self, args, db, version):
@@ -355,9 +371,11 @@ class Signature:
         for i, (arg, type_) in enumerate(zip(args, types)):
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
-                    return type_.missing_return,
+                    return (type_.missing_return,)
             elif type_ != bytes:
-                args[i] = type_.decode(args[i], )
+                args[i] = type_.decode(
+                    args[i],
+                )
 
         # Second pass: read keys and check their types
         command_items = []
@@ -365,13 +383,17 @@ class Signature:
             if isinstance(type_, Key):
                 item = db.get(arg)
                 default = None
-                if (type_.type_ is not None
+                if (
+                        type_.type_ is not None
                         and item is not None
-                        and type(item.value) is not type_.type_):
+                        and type(item.value) is not type_.type_
+                ):
                     raise SimpleError(msgs.WRONGTYPE_MSG)
-                if (type_.type_ is not None
+                if (
+                        type_.type_ is not None
                         and item is None
-                        and type_.type_ is not bytes):
+                        and type_.type_ is not bytes
+                ):
                     default = type_.type_()
                 args[i] = CommandItem(arg, db, item, default=default)
                 command_items.append(args[i])
@@ -381,12 +403,14 @@ class Signature:
 
 def command(*args, **kwargs):
     def create_signature(func, cmd_name):
-        if ' ' in cmd_name:
-            COMMANDS_WITH_SUB.add(cmd_name.split(' ')[0])
-        SUPPORTED_COMMANDS[cmd_name] = Signature(cmd_name, func.__name__, *args, **kwargs)
+        if " " in cmd_name:
+            COMMANDS_WITH_SUB.add(cmd_name.split(" ")[0])
+        SUPPORTED_COMMANDS[cmd_name] = Signature(
+            cmd_name, func.__name__, *args, **kwargs
+        )
 
     def decorator(func):
-        cmd_names = kwargs.pop('name', func.__name__)
+        cmd_names = kwargs.pop("name", func.__name__)
         if isinstance(cmd_names, list):  # Support for alias commands
             for cmd_name in cmd_names:
                 create_signature(func, cmd_name.lower())
@@ -436,16 +460,16 @@ def fix_range_string(start, end, length):
 
 def key_value_type(key):
     if key.value is None:
-        return SimpleString(b'none')
+        return SimpleString(b"none")
     elif isinstance(key.value, bytes):
-        return SimpleString(b'string')
+        return SimpleString(b"string")
     elif isinstance(key.value, list):
-        return SimpleString(b'list')
+        return SimpleString(b"list")
     elif isinstance(key.value, set):
-        return SimpleString(b'set')
+        return SimpleString(b"set")
     elif isinstance(key.value, ZSet):
-        return SimpleString(b'zset')
+        return SimpleString(b"zset")
     elif isinstance(key.value, dict):
-        return SimpleString(b'hash')
+        return SimpleString(b"hash")
     else:
         assert False  # pragma: nocover

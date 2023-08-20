@@ -77,11 +77,17 @@ class ZSet:
         default_score = self._byscore[0][0]
         start_score = self._bylex.get(start, default_score)
         stop_score = self._bylex.get(stop, default_score)
-        it = self._byscore.irange((start_score, start), (stop_score, stop),
-                                  inclusive=inclusive, reverse=reverse)
+        it = self._byscore.irange(
+            (start_score, start),
+            (stop_score, stop),
+            inclusive=inclusive,
+            reverse=reverse,
+        )
         return (item[1] for item in it)
 
-    def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False):
+    def irange_score(
+        self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False
+    ):
         return self._byscore.irange(start, stop, reverse=reverse)
 
     def rank(self, member):

@@ -5,43 +5,67 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional, List, Tuple
+from typing import Union, Optional, List, Tuple, Callable, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import (command, Key, Int, Float, CommandItem, Timeout, ScoreTest, StringTest, fix_range)
-from fakeredis._helpers import (SimpleError, casematch, null_terminate, Database, )
+from fakeredis._commands import (
+    command,
+    Key,
+    Int,
+    Float,
+    CommandItem,
+    Timeout,
+    ScoreTest,
+    StringTest,
+    fix_range,
+)
+from fakeredis._helpers import (
+    SimpleError,
+    casematch,
+    null_terminate,
+    Database,
+)
 from fakeredis._zset import ZSet
 
 SORTED_SET_METHODS = {
-    'ZUNIONSTORE': lambda s1, s2: s1 | s2,
-    'ZUNION': lambda s1, s2: s1 | s2,
-    'ZINTERSTORE': lambda s1, s2: s1.intersection(s2),
-    'ZINTER': lambda s1, s2: s1.intersection(s2),
-    'ZDIFFSTORE': lambda s1, s2: s1 - s2,
-    'ZDIFF': lambda s1, s2: s1 - s2,
+    "ZUNIONSTORE": lambda s1, s2: s1 | s2,
+    "ZUNION": lambda s1, s2: s1 | s2,
+    "ZINTERSTORE": lambda s1, s2: s1.intersection(s2),
+    "ZINTER": lambda s1, s2: s1.intersection(s2),
+    "ZDIFFSTORE": lambda s1, s2: s1 - s2,
+    "ZDIFF": lambda s1, s2: s1 - s2,
 }
 
 
 class SortedSetCommandsMixin:
     _db: Database
     version: Tuple[int]
+    _blocking: Callable
+    _scan: Callable
 
     # Sorted set commands
-    def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[bytes]:
+    def _zpop(
+            self, key: CommandItem, count: int, reverse: bool, flatten_list: bool
+    ) -> List[List[Any]]:
         zset = key.value
         members = list(zset)
         if reverse:
             members.reverse()
         members = members[:count]
-        res = [[bytes(member), self._encodefloat(zset.get(member), True)] for member in members]
+        res = [
+            [bytes(member), self._encodefloat(zset.get(member), True)]
+            for member in members
+        ]
         if flatten_list:
             res = list(itertools.chain.from_iterable(res))
         for item in members:
             zset.discard(item)
         return res
 
-    def _bzpop(self, keys: List[CommandItem], reverse: bool, first_pass: bool) -> Optional[List[bytes]]:
+    def _bzpop(
+            self, keys: List[CommandItem], reverse: bool, first_pass: bool
+    ) -> Optional[List[Any]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse, True)
@@ -97,7 +121,17 @@ class SortedSetCommandsMixin:
         zset = key.value
 
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
-            args, ('nx', 'xx', 'ch', 'incr', 'gt', 'lt',), error_on_unexpected=False)
+            args,
+            (
+                "nx",
+                "xx",
+                "ch",
+                "incr",
+                "gt",
+                "lt",
+            ),
+            error_on_unexpected=False,
+        )
 
         elements = left_args
         if not elements or len(elements) % 2 != 0:
@@ -110,8 +144,14 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
         items = [
-            ((0.0 + Float.decode(elements[j]) if self.version >= (7,)
-              else Float.decode(elements[j]), elements[j + 1]))
+            (
+                (
+                    0.0 + Float.decode(elements[j])
+                    if self.version >= (7,)
+                    else Float.decode(elements[j]),
+                    elements[j + 1],
+                )
+            )
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)
@@ -127,10 +167,20 @@ class SortedSetCommandsMixin:
             update = count == 0
             update = update or (count == 1 and nx and item_name not in zset)
             update = update or (count == 1 and xx and item_name in zset)
-            update = update or (gt and ((item_name in zset and zset.get(item_name) < item_score)
-                                        or (not xx and item_name not in zset)))
-            update = update or (lt and ((item_name in zset and zset.get(item_name) > item_score)
-                                        or (not xx and item_name not in zset)))
+            update = update or (
+                    gt
+                    and (
+                            (item_name in zset and zset.get(item_name) < item_score)
+                            or (not xx and item_name not in zset)
+                    )
+            )
+            update = update or (
+                    lt
+                    and (
+                            (item_name in zset and zset.get(item_name) > item_score)
+                            or (not xx and item_name not in zset)
+                    )
+            )
 
             if update:
                 if zset.add(item_name, item_score):
@@ -170,13 +220,19 @@ class SortedSetCommandsMixin:
 
     @command((Key(ZSet), StringTest, StringTest))
     def zlexcount(self, key, _min, _max):
-        return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)
+        return key.value.zlexcount(
+            _min.value, _min.exclusive, _max.value, _max.exclusive
+        )
 
-    def _zrangebyscore(self, key, _min, _max, reverse, withscores, offset, count) -> List[bytes]:
+    def _zrangebyscore(
+            self, key, _min, _max, reverse, withscores, offset, count
+    ) -> List[bytes]:
         zset = key.value
         if reverse:
             _min, _max = _max, _min
-        items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
+        items = list(
+            zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse)
+        )
         items = self._limit_items(items, offset, count)
         items = self._apply_withscores(items, withscores)
         return items
@@ -184,7 +240,9 @@ class SortedSetCommandsMixin:
     def _zrange(self, key, start, stop, reverse, withscores, byscore) -> List[bytes]:
         zset = key.value
         if byscore:
-            items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
+            items = zset.irange_score(
+                start.lower_bound, stop.upper_bound, reverse=reverse
+            )
         else:
             start, stop = Int.decode(start.bytes_val), Int.decode(stop.bytes_val)
             start, stop = fix_range(start, stop, len(zset))
@@ -198,15 +256,19 @@ class SortedSetCommandsMixin:
         zset = key.value
         if reverse:
             _min, _max = _max, _min
-        items = zset.irange_lex(_min.value, _max.value,
-                                inclusive=(not _min.exclusive, not _max.exclusive),
-                                reverse=reverse)
+        items = zset.irange_lex(
+            _min.value,
+            _max.value,
+            inclusive=(not _min.exclusive, not _max.exclusive),
+            reverse=reverse,
+        )
         items = self._limit_items(items, offset, count)
         return items
 
     def _zrange_args(self, key, start, stop, *args):
         (bylex, byscore, rev, (offset, count), withscores), _ = extract_args(
-            args, ('bylex', 'byscore', 'rev', '++limit', 'withscores'))
+            args, ("bylex", "byscore", "rev", "++limit", "withscores")
+        )
         if offset is not None and not bylex and not byscore:
             raise SimpleError(msgs.SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG)
         if bylex and byscore:
@@ -217,13 +279,32 @@ class SortedSetCommandsMixin:
 
         if bylex:
             res = self._zrangebylex(
-                key, StringTest.decode(start), StringTest.decode(stop), rev, offset, count)
+                key,
+                StringTest.decode(start),
+                StringTest.decode(stop),
+                rev,
+                offset,
+                count,
+            )
         elif byscore:
             res = self._zrangebyscore(
-                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, offset, count)
+                key,
+                ScoreTest.decode(start),
+                ScoreTest.decode(stop),
+                rev,
+                withscores,
+                offset,
+                count,
+            )
         else:
             res = self._zrange(
-                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, byscore)
+                key,
+                ScoreTest.decode(start),
+                ScoreTest.decode(stop),
+                rev,
+                withscores,
+                byscore,
+            )
         return res
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
@@ -241,33 +322,33 @@ class SortedSetCommandsMixin:
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrange(self, key, start, stop, *args):
-        (withscores, byscore), _ = extract_args(args, ('withscores', 'byscore'))
+        (withscores, byscore), _ = extract_args(args, ("withscores", "byscore"))
         return self._zrange(key, start, stop, True, withscores, byscore)
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
     def zrangebylex(self, key, _min, _max, *args):
-        ((offset, count),), _ = extract_args(args, ('++limit',))
+        ((offset, count),), _ = extract_args(args, ("++limit",))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebylex(key, _min, _max, False, offset, count)
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
     def zrevrangebylex(self, key, _min, _max, *args):
-        ((offset, count),), _ = extract_args(args, ('++limit',))
+        ((offset, count),), _ = extract_args(args, ("++limit",))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebylex(key, _min, _max, True, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrangebyscore(self, key, _min, _max, *args):
-        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
+        (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, False, withscores, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrangebyscore(self, key, _min, _max, *args):
-        (withscores, (offset, count)), _ = extract_args(args, ('withscores', '++limit'))
+        (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
@@ -299,7 +380,8 @@ class SortedSetCommandsMixin:
     @command((Key(ZSet), StringTest, StringTest))
     def zremrangebylex(self, key, _min, _max):
         items = key.value.irange_lex(
-            _min.value, _max.value, inclusive=(not _min.exclusive, not _max.exclusive))
+            _min.value, _max.value, inclusive=(not _min.exclusive, not _max.exclusive)
+        )
         return self.zrem(key, *items)
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
@@ -318,7 +400,7 @@ class SortedSetCommandsMixin:
     def zscan(self, key, cursor, *args):
         new_cursor, ans = self._scan(key.value.items(), cursor, *args)
         flat = []
-        for (key, score) in ans:
+        for key, score in ans:
             flat.append(key)
             flat.append(self._encodefloat(score, False))
         return [new_cursor, flat]
@@ -347,21 +429,21 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        aggregate = b'sum'
+        aggregate = b"sum"
         weights = [1.0] * numkeys
 
         i = numkeys
         while i < len(args):
             arg = args[i]
-            if casematch(arg, b'weights') and i + numkeys < len(args):
+            if casematch(arg, b"weights") and i + numkeys < len(args):
                 weights = [
                     Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG)
-                    for x in args[i + 1:i + numkeys + 1]
+                    for x in args[i + 1: i + numkeys + 1]
                 ]
                 i += numkeys + 1
-            elif casematch(arg, b'aggregate') and i + 1 < len(args):
+            elif casematch(arg, b"aggregate") and i + 1 < len(args):
                 aggregate = null_terminate(args[i + 1])
-                if aggregate not in (b'sum', b'min', b'max'):
+                if aggregate not in (b"sum", b"min", b"max"):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
             else:
@@ -369,7 +451,9 @@ class SortedSetCommandsMixin:
 
         sets = []
         for i in range(numkeys):
-            item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
+            item = CommandItem(
+                args[i], self._db, item=self._db.get(args[i]), default=ZSet()
+            )
             sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
@@ -389,19 +473,19 @@ class SortedSetCommandsMixin:
                 score *= w
                 # Redis only does this step for ZUNIONSTORE. See
                 # https://github.com/antirez/redis/issues/3954.
-                if func in {'ZUNIONSTORE', 'ZUNION'} and math.isnan(score):
+                if func in {"ZUNIONSTORE", "ZUNION"} and math.isnan(score):
                     score = 0.0
                 if member not in out_members:
                     continue
                 if member in out:
                     old = out[member]
-                    if aggregate == b'sum':
+                    if aggregate == b"sum":
                         score += old
                         if math.isnan(score):
                             score = 0.0
-                    elif aggregate == b'max':
+                    elif aggregate == b"max":
                         score = max(old, score)
-                    elif aggregate == b'min':
+                    elif aggregate == b"min":
                         score = min(old, score)
                     else:
                         assert False  # pragma: nocover
@@ -421,21 +505,27 @@ class SortedSetCommandsMixin:
 
     @command((Key(), Int, bytes), (bytes,))
     def zunionstore(self, dest, numkeys, *args):
-        return self._zunioninterdiff('ZUNIONSTORE', dest, numkeys, *args)
+        return self._zunioninterdiff("ZUNIONSTORE", dest, numkeys, *args)
 
     @command((Key(), Int, bytes), (bytes,))
     def zinterstore(self, dest, numkeys, *args):
-        return self._zunioninterdiff('ZINTERSTORE', dest, numkeys, *args)
+        return self._zunioninterdiff("ZINTERSTORE", dest, numkeys, *args)
 
     @command((Key(), Int, bytes), (bytes,))
     def zdiffstore(self, dest, numkeys, *args):
-        return self._zunioninterdiff('ZDIFFSTORE', dest, numkeys, *args)
+        return self._zunioninterdiff("ZDIFFSTORE", dest, numkeys, *args)
 
-    @command((Int, bytes,), (bytes,))
+    @command(
+        (
+                Int,
+                bytes,
+        ),
+        (bytes,),
+    )
     def zdiff(self, numkeys, *args):
-        withscores = casematch(b'withscores', args[-1])
+        withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
-        res = self._zunioninterdiff('ZDIFF', None, numkeys, *sets)
+        res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
 
         if withscores:
             res = [item for t in res for item in (t, Float.encode(res[t], False))]
@@ -443,11 +533,17 @@ class SortedSetCommandsMixin:
             res = [t for t in res]
         return res
 
-    @command((Int, bytes,), (bytes,))
+    @command(
+        (
+                Int,
+                bytes,
+        ),
+        (bytes,),
+    )
     def zunion(self, numkeys, *args):
-        withscores = casematch(b'withscores', args[-1])
+        withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
-        res = self._zunioninterdiff('ZUNION', None, numkeys, *sets)
+        res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
 
         if withscores:
             res = [item for t in res for item in (t, Float.encode(res[t], False))]
@@ -455,11 +551,17 @@ class SortedSetCommandsMixin:
             res = [t for t in res]
         return res
 
-    @command((Int, bytes,), (bytes,))
+    @command(
+        (
+                Int,
+                bytes,
+        ),
+        (bytes,),
+    )
     def zinter(self, numkeys, *args):
-        withscores = casematch(b'withscores', args[-1])
+        withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
-        res = self._zunioninterdiff('ZINTER', None, numkeys, *sets)
+        res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
 
         if withscores:
             res = [item for t in res for item in (t, Float.encode(res[t], False))]
@@ -467,16 +569,29 @@ class SortedSetCommandsMixin:
             res = [t for t in res]
         return res
 
-    @command(name="ZINTERCARD", fixed=(Int, bytes,), repeat=(bytes,))
+    @command(
+        name="ZINTERCARD",
+        fixed=(
+                Int,
+                bytes,
+        ),
+        repeat=(bytes,),
+    )
     def zintercard(self, numkeys, *args):
         (limit,), left_args = extract_args(
-            args, ('+limit',), error_on_unexpected=False, left_from_first_unexpected=False)
+            args,
+            ("+limit",),
+            error_on_unexpected=False,
+            left_from_first_unexpected=False,
+        )
         limit = limit if limit != 0 else sys.maxsize
-        res = self._zunioninterdiff('ZINTER', None, numkeys, *left_args)
+        res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
         return min(limit, len(res))
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+    def zmscore(
+            self, key: CommandItem, *members: Union[str, bytes]
+    ) -> list[Optional[float]]:
         """Get the scores associated with the specified members in the sorted set
         stored at key.
 
@@ -484,18 +599,20 @@ class SortedSetCommandsMixin:
         is returned.
         """
         scores = map(
-            lambda score: score if score is None else self._encodefloat(score, humanfriendly=False),
+            lambda score: score
+            if score is None
+            else self._encodefloat(score, humanfriendly=False),
             map(key.value.get, members),
         )
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args) -> list[Optional[float]]:
+    def zrandmember(self, key: CommandItem, *args) -> Optional[list[float]]:
         count, withscores = 1, None
         if len(args) > 0:
             count = Int.decode(args[0])
         if len(args) > 1:
-            if casematch(b'withscores', args[1]):
+            if casematch(b"withscores", args[1]):
                 withscores = True
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -526,29 +643,44 @@ class SortedSetCommandsMixin:
     def zmpop(self, numkeys: int, *args):
         if numkeys == 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b'count'):
+        if casematch(args[-2], b"count"):
             count = Int.decode(args[-1])
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b'min') and not casematch(args[-1], b'max')):
+        if len(args) != numkeys + 1 or (
+                not casematch(args[-1], b"min") and not casematch(args[-1], b"max")
+        ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        return self._zmpop(args[:-1], count, casematch(args[-1], b'max'), False)
+        return self._zmpop(args[:-1], count, casematch(args[-1], b"max"), False)
 
-    @command(fixed=(Timeout, Int,), repeat=(bytes,))
+    @command(
+        fixed=(
+                Timeout,
+                Int,
+        ),
+        repeat=(bytes,),
+    )
     def bzmpop(self, timeout, numkeys: int, *args):
         if numkeys == 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b'count'):
+        if casematch(args[-2], b"count"):
             count = Int.decode(args[-1])
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b'min') and not casematch(args[-1], b'max')):
+        if len(args) != numkeys + 1 or (
+                not casematch(args[-1], b"min") and not casematch(args[-1], b"max")
+        ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        return self._blocking(timeout, functools.partial(self._zmpop, args[:-1], count, casematch(args[-1], b'max')))
+        return self._blocking(
+            timeout,
+            functools.partial(
+                self._zmpop, args[:-1], count, casematch(args[-1], b"max")
+            ),
+        )
 
     def _encodefloat(self, value, humanfriendly):
         raise NotImplementedError  # Implemented in BaseFakeSocket

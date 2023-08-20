@@ -6,9 +6,17 @@ from typing import Tuple, Any
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
-    command, Key, Int, DbIndex, BeforeAny, CommandItem, SortFloat,
-    delete_keys, key_value_type, )
-from fakeredis._helpers import (compile_pattern, SimpleError, OK, casematch, Database)
+    command,
+    Key,
+    Int,
+    DbIndex,
+    BeforeAny,
+    CommandItem,
+    SortFloat,
+    delete_keys,
+    key_value_type,
+)
+from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database
 from fakeredis._zset import ZSet
 
 
@@ -20,16 +28,16 @@ class GenericCommandsMixin:
 
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""
-        if pattern == b'#':
+        if pattern == b"#":
             return key
-        p = pattern.find(b'*')
+        p = pattern.find(b"*")
         if p == -1:
             return None
         prefix = pattern[:p]
-        suffix = pattern[p + 1:]
-        arrow = suffix.find(b'->', 0, -1)
+        suffix = pattern[p + 1 :]
+        arrow = suffix.find(b"->", 0, -1)
         if arrow != -1:
-            field = suffix[arrow + 2:]
+            field = suffix[arrow + 2 :]
             suffix = suffix[:arrow]
         else:
             field = None
@@ -47,23 +55,38 @@ class GenericCommandsMixin:
             return item.value
 
     def _expireat(self, key, timestamp, *args):
-        (nx, xx, gt, lt,), _ = extract_args(
-            args, ('nx', 'xx', 'gt', 'lt',), exception=msgs.EXPIRE_UNSUPPORTED_OPTION, )
+        (
+            nx,
+            xx,
+            gt,
+            lt,
+        ), _ = extract_args(
+            args,
+            (
+                "nx",
+                "xx",
+                "gt",
+                "lt",
+            ),
+            exception=msgs.EXPIRE_UNSUPPORTED_OPTION,
+        )
         if self.version < (7,) and any((nx, xx, gt, lt)):
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format('expire'))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
         counter = (nx, gt, lt).count(True)
         if (counter > 1) or (nx and xx):
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
-        if (not key
-                or (xx and key.expireat is None)
-                or (nx and key.expireat is not None)
-                or (gt and key.expireat is not None and timestamp < key.expireat)
-                or (lt and key.expireat is not None and timestamp > key.expireat)):
+        if (
+            not key
+            or (xx and key.expireat is None)
+            or (nx and key.expireat is not None)
+            or (gt and key.expireat is not None and timestamp < key.expireat)
+            or (lt and key.expireat is not None and timestamp > key.expireat)
+        ):
             return 0
         key.expireat = timestamp
         return 1
 
-    @command((Key(),), (Key(),), name='del')
+    @command((Key(),), (Key(),), name="del")
     def del_(self, *keys):
         return delete_keys(*keys)
 
@@ -81,7 +104,14 @@ class GenericCommandsMixin:
                 ret += 1
         return ret
 
-    @command((Key(), Int,), (bytes,), name='expire')
+    @command(
+        (
+            Key(),
+            Int,
+        ),
+        (bytes,),
+        name="expire",
+    )
     def expire(self, key, seconds, *args):
         res = self._expireat(key, self._db.time + seconds, *args)
         return res
@@ -92,7 +122,7 @@ class GenericCommandsMixin:
 
     @command((bytes,))
     def keys(self, pattern):
-        if pattern == b'*':
+        if pattern == b"*":
             return list(self._db)
         else:
             regex = compile_pattern(pattern)
@@ -157,7 +187,7 @@ class GenericCommandsMixin:
 
     @command((Key(), Int, bytes), (bytes,))
     def restore(self, key, ttl, value, *args):
-        (replace,), _ = extract_args(args, ('replace',))
+        (replace,), _ = extract_args(args, ("replace",))
         if key and not replace:
             raise SimpleError(msgs.RESTORE_KEY_EXISTS)
         checksum, value = value[:20], value[20:]
@@ -181,19 +211,27 @@ class GenericCommandsMixin:
     def sort(self, key, *args):
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (asc, desc, alpha, store, sortby, (limit_start, limit_count)), args = extract_args(
-            args, ('asc', 'desc', 'alpha', '*store', '*by', '++limit'),
+        (
+            asc,
+            desc,
+            alpha,
+            store,
+            sortby,
+            (limit_start, limit_count),
+        ), args = extract_args(
+            args,
+            ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
         limit_start = limit_start or 0
         limit_count = -1 if limit_count is None else limit_count
-        dontsort = (sortby is not None and b'*' not in sortby)
+        dontsort = sortby is not None and b"*" not in sortby
 
         i = 0
         get = []
         while i < len(args):
-            if casematch(args[i], b'get') and i + 1 < len(args):
+            if casematch(args[i], b"get") and i + 1 < len(args):
                 get.append(args[i + 1])
                 i += 2
             else:
@@ -212,12 +250,13 @@ class GenericCommandsMixin:
         end = min(end, len(items))
 
         if not get:
-            get.append(b'#')
+            get.append(b"#")
         if sortby is None:
-            sortby = b'#'
+            sortby = b"#"
 
         if not dontsort:
             if alpha:
+
                 def sort_key(val):
                     byval = self._lookup_key(val, sortby)
                     # TODO: use locale.strxfrm when not storing? But then need to decode too.
@@ -226,9 +265,16 @@ class GenericCommandsMixin:
                     return byval
 
             else:
+
                 def sort_key(val):
                     byval = self._lookup_key(val, sortby)
-                    score = SortFloat.decode(byval, ) if byval is not None else 0.0
+                    score = (
+                        SortFloat.decode(
+                            byval,
+                        )
+                        if byval is not None
+                        else 0.0
+                    )
                     return score, val
 
             items.sort(key=sort_key, reverse=desc)
@@ -240,7 +286,7 @@ class GenericCommandsMixin:
             for g in get:
                 v = self._lookup_key(row, g)
                 if store is not None and v is None:
-                    v = b''
+                    v = b""
                 out.append(v)
         if store is not None:
             item = CommandItem(store, self._db, item=self._db.get(store))
@@ -258,6 +304,6 @@ class GenericCommandsMixin:
     def type(self, key):
         return key_value_type(key)
 
-    @command((Key(),), (Key(),), name='unlink')
+    @command((Key(),), (Key(),), name="unlink")
     def unlink(self, *keys):
         return delete_keys(*keys)

@@ -1,13 +1,17 @@
 import itertools
 import math
 import random
+from typing import Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, Key, Hash, Int, Float)
-from fakeredis._helpers import (SimpleError, OK, casematch)
+from fakeredis._commands import command, Key, Hash, Int, Float
+from fakeredis._helpers import SimpleError, OK, casematch
 
 
 class HashCommandsMixin:
+    _encodeint: Callable[[int, ], bytes]
+    _encodefloat: Callable[[float, bool], bytes]
+
     @command((Key(Hash), bytes), (bytes,))
     def hdel(self, key, *fields):
         h = key.value
@@ -34,7 +38,9 @@ class HashCommandsMixin:
     @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key, field, amount):
         amount = Int.decode(amount)
-        field_value = Int.decode(key.value.get(field, b'0'), decode_error=msgs.INVALID_HASH_MSG)
+        field_value = Int.decode(
+            key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG
+        )
         c = field_value + amount
         key.value[field] = self._encodeint(c)
         key.updated()
@@ -42,7 +48,7 @@ class HashCommandsMixin:
 
     @command((Key(Hash), bytes, bytes))
     def hincrbyfloat(self, key, field, amount):
-        c = Float.decode(key.value.get(field, b'0')) + Float.decode(amount)
+        c = Float.decode(key.value.get(field, b"0")) + Float.decode(amount)
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
@@ -67,7 +73,13 @@ class HashCommandsMixin:
         self.hset(key, *args)
         return OK
 
-    @command((Key(Hash), Int,), (bytes, bytes))
+    @command(
+        (
+                Key(Hash),
+                Int,
+        ),
+        (bytes, bytes),
+    )
     def hscan(self, key, cursor, *args):
         cursor, keys = self._scan(key.value, cursor, *args)
         items = []
@@ -80,7 +92,9 @@ class HashCommandsMixin:
     def hset(self, key, *args):
         h = key.value
         keys_count = len(h.keys())
-        h.update(dict(zip(*[iter(args)] * 2)))  # https://stackoverflow.com/a/12739974/1056460
+        h.update(
+            dict(zip(*[iter(args)] * 2))
+        )  # https://stackoverflow.com/a/12739974/1056460
         created = len(h.keys()) - keys_count
 
         key.updated()
@@ -94,13 +108,13 @@ class HashCommandsMixin:
 
     @command((Key(Hash), bytes))
     def hstrlen(self, key, field):
-        return len(key.value.get(field, b''))
+        return len(key.value.get(field, b""))
 
     @command((Key(Hash),))
     def hvals(self, key):
         return list(key.value.values())
 
-    @command(name='HRANDFIELD', fixed=(Key(Hash),), repeat=(bytes,))
+    @command(name="HRANDFIELD", fixed=(Key(Hash),), repeat=(bytes,))
     def hrandfield(self, key, *args):
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -121,12 +135,6 @@ class HashCommandsMixin:
         else:
             res = [t[0] for t in res]
         return res
-
-    def _encodefloat(self, value, humanfriendly):
-        raise NotImplementedError  # Implemented in BaseFakeSocket
-
-    def _encodeint(self, value):
-        raise NotImplementedError  # Implemented in BaseFakeSocket
 
     def _scan(self, keys, cursor, *args):
         raise NotImplementedError  # Implemented in BaseFakeSocket

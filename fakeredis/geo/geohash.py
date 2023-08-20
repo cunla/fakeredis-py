@@ -3,7 +3,7 @@
 #  (http://tools.ietf.org/html/rfc4648)
 from typing import Tuple
 
-base32 = '0123456789bcdefghjkmnpqrstuvwxyz'
+base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 decodemap = {base32[i]: i for i in range(len(base32))}
 
 
@@ -24,15 +24,27 @@ def decode(geohash: str) -> Tuple[float, float, float, float]:
             if is_longitude:  # adds longitude info
                 lon_err /= 2
                 if cd & mask:
-                    lon_interval = ((lon_interval[0] + lon_interval[1]) / 2, lon_interval[1])
+                    lon_interval = (
+                        (lon_interval[0] + lon_interval[1]) / 2,
+                        lon_interval[1],
+                    )
                 else:
-                    lon_interval = (lon_interval[0], (lon_interval[0] + lon_interval[1]) / 2)
+                    lon_interval = (
+                        lon_interval[0],
+                        (lon_interval[0] + lon_interval[1]) / 2,
+                    )
             else:  # adds latitude info
                 lat_err /= 2
                 if cd & mask:
-                    lat_interval = ((lat_interval[0] + lat_interval[1]) / 2, lat_interval[1])
+                    lat_interval = (
+                        (lat_interval[0] + lat_interval[1]) / 2,
+                        lat_interval[1],
+                    )
                 else:
-                    lat_interval = (lat_interval[0], (lat_interval[0] + lat_interval[1]) / 2)
+                    lat_interval = (
+                        lat_interval[0],
+                        (lat_interval[0] + lat_interval[1]) / 2,
+                    )
             is_longitude = not is_longitude
     lat = (lat_interval[0] + lat_interval[1]) / 2
     lon = (lon_interval[0] + lon_interval[1]) / 2
@@ -45,11 +57,13 @@ def encode(latitude: float, longitude: float, precision=12) -> str:
     a geohash which will have the character count precision.
     """
     lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
-    geohash, bits = [], [16, 8, 4, 2, 1]
+    geohash, bits = [], [16, 8, 4, 2, 1]  # type: ignore
     bit, ch = 0, 0
     is_longitude = True
 
-    def next_interval(curr: float, interval: Tuple[float, float], ch: int) -> Tuple[Tuple[float, float], int]:
+    def next_interval(
+        curr: float, interval: Tuple[float, float], ch: int
+    ) -> Tuple[Tuple[float, float], int]:
         mid = (interval[0] + interval[1]) / 2
         if curr > mid:
             ch |= bits[bit]
@@ -69,4 +83,4 @@ def encode(latitude: float, longitude: float, precision=12) -> str:
             geohash += base32[ch]
             bit = 0
             ch = 0
-    return ''.join(geohash)
+    return "".join(geohash)

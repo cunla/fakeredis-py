@@ -2,24 +2,30 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Optional, Callable
 
 import redis
 from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import (
-    Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, key_value_type)
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, key_value_type
 from ._helpers import (
-    SimpleError, valid_response_type, SimpleString, NoResponse, casematch,
-    compile_pattern, QUEUED, encode_command)
+    SimpleError,
+    valid_response_type,
+    SimpleString,
+    NoResponse,
+    casematch,
+    compile_pattern,
+    QUEUED,
+    encode_command,
+)
 
 
 def _extract_command(fields) -> Tuple[Any, List[Any]]:
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
-        cmd += ' ' + encode_command(fields[1])
+        cmd += " " + encode_command(fields[1])
         cmd_arguments = fields[2:]
     else:
         cmd_arguments = fields[1:]
@@ -35,9 +41,19 @@ def bin_reverse(x, bits_count):
 
 
 class BaseFakeSocket:
+    _transaction: Optional[List[Any]]
+    _clear_watches: Callable
+    _in_transaction: bool
+    _pubsub: int
     ACCEPTED_COMMANDS_WHILE_PUBSUB = {
-        'ping', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe', 'quit',
-        'ssubscribe', 'sunsubscribe',
+        "ping",
+        "subscribe",
+        "unsubscribe",
+        "psubscribe",
+        "punsubscribe",
+        "quit",
+        "ssubscribe",
+        "sunsubscribe",
     }
     _connection_error_class = redis.ConnectionError
 
@@ -68,7 +84,7 @@ class BaseFakeSocket:
 
     def resume(self):
         self._paused = False
-        self._parser.send(b'')
+        self._parser.send(b"")
 
     def shutdown(self, flags):
         self._parser.close()
@@ -104,11 +120,11 @@ class BaseFakeSocket:
 
     @staticmethod
     def _extract_line(buf):
-        pos = buf.find(b'\n') + 1
+        pos = buf.find(b"\n") + 1
         assert pos > 0
         line = buf[:pos]
         buf = buf[pos:]
-        assert line.endswith(b'\r\n')
+        assert line.endswith(b"\r\n")
         return line, buf
 
     def _parse_commands(self):
@@ -117,19 +133,19 @@ class BaseFakeSocket:
         It is fed pieces of redis protocol data (via `send`) and calls
         `_process_command` whenever it has a complete one.
         """
-        buf = b''
+        buf = b""
         while True:
-            while self._paused or b'\n' not in buf:
+            while self._paused or b"\n" not in buf:
                 buf += yield
             line, buf = self._extract_line(buf)
-            assert line[:1] == b'*'  # array
+            assert line[:1] == b"*"  # array
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):
-                while b'\n' not in buf:
+                while b"\n" not in buf:
                     buf += yield
                 line, buf = self._extract_line(buf)
-                assert line[:1] == b'$'  # string
+                assert line[:1] == b"$"  # string
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -143,7 +159,10 @@ class BaseFakeSocket:
             ret = sig.apply(args, self._db, self.version)
             if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
                 raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
-            if self._pubsub and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB:
+            if (
+                    self._pubsub
+                    and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB
+            ):
                 raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
             if len(ret) == 1:
                 result = ret[0]
@@ -154,7 +173,9 @@ class BaseFakeSocket:
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
-            command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+            command_item.writeback(
+                remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags
+            )
         return result
 
     def _decode_error(self, error):
@@ -202,11 +223,10 @@ class BaseFakeSocket:
                 return ret
 
     def _name_to_func(self, cmd_name: str):
-        """Get the signature and the method from the command name.
-        """
+        """Get the signature and the method from the command name."""
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
-            clean_name = cmd_name.replace('\r', ' ').replace('\n', ' ')
+            clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
         sig = SUPPORTED_COMMANDS[cmd_name]
         func = getattr(self, sig.func_name, None)
@@ -216,13 +236,13 @@ class BaseFakeSocket:
         if not self._server.connected:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if isinstance(data, str):
-            data = data.encode('ascii')
+            data = data.encode("ascii")
         self._parser.send(data)
 
     def _process_command(self, fields: List[bytes]):
         if not fields:
             return
-
+        result: Any
         cmd, cmd_arguments = _extract_command(fields)
         try:
             func, sig = self._name_to_func(cmd)
@@ -241,7 +261,10 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(cmd_arguments, self.version)
-                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                if (
+                        self._transaction is not None
+                        and msgs.FLAG_TRANSACTION not in sig.flags
+                ):
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
@@ -251,8 +274,10 @@ class BaseFakeSocket:
                 # TODO: should not apply if the exception is from _run_command
                 # e.g. watch inside multi
                 self._transaction_failed = True
-            if cmd == 'exec' and exc.value.startswith('ERR '):
-                exc.value = 'EXECABORT Transaction discarded because of: ' + exc.value[4:]
+            if cmd == "exec" and exc.value.startswith("ERR "):
+                exc.value = (
+                        "EXECABORT Transaction discarded because of: " + exc.value[4:]
+                )
                 self._transaction = None
                 self._transaction_failed = False
                 self._clear_watches()
@@ -288,7 +313,7 @@ class BaseFakeSocket:
 
         """
         cursor = int(cursor)
-        (pattern, _type, count), _ = extract_args(args, ('*match', '*type', '+count'))
+        (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()
@@ -314,7 +339,7 @@ class BaseFakeSocket:
                 if match_key(compare_val) and match_type(compare_val):
                     result_data.append(val)
         else:
-            result_data = data[cursor:cursor + count]
+            result_data = data[cursor: cursor + count]
 
         if result_cursor >= len(data):
             result_cursor = 0

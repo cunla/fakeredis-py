@@ -7,42 +7,42 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, List
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import (Database, FakeSelector)
+from fakeredis._helpers import Database, FakeSelector
 from . import _msgs as msgs
 
-LOGGER = logging.getLogger('fakeredis')
+LOGGER = logging.getLogger("fakeredis")
 
 
 def _create_version(v) -> Tuple[int]:
     if isinstance(v, tuple):
-        return v
+        return v  # type: ignore
     if isinstance(v, int):
         return (v,)
     if isinstance(v, str):
-        v = v.split('.')
-        return tuple(int(x) for x in v)
+        v = v.split(".")
+        return tuple(int(x) for x in v)  # type: ignore
     return v
 
 
 class FakeServer:
-    _servers_map: Dict[str, 'FakeServer'] = dict()
+    _servers_map: Dict[str, "FakeServer"] = dict()
 
     def __init__(self, version: Tuple[int] = (7,)):
         self.lock = threading.Lock()
-        self.dbs = defaultdict(lambda: Database(self.lock))
+        self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to weak set of sockets
-        self.subscribers = defaultdict(weakref.WeakSet)
-        self.psubscribers = defaultdict(weakref.WeakSet)
-        self.ssubscribers = defaultdict(weakref.WeakSet)
+        self.subscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        self.psubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        self.ssubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
         self.lastsave = int(time.time())
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
-        self.closed_sockets = []
+        self.closed_sockets: List[Any] = []
         self.version = _create_version(version)
 
     @staticmethod
@@ -55,24 +55,23 @@ class FakeBaseConnectionMixin:
         self.client_name = None
         self._sock = None
         self._selector = None
-        self._server = kwargs.pop('server', None)
-        path = kwargs.pop('path', None)
-        version = kwargs.pop('version', (7, 0))
-        connected = kwargs.pop('connected', True)
+        self._server = kwargs.pop("server", None)
+        path = kwargs.pop("path", None)
+        version = kwargs.pop("version", (7, 0))
+        connected = kwargs.pop("connected", True)
         if self._server is None:
             if path:
                 self.server_key = path
             else:
-                host, port = kwargs.get('host'), kwargs.get('port')
-                self.server_key = f'{host}:{port}'
-            self.server_key += f':v{version}'
+                host, port = kwargs.get("host"), kwargs.get("port")
+                self.server_key = f"{host}:{port}"
+            self.server_key += f":v{version}"
             self._server = FakeServer.get_server(self.server_key, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
-
     def connect(self):
         super().connect()
         # The selector is set in redis.Connection.connect() after _connect() is called
@@ -99,7 +98,9 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         if isinstance(response, list):
             return [self._decode(item) for item in response]
         elif isinstance(response, bytes):
-            return self.encoder.decode(response, )
+            return self.encoder.decode(
+                response,
+            )
         else:
             return response
 
@@ -108,25 +109,22 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             try:
                 response = self._sock.responses.get_nowait()
             except queue.Empty:
-                if kwargs.get('disconnect_on_error', True):
+                if kwargs.get("disconnect_on_error", True):
                     self.disconnect()
                 raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
         if isinstance(response, redis.ResponseError):
             raise response
-        if kwargs.get('disable_decoding', False):
+        if kwargs.get("disable_decoding", False):
             return response
         else:
             return self._decode(response)
 
     def repr_pieces(self):
-        pieces = [
-            ('server', self._server),
-            ('db', self.db)
-        ]
+        pieces = [("server", self._server), ("db", self.db)]
         if self.client_name:
-            pieces.append(('client_name', self.client_name))
+            pieces.append(("client_name", self.client_name))
         return pieces
 
     def __str__(self):
@@ -137,52 +135,66 @@ class FakeRedisMixin:
     def __init__(self, *args, server=None, version=(7,), **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
-        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
+        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[
+                     1:
+                     ]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-        kwargs.setdefault('host', uuid.uuid4().hex)
-        kwds = {p.name: kwargs.get(p.name, p.default)
-                for ind, p in enumerate(parameters)
-                if p.default != inspect.Parameter.empty}
-        if not kwds.get('connection_pool', None):
-            charset = kwds.get('charset', None)
-            errors = kwds.get('errors', None)
+        kwargs.setdefault("host", uuid.uuid4().hex)
+        kwds = {
+            p.name: kwargs.get(p.name, p.default)
+            for ind, p in enumerate(parameters)
+            if p.default != inspect.Parameter.empty
+        }
+        if not kwds.get("connection_pool", None):
+            charset = kwds.get("charset", None)
+            errors = kwds.get("errors", None)
             # Adapted from redis-py
             if charset is not None:
-                warnings.warn(DeprecationWarning(
-                    '"charset" is deprecated. Use "encoding" instead'))
-                kwds['encoding'] = charset
+                warnings.warn(
+                    DeprecationWarning(
+                        '"charset" is deprecated. Use "encoding" instead'
+                    )
+                )
+                kwds["encoding"] = charset
             if errors is not None:
-                warnings.warn(DeprecationWarning(
-                    '"errors" is deprecated. Use "encoding_errors" instead'))
-                kwds['encoding_errors'] = errors
+                warnings.warn(
+                    DeprecationWarning(
+                        '"errors" is deprecated. Use "encoding_errors" instead'
+                    )
+                )
+                kwds["encoding_errors"] = errors
             conn_pool_args = {
-                'host',
-                'port',
-                'db',
+                "host",
+                "port",
+                "db",
                 # Ignoring because AUTH is not implemented
                 # 'username',
                 # 'password',
-                'socket_timeout',
-                'encoding',
-                'encoding_errors',
-                'decode_responses',
-                'retry_on_timeout',
-                'max_connections',
-                'health_check_interval',
-                'client_name',
-                'connected',
+                "socket_timeout",
+                "encoding",
+                "encoding_errors",
+                "decode_responses",
+                "retry_on_timeout",
+                "max_connections",
+                "health_check_interval",
+                "client_name",
+                "connected",
             }
             connection_kwargs = {
-                'connection_class': FakeConnection,
-                'server': server,
-                'version': version,
+                "connection_class": FakeConnection,
+                "server": server,
+                "version": version,
             }
-            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds['connection_pool'] = redis.connection.ConnectionPool(**connection_kwargs)
-        kwds.pop('server', None)
-        kwds.pop('connected', None)
-        kwds.pop('version', None)
+            connection_kwargs.update(
+                {arg: kwds[arg] for arg in conn_pool_args if arg in kwds}
+            )
+            kwds["connection_pool"] = redis.connection.ConnectionPool(
+                **connection_kwargs
+            )
+        kwds.pop("server", None)
+        kwds.pop("connected", None)
+        kwds.pop("version", None)
         super().__init__(**kwds)
 
     @classmethod
@@ -192,8 +204,8 @@ class FakeRedisMixin:
         pool.connection_class = FakeConnection
         # Using username and password fails since AUTH is not implemented.
         # https://github.com/cunla/fakeredis-py/issues/9
-        pool.connection_kwargs.pop('username', None)
-        pool.connection_kwargs.pop('password', None)
+        pool.connection_kwargs.pop("username", None)
+        pool.connection_kwargs.pop("password", None)
         return cls(connection_pool=pool)
 
 
@@ -212,15 +224,15 @@ class FakeRedis(FakeRedisMixin, redis.Redis):
 # do not share the state. Therefore, we define a singleton object to reuse it.
 def get_fake_connection(config: Dict[str, Any], strict: bool):
     redis_cls = FakeStrictRedis if strict else FakeRedis
-    if 'URL' in config:
+    if "URL" in config:
         return redis_cls.from_url(
-            config['URL'],
-            db=config.get('DB'),
+            config["URL"],
+            db=config.get("DB"),
         )
     return redis_cls(
-        host=config['HOST'],
-        port=config['PORT'],
-        db=config.get('DB', 0),
-        username=config.get('USERNAME', None),
-        password=config.get('PASSWORD'),
+        host=config["HOST"],
+        port=config["PORT"],
+        db=config.get("DB", 0),
+        username=config.get("USERNAME", None),
+        password=config.get("PASSWORD"),
     )

@@ -1,10 +1,10 @@
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (command, DbIndex)
-from fakeredis._helpers import (SimpleError, OK, SimpleString, Database)
+from fakeredis._commands import command, DbIndex
+from fakeredis._helpers import SimpleError, OK, SimpleString, Database
 
-PONG = SimpleString(b'PONG')
+PONG = SimpleString(b"PONG")
 
 
 class ConnectionCommandsMixin:
@@ -23,10 +23,10 @@ class ConnectionCommandsMixin:
     @command((), (bytes,))
     def ping(self, *args):
         if len(args) > 1:
-            msg = msgs.WRONG_ARGS_MSG6.format('ping')
+            msg = msgs.WRONG_ARGS_MSG6.format("ping")
             raise SimpleError(msg)
         if self._pubsub:
-            return [b'pong', args[0] if args else b'']
+            return [b"pong", args[0] if args else b""]
         else:
             return args[0] if args else PONG
 

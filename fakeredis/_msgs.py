@@ -1,8 +1,7 @@
 INVALID_EXPIRE_MSG = "ERR invalid expire time in {}"
 WRONGTYPE_MSG = "WRONGTYPE Operation against a key holding the wrong kind of value"
 SYNTAX_ERROR_MSG = "ERR syntax error"
-SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
-    "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX")
+SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX"
 INVALID_HASH_MSG = "ERR hash value is not an integer"
 INVALID_INT_MSG = "ERR value is not an integer or out of range"
 INVALID_FLOAT_MSG = "ERR value is not a valid float"
@@ -26,8 +25,12 @@ INDEX_NEGATIVE_ERROR_MSG = "ERR value is out of range, must be positive"
 # ZADD_NX_XX_ERROR_MSG6 = "ERR ZADD allows either 'nx' or 'xx', not both"
 ZADD_NX_XX_ERROR_MSG = "ERR XX and NX options at the same time are not compatible"
 ZADD_INCR_LEN_ERROR_MSG = "ERR INCR option supports a single increment-element pair"
-ZADD_NX_GT_LT_ERROR_MSG = "ERR GT, LT, and/or NX options at the same time are not compatible"
-NX_XX_GT_LT_ERROR_MSG = "ERR NX and XX, GT or LT options at the same time are not compatible"
+ZADD_NX_GT_LT_ERROR_MSG = (
+    "ERR GT, LT, and/or NX options at the same time are not compatible"
+)
+NX_XX_GT_LT_ERROR_MSG = (
+    "ERR NX and XX, GT or LT options at the same time are not compatible"
+)
 EXPIRE_UNSUPPORTED_OPTION = "ERR Unsupported option {}"
 ZUNIONSTORE_KEYS_MSG = "ERR at least 1 input key is needed for {}"
 WRONG_ARGS_MSG7 = "ERR Wrong number of args calling Redis command from script"
@@ -44,8 +47,9 @@ NO_MATCHING_SCRIPT_MSG = "NOSCRIPT No matching script. Please use EVAL."
 GLOBAL_VARIABLE_MSG = "ERR Script attempted to set global variables: {}"
 COMMAND_IN_SCRIPT_MSG = "ERR This Redis command is not allowed from scripts"
 BAD_SUBCOMMAND_MSG = "ERR Unknown {} subcommand or wrong # of args."
-BAD_COMMAND_IN_PUBSUB_MSG = \
+BAD_COMMAND_IN_PUBSUB_MSG = (
     "ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT allowed in this context"
+)
 CONNECTION_ERROR_MSG = "FakeRedis is emulating a connection error."
 REQUIRES_MORE_ARGS_MSG = "ERR {} requires {} arguments or more."
 LOG_INVALID_DEBUG_LEVEL_MSG = "ERR Invalid debug level."
@@ -61,21 +65,29 @@ JSON_WRONG_REDIS_TYPE = "ERR Existing key has wrong Redis type"
 JSON_KEY_NOT_FOUND = "ERR could not perform this operation on a key that doesn't exist"
 JSON_PATH_NOT_FOUND_OR_NOT_STRING = "ERR Path '{}' does not exist or not a string"
 JSON_PATH_DOES_NOT_EXIST = "ERR Path '{}' does not exist"
-LCS_CANT_HAVE_BOTH_LEN_AND_IDX = "ERR If you want both the length and indexes, please just use IDX."
+LCS_CANT_HAVE_BOTH_LEN_AND_IDX = (
+    "ERR If you want both the length and indexes, please just use IDX."
+)
 BIT_ARG_MUST_BE_ZERO_OR_ONE = "ERR The bit argument must be 1 or 0."
-XADD_ID_LOWER_THAN_LAST = "ERR The ID specified in XADD is equal or smaller than the target stream top item"
-XADD_INVALID_ID = 'ERR Invalid stream ID specified as stream command argument'
-XGROUP_BUSYGROUP = 'ERR BUSYGROUP Consumer Group name already exists'
+XADD_ID_LOWER_THAN_LAST = (
+    "ERR The ID specified in XADD is equal or smaller than the target stream top item"
+)
+XADD_INVALID_ID = "ERR Invalid stream ID specified as stream command argument"
+XGROUP_BUSYGROUP = "ERR BUSYGROUP Consumer Group name already exists"
 XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG = (
-    "NOGROUP No such key '{0}' or consumer group '{1}' in XREADGROUP with GROUP option")
+    "NOGROUP No such key '{0}' or consumer group '{1}' in XREADGROUP with GROUP option"
+)
 XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '{0}' for key name '{1}'"
 XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
-    " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.")
-FLAG_NO_SCRIPT = 's'  # Command not allowed in scripts
-FLAG_LEAVE_EMPTY_VAL = 'v'
-FLAG_TRANSACTION = 't'
-GEO_UNSUPPORTED_UNIT = 'unsupported unit provided. please use M, KM, FT, MI'
-LPOS_RANK_CAN_NOT_BE_ZERO = "RANK can't be zero: use 1 to start from the first match, 2 from the second ... " \
-                            "or use negative to start from the end of the list"
-NUMKEYS_GREATER_THAN_ZERO_MSG = 'numkeys should be greater than 0'
+    " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
+)
+FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
+FLAG_LEAVE_EMPTY_VAL = "v"
+FLAG_TRANSACTION = "t"
+GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
+LPOS_RANK_CAN_NOT_BE_ZERO = (
+    "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
+    "or use negative to start from the end of the list"
+)
+NUMKEYS_GREATER_THAN_ZERO_MSG = "numkeys should be greater than 0"
