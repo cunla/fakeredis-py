@@ -412,7 +412,7 @@ class XStream:
             split = entry_key.split("-")
             if len(split) != 2:
                 return None
-            ts, seq = int(split[0]), int(split[1])
+            ts, seq = int(split[0]), split[1]
             if len(self._ids) > 0 and ts == self._ids[-1].ts:
                 seq = self._ids[-1].seq + 1
             else:

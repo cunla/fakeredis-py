@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Any, Sequence
+from typing import Tuple, List, Dict, Any, Sequence, Optional
 
 from . import _msgs as msgs
 from ._commands import Int, Float
@@ -33,7 +33,7 @@ def extract_args(
         expected: Tuple[str, ...],
         error_on_unexpected: bool = True,
         left_from_first_unexpected: bool = True,
-        exception: str = None
+        exception: Optional[str] = None
 ) -> Tuple[List, Sequence]:
     """Parse argument values.
 
@@ -68,7 +68,7 @@ def extract_args(
         ('~+maxlen', 'nx', 'xx', '+ex', 'keepttl'))
     10, [True, True, 324, False], None
     """
-    args_info: Dict[bytes, int] = {
+    args_info: Dict[bytes, Tuple[int, int]] = {
         _encode_arg(k): (i, _count_params(k))
         for (i, k) in enumerate(expected)
     }
