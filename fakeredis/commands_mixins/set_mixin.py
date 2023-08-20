@@ -1,8 +1,9 @@
 import random
+from typing import Callable, Tuple
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
-from fakeredis._helpers import OK, SimpleError, casematch
+from fakeredis._helpers import OK, SimpleError, casematch, Database
 
 
 def _calc_setop(op, stop_if_missing, key, *keys):
@@ -38,9 +39,10 @@ def _setop(op, stop_if_missing, dst, key, *keys):
 
 
 class SetCommandsMixin:
-    # Set and Hyperloglog commands
+    version: Tuple[int]
+    _db: Database
+    _scan: Callable
 
-    # Set commands
     @command((Key(set), bytes), (bytes,))
     def sadd(self, key, *members):
         old_size = len(key.value)

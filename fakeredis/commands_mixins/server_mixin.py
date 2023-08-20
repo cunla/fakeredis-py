@@ -1,12 +1,14 @@
 import time
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex
-from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED
+from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database
 
 
 class ServerCommandsMixin:
-    # TODO: lots
+    _server: Any
+    _db: Database
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args):

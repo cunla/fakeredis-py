@@ -1,9 +1,14 @@
+from typing import Callable
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key
-from fakeredis._helpers import OK, SimpleError
+from fakeredis._helpers import OK, SimpleError, Database
 
 
 class TransactionsCommandsMixin:
+    _db: Database
+    _run_command: Callable
+
     def __init__(self, *args, **kwargs):
         super(TransactionsCommandsMixin, self).__init__(*args, **kwargs)
         self._watches = set()

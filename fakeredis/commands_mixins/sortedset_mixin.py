@@ -204,7 +204,7 @@ class SortedSetCommandsMixin:
     @command((Key(ZSet), Float, bytes))
     def zincrby(self, key, increment, member):
         # Can't just default the old score to 0.0, because in IEEE754, adding
-        # 0.0 to something isn't a nop (e.g. 0.0 + -0.0 == 0.0).
+        # 0.0 to something isn't a nop (e.g., 0.0 + -0.0 == 0.0).
         try:
             score = key.value.get(member, None) + increment
         except TypeError:
@@ -593,7 +593,7 @@ class SortedSetCommandsMixin:
             self, key: CommandItem, *members: Union[str, bytes]
     ) -> list[Optional[float]]:
         """Get the scores associated with the specified members in the sorted set
-        stored at key.
+        stored at the key.
 
         For every member that does not exist in the sorted set, a nil value
         is returned.

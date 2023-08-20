@@ -2,6 +2,7 @@ import functools
 import hashlib
 import itertools
 import logging
+from typing import Tuple, Callable, AnyStr, Set, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
@@ -28,7 +29,7 @@ REDIS_LOG_LEVELS_TO_LOGGING = {
 }
 
 
-def _ensure_str(s, encoding, replaceerr):
+def _ensure_str(s: AnyStr, encoding: str, replaceerr: str):
     if isinstance(s, bytes):
         res = s.decode(encoding=encoding, errors=replaceerr)
     else:
@@ -62,12 +63,13 @@ def _lua_redis_log(lua_runtime, expected_globals, lvl, *args):
 
 
 class ScriptingCommandsMixin:
-    # Script commands
-    # script debug and script kill will probably not be supported
+    version: Tuple[int]
+    _name_to_func: Callable
+    _run_command: Callable
 
     def __init__(self, *args, **kwargs):
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
-        # Maps SHA1 to script source
+        # Maps SHA1 to the script source
         self.script_cache = {}
 
     def _convert_redis_arg(self, lua_runtime, value):
@@ -141,8 +143,8 @@ class ScriptingCommandsMixin:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(encode_command(op))
-        args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
-        result = self._run_command(func, sig, args, True)
+        new_args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
+        result = self._run_command(func, sig, new_args, True)
         return self._convert_redis_result(lua_runtime, result)
 
     def _lua_redis_pcall(self, lua_runtime, expected_globals, op, *args):
@@ -180,7 +182,7 @@ class ScriptingCommandsMixin:
             end
             """
         )
-        expected_globals = set()
+        expected_globals: Set[Any] = set()
         set_globals(
             lua_runtime.table_from(keys_and_args[:numkeys]),
             lua_runtime.table_from(keys_and_args[numkeys:]),
@@ -245,7 +247,7 @@ class ScriptingCommandsMixin:
     )
     def script_flush(self, *args):
         if len(args) > 1 or (
-            len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}
+                len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}
         ):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
         self.script_cache = {}
