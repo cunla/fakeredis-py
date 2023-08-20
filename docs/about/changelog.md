@@ -5,6 +5,13 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.18.1
+
+### 🧰 Maintenance
+
+- Add mypy hints to everything
+- Officially for redis-py 5.0.0, redis 7.2
+
 ## v2.18.0
 
 ### 🚀 Features

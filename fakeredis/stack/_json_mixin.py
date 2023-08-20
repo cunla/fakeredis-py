@@ -142,7 +142,6 @@ def _json_read_iterate(method, key, *args, error_on_zero_matches=False):
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
-    NoneType = type(None)
     TYPES_EMPTY_VAL_DICT = {
         dict: {},
         int: 0,
@@ -158,7 +157,7 @@ class JSONCommandsMixin:
         set: b"set",
         str: b"string",
         bool: b"boolean",
-        NoneType: b"null",
+        type(None): b"null",
         ZSet: "zset",
     }
 
