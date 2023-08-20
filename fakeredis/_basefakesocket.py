@@ -110,7 +110,7 @@ class BaseFakeSocket:
         # `FakeSelector` before it is ever used.
         return 0
 
-    def _cleanup(self, server: "FakeServer") -> None:
+    def _cleanup(self, server: "FakeServer") -> None:  # noqa: F821
         """Remove all the references to `self` from `server`.
 
         This is called with the server lock held, but it may be some time after

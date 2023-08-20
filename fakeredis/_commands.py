@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any, Sequence
+from typing import Tuple, Union, Optional, Any
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, SimpleString
@@ -421,7 +421,7 @@ def command(*args, **kwargs):
     return decorator
 
 
-def delete_keys(*keys: Item) -> int:
+def delete_keys(*keys: CommandItem) -> int:
     ans = 0
     done = set()
     for key in keys:
