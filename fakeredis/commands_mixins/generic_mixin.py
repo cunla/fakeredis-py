@@ -213,14 +213,7 @@ class GenericCommandsMixin:
     def sort(self, key, *args):
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (
-            asc,
-            desc,
-            alpha,
-            store,
-            sortby,
-            (limit_start, limit_count),
-        ), args = extract_args(
+        (asc, desc, alpha, store, sortby, (limit_start, limit_count),), left_args = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
@@ -232,9 +225,9 @@ class GenericCommandsMixin:
 
         i = 0
         get = []
-        while i < len(args):
-            if casematch(args[i], b"get") and i + 1 < len(args):
-                get.append(args[i + 1])
+        while i < len(left_args):
+            if casematch(left_args[i], b"get") and i + 1 < len(left_args):
+                get.append(left_args[i + 1])
                 i += 2
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

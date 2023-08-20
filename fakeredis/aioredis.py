@@ -25,13 +25,15 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.responses = asyncio.Queue()
+        self.responses = asyncio.Queue()  # type:ignore
 
     def _decode_error(self, error):
         parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
-    def put_response(self, msg):
+    def put_response(self, msg) -> None:
+        if not self.responses:
+            return
         self.responses.put_nowait(msg)
 
     async def _async_blocking(self, timeout, func, event, callback):
@@ -78,14 +80,14 @@ class FakeReader:
         self._socket = socket
 
     async def read(self, _: int) -> bytes:
-        return await self._socket.responses.get()
+        return await self._socket.responses.get()  # type:ignore
 
 
 class FakeWriter:
     def __init__(self, socket: AsyncFakeSocket) -> None:
-        self._socket = socket
+        self._socket: Optional[AsyncFakeSocket] = socket
 
-    def close(self):
+    def close(self) -> None:
         self._socket = None
 
     async def wait_closed(self):
@@ -94,7 +96,9 @@ class FakeWriter:
     async def drain(self):
         pass
 
-    def writelines(self, data):
+    def writelines(self, data) -> None:
+        if self._socket is None:
+            return
         for chunk in data:
             self._socket.sendall(chunk)
 
@@ -122,7 +126,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         loop = asyncio.get_event_loop()
         start = loop.time()
         while True:
-            if not self._sock.responses.empty():
+            if self._sock and not self._sock.responses.empty():
                 return True
             await asyncio.sleep(0.01)
             now = loop.time()
@@ -140,6 +144,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             return response
 
     async def read_response(self, **kwargs):
+        if not self._sock:
+            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
@@ -167,26 +173,26 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
 class FakeRedis(redis_async.Redis):
     def __init__(
-        self,
-        *,
-        host: str = "localhost",
-        port: int = 6379,
-        db: Union[str, int] = 0,
-        password: Optional[str] = None,
-        socket_timeout: Optional[float] = None,
-        connection_pool: Optional[redis_async.ConnectionPool] = None,
-        encoding: str = "utf-8",
-        encoding_errors: str = "strict",
-        decode_responses: bool = False,
-        retry_on_timeout: bool = False,
-        max_connections: Optional[int] = None,
-        health_check_interval: int = 0,
-        client_name: Optional[str] = None,
-        username: Optional[str] = None,
-        server: Optional[_server.FakeServer] = None,
-        connected: bool = True,
-        version=(7,),
-        **kwargs,
+            self,
+            *,
+            host: str = "localhost",
+            port: int = 6379,
+            db: Union[str, int] = 0,
+            password: Optional[str] = None,
+            socket_timeout: Optional[float] = None,
+            connection_pool: Optional[redis_async.ConnectionPool] = None,
+            encoding: str = "utf-8",
+            encoding_errors: str = "strict",
+            decode_responses: bool = False,
+            retry_on_timeout: bool = False,
+            max_connections: Optional[int] = None,
+            health_check_interval: int = 0,
+            client_name: Optional[str] = None,
+            username: Optional[str] = None,
+            server: Optional[_server.FakeServer] = None,
+            connected: bool = True,
+            version=(7,),
+            **kwargs,
     ):
         if not connection_pool:
             # Adapted from aioredis

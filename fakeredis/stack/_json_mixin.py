@@ -510,11 +510,8 @@ class JSONCommandsMixin:
                 return None
             try:
                 ind = next(
-                    filter(
-                        lambda x: x[1] == expected_value
-                                  and type(x[1]) is type(expected_value),
-                        enumerate(value[start:end]),
-                    )
+                    filter(lambda x: x[1] == expected_value and type(x[1]) is type(expected_value),
+                           enumerate(value[start:end]))
                 )
                 return ind[0] + start
             except StopIteration:

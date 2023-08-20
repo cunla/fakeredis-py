@@ -1,5 +1,5 @@
 import functools
-from typing import Callable
+from typing import Callable, List
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -325,7 +325,7 @@ class ListCommandsMixin:
         rank = abs(rank)
         parse_count = len(key.value) if count == 0 else (count or 1)
         maxlen = maxlen or len(key.value)
-        res = []
+        res: List[int] = []
         comparisons = 0
         while (
                 0 <= ind <= len(key.value) - 1

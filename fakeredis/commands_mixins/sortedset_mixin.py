@@ -5,7 +5,7 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional, List, Tuple, Callable, Any
+from typing import Union, Optional, List, Tuple, Callable, Any, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -464,7 +464,7 @@ class SortedSetCommandsMixin:
         # We first build a regular dict and turn it into a ZSet. The
         # reason is subtle: a ZSet won't update a score from -0 to +0
         # (or vice versa) through assignment, but a regular dict will.
-        out = {}
+        out: Dict[bytes, Any] = {}
         # The sort affects the order of floating-point operations.
         # Note that redis uses qsort(1), which has no stability guarantees,
         # so we can't be sure to match it in all cases.

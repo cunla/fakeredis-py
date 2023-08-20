@@ -92,7 +92,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         # implement can_read. Normally can_read provides retries on EINTR,
         # but that's not necessary for the implementation of
         # FakeSelector.check_can_read.
-        return self._selector.check_can_read(timeout)
+        return self._selector and self._selector.check_can_read(timeout)
 
     def _decode(self, response):
         if isinstance(response, list):
@@ -105,6 +105,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             return response
 
     def read_response(self, **kwargs):
+        if not self._sock:
+            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
