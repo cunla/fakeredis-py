@@ -4,23 +4,23 @@ import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import AnyStr, Any, Set, Callable, Dict
+from typing import AnyStr, Any, Set, Callable, Dict, Optional, Iterator
 
 
 class SimpleString:
-    def __init__(self, value: bytes):
+    def __init__(self, value: bytes) -> None:
         assert isinstance(value, bytes)
         self.value = value
 
     @classmethod
-    def decode(cls, value: bytes):
+    def decode(cls, value: bytes) -> bytes:
         return value
 
 
 class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""
 
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         assert isinstance(value, str)
         self.value = value
 
@@ -57,7 +57,7 @@ def encode_command(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
 
 
-def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
+def compile_pattern(pattern_bytes: bytes) -> re.Pattern[Any]:
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
@@ -123,41 +123,41 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
             parts.append(re.escape(c))
     parts.append("\\Z")
     regex: bytes = "".join(parts).encode("latin-1")
-    return re.compile(regex, flags=re.S)  # type: ignore
+    return re.compile(regex, flags=re.S)
 
 
-class Database(MutableMapping):
-    def __init__(self, lock, *args, **kwargs) -> None:
-        self._dict = dict(*args, **kwargs)
+class Database(MutableMapping[bytes, Any]):
+    def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
+        self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
-        self._watches: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)  # key to the set of connections
+        self._watches: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)  # key to the set of connections
         self.condition = threading.Condition(lock)
-        self._change_callbacks: Set[Callable] = set()
+        self._change_callbacks: Set[Callable[[], None]] = set()
 
-    def swap(self, other: "Database"):
+    def swap(self, other: "Database") -> None:
         self._dict, other._dict = other._dict, self._dict
         self.time, other.time = other.time, self.time
 
-    def notify_watch(self, key: bytes):
+    def notify_watch(self, key: bytes) -> None:
         for sock in self._watches.get(key, set()):
             sock.notify_watch()
         self.condition.notify_all()
         for callback in self._change_callbacks:
             callback()
 
-    def add_watch(self, key: bytes, sock):
+    def add_watch(self, key: bytes, sock: Any) -> None:
         self._watches[key].add(sock)
 
-    def remove_watch(self, key, sock):
+    def remove_watch(self, key: bytes, sock: Any) -> None:
         watches = self._watches[key]
         watches.discard(sock)
         if not watches:
             del self._watches[key]
 
-    def add_change_callback(self, callback: Callable) -> None:
+    def add_change_callback(self, callback: Callable[[], None]) -> None:
         self._change_callbacks.add(callback)
 
-    def remove_change_callback(self, callback: Callable) -> None:
+    def remove_change_callback(self, callback: Callable[[], None]) -> None:
         self._change_callbacks.remove(callback)
 
     def clear(self) -> None:
@@ -174,35 +174,35 @@ class Database(MutableMapping):
             if self.expired(item):
                 del self._dict[key]
 
-    def __getitem__(self, key: AnyStr) -> Any:
+    def __getitem__(self, key: bytes) -> Any:
         item = self._dict[key]
         if self.expired(item):
             del self._dict[key]
             raise KeyError(key)
         return item
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: bytes, value: Any) -> None:
         self._dict[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: bytes) -> None:
         del self._dict[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bytes]:
         self._remove_expired()
         return iter(self._dict)
 
-    def __len__(self):
+    def __len__(self) -> int:
         self._remove_expired()
         return len(self._dict)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(super(object, self))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return super(object, self) == other
 
 
-def valid_response_type(value: Any, nested=False) -> bool:
+def valid_response_type(value: Any, nested: bool = False) -> bool:
     if isinstance(value, NoResponse) and not nested:
         return True
     if value is not None and not isinstance(
@@ -216,10 +216,10 @@ def valid_response_type(value: Any, nested=False) -> bool:
 
 
 class FakeSelector(object):
-    def __init__(self, sock):
+    def __init__(self, sock: Any):
         self.sock = sock
 
-    def check_can_read(self, timeout) -> bool:
+    def check_can_read(self, timeout: Optional[int]) -> bool:
         if self.sock.responses.qsize():
             return True
         if timeout is not None and timeout <= 0:
@@ -237,5 +237,5 @@ class FakeSelector(object):
                 return False
 
     @staticmethod
-    def check_is_ready_for_command(_) -> bool:
+    def check_is_ready_for_command(_: Any) -> bool:
         return True
