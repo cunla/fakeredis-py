@@ -4,7 +4,7 @@ import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import AnyStr, Any, Set, Callable, Dict, Optional, Iterator
+from typing import Any, Set, Callable, Dict, Optional, Iterator
 
 
 class SimpleString:
@@ -130,7 +130,8 @@ class Database(MutableMapping[bytes, Any]):
     def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
         self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
-        self._watches: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)  # key to the set of connections
+        # key to the set of connections
+        self._watches: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.condition = threading.Condition(lock)
         self._change_callbacks: Set[Callable[[], None]] = set()
 
