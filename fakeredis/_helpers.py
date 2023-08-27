@@ -126,7 +126,7 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
     return re.compile(regex, flags=re.S)
 
 
-class Database(MutableMapping[bytes, Any]):
+class Database(MutableMapping):
     def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
         self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
