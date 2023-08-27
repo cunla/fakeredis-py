@@ -246,6 +246,22 @@ async def test_disconnect_server(req_aioredis2, fake_server):
     fake_server.connected = True
 
 
+async def test_type(req_aioredis2: redis.asyncio.Redis):
+    r = req_aioredis2
+    await r.set('string_key', "value")
+    await r.lpush("list_key", "value")
+    await r.sadd("set_key", "value")
+    await r.zadd("zset_key", {"value": 1})
+    await r.hset('hset_key', 'key', 'value')
+
+    assert b'string' == await r.type('string_key')  # noqa: E721
+    assert b'list' == await r.type('list_key')  # noqa: E721
+    assert b'set' == await r.type('set_key')  # noqa: E721
+    assert b'zset' == await r.type('zset_key')  # noqa: E721
+    assert b'hash' == await r.type('hset_key')  # noqa: E721
+    assert b'none' == await  r.type('none_key')  # noqa: E721
+
+
 async def test_xdel(req_aioredis2: redis.asyncio.Redis):
     stream = "stream"
 
