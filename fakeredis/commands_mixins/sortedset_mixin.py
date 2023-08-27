@@ -64,7 +64,7 @@ class SortedSetCommandsMixin:
         return res
 
     def _bzpop(
-            self, keys: List[CommandItem], reverse: bool, first_pass: bool
+            self, keys: List[bytes], reverse: bool, first_pass: bool
     ) -> Optional[List[Any]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])

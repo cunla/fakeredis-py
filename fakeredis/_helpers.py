@@ -127,7 +127,7 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
 
 
 class Database(MutableMapping):
-    def __init__(self, lock, *args, **kwargs):
+    def __init__(self, lock, *args, **kwargs) -> None:
         self._dict = dict(*args, **kwargs)
         self.time = 0.0
         self._watches: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)  # key to the set of connections

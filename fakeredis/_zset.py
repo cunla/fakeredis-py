@@ -1,17 +1,17 @@
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional, Generator, Dict, ItemsView
 
 import sortedcontainers
 
 
 class ZSet:
-    def __init__(self):
-        self._bylex = {}  # Maps value to score
+    def __init__(self) -> None:
+        self._bylex: Dict[bytes, Any] = {}  # Maps value to score
         self._byscore = sortedcontainers.SortedList()
 
-    def __contains__(self, value):
+    def __contains__(self, value: bytes) -> bool:
         return value in self._bylex
 
-    def add(self, value, score):
+    def add(self, value: bytes, score: float) -> bool:
         """Update the item and return whether it modified the zset"""
         old_score = self._bylex.get(value, None)
         if old_score is not None:
@@ -22,26 +22,26 @@ class ZSet:
         self._byscore.add((score, value))
         return True
 
-    def __setitem__(self, value, score):
+    def __setitem__(self, value: bytes, score: float) -> None:
         self.add(value, score)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: bytes) -> float:
         return self._bylex[key]
 
-    def get(self, key, default=None):
+    def get(self, key: bytes, default: Optional[float] = None) -> Optional[float]:
         return self._bylex.get(key, default)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._bylex)
 
-    def __iter__(self):
-        def gen():
+    def __iter__(self) -> Generator[Any, Any, None]:
+        def gen() -> Generator[Any, Any, None]:
             for score, value in self._byscore:
                 yield value
 
         return gen()
 
-    def discard(self, key):
+    def discard(self, key: bytes) -> None:
         try:
             score = self._bylex.pop(key)
         except KeyError:
@@ -49,12 +49,14 @@ class ZSet:
         else:
             self._byscore.remove((score, key))
 
-    def zcount(self, min_, max_):
-        pos1 = self._byscore.bisect_left(min_)
-        pos2 = self._byscore.bisect_left(max_)
+    def zcount(self, _min: float, _max: float) -> int:
+        pos1: int = self._byscore.bisect_left(_min)
+        pos2: int = self._byscore.bisect_left(_max)
         return max(0, pos2 - pos1)
 
-    def zlexcount(self, min_value, min_exclusive, max_value, max_exclusive):
+    def zlexcount(self, min_value: float, min_exclusive: bool, max_value: float, max_exclusive: bool) -> int:
+        pos1: int
+        pos2: int
         if not self._byscore:
             return 0
         score = self._byscore[0][0]
@@ -68,10 +70,16 @@ class ZSet:
             pos2 = self._byscore.bisect_right((score, max_value))
         return max(0, pos2 - pos1)
 
-    def islice_score(self, start, stop, reverse=False):
+    def islice_score(self, start: int, stop: int, reverse: bool = False) -> Any:
         return self._byscore.islice(start, stop, reverse)
 
-    def irange_lex(self, start, stop, inclusive=(True, True), reverse=False):
+    def irange_lex(
+            self,
+            start: bytes,
+            stop: bytes,
+            inclusive: Tuple[bool, bool] = (True, True),
+            reverse: bool = False
+    ) -> Any:
         if not self._byscore:
             return iter([])
         default_score = self._byscore[0][0]
@@ -86,12 +94,13 @@ class ZSet:
         return (item[1] for item in it)
 
     def irange_score(
-        self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False
-    ):
+            self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False
+    ) -> Any:
         return self._byscore.irange(start, stop, reverse=reverse)
 
-    def rank(self, member):
-        return self._byscore.index((self._bylex[member], member))
+    def rank(self, member: bytes) -> int:
+        ind: int = self._byscore.index((self._bylex[member], member))
+        return ind
 
-    def items(self):
+    def items(self) -> ItemsView[bytes, Any]:
         return self._bylex.items()

@@ -5,10 +5,10 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any
+from typing import Tuple, Union, Optional, Any, Type
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError, SimpleString
+from ._helpers import null_terminate, SimpleError, SimpleString, Database
 from ._zset import ZSet
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
@@ -21,7 +21,7 @@ class Key:
 
     UNSPECIFIED = object()
 
-    def __init__(self, type_=None, missing_return=UNSPECIFIED) -> None:
+    def __init__(self, type_: Optional[Type[Any]] = None, missing_return: Any = UNSPECIFIED) -> None:
         self.type_ = type_
         self.missing_return = missing_return
 
@@ -31,7 +31,7 @@ class Item:
 
     __slots__ = ["value", "expireat"]
 
-    def __init__(self, value):
+    def __init__(self, value: Any) -> None:
         self.value = value
         self.expireat = None
 
@@ -42,7 +42,7 @@ class CommandItem:
     It wraps an Item but has extra fields to manage updates and notifications.
     """
 
-    def __init__(self, key, db, item=None, default=None) -> None:
+    def __init__(self, key: bytes, db: Database, item: Optional["CommandItem"] = None, default: Any = None) -> None:
         if item is None:
             self._value = default
             self._expireat = None
@@ -55,57 +55,57 @@ class CommandItem:
         self._expireat_modified = False
 
     @property
-    def value(self):
+    def value(self) -> Any:
         return self._value
 
     @value.setter
-    def value(self, new_value):
+    def value(self, new_value: Any) -> None:
         self._value = new_value
         self._modified = True
         self.expireat = None
 
     @property
-    def expireat(self):
+    def expireat(self) -> Optional[int]:
         return self._expireat
 
     @expireat.setter
-    def expireat(self, value):
+    def expireat(self, value: int) -> None:
         self._expireat = value
         self._expireat_modified = True
         self._modified = True  # Since redis 6.0.7
 
-    def get(self, default):
+    def get(self, default: Any) -> Any:
         return self._value if self else default
 
-    def update(self, new_value):
+    def update(self, new_value: Any) -> None:
         self._value = new_value
         self._modified = True
 
-    def updated(self):
+    def updated(self) -> None:
         self._modified = True
 
-    def writeback(self, remove_empty_val=True):
+    def writeback(self, remove_empty_val: bool = True) -> None:
         if self._modified:
             self.db.notify_watch(self.key)
-            if not isinstance(self.value, bytes) and (
-                    self.value is None or (not self.value and remove_empty_val)
-            ):
+            if (not isinstance(self.value, bytes)
+                    and (self.value is None or (not self.value and remove_empty_val))):
                 self.db.pop(self.key, None)
                 return
-            else:
-                item = self.db.setdefault(self.key, Item(None))
-                item.value = self.value
-                item.expireat = self.expireat
-        elif self._expireat_modified and self.key in self.db:
+            item = self.db.setdefault(self.key, Item(None))
+            item.value = self.value
+            item.expireat = self.expireat
+            return
+
+        if self._expireat_modified and self.key in self.db:
             self.db[self.key].expireat = self.expireat
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._value) or isinstance(self._value, bytes)
 
     __nonzero__ = __bool__  # For Python 2
 
 
-class Hash(dict):
+class Hash(dict):  # type:ignore
     DECODE_ERROR = msgs.INVALID_HASH_MSG
     redis_type = b"hash"
 
@@ -119,11 +119,11 @@ class Int:
     MAX_VALUE = 2 ** 63 - 1
 
     @classmethod
-    def valid(cls, value):
+    def valid(cls, value: int) -> bool:
         return cls.MIN_VALUE <= value <= cls.MAX_VALUE
 
     @classmethod
-    def decode(cls, value: bytes, decode_error=None) -> int:
+    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
         try:
             out = int(value)
             if not cls.valid(out) or str(out).encode() != value:
@@ -133,7 +133,7 @@ class Int:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
 
     @classmethod
-    def encode(cls, value):
+    def encode(cls, value: int) -> bytes:
         if cls.valid(value):
             return str(value).encode()
         else:
@@ -182,12 +182,12 @@ class Float:
     @classmethod
     def decode(
             cls,
-            value,
-            allow_leading_whitespace=False,
-            allow_erange=False,
-            allow_empty=False,
-            crop_null=False,
-            decode_error=None,
+            value: bytes,
+            allow_leading_whitespace: bool = False,
+            allow_erange: bool = False,
+            allow_empty: bool = False,
+            crop_null: bool = False,
+            decode_error: Optional[str] = None,
     ) -> float:
         # redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
@@ -230,7 +230,15 @@ class SortFloat(Float):
     DECODE_ERROR = msgs.INVALID_SORT_FLOAT_MSG
 
     @classmethod
-    def decode(cls, value, **kwargs):
+    def decode(
+            cls,
+            value: bytes,
+            allow_leading_whitespace: bool = True,
+            allow_erange: bool = False,
+            allow_empty: bool = True,
+            crop_null: bool = True,
+            decode_error: Optional[str] = None,
+    ) -> float:
         return super().decode(
             value, allow_leading_whitespace=True, allow_empty=True, crop_null=True
         )
@@ -238,25 +246,25 @@ class SortFloat(Float):
 
 @functools.total_ordering
 class BeforeAny:
-    def __gt__(self, other: Any):
+    def __gt__(self, other: Any) -> bool:
         return False
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return isinstance(other, BeforeAny)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return 1
 
 
 @functools.total_ordering
 class AfterAny:
-    def __lt__(self, other: Any):
+    def __lt__(self, other: Any) -> bool:
         return False
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return isinstance(other, AfterAny)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return 1
 
 
@@ -269,36 +277,36 @@ class ScoreTest:
         self.bytes_val = bytes_val
 
     @classmethod
-    def decode(cls, value):
+    def decode(cls, value: bytes) -> "ScoreTest":
         try:
             original_value = value
             exclusive = False
             if value[:1] == b"(":
                 exclusive = True
                 value = value[1:]
-            value = Float.decode(
+            fvalue = Float.decode(
                 value,
                 allow_leading_whitespace=True,
                 allow_erange=True,
                 allow_empty=True,
                 crop_null=True,
             )
-            return cls(value, exclusive, original_value)
+            return cls(fvalue, exclusive, original_value)
         except SimpleError:
             raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.exclusive:
             return "({!r}".format(self.value)
         else:
             return repr(self.value)
 
     @property
-    def lower_bound(self):
+    def lower_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
         return self.value, AfterAny() if self.exclusive else BeforeAny()
 
     @property
-    def upper_bound(self):
+    def upper_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
         return self.value, BeforeAny() if self.exclusive else AfterAny()
 
 
@@ -322,12 +330,13 @@ class StringTest:
         else:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
 
-    def to_scoretest(self, zset: ZSet):
-        if isinstance(self.value, BeforeAny):
-            return ScoreTest(float("-inf"), False)
-        if isinstance(self.value, AfterAny):
-            return ScoreTest(float("inf"), False)
-        return ScoreTest(zset.get(self.value, None), self.exclusive)
+    # def to_scoretest(self, zset: ZSet) -> ScoreTest:
+    #     if isinstance(self.value, BeforeAny):
+    #         return ScoreTest(float("-inf"), False)
+    #     if isinstance(self.value, AfterAny):
+    #         return ScoreTest(float("inf"), False)
+    #     val: float = zset.get(self.value, None)
+    #     return ScoreTest(val, self.exclusive)
 
 
 class Signature:
