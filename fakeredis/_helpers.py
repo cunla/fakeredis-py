@@ -57,7 +57,7 @@ def encode_command(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
 
 
-def compile_pattern(pattern_bytes: bytes) -> re.Pattern[Any]:
+def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
