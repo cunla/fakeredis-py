@@ -11,7 +11,7 @@ packages = [
 version = "2.18.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
-keywords = ["redis", "RedisJson", ]
+keywords = ["redis", "RedisJson", "tests", "redis-stack"]
 authors = [
     "Daniel Moran <daniel@moransoftware.ca>",
     "Bruce Merry <bmerry@ska.ac.za>",

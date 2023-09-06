@@ -28,11 +28,11 @@ Append new samples to one or more time series
 
 #### [TS.INCRBY](https://redis.io/commands/ts.incrby/) <small>(not implemented)</small>
 
-Increase the value of the sample with the maximal existing timestamp, or create a new sample with a value equal to the value of the sample with the maximal existing timestamp with a given increment
+Increase the value of the sample with the maximum existing timestamp, or create a new sample with a value equal to the value of the sample with the maximum existing timestamp with a given increment
 
 #### [TS.DECRBY](https://redis.io/commands/ts.decrby/) <small>(not implemented)</small>
 
-Decrease the value of the sample with the maximal existing timestamp, or create a new sample with a value equal to the value of the sample with the maximal existing timestamp with a given decrement
+Decrease the value of the sample with the maximum existing timestamp, or create a new sample with a value equal to the value of the sample with the maximum existing timestamp with a given decrement
 
 #### [TS.CREATERULE](https://redis.io/commands/ts.createrule/) <small>(not implemented)</small>
 
