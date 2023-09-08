@@ -9,7 +9,7 @@ from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, key_value_type
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item
 from ._helpers import (
     SimpleError,
     valid_response_type,
@@ -20,6 +20,8 @@ from ._helpers import (
     QUEUED,
     encode_command,
 )
+from ._stream import XStream
+from ._zset import ZSet
 
 
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
@@ -346,7 +348,7 @@ class BaseFakeSocket:
             return regex.match(key) if regex is not None else True
 
         def match_type(key) -> bool:
-            return _type is None or casematch(key_value_type(self._db[key]).value, _type)
+            return _type is None or casematch(BaseFakeSocket._key_value_type(self._db[key]).value, _type)
 
         if pattern is not None or _type is not None:
             for val in itertools.islice(data, cursor, cursor + count):
@@ -377,3 +379,22 @@ class BaseFakeSocket:
         if self.version >= (7,):
             value = 0 + value
         return Int.encode(value)
+
+    @staticmethod
+    def _key_value_type(key: Item) -> SimpleString:
+        if key.value is None:
+            return SimpleString(b"none")
+        elif isinstance(key.value, bytes):
+            return SimpleString(b"string")
+        elif isinstance(key.value, list):
+            return SimpleString(b"list")
+        elif isinstance(key.value, set):
+            return SimpleString(b"set")
+        elif isinstance(key.value, ZSet):
+            return SimpleString(b"zset")
+        elif isinstance(key.value, dict):
+            return SimpleString(b"hash")
+        elif isinstance(key.value, XStream):
+            return SimpleString(b"stream")
+        else:
+            assert False  # pragma: nocover

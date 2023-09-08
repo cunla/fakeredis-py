@@ -7,6 +7,10 @@ description: Change log of all fakeredis releases
 
 ## v2.18.1
 
+### 🐛 Bug Fixes
+
+- Fix stream type issue #233
+
 ### 🧰 Maintenance
 
 - Add mypy hints to everything
@@ -19,7 +23,7 @@ description: Change log of all fakeredis releases
 - Implement `PUBSUB NUMPAT` #195, `SSUBSCRIBE` #199, `SPUBLISH` #198,
   `SUNSUBSCRIBE` #200, `PUBSUB SHARDCHANNELS` #196, `PUBSUB SHARDNUMSUB` #197
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fix All aio.FakeRedis instances share the same server #218
 
@@ -30,7 +34,7 @@ description: Change log of all fakeredis releases
 - Implement `LPOS` #207, `LMPOP` #184, and `BLMPOP` #183
 - Implement `ZMPOP` #191, `BZMPOP` #186
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fix incorrect error msg for the group not found #210
 - fix: use the same server_key within the pipeline when issued watch #213
@@ -48,7 +52,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - Implemented support for `JSON.MSET` #174, `JSON.MERGE` #181
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Add support for `version` for async FakeRedis #205
 
@@ -76,13 +80,13 @@ We'd like to thank all the contributors who worked on this release!
 
 ## v2.14.2
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fix documentation link
 
 ## v2.14.1
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fix requirement for packaging.Version #177
 
@@ -99,7 +103,7 @@ We'd like to thank all the contributors who worked on this release!
 
 ## v2.13.0
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fixed xadd timestamp (fixes #151) (#152)
 - Implement XDEL #153
@@ -111,7 +115,7 @@ We'd like to thank all the contributors who worked on this release!
 
 ## v2.12.1
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Add support for `Connection.read_response` arguments used in redis-py 4.5.5 and 5.0.0
 - Adding state for scan commands (#99)
@@ -129,7 +133,7 @@ We'd like to thank all the contributors who worked on this release!
 
 ## v2.11.2
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Unique FakeServer when no connection params are provided (#142)
 
@@ -148,7 +152,7 @@ We'd like to thank all the contributors who worked on this release!
   Creating multiple clients with the same connection parameters will result in
   the same server data structure.
 
-### 🧰 Bug Fixes
+### 🐛 Bug Fixes
 
 - Fix creating fakeredis.aioredis using url with user/password (#139)
 
