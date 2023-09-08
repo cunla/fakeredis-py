@@ -191,3 +191,10 @@ def test_scan_expired_key(r: redis.Redis):
     r.pexpire('expiringkey', 1)
     sleep(1)
     assert r.scan()[1] == []
+
+
+def test_scan_stream(r: redis.Redis):
+    r.xadd("mystream", {"test": "value"})
+    assert r.type("mystream") == b"stream"
+    for s in r.scan_iter(_type="STRING"):
+        print(s)

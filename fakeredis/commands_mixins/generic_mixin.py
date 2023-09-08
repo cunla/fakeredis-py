@@ -14,7 +14,6 @@ from fakeredis._commands import (
     CommandItem,
     SortFloat,
     delete_keys,
-    key_value_type,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database
 from fakeredis._zset import ZSet
@@ -27,6 +26,7 @@ class GenericCommandsMixin:
     _db_num: int
     _ttl: Callable
     _scan: Callable
+    _key_value_type: Callable
 
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""
@@ -297,7 +297,7 @@ class GenericCommandsMixin:
 
     @command((Key(),))
     def type(self, key):
-        return key_value_type(key)
+        return self._key_value_type(key)
 
     @command((Key(),), (Key(),), name="unlink")
     def unlink(self, *keys):
