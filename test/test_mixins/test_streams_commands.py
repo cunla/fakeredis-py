@@ -455,6 +455,7 @@ def test_xreadgroup(r: redis.Redis):
     # r.xreadgroup(group, consumer, streams={stream: ">"})
     # r.xtrim(stream, 0)
     # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
+    r.xreadgroup(group, consumer, streams={stream: '>'}, count=10, block=500)
 
 
 def test_xinfo_stream(r: redis.Redis):

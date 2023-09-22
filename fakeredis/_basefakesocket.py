@@ -223,15 +223,13 @@ class BaseFakeSocket:
         if ret is not None or self._in_transaction:
             return ret
         if timeout:
-            deadline = time.time() + timeout
+            deadline = time.time() + timeout / 1000.0
         else:
             deadline = None
         while True:
             timeout = deadline - time.time() if deadline is not None else None
             if timeout is not None and timeout <= 0:
                 return None
-            # Python <3.2 doesn't return a status from wait. On Python 3.2+
-            # we bail out early on False.
             if self._db.condition.wait(timeout=timeout) is False:
                 return None  # Timeout expired
             ret = func(False)
