@@ -173,7 +173,7 @@ class StreamsCommandsMixin:
             return self._xread(stream_start_id_list, count, False)
         else:
             return self._blocking(
-                timeout, functools.partial(self._xread, stream_start_id_list, count)
+                timeout / 1000.0, functools.partial(self._xread, stream_start_id_list, count)
             )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
@@ -216,7 +216,7 @@ class StreamsCommandsMixin:
             return self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
             return self._blocking(
-                timeout,
+                timeout / 1000.0,
                 functools.partial(
                     self._xreadgroup, consumer_name, group_params, count, noack
                 ),

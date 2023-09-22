@@ -208,7 +208,7 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout, func):
+    def _blocking(self, timeout: Union[float, int], func: Callable):
         """Run a function until it succeeds or timeout is reached.
 
         The timeout must be an integer, and 0 means infinite. The function
@@ -222,10 +222,7 @@ class BaseFakeSocket:
         ret = func(True)
         if ret is not None or self._in_transaction:
             return ret
-        if timeout:
-            deadline = time.time() + timeout / 1000.0
-        else:
-            deadline = None
+        deadline = time.time() + timeout if timeout else None
         while True:
             timeout = deadline - time.time() if deadline is not None else None
             if timeout is not None and timeout <= 0:
