@@ -211,7 +211,7 @@ class BaseFakeSocket:
     def _blocking(self, timeout: Union[float, int], func: Callable):
         """Run a function until it succeeds or timeout is reached.
 
-        The timeout must be an integer, and 0 means infinite. The function
+        The timeout is in seconds, and 0 means infinite. The function
         is called with a boolean to indicate whether this is the first call.
         If it returns None, it is considered to have "failed" and is retried
         each time the condition variable is notified, until the timeout is
