@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.18.2
+
+### 🐛 Bug Fixes
+
+- Fix error on blocking XREADGROUP #237
+
 ## v2.18.1
 
 ### 🐛 Bug Fixes

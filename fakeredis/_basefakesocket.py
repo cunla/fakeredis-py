@@ -208,10 +208,10 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout, func):
+    def _blocking(self, timeout: Union[float, int], func: Callable):
         """Run a function until it succeeds or timeout is reached.
 
-        The timeout must be an integer, and 0 means infinite. The function
+        The timeout is in seconds, and 0 means infinite. The function
         is called with a boolean to indicate whether this is the first call.
         If it returns None, it is considered to have "failed" and is retried
         each time the condition variable is notified, until the timeout is
@@ -222,16 +222,11 @@ class BaseFakeSocket:
         ret = func(True)
         if ret is not None or self._in_transaction:
             return ret
-        if timeout:
-            deadline = time.time() + timeout
-        else:
-            deadline = None
+        deadline = time.time() + timeout if timeout else None
         while True:
             timeout = deadline - time.time() if deadline is not None else None
             if timeout is not None and timeout <= 0:
                 return None
-            # Python <3.2 doesn't return a status from wait. On Python 3.2+
-            # we bail out early on False.
             if self._db.condition.wait(timeout=timeout) is False:
                 return None  # Timeout expired
             ret = func(False)

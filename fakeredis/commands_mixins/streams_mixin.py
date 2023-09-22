@@ -107,7 +107,7 @@ class StreamsCommandsMixin:
         for item, start_id in stream_start_id_list:
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
             if first_pass and (count is None or len(stream_results) < count):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
+                return None
             if len(stream_results) > 0:
                 res.append([item.key, stream_results])
         return res
@@ -124,7 +124,7 @@ class StreamsCommandsMixin:
         for group, stream_name, start_id in group_params:
             stream_results = group.group_read(consumer_name, start_id, count, noack)
             if first_pass and (count is None or len(stream_results) < count):
-                raise SimpleError(msgs.WRONGTYPE_MSG)
+                return None
             if len(stream_results) > 0 or start_id != b">":
                 res.append([stream_name, stream_results])
         return res
@@ -173,7 +173,7 @@ class StreamsCommandsMixin:
             return self._xread(stream_start_id_list, count, False)
         else:
             return self._blocking(
-                timeout, functools.partial(self._xread, stream_start_id_list, count)
+                timeout / 1000.0, functools.partial(self._xread, stream_start_id_list, count)
             )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
@@ -183,11 +183,9 @@ class StreamsCommandsMixin:
         (count, timeout, noack), left_args = extract_args(
             args, ("+count", "+block", "noack"), error_on_unexpected=False
         )
-        if (
-                len(left_args) < 3
+        if (len(left_args) < 3
                 or not casematch(left_args[0], b"STREAMS")
-                or len(left_args) % 2 != 1
-        ):
+                or len(left_args) % 2 != 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
@@ -218,7 +216,7 @@ class StreamsCommandsMixin:
             return self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
             return self._blocking(
-                timeout,
+                timeout / 1000.0,
                 functools.partial(
                     self._xreadgroup, consumer_name, group_params, count, noack
                 ),
