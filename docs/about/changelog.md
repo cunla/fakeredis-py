@@ -5,7 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.18.2
+## v2.19.0
+
+### 🚀 Features
+
+- Implement Bloom filters commands #239
 
 ### 🐛 Bug Fixes
 
