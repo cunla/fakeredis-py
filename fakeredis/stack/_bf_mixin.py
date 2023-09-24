@@ -4,8 +4,10 @@ from fakeredis._commands import command, Key, CommandItem
 from fakeredis import _msgs as msgs
 import pybloom_live
 
+
 class BloomFilter(pybloom_live.ScalableBloomFilter):
     pass
+
 
 class BFCommandsMixin:
     _db: helpers.Database
@@ -22,3 +24,14 @@ class BFCommandsMixin:
     )
     def bf_add(self, key, value: bytes):
         return BFCommandsMixin._bf_add(key, value)
+
+    @command(
+        name="BF.MADD",
+        fixed=(Key(BloomFilter), bytes),
+        repeat=(bytes,),
+    )
+    def bf_madd(self, key, *values):
+        res = list()
+        for value in values:
+            res.append(BFCommandsMixin._bf_add(key, value))
+        return res
