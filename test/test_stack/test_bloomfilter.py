@@ -18,3 +18,13 @@ def test_bf_madd(r: redis.Redis):
     r.set('key1', 'value')
     with pytest.raises(redis.exceptions.ResponseError):
         r.bf().add('key1', 'v')
+
+
+def test_bf_card(r: redis.Redis):
+    assert r.bf().madd('key', 'v1', 'v2', 'v2') == [1, 1, 0]
+    assert r.bf().card('key') == 2
+    assert r.bf().card('key-new') == 0
+
+    r.set('key1', 'value')
+    with pytest.raises(redis.exceptions.ResponseError):
+        r.bf().card('key1')

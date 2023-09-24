@@ -35,3 +35,11 @@ class BFCommandsMixin:
         for value in values:
             res.append(BFCommandsMixin._bf_add(key, value))
         return res
+
+    @command(
+        name="BF.CARD",
+        fixed=(Key(BloomFilter),),
+        repeat=(),
+    )
+    def bf_card(self, key):
+        return len(key.value)
