@@ -17,7 +17,7 @@ load_dotenv()  # take environment variables from .env.
 IGNORE_GROUPS = {
     'suggestion', 'tdigest', 'scripting', 'cf', 'topk',
     'hyperloglog', 'graph', 'timeseries', 'connection',
-    'server', 'generic', 'cms', 'bf', 'cluster',
+    'server', 'generic', 'cms', 'cluster',
     'search', 'bitmap',
 }
 IGNORE_COMMANDS = {
@@ -49,9 +49,7 @@ def commands_groups(
 
 
 def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
-    """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands
-
-    """
+    """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands"""
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)
