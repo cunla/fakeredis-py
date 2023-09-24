@@ -12,11 +12,13 @@ class BloomFilter(pybloom_live.ScalableBloomFilter):
 class BFCommandsMixin:
     _db: helpers.Database
 
+    @staticmethod
     def _bf_add(key: CommandItem, item: bytes) -> int:
         res = key.value.add(item)
         key.updated()
         return 0 if res else 1
 
+    @staticmethod
     def _bf_exist(key: CommandItem, item: bytes) -> int:
         return 1 if (item in key.value) else 0
 
