@@ -1,6 +1,26 @@
 # Probabilistic commands
 
-Module currently not implemented in fakeredis.
+## `bf` commands (5/10 implemented)
+
+### [BF.ADD](https://redis.io/commands/bf.add/)
+
+Adds an item to a Bloom Filter
+
+### [BF.MADD](https://redis.io/commands/bf.madd/)
+
+Adds one or more items to a Bloom Filter. A filter will be created if it does not exist
+
+### [BF.EXISTS](https://redis.io/commands/bf.exists/)
+
+Checks whether an item exists in a Bloom Filter
+
+### [BF.MEXISTS](https://redis.io/commands/bf.mexists/)
+
+Checks whether one or more items exist in a Bloom Filter
+
+### [BF.CARD](https://redis.io/commands/bf.card/)
+
+Returns the cardinality of a Bloom filter
 
 
 ### Unsupported bf commands 
@@ -10,25 +30,9 @@ Module currently not implemented in fakeredis.
 
 Creates a new Bloom Filter
 
-#### [BF.ADD](https://redis.io/commands/bf.add/) <small>(not implemented)</small>
-
-Adds an item to a Bloom Filter
-
-#### [BF.MADD](https://redis.io/commands/bf.madd/) <small>(not implemented)</small>
-
-Adds one or more items to a Bloom Filter. A filter will be created if it does not exist
-
 #### [BF.INSERT](https://redis.io/commands/bf.insert/) <small>(not implemented)</small>
 
 Adds one or more items to a Bloom Filter. A filter will be created if it does not exist
-
-#### [BF.EXISTS](https://redis.io/commands/bf.exists/) <small>(not implemented)</small>
-
-Checks whether an item exists in a Bloom Filter
-
-#### [BF.MEXISTS](https://redis.io/commands/bf.mexists/) <small>(not implemented)</small>
-
-Checks whether one or more items exist in a Bloom Filter
 
 #### [BF.SCANDUMP](https://redis.io/commands/bf.scandump/) <small>(not implemented)</small>
 
@@ -41,10 +45,6 @@ Restores a filter previously saved using SCANDUMP
 #### [BF.INFO](https://redis.io/commands/bf.info/) <small>(not implemented)</small>
 
 Returns information about a Bloom Filter
-
-#### [BF.CARD](https://redis.io/commands/bf.card/) <small>(not implemented)</small>
-
-Returns the cardinality of a Bloom filter
 
 
 
