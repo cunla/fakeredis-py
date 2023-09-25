@@ -6,5 +6,18 @@ except ImportError as e:
     if e.name == "fakeredis.stack._json_mixin":
         raise e
 
+
     class JSONCommandsMixin:  # type: ignore
+        pass
+
+try:
+    import pybloom_live  # noqa: F401
+
+    from ._bf_mixin import BFCommandsMixin  # noqa: F401
+except ImportError as e:
+    if e.name == "fakeredis.stack._bf_mixin":
+        raise e
+
+
+    class BFCommandsMixin:  # type: ignore
         pass
