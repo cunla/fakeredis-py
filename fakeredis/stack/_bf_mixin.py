@@ -1,4 +1,6 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
+import io
+
 import pybloom_live
 
 from fakeredis import _msgs as msgs
@@ -163,3 +165,38 @@ class BFCommandsMixin:
             return key.value.scale if key.value.scale > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+    @command(
+        name="BF.SCANDUMP",
+        fixed=(Key(), Int,),
+        repeat=(),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+    )
+    def bf_scandump(self, key: CommandItem, iterator: int):
+        if key.value is None:
+            raise SimpleError(msgs.NOT_FOUND_MSG)
+        f = io.BytesIO()
+
+        if iterator == 0:
+            key.value.tofile(f)
+            f.seek(0)
+            s = f.read()
+            f.close()
+            return [1, s]
+        else:
+            return [0, None]
+
+    @command(
+        name="BF.LOADCHUNK",
+        fixed=(Key(), Int, bytes),
+        repeat=(),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+    )
+    def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes):
+        if key.value is not None and type(key.value) != ScalableBloomFilter:
+            raise SimpleError(msgs.NOT_FOUND_MSG)
+        f = io.BytesIO(data)
+        key.value = ScalableBloomFilter.fromfile(f)
+        f.close()
+        key.updated()
+        return OK
