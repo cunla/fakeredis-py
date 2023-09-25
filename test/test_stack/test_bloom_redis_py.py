@@ -115,10 +115,10 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
 
     # Now, load all the commands:
     for cmd in cmds:
-        r.bf().loadchunk("myBloom", *cmd)
+        r.bf().loadchunk("myBloom1", *cmd)
 
-    r.bf().client.delete("myBloom")
-    r.bf().create("myBloom", "0.0001", "10000000")
+    for x in range(1000):
+        assert r.bf().exists("myBloom1", x)
 
 
 def test_bf_info(r: redis.Redis):
