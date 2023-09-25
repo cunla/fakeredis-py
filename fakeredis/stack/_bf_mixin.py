@@ -161,3 +161,5 @@ class BFCommandsMixin:
             return key.value.count
         elif casematch(args[0], b'EXPANSION'):
             return key.value.scale if key.value.scale > 0 else None
+        else:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
