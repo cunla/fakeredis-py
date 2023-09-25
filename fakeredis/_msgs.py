@@ -93,3 +93,7 @@ LPOS_RANK_CAN_NOT_BE_ZERO = (
     "or use negative to start from the end of the list"
 )
 NUMKEYS_GREATER_THAN_ZERO_MSG = "numkeys should be greater than 0"
+FILTER_FULL_MSG = ""
+NONSCALING_FILTERS_CANNOT_EXPAND_MSG = "Nonscaling filters cannot expand"
+ITEM_EXISTS_MSG = "item exists"
+NOT_FOUND_MSG = "not found"
