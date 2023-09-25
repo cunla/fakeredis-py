@@ -2,6 +2,8 @@ import pytest
 import redis.commands.bf
 from redis.commands.bf import BFInfo
 
+json_tests = pytest.importorskip("pybloom_live")
+
 
 def get_protocol_version(r):
     if isinstance(r, redis.Redis) or isinstance(r, redis.asyncio.Redis):
