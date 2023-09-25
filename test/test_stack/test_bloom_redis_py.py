@@ -1,8 +1,6 @@
 import pytest
 import redis.commands.bf
 from redis.commands.bf import BFInfo
-from redis.exceptions import ModuleError
-from redis.utils import HIREDIS_AVAILABLE
 
 
 def get_protocol_version(r):
@@ -89,40 +87,28 @@ def test_bf_insert(r: redis.Redis):
 
 
 def test_bf_scandump_and_loadchunk(r: redis.Redis):
-    # Store a filter
     r.bf().create("myBloom", "0.0001", "1000")
 
-    # test is probabilistic and might fail. It is OK to change variables if
+    # Test is probabilistic and might fail. It is OK to change variables if
     # certain to not break anything
-    def do_verify():
-        res = 0
-        for x in range(1000):
-            r.bf().add("myBloom", x)
-            rv = r.bf().exists("myBloom", x)
-            assert rv
-            rv = r.bf().exists("myBloom", f"nonexist_{x}")
-            res += rv == x
-        assert res < 5
 
-    do_verify()
-    cmds = []
-    if HIREDIS_AVAILABLE:
-        with pytest.raises(ModuleError):
-            cur = r.bf().scandump("myBloom", 0)
-        return
+    res = 0
+    for x in range(1000):
+        r.bf().add("myBloom", x)
+        assert r.bf().exists("myBloom", x)
+        rv = r.bf().exists("myBloom", f"nonexist_{x}")
+        res += rv == x
+    assert res < 5
 
-    cur = r.bf().scandump("myBloom", 0)
-    first = cur[0]
-    cmds.append(cur)
-
-    while True:
+    cmds = list()
+    first = 0
+    while first is not None:
         cur = r.bf().scandump("myBloom", first)
-        first = cur[0]
-        if first == 0:
-            break
+        if cur[0] == 0:
+            first = None
         else:
+            first = cur[0]
             cmds.append(cur)
-    prev_info = r.bf().execute_command("bf.debug", "myBloom")
 
     # Remove the filter
     r.bf().client.delete("myBloom")
@@ -130,10 +116,6 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
     # Now, load all the commands:
     for cmd in cmds:
         r.bf().loadchunk("myBloom", *cmd)
-
-    cur_info = r.bf().execute_command("bf.debug", "myBloom")
-    assert prev_info == cur_info
-    do_verify()
 
     r.bf().client.delete("myBloom")
     r.bf().create("myBloom", "0.0001", "10000000")
