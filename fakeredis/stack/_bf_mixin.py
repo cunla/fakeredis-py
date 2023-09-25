@@ -10,6 +10,13 @@ from fakeredis._helpers import SimpleError, OK, casematch
 class ScalableBloomFilter(pybloom_live.ScalableBloomFilter):
     NO_GROWTH = 0
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filters.append(
+            pybloom_live.BloomFilter(
+                capacity=self.initial_capacity,
+                error_rate=self.error_rate * self.ratio))
+
     def add(self, key):
         if key in self:
             return True
@@ -125,3 +132,32 @@ class BFCommandsMixin:
             res.append(self._bf_add(key, item))
         key.updated()
         return res
+
+    @command(
+        name="BF.INFO",
+        fixed=(Key(),),
+        repeat=(bytes,),
+    )
+    def bf_info(self, key: CommandItem, *args: bytes):
+        if key.value is None or type(key.value) != ScalableBloomFilter:
+            raise SimpleError('...')
+        if len(args) > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) == 0:
+            return [
+                b'Capacity', key.value.capacity,
+                b'Size', key.value.capacity,
+                b'Number of filters', len(key.value.filters),
+                b'Number of items inserted', key.value.count,
+                b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
+            ]
+        if casematch(args[0], b'CAPACITY'):
+            return key.value.capacity
+        elif casematch(args[0], b'SIZE'):
+            return key.value.capacity
+        elif casematch(args[0], b'FILTERS'):
+            return len(key.value.filters)
+        elif casematch(args[0], b'ITEMS'):
+            return key.value.count
+        elif casematch(args[0], b'EXPANSION'):
+            return key.value.scale if key.value.scale > 0 else None

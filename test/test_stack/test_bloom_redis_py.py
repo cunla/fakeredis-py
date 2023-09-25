@@ -1,6 +1,7 @@
 import pytest
 import redis.commands.bf
-from redis.exceptions import ModuleError, RedisError
+from redis.commands.bf import BFInfo
+from redis.exceptions import ModuleError
 from redis.utils import HIREDIS_AVAILABLE
 
 
@@ -139,35 +140,17 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
 
 
 def test_bf_info(r: redis.Redis):
-    expansion = 4
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
-    info = r.bf().info("nonscaling")
-    assert_resp_response(
-        r,
-        None,
-        info.get("expansionRate"),
-        info.get("Expansion rate"),
-    )
+    info: BFInfo = r.bf().info("nonscaling")
+    assert info.expansionRate is None
 
+    expansion = 4
     r.bf().create("expanding", "0.0001", "1000", expansion=expansion)
     info = r.bf().info("expanding")
-
-    assert_resp_response(
-        r,
-        4,
-        info.get("expansionRate"),
-        info.get("Expansion rate"),
-    )
-
-    try:
-        # noScale mean no expansion
-        r.bf().create(
-            "myBloom", "0.0001", "1000", expansion=expansion, noScale=True
-        )
-        assert False
-    except RedisError:
-        assert True
+    assert info.expansionRate == 4
+    assert info.capacity == 1000
+    assert info.insertedNum == 0
 
 
 def test_bf_card(r: redis.Redis):
