@@ -195,6 +195,6 @@ def test_scan_expired_key(r: redis.Redis):
 
 def test_scan_stream(r: redis.Redis):
     r.xadd("mystream", {"test": "value"})
-    assert r.type("mystream") == b"stream"
+    assert r.type("mystream") == b"stream"  # noqa: E721
     for s in r.scan_iter(_type="STRING"):
         print(s)

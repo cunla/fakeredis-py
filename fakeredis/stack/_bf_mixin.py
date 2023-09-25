@@ -141,7 +141,7 @@ class BFCommandsMixin:
         repeat=(bytes,),
     )
     def bf_info(self, key: CommandItem, *args: bytes):
-        if key.value is None or type(key.value) != ScalableBloomFilter:
+        if key.value is None or type(key.value) is not ScalableBloomFilter:
             raise SimpleError('...')
         if len(args) > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -193,7 +193,7 @@ class BFCommandsMixin:
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
     def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes):
-        if key.value is not None and type(key.value) != ScalableBloomFilter:
+        if key.value is not None and type(key.value) is not ScalableBloomFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         f = io.BytesIO(data)
         key.value = ScalableBloomFilter.fromfile(f)
