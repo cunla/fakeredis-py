@@ -64,7 +64,7 @@ jobs:
             redis-image: "redis/redis-stack-server:7.2.0-v0"
             redis-py: "5.0.0"
             lupa: true
-            json: true
+            extra: true
             coverage: true
             hypothesis: true
 
@@ -99,11 +99,11 @@ jobs:
       - name: Install lupa
         if: ${{ matrix.lupa }}
         run: |
-          poetry run pip install fakeredis[lua]
+          poetry run pip install "fakeredis[lua]"
       - name: Install json
-        if: ${{ matrix.json }}
+        if: ${{ matrix.extra }}
         run: |
-          poetry run pip install fakeredis[json]
+          poetry run pip install "fakeredis[json,bf]"
       - name: Get version
         id: getVersion
         shell: bash

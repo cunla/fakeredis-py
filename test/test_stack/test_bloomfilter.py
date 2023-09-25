@@ -3,6 +3,8 @@ import redis
 
 from fakeredis import _msgs as msgs
 
+json_tests = pytest.importorskip("pybloom_live")
+
 
 def test_bf_add(r: redis.Redis):
     assert r.bf().add('key', 'value') == 1
