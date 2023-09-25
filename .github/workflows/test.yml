@@ -43,7 +43,7 @@ jobs:
     name: >
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
-      lupa:${{ matrix.lupa }}, json:${{matrix.json}}
+      lupa:${{ matrix.lupa }}, json:${{matrix.extra}}
     needs:
       - "lint"
     runs-on: ubuntu-latest
