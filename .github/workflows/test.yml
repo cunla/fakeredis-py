@@ -53,18 +53,18 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.13", "redis:7.0.12", "redis:7.2.0" ]
         python-version: [ "3.8", "3.9", "3.10", "3.11" ]
-        redis-py: [ "4.3.6", "4.5.5", "4.6.0", "5.0.0" ]
+        redis-py: [ "4.3.6", "4.6.0", "5.0.1" ]
         include:
           - python-version: "3.11"
             redis-image: "redis:6.2.12"
-            redis-py: "5.0.0"
+            redis-py: "5.0.1"
             lupa: true
             hypothesis: true
           - python-version: "3.11"
             redis-image: "redis/redis-stack-server:7.2.0-v0"
-            redis-py: "5.0.0"
+            redis-py: "5.0.1"
             lupa: true
-            extra: true
+            extra: true  # json, bf
             coverage: true
             hypothesis: true
 
