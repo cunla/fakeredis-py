@@ -60,7 +60,7 @@ flake8 = { version = "^6.1", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
 hypothesis = "^6.70"
 mypy = "^1"
-pygithub = "^1.58.2"
+pygithub = "^2.1.1"
 pytest = "^7.4"
 pytest-asyncio = "^0.21"
 pytest-cov = "^4.0"
