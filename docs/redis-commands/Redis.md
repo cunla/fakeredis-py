@@ -619,11 +619,15 @@ Closes the connection.
 Resets the connection.
 
 
-## `bitmap` commands (5/7 implemented)
+## `bitmap` commands (6/7 implemented)
 
 ### [BITCOUNT](https://redis.io/commands/bitcount/)
 
 Counts the number of set bits (population counting) in a string.
+
+#### [BITFIELD](https://redis.io/commands/bitfield/)
+
+Performs arbitrary bitfield integer operations on strings.
 
 ### [BITOP](https://redis.io/commands/bitop/)
 
@@ -643,11 +647,7 @@ Sets or clears the bit at offset of the string value. Creates the key if it does
 
 
 ### Unsupported bitmap commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [BITFIELD](https://redis.io/commands/bitfield/) <small>(not implemented)</small>
-
-Performs arbitrary bitfield integer operations on strings.
+> To implement support for a command, see [here](../../guides/implement-command/)
 
 #### [BITFIELD_RO](https://redis.io/commands/bitfield_ro/) <small>(not implemented)</small>
 

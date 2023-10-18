@@ -208,3 +208,182 @@ def test_bitpos_wrong_arguments(r: redis.Redis):
         raw_command(r, 'bitpos', key, 1, '6', '5', 'BYTE', '6')
     with pytest.raises(redis.ResponseError):
         raw_command(r, 'bitpos', key)
+
+
+def test_bitfield_empty(r: redis.Redis):
+    key = "key:bitfield"
+    assert r.bitfield(key).execute() == []
+    for overflow in ('wrap', 'sat', 'fail'):
+        assert raw_command(r, 'bitfield', key, 'overflow', overflow) == []
+
+
+def test_bitfield_wrong_arguments(r: redis.Redis):
+    key = "key:bitfield:wrong:args"
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'foo')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'overflow')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'overflow', 'foo')
+
+
+def test_bitfield_get(r: redis.Redis):
+    key = "key:bitfield_get"
+    r.set(key, b"\xff\xf0\x00")
+    for i in range(0, 12):
+        assert r.bitfield(key).get('u1', i).get('i1', i).execute() == [1, -1]
+    for i in range(12, 25):
+        for j in range(1, 63):
+            assert r.bitfield(key).get(f'u{j}', i).get(f'i{j}', i).execute() == [0, 0]
+
+    for i in range(0, 11):
+        assert r.bitfield(key).get('u2', i).get('i2', i).execute() == [3, -1]
+    assert r.bitfield(key).get('u2', 11).get('i2', 11).execute() == [2, -2]
+    assert r.bitfield(key).get('u8', 0).get('u8', 8).get('u8', 16).execute() == [0xff, 0xf0, 0]
+    assert r.bitfield(key).get('i8', 0).get('i8', 8).get('i8', 16).execute() == [~0, ~0x0f, 0]
+
+    assert r.bitfield(key).get('u32', 8).get('u8', 100).execute() == [0xf000_0000, 0]
+
+    r.set(key, b"\x01\x23\x45\x67\x89\xab\xcd\xef")
+    for enc in ('i16', 'u16'):
+        assert r.bitfield(key).get(enc, 0).execute() == [0x0123]
+        assert r.bitfield(key).get(enc, 4).execute() == [0x1234]
+        assert r.bitfield(key).get(enc, 8).execute() == [0x2345]
+
+        assert r.bitfield(key).get(enc, 1).execute() == [0x0246]
+        assert r.bitfield(key).get(enc, 5).execute() == [0x2468]
+        assert r.bitfield(key).get(enc, 9).execute() == [0x468a]
+
+        assert r.bitfield(key).get(enc, 2).execute() == [0x048d]
+        assert r.bitfield(key).get(enc, 6).execute() == [0x48d1]
+
+    assert r.bitfield(key).get('u16', 10).get('i16', 10).execute() == [0x8d15, 0xd15 - 0x8000]
+    assert r.bitfield(key).get('u32', 16).get('u48', 8).execute() == [0x456789ab, 0x2345_6789_abcd]
+    assert r.bitfield(key).get('i32', 16).get('i48', 8).execute() == [0x456789ab, 0x2345_6789_abcd]
+    assert r.bitfield(key).get('u63', 1).execute() == [0x123456789_abcdef]
+    assert r.bitfield(key).get('i63', 1).execute() == [0x123456789_abcdef]
+    assert r.bitfield(key).get('i64', 0).execute() == [0x123456789_abcdef]
+    assert raw_command(r, 'bitfield', key, 'get', 'i16', 0) == [0x0123]
+
+
+def test_bitfield_set(r: redis.Redis):
+    key = "key:bitfield_set"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key).set('u8', 0, 0x55).set('u8', 16, 0xaa).execute() == [0xff, 0]
+    assert r.get(key) == b"\x55\xf0\xaa"
+    assert r.bitfield(key).set('u1', 0, 1).set('u1', 16, 2).execute() == [0, 1]
+    assert r.get(key) == b"\xd5\xf0\x2a"
+    assert r.bitfield(key).set('i1', 31, 1).set('i1', 30, 1).execute() == [0, 0]
+    assert r.get(key) == b"\xd5\xf0\x2a\x03"
+    assert r.bitfield(key).set('u36', 4, 0xbadc0ffe).execute() == [0x5_f02a_0300]
+    assert r.get(key) == b"\xd0\xba\xdc\x0f\xfe"
+    assert r.bitfield(key, 'WRAP').set('u12', 8, 0xfff).execute() == [0xbad]
+    assert r.get(key) == b"\xd0\xff\xfc\x0f\xfe"
+
+
+def test_bitfield_set_sat(r: redis.Redis):
+    key = "key:bitfield_set"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key, 'SAT').set('u8', 4, 0x123).set('u8', 8, 0x55).execute() == [0xff, 0xf0]
+    assert r.get(key) == b"\xff\x55\x00"
+    assert r.bitfield(key, 'SAT').set('u12', 0, -1).set('u1', 1, 2).execute() == [0xff5, 1]
+    assert r.get(key) == b"\xff\xf5\x00"
+    assert r.bitfield(key, 'SAT').set('i4', 0, 8).set('i4', 4, 7).execute() == [-1, -1]
+    assert r.get(key) == b"\x77\xf5\x00"
+    assert r.bitfield(key, 'SAT').set('i4', 4, -8).set('i4', 0, -9).execute() == [7, 7]
+    assert r.get(key) == b"\x88\xf5\x00"
+    assert r.bitfield(key, 'SAT').set('i60', 0, -(1 << 62)+1).execute() == [0x88f5000_00000000-(1 << 60)]
+    assert r.get(key) == b"\x80" + b"\0" * 7
+    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63)+1).execute() == [1 << 59]
+    assert r.get(key) == b"\xff" * 7 + b"\xf0"
+
+
+def test_bitfield_set_fail(r: redis.Redis):
+    key = "key:bitfield_set"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key, 'FAIL').set('u8', 4, 0x123).set('u8', 8, 0x55).execute() == [None, 0xf0]
+    assert r.get(key) == b"\xff\x55\x00"
+    assert r.bitfield(key, 'FAIL').set('u12', 0, -1).set('u1', 1, 2).execute() == [None, None]
+    assert r.get(key) == b"\xff\x55\x00"
+    assert r.bitfield(key, 'FAIL').set('i4', 0, 8).set('i4', 4, 7).execute() == [None, -1]
+    assert r.get(key) == b"\xf7\x55\x00"
+    assert r.bitfield(key, 'FAIL').set('i4', 4, -8).set('i4', 0, -9).execute() == [7, None]
+    assert r.get(key) == b"\xf8\x55\x00"
+
+
+def test_bitfield_incr(r: redis.Redis):
+    key = "key:bitfield_incr"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key).incrby('u8', 0, 0x55).incrby('u8', 16, 0xaa).execute() == [0x54, 0xaa]
+    assert r.get(key) == b"\x54\xf0\xaa"
+    assert r.bitfield(key).incrby('u1', 0, 1).incrby('u1', 16, 2).execute() == [1, 1]
+    assert r.get(key) == b"\xd4\xf0\xaa"
+    assert r.bitfield(key).incrby('i1', 31, 1).incrby('i1', 30, 1).execute() == [-1, -1]
+    assert r.get(key) == b"\xd4\xf0\xaa\x03"
+    assert r.bitfield(key).incrby('u36', 4, 0xbadc0ffe).execute() == [0x5_ab86_12fe]
+    assert r.get(key) == b"\xd5\xab\x86\x12\xfe"
+    assert r.bitfield(key, 'WRAP').incrby('u12', 8, 0xfff).execute() == [0xab7]
+    assert r.get(key) == b"\xd5\xab\x76\x12\xfe"
+
+
+def test_bitfield_incr_sat(r: redis.Redis):
+    key = "key:bitfield_incr_sat"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key, 'SAT').incrby('u8', 4, 0x123).incrby('u8', 8, 0x55).execute() == [0xff, 0xff]
+    assert r.get(key) == b"\xff\xff\x00"
+    assert r.bitfield(key, 'SAT').incrby('u12', 0, -1).incrby('u1', 1, 2).execute() == [0xffe, 1]
+    assert r.get(key) == b"\xff\xef\x00"
+    assert r.bitfield(key, 'SAT').incrby('i4', 0, 8).incrby('i4', 4, 7).execute() == [7, 6]
+    assert r.get(key) == b"\x76\xef\x00"
+    assert r.bitfield(key, 'SAT').incrby('i4', 4, -8).incrby('i4', 0, -9).execute() == [-2, -2]
+    assert r.get(key) == b"\xee\xef\x00"
+    assert r.bitfield(key, 'SAT').incrby('i60', 0, -(1 << 62)+1).execute() == [-(1 << 59)]
+    assert r.get(key) == b"\x80" + b"\0" * 7
+    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63)+1).execute() == [1 << 59]
+    assert r.get(key) == b"\xff" * 7 + b"\xf0"
+
+
+def test_bitfield_incr_fail(r: redis.Redis):
+    key = "key:bitfield_incr_fail"
+    r.set(key, b"\xff\xf0\x00")
+    assert r.bitfield(key, 'FAIL').incrby('u8', 4, 0x123).incrby('u8', 8, 0x55).execute() == [None, None]
+    assert r.get(key) == b"\xff\xf0\x00"
+    assert r.bitfield(key, 'FAIL').incrby('u12', 0, -1).incrby('u1', 1, 2).execute() == [0xffe, None]
+    assert r.get(key) == b"\xff\xe0\x00"
+    assert r.bitfield(key, 'FAIL').incrby('i4', 0, 8).incrby('i4', 4, 7).execute() == [7, 6]
+    assert r.get(key) == b"\x76\xe0\x00"
+    assert r.bitfield(key, 'FAIL').incrby('i4', 4, -8).incrby('i4', 0, -9).execute() == [-2, -2]
+    assert r.get(key) == b"\xee\xe0\x00"
+
+
+def test_bitfield_get_wrong_arguments(r: redis.Redis):
+    key = "key:bitfield_get:wrong:args"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'get')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'get', 'i16')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'get', 'i16', -1)
+    for encoding in ('I8', 'i-42', 'i5?', 'u0', 'i0', 'i65', 'u64', 'i 60'):
+        with pytest.raises(redis.ResponseError):
+            raw_command(r, 'bitfield', key, 'get', encoding, 0)
+
+
+def test_bitfield_set_wrong_arguments(r: redis.Redis):
+    key = "key:bitfield_set:wrong:args"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'set')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'set', 'i16')
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'set', 'i16', -1)
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, 'bitfield', key, 'set', 'i16', 0, 'foo')
+    for encoding in ('I8', 'i-42', 'i5?', 'u0', 'i0', 'i65', 'u64', 'i 60'):
+        with pytest.raises(redis.ResponseError):
+            raw_command(r, 'bitfield', key, 'set', encoding, 0, 0)
+

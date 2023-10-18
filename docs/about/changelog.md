@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.20.0
+
+### 🚀 Features
+
+- Implement BITFIELD command
+
 ## v2.19.0
 
 ### 🚀 Features
