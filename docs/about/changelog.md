@@ -9,7 +9,7 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
-- Implement BITFIELD command
+- Implement BITFIELD command #247
 
 ## v2.19.0
 
