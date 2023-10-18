@@ -1,5 +1,6 @@
 from typing import Tuple
 
+import re
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
     command,
@@ -11,6 +12,22 @@ from fakeredis._commands import (
     fix_range,
 )
 from fakeredis._helpers import SimpleError, casematch
+
+
+class BitfieldEncoding:
+    signed: bool
+    size: int
+
+    def __init__(self, encoding):
+        match = re.match(br'^([ui])(\d+)$', encoding)
+        if match is None:
+            raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
+
+        self.signed = match[1] == b'i'
+        self.size = int(match[2])
+
+        if self.size < 1 or self.size > (64 if self.signed else 63):
+            raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
 
 
 class BitmapCommandsMixin:
@@ -149,3 +166,85 @@ class BitmapCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitop"))
         dst.value = res
         return len(dst.value)
+
+    def _bitfield_get(self, key, encoding, offset):
+        ans = 0
+        for i in range(0, encoding.size):
+            ans <<= 1
+            if self.getbit(key, offset + i):
+                ans += -1 if encoding.signed and i == 0 else 1
+        return ans
+
+    def _bitfield_set(self, key, encoding, offset, overflow, value=None, incr=0):
+        if encoding.signed:
+            min_value = -(1 << (encoding.size - 1))
+            max_value = (1 << (encoding.size - 1)) - 1
+        else:
+            min_value = 0
+            max_value = (1 << encoding.size) - 1
+
+        ans = self._bitfield_get(key, encoding, offset)
+        new_value = ans if value is None else value
+        if not encoding.signed:
+            new_value &= (1 << 64) - 1  # force cast to uint64_t
+
+        if overflow == b"FAIL" and not (min_value <= new_value + incr <= max_value):
+            return None  # yes, failing in this context is not writing the value
+        elif overflow == b"SAT":
+            if new_value + incr > max_value:
+                new_value, incr = max_value, 0
+            # REDIS only checks for unsigned underflow on negative incr:
+            if (encoding.signed or incr < 0) and new_value + incr < min_value:
+                new_value, incr = min_value, 0
+
+        new_value += incr
+        new_value &= (1 << encoding.size) - 1
+        # normalize signed number by changing the sign associated to higher bit:
+        if encoding.signed and new_value > max_value:
+            new_value -= 1 << encoding.size
+
+        for i in range(0, encoding.size):
+            bit = (new_value >> (encoding.size - i - 1)) & 1
+            self.setbit(key, offset + i, bit)
+        return new_value if value is None else ans
+
+    @command(fixed=(Key(bytes),), repeat=(bytes,))
+    def bitfield(self, key, *args):
+        overflow = b"WRAP"
+        results = []
+        i = 0
+        while i < len(args):
+            if casematch(args[i], b"overflow") and i + 1 < len(args):
+                overflow = args[i+1].upper()
+                if overflow not in (b"WRAP", b"SAT", b"FAIL"):
+                    raise SimpleError(msgs.INVALID_OVERFLOW_TYPE)
+                i += 2
+            elif casematch(args[i], b"get") and i + 2 < len(args):
+                encoding = BitfieldEncoding(args[i+1])
+                offset = BitOffset.decode(args[i+2])
+                results.append(self._bitfield_get(key, encoding, offset))
+                i += 3
+            elif casematch(args[i], b"set") and i + 3 < len(args):
+                old_value = self._bitfield_set(
+                    key=key,
+                    encoding=BitfieldEncoding(args[i + 1]),
+                    offset=BitOffset.decode(args[i + 2]),
+                    value=Int.decode(args[i + 3]),
+                    overflow=overflow
+                )
+                results.append(old_value)
+                i += 4
+            elif casematch(args[i], b"incrby") and i + 3 < len(args):
+                old_value = self._bitfield_set(
+                    key=key,
+                    encoding=BitfieldEncoding(args[i + 1]),
+                    offset=BitOffset.decode(args[i + 2]),
+                    incr=Int.decode(args[i + 3]),
+                    overflow=overflow
+                )
+                results.append(old_value)
+                i += 4
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        return results
