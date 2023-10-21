@@ -9,7 +9,8 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
-- Implement BITFIELD command #247
+- Implement `BITFIELD` command #247
+- Implement `COMMAND`, `COMMAND INFO`, `COMMAND COUNT` #248
 
 ## v2.19.0
 

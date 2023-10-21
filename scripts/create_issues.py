@@ -5,14 +5,16 @@ To run this:
 - Set environment variable `GITHUB_TOKEN` to a github token with permissions to create issues.
   - Another option is to create `.env` file with `GITHUB_TOKEN`.
 """
+import json
 import os
 
+import requests
 from dotenv import load_dotenv
 from github import Github
 
-from supported import download_redis_commands, implemented_commands
-
 load_dotenv()  # take environment variables from .env.
+
+THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
 IGNORE_GROUPS = {
     'suggestion', 'tdigest', 'scripting', 'cf', 'topk',
@@ -48,8 +50,22 @@ def commands_groups(
     return implemented, unimplemented
 
 
+def download_redis_commands() -> dict:
+    from supported2 import METADATA
+    cmds = {}
+    for filename, url in METADATA:
+        full_filename = os.path.join(THIS_DIR, filename)
+        if not os.path.exists(full_filename):
+            contents = requests.get(url).content
+            open(full_filename, 'wb').write(contents)
+        curr_cmds = json.load(open(full_filename))
+        cmds = cmds | {k.lower(): v for k, v in curr_cmds.items()}
+    return cmds
+
+
 def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands"""
+    from supported2 import implemented_commands
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)

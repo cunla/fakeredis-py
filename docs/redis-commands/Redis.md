@@ -1,10 +1,22 @@
 # Redis commands
 
-## `server` commands (8/70 implemented)
+## `server` commands (11/70 implemented)
 
 ### [BGSAVE](https://redis.io/commands/bgsave/)
 
 Asynchronously saves the database(s) to disk.
+
+### [COMMAND](https://redis.io/commands/command/)
+
+Returns detailed information about all commands.
+
+### [COMMAND COUNT](https://redis.io/commands/command-count/)
+
+Returns a count of commands.
+
+### [COMMAND INFO](https://redis.io/commands/command-info/)
+
+Returns information about one, multiple or all commands.
 
 ### [DBSIZE](https://redis.io/commands/dbsize/)
 
@@ -94,14 +106,6 @@ Returns the authenticated username of the current connection.
 
 Asynchronously rewrites the append-only file to disk.
 
-#### [COMMAND](https://redis.io/commands/command/) <small>(not implemented)</small>
-
-Returns detailed information about all commands.
-
-#### [COMMAND COUNT](https://redis.io/commands/command-count/) <small>(not implemented)</small>
-
-Returns a count of commands.
-
 #### [COMMAND DOCS](https://redis.io/commands/command-docs/) <small>(not implemented)</small>
 
 Returns documentary information about one, multiple or all commands.
@@ -113,10 +117,6 @@ Extracts the key names from an arbitrary command.
 #### [COMMAND GETKEYSANDFLAGS](https://redis.io/commands/command-getkeysandflags/) <small>(not implemented)</small>
 
 Extracts the key names and access flags for an arbitrary command.
-
-#### [COMMAND INFO](https://redis.io/commands/command-info/) <small>(not implemented)</small>
-
-Returns information about one, multiple or all commands.
 
 #### [COMMAND LIST](https://redis.io/commands/command-list/) <small>(not implemented)</small>
 
@@ -625,7 +625,7 @@ Resets the connection.
 
 Counts the number of set bits (population counting) in a string.
 
-#### [BITFIELD](https://redis.io/commands/bitfield/)
+### [BITFIELD](https://redis.io/commands/bitfield/)
 
 Performs arbitrary bitfield integer operations on strings.
 
@@ -647,7 +647,7 @@ Sets or clears the bit at offset of the string value. Creates the key if it does
 
 
 ### Unsupported bitmap commands 
-> To implement support for a command, see [here](../../guides/implement-command/)
+> To implement support for a command, see [here](../../guides/implement-command/) 
 
 #### [BITFIELD_RO](https://redis.io/commands/bitfield_ro/) <small>(not implemented)</small>
 

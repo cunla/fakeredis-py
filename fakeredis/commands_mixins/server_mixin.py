@@ -1,14 +1,42 @@
+import json
+import os
 import time
-from typing import Any
+from typing import Any, List, Optional, Dict
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex
+from fakeredis._commands import command, DbIndex, SUPPORTED_COMMANDS
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database
+
+_COMMAND_INFO: Dict[bytes, List[Any]] = None
+
+
+def convert_obj(obj: Any) -> Any:
+    if isinstance(obj, str):
+        return obj.encode()
+    if isinstance(obj, list):
+        return [convert_obj(x) for x in obj]
+    if isinstance(obj, dict):
+        return {convert_obj(k): convert_obj(obj[k]) for k in obj}
+    return obj
+
+
+def _load_command_info() -> None:
+    global _COMMAND_INFO
+    if _COMMAND_INFO is None:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'commands.json')) as f:
+            _COMMAND_INFO = convert_obj(json.load(f))
 
 
 class ServerCommandsMixin:
     _server: Any
     _db: Database
+
+    @staticmethod
+    def _get_command_info(cmd: str) -> Optional[List[Any]]:
+        _load_command_info()
+        if cmd not in SUPPORTED_COMMANDS or cmd.encode() not in _COMMAND_INFO:
+            return None
+        return _COMMAND_INFO[cmd.encode()]
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args):
@@ -60,3 +88,19 @@ class ServerCommandsMixin:
             db2 = self._server.dbs[index2]
             db1.swap(db2)
         return OK
+
+    @command(name="COMMAND INFO", fixed=(), repeat=(bytes,))
+    def command_info(self, *commands):
+        res = [self._get_command_info(cmd) for cmd in commands]
+        return res
+
+    @command(name="COMMAND COUNT", fixed=(), repeat=())
+    def command_count(self):
+        _load_command_info()
+        return len(_COMMAND_INFO)
+
+    @command(name="COMMAND", fixed=(), repeat=())
+    def command(self):
+        _load_command_info()
+        res = [self._get_command_info(cmd.decode()) for cmd in _COMMAND_INFO]
+        return res
