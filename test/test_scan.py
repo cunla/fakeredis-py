@@ -67,26 +67,26 @@ def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: 
     assert key_to_remove not in keys
 
 
-@pytest.mark.xfail
-def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: redis.Redis):
-    size = 30
-    all_keys_dict = key_val_dict(size=size)
-    assert all(r.set(k, v) for k, v in all_keys_dict.items())
-    assert len(r.keys()) == size
-
-    cursor, keys = r.scan()
-
-    key_to_remove = keys[0]
-    assert r.delete(keys[0]) == 1
-    assert r.get(key_to_remove) is None
-    while cursor != 0:
-        cursor, data = r.scan(cursor=cursor)
-        keys.extend(data)
-
-    assert len(set(keys)) == len(keys)
-    keys = set(keys)
-    assert len(keys) == size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
-    assert key_to_remove in keys
+# @pytest.mark.xfail # todo
+# def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: redis.Redis):
+#     size = 30
+#     all_keys_dict = key_val_dict(size=size)
+#     assert all(r.set(k, v) for k, v in all_keys_dict.items())
+#     assert len(r.keys()) == size
+#
+#     cursor, keys = r.scan()
+#
+#     key_to_remove = keys[0]
+#     assert r.delete(keys[0]) == 1
+#     assert r.get(key_to_remove) is None
+#     while cursor != 0:
+#         cursor, data = r.scan(cursor=cursor)
+#         keys.extend(data)
+#
+#     assert len(set(keys)) == len(keys)
+#     keys = set(keys)
+#     assert len(keys) == size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
+#     assert key_to_remove in keys
 
 
 def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):

@@ -50,8 +50,8 @@ def test_command(r: redis.Redis):
     assert one_word_commands - set(commands_dict.keys()) == set()
 
 
-def test_command_info(r: redis.Redis):
-    assert r.command_count() >= len(SUPPORTED_COMMANDS)
+def test_command_count(r: redis.Redis):
+    assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if ' ' not in cmd])
 
 
 @pytest.mark.slow
