@@ -51,7 +51,7 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image: [ "redis:6.2.13", "redis:7.0.12", "redis:7.2.0" ]
+        redis-image: [ "redis:6.2.13", "redis:7.0.12", "redis:7.2.2" ]
         python-version: [ "3.8", "3.9", "3.10", "3.11" ]
         redis-py: [ "4.3.6", "4.6.0", "5.0.1" ]
         include:
@@ -61,7 +61,7 @@ jobs:
             lupa: true
             hypothesis: true
           - python-version: "3.11"
-            redis-image: "redis/redis-stack-server:7.2.0-v0"
+            redis-image: "redis/redis-stack-server:7.2.0-v4"
             redis-py: "5.0.1"
             lupa: true
             extra: true  # json, bf
