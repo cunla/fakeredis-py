@@ -4,7 +4,7 @@ import time
 from typing import Any, List, Optional, Dict
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex, SUPPORTED_COMMANDS
+from fakeredis._commands import command, DbIndex
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database
 
 _COMMAND_INFO: Dict[bytes, List[Any]] = None
@@ -32,11 +32,11 @@ class ServerCommandsMixin:
     _db: Database
 
     @staticmethod
-    def _get_command_info(cmd: str) -> Optional[List[Any]]:
+    def _get_command_info(cmd: bytes) -> Optional[List[Any]]:
         _load_command_info()
-        if cmd not in SUPPORTED_COMMANDS or cmd.encode() not in _COMMAND_INFO:
+        if cmd not in _COMMAND_INFO:
             return None
-        return _COMMAND_INFO[cmd.encode()]
+        return _COMMAND_INFO.get(cmd, None)
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args):
@@ -100,7 +100,7 @@ class ServerCommandsMixin:
         return len(_COMMAND_INFO)
 
     @command(name="COMMAND", fixed=(), repeat=())
-    def command(self):
+    def command_(self):
         _load_command_info()
-        res = [self._get_command_info(cmd.decode()) for cmd in _COMMAND_INFO]
+        res = [self._get_command_info(cmd) for cmd in _COMMAND_INFO]
         return res
