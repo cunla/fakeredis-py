@@ -6,6 +6,7 @@ import redis
 from redis.exceptions import ResponseError
 
 from fakeredis._commands import SUPPORTED_COMMANDS
+from test.testtools import fake_only
 
 
 def test_swapdb(r, create_redis):
@@ -43,7 +44,7 @@ def test_lastsave(r: redis.Redis):
     assert isinstance(r.lastsave(), datetime)
 
 
-@pytest.mark.min_server('7')
+@fake_only
 def test_command(r: redis.Redis):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if ' ' not in cmd}
