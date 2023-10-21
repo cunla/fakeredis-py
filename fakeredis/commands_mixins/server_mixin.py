@@ -7,7 +7,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database
 
-_COMMAND_INFO: Dict[bytes, List[Any]] = None
+_COMMAND_INFO: Optional[Dict[bytes, List[Any]]] = None
 
 
 def convert_obj(obj: Any) -> Any:
