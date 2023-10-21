@@ -5,6 +5,8 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
+from fakeredis._commands import SUPPORTED_COMMANDS
+
 
 def test_swapdb(r, create_redis):
     r1 = create_redis(1)
@@ -39,6 +41,16 @@ def test_bgsave(r: redis.Redis):
 
 def test_lastsave(r: redis.Redis):
     assert isinstance(r.lastsave(), datetime)
+
+
+def test_command(r: redis.Redis):
+    commands_dict = r.command()
+    one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if ' ' not in cmd}
+    assert one_word_commands - set(commands_dict.keys()) == set()
+
+
+def test_command_info(r: redis.Redis):
+    assert r.command_count() >= len(SUPPORTED_COMMANDS)
 
 
 @pytest.mark.slow
