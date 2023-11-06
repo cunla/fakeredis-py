@@ -1973,4 +1973,4 @@ lua = ["lupa"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "3bec6670d29fc31e583aa07a90c9408321a4f106406ae6352452fbb204e06e21"
+content-hash = "5b4640ae514120bb6932bd569c8446c1f36e1883b76d616f9f9c1b11f59edfb9"

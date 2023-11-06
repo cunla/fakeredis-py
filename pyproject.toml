@@ -66,7 +66,7 @@ pytest-asyncio = "^0.21"
 pytest-cov = "^4.0"
 python-dotenv = { version = "^1", python = ">=3.8.1" }
 pytest-mock = "^3.10"
-types-redis = "^4.6"
+types-redis = "^4"
 twine = "^4.0"
 tox = "^4.7"
 tox-docker = "^4"
