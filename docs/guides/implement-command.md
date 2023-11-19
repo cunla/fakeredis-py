@@ -104,7 +104,7 @@ Lastly, run from the root of the project the script to regenerate documentation 
 supported and unsupported commands:
 
 ```bash
-python scripts/supported.py    
+python scripts/generate_supported_commands_doc.py
 ```
 
 Include the changes in the `docs/` directory in your pull request.
