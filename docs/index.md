@@ -132,7 +132,27 @@ a method returning the same connection.
 
 ```python
 import django_rq
-from fakeredis import get_fake_connection
+
+# RQ
+# Configuration to pretend there is a Redis service available.
+# Set up the connection before RQ Django reads the settings.
+# The connection must be the same because in fakeredis connections
+# do not share the state. Therefore, we define a singleton object to reuse it.
+def get_fake_connection(config: Dict[str, Any], strict: bool):
+    from fakeredis import FakeRedis, FakeStrictRedis
+    redis_cls = FakeStrictRedis if strict else FakeRedis
+    if "URL" in config:
+        return redis_cls.from_url(
+            config["URL"],
+            db=config.get("DB"),
+        )
+    return redis_cls(
+        host=config["HOST"],
+        port=config["PORT"],
+        db=config.get("DB", 0),
+        username=config.get("USERNAME", None),
+        password=config.get("PASSWORD"),
+    )
 
 django_rq.queues.get_redis_connection = get_fake_connection
 ```
