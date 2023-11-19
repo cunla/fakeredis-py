@@ -21,3 +21,16 @@ except ImportError as e:
 
     class BFCommandsMixin:  # noqa: E303
         pass
+
+
+try:
+    import cuckoo  # noqa: F401
+
+    from ._cf_mixin import CFCommandsMixin  # noqa: F401
+except ImportError as e:
+    if e.name == "fakeredis.stack._cf_mixin":
+        raise e
+
+
+    class CFCommandsMixin:  # noqa: E303
+        pass
