@@ -39,6 +39,8 @@ def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
     if 'json.type' not in res:
         raise ValueError('Make sure jsonpath_ng is installed to get accurate documentation')
+    if 'bf.add' not in res:
+        raise ValueError('Make sure pybloom-live is installed to get accurate documentation')
     return res
 
 
