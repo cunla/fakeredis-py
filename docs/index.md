@@ -23,19 +23,18 @@ pip install fakeredis        ## No additional modules support
 pip install fakeredis[lua]   ## Support for LUA scripts
 
 pip install fakeredis[json]  ## Support for RedisJSON commands
+
+pip install fakeredis[bf,json]  ## Support for RedisJSON and BloomFilter commands
 ```
 
 ## How to Use
 
 ### General usage
 
-FakeRedis can imitate Redis server version 6.x or 7.x.
-If you do not specify the version, version 7 is used by default.
+FakeRedis can imitate Redis server version 6.x or 7.x. Version 7 is used by default.
 
-The intent is for fakeredis to act as though you're talking to a real
-redis server.
-It does this by storing the state internally.
-For example:
+The intent is for fakeredis to act as though you're talking to a real redis server.
+It does this by storing the state internally. For example:
 
 ```pycon
 >>> import fakeredis
@@ -154,16 +153,13 @@ bugs in GitHub.
   the wrong type and an integer argument is not well-formed, the choice of
   error to return may not match redis.
 
-- The `incrbyfloat` and `hincrbyfloat` commands in redis use the C `long
-  double` type, which typically has more precision than Python's `float`
-  type.
+- The `incrbyfloat` and `hincrbyfloat` commands in redis use the C `long double` type, which typically has more
+  precision than Python's `float` type.
 
-- Redis makes guarantees about the order in which clients blocked on blocking
-  commands are woken up.
+- Redis makes guarantees about the order in which clients blocked on blocking commands are woken up.
   Fakeredis does not honor these guarantees.
 
-- Where redis contains bugs, fakeredis generally does not try to provide exact
-  bug compatibility.
+- Where redis contains bugs, fakeredis generally does not try to provide exact bug compatibility.
   It's not practical for fakeredis to try to match the set of bugs in your specific version of redis.
 
 - There are a number of cases where the behavior of redis is undefined, such

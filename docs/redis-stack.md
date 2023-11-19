@@ -1,6 +1,15 @@
 # Support for redis-stack
 
+To install all supported modules, you can simply install fakeredis with `pip install fakeredis[lua,json,bf]`.
+
 ## RedisJson support
+
+The JSON capability of Redis Stack provides JavaScript Object Notation (JSON) support for Redis. It lets you store,
+update, and retrieve JSON values in a Redis database, similar to any other Redis data type. Redis JSON also works
+seamlessly with Search and Query to let you index and query JSON documents.
+
+JSONPath syntax The following JSONPath syntax table was adapted from
+Goessner's [path syntax comparison](https://goessner.net/articles/JsonPath/index.html#e2).
 
 Currently, Redis Json module is fully implemented (see [supported commands](./redis-commands/RedisJson/)).
 Support for JSON commands (e.g., [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
@@ -17,7 +26,38 @@ Support for JSON commands (e.g., [`JSON.GET`](https://redis.io/commands/json.get
 'bar'
 ```
 
-## Lua support
+## Bloom filter support
+
+Bloom filters are a probabilistic data structure that checks for presence of an element in a set.
+
+Instead of storing all of the elements in the set, Bloom Filters store only the elements' hashed representation, thus
+sacrificing some precision. The trade-off is that Bloom Filters are very space-efficient and fast.
+
+You can get a false positive result, but never a false negative. i.e., if the bloom filter says that an element is not
+in the set, then it is definitely not in the set. If the bloom filter says that an element is in the set, then it is
+most likely in the set, but it is not guaranteed.
+
+Currently, RedisBloom module bloom filter commands are fully implemented using
+[pybloom-live](https://github.com/joseph-fox/python-bloomfilter) (
+see [supported commands](./redis-commands/RedisBloom/)).
+
+You can install it using `pip install 'fakeredis[bf]'`.
+
+```pycon
+>>> import fakeredis
+>>> r = fakeredis.FakeStrictRedis()
+>>> r.bf().madd('key', 'v1', 'v2', 'v3') == [1, 1, 1]
+>>> r.bf().exists('key', 'v1')
+1
+>>> r.bf().exists('key', 'v5')
+0
+```
+
+## [Redis programmability](https://redis.io/docs/interact/programmability/)
+
+Redis provides a programming interface that lets you execute custom scripts on the server itself. In Redis 7 and beyond,
+you can use Redis Functions to manage and run your scripts. In Redis 6.2 and below, you use Lua scripting with the EVAL
+command to program the server.
 
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
 Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it
