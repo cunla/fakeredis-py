@@ -217,4 +217,3 @@ class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
 
 class FakeRedis(FakeRedisMixin, redis.Redis):
     pass
-

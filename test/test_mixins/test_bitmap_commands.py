@@ -294,9 +294,9 @@ def test_bitfield_set_sat(r: redis.Redis):
     assert r.get(key) == b"\x77\xf5\x00"
     assert r.bitfield(key, 'SAT').set('i4', 4, -8).set('i4', 0, -9).execute() == [7, 7]
     assert r.get(key) == b"\x88\xf5\x00"
-    assert r.bitfield(key, 'SAT').set('i60', 0, -(1 << 62)+1).execute() == [0x88f5000_00000000-(1 << 60)]
+    assert r.bitfield(key, 'SAT').set('i60', 0, -(1 << 62) + 1).execute() == [0x88f5000_00000000 - (1 << 60)]
     assert r.get(key) == b"\x80" + b"\0" * 7
-    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63)+1).execute() == [1 << 59]
+    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63) + 1).execute() == [1 << 59]
     assert r.get(key) == b"\xff" * 7 + b"\xf0"
 
 
@@ -339,9 +339,9 @@ def test_bitfield_incr_sat(r: redis.Redis):
     assert r.get(key) == b"\x76\xef\x00"
     assert r.bitfield(key, 'SAT').incrby('i4', 4, -8).incrby('i4', 0, -9).execute() == [-2, -2]
     assert r.get(key) == b"\xee\xef\x00"
-    assert r.bitfield(key, 'SAT').incrby('i60', 0, -(1 << 62)+1).execute() == [-(1 << 59)]
+    assert r.bitfield(key, 'SAT').incrby('i60', 0, -(1 << 62) + 1).execute() == [-(1 << 59)]
     assert r.get(key) == b"\x80" + b"\0" * 7
-    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63)+1).execute() == [1 << 59]
+    assert r.bitfield(key, 'SAT').set('u60', 0, -(1 << 63) + 1).execute() == [1 << 59]
     assert r.get(key) == b"\xff" * 7 + b"\xf0"
 
 
@@ -386,4 +386,3 @@ def test_bitfield_set_wrong_arguments(r: redis.Redis):
     for encoding in ('I8', 'i-42', 'i5?', 'u0', 'i0', 'i65', 'u64', 'i 60'):
         with pytest.raises(redis.ResponseError):
             raw_command(r, 'bitfield', key, 'set', encoding, 0, 0)
-
