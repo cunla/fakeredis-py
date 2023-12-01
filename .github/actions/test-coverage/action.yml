@@ -19,7 +19,7 @@ runs:
         echo "COVERAGE=$(jq '.totals.percent_covered_display|tonumber' coverage.json)" >> $GITHUB_ENV
     - name: Create coverage badge
       if: ${{ github.event_name == 'push' }}
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       with:
         auth: ${{ inputs.gist-secret }}
         gistID: b756396efb895f0e34558c980f1ca0c7
