@@ -4,8 +4,8 @@ import fakeredis
 
 
 def test_multidb(create_redis):
-    r1 = create_redis(db=0)
-    r2 = create_redis(db=1)
+    r1 = create_redis(db=2)
+    r2 = create_redis(db=3)
 
     r1['r1'] = 'r1'
     r2['r2'] = 'r2'

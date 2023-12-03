@@ -10,7 +10,7 @@ from test.testtools import fake_only
 
 
 def test_swapdb(r, create_redis):
-    r1 = create_redis(1)
+    r1 = create_redis(2)
     r.set('foo', 'abc')
     r.set('bar', 'xyz')
     r1.set('foo', 'foo')

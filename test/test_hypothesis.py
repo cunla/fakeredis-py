@@ -20,7 +20,7 @@ self_strategy = st.runner()
 
 def get_redis_version() -> Tuple[int]:
     try:
-        r = redis.StrictRedis('localhost', port=6379)
+        r = redis.StrictRedis('localhost', port=6379, db=2)
         r.ping()
         return _create_version(r.info()['redis_version'])
     except redis.ConnectionError:
@@ -259,7 +259,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
     def __init__(self):
         super().__init__()
         try:
-            self.real = redis.StrictRedis('localhost', port=6379)
+            self.real = redis.StrictRedis('localhost', port=6379, db=2)
             self.real.ping()
         except redis.ConnectionError:
             pytest.skip('redis is not running')
