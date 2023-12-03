@@ -51,7 +51,7 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
         fake_server = request.getfixturevalue('fake_server')
         ret = aioredis.FakeRedis(server=fake_server)
     else:
-        ret = redis.asyncio.Redis()
+        ret = redis.asyncio.Redis(host='localhost', port=6380, db=2)
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()
