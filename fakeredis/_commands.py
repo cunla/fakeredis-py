@@ -348,8 +348,8 @@ class Signature:
     def __init__(
             self, name: str,
             func_name: str,
-            fixed: Tuple[Type[RedisType | bytes]],
-            repeat: Tuple[Type[RedisType | bytes]] = (),  # type:ignore
+            fixed: Tuple[Type[Union[RedisType, bytes]]],
+            repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
             args: Tuple[str] = (),  # type:ignore
             flags: str = "",
     ):

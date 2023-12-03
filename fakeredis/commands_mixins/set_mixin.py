@@ -1,9 +1,9 @@
 import random
-from typing import Callable, Tuple, Any, Optional, List
+from typing import Callable, Tuple, Any, Optional, List, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
-from fakeredis._helpers import OK, SimpleError, casematch, Database
+from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 
 
 def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
@@ -121,30 +121,30 @@ class SetCommandsMixin:
             return 1
 
     @command((Key(set),), (Int,))
-    def spop(self, key: CommandItem, count: Optional[int] = None) -> Optional[bytes]:
+    def spop(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
         if count is None:
             if not key.value:
                 return None
             item = random.sample(list(key.value), 1)[0]
             key.value.remove(item)
             key.updated()
-            return item
+            return item  # type: ignore
         else:
             if count < 0:
                 raise SimpleError(msgs.INDEX_ERROR_MSG)
-            items = self.srandmember(key, count)
+            items: Union[bytes, List[bytes]] = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
     @command((Key(set),), (Int,))
-    def srandmember(self, key: CommandItem, count: Optional[int] = None) -> Optional[List[bytes]]:
+    def srandmember(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
         if count is None:
             if not key.value:
                 return None
             else:
-                return random.sample(list(key.value), 1)[0]
+                return random.sample(list(key.value), 1)[0]  # type: ignore
         elif count >= 0:
             count = min(count, len(key.value))
             return random.sample(list(key.value), count)
@@ -163,15 +163,15 @@ class SetCommandsMixin:
         return deleted
 
     @command((Key(set), Int), (bytes, bytes))
-    def sscan(self, key: CommandItem, cursor, *args):
+    def sscan(self, key: CommandItem, cursor: int, *args: bytes) -> Any:
         return self._scan(key.value, cursor, *args)
 
     @command((Key(set),), (Key(set),))
-    def sunion(self, *keys):
+    def sunion(self, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a | b, False, None, *keys)
 
     @command((Key(), Key(set)), (Key(set),))
-    def sunionstore(self, dst, *keys):
+    def sunionstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
@@ -180,14 +180,14 @@ class SetCommandsMixin:
     # on top of sets.
 
     @command((Key(set),), (bytes,))
-    def pfadd(self, key: CommandItem, *elements):
+    def pfadd(self, key: CommandItem, *elements: bytes) -> int:
         result = self.sadd(key, *elements)
         # Per the documentation:
         # - 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
         return 1 if result > 0 else 0
 
     @command((Key(set),), (Key(set),))
-    def pfcount(self, *keys):
+    def pfcount(self, *keys: CommandItem) -> int:
         """
         Return the approximated cardinality of
         the set observed by the HyperLogLog at key(s).
@@ -195,7 +195,7 @@ class SetCommandsMixin:
         return len(self.sunion(*keys))
 
     @command((Key(set), Key(set)), (Key(set),))
-    def pfmerge(self, dest, *sources):
+    def pfmerge(self, dest: CommandItem, *sources: CommandItem) -> SimpleString:
         """Merge N different HyperLogLogs into a single one."""
         self.sunionstore(dest, *sources)
         return OK
