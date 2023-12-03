@@ -377,7 +377,7 @@ class Signature:
 
     def apply(
             self, args: Tuple[Any], db: Database, version: Tuple[int]
-    ) -> Tuple[Any] | Tuple[List[Any], List[CommandItem]]:
+    ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
         - a single containing a short-circuit return value
