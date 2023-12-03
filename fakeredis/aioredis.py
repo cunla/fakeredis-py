@@ -217,21 +217,19 @@ class FakeRedis(redis_async.Redis):
                 version=version,
             )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)
-        super().__init__(
-            db=db,
-            password=password,
-            socket_timeout=socket_timeout,
-            connection_pool=connection_pool,
-            encoding=encoding,
-            encoding_errors=encoding_errors,
-            decode_responses=decode_responses,
-            retry_on_timeout=retry_on_timeout,
-            max_connections=max_connections,
-            health_check_interval=health_check_interval,
-            client_name=client_name,
-            username=username,
-            **kwargs,
-        )
+        kwargs.update(dict(db=db,
+                           password=password,
+                           socket_timeout=socket_timeout,
+                           connection_pool=connection_pool,
+                           encoding=encoding,
+                           encoding_errors=encoding_errors,
+                           decode_responses=decode_responses,
+                           retry_on_timeout=retry_on_timeout,
+                           max_connections=max_connections,
+                           health_check_interval=health_check_interval,
+                           client_name=client_name,
+                           username=username))
+        super().__init__(**kwargs)
 
     @classmethod
     def from_url(cls, url: str, **kwargs) -> redis_async.Redis:

@@ -57,7 +57,7 @@ def encode_command(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
 
 
-def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
+def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
@@ -126,7 +126,7 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:
     return re.compile(regex, flags=re.S)
 
 
-class Database(MutableMapping):
+class Database(MutableMapping):  # type: ignore
     def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
         self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0

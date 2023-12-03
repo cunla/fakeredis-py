@@ -5,7 +5,7 @@ import sortedcontainers
 
 class ZSet:
     def __init__(self) -> None:
-        self._bylex: Dict[bytes, Any] = {}  # Maps value to score
+        self._bylex: Dict[bytes, float] = {}  # Maps value to score
         self._byscore = sortedcontainers.SortedList()
 
     def __contains__(self, value: bytes) -> bool:

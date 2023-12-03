@@ -89,14 +89,12 @@ markers = [
 asyncio_mode = "strict"
 
 [tool.mypy]
-files = [
-    "fakeredis/**/*.py",
-    "test/**/*.py",
-]
 packages = ['fakeredis', ]
+strict = true
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
+check_untyped_defs = true
 
 [tool.flake8]
 max-line-length = 119

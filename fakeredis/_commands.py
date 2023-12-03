@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any, Type
+from typing import Tuple, Union, Optional, Any, Type, List, Callable
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database
@@ -109,7 +109,13 @@ class Hash(dict):  # type:ignore
     redis_type = b"hash"
 
 
-class Int:
+class RedisType:
+    @classmethod
+    def decode(cls, *args, **kwargs):  # type:ignore
+        raise NotImplementedError
+
+
+class Int(RedisType):
     """Argument converter for 64-bit signed integers"""
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
@@ -168,7 +174,7 @@ class Timeout(Int):
     MIN_VALUE = 0
 
 
-class Float:
+class Float(RedisType):
     """Argument converter for floating-point values.
 
     Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT)
@@ -267,7 +273,7 @@ class AfterAny:
         return 1
 
 
-class ScoreTest:
+class ScoreTest(RedisType):
     """Argument converter for sorted set score endpoints."""
 
     def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
@@ -309,7 +315,7 @@ class ScoreTest:
         return self.value, BeforeAny() if self.exclusive else AfterAny()
 
 
-class StringTest:
+class StringTest(RedisType):
     """Argument converter for sorted set LEX endpoints."""
 
     def __init__(self, value: Union[bytes, BeforeAny, AfterAny], exclusive: bool):
@@ -339,7 +345,14 @@ class StringTest:
 
 
 class Signature:
-    def __init__(self, name, func_name, fixed, repeat=(), args=(), flags=""):
+    def __init__(
+            self, name: str,
+            func_name: str,
+            fixed: Tuple[Type[RedisType | bytes]],
+            repeat: Tuple[Type[RedisType | bytes]] = (),  # type:ignore
+            args: Tuple[str] = (),  # type:ignore
+            flags: str = "",
+    ):
         self.name = name
         self.func_name = func_name
         self.fixed = fixed
@@ -347,21 +360,24 @@ class Signature:
         self.flags = set(flags)
         self.command_args = args
 
-    def check_arity(self, args, version: Tuple[int]):
-        if len(args) != len(self.fixed):
-            delta = len(args) - len(self.fixed)
-            if delta < 0 or not self.repeat:
-                msg = msgs.WRONG_ARGS_MSG6.format(self.name)
-                raise SimpleError(msg)
-            if delta % len(self.repeat) != 0:
-                msg = (
-                    msgs.WRONG_ARGS_MSG7
-                    if version >= (7,)
-                    else msgs.WRONG_ARGS_MSG6.format(self.name)
-                )
-                raise SimpleError(msg)
+    def check_arity(self, args: Tuple[Any], version: Tuple[int]) -> None:
+        if len(args) == len(self.fixed):
+            return
+        delta = len(args) - len(self.fixed)
+        if delta < 0 or not self.repeat:
+            msg = msgs.WRONG_ARGS_MSG6.format(self.name)
+            raise SimpleError(msg)
+        if delta % len(self.repeat) != 0:
+            msg = (
+                msgs.WRONG_ARGS_MSG7
+                if version >= (7,)
+                else msgs.WRONG_ARGS_MSG6.format(self.name)
+            )
+            raise SimpleError(msg)
 
-    def apply(self, args, db, version):
+    def apply(
+            self, args: Tuple[Any], db: Database, version: Tuple[int]
+    ) -> Tuple[Any] | Tuple[List[Any], List[CommandItem]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
         - a single containing a short-circuit return value
@@ -372,20 +388,20 @@ class Signature:
         for i in range(len(args) - len(types)):
             types.append(self.repeat[i % len(self.repeat)])
 
-        args = list(args)
+        args_list = list(args)
         # First pass: convert/validate non-keys, and short-circuit on missing keys
-        for i, (arg, type_) in enumerate(zip(args, types)):
+        for i, (arg, type_) in enumerate(zip(args_list, types)):
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
                     return (type_.missing_return,)
             elif type_ != bytes:
-                args[i] = type_.decode(
-                    args[i],
+                args_list[i] = type_.decode(
+                    args_list[i],
                 )
 
         # Second pass: read keys and check their types
-        command_items = []
-        for i, (arg, type_) in enumerate(zip(args, types)):
+        command_items: List[CommandItem] = []
+        for i, (arg, type_) in enumerate(zip(args_list, types)):
             if isinstance(type_, Key):
                 item = db.get(arg)
                 default = None
@@ -401,21 +417,21 @@ class Signature:
                         and type_.type_ is not bytes
                 ):
                     default = type_.type_()
-                args[i] = CommandItem(arg, db, item, default=default)
-                command_items.append(args[i])
+                args_list[i] = CommandItem(arg, db, item, default=default)
+                command_items.append(args_list[i])
 
-        return args, command_items
+        return args_list, command_items
 
 
-def command(*args, **kwargs):
-    def create_signature(func, cmd_name):
+def command(*args, **kwargs) -> Callable:  # type:ignore
+    def create_signature(func: Callable[..., Any], cmd_name: str) -> None:
         if " " in cmd_name:
             COMMANDS_WITH_SUB.add(cmd_name.split(" ")[0])
         SUPPORTED_COMMANDS[cmd_name] = Signature(
             cmd_name, func.__name__, *args, **kwargs
         )
 
-    def decorator(func):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         cmd_names = kwargs.pop("name", func.__name__)
         if isinstance(cmd_names, list):  # Support for alias commands
             for cmd_name in cmd_names:

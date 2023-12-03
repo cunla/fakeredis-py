@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.20.1
+
+### 🧰 Maintenance
+
+- Testing for python 3.12
+
 ## v2.20.0
 
 ### 🚀 Features

@@ -9,7 +9,7 @@ from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature
 from ._helpers import (
     SimpleError,
     valid_response_type,
@@ -169,7 +169,7 @@ class BaseFakeSocket:
                 buf = buf[length + 2:]  # +2 to skip the CRLF
             self._process_command(fields)
 
-    def _run_command(self, func, sig, args, from_script):
+    def _run_command(self, func: Callable[..., Any], sig: Signature, args: Tuple[Any], from_script: bool) -> Any:
         command_items = {}
         try:
             ret = sig.apply(args, self._db, self.version)
@@ -208,7 +208,7 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: Union[float, int], func: Callable):
+    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable):
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -224,7 +224,7 @@ class BaseFakeSocket:
             return ret
         deadline = time.time() + timeout if timeout else None
         while True:
-            timeout = deadline - time.time() if deadline is not None else None
+            timeout = (deadline - time.time()) if deadline is not None else None
             if timeout is not None and timeout <= 0:
                 return None
             if self._db.condition.wait(timeout=timeout) is False:

@@ -34,7 +34,7 @@ class ServerCommandsMixin:
     @staticmethod
     def _get_command_info(cmd: bytes) -> Optional[List[Any]]:
         _load_command_info()
-        if cmd not in _COMMAND_INFO:
+        if _COMMAND_INFO is None or cmd not in _COMMAND_INFO:
             return None
         return _COMMAND_INFO.get(cmd, None)
 
@@ -97,10 +97,12 @@ class ServerCommandsMixin:
     @command(name="COMMAND COUNT", fixed=(), repeat=())
     def command_count(self):
         _load_command_info()
-        return len(_COMMAND_INFO)
+        return len(_COMMAND_INFO) if _COMMAND_INFO is not None else 0
 
     @command(name="COMMAND", fixed=(), repeat=())
     def command_(self):
         _load_command_info()
+        if _COMMAND_INFO is None:
+            return []
         res = [self._get_command_info(cmd) for cmd in _COMMAND_INFO]
         return res

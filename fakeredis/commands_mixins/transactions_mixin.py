@@ -1,25 +1,25 @@
-from typing import Callable
+from typing import Callable, Set, Any, List, Optional
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key
-from fakeredis._helpers import OK, SimpleError, Database
+from fakeredis._commands import command, Key, CommandItem
+from fakeredis._helpers import OK, SimpleError, Database, SimpleString
 
 
 class TransactionsCommandsMixin:
     _db: Database
-    _run_command: Callable
+    _run_command: Callable  # type: ignore
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:  # type: ignore
         super(TransactionsCommandsMixin, self).__init__(*args, **kwargs)
-        self._watches = set()
+        self._watches: Set[Any] = set()
         # When in a MULTI, set to a list of function calls
-        self._transaction = None
+        self._transaction: Optional[List[Any]] = None
         self._transaction_failed = False
         # Set when executing the commands from EXEC
         self._in_transaction = False
         self._watch_notified = False
 
-    def _clear_watches(self):
+    def _clear_watches(self) -> None:
         self._watch_notified = False
         while self._watches:
             (key, db) = self._watches.pop()
@@ -27,7 +27,7 @@ class TransactionsCommandsMixin:
 
     # Transaction commands
     @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
-    def discard(self):
+    def discard(self) -> SimpleString:
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("DISCARD"))
         self._transaction = None
@@ -41,7 +41,7 @@ class TransactionsCommandsMixin:
         repeat=(),
         flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION],
     )
-    def exec_(self):
+    def exec_(self) -> Any:
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("EXEC"))
         if self._transaction_failed:
@@ -68,7 +68,7 @@ class TransactionsCommandsMixin:
         return result
 
     @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
-    def multi(self):
+    def multi(self) -> SimpleString:
         if self._transaction is not None:
             raise SimpleError(msgs.MULTI_NESTED_MSG)
         self._transaction = []
@@ -76,12 +76,12 @@ class TransactionsCommandsMixin:
         return OK
 
     @command((), flags=msgs.FLAG_NO_SCRIPT)
-    def unwatch(self):
+    def unwatch(self) -> SimpleString:
         self._clear_watches()
         return OK
 
     @command((Key(),), (Key(),), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
-    def watch(self, *keys):
+    def watch(self, *keys: CommandItem) -> SimpleString:
         if self._transaction is not None:
             raise SimpleError(msgs.WATCH_INSIDE_MULTI_MSG)
         for key in keys:
@@ -90,5 +90,5 @@ class TransactionsCommandsMixin:
                 self._db.add_watch(key.key, self)
         return OK
 
-    def notify_watch(self):
+    def notify_watch(self) -> None:
         self._watch_notified = True
