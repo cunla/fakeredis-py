@@ -10,12 +10,12 @@ from test.testtools import fake_only
 
 
 def test_swapdb(r, create_redis):
-    r1 = create_redis(2)
+    r1 = create_redis(3)
     r.set('foo', 'abc')
     r.set('bar', 'xyz')
     r1.set('foo', 'foo')
     r1.set('baz', 'baz')
-    assert r.swapdb(0, 1)
+    assert r.swapdb(2, 3)
     assert r.get('foo') == b'foo'
     assert r.get('bar') is None
     assert r.get('baz') == b'baz'
