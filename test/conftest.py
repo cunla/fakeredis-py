@@ -13,7 +13,7 @@ def real_redis_version() -> Union[None, str]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
-        client = redis.StrictRedis('localhost', port=6379, db=2)
+        client = redis.StrictRedis('localhost', port=6380, db=2)
         server_version = client.info()['redis_version']
         return server_version
     except redis.ConnectionError:
@@ -80,6 +80,6 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
             return cls(db=db, decode_responses=decode_responses, server=fake_server)
         # Real
         cls = getattr(redis, cls_name)
-        return cls('localhost', port=6379, db=db, decode_responses=decode_responses)
+        return cls('localhost', port=6380, db=db, decode_responses=decode_responses)
 
     return factory
