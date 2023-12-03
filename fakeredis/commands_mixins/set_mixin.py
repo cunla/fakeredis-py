@@ -121,7 +121,7 @@ class SetCommandsMixin:
             return 1
 
     @command((Key(set),), (Int,))
-    def spop(self, key: CommandItem, count=None) -> Optional[bytes]:
+    def spop(self, key: CommandItem, count: Optional[int] = None) -> Optional[bytes]:
         if count is None:
             if not key.value:
                 return None

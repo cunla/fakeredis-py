@@ -51,7 +51,7 @@ def decode(geohash: str) -> Tuple[float, float, float, float]:
     return lat, lon, lat_err, lon_err
 
 
-def encode(latitude: float, longitude: float, precision:int=12) -> str:
+def encode(latitude: float, longitude: float, precision: int = 12) -> str:
     """
     Encode a position given in float arguments latitude, longitude to
     a geohash which will have the character count precision.
@@ -62,7 +62,7 @@ def encode(latitude: float, longitude: float, precision:int=12) -> str:
     is_longitude = True
 
     def next_interval(
-        curr: float, interval: Tuple[float, float], ch: int
+            curr: float, interval: Tuple[float, float], ch: int
     ) -> Tuple[Tuple[float, float], int]:
         mid = (interval[0] + interval[1]) / 2
         if curr > mid:
