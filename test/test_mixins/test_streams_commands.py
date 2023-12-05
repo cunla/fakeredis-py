@@ -256,6 +256,13 @@ def test_xread(r: redis.Redis):
     assert r.xread(streams={stream: m2}) == []
 
 
+def test_xread_count(r: redis.Redis):
+    r.xadd("test", {"x": 1})
+    result = r.xread(streams={"test": "0"}, count=100, block=10)
+    assert result[0][0] == b"test"
+    assert result[0][1][0][1] == {b'x': b'1'}
+
+
 def test_xread_bad_commands(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as exc_info:
         testtools.raw_command(r, 'xread', 'foo', '11-1')
