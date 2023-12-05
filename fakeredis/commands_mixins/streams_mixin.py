@@ -106,7 +106,7 @@ class StreamsCommandsMixin:
         res = list()
         for item, start_id in stream_start_id_list:
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
-            if first_pass and (count is None or len(stream_results) < count):
+            if first_pass and (count is None):
                 return None
             if len(stream_results) > 0:
                 res.append([item.key, stream_results])
@@ -137,22 +137,8 @@ class StreamsCommandsMixin:
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,))
     def xread(self, *args):
-        (
-            count,
-            timeout,
-        ), left_args = extract_args(
-            args,
-            (
-                "+count",
-                "+block",
-            ),
-            error_on_unexpected=False,
-        )
-        if (
-                len(left_args) < 3
-                or not casematch(left_args[0], b"STREAMS")
-                or len(left_args) % 2 != 1
-        ):
+        (count, timeout,), left_args = extract_args(args, ("+count", "+block",), error_on_unexpected=False, )
+        if (len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
