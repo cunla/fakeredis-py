@@ -7,6 +7,10 @@ description: Change log of all fakeredis releases
 
 ## v2.20.1
 
+### 🐛 Bug Fixes
+
+- Fix `XREAD` bug #256
+
 ### 🧰 Maintenance
 
 - Testing for python 3.12
