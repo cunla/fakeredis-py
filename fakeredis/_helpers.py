@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+import os
 import re
 import threading
 import time
@@ -5,6 +7,7 @@ import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import Any, Set, Callable, Dict, Optional, Iterator
+import json
 
 
 class SimpleString:
@@ -201,6 +204,266 @@ class Database(MutableMapping):  # type: ignore
 
     def __eq__(self, other: object) -> bool:
         return super(object, self) == other
+
+
+class PersistentDatabase(Database):
+    def __init__(
+        self,
+        lock: Optional[threading.Lock],
+        filename: str = "redis.json",
+        initial_values: Optional[dict] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(lock, *args, **kwargs)
+        self.filename = filename
+        self._load(initial_values)
+
+    def _load(self, default_values: Optional[dict] = None) -> None:
+        try:
+            with open(self.filename, 'r') as file:
+                file_content = file.read()
+                self._dict = json.loads(file_content) if file_content else {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            self._dict = default_values if isinstance(default_values, dict) else {}
+            self._save()
+
+    def _save(self) -> None:
+        with open(self.filename, 'w') as file:
+            json.dump(self._dict, file)
+
+    def __getitem__(self, key: bytes) -> Any:
+        self._load()
+        return super().__getitem__(key)
+
+    def clear(self) -> None:
+        super().clear()
+        self._save()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, PersistentDatabase):
+            self._load()
+            other._load()
+            return self._dict == other._dict
+        return False
+
+    def __iter__(self) -> Iterator[bytes]:
+        # Load from persistent storage before iteration
+        self._load()
+        # Iterator of the current state of the dictionary
+        return super().__iter__()
+
+    def __len__(self) -> int:
+        # Load from persistent storage to get the current length
+        self._load()
+        # Length of the current state of the dictionary
+        return super().__len__()
+
+    def _reload_state(self, default_values: Optional[dict] = None):
+        """
+        Reload the state from the file before any write operation.
+        """
+        try:
+            with open(self.filename, 'r') as file:
+                file_content = file.read()
+                self._dict = json.loads(file_content) if file_content else {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            self._dict = default_values if isinstance(default_values, dict) else {}
+            self._save()
+
+    def __setitem__(self, key: bytes, value: Any) -> None:
+        self._reload_state()
+        super().__setitem__(key, value)
+        self._save()
+
+    def __delitem__(self, key: bytes) -> None:
+        self._reload_state()
+        super().__delitem__(key)
+        self._save()
+
+    def swap(self, other: "PersistentDatabase") -> None:
+        self._reload_state()
+        other._reload_state()
+        super().swap(other)
+        self._save()
+        other._save()
+
+
+class Lock(ABC):
+    @abstractmethod
+    def __enter__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __exit__(self, exc_type, exc_value, traceback):
+        raise NotImplementedError
+
+
+class FileLock(Lock):
+    def __init__(self, filepath, timeout=1):
+        self.lock_file_path = filepath + ".lock"
+        self.timeout = timeout
+
+    def __enter__(self):
+        start_time = time.time()
+        while os.path.exists(self.lock_file_path):
+            time.sleep(0.1)
+            if time.time() - start_time > self.timeout:
+                raise TimeoutError("Lock acquisition timed out")
+        with open(self.lock_file_path, 'w') as lock_file:
+            lock_file.write('locked')
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if os.path.exists(self.lock_file_path):
+            os.remove(self.lock_file_path)
+
+
+class DBLock(Lock):
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        self.conn.autocommit = False
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            # If an exception occurred, roll back the transaction
+            self.conn.rollback()
+        else:
+            # Otherwise, commit the transaction
+            self.conn.commit()
+        self.conn.autocommit = True
+
+
+class PersistentWithLockingDatabase(PersistentDatabase):
+    def __init__(
+        self,
+        lock: Optional[threading.Lock | Lock],
+        filename: str = "redis.json",
+        initial_values: Optional[dict] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(filename, initial_values, *args, **kwargs)
+        self.lock = lock
+
+    def _load(self, default_values: Optional[dict] = None) -> None:
+        with self.lock:
+            if not os.path.exists(self.filename):
+                with open(self.filename, 'w') as file:
+                    json.dump({"_version": 0}, file)
+            super()._load(default_values)
+
+    def _save(self) -> None:
+        with self.lock:
+            current_data = {}
+            if os.path.exists(self.filename):
+                with open(self.filename, 'r') as file:
+                    current_data = json.load(file)
+            current_data["_version"] = current_data.get("_version", 0) + 1
+            current_data.update(self._dict)
+            with open(self.filename, 'w') as file:
+                json.dump(current_data, file)
+
+    def __delitem__(self, key: bytes) -> None:
+        with self.lock:
+            super().__delitem__(key)
+
+    def swap(self, other: "PersistentWithLockingDatabase") -> None:
+        with self.lock:
+            with other.lock:
+                # Locking for the current database
+                super().swap(other)
+
+    def __iter__(self) -> Iterator[bytes]:
+        with self.lock:
+            # Acquire file lock before iteration
+            return super().__iter__()
+
+    def __len__(self) -> int:
+        with self.lock:
+            # Acquire file lock before calculating length
+            return super().__len__()
+
+    def __setitem__(self, key: bytes, value: Any) -> None:
+        with self.lock:
+            super().__setitem__(key, value)
+
+    def clear(self) -> None:
+        with self.lock:
+            super().clear()
+
+
+class PersistentWithLockingWithPostgresDatabase(PersistentWithLockingDatabase):
+    def __init__(self, conn, table_name: str = "kv_store", id: int = 1, *args, **kwargs):
+        self.conn = conn
+        self.table_name = table_name
+        self.row_id = id
+        db_lock = DBLock(conn)  # Initialize DBLock with the connection
+        super().__init__(db_lock, *args, **kwargs)
+        self._ensure_table_exists()
+
+    def _ensure_table_exists(self):
+        with super().lock:
+            with self.conn.cursor() as cursor:
+                # Create the table if it does not exist
+                cursor.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {self.table_name} (
+                        id SERIAL PRIMARY KEY,
+                        data JSONB NOT NULL
+                    );
+                """
+                )
+
+                # Insert a row with id = 1 if it does not exist
+                cursor.execute(
+                    f"""
+                                    INSERT INTO {self.table_name} (id, data)
+                                    VALUES (%s, '{{}}'::jsonb)
+                                    ON CONFLICT (id) DO NOTHING;
+                                """,
+                    (self.row_id,),
+                )
+
+    # Overriding methods to use PostgreSQL transactions
+    def _load(self, default_values: Optional[dict] = None) -> None:
+        with super().lock:
+            with self.conn.cursor() as cursor:
+                cursor.execute(f"SELECT data FROM {self.table_name} WHERE id = 1;")
+                row = cursor.fetchone()
+                if row:
+                    self._dict = row[0]
+                else:
+                    self._dict = default_values if isinstance(default_values, dict) else {}
+                    self._save()
+
+    def _save(self) -> None:
+        with super().lock:
+            with self.conn.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    UPDATE {self.table_name} SET data = %s WHERE id = %s;
+                """,
+                    (json.dumps(self._dict), self.row_id),
+                )
+
+                # Check if the update was successful
+                if cursor.rowcount == 0:
+                    # No rows were updated, so insert a new row
+                    cursor.execute(
+                        f"""
+                        INSERT INTO {self.table_name} (id, data) VALUES (%s, %s);
+                    """,
+                        (self.row_id, json.dumps(self._dict)),
+                    )
+
+    # Override other methods similarly...
+
+    def close(self):
+        self.conn.close()
 
 
 def valid_response_type(value: Any, nested: bool = False) -> bool:
