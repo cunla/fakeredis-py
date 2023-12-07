@@ -5,7 +5,16 @@ import pytest_asyncio
 import redis
 
 import fakeredis
-from fakeredis._server import _create_version
+from fakeredis._server import _create_version, 
+import sqlite3
+
+
+@pytest.fixture(scope="session")
+def sqlite_conn():
+    # Setup an in-memory SQLite database
+    conn = sqlite3.connect(':memory:')
+    yield conn
+    conn.close()
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -29,6 +38,13 @@ def _fake_server(request):
     server_version = min_server_marker.args[0] if min_server_marker else '6.2'
     server = fakeredis.FakeServer(version=server_version)
     server.connected = request.node.get_closest_marker('disconnected') is None
+    return server
+
+
+@pytest.fixture(name='sqlite_server')
+def _sqlite_server(request, sqlite_conn):
+    server = fakeredis.DBServer(conn=sqlite_conn, db_class=fakeredis.PersistentWithLockingWithSQLiteDatabase)
+    # Configure your server as needed
     return server
 
 
@@ -57,6 +73,7 @@ def _marker_version_value(request, marker_name: str):
     params=[
         pytest.param('StrictRedis', marks=pytest.mark.real),
         pytest.param('FakeStrictRedis', marks=pytest.mark.fake),
+        pytest.param('SQLiteRedis', marks=pytest.mark.sqlite),
     ]
 )
 def _create_redis(request) -> Callable[[int], redis.Redis]:
@@ -78,6 +95,10 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
             fake_server = request.getfixturevalue('fake_server')
             cls = getattr(fakeredis, cls_name)
             return cls(db=db, decode_responses=decode_responses, server=fake_server)
+        elif cls_name == 'DBServerSQLite':
+            sqlite_server = request.getfixturevalue('sqlite_server')
+            cls = getattr(fakeredis, cls_name)
+            return cls(db=db, decode_responses=decode_responses, server=sqlite_server)
         # Real
         cls = getattr(redis, cls_name)
         return cls('localhost', port=6380, db=db, decode_responses=decode_responses)

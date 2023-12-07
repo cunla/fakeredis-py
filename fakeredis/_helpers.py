@@ -8,6 +8,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import Any, Set, Callable, Dict, Optional, Iterator
 import json
+import sqlite3
 
 
 class SimpleString:
@@ -130,7 +131,9 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
 
 
 class Database(MutableMapping):  # type: ignore
-    def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any
+    ) -> None:
         self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
         # key to the set of connections
@@ -221,7 +224,7 @@ class PersistentDatabase(Database):
 
     def _load(self, default_values: Optional[dict] = None) -> None:
         try:
-            with open(self.filename, 'r') as file:
+            with open(self.filename, "r") as file:
                 file_content = file.read()
                 self._dict = json.loads(file_content) if file_content else {}
         except (FileNotFoundError, json.JSONDecodeError):
@@ -229,7 +232,7 @@ class PersistentDatabase(Database):
             self._save()
 
     def _save(self) -> None:
-        with open(self.filename, 'w') as file:
+        with open(self.filename, "w") as file:
             json.dump(self._dict, file)
 
     def __getitem__(self, key: bytes) -> Any:
@@ -264,7 +267,7 @@ class PersistentDatabase(Database):
         Reload the state from the file before any write operation.
         """
         try:
-            with open(self.filename, 'r') as file:
+            with open(self.filename, "r") as file:
                 file_content = file.read()
                 self._dict = json.loads(file_content) if file_content else {}
         except (FileNotFoundError, json.JSONDecodeError):
@@ -310,8 +313,8 @@ class FileLock(Lock):
             time.sleep(0.1)
             if time.time() - start_time > self.timeout:
                 raise TimeoutError("Lock acquisition timed out")
-        with open(self.lock_file_path, 'w') as lock_file:
-            lock_file.write('locked')
+        with open(self.lock_file_path, "w") as lock_file:
+            lock_file.write("locked")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -319,7 +322,7 @@ class FileLock(Lock):
             os.remove(self.lock_file_path)
 
 
-class DBLock(Lock):
+class PotgresDBLock(Lock):
     def __init__(self, conn):
         self.conn = conn
 
@@ -337,6 +340,26 @@ class DBLock(Lock):
         self.conn.autocommit = True
 
 
+class SQLiteDBLock(Lock):
+    def __init__(self, conn):
+        self.conn = conn
+        self._in_transaction = False
+
+    def __enter__(self):
+        if not self._in_transaction:
+            self.conn.execute("BEGIN")
+            self._in_transaction = True
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._in_transaction:
+            if exc_type is not None:
+                self.conn.rollback()
+            else:
+                self.conn.commit()
+            self._in_transaction = False
+
+
 class PersistentWithLockingDatabase(PersistentDatabase):
     def __init__(
         self,
@@ -352,7 +375,7 @@ class PersistentWithLockingDatabase(PersistentDatabase):
     def _load(self, default_values: Optional[dict] = None) -> None:
         with self.lock:
             if not os.path.exists(self.filename):
-                with open(self.filename, 'w') as file:
+                with open(self.filename, "w") as file:
                     json.dump({"_version": 0}, file)
             super()._load(default_values)
 
@@ -360,11 +383,11 @@ class PersistentWithLockingDatabase(PersistentDatabase):
         with self.lock:
             current_data = {}
             if os.path.exists(self.filename):
-                with open(self.filename, 'r') as file:
+                with open(self.filename, "r") as file:
                     current_data = json.load(file)
             current_data["_version"] = current_data.get("_version", 0) + 1
             current_data.update(self._dict)
-            with open(self.filename, 'w') as file:
+            with open(self.filename, "w") as file:
                 json.dump(current_data, file)
 
     def __delitem__(self, key: bytes) -> None:
@@ -397,11 +420,13 @@ class PersistentWithLockingDatabase(PersistentDatabase):
 
 
 class PersistentWithLockingWithPostgresDatabase(PersistentWithLockingDatabase):
-    def __init__(self, conn, table_name: str = "kv_store", id: int = 1, *args, **kwargs):
+    def __init__(
+        self, conn, table_name: str = "kv_store", id: int = 1, *args, **kwargs
+    ):
         self.conn = conn
         self.table_name = table_name
         self.row_id = id
-        db_lock = DBLock(conn)  # Initialize DBLock with the connection
+        db_lock = PotgresDBLock(conn)  # Initialize PotgresDBLock with the connection
         super().__init__(db_lock, *args, **kwargs)
         self._ensure_table_exists()
 
@@ -437,7 +462,9 @@ class PersistentWithLockingWithPostgresDatabase(PersistentWithLockingDatabase):
                 if row:
                     self._dict = row[0]
                 else:
-                    self._dict = default_values if isinstance(default_values, dict) else {}
+                    self._dict = (
+                        default_values if isinstance(default_values, dict) else {}
+                    )
                     self._save()
 
     def _save(self) -> None:
@@ -466,11 +493,79 @@ class PersistentWithLockingWithPostgresDatabase(PersistentWithLockingDatabase):
         self.conn.close()
 
 
+class PersistentWithLockingWithSQLiteDatabase(PersistentWithLockingDatabase):
+    def __init__(
+        self, conn, table_name: str = "kv_store", id: int = 1, *args, **kwargs
+    ):
+        self.conn = conn
+        self.table_name = table_name
+        self.row_id = id
+        db_lock = SQLiteDBLock(conn)
+        super().__init__(db_lock, *args, **kwargs)
+        self._ensure_table_exists()
+
+    def _ensure_table_exists(self):
+        with super().lock:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table_name} (
+                    id INTEGER PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+            """
+            )
+            cursor.execute(
+                f"""
+                INSERT OR IGNORE INTO {self.table_name} (id, data)
+                VALUES (?, '{{}}');
+            """,
+                (self.row_id,),
+            )
+            self.conn.commit()
+
+    def _load(self, default_values: Optional[dict] = None) -> None:
+        with super().lock:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                f"SELECT data FROM {self.table_name} WHERE id = ?;", (self.row_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                self._dict = json.loads(row[0])
+            else:
+                self._dict = default_values if isinstance(default_values, dict) else {}
+                self._save()
+
+    def _save(self) -> None:
+        with super().lock:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                f"""
+                UPDATE {self.table_name} SET data = ? WHERE id = ?;
+            """,
+                (json.dumps(self._dict), self.row_id),
+            )
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    f"""
+                    INSERT INTO {self.table_name} (id, data) VALUES (?, ?);
+                """,
+                    (self.row_id, json.dumps(self._dict)),
+                )
+            self.conn.commit()
+
+    # Override other methods similarly...
+
+    def close(self):
+        self.conn.close()
+
+
 def valid_response_type(value: Any, nested: bool = False) -> bool:
     if isinstance(value, NoResponse) and not nested:
         return True
     if value is not None and not isinstance(
-            value, (bytes, SimpleString, SimpleError, float, int, list)
+        value, (bytes, SimpleString, SimpleError, float, int, list)
     ):
         return False
     if isinstance(value, list):

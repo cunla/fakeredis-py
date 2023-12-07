@@ -80,6 +80,7 @@ tox-docker = "^4"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "fake: run tests only with fake redis",
+    "sqlite: run tests only with sqlite redis",
     "real: run tests with a locally running real Redis server",
     "disconnected",
     "min_server",

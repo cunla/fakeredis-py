@@ -8,11 +8,18 @@ import warnings
 import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List
-
+from abc import ABC, abstractmethod
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import Database, FakeSelector
+from fakeredis._helpers import (
+    Database,
+    PersistentWithLockingWithPostgresDatabase,
+    PersistentWithLockingWithSQLiteDatabase,
+    PersistentWithLockingDatabase,
+    FileLock,
+    FakeSelector,
+)
 from . import _msgs as msgs
 
 LOGGER = logging.getLogger("fakeredis")
@@ -29,12 +36,77 @@ def _create_version(v) -> Tuple[int]:
     return v
 
 
-class FakeServer:
+class AbstractServer(ABC):
+    @abstractmethod
+    def __init__(self, version: Tuple[int]):
+        """Initialize the server with a version."""
+        pass
+
+    @abstractmethod
+    def get_server(self, key: str, version: Tuple[int]) -> "BaseServer":
+        """Retrieve or create a server instance."""
+        pass
+
+
+class BaseServer(AbstractServer):
+    def __init__(self, version: Tuple[int] = (7,)):
+        super().__init__(version)
+        self.lock = threading.Lock()
+        # Maps channel/pattern to weak set of sockets
+        self.subscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        self.psubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        self.ssubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        self.lastsave = int(time.time())
+        self.connected = True
+        # List of weakrefs to sockets that are being closed lazily
+        self.closed_sockets: List[Any] = []
+        self.version = _create_version(version)
+
+
+class FakeServer(BaseServer):
     _servers_map: Dict[str, "FakeServer"] = dict()
 
     def __init__(self, version: Tuple[int] = (7,)):
-        self.lock = threading.Lock()
+        super().__init__(version)
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
+
+    @staticmethod
+    def get_server(key, version: Tuple[int]):
+        return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
+
+
+class DBServer(BaseServer):
+    _servers_map: Dict[str, "DBServer"] = dict()
+
+    def __init__(
+        self,
+        conn,
+        version: Tuple[int] = (7,),
+        table_name: str = "kv_store",
+        db_class=PersistentWithLockingWithPostgresDatabase,
+    ):
+        super().__init__(version)
+        self.conn = conn
+        self.table_name = table_name
+        self.dbs: Dict[int, db_class] = defaultdict(lambda: db_class(self.conn, self.table_name))
+
+    @staticmethod
+    def get_server(
+        key: str, conn, version: Tuple[int], table_name: str = "kv_store", db_class=PersistentWithLockingWithPostgresDatabase
+    ) -> "DBServer":
+        return DBServer._servers_map.setdefault(key, DBServer(conn, version=version, table_name=table_name, db_class=db_class))
+
+
+class FileServer(BaseServer):
+    _servers_map: Dict[str, "FileServer"] = dict()
+
+    def __init__(self, version: Tuple[int] = (7,), file_path: str = "redis.json"):
+        super().__init__(version)
+        self.lock = threading.Lock()
+        self.file_path = file_path
+        self.dbs: Dict[int, PersistentWithLockingDatabase] = defaultdict(
+            lambda: PersistentWithLockingDatabase(FileLock(self.file_path), self.file_path)
+        )
         # Maps channel/pattern to weak set of sockets
         self.subscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
         self.psubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
@@ -46,8 +118,10 @@ class FakeServer:
         self.version = _create_version(version)
 
     @staticmethod
-    def get_server(key, version: Tuple[int]):
-        return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
+    def get_server(key: str, version: Tuple[int], file_path: str = "redis.json") -> "FileServer":
+        return FileServer._servers_map.setdefault(key, FileServer(version=version, file_path=file_path))
+
+    # Implementation of other methods...
 
 
 class FakeBaseConnectionMixin:
@@ -137,34 +211,22 @@ class FakeRedisMixin:
     def __init__(self, *args, server=None, version=(7,), **kwargs):
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
-        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[
-                     1:
-                     ]
+        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
         kwargs.setdefault("host", uuid.uuid4().hex)
         kwds = {
-            p.name: kwargs.get(p.name, p.default)
-            for ind, p in enumerate(parameters)
-            if p.default != inspect.Parameter.empty
+            p.name: kwargs.get(p.name, p.default) for ind, p in enumerate(parameters) if p.default != inspect.Parameter.empty
         }
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)
             errors = kwds.get("errors", None)
             # Adapted from redis-py
             if charset is not None:
-                warnings.warn(
-                    DeprecationWarning(
-                        '"charset" is deprecated. Use "encoding" instead'
-                    )
-                )
+                warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
                 kwds["encoding"] = charset
             if errors is not None:
-                warnings.warn(
-                    DeprecationWarning(
-                        '"errors" is deprecated. Use "encoding_errors" instead'
-                    )
-                )
+                warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds["encoding_errors"] = errors
             conn_pool_args = {
                 "host",
@@ -188,12 +250,8 @@ class FakeRedisMixin:
                 "server": server,
                 "version": version,
             }
-            connection_kwargs.update(
-                {arg: kwds[arg] for arg in conn_pool_args if arg in kwds}
-            )
-            kwds["connection_pool"] = redis.connection.ConnectionPool(
-                **connection_kwargs
-            )
+            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
+            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
@@ -217,3 +275,8 @@ class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
 
 class FakeRedis(FakeRedisMixin, redis.Redis):
     pass
+
+class SQLiteRedis(FakeRedisMixin, redis.Redis):
+    def __init__(self, *args, server=None, version=(7, ), **kwargs):
+        server = server or DBServer.get_server("sqlite", None, version=version, db_class=PersistentWithLockingWithSQLiteDatabase)
+        super().__init__(*args, server=server, version=version, **kwargs)
