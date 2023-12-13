@@ -115,7 +115,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         await super().disconnect(**kwargs)
         self._sock = None
 
-    async def can_read(self, timeout: float = 0):
+    async def can_read(self, timeout: Optional[float] = 0):
         if not self.is_connected:
             await self.connect()
         if timeout == 0:
@@ -154,7 +154,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
                     await self.disconnect()
                 raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
-            timeout = kwargs.pop("timeout", None)
+            timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
             response = await self._reader.read(0) if can_read else None
         if isinstance(response, redis_async.ResponseError):

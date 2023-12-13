@@ -14,6 +14,7 @@ description: Change log of all fakeredis releases
 ### 🧰 Maintenance
 
 - Testing for python 3.12
+- Dependencies update
 
 ## v2.20.0
 

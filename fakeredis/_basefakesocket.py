@@ -25,15 +25,15 @@ from ._zset import ZSet
 
 
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
-    """Extracts the command and command arguments from a list of bytes fields.
+    """Extracts the command and command arguments from a list of `bytes` fields.
 
-    :param fields: A list of bytes fields containing the command and command arguments.
+    :param fields: A list of `bytes` fields containing the command and command arguments.
     :return: A tuple of the command and command arguments.
 
     Example:
         fields = [b'GET', b'key1']
         result = _extract_command(fields)
-        print(result)  # ('GET', ['key1'])
+        print(result) # ('GET', ['key1'])
     """
     cmd = encode_command(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
@@ -71,7 +71,8 @@ class BaseFakeSocket:
 
     def __init__(self, server, db, *args, **kwargs):
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
-        self._server = server
+        from fakeredis import FakeServer
+        self._server: FakeServer = server
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self.responses: Optional[queue.Queue] = queue.Queue()
@@ -84,7 +85,7 @@ class BaseFakeSocket:
         self.version = server.version
 
     def put_response(self, msg: Any) -> None:
-        """Put a response message into the responses queue.
+        """Put a response message into the queue of responses.
 
         :param msg: The response message.
         """
@@ -169,7 +170,7 @@ class BaseFakeSocket:
                 buf = buf[length + 2:]  # +2 to skip the CRLF
             self._process_command(fields)
 
-    def _run_command(self, func: Callable[..., Any], sig: Signature, args: Tuple[Any], from_script: bool) -> Any:
+    def _run_command(self, func: Callable[..., Any], sig: Signature, args: List[Any], from_script: bool) -> Any:
         command_items = {}
         try:
             ret = sig.apply(args, self._db, self.version)
@@ -320,8 +321,8 @@ class BaseFakeSocket:
         it has the following drawbacks:
 
         - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
-          elements, for example, only using the returned elements in order to perform operations that are safe when
-          re-applied multiple times.
+          elements, for example, only using the returned elements to perform operations that are safe when re-applied
+          multiple times.
         - Elements that were not constantly present in the collection during a full iteration may be returned or not:
           it is undefined.
 

@@ -7,7 +7,14 @@ from .commands_mixins.geo_mixin import GeoCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
-from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
+
+try:
+    from lupa import LuaRuntime
+    from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
+except ImportError:
+    class ScriptingCommandsMixin:
+        pass
+
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.set_mixin import SetCommandsMixin
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin

@@ -5,7 +5,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any, Type, List, Callable
+from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database
@@ -179,7 +179,7 @@ class Float(RedisType):
 
     Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT)
     and double for others (zset scores), but Python doesn't support
-    long double.
+    `long double`.
     """
 
     DECODE_ERROR = msgs.INVALID_FLOAT_MSG
@@ -194,7 +194,7 @@ class Float(RedisType):
             crop_null: bool = False,
             decode_error: Optional[str] = None,
     ) -> float:
-        # redis has some quirks in float parsing, with several variants.
+        # Redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
         try:
             if crop_null:
@@ -209,7 +209,7 @@ class Float(RedisType):
             if math.isnan(out):
                 raise ValueError
             if not allow_erange:
-                # Values that over- or underflow- are explicitly rejected by
+                # Values that over- or under-flow are explicitly rejected by
                 # redis. This is a crude hack to determine whether the input
                 # may have been such a value.
                 if out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
@@ -223,7 +223,7 @@ class Float(RedisType):
         if math.isinf(value):
             return str(value).encode()
         elif humanfriendly:
-            # Algorithm from ld2string in redis
+            # Algorithm from `ld2string` in redis
             out = "{:.17f}".format(value)
             out = re.sub(r"\.?0+$", "", out)
             return out.encode()
@@ -360,7 +360,7 @@ class Signature:
         self.flags = set(flags)
         self.command_args = args
 
-    def check_arity(self, args: Tuple[Any], version: Tuple[int]) -> None:
+    def check_arity(self, args: Sequence[Any], version: Tuple[int]) -> None:
         if len(args) == len(self.fixed):
             return
         delta = len(args) - len(self.fixed)
@@ -376,7 +376,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-            self, args: Tuple[Any], db: Database, version: Tuple[int]
+            self, args: Sequence[Any], db: Database, version: Tuple[int]
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
