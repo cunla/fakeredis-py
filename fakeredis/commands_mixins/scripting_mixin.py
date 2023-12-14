@@ -208,7 +208,7 @@ class ScriptingCommandsMixin:
 
         return self._convert_lua_result(result, nested=False)
 
-    @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
+    @command(name="EVALSHA", fixed=(bytes, Int), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def evalsha(self, sha1, numkeys, *keys_and_args):
         try:
             script = self.script_cache[sha1]
@@ -216,12 +216,7 @@ class ScriptingCommandsMixin:
             raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
         return self.eval(script, numkeys, *keys_and_args)
 
-    @command(
-        name="script load",
-        fixed=(bytes,),
-        repeat=(bytes,),
-        flags=msgs.FLAG_NO_SCRIPT,
-    )
+    @command(name="SCRIPT LOAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_load(self, *args):
         if len(args) != 1:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
@@ -230,23 +225,13 @@ class ScriptingCommandsMixin:
         self.script_cache[sha1] = script
         return sha1
 
-    @command(
-        name="script exists",
-        fixed=(),
-        repeat=(bytes,),
-        flags=msgs.FLAG_NO_SCRIPT,
-    )
+    @command(name="SCRIPT EXISTS", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_exists(self, *args):
         if self.version >= (7,) and len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         return [int(sha1 in self.script_cache) for sha1 in args]
 
-    @command(
-        name="script flush",
-        fixed=(),
-        repeat=(bytes,),
-        flags=msgs.FLAG_NO_SCRIPT,
-    )
+    @command(name="SCRIPT FLUSH", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_flush(self, *args):
         if len(args) > 1 or (
                 len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}
