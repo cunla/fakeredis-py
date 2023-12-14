@@ -203,7 +203,7 @@ async def test_syntax_error(req_aioredis2: redis.asyncio.Redis):
 
 @testtools.run_test_if_lupa
 class TestScripts:
-    async def test_no_script_error(req_aioredis2: redis.asyncio.Redis):
+    async def test_no_script_error(self, req_aioredis2: redis.asyncio.Redis):
         with pytest.raises(redis.exceptions.NoScriptError):
             await req_aioredis2.evalsha('0123456789abcdef0123456789abcdef', 0)
 
