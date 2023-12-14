@@ -53,7 +53,7 @@ def casematch(a: bytes, b: bytes) -> bool:
     return null_terminate(a) == null_terminate(b)
 
 
-def encode_command(s: bytes) -> str:
+def decode_command_bytes(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
 
 

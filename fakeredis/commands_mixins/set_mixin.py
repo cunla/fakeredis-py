@@ -44,9 +44,12 @@ def _setop(
 
 
 class SetCommandsMixin:
-    version: Tuple[int]
-    _db: Database
     _scan: Callable[..., Any]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(SetCommandsMixin, self).__init__(*args, **kwargs)
+        self.version: Tuple[int]
+        self._db: Database
 
     @command((Key(set), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:

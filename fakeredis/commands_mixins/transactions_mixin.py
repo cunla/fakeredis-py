@@ -6,7 +6,6 @@ from fakeredis._helpers import OK, SimpleError, Database, SimpleString
 
 
 class TransactionsCommandsMixin:
-    _db: Database
     _run_command: Callable  # type: ignore
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
@@ -18,6 +17,7 @@ class TransactionsCommandsMixin:
         # Set when executing the commands from EXEC
         self._in_transaction = False
         self._watch_notified = False
+        self._db: Database
 
     def _clear_watches(self) -> None:
         self._watch_notified = False

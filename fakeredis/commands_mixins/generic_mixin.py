@@ -20,13 +20,16 @@ from fakeredis._zset import ZSet
 
 
 class GenericCommandsMixin:
-    version: Tuple[int]
-    _server: Any
-    _db: Database
-    _db_num: int
     _ttl: Callable
     _scan: Callable
     _key_value_type: Callable
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(GenericCommandsMixin, self).__init__(*args, **kwargs)
+        self.version: Tuple[int]
+        self._server: Any
+        self._db: Database
+        self._db_num: int
 
     def _lookup_key(self, key, pattern):
         """Python implementation of lookupKeyByPattern from redis"""

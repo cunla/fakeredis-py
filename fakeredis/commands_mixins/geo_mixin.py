@@ -88,8 +88,9 @@ def _find_near(
 
 
 class GeoCommandsMixin:
-    _db: Database
-
+    def __init__(self, *args, **kwargs):
+        super(GeoCommandsMixin, self).__init__(*args, **kwargs)
+        self._db: Database
     def _store_geo_results(
         self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool
     ) -> int:

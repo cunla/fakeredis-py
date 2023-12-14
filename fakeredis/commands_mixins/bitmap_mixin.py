@@ -1,6 +1,6 @@
+import re
 from typing import Tuple
 
-import re
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
     command,
@@ -31,9 +31,12 @@ class BitfieldEncoding:
 
 
 class BitmapCommandsMixin:
-    version: Tuple[int]
-
     # TODO: bitfield, bitfield_ro, bitpos
+
+    def __init(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.version: Tuple[int]
+
     @staticmethod
     def _bytes_as_bin_string(value):
         return "".join([bin(i).lstrip("0b").rjust(8, "0") for i in value])
@@ -131,7 +134,7 @@ class BitmapCommandsMixin:
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
         if bytes(reconstructed) != key.value or (
-            self.version == 6 and old_byte != new_byte
+                self.version == 6 and old_byte != new_byte
         ):
             key.update(bytes(reconstructed))
         return old_value
@@ -215,13 +218,13 @@ class BitmapCommandsMixin:
         i = 0
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
-                overflow = args[i+1].upper()
+                overflow = args[i + 1].upper()
                 if overflow not in (b"WRAP", b"SAT", b"FAIL"):
                     raise SimpleError(msgs.INVALID_OVERFLOW_TYPE)
                 i += 2
             elif casematch(args[i], b"get") and i + 2 < len(args):
-                encoding = BitfieldEncoding(args[i+1])
-                offset = BitOffset.decode(args[i+2])
+                encoding = BitfieldEncoding(args[i + 1])
+                offset = BitOffset.decode(args[i + 2])
                 results.append(self._bitfield_get(key, encoding, offset))
                 i += 3
             elif casematch(args[i], b"set") and i + 3 < len(args):

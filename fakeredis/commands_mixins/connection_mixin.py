@@ -8,13 +8,15 @@ PONG = SimpleString(b"PONG")
 
 
 class ConnectionCommandsMixin:
-    _server: Any
-    _db: Database
-    _db_num: int
-    _pubsub: int
-
     # Connection commands
     # TODO: auth, quit
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
+        self._db: Database
+        self._db_num: int
+        self._pubsub: int
+        self._server: Any
 
     @command((bytes,))
     def echo(self, message):

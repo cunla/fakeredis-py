@@ -6,13 +6,14 @@ from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
 
 
 class PubSubCommandsMixin:
-    _server: Any
-    version: Tuple[int]
-    put_response: Callable
+
 
     def __init__(self, *args, **kwargs):
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
+        self._server: Any
+        self.version: Tuple[int]
+        self.put_response: Callable
 
     def _subscribe(self, channels, subscribers, mtype):
         for channel in channels:

@@ -5,14 +5,14 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence
+from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
-SUPPORTED_COMMANDS = dict()  # Dictionary of supported commands name => Signature
-COMMANDS_WITH_SUB = set()  # Commands with sub-commands
+SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature
+COMMANDS_WITH_SUB: Set[str] = set()  # Commands with sub-commands
 
 
 class Key:

@@ -9,9 +9,12 @@ from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
 
 class StreamsCommandsMixin:
-    _db: Database
-    version: Tuple[int]
     _blocking: Callable
+
+    def __init__(self, *args, **kwargs):
+        super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
+        self._db: Database
+        self.version: Tuple[int]
 
     @command(
         name="XADD",

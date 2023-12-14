@@ -70,10 +70,13 @@ def _lcs(s1, s2):
 
 
 class StringCommandsMixin:
-    _db: Database
-    version: Tuple[int]
     _encodeint: Callable
     _encodefloat: Callable
+
+    def __init__(self, *args, **kwargs):
+        super(StringCommandsMixin, self).__init__(*args, **kwargs)
+        self._db: Database
+        self.version: Tuple[int]
 
     @command((Key(bytes), bytes))
     def append(self, key, value):

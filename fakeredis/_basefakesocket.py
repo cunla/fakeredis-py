@@ -18,7 +18,7 @@ from ._helpers import (
     casematch,
     compile_pattern,
     QUEUED,
-    encode_command,
+    decode_command_bytes,
 )
 from ._stream import XStream
 from ._zset import ZSet
@@ -35,9 +35,9 @@ def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
         result = _extract_command(fields)
         print(result) # ('GET', ['key1'])
     """
-    cmd = encode_command(fields[0])
+    cmd = decode_command_bytes(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
-        cmd += " " + encode_command(fields[1])
+        cmd += " " + decode_command_bytes(fields[1])
         cmd_arguments = fields[2:]
     else:
         cmd_arguments = fields[1:]
@@ -53,10 +53,7 @@ def bin_reverse(x, bits_count):
 
 
 class BaseFakeSocket:
-    _transaction: Optional[List[Any]]
     _clear_watches: Callable
-    _in_transaction: bool
-    _pubsub: int
     ACCEPTED_COMMANDS_WHILE_PUBSUB = {
         "ping",
         "subscribe",
@@ -83,6 +80,10 @@ class BaseFakeSocket:
         self._parser = self._parse_commands()
         self._parser.send(None)
         self.version = server.version
+        # Assigned elsewhere
+        self._transaction: Optional[List[Any]]
+        self._in_transaction: bool
+        self._pubsub: int
 
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.
@@ -234,7 +235,7 @@ class BaseFakeSocket:
             if ret is not None:
                 return ret
 
-    def _name_to_func(self, cmd_name: str):
+    def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable], Signature]:
         """Get the signature and the method from the command name."""
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol

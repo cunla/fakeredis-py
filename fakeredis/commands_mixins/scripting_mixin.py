@@ -2,16 +2,18 @@ import functools
 import hashlib
 import itertools
 import logging
-from typing import Tuple, Callable, AnyStr, Set, Any
+from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict
+
 from lupa import LuaRuntime
+
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Int
+from fakeredis._commands import command, Int, Signature
 from fakeredis._helpers import (
     SimpleError,
     SimpleString,
     null_terminate,
     OK,
-    encode_command,
+    decode_command_bytes,
 )
 
 LOGGER = logging.getLogger("fakeredis")
@@ -46,7 +48,7 @@ def _check_for_lua_globals(lua_runtime: LuaRuntime, expected_globals: Set[Any]) 
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
 
-def _lua_redis_log(lua_runtime: LuaRuntime, expected_globals: Set[Any], lvl, *args) -> None:
+def _lua_redis_log(lua_runtime: LuaRuntime, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
@@ -63,16 +65,16 @@ def _lua_redis_log(lua_runtime: LuaRuntime, expected_globals: Set[Any], lvl, *ar
 
 
 class ScriptingCommandsMixin:
-    version: Tuple[int]
-    _name_to_func: Callable
-    _run_command: Callable
+    _name_to_func: Callable[[str, ], Tuple[Callable[..., Any], Signature]]
+    _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
         # Maps SHA1 to the script source
-        self.script_cache = {}
+        self.script_cache: Dict[bytes, bytes] = {}
+        self.version: Tuple[int]
 
-    def _convert_redis_arg(self, lua_runtime: LuaRuntime, value):
+    def _convert_redis_arg(self, lua_runtime: LuaRuntime, value: Any) -> bytes:
         # Type checks are exact to avoid issues like bool being a subclass of int.
         if type(value) is bytes:
             return value
@@ -87,7 +89,7 @@ class ScriptingCommandsMixin:
             )
             raise SimpleError(msg)
 
-    def _convert_redis_result(self, lua_runtime: LuaRuntime, result):
+    def _convert_redis_result(self, lua_runtime: LuaRuntime, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
             return result
         elif isinstance(result, SimpleString):
@@ -108,7 +110,7 @@ class ScriptingCommandsMixin:
                 "Unexpected return type from redis: {}".format(type(result))
             )
 
-    def _convert_lua_result(self, result, nested=True):
+    def _convert_lua_result(self, result: Any, nested: bool = True) -> Any:
         from lupa import lua_type
 
         if lua_type(result) == "table":
@@ -139,22 +141,22 @@ class ScriptingCommandsMixin:
             return 1 if result else None
         return result
 
-    def _lua_redis_call(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op, *args):
+    def _lua_redis_call(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
-        func, sig = self._name_to_func(encode_command(op))
+        func, sig = self._name_to_func(decode_command_bytes(op))
         new_args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
         result = self._run_command(func, sig, new_args, True)
         return self._convert_redis_result(lua_runtime, result)
 
-    def _lua_redis_pcall(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op, *args):
+    def _lua_redis_pcall(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:
             return lua_runtime.table_from({b"err": str(ex)})
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def eval(self, script, numkeys, *keys_and_args):
+    def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes):
         from lupa import LuaError, LuaRuntime, as_attrgetter
 
         if numkeys > len(keys_and_args):

@@ -39,12 +39,15 @@ SORTED_SET_METHODS = {
 
 
 class SortedSetCommandsMixin:
-    _db: Database
-    version: Tuple[int]
     _blocking: Callable
     _scan: Callable
 
-    # Sorted set commands
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
+        self.version: Tuple[int]
+        self._db: Database
+        # Sorted set commands
+
     def _zpop(
             self, key: CommandItem, count: int, reverse: bool, flatten_list: bool
     ) -> List[List[Any]]:
