@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 import redis
 import redis.client
+from redis.exceptions import ResponseError
 
+import fakeredis
 from test.testtools import raw_command
 from test import testtools
 
