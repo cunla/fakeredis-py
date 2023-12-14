@@ -5,6 +5,7 @@ import redis
 import redis.client
 
 from test.testtools import raw_command
+from test import testtools
 
 json_tests = pytest.importorskip("lupa")
 
