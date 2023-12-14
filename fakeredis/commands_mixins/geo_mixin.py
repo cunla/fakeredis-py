@@ -28,7 +28,7 @@ GeoResult = namedtuple("GeoResult", "name long lat hash distance")
 
 
 def _parse_results(
-    items: List[GeoResult], withcoord: bool, withdist: bool
+        items: List[GeoResult], withcoord: bool, withdist: bool
 ) -> List[Any]:
     """Parse list of GeoResults to redis response
     :param withcoord: include coordinates in response
@@ -53,14 +53,14 @@ def _parse_results(
 
 
 def _find_near(
-    zset: ZSet,
-    lat: float,
-    long: float,
-    radius: float,
-    conv: float,
-    count: int,
-    count_any: bool,
-    desc: bool,
+        zset: ZSet,
+        lat: float,
+        long: float,
+        radius: float,
+        conv: float,
+        count: int,
+        count_any: bool,
+        desc: bool,
 ) -> List[GeoResult]:
     """Find items within area (lat,long)+radius
     :param zset: list of items to check
@@ -91,9 +91,8 @@ class GeoCommandsMixin:
     def __init__(self, *args, **kwargs):
         super(GeoCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-    def _store_geo_results(
-        self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool
-    ) -> int:
+
+    def _store_geo_results(self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool) -> int:
         db_item = CommandItem(
             item_name, self._db, item=self._db.get(item_name), default=ZSet()
         )
@@ -171,20 +170,20 @@ class GeoCommandsMixin:
         return res * unit
 
     def _search(
-        self,
-        key,
-        long,
-        lat,
-        radius,
-        conv,
-        withcoord,
-        withdist,
-        _,
-        count,
-        count_any,
-        desc,
-        store,
-        storedist,
+            self,
+            key,
+            long,
+            lat,
+            radius,
+            conv,
+            withcoord,
+            withdist,
+            _,
+            count,
+            count_any,
+            desc,
+            store,
+            storedist,
     ):
         zset = key.value
         geo_results = _find_near(zset, lat, long, radius, conv, count, count_any, desc)
@@ -318,8 +317,8 @@ class GeoCommandsMixin:
     @command(
         name="GEOSEARCHSTORE",
         fixed=(
-            bytes,
-            Key(ZSet),
+                bytes,
+                Key(ZSet),
         ),
         repeat=(bytes,),
     )
