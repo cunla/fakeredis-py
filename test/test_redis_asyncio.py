@@ -201,13 +201,11 @@ async def test_syntax_error(req_aioredis2: redis.asyncio.Redis):
         await req_aioredis2.execute_command('get')
 
 
-async def test_no_script_error(req_aioredis2: redis.asyncio.Redis):
-    with pytest.raises(redis.exceptions.NoScriptError):
-        await req_aioredis2.evalsha('0123456789abcdef0123456789abcdef', 0)
-
-
 @testtools.run_test_if_lupa
 class TestScripts:
+    async def test_no_script_error(req_aioredis2: redis.asyncio.Redis):
+        with pytest.raises(redis.exceptions.NoScriptError):
+            await req_aioredis2.evalsha('0123456789abcdef0123456789abcdef', 0)
 
     @pytest.mark.max_server('6.2.7')
     async def test_failed_script_error6(self, req_aioredis2):
