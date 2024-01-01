@@ -9,11 +9,11 @@ update, and retrieve JSON values in a Redis database, similar to any other Redis
 seamlessly with Search and Query to let you index and query JSON documents.
 
 JSONPath syntax The following JSONPath syntax table was adapted from
-Goessner's [path syntax comparison](https://goessner.net/articles/JsonPath/index.html#e2).
+Goessner's [path syntax comparison][4].
 
-Currently, Redis Json module is fully implemented (see [supported commands](./redis-commands/RedisJson/)).
-Support for JSON commands (e.g., [`JSON.GET`](https://redis.io/commands/json.get/)) is implemented using
-[jsonpath-ng,](https://github.com/h2non/jsonpath-ng) you can simply install it using `pip install 'fakeredis[json]'`.
+Currently, Redis Json module is fully implemented (see [supported commands][1]).
+Support for JSON commands (e.g., [`JSON.GET`][2]) is implemented using
+[jsonpath-ng,][3] you can simply install it using `pip install 'fakeredis[json]'`.
 
 ```pycon
 >>> import fakeredis
@@ -30,16 +30,15 @@ Support for JSON commands (e.g., [`JSON.GET`](https://redis.io/commands/json.get
 
 Bloom filters are a probabilistic data structure that checks for presence of an element in a set.
 
-Instead of storing all of the elements in the set, Bloom Filters store only the elements' hashed representation, thus
+Instead of storing all the elements in the set, Bloom Filters store only the elements' hashed representation, thus
 sacrificing some precision. The trade-off is that Bloom Filters are very space-efficient and fast.
 
 You can get a false positive result, but never a false negative. i.e., if the bloom filter says that an element is not
 in the set, then it is definitely not in the set. If the bloom filter says that an element is in the set, then it is
 most likely in the set, but it is not guaranteed.
 
-Currently, RedisBloom module bloom filter commands are fully implemented using
-[pybloom-live](https://github.com/joseph-fox/python-bloomfilter) (
-see [supported commands](./redis-commands/RedisBloom/)).
+Currently, RedisBloom module bloom filter commands are fully implemented using [pybloom-live][5] (
+see [supported commands][6]).
 
 You can install it using `pip install 'fakeredis[bf]'`.
 
@@ -62,3 +61,15 @@ command to program the server.
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
 Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it
 using `pip install 'fakeredis[lua]'`
+
+[1]:./redis-commands/RedisJson/
+
+[2]:https://redis.io/commands/json.get/
+
+[3]:https://github.com/h2non/jsonpath-ng
+
+[4]:https://goessner.net/articles/JsonPath/index.html#e2
+
+[5]:https://github.com/joseph-fox/python-bloomfilter
+
+[6]:./redis-commands/BloomFilter/

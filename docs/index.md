@@ -6,12 +6,13 @@ It enables running tests requiring redis server without an actual server.
 
 It provides enhanced versions of the redis-py Python bindings for Redis.
 
-That provides the following added functionality:
-A built-in Redis server that is automatically installed, configured and managed when the Redis bindings are used. A
-single server shared by multiple programs or multiple independent servers. All the servers provided by
-FakeRedis support all Redis functionality including advanced features such as RedisJson, GeoCommands.
+That provides the following added functionality: A built-in Redis server that is automatically installed, configured and
+managed when the Redis bindings are used.
+A single server shared by multiple programs or multiple independent servers.
+All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson,
+GeoCommands.
 
-For a list of supported/unsupported redis commands, see [Supported commands](./redis-commands/Redis.md).
+For a list of supported/unsupported redis commands, see [Supported commands][6].
 
 ## Installation
 
@@ -72,9 +73,8 @@ True
 'baz'
 ```
 
-It is also possible to mock connection errors, so you can effectively test
-your error handling. Simply set the connected attribute of the server to
-`False` after initialization.
+It is also possible to mock connection errors, so you can effectively test your error handling.
+Set the connected attribute of the server to `False` after initialization.
 
 ```pycon
 >>> import fakeredis
@@ -133,6 +133,7 @@ a method returning the same connection.
 ```python
 import django_rq
 
+
 # RQ
 # Configuration to pretend there is a Redis service available.
 # Set up the connection before RQ Django reads the settings.
@@ -154,56 +155,48 @@ def get_fake_connection(config: Dict[str, Any], strict: bool):
         password=config.get("PASSWORD"),
     )
 
+
 django_rq.queues.get_redis_connection = get_fake_connection
 ```
 
 ## Known Limitations
 
-Apart from unimplemented commands, there are a number of cases where fakeredis
-won't give identical results to real redis. The following are differences that
-are unlikely to ever be fixed; there are also differences that are fixable
-(such as commands that do not support all features) which should be filed as
-bugs in GitHub.
+Apart from unimplemented commands, there are a number of cases where fakeredis won't give identical results to real
+redis.
+The following are differences that are unlikely to ever be fixed; there are also differences that are fixable (such as
+commands that do not support all features) which should be filed as bugs in GitHub.
 
-- Hyperloglogs are implemented using sets underneath. This means that the
-  `type` command will return the wrong answer, you can't use `get` to retrieve
-  the encoded value, and counts will be slightly different (they will in fact be
-  exact).
-- When a command has multiple error conditions, such as operating on a key of
-  the wrong type and an integer argument is not well-formed, the choice of
-  error to return may not match redis.
+- Hyperloglogs are implemented using sets underneath. This means that the `type` command will return the wrong answer,
+  you can't use `get` to retrieve the encoded value, and counts will be slightly different (they will in fact be exact).
+- When a command has multiple error conditions, such as operating on a key of the wrong type and an integer argument is
+  not well-formed, the choice of error to return may not match redis.
 
 - The `incrbyfloat` and `hincrbyfloat` commands in redis use the C `long double` type, which typically has more
   precision than Python's `float` type.
 
-- Redis makes guarantees about the order in which clients blocked on blocking commands are woken up.
-  Fakeredis does not honor these guarantees.
+- Redis makes guarantees about the order in which clients blocked on blocking commands are woken up. Fakeredis does not
+  honor these guarantees.
 
-- Where redis contains bugs, fakeredis generally does not try to provide exact bug compatibility.
-  It's not practical for fakeredis to try to match the set of bugs in your specific version of redis.
+- Where redis contains bugs, fakeredis generally does not try to provide exact bug compatibility. It's not practical for
+  fakeredis to try to match the set of bugs in your specific version of redis.
 
-- There are a number of cases where the behavior of redis is undefined, such
-  as the order of elements returned by set and hash commands. Fakeredis will
-  generally not produce the same results, and in Python versions before 3.6
-  may produce different results each time the process is re-run.
+- There are a number of cases where the behavior of redis is undefined, such as the order of elements returned by set
+  and hash commands. Fakeredis will generally not produce the same results, and in Python versions before 3.6 may
+  produce different results each time the process is re-run.
 
-- SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are
-  deleted or renamed during iteration. They also won't necessarily iterate in
-  the same chunk sizes or the same order as redis. This is aligned with redis behavior as
-  can be seen in tests `test_scan_delete_key_while_scanning_should_not_returns_it_in_scan`.
+- SCAN/ZSCAN/HSCAN/SSCAN will not necessarily iterate all items if items are deleted or renamed during iteration. They
+  also won't necessarily iterate in the same chunk sizes or the same order as redis. This is aligned with redis behavior
+  as can be seen in tests `test_scan_delete_key_while_scanning_should_not_returns_it_in_scan`.
 
-- DUMP/RESTORE will not return or expect data in the RDB format. Instead, the
-  `pickle` module is used to mimic an opaque and non-standard format.
-  **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle
-  can execute arbitrary code.
+- DUMP/RESTORE will not return or expect data in the RDB format. Instead, the `pickle` module is used to mimic an opaque
+  and non-standard format. **WARNING**: Do not use RESTORE with untrusted data, as a malicious pickle can execute
+  arbitrary code.
 
 ## Local development environment
 
-To ensure parity with the real redis, there are a set of integration tests
-that mirror the unittests. For every unittest that is written, the same
-test is run against a real redis instance using a real redis-py client
-instance. In order to run these tests, you must have a redis server running
-on localhost, port 6379 (the default settings). **WARNING**: the tests will
+To ensure parity with the real redis, there are a set of integration tests that mirror the unittests. For every unittest
+that is written, the same test is run against a real redis instance using a real redis-py client instance. To run these
+tests, you must have a redis server running on localhost, port 6379 (the default settings). **WARNING**: the tests will
 completely wipe your database!
 
 First install poetry if you don't have it, and then install all the dependencies:
@@ -225,9 +218,8 @@ If you only want to run tests against fake redis, without a real redis::
 poetry run pytest -m fake
 ```
 
-Because this module is attempting to provide the same interface as `redis-py`,
-the python bindings to redis, a reasonable way to test this to take each
-unittest and run it against a real redis server.
+Because this module is attempting to provide the same interface as `redis-py`, the python bindings to redis, a
+reasonable way to test this to take each unittest and run it against a real redis server.
 Fakeredis and the real redis server should give the same result.
 To run tests against a real redis instance instead:
 
@@ -235,11 +227,10 @@ To run tests against a real redis instance instead:
 poetry run pytest -m real
 ```
 
-If redis is not running, and you try to run tests against a real redis server,
-these tests will have a result of 's' for skipped.
+If redis is not running, and you try to run tests against a real redis server, these tests will have a result of 's' for
+skipped.
 
-There are some tests that test redis blocking operations that are somewhat
-slow.
+There are some tests that test redis blocking operations that are somewhat slow.
 If you want to skip these tests during day-to-day development, they have all been tagged as 'slow' so you can skip them
 by running:
 
@@ -252,17 +243,27 @@ poetry run pytest -m "not slow"
 Contributions are welcome. You can contribute in many ways:
 
 - Report bugs you found.
-- Check out issues
-  with [`Help wanted`](https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
-  label.
-- Implement commands which are not yet implemented. Follow
-  the [guide how to implement a new command](./guides/implement-command/).
-- Write additional test cases. Follow the [guide how to write a test-case](./guides/test-case/)
+- Check out issues with [`Help wanted`][5] label.
+- Implement commands which are not yet implemented. Follow the [guide how to implement a new command][1].
+- Write additional test cases. Follow the [guide how to write a test-case][4].
 
-Please follow coding standards listed in the [contributing guide](./about/contributing.md).
+Please follow coding standards listed in the [contributing guide][3].
 
 ## Sponsor
 
 fakeredis-py is developed for free.
 
-You can support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
+You can support this project by becoming a sponsor using [this link][2].
+
+
+[1]:./guides/implement-command/
+
+[2]:https://github.com/sponsors/cunla
+
+[3]:./about/contributing.md
+
+[4]:./guides/test-case/
+
+[5]:https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
+
+[6]:./redis-commands/
