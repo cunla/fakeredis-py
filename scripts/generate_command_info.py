@@ -18,45 +18,22 @@ that is used for the `COMMAND` redis command.
 """
 import json
 import os
-from collections import namedtuple
 from typing import Any, List, Dict
 
 import requests
 
 from fakeredis._commands import SUPPORTED_COMMANDS
+from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
-CommandsMeta = namedtuple('CommandsMeta', ['local_filename', 'stack', 'title', 'url', ])
-METADATA = [
-    CommandsMeta('.commands.json', 'Redis', 'Redis',
-                 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json', ),
-    CommandsMeta('.json.commands.json', 'RedisJson', 'JSON',
-                 'https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json', ),
-    CommandsMeta('.graph.commands.json', 'RedisGraph', 'Graph',
-                 'https://raw.githubusercontent.com/RedisGraph/RedisGraph/master/commands.json', ),
-    CommandsMeta('.ts.commands.json', 'RedisTimeSeries', 'Time Series',
-                 'https://raw.githubusercontent.com/RedisTimeSeries/RedisTimeSeries/master/commands.json', ),
-    CommandsMeta('.ft.commands.json', 'RedisSearch', 'Search',
-                 'https://raw.githubusercontent.com/RediSearch/RediSearch/master/commands.json', ),
-    CommandsMeta('.bloom.commands.json', 'RedisBloom', 'Probabilistic',
-                 'https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json', ),
-]
-
-
-def download_single_stack_commands(filename, url) -> dict:
-    full_filename = os.path.join(THIS_DIR, filename)
-    if not os.path.exists(full_filename):
-        contents = requests.get(url).content
-        open(full_filename, 'wb').write(contents)
-    curr_cmds = json.load(open(full_filename))
-    cmds = {k.lower(): v for k, v in curr_cmds.items()}
-    return cmds
 
 
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
     if 'json.type' not in res:
         raise ValueError('Make sure jsonpath_ng is installed to get accurate documentation')
+    if 'eval' not in res:
+        raise ValueError('Make sure lupa is installed to get accurate documentation')
     return res
 
 
