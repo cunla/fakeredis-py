@@ -12,30 +12,20 @@ import requests
 from dotenv import load_dotenv
 from github import Github
 
+from scripts.generate_supported_commands_doc import implemented_commands, METADATA, IGNORE_COMMANDS
+
 load_dotenv()  # take environment variables from .env.
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
 IGNORE_GROUPS = {
-    'suggestion', 'tdigest', 'scripting', 'cf', 'topk',
-    'hyperloglog', 'graph', 'timeseries', 'connection',
-    'server', 'generic', 'cms', 'cluster',
-    'search', 'bitmap',
-}
-IGNORE_COMMANDS = {
-    'PUBSUB HELP', 'OBJECT HELP', 'FUNCTION HELP',
-    'SCRIPT HELP',
-    'JSON.DEBUG', 'JSON.DEBUG HELP', 'JSON.DEBUG MEMORY',
-    'JSON.RESP',
-    'XINFO', 'XINFO HELP', 'XGROUP', 'XGROUP HELP', 'XSETID',
-    'ACL HELP', 'COMMAND HELP', 'CONFIG HELP', 'DEBUG',
-    'MEMORY HELP', 'MODULE HELP', 'CLIENT HELP',
+    'suggestion', 'tdigest', 'scripting', 'cf',
+    'graph', 'timeseries', 'connection',
+    'server', 'generic', 'cms', 'cluster', 'search',
 }
 
 
-def commands_groups(
-        all_commands: dict, implemented_set: set
-) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+def commands_groups(all_commands: dict, implemented_set: set) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     implemented, unimplemented = dict(), dict()
     for cmd in all_commands:
         if cmd.upper() in IGNORE_COMMANDS:
@@ -51,12 +41,11 @@ def commands_groups(
 
 
 def download_redis_commands() -> dict:
-    from supported2 import METADATA
     cmds = {}
-    for filename, url in METADATA:
-        full_filename = os.path.join(THIS_DIR, filename)
+    for item in METADATA:
+        full_filename = os.path.join(THIS_DIR, item.local_filename)
         if not os.path.exists(full_filename):
-            contents = requests.get(url).content
+            contents = requests.get(item.url).content
             open(full_filename, 'wb').write(contents)
         curr_cmds = json.load(open(full_filename))
         cmds = cmds | {k.lower(): v for k, v in curr_cmds.items()}
@@ -65,7 +54,6 @@ def download_redis_commands() -> dict:
 
 def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """Returns 2 dictionaries, one of unimplemented commands and another of implemented commands"""
-    from supported2 import implemented_commands
     commands = download_redis_commands()
     implemented_commands_set = implemented_commands()
     implemented_dict, unimplemented_dict = commands_groups(commands, implemented_commands_set)
@@ -116,20 +104,29 @@ Here is the [Official documentation]({link})"""
             self.gh_repo.create_issue(title, body, labels=labels)
 
 
-def print_gh_commands(commands: dict, unimplemented: dict):
-    gh = GithubData()
-    for group in unimplemented:
-        if group in IGNORE_GROUPS:
-            continue
-        print(f'### Creating issues for {group} commands')
-        for cmd in unimplemented[group]:
-            if cmd.upper() in IGNORE_COMMANDS:
+def created_issues_for_commands(commands: dict, unimplemented: dict):
+    def _handle_commands(gh: GithubData):
+        for group in unimplemented:
+            if group in IGNORE_GROUPS:
                 continue
-            summary = commands[cmd]['summary']
-            gh.create_issue(group, cmd, summary)
+            if len(unimplemented[group]) == 0:
+                continue
+            print(f'### Creating issues for {group} commands')
+            for cmd in unimplemented[group]:
+                if cmd.upper() in IGNORE_COMMANDS:
+                    continue
+                summary = commands[cmd]['summary']
+                gh.create_issue(group, cmd, summary)
+
+    gh = GithubData(dry=True)
+    _handle_commands(gh)
+    create = input('Press y to create issues, anything else to exit: ')
+    if create == 'y':
+        gh = GithubData()
+        _handle_commands(gh)
 
 
 if __name__ == '__main__':
     commands = download_redis_commands()
     unimplemented_dict, _ = get_unimplemented_and_implemented_commands()
-    print_gh_commands(commands, unimplemented_dict)
+    created_issues_for_commands(commands, unimplemented_dict)

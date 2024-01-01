@@ -1,3 +1,21 @@
+"""
+Generates a JSON file with the following structure:
+{
+    "command_name": [
+      1. Name
+      2. Arity
+      3. Flags
+      4. First key
+      5. Last key
+      6. Step
+      7. ACL categories (as of Redis 6.0)
+      8. Tips (as of Redis 7.0)
+      9. Key specifications (as of Redis 7.0)
+      10. Subcommands (as of Redis 7.0)
+    ]
+}
+that is used for the `COMMAND` redis command.
+"""
 import json
 import os
 from collections import namedtuple

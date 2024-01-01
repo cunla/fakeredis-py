@@ -191,10 +191,7 @@ class SetCommandsMixin:
 
     @command((Key(set),), (Key(set),))
     def pfcount(self, *keys: CommandItem) -> int:
-        """
-        Return the approximated cardinality of
-        the set observed by the HyperLogLog at key(s).
-        """
+        """Return the approximated cardinality of the set observed by the HyperLogLog at key(s)."""
         return len(self.sunion(*keys))
 
     @command((Key(set), Key(set)), (Key(set),))

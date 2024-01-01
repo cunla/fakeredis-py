@@ -1,6 +1,6 @@
 # Support for redis-stack
 
-To install all supported modules, you can simply install fakeredis with `pip install fakeredis[lua,json,bf]`.
+To install all supported modules, you can install fakeredis with `pip install fakeredis[lua,json,bf]`.
 
 ## RedisJson support
 
@@ -8,12 +8,11 @@ The JSON capability of Redis Stack provides JavaScript Object Notation (JSON) su
 update, and retrieve JSON values in a Redis database, similar to any other Redis data type. Redis JSON also works
 seamlessly with Search and Query to let you index and query JSON documents.
 
-JSONPath syntax The following JSONPath syntax table was adapted from
-Goessner's [path syntax comparison][4].
+JSONPath's syntax: The following JSONPath syntax table was adapted from Goessner's [path syntax comparison][4].
 
 Currently, Redis Json module is fully implemented (see [supported commands][1]).
 Support for JSON commands (e.g., [`JSON.GET`][2]) is implemented using
-[jsonpath-ng,][3] you can simply install it using `pip install 'fakeredis[json]'`.
+[jsonpath-ng,][3] you can install it using `pip install 'fakeredis[json]'`.
 
 ```pycon
 >>> import fakeredis
@@ -28,16 +27,16 @@ Support for JSON commands (e.g., [`JSON.GET`][2]) is implemented using
 
 ## Bloom filter support
 
-Bloom filters are a probabilistic data structure that checks for presence of an element in a set.
+Bloom filters are a probabilistic data structure that checks for the presence of an element in a set.
 
 Instead of storing all the elements in the set, Bloom Filters store only the elements' hashed representation, thus
 sacrificing some precision. The trade-off is that Bloom Filters are very space-efficient and fast.
 
-You can get a false positive result, but never a false negative. i.e., if the bloom filter says that an element is not
+You can get a false positive result, but never a false negative, i.e., if the bloom filter says that an element is not
 in the set, then it is definitely not in the set. If the bloom filter says that an element is in the set, then it is
 most likely in the set, but it is not guaranteed.
 
-Currently, RedisBloom module bloom filter commands are fully implemented using [pybloom-live][5] (
+Currently, RedisBloom module bloom filter commands are fully implemented using [pybloom-live][5](
 see [supported commands][6]).
 
 You can install it using `pip install 'fakeredis[bf]'`.
@@ -52,15 +51,14 @@ You can install it using `pip install 'fakeredis[bf]'`.
 0
 ```
 
-## [Redis programmability](https://redis.io/docs/interact/programmability/)
+## [Redis programmability][7]
 
 Redis provides a programming interface that lets you execute custom scripts on the server itself. In Redis 7 and beyond,
 you can use Redis Functions to manage and run your scripts. In Redis 6.2 and below, you use Lua scripting with the EVAL
 command to program the server.
 
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
-Lua), you will need [lupa](https://pypi.org/project/lupa/), you can simply install it
-using `pip install 'fakeredis[lua]'`
+Lua), you will need [lupa](https://pypi.org/project/lupa/), you can install it using `pip install 'fakeredis[lua]'`
 
 [1]:./redis-commands/RedisJson/
 
@@ -73,3 +71,5 @@ using `pip install 'fakeredis[lua]'`
 [5]:https://github.com/joseph-fox/python-bloomfilter
 
 [6]:./redis-commands/BloomFilter/
+
+[7]:https://redis.io/docs/interact/programmability/
