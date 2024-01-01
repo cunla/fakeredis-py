@@ -221,7 +221,7 @@ class TestScripts:
 
 
 @fake_only
-@testtools.run_test_if_redispy_ver('lt', '5.1')
+@testtools.run_test_if_redispy_ver('lt', '5.1.0b1')
 async def test_repr_redis_until_51(req_aioredis2: redis.asyncio.Redis):
     assert re.fullmatch(
         r'ConnectionPool<FakeConnection<server=<fakeredis._server.FakeServer object at .*>,db=0>>',
