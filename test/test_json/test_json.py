@@ -558,7 +558,7 @@ def test_nummultby(r: redis.Redis):
         assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
 
 
-@testtools.run_test_if_redispy_ver('above', '4.6')
+@testtools.run_test_if_redispy_ver('gte', '4.6')
 @pytest.mark.min_server('7.1')
 def test_json_merge(r: redis.Redis):
     # Test with root path $
@@ -579,7 +579,7 @@ def test_json_merge(r: redis.Redis):
     }
 
 
-@testtools.run_test_if_redispy_ver('above', '4.6')
+@testtools.run_test_if_redispy_ver('gte', '4.6')
 @pytest.mark.min_server('7.1')
 def test_mset(r: redis.Redis):
     r.json().mset([("1", Path.root_path(), 1), ("2", Path.root_path(), 2)])

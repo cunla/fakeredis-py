@@ -221,9 +221,18 @@ class TestScripts:
 
 
 @fake_only
-async def test_repr(req_aioredis2: redis.asyncio.Redis):
+@testtools.run_test_if_redispy_ver('lte', '5.0.9')
+async def test_repr_redis_until_51(req_aioredis2: redis.asyncio.Redis):
     assert re.fullmatch(
         r'ConnectionPool<FakeConnection<server=<fakeredis._server.FakeServer object at .*>,db=0>>',
+        repr(req_aioredis2.connection_pool)
+    )
+
+
+@testtools.run_test_if_redispy_ver('gte', '5.1.0')
+async def test_repr_redis_51(req_aioredis2: redis.asyncio.Redis):
+    assert re.fullmatch(
+        r'<redis.asyncio.connection.ConnectionPool(<fakeredis.aioredis.FakeConnection(server=<fakeredis._server.FakeServer object at .*>,db=0)>)>',
         repr(req_aioredis2.connection_pool)
     )
 
@@ -332,7 +341,7 @@ async def test_async():
     assert x == b"plz"
 
 
-@testtools.run_test_if_redispy_ver('above', '4.4.0')
+@testtools.run_test_if_redispy_ver('gte', '4.4.0')
 @pytest.mark.parametrize('nowait', [False, True])
 @pytest.mark.fake
 async def test_connection_disconnect(nowait):

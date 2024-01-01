@@ -13,14 +13,15 @@ To write a new test case for a command:
 - Determine when support for the command was introduced
     - To limit the redis-server versions, it will run on use:
       `@pytest.mark.max_server(version)` and `@pytest.mark.min_server(version)`
-    - To limit the redis-py version use `@run_test_if_redispy_ver(above/below, version)`
+    - To limit the redis-py version use `@run_test_if_redispy_ver('gte', version)`
+      (you can use `ge`/`gte`/`lte`/`lt`/`eq`/`ne`).
 - pytest will inject a redis connection to the argument `r` of the test.
 
 Sample of running a test for redis-py v4.2.0 and above, redis-server 7.0 and above.
 
 ```python
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.2.0')
+@testtools.run_test_if_redispy_ver('gte', '4.2.0')
 def test_expire_should_not_expire__when_no_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'
