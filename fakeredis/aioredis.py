@@ -31,7 +31,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
-    def put_response(self, msg:Any) -> None:
+    def put_response(self, msg: Any) -> None:
         if not self.responses:
             return
         self.responses.put_nowait(msg)
