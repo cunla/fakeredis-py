@@ -30,6 +30,18 @@ pip install fakeredis[bf,json]  ## Support for RedisJSON and BloomFilter command
 
 ## How to Use
 
+### Use as a pytest fixture
+
+```python
+import pytest
+
+@pytest.fixture
+def redis_client(request):
+    import fakeredis
+    redis_client = fakeredis.FakeRedis()
+    return redis_client
+```
+
 ### General usage
 
 FakeRedis can imitate Redis server version 6.x or 7.x. Version 7 is used by default.
