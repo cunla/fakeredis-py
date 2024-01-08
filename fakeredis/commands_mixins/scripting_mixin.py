@@ -156,7 +156,7 @@ class ScriptingCommandsMixin:
             return lua_runtime.table_from({b"err": str(ex)})
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes):
+    def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes) -> Any:
         from lupa import LuaError, LuaRuntime, as_attrgetter
 
         if numkeys > len(keys_and_args):
@@ -209,7 +209,7 @@ class ScriptingCommandsMixin:
         return self._convert_lua_result(result, nested=False)
 
     @command(name="EVALSHA", fixed=(bytes, Int), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def evalsha(self, sha1, numkeys, *keys_and_args):
+    def evalsha(self, sha1: bytes, numkeys: Int, *keys_and_args: bytes) -> Any:
         try:
             script = self.script_cache[sha1]
         except KeyError:
@@ -217,7 +217,7 @@ class ScriptingCommandsMixin:
         return self.eval(script, numkeys, *keys_and_args)
 
     @command(name="SCRIPT LOAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def script_load(self, *args):
+    def script_load(self, *args: bytes) -> bytes:
         if len(args) != 1:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
         script = args[0]
@@ -226,13 +226,13 @@ class ScriptingCommandsMixin:
         return sha1
 
     @command(name="SCRIPT EXISTS", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def script_exists(self, *args):
+    def script_exists(self, *args: bytes) -> List[int]:
         if self.version >= (7,) and len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         return [int(sha1 in self.script_cache) for sha1 in args]
 
     @command(name="SCRIPT FLUSH", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def script_flush(self, *args):
+    def script_flush(self, *args: bytes) -> SimpleString:
         if len(args) > 1 or (
                 len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}
         ):
@@ -241,11 +241,11 @@ class ScriptingCommandsMixin:
         return OK
 
     @command((), flags=msgs.FLAG_NO_SCRIPT)
-    def script(self, *args):
+    def script(self, *args: bytes) -> None:
         raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
 
     @command(name="SCRIPT HELP", fixed=())
-    def script_help(self, *args):
+    def script_help(self, *args: bytes) -> List[bytes]:
         help_strings = [
             "SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
             "DEBUG (YES|SYNC|NO)",

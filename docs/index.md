@@ -133,7 +133,6 @@ a method returning the same connection.
 ```python
 import django_rq
 
-
 # RQ
 # Configuration to pretend there is a Redis service available.
 # Set up the connection before RQ Django reads the settings.

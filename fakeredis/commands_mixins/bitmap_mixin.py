@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+from typing import Tuple, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
@@ -9,7 +9,7 @@ from fakeredis._commands import (
     BitOffset,
     BitValue,
     fix_range_string,
-    fix_range,
+    fix_range, CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
 
@@ -18,7 +18,7 @@ class BitfieldEncoding:
     signed: bool
     size: int
 
-    def __init__(self, encoding):
+    def __init__(self, encoding: bytes) -> None:
         match = re.match(br'^([ui])(\d+)$', encoding)
         if match is None:
             raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
@@ -33,16 +33,16 @@ class BitfieldEncoding:
 class BitmapCommandsMixin:
     # TODO: bitfield, bitfield_ro, bitpos
 
-    def __init(self, *args, **kwargs):
+    def __init(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.version: Tuple[int]
 
     @staticmethod
-    def _bytes_as_bin_string(value):
+    def _bytes_as_bin_string(value: bytes) -> str:
         return "".join([bin(i).lstrip("0b").rjust(8, "0") for i in value])
 
     @command((Key(bytes), Int), (bytes,))
-    def bitpos(self, key, bit, *args):
+    def bitpos(self, key: CommandItem, bit: int, *args: bytes) -> int:
         if bit != 0 and bit != 1:
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:

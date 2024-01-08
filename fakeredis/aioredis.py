@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Union, Optional
+from typing import Union, Optional, Any
 
 from ._server import FakeBaseConnectionMixin
 
@@ -31,7 +31,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
-    def put_response(self, msg) -> None:
+    def put_response(self, msg:Any) -> None:
         if not self.responses:
             return
         self.responses.put_nowait(msg)
