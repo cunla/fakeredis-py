@@ -20,8 +20,6 @@ import json
 import os
 from typing import Any, List, Dict
 
-import requests
-
 from fakeredis._commands import SUPPORTED_COMMANDS
 from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
 
