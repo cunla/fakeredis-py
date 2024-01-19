@@ -104,15 +104,19 @@ class StreamsCommandsMixin:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
-    def _xread(self, stream_start_id_list: List, count: int, first_pass: bool):
+    def _xread(self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool,
+               first_pass: bool):
         max_inf = StreamRangeTest.decode(b"+")
         res = list()
-        for item, start_id in stream_start_id_list:
+        for stream_name, start_id in stream_start_id_list:
+            item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
             if first_pass and (count is None):
                 return None
             if len(stream_results) > 0:
                 res.append([item.key, stream_results])
+        if blocking and count and len(res) == 0:
+            return None
         return res
 
     def _xreadgroup(
@@ -135,6 +139,8 @@ class StreamsCommandsMixin:
     @staticmethod
     def _parse_start_id(key: CommandItem, s: bytes) -> StreamRangeTest:
         if s == b"$":
+            if key.value is None:
+                return StreamRangeTest.decode(b"0-0")
             return StreamRangeTest.decode(key.value.last_item_key(), exclusive=True)
         return StreamRangeTest.decode(s, exclusive=True)
 
@@ -146,23 +152,16 @@ class StreamsCommandsMixin:
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
-        stream_start_id_list = list()
+        stream_start_id_list: List[Tuple[bytes, StreamRangeTest]] = list()  # (name, start_id)
         for i in range(num_streams):
-            item = CommandItem(
-                left_args[i], self._db, item=self._db.get(left_args[i]), default=None
-            )
+            item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             start_id = self._parse_start_id(item, left_args[i + num_streams])
-            stream_start_id_list.append(
-                (
-                    item,
-                    start_id,
-                )
-            )
+            stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
-            return self._xread(stream_start_id_list, count, False)
+            return self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
         else:
             return self._blocking(
-                timeout / 1000.0, functools.partial(self._xread, stream_start_id_list, count)
+                timeout / 1000.0, functools.partial(self._xread, stream_start_id_list, count, True)
             )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
