@@ -29,6 +29,10 @@ class ScalableCuckooFilter(filter.ScalableCuckooFilter):
     def bucket_size(self):
         return self.filters[0].bucket_size
 
+    @property
+    def buckets_count(self):
+        return sum([int(filter.capacity / filter.bucket_size) for filter in self.filters])
+
     def insert(self, item):
         ScalableCuckooFilter.SCALE_FACTOR = self.scale
         res = super().insert(item)
@@ -50,7 +54,7 @@ class CFCommandsMixin:
     @staticmethod
     def _cf_add(key: CommandItem, item: bytes) -> int:
         if key.value is None:
-            key.update(ScalableCuckooFilter(100))
+            key.update(ScalableCuckooFilter(1024))
         res = key.value.insert(item)
         key.updated()
         return 1 if res else 0
@@ -107,36 +111,21 @@ class CFCommandsMixin:
     @command(
         name="CF.INFO",
         fixed=(Key(),),
-        repeat=(bytes,),
+        repeat=(),
     )
-    def cf_info(self, key: CommandItem, *args: bytes):
+    def cf_info(self, key: CommandItem):
         if key.value is None or type(key.value) is not ScalableCuckooFilter:
             raise SimpleError('...')
-        if len(args) > 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 0:
-            return [
-                b'Size', key.value.capacity,
-                b'Number of buckets', len(key.value.filters),
-                b'Number of filters', len(key.value.filters),
-                b'Number of items inserted', key.value.inserted,
-                b'Number of items deleted', key.value.deleted,
-                b'Bucket size', key.value.bucket_size,
-                b'Max iterations', key.value.max_iterations,
-                b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
-            ]
-        if casematch(args[0], b'CAPACITY'):
-            return key.value.capacity
-        elif casematch(args[0], b'SIZE'):
-            return key.value.capacity
-        elif casematch(args[0], b'FILTERS'):
-            return len(key.value.filters)
-        elif casematch(args[0], b'ITEMS'):
-            return key.value.count
-        elif casematch(args[0], b'EXPANSION'):
-            return key.value.scale if key.value.scale > 0 else None
-        else:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        return [
+            b'Size', key.value.capacity,
+            b'Number of buckets', key.value.buckets_count,
+            b'Number of filters', len(key.value.filters),
+            b'Number of items inserted', key.value.inserted,
+            b'Number of items deleted', key.value.deleted,
+            b'Bucket size', key.value.bucket_size,
+            b'Max iterations', key.value.max_iterations,
+            b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
+        ]
 
     @command(
         name="CF.INSERT",
@@ -152,7 +141,7 @@ class CFCommandsMixin:
         if len(left_args) < 2 or not casematch(left_args[0], b'items'):
             raise SimpleError("...")
         items = left_args[1:]
-        capacity = capacity or 100
+        capacity = capacity or 1024
 
         if key.value is None and no_create:
             raise SimpleError(msgs.NOT_FOUND_MSG)
@@ -178,7 +167,7 @@ class CFCommandsMixin:
         if len(left_args) < 2 or not casematch(left_args[0], b'items'):
             raise SimpleError("...")
         items = left_args[1:]
-
+        capacity = capacity or 1024
         if key.value is None and no_create:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         if key.value is None:
@@ -209,7 +198,7 @@ class CFCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def cf_reserve(self, key: CommandItem, capacity, *args: bytes):
+    def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes):
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
         (bucketsize, maxiterations, expansion), _ = extract_args(args, ("+bucketsize", "+maxiterations", "+expansion"))
