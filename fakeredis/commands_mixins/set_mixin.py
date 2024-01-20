@@ -1,12 +1,12 @@
 import random
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Any, Optional, List, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
-from fakeredis._helpers import OK, SimpleError, casematch, Database
+from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 
 
-def _calc_setop(op, stop_if_missing, key, *keys):
+def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
     if stop_if_missing and not key.value:
         return set()
     value = key.value
@@ -23,7 +23,12 @@ def _calc_setop(op, stop_if_missing, key, *keys):
     return ans
 
 
-def _setop(op, stop_if_missing, dst, key, *keys):
+def _setop(
+        op: Callable[..., Any],
+        stop_if_missing: bool,
+        dst: Optional[CommandItem],
+        key: CommandItem,
+        *keys: CommandItem) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
     If `stop_if_missing`, the output will be made an empty set as soon as
@@ -39,36 +44,39 @@ def _setop(op, stop_if_missing, dst, key, *keys):
 
 
 class SetCommandsMixin:
-    version: Tuple[int]
-    _db: Database
-    _scan: Callable
+    _scan: Callable[..., Any]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(SetCommandsMixin, self).__init__(*args, **kwargs)
+        self.version: Tuple[int]
+        self._db: Database
 
     @command((Key(set), bytes), (bytes,))
-    def sadd(self, key, *members):
+    def sadd(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)
         key.value.update(members)
         key.updated()
         return len(key.value) - old_size
 
     @command((Key(set),))
-    def scard(self, key):
+    def scard(self, key: CommandItem) -> int:
         return len(key.value)
 
     @command((Key(set),), (Key(set),))
-    def sdiff(self, *keys):
+    def sdiff(self, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a - b, False, None, *keys)
 
     @command((Key(), Key(set)), (Key(set),))
-    def sdiffstore(self, dst, *keys):
+    def sdiffstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a - b, False, dst, *keys)
 
     @command((Key(set),), (Key(set),))
-    def sinter(self, *keys):
+    def sinter(self, *keys: CommandItem) -> Any:
         res = _setop(lambda a, b: a & b, True, None, *keys)
         return res
 
     @command((Int, bytes), (bytes,))
-    def sintercard(self, numkeys, *args):
+    def sintercard(self, numkeys: int, *args: bytes) -> int:
         if self.version < (7,):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
         if numkeys < 1:
@@ -88,23 +96,23 @@ class SetCommandsMixin:
         return len(res) if limit == 0 else min(limit, len(res))
 
     @command((Key(), Key(set)), (Key(set),))
-    def sinterstore(self, dst, *keys):
+    def sinterstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a & b, True, dst, *keys)
 
     @command((Key(set), bytes))
-    def sismember(self, key, member):
+    def sismember(self, key: CommandItem, member: bytes) -> int:
         return int(member in key.value)
 
     @command((Key(set), bytes), (bytes,))
-    def smismember(self, key, *members):
+    def smismember(self, key: CommandItem, *members: bytes) -> List[int]:
         return [self.sismember(key, member) for member in members]
 
     @command((Key(set),))
-    def smembers(self, key):
+    def smembers(self, key: CommandItem) -> List[bytes]:
         return list(key.value)
 
     @command((Key(set, 0), Key(set), bytes))
-    def smove(self, src, dst, member):
+    def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
         try:
             src.value.remove(member)
             src.updated()
@@ -116,30 +124,30 @@ class SetCommandsMixin:
             return 1
 
     @command((Key(set),), (Int,))
-    def spop(self, key, count=None):
+    def spop(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
         if count is None:
             if not key.value:
                 return None
             item = random.sample(list(key.value), 1)[0]
             key.value.remove(item)
             key.updated()
-            return item
+            return item  # type: ignore
         else:
             if count < 0:
                 raise SimpleError(msgs.INDEX_ERROR_MSG)
-            items = self.srandmember(key, count)
+            items: Union[bytes, List[bytes]] = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
     @command((Key(set),), (Int,))
-    def srandmember(self, key, count=None):
+    def srandmember(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
         if count is None:
             if not key.value:
                 return None
             else:
-                return random.sample(list(key.value), 1)[0]
+                return random.sample(list(key.value), 1)[0]  # type: ignore
         elif count >= 0:
             count = min(count, len(key.value))
             return random.sample(list(key.value), count)
@@ -148,7 +156,7 @@ class SetCommandsMixin:
             return [random.choice(items) for _ in range(-count)]
 
     @command((Key(set), bytes), (bytes,))
-    def srem(self, key, *members):
+    def srem(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)
         for member in members:
             key.value.discard(member)
@@ -158,15 +166,15 @@ class SetCommandsMixin:
         return deleted
 
     @command((Key(set), Int), (bytes, bytes))
-    def sscan(self, key, cursor, *args):
+    def sscan(self, key: CommandItem, cursor: int, *args: bytes) -> Any:
         return self._scan(key.value, cursor, *args)
 
     @command((Key(set),), (Key(set),))
-    def sunion(self, *keys):
+    def sunion(self, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a | b, False, None, *keys)
 
     @command((Key(), Key(set)), (Key(set),))
-    def sunionstore(self, dst, *keys):
+    def sunionstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
         return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
@@ -175,22 +183,19 @@ class SetCommandsMixin:
     # on top of sets.
 
     @command((Key(set),), (bytes,))
-    def pfadd(self, key, *elements):
+    def pfadd(self, key: CommandItem, *elements: bytes) -> int:
         result = self.sadd(key, *elements)
         # Per the documentation:
         # - 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
         return 1 if result > 0 else 0
 
     @command((Key(set),), (Key(set),))
-    def pfcount(self, *keys):
-        """
-        Return the approximated cardinality of
-        the set observed by the HyperLogLog at key(s).
-        """
+    def pfcount(self, *keys: CommandItem) -> int:
+        """Return the approximated cardinality of the set observed by the HyperLogLog at key(s)."""
         return len(self.sunion(*keys))
 
     @command((Key(set), Key(set)), (Key(set),))
-    def pfmerge(self, dest, *sources):
+    def pfmerge(self, dest: CommandItem, *sources: CommandItem) -> SimpleString:
         """Merge N different HyperLogLogs into a single one."""
         self.sunionstore(dest, *sources)
         return OK

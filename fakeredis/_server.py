@@ -39,7 +39,7 @@ class FakeServer:
         self.subscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
         self.psubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
         self.ssubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
-        self.lastsave = int(time.time())
+        self.lastsave: int = int(time.time())
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
         self.closed_sockets: List[Any] = []
@@ -217,4 +217,3 @@ class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
 
 class FakeRedis(FakeRedisMixin, redis.Redis):
     pass
-

@@ -91,7 +91,7 @@ to the real server output.
   decorator `@testtools.run_test_if_redispy_ver` on your tests. example:
 
 ```python
-@testtools.run_test_if_redispy_ver('above', '4.2.0')  # This will run for redis-py 4.2.0 or above.
+@testtools.run_test_if_redispy_ver('gte', '4.2.0')  # This will run for redis-py 4.2.0 or above.
 def test_expire_should_not_expire__when_no_expire_is_set(r):
     r.set('foo', 'bar')
     assert r.get('foo') == b'bar'

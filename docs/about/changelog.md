@@ -5,6 +5,28 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.20.2
+
+### 🐛 Bug Fixes
+
+- Fix XREAD blocking bug #274 #275
+
+### 🧰 Maintenance
+
+- Support for redis-py 5.1.0b1
+- Improve `@testtools.run_test_if_redispy_ver`
+
+## v2.20.1
+
+### 🐛 Bug Fixes
+
+- Fix `XREAD` bug #256
+
+### 🧰 Maintenance
+
+- Testing for python 3.12
+- Dependencies update
+
 ## v2.20.0
 
 ### 🚀 Features

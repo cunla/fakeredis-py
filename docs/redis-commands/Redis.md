@@ -1260,7 +1260,7 @@ Returns all values in a hash.
 
 
 
-## `hyperloglog` commands (3/5 implemented)
+## `hyperloglog` commands (3/3 implemented)
 
 ### [PFADD](https://redis.io/commands/pfadd/)
 
@@ -1274,17 +1274,6 @@ Returns the approximated cardinality of the set(s) observed by the HyperLogLog k
 
 Merges one or more HyperLogLog values into a single key.
 
-
-### Unsupported hyperloglog commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [PFDEBUG](https://redis.io/commands/pfdebug/) <small>(not implemented)</small>
-
-Internal commands for debugging HyperLogLog values.
-
-#### [PFSELFTEST](https://redis.io/commands/pfselftest/) <small>(not implemented)</small>
-
-An internal command for testing HyperLogLog values.
 
 
 ## `pubsub` commands (15/15 implemented)

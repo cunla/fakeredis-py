@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           cache-dependency-path: poetry.lock
           python-version: "3.11"
@@ -52,16 +52,17 @@ jobs:
       fail-fast: false
       matrix:
         redis-image: [ "redis:6.2.13", "redis:7.0.12", "redis:7.2.2" ]
-        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
-        redis-py: [ "4.3.6", "4.6.0", "5.0.1" ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
+        redis-py: [ "4.3.6", "4.6.0", "5.0.1", "5.1.0b3" ]
         include:
           - python-version: "3.11"
-            redis-image: "redis:6.2.12"
+            redis-image: "redis/redis-stack:6.2.6-v10"
             redis-py: "5.0.1"
             lupa: true
+            extra: true
             hypothesis: true
           - python-version: "3.11"
-            redis-image: "redis/redis-stack-server:7.2.0-v4"
+            redis-image: "redis/redis-stack-server:7.2.0-v0"
             redis-py: "5.0.1"
             lupa: true
             extra: true  # json, bf
@@ -74,7 +75,7 @@ jobs:
       redis:
         image: ${{ matrix.redis-image }}
         ports:
-          - 6379:6379
+          - 6380:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -84,7 +85,7 @@ jobs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           cache-dependency-path: poetry.lock
           python-version: ${{ matrix.python-version }}

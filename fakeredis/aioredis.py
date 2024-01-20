@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Union, Optional
+from typing import Union, Optional, Any
 
 from ._server import FakeBaseConnectionMixin
 
@@ -31,7 +31,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
-    def put_response(self, msg) -> None:
+    def put_response(self, msg: Any) -> None:
         if not self.responses:
             return
         self.responses.put_nowait(msg)
@@ -115,7 +115,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         await super().disconnect(**kwargs)
         self._sock = None
 
-    async def can_read(self, timeout: float = 0):
+    async def can_read(self, timeout: Optional[float] = 0):
         if not self.is_connected:
             await self.connect()
         if timeout == 0:
@@ -154,7 +154,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
                     await self.disconnect()
                 raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
-            timeout = kwargs.pop("timeout", None)
+            timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
             response = await self._reader.read(0) if can_read else None
         if isinstance(response, redis_async.ResponseError):
@@ -217,21 +217,19 @@ class FakeRedis(redis_async.Redis):
                 version=version,
             )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)
-        super().__init__(
-            db=db,
-            password=password,
-            socket_timeout=socket_timeout,
-            connection_pool=connection_pool,
-            encoding=encoding,
-            encoding_errors=encoding_errors,
-            decode_responses=decode_responses,
-            retry_on_timeout=retry_on_timeout,
-            max_connections=max_connections,
-            health_check_interval=health_check_interval,
-            client_name=client_name,
-            username=username,
-            **kwargs,
-        )
+        kwargs.update(dict(db=db,
+                           password=password,
+                           socket_timeout=socket_timeout,
+                           connection_pool=connection_pool,
+                           encoding=encoding,
+                           encoding_errors=encoding_errors,
+                           decode_responses=decode_responses,
+                           retry_on_timeout=retry_on_timeout,
+                           max_connections=max_connections,
+                           health_check_interval=health_check_interval,
+                           client_name=client_name,
+                           username=username))
+        super().__init__(**kwargs)
 
     @classmethod
     def from_url(cls, url: str, **kwargs) -> redis_async.Redis:

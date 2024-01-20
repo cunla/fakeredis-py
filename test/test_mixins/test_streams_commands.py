@@ -1,3 +1,4 @@
+import threading
 import time
 from typing import List
 
@@ -254,6 +255,13 @@ def test_xread(r: redis.Redis):
 
     # xread starting at the last message returns an empty list
     assert r.xread(streams={stream: m2}) == []
+
+
+def test_xread_count(r: redis.Redis):
+    r.xadd("test", {"x": 1})
+    result = r.xread(streams={"test": "0"}, count=100, block=10)
+    assert result[0][0] == b"test"
+    assert result[0][1][0][1] == {b'x': b'1'}
 
 
 def test_xread_bad_commands(r: redis.Redis):
@@ -631,7 +639,7 @@ def test_xpending_range_negative(r: redis.Redis):
 
 
 @pytest.mark.max_server('6.3')
-@testtools.run_test_if_redispy_ver('above', '4.4')
+@testtools.run_test_if_redispy_ver('gte', '4.4')
 def test_xautoclaim_redis6(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
@@ -659,7 +667,7 @@ def test_xautoclaim_redis6(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '4.4')
+@testtools.run_test_if_redispy_ver('gte', '4.4')
 def test_xautoclaim_redis7(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
@@ -737,3 +745,28 @@ def test_xclaim(r: redis.Redis):
         stream, group, consumer1,
         min_idle_time=0, message_ids=(message_id,), justid=True,
     ) == [message_id, ]
+
+
+def test_xread_blocking(create_redis):
+    # thread with xread block 0 should hang
+    # putting data in the stream should unblock it
+    event = threading.Event()
+    event.clear()
+
+    def thread_func():
+        while not event.is_set():
+            time.sleep(0.1)
+        r = create_redis(db=1)
+        r.xadd("stream", {"x": "1"})
+        time.sleep(0.1)
+
+    t = threading.Thread(target=thread_func)
+    t.start()
+    r1 = create_redis(db=1)
+    event.set()
+    result = r1.xread({"stream": "$"}, block=0, count=1)
+    event.clear()
+    t.join()
+    assert result[0][0] == b"stream"
+    assert result[0][1][0][1] == {b'x': b'1'}
+    pass

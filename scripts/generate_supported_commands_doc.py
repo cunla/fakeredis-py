@@ -1,14 +1,35 @@
+"""
+This script generates the markdown files for the supported commands documentation.
+"""
+
 import json
 import os
-from collections import namedtuple
+from dataclasses import dataclass
 
 import requests
 
-from create_issues import IGNORE_COMMANDS
 from fakeredis._commands import SUPPORTED_COMMANDS
 
+IGNORE_COMMANDS = {
+    'PUBSUB HELP', 'OBJECT HELP', 'FUNCTION HELP', 'SCRIPT HELP',
+    'JSON.DEBUG', 'JSON.DEBUG HELP', 'JSON.DEBUG MEMORY', 'JSON.RESP',
+    'XINFO', 'XINFO HELP', 'XGROUP', 'XGROUP HELP', 'XSETID',
+    'ACL HELP', 'COMMAND HELP', 'CONFIG HELP', 'DEBUG',
+    'MEMORY HELP', 'MODULE HELP', 'CLIENT HELP',
+    'PFDEBUG', 'PFSELFTEST', 'BITFIELD_RO',
+}
+
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
-CommandsMeta = namedtuple('CommandsMeta', ['local_filename', 'stack', 'title', 'url', ])
+
+
+@dataclass
+class CommandsMeta:
+    local_filename: str
+    stack: str
+    title: str
+    url: str
+
+
 METADATA = [
     CommandsMeta('.commands.json', 'Redis', 'Redis',
                  'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json', ),

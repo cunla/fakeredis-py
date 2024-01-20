@@ -40,8 +40,10 @@ def _list_pop(get_slice, key, *args):
 
 
 class ListCommandsMixin:
-    _db: Database
-    _blocking: Callable
+    def __init__(self, *args, **kwargs):
+        super(ListCommandsMixin, self).__init__(*args, **kwargs)
+        self._db: Database
+        self._blocking: Callable
 
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:

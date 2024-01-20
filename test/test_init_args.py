@@ -4,8 +4,8 @@ import fakeredis
 
 
 def test_multidb(create_redis):
-    r1 = create_redis(db=0)
-    r2 = create_redis(db=1)
+    r1 = create_redis(db=2)
+    r2 = create_redis(db=3)
 
     r1['r1'] = 'r1'
     r2['r2'] = 'r2'
@@ -49,26 +49,26 @@ class TestInitArgs:
 
     def test_from_url(self):
         db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/0')
+            'redis://localhost:6380/0')
         db.set('foo', 'bar')
         assert db.get('foo') == b'bar'
 
     def test_from_url_user(self):
         db = fakeredis.FakeStrictRedis.from_url(
-            'redis://user@localhost:6379/0')
+            'redis://user@localhost:6380/0')
         db.set('foo', 'bar')
         assert db.get('foo') == b'bar'
 
     def test_from_url_user_password(self):
         db = fakeredis.FakeStrictRedis.from_url(
-            'redis://user:password@localhost:6379/0')
+            'redis://user:password@localhost:6380/0')
         db.set('foo', 'bar')
         assert db.get('foo') == b'bar'
 
     def test_from_url_with_db_arg(self):
-        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/0')
-        db1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/1')
-        db2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/', db=2)
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/0')
+        db1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/1')
+        db2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/', db=2)
         db.set('foo', 'foo0')
         db1.set('foo', 'foo1')
         db2.set('foo', 'foo2')
@@ -78,17 +78,17 @@ class TestInitArgs:
 
     def test_from_url_db_value_error(self):
         # In the case of ValueError, should default to 0, or be absent in redis-py 4.0
-        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/a')
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/a')
         assert db.connection_pool.connection_kwargs.get('db', 0) == 0
 
     def test_can_pass_through_extra_args(self):
-        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/0', decode_responses=True)
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/0', decode_responses=True)
         db.set('foo', 'bar')
         assert db.get('foo') == 'bar'
 
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/0',
+            'redis://localhost:6380/0',
             socket_connect_timeout=11, socket_timeout=12, socket_keepalive=True,
             socket_keepalive_options={60: 30}, socket_type=1,
             retry_on_timeout=True,
@@ -103,7 +103,7 @@ class TestInitArgs:
 
         # Make fallback logic match redis-py
         db = fakeredis.FakeStrictRedis.from_url(
-            'redis://localhost:6379/0',
+            'redis://localhost:6380/0',
             socket_connect_timeout=None, socket_timeout=30
         )
         fake_conn = db.connection_pool.make_connection()
@@ -113,7 +113,7 @@ class TestInitArgs:
     def test_repr(self):
         # repr is human-readable, so we only test that it doesn't crash,
         # and that it contains the db number.
-        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
+        db = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/11')
         rep = repr(db)
         assert 'db=11' in rep
 
@@ -123,8 +123,8 @@ class TestInitArgs:
         assert db.get('foo') == b'bar'
 
     def test_same_connection_params(self):
-        r1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
-        r2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6379/11')
+        r1 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/11')
+        r2 = fakeredis.FakeStrictRedis.from_url('redis://localhost:6380/11')
         r3 = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer())
         r1.set('foo', 'bar')
         assert r2.get('foo') == b'bar'

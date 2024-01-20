@@ -13,7 +13,7 @@ def real_redis_version() -> Union[None, str]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
-        client = redis.StrictRedis('localhost', port=6379)
+        client = redis.StrictRedis('localhost', port=6380, db=2)
         server_version = client.info()['redis_version']
         return server_version
     except redis.ConnectionError:
@@ -34,7 +34,7 @@ def _fake_server(request):
 
 @pytest_asyncio.fixture
 def r(request, create_redis) -> redis.Redis:
-    rconn = create_redis(db=0)
+    rconn = create_redis(db=2)
     connected = request.node.get_closest_marker('disconnected') is None
     if connected:
         rconn.flushall()
@@ -73,13 +73,13 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
         pytest.skip(f'Redis server {max_server} or less required but {server_version} found')
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
 
-    def factory(db=0):
+    def factory(db=2):
         if cls_name.startswith('Fake'):
             fake_server = request.getfixturevalue('fake_server')
             cls = getattr(fakeredis, cls_name)
             return cls(db=db, decode_responses=decode_responses, server=fake_server)
         # Real
         cls = getattr(redis, cls_name)
-        return cls('localhost', port=6379, db=db, decode_responses=decode_responses)
+        return cls('localhost', port=6380, db=db, decode_responses=decode_responses)
 
     return factory

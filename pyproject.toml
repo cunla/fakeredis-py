@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.20.0"
+version = "2.20.2"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", "tests", "redis-stack"]
@@ -58,7 +58,7 @@ cf = ["scalable-cuckoo-filter"]
 
 [tool.poetry.dev-dependencies]
 coverage = "^7"
-flake8 = { version = "^6.1", python = ">=3.8.1" }
+flake8 = { version = "^7", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
 hypothesis = "^6.70"
 mypy = "^1"
@@ -71,12 +71,11 @@ pytest-mock = "^3.10"
 types-redis = "^4"
 twine = "^4.0"
 tox = "^4.7"
-tox-docker = "^4"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
 "Funding" = "https://github.com/sponsors/cunla"
-
+"Documentation" = "https://fakeredis.moransoftware.ca/"
 
 [tool.pytest.ini_options]
 markers = [
@@ -91,14 +90,12 @@ markers = [
 asyncio_mode = "strict"
 
 [tool.mypy]
-files = [
-    "fakeredis/**/*.py",
-    "test/**/*.py",
-]
 packages = ['fakeredis', ]
+strict = true
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
+check_untyped_defs = true
 
 [tool.flake8]
 max-line-length = 119

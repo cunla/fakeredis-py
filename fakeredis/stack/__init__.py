@@ -7,7 +7,7 @@ except ImportError as e:
         raise e
 
 
-    class JSONCommandsMixin:  # noqa: E303
+    class JSONCommandsMixin:  # type: ignore # noqa: E303
         pass
 
 try:
@@ -19,7 +19,7 @@ except ImportError as e:
         raise e
 
 
-    class BFCommandsMixin:  # noqa: E303
+    class BFCommandsMixin:  # type: ignore # noqa: E303
         pass
 
 

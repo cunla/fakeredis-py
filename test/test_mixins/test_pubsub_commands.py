@@ -314,7 +314,7 @@ def test_pubsub_run_in_thread(r: redis.Redis):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("timeout_value", [
-    1, pytest.param(None, marks=testtools.run_test_if_redispy_ver('above', '3.2'))
+    1, pytest.param(None, marks=testtools.run_test_if_redispy_ver('gte', '3.2'))
 ])
 def test_pubsub_timeout(r, timeout_value):
     def publish():
@@ -448,7 +448,7 @@ def test_pubsub_numsub(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+@testtools.run_test_if_redispy_ver('gte', '5.0.0rc2')
 def test_published_message_to_shard_channel(r: redis.Redis):
     p = r.pubsub()
     p.ssubscribe("foo")
@@ -461,7 +461,7 @@ def test_published_message_to_shard_channel(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+@testtools.run_test_if_redispy_ver('gte', '5.0.0rc2')
 def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
     p = r.pubsub()
     keys = ["foo", "bar", "uni" + chr(4456) + "code"]
@@ -507,7 +507,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '5.0.0')
+@testtools.run_test_if_redispy_ver('gte', '5.0.0')
 def test_pubsub_shardnumsub(r: redis.Redis):
     channels = {b"foo", b"bar", b"baz"}
     p1 = r.pubsub()
@@ -527,7 +527,7 @@ def test_pubsub_shardnumsub(r: redis.Redis):
 
 
 @pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('above', '5.0.0rc2')
+@testtools.run_test_if_redispy_ver('gte', '5.0.0rc2')
 def test_pubsub_shardchannels(r: redis.Redis):
     p = r.pubsub()
     p.ssubscribe("foo", "bar", "baz", "quux")

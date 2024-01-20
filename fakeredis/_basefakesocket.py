@@ -9,7 +9,7 @@ from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature
 from ._helpers import (
     SimpleError,
     valid_response_type,
@@ -18,26 +18,26 @@ from ._helpers import (
     casematch,
     compile_pattern,
     QUEUED,
-    encode_command,
+    decode_command_bytes,
 )
 from ._stream import XStream
 from ._zset import ZSet
 
 
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
-    """Extracts the command and command arguments from a list of bytes fields.
+    """Extracts the command and command arguments from a list of `bytes` fields.
 
-    :param fields: A list of bytes fields containing the command and command arguments.
+    :param fields: A list of `bytes` fields containing the command and command arguments.
     :return: A tuple of the command and command arguments.
 
     Example:
         fields = [b'GET', b'key1']
         result = _extract_command(fields)
-        print(result)  # ('GET', ['key1'])
+        print(result) # ('GET', ['key1'])
     """
-    cmd = encode_command(fields[0])
+    cmd = decode_command_bytes(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
-        cmd += " " + encode_command(fields[1])
+        cmd += " " + decode_command_bytes(fields[1])
         cmd_arguments = fields[2:]
     else:
         cmd_arguments = fields[1:]
@@ -53,10 +53,7 @@ def bin_reverse(x, bits_count):
 
 
 class BaseFakeSocket:
-    _transaction: Optional[List[Any]]
     _clear_watches: Callable
-    _in_transaction: bool
-    _pubsub: int
     ACCEPTED_COMMANDS_WHILE_PUBSUB = {
         "ping",
         "subscribe",
@@ -71,7 +68,8 @@ class BaseFakeSocket:
 
     def __init__(self, server, db, *args, **kwargs):
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
-        self._server = server
+        from fakeredis import FakeServer
+        self._server: FakeServer = server
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self.responses: Optional[queue.Queue] = queue.Queue()
@@ -82,9 +80,13 @@ class BaseFakeSocket:
         self._parser = self._parse_commands()
         self._parser.send(None)
         self.version = server.version
+        # Assigned elsewhere
+        self._transaction: Optional[List[Any]]
+        self._in_transaction: bool
+        self._pubsub: int
 
     def put_response(self, msg: Any) -> None:
-        """Put a response message into the responses queue.
+        """Put a response message into the queue of responses.
 
         :param msg: The response message.
         """
@@ -169,7 +171,7 @@ class BaseFakeSocket:
                 buf = buf[length + 2:]  # +2 to skip the CRLF
             self._process_command(fields)
 
-    def _run_command(self, func, sig, args, from_script):
+    def _run_command(self, func: Callable[..., Any], sig: Signature, args: List[Any], from_script: bool) -> Any:
         command_items = {}
         try:
             ret = sig.apply(args, self._db, self.version)
@@ -208,7 +210,7 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: Union[float, int], func: Callable):
+    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable):
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -224,7 +226,7 @@ class BaseFakeSocket:
             return ret
         deadline = time.time() + timeout if timeout else None
         while True:
-            timeout = deadline - time.time() if deadline is not None else None
+            timeout = (deadline - time.time()) if deadline is not None else None
             if timeout is not None and timeout <= 0:
                 return None
             if self._db.condition.wait(timeout=timeout) is False:
@@ -233,7 +235,7 @@ class BaseFakeSocket:
             if ret is not None:
                 return ret
 
-    def _name_to_func(self, cmd_name: str):
+    def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable], Signature]:
         """Get the signature and the method from the command name."""
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
@@ -320,8 +322,8 @@ class BaseFakeSocket:
         it has the following drawbacks:
 
         - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
-          elements, for example, only using the returned elements in order to perform operations that are safe when
-          re-applied multiple times.
+          elements, for example, only using the returned elements to perform operations that are safe when re-applied
+          multiple times.
         - Elements that were not constantly present in the collection during a full iteration may be returned or not:
           it is undefined.
 

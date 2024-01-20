@@ -380,7 +380,7 @@ class XStream:
     def add(self, fields: List, entry_key: str = "*") -> Union[None, bytes]:
         """Add entry to a stream.
 
-        If the entry_key can not be added (because its timestamp is before the last entry, etc.),
+        If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
         nothing is added.
 
         :param fields: List of fields to add, must [key1, value1, key2, value2, ... ]
@@ -493,7 +493,7 @@ class XStream:
         """Trim a stream
 
         :param max_length: Max length of the resulting stream after trimming (number of last values to keep)
-        :param start_entry_key: Min entry-key to keep, can not be given together with max_length.
+        :param start_entry_key: Min entry-key to keep, cannot be given together with max_length.
         :param limit: Number of entries to keep from minid.
         :returns: The resulting stream after trimming.
         :raises ValueError: When both max_length and start_entry_key are passed.
