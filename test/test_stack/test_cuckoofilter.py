@@ -1,4 +1,7 @@
+import pytest
 import redis
+
+cuckoofilters_tests = pytest.importorskip("cuckoo")
 
 
 def test_cf_add_and_insert(r: redis.Redis):
