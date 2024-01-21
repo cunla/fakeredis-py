@@ -1,7 +1,7 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
 import io
 
-import pybloom_live
+from probables import ExpandingBloomFilter
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -9,22 +9,28 @@ from fakeredis._commands import command, Key, CommandItem, Float, Int
 from fakeredis._helpers import SimpleError, OK, casematch
 
 
-class ScalableBloomFilter(pybloom_live.ScalableBloomFilter):
+class ScalableBloomFilter(ExpandingBloomFilter):
     NO_GROWTH = 0
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.filters.append(
-            pybloom_live.BloomFilter(
-                capacity=self.initial_capacity,
-                error_rate=self.error_rate * self.ratio))
+    def __init__(self, capacity: int = 100, error_rate: float = 0.001, scale: int = 2):
+        super().__init__(capacity, error_rate)
+        self.scale: int = scale
 
-    def add(self, key):
+    def add(self, key: bytes, force: bool = False) -> bool:
         if key in self:
             return True
-        if self.scale == self.NO_GROWTH and self.filters and self.filters[-1].count >= self.filters[-1].capacity:
+        if self.scale == self.NO_GROWTH and self.elements_added >= self.estimated_elements:
             raise SimpleError(msgs.FILTER_FULL_MSG)
-        return super(ScalableBloomFilter, self).add(key)
+        super(ScalableBloomFilter, self).add(key)
+        return False
+
+    @classmethod
+    def frombytes(cls, b: bytes, **kwargs) -> "ScalableBloomFilter":
+        size, est_els, added_els, fpr = cls._parse_footer(b)
+        blm = ScalableBloomFilter(capacity=est_els, error_rate=fpr)
+        blm._parse_blooms(b, size)
+        blm._added_elements = added_els
+        return blm
 
 
 class BFCommandsMixin:
@@ -64,7 +70,7 @@ class BFCommandsMixin:
         repeat=(),
     )
     def bf_card(self, key):
-        return len(key.value)
+        return key.value.elements_added
 
     @command(
         name="BF.EXISTS",
@@ -147,10 +153,10 @@ class BFCommandsMixin:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(args) == 0:
             return [
-                b'Capacity', key.value.capacity,
-                b'Size', key.value.capacity,
-                b'Number of filters', len(key.value.filters),
-                b'Number of items inserted', key.value.count,
+                b'Capacity', key.value.estimated_elements,
+                b'Size', key.value.elements_added,
+                b'Number of filters', key.value.expansions + 1,
+                b'Number of items inserted', key.value.elements_added,
                 b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
             ]
         if casematch(args[0], b'CAPACITY'):
@@ -178,10 +184,7 @@ class BFCommandsMixin:
         f = io.BytesIO()
 
         if iterator == 0:
-            key.value.tofile(f)
-            f.seek(0)
-            s = f.read()
-            f.close()
+            s = bytes(key.value)
             return [1, s]
         else:
             return [0, None]
@@ -195,8 +198,5 @@ class BFCommandsMixin:
     def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes):
         if key.value is not None and type(key.value) is not ScalableBloomFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
-        f = io.BytesIO(data)
-        key.value = ScalableBloomFilter.fromfile(f)
-        f.close()
-        key.updated()
+        key.update(ScalableBloomFilter.frombytes(data))
         return OK
