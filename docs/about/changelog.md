@@ -5,7 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.20.2
+## v2.21.0
+
+### 🚀 Features
+
+- Implement all cuckoo filter commands #276
 
 ### 🐛 Bug Fixes
 
