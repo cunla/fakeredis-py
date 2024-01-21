@@ -24,7 +24,7 @@ except ImportError as e:
 
 
 try:
-    import cuckoo  # noqa: F401
+    import probables  # noqa: F401
 
     from ._cf_mixin import CFCommandsMixin  # noqa: F401
 except ImportError as e:

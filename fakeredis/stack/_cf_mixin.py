@@ -1,7 +1,7 @@
 """Command mixin for emulating `redis-py`'s cuckoo filter functionality."""
 import io
 
-from cuckoo import filter
+from probables import CountingCuckooFilter, CuckooFilterFullError
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -9,44 +9,30 @@ from fakeredis._commands import command, CommandItem, Int, Key
 from fakeredis._helpers import SimpleError, OK, casematch
 
 
-class ScalableCuckooFilter(filter.ScalableCuckooFilter):
+class ScalableCuckooFilter(CountingCuckooFilter):
 
-    def __init__(self, initial_capacity, error_rate=None, bucket_size=2, max_iterations=20, scale=1):
-        super().__init__(initial_capacity, error_rate, bucket_size, max_iterations)
-        self.inserted = 0
-        self.deleted = 0
-        self.scale = scale
+    def __init__(self, capacity: int, bucket_size: int = 2, max_iterations: int = 20, expansion: int = 1):
+        super().__init__(capacity, bucket_size, max_iterations, expansion)
+        self.initial_capacity: int = capacity
+        self.inserted: int = 0
+        self.deleted: int = 0
 
-    @property
-    def capacity(self):
-        return sum([filter.capacity for filter in self.filters])
+    def insert(self, item: bytes) -> bool:
+        try:
+            super().add(item)
+        except CuckooFilterFullError:
+            return False
+        self.inserted += 1
+        return True
 
-    @property
-    def size(self):
-        return sum([filter.size for filter in self.filters])
+    def count(self, item: bytes) -> int:
+        return super().check(item)
 
-    @property
-    def bucket_size(self):
-        return self.filters[0].bucket_size
-
-    @property
-    def buckets_count(self):
-        return sum([int(filter.capacity / filter.bucket_size) for filter in self.filters])
-
-    def insert(self, item):
-        ScalableCuckooFilter.SCALE_FACTOR = self.scale
-        res = super().insert(item)
-        self.inserted += (1 if res else 0)
-        return res
-
-    def delete(self, item):
-        res = super().delete(item)
-        self.deleted += (1 if res else 0)
-        return res
-
-    @property
-    def max_iterations(self):
-        return self.filters[0].max_kicks
+    def delete(self, item: bytes) -> bool:
+        if super().remove(item):
+            self.deleted += 1
+            return True
+        return False
 
 
 class CFCommandsMixin:
@@ -118,13 +104,13 @@ class CFCommandsMixin:
             raise SimpleError('...')
         return [
             b'Size', key.value.capacity,
-            b'Number of buckets', key.value.buckets_count,
-            b'Number of filters', len(key.value.filters),
+            b'Number of buckets', len(key.value.buckets),
+            b'Number of filters', (key.value.capacity / key.value.initial_capacity) / key.value.expansion_rate,
             b'Number of items inserted', key.value.inserted,
             b'Number of items deleted', key.value.deleted,
             b'Bucket size', key.value.bucket_size,
-            b'Max iterations', key.value.max_iterations,
-            b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
+            b'Max iterations', key.value.max_swaps,
+            b'Expansion rate', key.value.expansion_rate,
         ]
 
     @command(
@@ -171,7 +157,7 @@ class CFCommandsMixin:
         if key.value is None and no_create:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         if key.value is None:
-            key.value = ScalableCuckooFilter(capacity, None)
+            key.value = ScalableCuckooFilter(capacity)
         res = list()
         for item in items:
             if item in key.value:
@@ -205,7 +191,7 @@ class CFCommandsMixin:
 
         maxiterations = maxiterations or 20
         bucketsize = bucketsize or 2
-        value = ScalableCuckooFilter(capacity, None, bucket_size=bucketsize, max_iterations=maxiterations)
+        value = ScalableCuckooFilter(capacity, bucket_size=bucketsize, max_iterations=maxiterations)
         key.update(value)
         return OK
 
