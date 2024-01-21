@@ -1,5 +1,4 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
-import io
 
 from probables import ExpandingBloomFilter
 
@@ -181,7 +180,6 @@ class BFCommandsMixin:
     def bf_scandump(self, key: CommandItem, iterator: int):
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)
-        f = io.BytesIO()
 
         if iterator == 0:
             s = bytes(key.value)
