@@ -43,7 +43,7 @@ jobs:
     name: >
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
-      lupa:${{ matrix.lupa }}, json:${{matrix.extra}}
+      extra:${{matrix.extra}}
     needs:
       - "lint"
     runs-on: ubuntu-latest
@@ -58,14 +58,12 @@ jobs:
           - python-version: "3.11"
             redis-image: "redis/redis-stack:6.2.6-v10"
             redis-py: "5.0.1"
-            lupa: true
-            extra: true
+            extra: true  # json, bf, lupa, cf
             hypothesis: true
           - python-version: "3.11"
             redis-image: "redis/redis-stack-server:7.2.0-v0"
             redis-py: "5.0.1"
-            lupa: true
-            extra: true  # json, bf
+            extra: true  # json, bf, lupa, cf
             coverage: true
             hypothesis: true
 
@@ -97,14 +95,10 @@ jobs:
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
           poetry install
           poetry run pip install redis==${{ matrix.redis-py }}
-      - name: Install lupa
-        if: ${{ matrix.lupa }}
-        run: |
-          poetry run pip install "fakeredis[lua]"
       - name: Install json
         if: ${{ matrix.extra }}
         run: |
-          poetry run pip install "fakeredis[json,bf]"
+          poetry run pip install "fakeredis[json,bf,cf,lua]"
       - name: Get version
         id: getVersion
         shell: bash

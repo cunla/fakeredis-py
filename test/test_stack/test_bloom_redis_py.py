@@ -2,7 +2,7 @@ import pytest
 import redis.commands.bf
 from redis.commands.bf import BFInfo
 
-json_tests = pytest.importorskip("pybloom_live")
+json_tests = pytest.importorskip("probables")
 
 
 def get_protocol_version(r):

@@ -5,7 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.20.2
+## v2.21.0
+
+### 🚀 Features
+
+- Implement all cuckoo filter commands #276
 
 ### 🐛 Bug Fixes
 
@@ -13,8 +17,10 @@ description: Change log of all fakeredis releases
 
 ### 🧰 Maintenance
 
-- Support for redis-py 5.1.0b1
+- Support for redis-py 5.1.0b3
 - Improve `@testtools.run_test_if_redispy_ver`
+- Refactor bloom filter commands implementation to use [pyprobables](https://github.com/barrust/pyprobables) instead of
+  pybloom_live
 
 ## v2.20.1
 
