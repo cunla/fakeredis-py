@@ -411,8 +411,8 @@ class Signature:
                         and type(item.value) is not type_.type_
                 ):
                     raise SimpleError(msgs.WRONGTYPE_MSG)
-                if (
-                        type_.type_ is not None
+                if (msgs.FLAG_NO_INITIATE not in self.flags
+                        and type_.type_ is not None
                         and item is None
                         and type_.type_ is not bytes
                 ):
