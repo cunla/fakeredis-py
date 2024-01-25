@@ -39,12 +39,18 @@ class CMSCommandsMixin:
 
     @command(
         name="CMS.INFO",
-        fixed=(Key(CountMinSketch)),
+        fixed=(Key(CountMinSketch),),
         repeat=(),
         flags=msgs.FLAG_NO_INITIATE,
     )
     def cms_info(self, key: CommandItem):
-        raise NotImplementedError()
+        if key.value is None:
+            raise SimpleError("CMS: key does not exist")
+        return [
+            b"width", key.value.width,
+            b"depth", key.value.depth,
+            b"count", key.value.elements_added,
+        ]
 
     @command(
         name="CMS.INITBYDIM",

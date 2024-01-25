@@ -71,3 +71,7 @@ def test_cms_merge(r: redis.Redis):
 
     assert r.cms().merge("C", 2, ["A", "B"], ["2", "3"])
     assert r.cms().query("C", "foo", "bar", "baz") == [16, 15, 21]
+    info = r.cms().info("A")
+    assert info.width == 1000
+    assert info.depth == 5
+    assert info.count == 17
