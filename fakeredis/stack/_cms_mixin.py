@@ -41,8 +41,9 @@ class CMSCommandsMixin:
         name="CMS.INFO",
         fixed=(Key(CountMinSketch)),
         repeat=(),
+        flags=msgs.FLAG_NO_INITIATE,
     )
-    def cf_addnx(self, key: CommandItem):
+    def cms_info(self, key: CommandItem):
         raise NotImplementedError()
 
     @command(
@@ -89,6 +90,7 @@ class CMSCommandsMixin:
         name="CMS.QUERY",
         fixed=(Key(CountMinSketch), bytes),
         repeat=(bytes,),
+        flags=msgs.FLAG_NO_INITIATE,
     )
     def cms_query(self, key: CommandItem, *items: bytes):
         if key.value is None:
