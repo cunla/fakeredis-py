@@ -6,6 +6,7 @@ from ._server import (
 )
 from .aioredis import (
     FakeRedis as FakeAsyncRedis,
+    FakeConnection as FakeAsyncConnection,
 )
 
 try:
@@ -26,4 +27,5 @@ __all__ = [
     "FakeStrictRedis",
     "FakeConnection",
     "FakeAsyncRedis",
+    "FakeAsyncConnection",
 ]
