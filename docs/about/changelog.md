@@ -10,6 +10,7 @@ description: Change log of all fakeredis releases
 ### 🚀 Features
 
 - Implement all cuckoo filter commands #276
+- Implement all Count-Min Sketch commands #277
 
 ### 🐛 Bug Fixes
 
