@@ -4,7 +4,7 @@ import probables
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import OK, SimpleString, SimpleError
+from fakeredis._helpers import OK, SimpleString, SimpleError, casematch
 
 
 class CountMinSketch(probables.CountMinSketch):
@@ -82,9 +82,32 @@ class CMSCommandsMixin:
         name="CMS.MERGE",
         fixed=(Key(CountMinSketch), Int, bytes),
         repeat=(bytes,),
+        flags=msgs.FLAG_NO_INITIATE,
     )
-    def cms_merge(self, key: CommandItem, num_keys: int, *args: bytes):
-        raise NotImplementedError()
+    def cms_merge(self, dest_key: CommandItem, num_keys: int, *args: bytes) -> SimpleString:
+        if dest_key.value is None:
+            raise SimpleError("CMS: dest key must be initialized")
+
+        if num_keys < 1:
+            raise SimpleError("CMS: invalid number of keys")
+        if len(args) == 0:
+            raise SimpleError("CMS: invalid number of keys")
+        weights = [1, ]
+        for i, arg in enumerate(args):
+            if casematch(b"weights", arg):
+                weights = [int(i) for i in args[i + 1:]]
+                if len(weights) != num_keys:
+                    raise SimpleError("CMS: invalid number of weights")
+                args = args[:i]
+                break
+        dest_key.value.clear()
+        for i, arg in enumerate(args):
+            item = self._db.get(arg, None)
+            if item is None or not isinstance(item.value, CountMinSketch):
+                raise SimpleError("CMS: invalid key")
+            for _ in range(weights[i % len(weights)]):
+                dest_key.value.join(item.value)
+        return OK
 
     @command(
         name="CMS.QUERY",
