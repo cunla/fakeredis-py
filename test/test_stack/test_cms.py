@@ -104,3 +104,23 @@ def test_cms_info(r: redis.Redis):
 
     with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
         r.cms().info("noexist")
+
+
+@pytest.mark.xfail(reason="Bug in pyprobables")
+def test_cms_merge_fail(r: redis.Redis):
+    assert r.cms().initbydim("A", 1000, 5)
+    assert r.cms().initbydim("B", 1000, 5)
+    assert r.cms().initbydim("C", 1000, 5)
+
+    assert r.cms().incrby("A", ["foo", "bar", "baz"], [5, 3, 9])
+    assert r.cms().incrby("B", ["foo", "bar", "baz"], [2, 3, 1])
+    assert r.cms().query("A", "foo", "bar", "baz") == [5, 3, 9]
+    assert r.cms().query("B", "foo", "bar", "baz") == [2, 3, 1]
+    assert r.cms().merge("C", 2, ["A", "B"])
+    assert r.cms().query("C", "foo", "bar", "baz") == [7, 6, 10]
+
+    assert r.cms().merge("C", 2, ["A", "B"], ["2", "3"])
+    info = r.cms().info("C")
+    assert info.width == 1000
+    assert info.depth == 5
+    assert info.count == 52
