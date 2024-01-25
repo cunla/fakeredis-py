@@ -414,8 +414,7 @@ class Signature:
                 if (msgs.FLAG_NO_INITIATE not in self.flags
                         and type_.type_ is not None
                         and item is None
-                        and type_.type_ is not bytes
-                ):
+                        and type_.type_ is not bytes):
                     default = type_.type_()
                 args_list[i] = CommandItem(arg, db, item, default=default)
                 command_items.append(args_list[i])
