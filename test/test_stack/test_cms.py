@@ -1,6 +1,8 @@
 import pytest
 import redis
 
+from test import testtools
+
 json_tests = pytest.importorskip("probables")
 
 
@@ -43,6 +45,15 @@ def test_cms_incrby(r: redis.Redis):
     with pytest.raises(redis.exceptions.ResponseError):
         r.cms().query("noexist", "foo")
 
+    with pytest.raises(redis.exceptions.ResponseError):
+        testtools.raw_command(r, "CMS.INCRBY", "cmsDim", "foo", 1, "bar")
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+        r.cms().incrby("noexist", ["foo", "bar"], [3, 4])
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: Cannot parse number"):
+        r.cms().incrby("cmsDim", ["foo", "bar"], [3, "four"])
+
 
 def test_cms_merge(r: redis.Redis):
     assert r.cms().initbydim("cmsDim", 100, 5)
@@ -51,10 +62,25 @@ def test_cms_merge(r: redis.Redis):
     assert r.cms().incrby("cmsDim", ["foo"], [3]) == [3]
     assert r.cms().incrby("cms2", ["foo", "bar"], [4, 1]) == [4, 1]
     assert r.cms().merge("cmsDim", 1, ["cms2"])
-    assert r.cms().query("cmsDim", "foo", "bar") == [7, 1]
+    assert r.cms().query("cmsDim", "foo", "bar") == [4, 1]
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+        r.cms().merge("noexist", 1, ["cms2"])
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: wrong number of keys"):
+        r.cms().merge("cms2", 0, ["cmsDim"])
+
+    with pytest.raises(redis.exceptions.ResponseError, match="wrong number of arguments for 'cms.merge' command"):
+        r.cms().merge("cms2", 1, [])
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: wrong number of keys/weights"):
+        r.cms().merge("cmsDim", 1, ["cms2", "cms1"], [4, 3])
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+        r.cms().merge("cmsDim", 2, ["cms2", "noexist"], [4, 3])
 
 
-def test_cms_merge(r: redis.Redis):
+def test_cms_info(r: redis.Redis):
     assert r.cms().initbydim("A", 1000, 5)
     assert r.cms().initbydim("B", 1000, 5)
     assert r.cms().initbydim("C", 1000, 5)
@@ -75,3 +101,6 @@ def test_cms_merge(r: redis.Redis):
     assert info.width == 1000
     assert info.depth == 5
     assert info.count == 17
+
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+        r.cms().info("noexist")

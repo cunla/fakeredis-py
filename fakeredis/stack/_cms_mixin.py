@@ -23,8 +23,6 @@ class CMSCommandsMixin:
     def cms_incrby(self, key: CommandItem, *args: bytes):
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
-        if len(args) % 2 != 0 or len(args) == 0:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("cms.incrby"))
         pairs = []
         for i in range(0, len(args), 2):
             try:
@@ -92,25 +90,23 @@ class CMSCommandsMixin:
     )
     def cms_merge(self, dest_key: CommandItem, num_keys: int, *args: bytes) -> SimpleString:
         if dest_key.value is None:
-            raise SimpleError("CMS: dest key must be initialized")
+            raise SimpleError("CMS: key does not exist")
 
         if num_keys < 1:
-            raise SimpleError("CMS: invalid number of keys")
-        if len(args) == 0:
-            raise SimpleError("CMS: invalid number of keys")
+            raise SimpleError("CMS: wrong number of keys")
         weights = [1, ]
         for i, arg in enumerate(args):
             if casematch(b"weights", arg):
                 weights = [int(i) for i in args[i + 1:]]
                 if len(weights) != num_keys:
-                    raise SimpleError("CMS: invalid number of weights")
+                    raise SimpleError("CMS: wrong number of keys/weights")
                 args = args[:i]
                 break
         dest_key.value.clear()
         for i, arg in enumerate(args):
             item = self._db.get(arg, None)
             if item is None or not isinstance(item.value, CountMinSketch):
-                raise SimpleError("CMS: invalid key")
+                raise SimpleError("CMS: key does not exist")
             for _ in range(weights[i % len(weights)]):
                 dest_key.value.join(item.value)
         return OK
