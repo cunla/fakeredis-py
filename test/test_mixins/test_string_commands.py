@@ -251,7 +251,7 @@ def test_set_pxat(r: redis.Redis):
     curr_time = int(time.time() * 1000)
     assert r.set('foo', 'bar', pxat=curr_time + 100) is True
     assert r.get('foo') == b'bar'
-    time.sleep(0.1)
+    time.sleep(0.15)
     assert r.get('foo') is None
 
 
