@@ -1,3 +1,5 @@
+from ._topk_mixin import TopkCommandsMixin  # noqa: F401
+
 try:
     from jsonpath_ng.ext import parse  # noqa: F401
     from redis.commands.json.path import Path  # noqa: F401
