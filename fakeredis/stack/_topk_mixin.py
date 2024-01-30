@@ -1,6 +1,7 @@
 """Command mixin for emulating `redis-py`'s top-k functionality."""
 import heapq
 import random
+import time
 from collections import Counter
 from typing import Any, List, Optional, Tuple
 
@@ -8,6 +9,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, Int, Float, command, CommandItem
 from fakeredis._helpers import OK, SimpleError
+
+random.seed(time.time())
 
 
 class Bucket(object):
@@ -57,7 +60,7 @@ class HashArray(object):
         return self.array[self._hash(item) % self.width]
 
     def _hash(self, item: bytes) -> int:
-        return hash(item) + self._seed
+        return hash(item) ^ self._seed
 
 
 class HeavyKeeper(object):
@@ -84,13 +87,14 @@ class HeavyKeeper(object):
             heapq.heappush(self.min_heap, (max_count, item))
             return None
         ind = self._index(item)
-        if ind < 0 and max_count > self.min_heap[0][0]:
-            expelled = heapq.heapreplace(self.min_heap, (max_count, item))
-            return expelled[1]
-        else:
+        if ind >= 0:
             self.min_heap[ind] = (max_count, item)
             heapq.heapify(self.min_heap)
             return None
+        if max_count > self.min_heap[0][0]:
+            expelled = heapq.heapreplace(self.min_heap, (max_count, item))
+            return expelled[1]
+
 
     def count(self, item: bytes) -> int:
         ind = self._index(item)
@@ -117,11 +121,11 @@ class TopkCommandsMixin:
             raise SimpleError("TOPK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
-        res = [key.value.add(_item) for _item in args]
+        res = [key.value.add(_item, 1) for _item in args]
         key.updated()
         return res
 
-    @command(name=["TOPK.COUNT", "TOPK.QUERY"],
+    @command(name="TOPK.COUNT",
              fixed=(Key(HeavyKeeper), bytes,),
              repeat=(bytes,),
              flags=msgs.FLAG_NO_INITIATE, )
@@ -131,6 +135,19 @@ class TopkCommandsMixin:
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         res = [key.value.count(_item) for _item in args]
+        return res
+
+    @command(name="TOPK.QUERY",
+             fixed=(Key(HeavyKeeper), bytes,),
+             repeat=(bytes,),
+             flags=msgs.FLAG_NO_INITIATE, )
+    def topk_query(self, key: CommandItem, *args: bytes) -> List[Optional[bytes]]:
+        if key.value is None:
+            raise SimpleError("TOPK: key does not exist")
+        if not isinstance(key.value, HeavyKeeper):
+            raise SimpleError("TOPK: key is not a HeavyKeeper")
+        topk = {item[1] for item in key.value.list()}
+        res = [1 if _item in topk else 0 for _item in args]
         return res
 
     @command(name="TOPK.INCRBY", fixed=(Key(), bytes, Int,), repeat=(bytes, Int), flags=msgs.FLAG_NO_INITIATE, )
@@ -150,7 +167,16 @@ class TopkCommandsMixin:
 
     @command(name="TOPK.INFO", fixed=(Key(),), repeat=(), flags=msgs.FLAG_NO_INITIATE, )
     def topk_info(self, key):
-        return OK  # todo
+        if key.value is None:
+            raise SimpleError("TOPK: key does not exist")
+        if not isinstance(key.value, HeavyKeeper):
+            raise SimpleError("TOPK: key is not a HeavyKeeper")
+        return [
+            b"k", key.value.k,
+            b"width", key.value.width,
+            b"depth", key.value.depth,
+            b"decay", key.value.decay,
+        ]
 
     @command(name="TOPK.LIST", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_NO_INITIATE, )
     def topk_list(self, key, *args):
