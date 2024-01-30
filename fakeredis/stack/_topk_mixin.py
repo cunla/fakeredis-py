@@ -95,7 +95,6 @@ class HeavyKeeper(object):
             expelled = heapq.heapreplace(self.min_heap, (max_count, item))
             return expelled[1]
 
-
     def count(self, item: bytes) -> int:
         ind = self._index(item)
         if ind > 0:
