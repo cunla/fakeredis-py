@@ -15,6 +15,7 @@ description: Change log of all fakeredis releases
 ### 🐛 Bug Fixes
 
 - Fix XREAD blocking bug #274 #275
+- EXAT option does not work #279
 
 ### 🧰 Maintenance
 
