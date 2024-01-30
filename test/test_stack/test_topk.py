@@ -1,6 +1,7 @@
 import pytest
 import redis
 
+topk_tests = pytest.importorskip("probables")
 
 def test_topk_incrby(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
