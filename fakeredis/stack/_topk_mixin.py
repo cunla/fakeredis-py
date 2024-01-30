@@ -2,7 +2,6 @@
 import heapq
 import random
 import time
-from collections import Counter
 from typing import Any, List, Optional, Tuple
 
 from fakeredis import _msgs as msgs
