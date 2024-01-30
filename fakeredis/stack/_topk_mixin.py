@@ -202,19 +202,3 @@ class TopkCommandsMixin:
             raise SimpleError("TOPK: key already set")
         key.update(HeavyKeeper(topk, width, depth, decay))
         return OK
-
-
-if __name__ == '__main__':
-    real = Counter()
-    heavy_keeper = HeavyKeeper(10)
-    random.seed(10)
-    for i in range(100000):
-        ip_addr = f'{random.randint(0, 100)}'.encode()
-        real[ip_addr] += 1
-        heavy_keeper.add(ip_addr, 1)
-        if i % 10000 == 0:
-            print(heavy_keeper.list(5))
-    items = heavy_keeper.list(5)
-    for item in items:
-        print(f"{item[1]}: count={item[0]} real_count={real[item[1]]}")
-    print(real)
