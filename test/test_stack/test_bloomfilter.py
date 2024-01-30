@@ -3,7 +3,7 @@ import redis
 
 from fakeredis import _msgs as msgs
 
-json_tests = pytest.importorskip("pybloom_live")
+bloom_tests = pytest.importorskip("probables")
 
 
 def test_bf_add(r: redis.Redis):

@@ -25,7 +25,7 @@ pip install fakeredis[lua]   ## Support for LUA scripts
 
 pip install fakeredis[json]  ## Support for RedisJSON commands
 
-pip install fakeredis[bf,json]  ## Support for RedisJSON and BloomFilter commands
+pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
 ```
 
 ## How to Use
@@ -34,6 +34,7 @@ pip install fakeredis[bf,json]  ## Support for RedisJSON and BloomFilter command
 
 ```python
 import pytest
+
 
 @pytest.fixture
 def redis_client(request):
@@ -108,8 +109,8 @@ redis client for python, and models the responses of redis 6.x or 7.x.
 Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
 
 ```pycon
->>> from fakeredis import aioredis
->>> r1 = aioredis.FakeRedis()
+>>> from fakeredis import FakeAsyncRedis
+>>> r1 = FakeAsyncRedis()
 >>> await r1.set('foo', 'bar')
 True
 >>> await r1.get('foo')
@@ -137,13 +138,30 @@ CACHES = {
 You can use
 django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
 
+### Use to test django cache
+
+```pycon
+from fakeredis import FakeConnection
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': [
+            'redis://127.0.0.1:6379',
+        ],
+        'OPTIONS': { ### <<<---- here
+            'connection_class': FakeConnection
+        }
+    }
+}
+```
+
 ### Use to test django-rq
 
-There is a need to override `django_rq.queues.get_redis_connection` with
-a method returning the same connection.
+There is a need to override `django_rq.queues.get_redis_connection` with a method returning the same connection.
 
 ```python
 import django_rq
+
 
 # RQ
 # Configuration to pretend there is a Redis service available.

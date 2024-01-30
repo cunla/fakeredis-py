@@ -5,12 +5,24 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.20.2
+## v2.21.0
+
+### 🚀 Features
+
+- Implement all cuckoo filter commands #276
+- Implement all Count-Min Sketch commands #277
+
+### 🐛 Bug Fixes
+
+- Fix XREAD blocking bug #274 #275
+- EXAT option does not work #279
 
 ### 🧰 Maintenance
 
-- Support for redis-py 5.1.0b1
-- Improve `@testtools.run_test_if_redispy_ver` 
+- Support for redis-py 5.1.0b3
+- Improve `@testtools.run_test_if_redispy_ver`
+- Refactor bloom filter commands implementation to use [pyprobables](https://github.com/barrust/pyprobables) instead of
+  pybloom_live
 
 ## v2.20.1
 

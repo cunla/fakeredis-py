@@ -239,6 +239,22 @@ def test_set_ex(r: redis.Redis):
     assert r.get('foo') == b'bar'
 
 
+@pytest.mark.min_server('6.2')
+def test_set_exat(r: redis.Redis):
+    curr_time = int(time.time())
+    assert r.set('foo', 'bar', exat=curr_time + 100) is True
+    assert r.get('foo') == b'bar'
+
+
+@pytest.mark.min_server('6.2')
+def test_set_pxat(r: redis.Redis):
+    curr_time = int(time.time() * 1000)
+    assert r.set('foo', 'bar', pxat=curr_time + 100) is True
+    assert r.get('foo') == b'bar'
+    time.sleep(0.15)
+    assert r.get('foo') is None
+
+
 def test_set_ex_using_timedelta(r: redis.Redis):
     assert r.set('foo', 'bar', ex=timedelta(seconds=100)) is True
     assert r.get('foo') == b'bar'

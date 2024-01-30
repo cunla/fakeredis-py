@@ -39,7 +39,7 @@ most likely in the set, but it is not guaranteed.
 Currently, RedisBloom module bloom filter commands are fully implemented using [pybloom-live][5](
 see [supported commands][6]).
 
-You can install it using `pip install 'fakeredis[bf]'`.
+You can install it using `pip install 'fakeredis[probabilistic]'`.
 
 ```pycon
 >>> import fakeredis
@@ -50,6 +50,27 @@ You can install it using `pip install 'fakeredis[bf]'`.
 >>> r.bf().exists('key', 'v5')
 0
 ```
+
+## [Count-Min Sketch][8] support
+
+Count-min sketch is a probabilistic data structure that estimates the frequency of an element in a data stream.
+
+You can install it using `pip install 'fakeredis[probabilistic]'`.
+
+```pycon
+>>> import fakeredis
+>>> r = fakeredis.FakeStrictRedis()
+>>> r.cms().initbydim("cmsDim", 100, 5)
+OK
+>>> r.cms().incrby("cmsDim", ["foo"], [3])
+[3]
+```
+
+## [Cuckoo filter][9] support
+
+Cuckoo filters are a probabilistic data structure that checks for the presence of an element in a set
+
+You can install it using `pip install 'fakeredis[probabilistic]'`.
 
 ## [Redis programmability][7]
 
@@ -73,3 +94,7 @@ Lua), you will need [lupa](https://pypi.org/project/lupa/), you can install it u
 [6]:./redis-commands/BloomFilter/
 
 [7]:https://redis.io/docs/interact/programmability/
+
+[8]:https://redis.io/docs/data-types/probabilistic/count-min-sketch/
+
+[9]:https://redis.io/docs/data-types/probabilistic/cuckoo-filter/

@@ -165,15 +165,19 @@ class StringCommandsMixin:
 
     @command(name="SET", fixed=(Key(), bytes), repeat=(bytes,))
     def set_(self, key, value, *args):
-        (ex, px, xx, nx, keepttl, get), _ = extract_args(
-            args, ("+ex", "+px", "xx", "nx", "keepttl", "get")
+        (ex, px, exat, pxat, xx, nx, keepttl, get), _ = extract_args(
+            args, ("+ex", "+px", "+exat", "+pxat", "xx", "nx", "keepttl", "get")
         )
         if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
         if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2 ** 63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
+        if exat is not None and (exat <= 0 or exat * 1000 >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
+        if pxat is not None and (pxat <= 0 or pxat >= 2 ** 63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
 
-        if (xx and nx) or ((px is not None) + (ex is not None) + keepttl > 1):
+        if (xx and nx) or (sum(x is not None for x in [ex, px, exat, pxat]) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and get and self.version < (7,):
             # The command docs say this is allowed from Redis 7.0.
@@ -193,6 +197,10 @@ class StringCommandsMixin:
             key.value = value
         else:
             key.update(value)
+        if exat is not None:
+            key.expireat = exat
+        if pxat is not None:
+            key.expireat = pxat / 1000.0
         if ex is not None:
             key.expireat = self._db.time + ex
         if px is not None:

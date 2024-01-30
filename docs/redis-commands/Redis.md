@@ -619,7 +619,7 @@ Closes the connection.
 Resets the connection.
 
 
-## `bitmap` commands (6/7 implemented)
+## `bitmap` commands (6/6 implemented)
 
 ### [BITCOUNT](https://redis.io/commands/bitcount/)
 
@@ -645,13 +645,6 @@ Returns a bit value by offset.
 
 Sets or clears the bit at offset of the string value. Creates the key if it doesn't exist.
 
-
-### Unsupported bitmap commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [BITFIELD_RO](https://redis.io/commands/bitfield_ro/) <small>(not implemented)</small>
-
-Performs arbitrary read-only bitfield integer operations on strings.
 
 
 ## `list` commands (22/22 implemented)

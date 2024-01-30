@@ -8,7 +8,7 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.20.1"
+version = "2.21.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", "tests", "redis-stack"]
@@ -47,12 +47,14 @@ redis = ">=4"
 sortedcontainers = "^2"
 lupa = { version = ">=1.14,<3.0", optional = true }
 jsonpath-ng = { version = "^1.6", optional = true }
-pybloom-live = { version = "^4.0", optional = true }
+pyprobables = { version = "^0.6", optional = true }
 
 [tool.poetry.extras]
 lua = ["lupa"]
 json = ["jsonpath-ng"]
-bf = ["pybloom-live"]
+bf = ["pyprobables"]
+cf = ["pyprobables"]
+probabilistic = ["pyprobables"]
 
 [tool.poetry.dev-dependencies]
 coverage = "^7"

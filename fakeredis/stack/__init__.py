@@ -11,13 +11,23 @@ except ImportError as e:
         pass
 
 try:
-    import pybloom_live  # noqa: F401
+    import probables  # noqa: F401
 
     from ._bf_mixin import BFCommandsMixin  # noqa: F401
+    from ._cf_mixin import CFCommandsMixin  # noqa: F401
+    from ._cms_mixin import CMSCommandsMixin  # noqa: F401
 except ImportError as e:
-    if e.name == "fakeredis.stack._bf_mixin":
+    if e.name == "fakeredis.stack._bf_mixin" or e.name == "fakeredis.stack._cf_mixin":
         raise e
 
 
-    class BFCommandsMixin:  # type: ignore # noqa: E303
+    class BFCommandsMixin:  # noqa: E303
+        pass
+
+
+    class CFCommandsMixin:  # noqa: E303
+        pass
+
+
+    class CMSCommandsMixin:  # noqa: E303
         pass
