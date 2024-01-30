@@ -124,37 +124,36 @@ Returns information about a sketch
 
 
 
+## `topk` commands (7/7 implemented)
 
-### Unsupported topk commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [TOPK.RESERVE](https://redis.io/commands/topk.reserve/) <small>(not implemented)</small>
+### [TOPK.RESERVE](https://redis.io/commands/topk.reserve/)
 
 Initializes a TopK with specified parameters
 
-#### [TOPK.ADD](https://redis.io/commands/topk.add/) <small>(not implemented)</small>
+### [TOPK.ADD](https://redis.io/commands/topk.add/)
 
 Increases the count of one or more items by increment
 
-#### [TOPK.INCRBY](https://redis.io/commands/topk.incrby/) <small>(not implemented)</small>
+### [TOPK.INCRBY](https://redis.io/commands/topk.incrby/)
 
 Increases the count of one or more items by increment
 
-#### [TOPK.QUERY](https://redis.io/commands/topk.query/) <small>(not implemented)</small>
+### [TOPK.QUERY](https://redis.io/commands/topk.query/)
 
 Checks whether one or more items are in a sketch
 
-#### [TOPK.COUNT](https://redis.io/commands/topk.count/) <small>(not implemented)</small>
+### [TOPK.COUNT](https://redis.io/commands/topk.count/)
 
 Return the count for one or more items are in a sketch
 
-#### [TOPK.LIST](https://redis.io/commands/topk.list/) <small>(not implemented)</small>
+### [TOPK.LIST](https://redis.io/commands/topk.list/)
 
 Return full list of items in Top K list
 
-#### [TOPK.INFO](https://redis.io/commands/topk.info/) <small>(not implemented)</small>
+### [TOPK.INFO](https://redis.io/commands/topk.info/)
 
 Returns information about a sketch
+
 
 
 
