@@ -9,6 +9,8 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
+- Implement all TOP-K commands (`TOPK.INFO`, `TOPK.LIST`, `TOPK.RESERVE`,
+  `TOPK.ADD`, `TOPK.COUNT`, `TOPK.QUERY`, `TOPK.INCRBY`) #278
 - Implement all cuckoo filter commands #276
 - Implement all Count-Min Sketch commands #277
 
