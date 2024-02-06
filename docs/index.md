@@ -123,25 +123,6 @@ Update your cache settings:
 
 ```python
 from fakeredis import FakeConnection
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': '...',
-        'OPTIONS': {
-            'connection_class': FakeConnection
-        }
-    }
-}
-```
-
-You can use
-django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
-
-### Use to test django cache
-
-```pycon
-from fakeredis import FakeConnection
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
@@ -149,11 +130,14 @@ CACHES = {
             'redis://127.0.0.1:6379',
         ],
         'OPTIONS': { ### <<<---- here
-            'connection_class': FakeConnection
+            "CONNECTION_POOL_KWARGS": {"connection_class": FakeConnection},
         }
     }
 }
 ```
+
+You can use
+django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
 
 ### Use to test django-rq
 
