@@ -5,6 +5,10 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+### 🧰 Maintenance
+
+- Fix django cache documentation #286
+
 ## v2.21.0
 
 ### 🚀 Features
