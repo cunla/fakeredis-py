@@ -135,25 +135,16 @@ CACHES = {
 }
 ```
 
-You can use
-django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
+For [django-redis](https://github.com/jazzband/django-redis) library, use the following `OPTIONS`:
 
-### Use to test django cache
-
-```pycon
-from fakeredis import FakeConnection
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': [
-            'redis://127.0.0.1:6379',
-        ],
-        'OPTIONS': { ### <<<---- here
-            'connection_class': FakeConnection
-        }
-    }
+```
+'OPTIONS': {
+    'CONNECTION_POOL_KWARGS': {'connection_class': FakeConnection},
 }
 ```
+
+You can use
+django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
 
 ### Use to test django-rq
 
@@ -233,7 +224,7 @@ First install poetry if you don't have it, and then install all the dependencies
 ```bash
 pip install poetry
 poetry install
-``` 
+```
 
 To run all the tests:
 
