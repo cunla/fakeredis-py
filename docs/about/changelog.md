@@ -5,6 +5,10 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+### 🐛 Bug Fixes
+
+- Support for float timeout values #289
+
 ### 🧰 Maintenance
 
 - Fix django cache documentation #286
