@@ -453,6 +453,16 @@ def test_blpop_block(r: redis.Redis):
 
 
 @pytest.mark.slow
+def test_blpop_block_float(r: redis.Redis):
+    thread = _push_thread(r)
+    try:
+        assert testtools.raw_command(r, 'blpop', 'foo', 0) == [b'foo', b'value1']
+        assert testtools.raw_command(r, 'blpop', 'foo', 1.1) == [b'foo', b'value2']
+    finally:
+        thread.join()
+
+
+@pytest.mark.slow
 def test_brpop_block(r: redis.Redis):
     thread = _push_thread(r)
     try:

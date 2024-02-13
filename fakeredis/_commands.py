@@ -167,13 +167,6 @@ class BitValue(Int):
     MAX_VALUE = 1
 
 
-class Timeout(Int):
-    """Argument converter for timeouts"""
-
-    DECODE_ERROR = msgs.TIMEOUT_NEGATIVE_MSG
-    MIN_VALUE = 0
-
-
 class Float(RedisType):
     """Argument converter for floating-point values.
 
@@ -229,6 +222,13 @@ class Float(RedisType):
             return out.encode()
         else:
             return "{:.17g}".format(value).encode()
+
+
+class Timeout(Float):
+    """Argument converter for timeouts"""
+
+    DECODE_ERROR = msgs.TIMEOUT_NEGATIVE_MSG
+    MIN_VALUE = 0.0
 
 
 class SortFloat(Float):
