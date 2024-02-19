@@ -1,18 +1,28 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
+from typing import Optional, Tuple, List, Any
 
 import probables
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import OK, SimpleString, SimpleError, casematch
+from fakeredis._helpers import OK, SimpleString, SimpleError, casematch, Database
 
 
 class CountMinSketch(probables.CountMinSketch):
-    def __init__(self, width: int = None, depth: int = None, probability: float = None, error_rate: float = None):
+    def __init__(
+            self,
+            width: Optional[int] = None,
+            depth: Optional[int] = None,
+            probability: Optional[float] = None,
+            error_rate: Optional[float] = None,
+    ):
         super().__init__(width=width, depth=depth, error_rate=error_rate, confidence=probability)
 
 
 class CMSCommandsMixin:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._db: Database
 
     @command(
         name="CMS.INCRBY",
@@ -20,10 +30,10 @@ class CMSCommandsMixin:
         repeat=(bytes, bytes,),
         flags=msgs.FLAG_NO_INITIATE,
     )
-    def cms_incrby(self, key: CommandItem, *args: bytes):
+    def cms_incrby(self, key: CommandItem, *args: bytes) -> List[Tuple[bytes, int]]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
-        pairs = []
+        pairs: List[Tuple[bytes, int]] = []
         for i in range(0, len(args), 2):
             try:
                 pairs.append((args[i], int(args[i + 1])))
@@ -41,7 +51,7 @@ class CMSCommandsMixin:
         repeat=(),
         flags=msgs.FLAG_NO_INITIATE,
     )
-    def cms_info(self, key: CommandItem):
+    def cms_info(self, key: CommandItem) -> List[bytes]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
         return [
@@ -117,7 +127,7 @@ class CMSCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_NO_INITIATE,
     )
-    def cms_query(self, key: CommandItem, *items: bytes):
+    def cms_query(self, key: CommandItem, *items: bytes) -> List[int]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
         return [key.value.check(item) for item in items]
