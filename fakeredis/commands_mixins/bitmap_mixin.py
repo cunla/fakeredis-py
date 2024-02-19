@@ -1,5 +1,5 @@
 import re
-from typing import Tuple, Any
+from typing import Tuple, Any, Callable, List, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
@@ -74,7 +74,7 @@ class BitmapCommandsMixin:
         return result
 
     @command((Key(bytes, 0),), (bytes,))
-    def bitcount(self, key, *args):
+    def bitcount(self, key: CommandItem, *args: bytes) -> int:
         # Redis checks the argument count before decoding integers. That's why
         # we can't declare them as Int.
         if len(args) == 0:
@@ -96,14 +96,15 @@ class BitmapCommandsMixin:
         if bit_mode:
             value = self._bytes_as_bin_string(key.value if key.value else b"")
             start, end = fix_range_string(start, end, len(value))
-            return value[start:end].count("1")
+            res: int = value.count("1", start, end)
+            return res
         start, end = fix_range_string(start, end, len(key.value))
         value = key.value[start:end]
 
         return bin(int.from_bytes(value, "little")).count("1")
 
-    @command((Key(bytes), BitOffset))
-    def getbit(self, key, offset):
+    @command(fixed=(Key(bytes), BitOffset))
+    def getbit(self, key: CommandItem, offset: int) -> int:
         value = key.get(b"")
         byte = offset // 8
         remaining = offset % 8
@@ -115,7 +116,7 @@ class BitmapCommandsMixin:
         return 1 if (1 << actual_bitoffset) & actual_val else 0
 
     @command((Key(bytes), BitOffset, BitValue))
-    def setbit(self, key, offset, value):
+    def setbit(self, key: CommandItem, offset: int, value: int) -> int:
         val = key.value if key.value is not None else b"\x00"
         byte = offset // 8
         remaining = offset % 8
@@ -134,13 +135,13 @@ class BitmapCommandsMixin:
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
         if bytes(reconstructed) != key.value or (
-                self.version == 6 and old_byte != new_byte
+                self.version == (6,) and old_byte != new_byte
         ):
             key.update(bytes(reconstructed))
         return old_value
 
     @staticmethod
-    def _bitop(op, *keys):
+    def _bitop(op: Callable[[Any, Any], Any], *keys: CommandItem) -> Any:
         value = keys[0].value
         ans = keys[0].value
         i = 1
@@ -151,7 +152,7 @@ class BitmapCommandsMixin:
         return ans
 
     @command((bytes, Key()), (Key(bytes),))
-    def bitop(self, op_name, dst, *keys):
+    def bitop(self, op_name: bytes, dst: CommandItem, *keys: CommandItem) -> int:
         if len(keys) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitop"))
         if casematch(op_name, b"and"):
@@ -170,7 +171,7 @@ class BitmapCommandsMixin:
         dst.value = res
         return len(dst.value)
 
-    def _bitfield_get(self, key, encoding, offset):
+    def _bitfield_get(self, key: CommandItem, encoding: BitfieldEncoding, offset: int) -> int:
         ans = 0
         for i in range(0, encoding.size):
             ans <<= 1
@@ -178,7 +179,9 @@ class BitmapCommandsMixin:
                 ans += -1 if encoding.signed and i == 0 else 1
         return ans
 
-    def _bitfield_set(self, key, encoding, offset, overflow, value=None, incr=0):
+    def _bitfield_set(
+            self, key: CommandItem, encoding: BitfieldEncoding, offset: int, overflow: bytes,
+            value: Optional[int] = None, incr: int = 0) -> Optional[int]:
         if encoding.signed:
             min_value = -(1 << (encoding.size - 1))
             max_value = (1 << (encoding.size - 1)) - 1
@@ -212,9 +215,9 @@ class BitmapCommandsMixin:
         return new_value if value is None else ans
 
     @command(fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key, *args):
+    def bitfield(self, key: CommandItem, *args: bytes) -> List[Optional[int]]:
         overflow = b"WRAP"
-        results = []
+        results: List[Optional[int]] = []
         i = 0
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
