@@ -431,8 +431,8 @@ class XStream:
     def __len__(self) -> int:
         return len(self._ids)
 
-    def __iter__(self) -> Generator[List[bytes | List[bytes]], Any, None]:
-        def gen() -> Generator[List[bytes | List[bytes]], Any, None]:
+    def __iter__(self) -> Generator[List[Union[bytes, List[bytes]]], Any, None]:
+        def gen() -> Generator[List[Union[bytes, List[bytes]]], Any, None]:
             for k in self._ids:
                 yield self.format_record(k)
 
