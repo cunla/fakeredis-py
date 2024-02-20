@@ -423,16 +423,11 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(arrinsert, key, path_str)
 
-    @command(
-        name="JSON.ARRPOP",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrpop(
             self, key: CommandItem, *args: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
-        path_str: bytes = args[0] if len(args) > 0 else b"$"
+        path_str: Union[bytes, str] = args[0] if len(args) > 0 else "$"
         index = Int.decode(args[1]) if len(args) > 1 else -1
 
         def arrpop(val: JsonType) -> Tuple[Optional[JsonType], Optional[bytes], bool]:
