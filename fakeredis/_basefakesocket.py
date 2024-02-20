@@ -18,8 +18,7 @@ from ._helpers import (
     casematch,
     compile_pattern,
     QUEUED,
-    decode_command_bytes,
-)
+    decode_command_bytes, )
 from ._stream import XStream
 from ._zset import ZSet
 
@@ -66,7 +65,7 @@ class BaseFakeSocket:
     }
     _connection_error_class = redis.ConnectionError
 
-    def __init__(self, server, db, *args, **kwargs):
+    def __init__(self, server: "FakeServer", db: int, *args: Any, **kwargs: Any):  # noqa: F821
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
         self._server: FakeServer = server
@@ -84,6 +83,7 @@ class BaseFakeSocket:
         self._transaction: Optional[List[Any]]
         self._in_transaction: bool
         self._pubsub: int
+        self._transaction_failed: bool
 
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.

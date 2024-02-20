@@ -45,5 +45,5 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
 ):
-    def __init__(self, server: "FakeServer", db: int) -> None:  # type:ignore
+    def __init__(self, server: "FakeServer", db: int) -> None:  # noqa: F821
         super(FakeSocket, self).__init__(server, db)
