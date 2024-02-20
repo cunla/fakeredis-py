@@ -220,7 +220,7 @@ class FakeSelector(object):
     def __init__(self, sock: Any):
         self.sock = sock
 
-    def check_can_read(self, timeout: Optional[int]) -> bool:
+    def check_can_read(self, timeout: Optional[float]) -> bool:
         if self.sock.responses.qsize():
             return True
         if timeout is not None and timeout <= 0:

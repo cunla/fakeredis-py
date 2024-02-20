@@ -23,13 +23,13 @@ except ImportError as e:
         raise e
 
 
-    class BFCommandsMixin:  # noqa: E303
+    class BFCommandsMixin:  # noqa: E303 # type: ignore
         pass
 
 
-    class CFCommandsMixin:  # noqa: E303
+    class CFCommandsMixin:  # noqa: E303 # type: ignore
         pass
 
 
-    class CMSCommandsMixin:  # noqa: E303
+    class CMSCommandsMixin:  # noqa: E303 # type: ignore
         pass

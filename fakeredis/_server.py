@@ -7,7 +7,7 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, Any, List, Optional
 
 import redis
 
@@ -18,27 +18,27 @@ from . import _msgs as msgs
 LOGGER = logging.getLogger("fakeredis")
 
 
-def _create_version(v) -> Tuple[int]:
+def _create_version(v: Tuple[int, ...]) -> Tuple[int, ...]:
     if isinstance(v, tuple):
-        return v  # type: ignore
+        return v
     if isinstance(v, int):
         return (v,)
     if isinstance(v, str):
         v = v.split(".")
-        return tuple(int(x) for x in v)  # type: ignore
+        return tuple(int(x) for x in v)
     return v
 
 
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: Tuple[int] = (7,)):
+    def __init__(self, version: Tuple[int, ...] = (7,)):
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
-        # Maps channel/pattern to weak set of sockets
-        self.subscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
-        self.psubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
-        self.ssubscribers: Dict[bytes, weakref.WeakSet] = defaultdict(weakref.WeakSet)
+        # Maps channel/pattern to a weak set of sockets
+        self.subscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
+        self.psubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
+        self.ssubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.lastsave: int = int(time.time())
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
@@ -46,15 +46,16 @@ class FakeServer:
         self.version = _create_version(version)
 
     @staticmethod
-    def get_server(key, version: Tuple[int]):
+    def get_server(key: str, version: Tuple[int, ...]) -> "FakeServer":
         return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
 
 class FakeBaseConnectionMixin:
-    def __init__(self, *args, **kwargs):
-        self.client_name = None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.client_name: Optional[str] = None
+        self.server_key: str
         self._sock = None
-        self._selector = None
+        self._selector: Optional[FakeSelector] = None
         self._server = kwargs.pop("server", None)
         path = kwargs.pop("path", None)
         version = kwargs.pop("version", (7, 0))
@@ -72,17 +73,17 @@ class FakeBaseConnectionMixin:
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
-    def connect(self):
+    def connect(self) -> None:
         super().connect()
         # The selector is set in redis.Connection.connect() after _connect() is called
-        self._selector = FakeSelector(self._sock)
+        self._selector: Optional[FakeSelector] = FakeSelector(self._sock)
 
-    def _connect(self):
+    def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         return FakeSocket(self._server, db=self.db)
 
-    def can_read(self, timeout=0):
+    def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self._server.connected:
             return True
         if not self._sock:
@@ -92,19 +93,17 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         # implement can_read. Normally can_read provides retries on EINTR,
         # but that's not necessary for the implementation of
         # FakeSelector.check_can_read.
-        return self._selector and self._selector.check_can_read(timeout)
+        return self._selector is not None and self._selector.check_can_read(timeout)
 
-    def _decode(self, response):
+    def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
             return [self._decode(item) for item in response]
         elif isinstance(response, bytes):
-            return self.encoder.decode(
-                response,
-            )
+            return self.encoder.decode(response)
         else:
             return response
 
-    def read_response(self, **kwargs):
+    def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
@@ -123,18 +122,22 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         else:
             return self._decode(response)
 
-    def repr_pieces(self):
+    def repr_pieces(self) -> List[Tuple[str, Any]]:
         pieces = [("server", self._server), ("db", self.db)]
         if self.client_name:
             pieces.append(("client_name", self.client_name))
         return pieces
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.server_key
 
 
 class FakeRedisMixin:
-    def __init__(self, *args, server=None, version=(7,), **kwargs):
+    def __init__(
+            self, *args: Any,
+            server: Optional[FakeServer] = None,
+            version: Tuple[int, ...] = (7,),
+            **kwargs: Any) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[
@@ -191,16 +194,14 @@ class FakeRedisMixin:
             connection_kwargs.update(
                 {arg: kwds[arg] for arg in conn_pool_args if arg in kwds}
             )
-            kwds["connection_pool"] = redis.connection.ConnectionPool(
-                **connection_kwargs
-            )
+            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, *args, **kwargs):
+    def from_url(cls, *args: Any, **kwargs: Any) -> "FakeRedisMixin":
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
@@ -211,9 +212,9 @@ class FakeRedisMixin:
         return cls(connection_pool=pool)
 
 
-class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
+class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):  # type: ignore
     pass
 
 
-class FakeRedis(FakeRedisMixin, redis.Redis):
+class FakeRedis(FakeRedisMixin, redis.Redis):  # type: ignore
     pass
