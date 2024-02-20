@@ -1,12 +1,13 @@
 """Command mixin for emulating `redis-py`'s cuckoo filter functionality."""
 import io
+from typing import List, Any
 
 from probables import CountingCuckooFilter, CuckooFilterFullError
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, CommandItem, Int, Key
-from fakeredis._helpers import SimpleError, OK, casematch
+from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
 class ScalableCuckooFilter(CountingCuckooFilter):
@@ -41,7 +42,7 @@ class CFCommandsMixin:
     def _cf_add(key: CommandItem, item: bytes) -> int:
         if key.value is None:
             key.update(ScalableCuckooFilter(1024))
-        res = key.value.insert(item)
+        res = key.value.insert(item)  # type:ignore
         key.updated()
         return 1 if res else 0
 
@@ -49,57 +50,33 @@ class CFCommandsMixin:
     def _cf_exist(key: CommandItem, item: bytes) -> int:
         return 1 if (item in key.value) else 0
 
-    @command(
-        name="CF.ADD",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(),
-    )
-    def cf_add(self, key: CommandItem, value: bytes):
+    @command(name="CF.ADD", fixed=(Key(ScalableCuckooFilter), bytes), repeat=())
+    def cf_add(self, key: CommandItem, value: bytes) -> int:
         return CFCommandsMixin._cf_add(key, value)
 
-    @command(
-        name="CF.ADDNX",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(),
-    )
-    def cf_addnx(self, key: CommandItem, value: bytes):
+    @command(name="CF.ADDNX", fixed=(Key(ScalableCuckooFilter), bytes), repeat=())
+    def cf_addnx(self, key: CommandItem, value: bytes) -> int:
         if value in key.value:
             return 0
         return CFCommandsMixin._cf_add(key, value)
 
-    @command(
-        name="CF.COUNT",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(),
-    )
-    def cf_count(self, key: CommandItem, item: bytes):
+    @command(name="CF.COUNT", fixed=(Key(ScalableCuckooFilter), bytes), repeat=())
+    def cf_count(self, key: CommandItem, item: bytes) -> int:
         return 1 if self._cf_exist(key, item) else 0  # todo
 
-    @command(
-        name="CF.DEL",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(),
-    )
-    def cf_del(self, key: CommandItem, value: bytes):
+    @command(name="CF.DEL", fixed=(Key(ScalableCuckooFilter), bytes), repeat=())
+    def cf_del(self, key: CommandItem, value: bytes) -> int:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         res = key.value.delete(value)
         return 1 if res else 0
 
-    @command(
-        name="CF.EXISTS",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(),
-    )
-    def cf_exist(self, key: CommandItem, value: bytes):
+    @command(name="CF.EXISTS", fixed=(Key(ScalableCuckooFilter), bytes), repeat=())
+    def cf_exist(self, key: CommandItem, value: bytes) -> int:
         return CFCommandsMixin._cf_exist(key, value)
 
-    @command(
-        name="CF.INFO",
-        fixed=(Key(),),
-        repeat=(),
-    )
-    def cf_info(self, key: CommandItem):
+    @command(name="CF.INFO", fixed=(Key(),), repeat=())
+    def cf_info(self, key: CommandItem) -> List[Any]:
         if key.value is None or type(key.value) is not ScalableCuckooFilter:
             raise SimpleError('...')
         return [
@@ -113,12 +90,8 @@ class CFCommandsMixin:
             b'Expansion rate', key.value.expansion_rate,
         ]
 
-    @command(
-        name="CF.INSERT",
-        fixed=(Key(),),
-        repeat=(bytes,),
-    )
-    def cf_insert(self, key: CommandItem, *args: bytes):
+    @command(name="CF.INSERT", fixed=(Key(),), repeat=(bytes,))
+    def cf_insert(self, key: CommandItem, *args: bytes) -> List[int]:
         (capacity, no_create), left_args = extract_args(
             args, ("+capacity", "nocreate"),
             error_on_unexpected=False, left_from_first_unexpected=True)
@@ -139,12 +112,8 @@ class CFCommandsMixin:
         key.updated()
         return res
 
-    @command(
-        name="CF.INSERTNX",
-        fixed=(Key(),),
-        repeat=(bytes,),
-    )
-    def cf_insertnx(self, key: CommandItem, *args: bytes):
+    @command(name="CF.INSERTNX", fixed=(Key(),), repeat=(bytes,))
+    def cf_insertnx(self, key: CommandItem, *args: bytes) -> List[int]:
         (capacity, no_create), left_args = extract_args(
             args, ("+capacity", "nocreate"),
             error_on_unexpected=False, left_from_first_unexpected=True)
@@ -167,24 +136,15 @@ class CFCommandsMixin:
         key.updated()
         return res
 
-    @command(
-        name="CF.MEXISTS",
-        fixed=(Key(ScalableCuckooFilter), bytes),
-        repeat=(bytes,),
-    )
-    def cf_mexists(self, key: CommandItem, *values: bytes):
+    @command(name="CF.MEXISTS", fixed=(Key(ScalableCuckooFilter), bytes), repeat=(bytes,))
+    def cf_mexists(self, key: CommandItem, *values: bytes) -> List[int]:
         res = list()
         for value in values:
             res.append(CFCommandsMixin._cf_exist(key, value))
         return res
 
-    @command(
-        name="CF.RESERVE",
-        fixed=(Key(), Int,),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes):
+    @command(name="CF.RESERVE", fixed=(Key(), Int,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
         (bucketsize, maxiterations, expansion), _ = extract_args(args, ("+bucketsize", "+maxiterations", "+expansion"))
@@ -195,13 +155,8 @@ class CFCommandsMixin:
         key.update(value)
         return OK
 
-    @command(
-        name="CF.SCANDUMP",
-        fixed=(Key(), Int,),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def cf_scandump(self, key: CommandItem, iterator: int):
+    @command(name="CF.SCANDUMP", fixed=(Key(), Int,), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def cf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         f = io.BytesIO()
@@ -215,17 +170,10 @@ class CFCommandsMixin:
         else:
             return [0, None]
 
-    @command(
-        name="CF.LOADCHUNK",
-        fixed=(Key(), Int, bytes),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def cf_loadchunk(self, key: CommandItem, iterator: int, data: bytes):
+    @command(name="CF.LOADCHUNK", fixed=(Key(), Int, bytes), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def cf_loadchunk(self, key: CommandItem, iterator: int, data: bytes) -> SimpleString:
         if key.value is not None and type(key.value) is not ScalableCuckooFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
-        f = io.BytesIO(data)
-        key.value = ScalableCuckooFilter.fromfile(f)
-        f.close()
+        key.value = ScalableCuckooFilter.frombytes(data)
         key.updated()
         return OK

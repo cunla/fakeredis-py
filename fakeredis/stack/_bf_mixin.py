@@ -1,11 +1,12 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
+from typing import Any, List, Union
 
 from probables import ExpandingBloomFilter
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Float, Int
-from fakeredis._helpers import SimpleError, OK, casematch
+from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
 class ScalableBloomFilter(ExpandingBloomFilter):
@@ -15,7 +16,7 @@ class ScalableBloomFilter(ExpandingBloomFilter):
         super().__init__(capacity, error_rate)
         self.scale: int = scale
 
-    def add(self, key: bytes, force: bool = False) -> bool:
+    def add_item(self, key: bytes) -> bool:
         if key in self:
             return True
         if self.scale == self.NO_GROWTH and self.elements_added >= self.estimated_elements:
@@ -24,7 +25,7 @@ class ScalableBloomFilter(ExpandingBloomFilter):
         return False
 
     @classmethod
-    def frombytes(cls, b: bytes, **kwargs) -> "ScalableBloomFilter":
+    def bf_frombytes(cls, b: bytes, **kwargs: Any) -> "ScalableBloomFilter":
         size, est_els, added_els, fpr = cls._parse_footer(b)
         blm = ScalableBloomFilter(capacity=est_els, error_rate=fpr)
         blm._parse_blooms(b, size)
@@ -36,7 +37,7 @@ class BFCommandsMixin:
 
     @staticmethod
     def _bf_add(key: CommandItem, item: bytes) -> int:
-        res = key.value.add(item)
+        res = key.value.add_item(item)
         key.updated()
         return 0 if res else 1
 
@@ -44,59 +45,34 @@ class BFCommandsMixin:
     def _bf_exist(key: CommandItem, item: bytes) -> int:
         return 1 if (item in key.value) else 0
 
-    @command(
-        name="BF.ADD",
-        fixed=(Key(ScalableBloomFilter), bytes),
-        repeat=(),
-    )
-    def bf_add(self, key, value: bytes):
+    @command(name="BF.ADD", fixed=(Key(ScalableBloomFilter), bytes), repeat=())
+    def bf_add(self, key: CommandItem, value: bytes) -> int:
         return BFCommandsMixin._bf_add(key, value)
 
-    @command(
-        name="BF.MADD",
-        fixed=(Key(ScalableBloomFilter), bytes),
-        repeat=(bytes,),
-    )
-    def bf_madd(self, key, *values):
+    @command(name="BF.CARD", fixed=(Key(ScalableBloomFilter),), repeat=())
+    def bf_card(self, key: CommandItem) -> int:
+        return key.value.elements_added  # type:ignore
+
+    @command(name="BF.MADD", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
+    def bf_madd(self, key: CommandItem, *values: bytes) -> List[int]:
         res = list()
         for value in values:
             res.append(BFCommandsMixin._bf_add(key, value))
         return res
 
-    @command(
-        name="BF.CARD",
-        fixed=(Key(ScalableBloomFilter),),
-        repeat=(),
-    )
-    def bf_card(self, key):
-        return key.value.elements_added
-
-    @command(
-        name="BF.EXISTS",
-        fixed=(Key(ScalableBloomFilter), bytes),
-        repeat=(),
-    )
-    def bf_exist(self, key, value: bytes):
+    @command(name="BF.EXISTS", fixed=(Key(ScalableBloomFilter), bytes), repeat=())
+    def bf_exist(self, key: CommandItem, value: bytes) -> int:
         return BFCommandsMixin._bf_exist(key, value)
 
-    @command(
-        name="BF.MEXISTS",
-        fixed=(Key(ScalableBloomFilter), bytes),
-        repeat=(bytes,),
-    )
-    def bf_mexists(self, key, *values: bytes):
+    @command(name="BF.MEXISTS", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
+    def bf_mexists(self, key: CommandItem, *values: bytes) -> List[int]:
         res = list()
         for value in values:
             res.append(BFCommandsMixin._bf_exist(key, value))
         return res
 
-    @command(
-        name="BF.RESERVE",
-        fixed=(Key(), Float, Int,),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def bf_reserve(self, key: CommandItem, error_rate, capacity, *args: bytes):
+    @command(name="BF.RESERVE", fixed=(Key(), Float, Int,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def bf_reserve(self, key: CommandItem, error_rate: float, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
         (expansion, non_scaling), _ = extract_args(args, ("+expansion", "nonscaling"))
@@ -108,12 +84,8 @@ class BFCommandsMixin:
         key.update(ScalableBloomFilter(capacity, error_rate, scale))
         return OK
 
-    @command(
-        name="BF.INSERT",
-        fixed=(Key(),),
-        repeat=(bytes,),
-    )
-    def bf_insert(self, key: CommandItem, *args: bytes):
+    @command(name="BF.INSERT", fixed=(Key(),), repeat=(bytes,))
+    def bf_insert(self, key: CommandItem, *args: bytes) -> List[int]:
         (capacity, error_rate, expansion, non_scaling, no_create), left_args = extract_args(
             args, ("+capacity", ".error", "+expansion", "nonscaling", "nocreate"),
             error_on_unexpected=False, left_from_first_unexpected=True)
@@ -140,12 +112,8 @@ class BFCommandsMixin:
         key.updated()
         return res
 
-    @command(
-        name="BF.INFO",
-        fixed=(Key(),),
-        repeat=(bytes,),
-    )
-    def bf_info(self, key: CommandItem, *args: bytes):
+    @command(name="BF.INFO", fixed=(Key(),), repeat=(bytes,))
+    def bf_info(self, key: CommandItem, *args: bytes) -> Union[Any, List[Any]]:
         if key.value is None or type(key.value) is not ScalableBloomFilter:
             raise SimpleError('...')
         if len(args) > 1:
@@ -159,25 +127,20 @@ class BFCommandsMixin:
                 b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
             ]
         if casematch(args[0], b'CAPACITY'):
-            return key.value.capacity
+            return key.value.estimated_elements
         elif casematch(args[0], b'SIZE'):
-            return key.value.capacity
+            return key.value.estimated_elements
         elif casematch(args[0], b'FILTERS'):
-            return len(key.value.filters)
+            return key.value.expansions + 1
         elif casematch(args[0], b'ITEMS'):
-            return key.value.count
+            return key.value.elements_added
         elif casematch(args[0], b'EXPANSION'):
-            return key.value.scale if key.value.scale > 0 else None
+            return key.value.expansions if key.value.expansions > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-    @command(
-        name="BF.SCANDUMP",
-        fixed=(Key(), Int,),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def bf_scandump(self, key: CommandItem, iterator: int):
+    @command(name="BF.SCANDUMP", fixed=(Key(), Int,), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def bf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)
 
@@ -187,14 +150,9 @@ class BFCommandsMixin:
         else:
             return [0, None]
 
-    @command(
-        name="BF.LOADCHUNK",
-        fixed=(Key(), Int, bytes),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes):
+    @command(name="BF.LOADCHUNK", fixed=(Key(), Int, bytes), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes) -> SimpleString:
         if key.value is not None and type(key.value) is not ScalableBloomFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
-        key.update(ScalableBloomFilter.frombytes(data))
+        key.update(ScalableBloomFilter.bf_frombytes(data))
         return OK
