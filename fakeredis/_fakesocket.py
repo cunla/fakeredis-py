@@ -1,7 +1,5 @@
 from fakeredis.stack import JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin
-from . import FakeServer
 from ._basefakesocket import BaseFakeSocket
-from ._helpers import Database
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
 from .commands_mixins.generic_mixin import GenericCommandsMixin
@@ -47,5 +45,5 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
 ):
-    def __init__(self, server: FakeServer, db: int) -> None:
+    def __init__(self, server: "FakeServer", db: int) -> None:  # type:ignore
         super(FakeSocket, self).__init__(server, db)
