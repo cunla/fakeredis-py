@@ -3,7 +3,7 @@
 import copy
 import json
 from json import JSONDecodeError
-from typing import Any, Union, Dict, List, Optional
+from typing import Any, Union, Dict, List, Optional, Callable, Tuple
 
 from jsonpath_ng import Root, JSONPath
 from jsonpath_ng.exceptions import JsonPathParserError
@@ -13,37 +13,37 @@ from fakeredis import _helpers as helpers
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
+from fakeredis._helpers import SimpleString
 from fakeredis._zset import ZSet
 
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
 
-def _format_path(path) -> str:
-    if isinstance(path, bytes):
-        path = path.decode()
-    if path == ".":
+def _format_path(path: Union[bytes, str]) -> str:
+    path_str = path.decode() if isinstance(path, bytes) else path
+    if path_str == ".":
         return "$"
-    elif path.startswith("."):
-        return "$" + path
-    elif path.startswith("$"):
-        return path
+    elif path_str.startswith("."):
+        return "$" + path_str
+    elif path_str.startswith("$"):
+        return path_str
     else:
-        return "$." + path
+        return "$." + path_str
 
 
-def _parse_jsonpath(path: Union[str, bytes]):
-    path = _format_path(path)
+def _parse_jsonpath(path: Union[str, bytes]) -> JSONPath:
+    path_str: str = _format_path(path)
     try:
-        return parse(path)
+        return parse(path_str)
     except JsonPathParserError:
-        raise helpers.SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path))
+        raise helpers.SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
 
 
 def _path_is_root(path: JSONPath) -> bool:
-    return path == Root()
+    return path == Root()  # type: ignore
 
 
-def _dict_deep_merge(source: JsonType, destination: Dict) -> Dict:
+def _dict_deep_merge(source: JsonType, destination: Dict[str, Any]) -> Dict[str, Any]:
     """Deep merge of two dictionaries"""
     if not isinstance(source, dict):
         return destination
@@ -80,7 +80,12 @@ class JSONObject:
         return json.dumps(value, default=str).encode() if value is not None else None
 
 
-def _json_write_iterate(method, key, path_str, **kwargs):
+def _json_write_iterate(
+        method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[int], bool]],
+        key: CommandItem,
+        path_str: Union[str, bytes],
+        **kwargs: Any,
+) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
     """Implement json.* write commands.
     Iterate over values with path_str in key and running method to get new value for path item.
     """
@@ -94,7 +99,7 @@ def _json_write_iterate(method, key, path_str, **kwargs):
         )
 
     curr_value = copy.deepcopy(key.value)
-    res = list()
+    res: List[Optional[JsonType]] = list()
     for item in found_matches:
         new_value, res_val, update = method(item.value)
         if update:
@@ -113,7 +118,12 @@ def _json_write_iterate(method, key, path_str, **kwargs):
     return res
 
 
-def _json_read_iterate(method, key, *args, error_on_zero_matches=False):
+def _json_read_iterate(
+        method: Callable[[JsonType], Optional[int]],
+        key: CommandItem,
+        *args: Any,
+        error_on_zero_matches: bool = False,
+) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
     path_str = args[0] if len(args) > 0 else "$"
     if key.value is None:
         if path_str[0] == 36:
@@ -168,12 +178,12 @@ class JSONCommandsMixin:
 
     @staticmethod
     def _get_single(
-            key,
-            path_str: str,
+            key: CommandItem,
+            path_str: Union[str, bytes],
             always_return_list: bool = False,
             empty_list_as_none: bool = False,
     ) -> Any:
-        path = _parse_jsonpath(path_str)
+        path: JSONPath = _parse_jsonpath(path_str)
         path_value = path.find(key.value)
         val = [i.value for i in path_value]
         if empty_list_as_none and len(val) == 0:
@@ -188,7 +198,7 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def json_del(self, key, path_str) -> int:
+    def json_del(self, key: CommandItem, path_str: bytes) -> int:
         if key.value is None:
             return 0
 
@@ -210,7 +220,7 @@ class JSONCommandsMixin:
         return res
 
     @staticmethod
-    def _json_set(key: CommandItem, path_str: bytes, value: JsonType, *args):
+    def _json_set(key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> Optional[SimpleString]:
         path = _parse_jsonpath(path_str)
         if (
                 key.value is not None
@@ -234,7 +244,7 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def json_set(self, key, path_str: bytes, value: JsonType, *args):
+    def json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: bytes) -> Optional[SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
@@ -247,14 +257,15 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def json_get(self, key, *args) -> Optional[bytes]:
+    def json_get(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
         if key.value is None:
             return None
         paths = [arg for arg in args if not helpers.casematch(b"noescape", arg)]
         no_wrapping_array = len(paths) == 1 and paths[0][0] == ord(b".")
 
-        formatted_paths = [
-            _format_path(arg) for arg in args if not helpers.casematch(b"noescape", arg)
+        formatted_paths: List[str] = [
+            _format_path(arg) for arg in args
+            if not helpers.casematch(b"noescape", arg)
         ]
         path_values = [
             self._get_single(key, path, len(formatted_paths) > 1)
@@ -278,7 +289,7 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def json_mget(self, *args):
+    def json_mget(self, *args: bytes) -> List[Optional[bytes]]:
         if len(args) < 2:
             raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mget"))
         path_str = args[-1]
@@ -299,7 +310,7 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def json_toggle(self, key, *args):
+    def json_toggle(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bool]], Optional[bool]]:
         if key.value is None:
             raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
         path_str = args[0] if len(args) > 0 else "$"
