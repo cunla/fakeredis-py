@@ -147,7 +147,8 @@ class CFCommandsMixin:
     def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
-        (bucket_size, max_iterations, expansion), _ = extract_args(args, ("+bucketsize", "+maxiterations", "+expansion"))
+        (bucket_size, max_iterations, expansion), _ = extract_args(
+            args, ("+bucketsize", "+maxiterations", "+expansion"))
 
         max_iterations = max_iterations or 20
         bucket_size = bucket_size or 2
