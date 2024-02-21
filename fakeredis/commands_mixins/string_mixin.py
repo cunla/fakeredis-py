@@ -1,5 +1,5 @@
 import math
-from typing import Tuple, Callable
+from typing import Tuple, Callable, List, Any, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -10,20 +10,20 @@ from fakeredis._commands import (
     Float,
     MAX_STRING_SIZE,
     delete_keys,
-    fix_range_string,
+    fix_range_string, CommandItem,
 )
-from fakeredis._helpers import OK, SimpleError, casematch, Database
+from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 
 
-def _lcs(s1, s2):
+def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
     l1 = len(s1)
     l2 = len(s2)
 
     # Opt array to store the optimal solution value till ith and jth position for 2 strings
-    opt = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+    opt: List[List[int]] = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
 
     # Pi array to store the direction when calculating the actual sequence
-    pi = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+    pi: List[List[int]] = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
 
     # Algorithm to calculate the length of the longest common subsequence
     for r in range(1, l1 + 1):
@@ -70,16 +70,21 @@ def _lcs(s1, s2):
 
 
 class StringCommandsMixin:
-    _encodeint: Callable
-    _encodefloat: Callable
+    _encodeint: Callable[[int, ], bytes]
+    _encodefloat: Callable[[float, bool], bytes]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StringCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
         self.version: Tuple[int]
 
+    def _incrby(self, key: CommandItem, amount: int) -> int:
+        c = Int.decode(key.get(b"0")) + amount
+        key.update(self._encodeint(c))
+        return c
+
     @command((Key(bytes), bytes))
-    def append(self, key, value):
+    def append(self, key: CommandItem, value: bytes) -> int:
         old = key.get(b"")
         if len(old) + len(value) > MAX_STRING_SIZE:
             raise SimpleError(msgs.STRING_OVERFLOW_MSG)
@@ -87,67 +92,65 @@ class StringCommandsMixin:
         return len(key.value)
 
     @command((Key(bytes),))
-    def decr(self, key):
-        return self.incrby(key, -1)
+    def decr(self, key: CommandItem) -> int:
+        return self._incrby(key, -1)
 
     @command((Key(bytes), Int))
-    def decrby(self, key, amount):
-        return self.incrby(key, -amount)
+    def decrby(self, key: CommandItem, amount: int) -> int:
+        return self._incrby(key, -amount)
 
     @command((Key(bytes),))
-    def get(self, key):
-        return key.get(None)
+    def get(self, key: CommandItem) -> bytes:
+        res: bytes = key.get(None)
+        return res
 
     @command((Key(bytes),))
-    def getdel(self, key):
-        res = key.get(None)
+    def getdel(self, key: CommandItem) -> bytes:
+        res: bytes = key.get(None)
         delete_keys(key)
         return res
 
     @command(name=["GETRANGE", "SUBSTR"], fixed=(Key(bytes), Int, Int))
-    def getrange(self, key, start, end):
-        value = key.get(b"")
+    def getrange(self, key: CommandItem, start: int, end: int) -> bytes:
+        value: bytes = key.get(b"")
         start, end = fix_range_string(start, end, len(value))
         return value[start:end]
 
-    @command((Key(bytes), bytes))
-    def getset(self, key, value):
-        old = key.value
+    @command(fixed=(Key(bytes), bytes))
+    def getset(self, key: CommandItem, value: bytes) -> bytes:
+        old: bytes = key.value
         key.value = value
         return old
 
-    @command((Key(bytes), Int))
-    def incrby(self, key, amount):
-        c = Int.decode(key.get(b"0")) + amount
-        key.update(self._encodeint(c))
-        return c
+    @command(fixed=(Key(bytes), Int))
+    def incrby(self, key: CommandItem, amount: int) -> int:
+        return self._incrby(key, amount)
 
-    @command((Key(bytes),))
-    def incr(self, key):
-        return self.incrby(key, 1)
+    @command(fixed=(Key(bytes),))
+    def incr(self, key: CommandItem) -> int:
+        return self._incrby(key, 1)
 
-    @command((Key(bytes), bytes))
-    def incrbyfloat(self, key, amount):
-        # TODO: introduce convert_order so that we can specify amount is Float
-        c = Float.decode(key.get(b"0")) + Float.decode(amount)
-        if not math.isfinite(c):
+    @command(fixed=(Key(bytes), Float))
+    def incrbyfloat(self, key: CommandItem, amount: float) -> bytes:
+        c = Float.decode(key.get(b"0")) + amount
+        if not math.isfinite(amount):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
         key.update(encoded)
         return encoded
 
-    @command((Key(),), (Key(),))
-    def mget(self, *keys):
+    @command(fixed=(Key(),), repeat=(Key(),))
+    def mget(self, *keys: CommandItem) -> List[Optional[bytes]]:
         return [key.value if isinstance(key.value, bytes) else None for key in keys]
 
     @command((Key(), bytes), (Key(), bytes))
-    def mset(self, *args):
+    def mset(self, *args: Any) -> SimpleString:
         for i in range(0, len(args), 2):
             args[i].value = args[i + 1]
         return OK
 
     @command((Key(), bytes), (Key(), bytes))
-    def msetnx(self, *args):
+    def msetnx(self, *args: Any) -> int:
         for i in range(0, len(args), 2):
             if args[i]:
                 return 0
@@ -156,15 +159,15 @@ class StringCommandsMixin:
         return 1
 
     @command((Key(), Int, bytes))
-    def psetex(self, key, ms, value):
+    def psetex(self, key: CommandItem, ms: int, value: bytes) -> SimpleString:
         if ms <= 0 or self._db.time * 1000 + ms >= 2 ** 63:
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("psetex"))
         key.value = value
-        key.expireat = self._db.time + ms / 1000.0
+        key.expireat = int(self._db.time + ms / 1000.0)
         return OK
 
     @command(name="SET", fixed=(Key(), bytes), repeat=(bytes,))
-    def set_(self, key, value, *args):
+    def set_(self, key: CommandItem, value: bytes, *args: bytes) -> Any:
         (ex, px, exat, pxat, xx, nx, keepttl, get), _ = extract_args(
             args, ("+ex", "+px", "+exat", "+pxat", "xx", "nx", "keepttl", "get")
         )
@@ -208,22 +211,22 @@ class StringCommandsMixin:
         return OK if not get else old_value
 
     @command((Key(), Int, bytes))
-    def setex(self, key, seconds, value):
+    def setex(self, key: CommandItem, seconds: int, value: bytes) -> SimpleString:
         if seconds <= 0 or (self._db.time + seconds) * 1000 >= 2 ** 63:
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("setex"))
         key.value = value
-        key.expireat = self._db.time + seconds
+        key.expireat = int(self._db.time + seconds)
         return OK
 
     @command((Key(), bytes))
-    def setnx(self, key, value):
+    def setnx(self, key: CommandItem, value: bytes) -> int:
         if key:
             return 0
         key.value = value
         return 1
 
     @command((Key(bytes), Int, bytes))
-    def setrange(self, key, offset, value):
+    def setrange(self, key: CommandItem, offset: int, value: bytes) -> int:
         if offset < 0:
             raise SimpleError(msgs.INVALID_OFFSET_MSG)
         elif not value:
@@ -238,11 +241,11 @@ class StringCommandsMixin:
         return len(out)
 
     @command((Key(bytes),))
-    def strlen(self, key):
+    def strlen(self, key: CommandItem) -> int:
         return len(key.get(b""))
 
     @command((Key(bytes),), (bytes,))
-    def getex(self, key, *args):
+    def getex(self, key: CommandItem, *args: bytes) -> Any:
         i, count_options, expire_time, diff = 0, 0, None, None
 
         while i < len(args):
@@ -273,18 +276,14 @@ class StringCommandsMixin:
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("getex"))
         if count_options > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if expire_time is None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        key.expireat = expire_time
+        key.expireat = int(expire_time)
         return key.get(None)
 
-    @command(
-        (
-                Key(bytes),
-                Key(bytes),
-        ),
-        (bytes,),
-    )
-    def lcs(self, k1, k2, *args):
+    @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,))
+    def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> Any:
         s1 = k1.value or b""
         s2 = k2.value or b""
 
