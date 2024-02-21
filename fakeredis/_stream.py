@@ -205,24 +205,24 @@ class StreamGroup(object):
             consumer: Optional[str],
     ) -> List[List[bytes]]:
         _time = current_time()
-        relevent_ids = list(self.pel.keys())
+        relevant_ids = list(self.pel.keys())
         if consumer is not None:
-            relevent_ids = [k for k in relevent_ids if self.pel[k][0] == consumer]
+            relevant_ids = [k for k in relevant_ids if self.pel[k][0] == consumer]
         if idle is not None:
-            relevent_ids = [k for k in relevent_ids if self.pel[k][1] + idle < _time]
+            relevant_ids = [k for k in relevant_ids if self.pel[k][1] + idle < _time]
         if start is not None and end is not None:
-            relevent_ids = [
+            relevant_ids = [
                 k
-                for k in relevent_ids
+                for k in relevant_ids
                 if (
                         ((start.value < k) or (start.value == k and not start.exclusive))
                         and ((end.value > k) or (end.value == k and not end.exclusive))
                 )
             ]
         if count is not None:
-            relevent_ids = sorted(relevent_ids)[:count]
+            relevant_ids = sorted(relevant_ids)[:count]
 
-        return [[k.encode(), self.pel[k][0]] for k in relevent_ids]
+        return [[k.encode(), self.pel[k][0]] for k in relevant_ids]
 
     def pending_summary(self) -> List[Any]:
         counter = Counter([self.pel[k][0] for k in self.pel])
