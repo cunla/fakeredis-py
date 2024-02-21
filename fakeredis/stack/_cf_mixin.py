@@ -147,11 +147,11 @@ class CFCommandsMixin:
     def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
-        (bucketsize, maxiterations, expansion), _ = extract_args(args, ("+bucketsize", "+maxiterations", "+expansion"))
+        (bucket_size, max_iterations, expansion), _ = extract_args(args, ("+bucketsize", "+maxiterations", "+expansion"))
 
-        maxiterations = maxiterations or 20
-        bucketsize = bucketsize or 2
-        value = ScalableCuckooFilter(capacity, bucket_size=bucketsize, max_iterations=maxiterations)
+        max_iterations = max_iterations or 20
+        bucket_size = bucket_size or 2
+        value = ScalableCuckooFilter(capacity, bucket_size=bucket_size, max_iterations=max_iterations)
         key.update(value)
         return OK
 
@@ -171,7 +171,7 @@ class CFCommandsMixin:
             return [0, None]
 
     @command(name="CF.LOADCHUNK", fixed=(Key(), Int, bytes), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def cf_loadchunk(self, key: CommandItem, iterator: int, data: bytes) -> SimpleString:
+    def cf_loadchunk(self, key: CommandItem, _: int, data: bytes) -> SimpleString:
         if key.value is not None and type(key.value) is not ScalableCuckooFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         key.value = ScalableCuckooFilter.frombytes(data)
