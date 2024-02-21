@@ -20,7 +20,7 @@ def test_create(r: redis.Redis):
     assert r.cf().create("cuckoo_mi", 1000, max_iterations=10)
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbyprob("cmsProb", 0.01, 0.01)
-    # assert r.topk().reserve("topk", 5, 100, 5, 0.9) TODO
+    assert r.topk().reserve("topk", 5, 100, 5, 0.9)
 
 
 def test_bf_reserve(r: redis.Redis):

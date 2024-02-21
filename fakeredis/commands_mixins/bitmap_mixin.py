@@ -31,7 +31,6 @@ class BitfieldEncoding:
 
 
 class BitmapCommandsMixin:
-    # TODO: bitfield, bitfield_ro, bitpos
 
     def __init(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
