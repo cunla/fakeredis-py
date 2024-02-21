@@ -39,7 +39,7 @@ SORTED_SET_METHODS = {
 
 
 class SortedSetCommandsMixin:
-    _blocking: Callable
+    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
     _scan: Callable
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

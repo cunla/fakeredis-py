@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, List
+from typing import Callable, List, Optional, Union, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -40,10 +40,11 @@ def _list_pop(get_slice, key, *args):
 
 
 class ListCommandsMixin:
+    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
+
     def __init__(self, *args, **kwargs):
         super(ListCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self._blocking: Callable
 
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:

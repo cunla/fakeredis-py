@@ -1,5 +1,5 @@
 import functools
-from typing import List, Union, Tuple, Callable
+from typing import List, Union, Tuple, Callable, Optional, Any
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -9,19 +9,15 @@ from fakeredis._stream import XStream, StreamRangeTest, StreamGroup
 
 
 class StreamsCommandsMixin:
-    _blocking: Callable
+    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
         self.version: Tuple[int]
 
-    @command(
-        name="XADD",
-        fixed=(Key(),),
-        repeat=(bytes,),
-    )
-    def xadd(self, key, *args):
+    @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
+    def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
         (nomkstream, limit, maxlen, minid), left_args = extract_args(
             args,
             ("nomkstream", "+limit", "~+maxlen", "~minid"),
@@ -40,23 +36,18 @@ class StreamsCommandsMixin:
                 and not StreamRangeTest.valid_key(entry_key)
         ):
             raise SimpleError(msgs.XADD_INVALID_ID)
-        entry_key = stream.add(elements, entry_key=entry_key)
-        if entry_key is None:
+        res: Optional[bytes] = stream.add(elements, entry_key=entry_key)
+        if res is None:
             if not StreamRangeTest.valid_key(left_args[0]):
                 raise SimpleError(msgs.XADD_INVALID_ID)
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
         if maxlen is not None or minid is not None:
             stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
         key.update(stream)
-        return entry_key
+        return res
 
-    @command(
-        name="XTRIM",
-        fixed=(Key(XStream),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def xtrim(self, key, *args):
+    @command(name="XTRIM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def xtrim(self, key: CommandItem, *args: bytes) -> int:
         (limit, maxlen, minid), _ = extract_args(args, ("+limit", "~+maxlen", "~minid"))
         if maxlen is not None and minid is not None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -68,84 +59,21 @@ class StreamsCommandsMixin:
         return res
 
     @command(name="XLEN", fixed=(Key(XStream),))
-    def xlen(self, key):
+    def xlen(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @staticmethod
-    def _xrange(
-            stream: XStream,
-            _min: StreamRangeTest,
-            _max: StreamRangeTest,
-            reverse: bool,
-            count: Union[int, None],
-    ) -> List:
-        if stream is None:
-            return []
-        if count is None:
-            count = len(stream)
-        res = stream.irange(_min, _max, reverse=reverse)
-        return res[:count]
-
-    @command(
-        name="XRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
-    def xrange(self, key, _min, _max, *args):
+    @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
+    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
-    @command(
-        name="XREVRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
-    def xrevrange(self, key, _min, _max, *args):
+    @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
+    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
-    def _xread(self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool,
-               first_pass: bool):
-        max_inf = StreamRangeTest.decode(b"+")
-        res = list()
-        for stream_name, start_id in stream_start_id_list:
-            item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
-            stream_results = self._xrange(item.value, start_id, max_inf, False, count)
-            if first_pass and (count is None):
-                return None
-            if len(stream_results) > 0:
-                res.append([item.key, stream_results])
-        if blocking and count and len(res) == 0:
-            return None
-        return res
-
-    def _xreadgroup(
-            self,
-            consumer_name: bytes,
-            group_params: List[Tuple[StreamGroup, bytes, bytes]],
-            count: int,
-            noack: bool,
-            first_pass: bool,
-    ):
-        res = list()
-        for group, stream_name, start_id in group_params:
-            stream_results = group.group_read(consumer_name, start_id, count, noack)
-            if first_pass and (count is None or len(stream_results) < count):
-                return None
-            if len(stream_results) > 0 or start_id != b">":
-                res.append([stream_name, stream_results])
-        return res
-
-    @staticmethod
-    def _parse_start_id(key: CommandItem, s: bytes) -> StreamRangeTest:
-        if s == b"$":
-            if key.value is None:
-                return StreamRangeTest.decode(b"0-0")
-            return StreamRangeTest.decode(key.value.last_item_key(), exclusive=True)
-        return StreamRangeTest.decode(s, exclusive=True)
-
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,))
-    def xread(self, *args):
+    def xread(self, *args: bytes) -> Optional[List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
         (count, timeout,), left_args = extract_args(args, ("+count", "+block",), error_on_unexpected=False, )
         if (len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -210,22 +138,14 @@ class StreamsCommandsMixin:
                 ),
             )
 
-    @command(
-        name="XDEL",
-        fixed=(Key(XStream),),
-        repeat=(bytes,),
-    )
-    def xdel(self, key, *args):
+    @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,), )
+    def xdel(self, key: CommandItem, *args):
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xdel"))
         res = key.value.delete(args)
         return res
 
-    @command(
-        name="XACK",
-        fixed=(Key(XStream), bytes),
-        repeat=(bytes,),
-    )
+    @command(name="XACK", fixed=(Key(XStream), bytes), repeat=(bytes,), )
     def xack(self, key, group_name, *args):
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xack"))
@@ -236,12 +156,8 @@ class StreamsCommandsMixin:
             return 0
         return group.ack(args)  # type: ignore
 
-    @command(
-        name="XPENDING",
-        fixed=(Key(XStream), bytes),
-        repeat=(bytes,),
-    )
-    def xpending(self, key, group_name, *args):
+    @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
+    def xpending(self, key: CommandItem, group_name, *args):
         if key.value is None:
             return 0
         idle, start, end, count, consumer = None, None, None, None, None
@@ -268,13 +184,8 @@ class StreamsCommandsMixin:
         else:
             return group.pending_summary()
 
-    @command(
-        name="XGROUP CREATE",
-        fixed=(Key(XStream), bytes, bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
-    def xgroup_create(self, key, group_name, start_key, *args):
+    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    def xgroup_create(self, key: CommandItem, group_name, start_key, *args):
         (
             mkstream,
             entries_read,
@@ -287,12 +198,8 @@ class StreamsCommandsMixin:
         key.updated()
         return OK
 
-    @command(
-        name="XGROUP SETID",
-        fixed=(Key(XStream), bytes, bytes),
-        repeat=(bytes,),
-    )
-    def xgroup_setid(self, key, group_name, start_key, *args):
+    @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,))
+    def xgroup_setid(self, key: CommandItem, group_name, start_key, *args):
         (entries_read,), _ = extract_args(args, ("+entriesread",))
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
@@ -304,30 +211,15 @@ class StreamsCommandsMixin:
         group.set_id(start_key, entries_read)
         return OK
 
-    @command(
-        name="XGROUP DESTROY",
-        fixed=(
-                Key(XStream),
-                bytes,
-        ),
-        repeat=(),
-    )
-    def xgroup_destroy(
-            self,
-            key,
-            group_name,
-    ):
+    @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes), repeat=())
+    def xgroup_destroy(self, key: CommandItem, group_name):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         res = key.value.group_delete(group_name)
         return res
 
-    @command(
-        name="XGROUP CREATECONSUMER",
-        fixed=(Key(XStream), bytes, bytes),
-        repeat=(),
-    )
-    def xgroup_createconsumer(self, key, group_name, consumer_name):
+    @command(name="XGROUP CREATECONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=())
+    def xgroup_createconsumer(self, key: CommandItem, group_name, consumer_name):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
@@ -337,12 +229,8 @@ class StreamsCommandsMixin:
             )
         return group.add_consumer(consumer_name)
 
-    @command(
-        name="XGROUP DELCONSUMER",
-        fixed=(Key(XStream), bytes, bytes),
-        repeat=(),
-    )
-    def xgroup_delconsumer(self, key, group_name, consumer_name):
+    @command(name="XGROUP DELCONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=())
+    def xgroup_delconsumer(self, key: CommandItem, group_name, consumer_name):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
@@ -352,40 +240,21 @@ class StreamsCommandsMixin:
             )
         return group.del_consumer(consumer_name)
 
-    @command(
-        name="XINFO GROUPS",
-        fixed=(Key(XStream),),
-        repeat=(),
-    )
-    def xinfo_groups(
-            self,
-            key,
-    ):
+    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
+    def xinfo_groups(self, key: CommandItem):
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.groups_info()
 
-    @command(
-        name="XINFO STREAM",
-        fixed=(Key(XStream),),
-        repeat=(bytes,),
-    )
-    def xinfo_stream(self, key, *args):
+    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,))
+    def xinfo_stream(self, key: CommandItem, *args):
         (full,), _ = extract_args(args, ("full",))
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.stream_info(full)
 
-    @command(
-        name="XINFO CONSUMERS",
-        fixed=(Key(XStream), bytes),
-        repeat=(),
-    )
-    def xinfo_consumers(
-            self,
-            key,
-            group_name,
-    ):
+    @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
+    def xinfo_consumers(self, key: CommandItem, group_name):
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
@@ -395,12 +264,8 @@ class StreamsCommandsMixin:
             )
         return group.consumers_info()
 
-    @command(
-        name="XCLAIM",
-        fixed=(Key(XStream), bytes, bytes, Int, bytes),
-        repeat=(bytes,),
-    )
-    def xclaim(self, key, group_name, consumer_name, min_idle_ms, *args):
+    @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
+    def xclaim(self, key: CommandItem, group_name, consumer_name, min_idle_ms, *args):
         stream = key.value
         if stream is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
@@ -425,12 +290,8 @@ class StreamsCommandsMixin:
             return [msg.encode() for msg in msgs_claimed]
         return [stream.format_record(msg) for msg in msgs_claimed]
 
-    @command(
-        name="XAUTOCLAIM",
-        fixed=(Key(XStream), bytes, bytes, Int, bytes),
-        repeat=(bytes,),
-    )
-    def xautoclaim(self, key, group_name, consumer_name, min_idle_ms, start, *args):
+    @command(name="XAUTOCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
+    def xautoclaim(self, key: CommandItem, group_name, consumer_name, min_idle_ms, start, *args):
         (count, justid), _ = extract_args(args, ("+count", "justid"))
         count = count or 100
         stream = key.value
@@ -456,3 +317,58 @@ class StreamsCommandsMixin:
         if self.version >= (7,):
             res.append([msg.encode() for msg in msgs_removed])
         return res
+
+    @staticmethod
+    def _xrange(
+            stream: XStream,
+            _min: StreamRangeTest,
+            _max: StreamRangeTest,
+            reverse: bool,
+            count: Union[int, None],
+    ) -> List[bytes]:
+        if stream is None:
+            return []
+        if count is None:
+            count = len(stream)
+        res = stream.irange(_min, _max, reverse=reverse)
+        return res[:count]
+
+    def _xreadgroup(
+            self,
+            consumer_name: bytes,
+            group_params: List[Tuple[StreamGroup, bytes, bytes]],
+            count: int,
+            noack: bool,
+            first_pass: bool,
+    ):
+        res = list()
+        for group, stream_name, start_id in group_params:
+            stream_results = group.group_read(consumer_name, start_id, count, noack)
+            if first_pass and (count is None or len(stream_results) < count):
+                return None
+            if len(stream_results) > 0 or start_id != b">":
+                res.append([stream_name, stream_results])
+        return res
+
+    def _xread(self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool,
+               first_pass: bool):
+        max_inf = StreamRangeTest.decode(b"+")
+        res = list()
+        for stream_name, start_id in stream_start_id_list:
+            item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
+            stream_results = self._xrange(item.value, start_id, max_inf, False, count)
+            if first_pass and (count is None):
+                return None
+            if len(stream_results) > 0:
+                res.append([item.key, stream_results])
+        if blocking and count and len(res) == 0:
+            return None
+        return res
+
+    @staticmethod
+    def _parse_start_id(key: CommandItem, s: bytes) -> StreamRangeTest:
+        if s == b"$":
+            if key.value is None:
+                return StreamRangeTest.decode(b"0-0")
+            return StreamRangeTest.decode(key.value.last_item_key(), exclusive=True)
+        return StreamRangeTest.decode(s, exclusive=True)

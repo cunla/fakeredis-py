@@ -210,7 +210,7 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable):
+    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable[[bool], Any]):
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
