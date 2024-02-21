@@ -414,8 +414,10 @@ def test_xreadgroup(r: redis.Redis):
     stream, group, consumer = "stream", "group", "consumer1"
     with pytest.raises(redis.exceptions.ResponseError):
         r.xreadgroup(group, consumer, streams={stream: ">"})
-    m1 = r.xadd(stream, {"foo": "bar"})
-    m2 = r.xadd(stream, {"bing": "baz"})
+    c1 = {b"foo": b"bar"}
+    c2 = {b"bing": b"baz"}
+    m1 = r.xadd(stream, c1)
+    m2 = r.xadd(stream, c2)
     with pytest.raises(
             redis.exceptions.ResponseError,
             match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)):
@@ -457,11 +459,11 @@ def test_xreadgroup(r: redis.Redis):
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, "0")
 
-    # TODO
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == [[stream.encode(), [(m1, c1), (m2, c2)]]]
     # delete all the messages in the stream
+    assert r.xtrim(stream, 0) == 2
+    # TODO groups keep ids of deleted messages
     # expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
-    # r.xreadgroup(group, consumer, streams={stream: ">"})
-    # r.xtrim(stream, 0)
     # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
     r.xreadgroup(group, consumer, streams={stream: '>'}, count=10, block=500)
 
