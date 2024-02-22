@@ -12,7 +12,7 @@ try:
     from lupa import LuaRuntime  # noqa: F401
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 except ImportError:
-    class ScriptingCommandsMixin:
+    class ScriptingCommandsMixin:  # type: ignore  # noqa: E303
         pass
 
 from .commands_mixins.server_mixin import ServerCommandsMixin
@@ -45,5 +45,5 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
 ):
-    def __init__(self, server: "FakeServer", db: int) -> None:  # noqa: F821
+    def __init__(self, server: "FakeServer", db: int) -> None:  # type: ignore # noqa: F821
         super(FakeSocket, self).__init__(server, db)

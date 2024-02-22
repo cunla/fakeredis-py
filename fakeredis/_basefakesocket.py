@@ -9,7 +9,7 @@ from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature, CommandItem
 from ._helpers import (
     SimpleError,
     valid_response_type,
@@ -199,7 +199,7 @@ class BaseFakeSocket:
     def _decode_error(self, error):
         return DefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
 
-    def _decode_result(self, result):
+    def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""
         if isinstance(result, list):
             return [self._decode_result(r) for r in result]
@@ -359,7 +359,7 @@ class BaseFakeSocket:
             result_cursor = 0
         return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
 
-    def _ttl(self, key, scale) -> int:
+    def _ttl(self, key: CommandItem, scale) -> int:
         if not key:
             return -2
         elif key.expireat is None:

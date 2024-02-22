@@ -133,13 +133,11 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             if timeout is not None and now > start + timeout:
                 return False
 
-    def _decode(self, response):
+    def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
             return [self._decode(item) for item in response]
         elif isinstance(response, bytes):
-            return self.encoder.decode(
-                response,
-            )
+            return self.encoder.decode(response)
         else:
             return response
 

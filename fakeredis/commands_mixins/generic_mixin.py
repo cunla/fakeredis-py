@@ -1,7 +1,7 @@
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any, Callable
+from typing import Tuple, Any, Callable, List
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -13,16 +13,16 @@ from fakeredis._commands import (
     BeforeAny,
     CommandItem,
     SortFloat,
-    delete_keys,
+    delete_keys, Item,
 )
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database
+from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
 from fakeredis._zset import ZSet
 
 
 class GenericCommandsMixin:
-    _ttl: Callable
-    _scan: Callable
-    _key_value_type: Callable
+    _ttl: Callable[[CommandItem, float], int]
+    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _key_value_type: Callable[[Item], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
@@ -295,13 +295,13 @@ class GenericCommandsMixin:
             return out
 
     @command((Key(),))
-    def ttl(self, key):
+    def ttl(self, key: CommandItem):
         return self._ttl(key, 1.0)
 
     @command((Key(),))
-    def type(self, key):
+    def type(self, key: CommandItem):
         return self._key_value_type(key)
 
     @command((Key(),), (Key(),), name="unlink")
-    def unlink(self, *keys):
+    def unlink(self, *keys: CommandItem):
         return delete_keys(*keys)

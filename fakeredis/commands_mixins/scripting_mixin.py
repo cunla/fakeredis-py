@@ -2,7 +2,7 @@ import functools
 import hashlib
 import itertools
 import logging
-from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict
+from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 
 from lupa import LuaRuntime
 
@@ -65,7 +65,7 @@ def _lua_redis_log(lua_runtime: LuaRuntime, expected_globals: Set[Any], lvl: int
 
 
 class ScriptingCommandsMixin:
-    _name_to_func: Callable[[str, ], Tuple[Callable[..., Any], Signature]]
+    _name_to_func: Callable[[str, ], Tuple[Optional[Callable[..., Any]], Signature]]
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):

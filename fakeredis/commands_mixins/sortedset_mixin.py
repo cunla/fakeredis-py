@@ -40,7 +40,8 @@ SORTED_SET_METHODS = {
 
 class SortedSetCommandsMixin:
     _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
-    _scan: Callable
+    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _encodefloat: Callable[[float, bool], bytes]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
@@ -68,7 +69,7 @@ class SortedSetCommandsMixin:
 
     def _bzpop(
             self, keys: List[bytes], reverse: bool, first_pass: bool
-    ) -> Optional[List[Any]]:
+    ) -> Optional[List[Union[bytes, List[bytes]]]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse, True)
@@ -77,30 +78,30 @@ class SortedSetCommandsMixin:
         return None
 
     @command((Key(ZSet),), (Int,))
-    def zpopmin(self, key, count: int = 1):
+    def zpopmin(self, key: CommandItem, count: int = 1) -> List[List[bytes]]:
         return self._zpop(key, count, reverse=False, flatten_list=True)
 
     @command((Key(ZSet),), (Int,))
-    def zpopmax(self, key, count: int = 1):
+    def zpopmax(self, key: CommandItem, count: int = 1) -> List[List[bytes]]:
         return self._zpop(key, count, reverse=True, flatten_list=True)
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def bzpopmin(self, *args):
+    def bzpopmin(self, *args: bytes) -> Optional[List[List[bytes]]]:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, False))
+        return self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def bzpopmax(self, *args):
+    def bzpopmax(self, *args: bytes) -> Optional[List[List[bytes]]]:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, True))
+        return self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
 
     @staticmethod
-    def _limit_items(items: List, offset: int, count: int):
-        out = []
+    def _limit_items(items: List[bytes], offset: int, count: int) -> List[bytes]:
+        out: List[bytes] = []
         for item in items:
-            if offset:  # Note: not offset > 0, in order to match redis
+            if offset:  # Note: not offset > 0, to match redis
                 offset -= 1
                 continue
             if count == 0:
@@ -684,6 +685,3 @@ class SortedSetCommandsMixin:
                 self._zmpop, args[:-1], count, casematch(args[-1], b"max")
             ),
         )
-
-    def _encodefloat(self, value, humanfriendly):
-        raise NotImplementedError  # Implemented in BaseFakeSocket
