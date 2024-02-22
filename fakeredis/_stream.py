@@ -202,7 +202,7 @@ class StreamGroup(object):
             start: Optional[StreamRangeTest],
             end: Optional[StreamRangeTest],
             count: Optional[int],
-            consumer: Optional[str],
+            consumer: Optional[bytes],
     ) -> List[List[bytes]]:
         _time = current_time()
         relevant_ids = list(self.pel.keys())
@@ -237,7 +237,7 @@ class StreamGroup(object):
     def claim(
             self,
             min_idle_ms: int,
-            msgs: Sequence[bytes],
+            msgs: Union[Sequence[bytes], Sequence[StreamEntryKey]],
             consumer_name: bytes,
             _time: Optional[int],
             force: bool,
