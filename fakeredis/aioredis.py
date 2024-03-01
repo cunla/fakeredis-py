@@ -82,6 +82,8 @@ class FakeReader:
     async def read(self, _: int) -> bytes:
         return await self._socket.responses.get()  # type:ignore
 
+    def at_eof(self) -> bool:
+        return self._socket.responses.empty() and not self._socket._server.connected
 
 class FakeWriter:
     def __init__(self, socket: AsyncFakeSocket) -> None:
