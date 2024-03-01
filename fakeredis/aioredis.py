@@ -85,6 +85,7 @@ class FakeReader:
     def at_eof(self) -> bool:
         return self._socket.responses.empty() and not self._socket._server.connected
 
+
 class FakeWriter:
     def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket: Optional[AsyncFakeSocket] = socket
