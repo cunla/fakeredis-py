@@ -126,7 +126,7 @@ class BaseFakeSocket:
             subs.discard(self)
         self._clear_watches()
 
-    def close(self):
+    def close(self) -> None:
         # Mark ourselves for cleanup. This might be called from
         # redis.Connection.__del__, which the garbage collection could call
         # at any time, and hence we can't safely take the server lock.
@@ -359,7 +359,7 @@ class BaseFakeSocket:
             result_cursor = 0
         return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
 
-    def _ttl(self, key: CommandItem, scale) -> int:
+    def _ttl(self, key: CommandItem, scale: int) -> int:
         if not key:
             return -2
         elif key.expireat is None:

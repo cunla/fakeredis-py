@@ -1,6 +1,6 @@
 import sys
 from collections import namedtuple
-from typing import List, Any
+from typing import List, Any, Callable, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -88,7 +88,9 @@ def _find_near(
 
 
 class GeoCommandsMixin:
-    def __init__(self, *args, **kwargs):
+    _encodefloat: Callable[[float, bool], bytes]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GeoCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
 
@@ -104,7 +106,7 @@ class GeoCommandsMixin:
         return len(geo_results)
 
     @command(name="GEOADD", fixed=(Key(ZSet),), repeat=(bytes,))
-    def geoadd(self, key, *args):
+    def geoadd(self, key: CommandItem, *args: bytes) -> int:
         (xx, nx, ch), data = extract_args(
             args,
             ("nx", "xx", "ch"),
@@ -133,13 +135,13 @@ class GeoCommandsMixin:
         return len(zset) - old_len
 
     @command(name="GEOHASH", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def geohash(self, key, *members):
+    def geohash(self, key: CommandItem, *members: bytes) -> List[bytes]:
         hashes = map(key.value.get, members)
         geohash_list = [((x + "0").encode() if x is not None else x) for x in hashes]
         return geohash_list
 
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def geopos(self, key, *members):
+    def geopos(self, key: CommandItem, *members: bytes) -> List[Optional[List[bytes]]]:
         gospositions = map(
             lambda x: geohash.decode(x) if x is not None else x,
             map(key.value.get, members),
@@ -147,8 +149,8 @@ class GeoCommandsMixin:
         res = [
             (
                 [
-                    self._encodefloat(x[1], humanfriendly=False),
-                    self._encodefloat(x[0], humanfriendly=False),
+                    self._encodefloat(x[1], False),
+                    self._encodefloat(x[0], False),
                 ]
                 if x is not None
                 else None
@@ -158,7 +160,7 @@ class GeoCommandsMixin:
         return res
 
     @command(name="GEODIST", fixed=(Key(ZSet), bytes, bytes), repeat=(bytes,))
-    def geodist(self, key, m1, m2, *args):
+    def geodist(self, key: CommandItem, m1: bytes, m2: bytes, *args: bytes) -> Optional[float]:
         geohashes = [key.value.get(m1), key.value.get(m2)]
         if any(elem is None for elem in geohashes):
             return None
@@ -171,20 +173,20 @@ class GeoCommandsMixin:
 
     def _search(
             self,
-            key,
-            long,
-            lat,
-            radius,
-            conv,
-            withcoord,
-            withdist,
-            _,
-            count,
-            count_any,
-            desc,
-            store,
-            storedist,
-    ):
+            key: CommandItem,
+            long: float,
+            lat: float,
+            radius: float,
+            conv: float,
+            withcoord: bool,
+            withdist: bool,
+            _: bool,
+            count: int,
+            count_any: bool,
+            desc: bool,
+            store: Optional[bytes],
+            storedist: Optional[bytes],
+    ) -> Union[List[Any], int]:
         zset = key.value
         geo_results = _find_near(zset, lat, long, radius, conv, count, count_any, desc)
 
@@ -200,74 +202,31 @@ class GeoCommandsMixin:
     @command(
         name="GEORADIUS_RO", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,)
     )
-    def georadius_ro(self, key, long, lat, radius, *args):
-        (
-            withcoord,
-            withdist,
-            withhash,
-            count,
-            count_any,
-            desc,
-        ), left_args = extract_args(
+    def georadius_ro(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> List[Any]:
+        (withcoord, withdist, withhash, count, count_any, desc), left_args = extract_args(
             args,
-            (
-                "withcoord",
-                "withdist",
-                "withhash",
-                "+count",
-                "any",
-                "desc",
-            ),
+            ("withcoord", "withdist", "withhash", "+count", "any", "desc"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
         count = count or sys.maxsize
-        conv = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1
-        return self._search(
-            key,
-            long,
-            lat,
-            radius,
-            conv,
-            withcoord,
-            withdist,
-            withhash,
-            count,
-            count_any,
-            desc,
-            False,
-            False,
-        )
+        conv: float = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1.0
+        res: List[Any] = self._search(  # type: ignore
+            key, long, lat, radius, conv, withcoord, withdist,
+            withhash, count, count_any, desc, None, None)
+        return res
 
     @command(name="GEORADIUS", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
-    def georadius(self, key, long, lat, radius, *args):
-        (
-            withcoord,
-            withdist,
-            withhash,
-            count,
-            count_any,
-            desc,
-            store,
-            storedist,
-        ), left_args = extract_args(
+    def georadius(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> List[Any]:
+        (withcoord, withdist, withhash, count, count_any, desc, store, storedist), left_args = extract_args(
             args,
-            (
-                "withcoord",
-                "withdist",
-                "withhash",
-                "+count",
-                "any",
-                "desc",
-                "*store",
-                "*storedist",
-            ),
+            ("withcoord", "withdist", "withhash", "+count", "any", "desc", "*store", "*storedist"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
         count = count or sys.maxsize
         conv = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1
-        return self._search(
+        res: List[Any] = self._search(  # type: ignore
             key,
             long,
             lat,
@@ -282,9 +241,10 @@ class GeoCommandsMixin:
             store,
             storedist,
         )
+        return res
 
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
-    def georadiusbymember(self, key, member_name, radius, *args):
+    def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes):
         member_score = key.value.get(member_name)
         lat, long, _, _ = geohash.decode(member_score)
         return self.georadius(key, long, lat, radius, *args)
@@ -292,13 +252,13 @@ class GeoCommandsMixin:
     @command(
         name="GEORADIUSBYMEMBER_RO", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,)
     )
-    def georadiusbymember_ro(self, key, member_name, radius, *args):
+    def georadiusbymember_ro(self, key: CommandItem, member_name: bytes, radius: float, *args: float) -> List[Any]:
         member_score = key.value.get(member_name)
         lat, long, _, _ = geohash.decode(member_score)
         return self.georadius_ro(key, long, lat, radius, *args)
 
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
-    def geosearch(self, key, *args):
+    def geosearch(self, key: CommandItem, *args: bytes) -> List[Any]:
         (frommember, (long, lat), radius), left_args = extract_args(
             args,
             ("*frommember", "..fromlonlat", ".byradius"),
@@ -312,7 +272,7 @@ class GeoCommandsMixin:
         if frommember:
             return self.georadiusbymember_ro(key, frommember, radius, *left_args)
         else:
-            return self.georadius_ro(key, long, lat, radius, *left_args)
+            return self.georadius_ro(key, long, lat, radius, *left_args)  # type: ignore
 
     @command(
         name="GEOSEARCHSTORE",
@@ -322,7 +282,7 @@ class GeoCommandsMixin:
         ),
         repeat=(bytes,),
     )
-    def geosearchstore(self, dst, src, *args):
+    def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> List[Any]:
         (frommember, (long, lat), radius, storedist), left_args = extract_args(
             args,
             ("*frommember", "..fromlonlat", ".byradius", "storedist"),
@@ -336,11 +296,6 @@ class GeoCommandsMixin:
         additional = [b"storedist", dst] if storedist else [b"store", dst]
 
         if frommember:
-            return self.georadiusbymember(
-                src, frommember, radius, *left_args, *additional
-            )
+            return self.georadiusbymember(src, frommember, radius, *left_args, *additional)
         else:
-            return self.georadius(src, long, lat, radius, *left_args, *additional)
-
-    def _encodefloat(self, value, humanfriendly):
-        raise NotImplementedError  # Implemented in BaseFakeSocket
+            return self.georadius(src, long, lat, radius, *left_args, *additional)  # type: ignore

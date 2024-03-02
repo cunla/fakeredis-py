@@ -50,7 +50,7 @@ class FakeServer:
         return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
 
-class FakeBaseConnectionMixin:
+class FakeBaseConnectionMixin(object):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str

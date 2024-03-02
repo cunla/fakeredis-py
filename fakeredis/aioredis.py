@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List
 
+from redis import ResponseError
+
+from ._helpers import SimpleError
 from ._server import FakeBaseConnectionMixin
 
 if sys.version_info >= (3, 11):
@@ -25,9 +28,9 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.responses = asyncio.Queue()  # type:ignore
+        self.responses: asyncio.Queue = asyncio.Queue()  # type:ignore
 
-    def _decode_error(self, error):
+    def _decode_error(self, error: SimpleError) -> ResponseError:
         parser = DefaultParser(1)
         return parser.parse_error(error.value)
 
@@ -36,7 +39,12 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
             return
         self.responses.put_nowait(msg)
 
-    async def _async_blocking(self, timeout, func, event, callback):
+    async def _async_blocking(
+            self,
+            timeout: Optional[Union[float, int]],
+            func: Callable[[bool, ], Any],
+            event: asyncio.Event,
+            callback: Callable[[], None]) -> None:
         result = None
         try:
             async with async_timeout(timeout if timeout else None):
@@ -59,14 +67,14 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
             self.put_response(result)
             self.resume()
 
-    def _blocking(self, timeout, func):
+    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable[[bool, ], None]) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
             return ret
         event = asyncio.Event()
 
-        def callback():
+        def callback() -> None:
             loop.call_soon_threadsafe(event.set)
 
         self._db.add_change_callback(callback)
@@ -93,32 +101,32 @@ class FakeWriter:
     def close(self) -> None:
         self._socket = None
 
-    async def wait_closed(self):
+    async def wait_closed(self) -> None:
         pass
 
-    async def drain(self):
+    async def drain(self) -> None:
         pass
 
-    def writelines(self, data) -> None:
+    def writelines(self, data: Iterable[Any]) -> None:
         if self._socket is None:
             return
         for chunk in data:
-            self._socket.sendall(chunk)
+            self._socket.sendall(chunk)  # type:ignore
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
-    async def _connect(self):
+    async def _connect(self) -> None:
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        self._sock = AsyncFakeSocket(self._server, self.db)
-        self._reader = FakeReader(self._sock)
-        self._writer = FakeWriter(self._sock)
+        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(self._server, self.db)
+        self._reader: Optional[FakeReader] = FakeReader(self._sock)
+        self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
-    async def disconnect(self, **kwargs):
+    async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
         await super().disconnect(**kwargs)
         self._sock = None
 
-    async def can_read(self, timeout: Optional[float] = 0):
+    async def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self.is_connected:
             await self.connect()
         if timeout == 0:
@@ -144,7 +152,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         else:
             return response
 
-    async def read_response(self, **kwargs):
+    async def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
@@ -157,18 +165,18 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         else:
             timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
-            response = await self._reader.read(0) if can_read else None
+            response = await self._reader.read(0) if can_read and self._reader else None
         if isinstance(response, redis_async.ResponseError):
             raise response
         return self._decode(response)
 
-    def repr_pieces(self):
+    def repr_pieces(self) -> List[Tuple[str, Any]]:
         pieces = [("server", self._server), ("db", self.db)]
         if self.client_name:
             pieces.append(("client_name", self.client_name))
         return pieces
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.server_key
 
 
@@ -192,9 +200,9 @@ class FakeRedis(redis_async.Redis):
             username: Optional[str] = None,
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
-            version=(7,),
-            **kwargs,
-    ):
+            version: Tuple[int, ...] = (7,),
+            **kwargs: Any,
+    ) -> None:
         if not connection_pool:
             # Adapted from aioredis
             connection_kwargs = dict(
@@ -217,7 +225,7 @@ class FakeRedis(redis_async.Redis):
                 max_connections=max_connections,
                 version=version,
             )
-            connection_pool = redis_async.ConnectionPool(**connection_kwargs)
+            connection_pool = redis_async.ConnectionPool(**connection_kwargs)  # type:ignore
         kwargs.update(dict(db=db,
                            password=password,
                            socket_timeout=socket_timeout,
@@ -233,7 +241,7 @@ class FakeRedis(redis_async.Redis):
         super().__init__(**kwargs)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs) -> redis_async.Redis:
+    def from_url(cls, url: str, **kwargs: Any) -> redis_async.Redis:
         self = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection
