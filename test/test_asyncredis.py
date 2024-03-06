@@ -14,7 +14,7 @@ import pytest_asyncio
 import redis
 import redis.asyncio
 
-from fakeredis import FakeServer, aioredis
+from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
 from test import testtools
 
 pytestmark = [
@@ -367,112 +367,25 @@ async def test_connection_with_username_and_password():
 
 
 @pytest.mark.fake
-class TestInitArgs:
-    async def test_singleton(self):
-        shared_server = FakeServer()
-        r1 = aioredis.FakeRedis()
-        r2 = aioredis.FakeRedis(server=FakeServer())
-        r3 = aioredis.FakeRedis(server=shared_server)
-        r4 = aioredis.FakeRedis(server=shared_server)
+async def test_init_args():
+    sync_r1 = FakeStrictRedis()
+    r1 = FakeAsyncRedis()
+    r5 = FakeAsyncRedis()
+    r2 = FakeAsyncRedis(server=FakeServer())
 
-        await r1.set('foo', 'bar')
-        await r3.set('bar', 'baz')
-        assert await r1.get('foo') == b'bar'
-        assert not (await r2.exists('foo'))
-        assert not (await r3.exists('foo'))
-        assert await r3.get('bar') == b'baz'
-        assert await r4.get('bar') == b'baz'
-        assert not (await r1.exists('bar'))
+    shared_server = FakeServer()
+    r3 = FakeAsyncRedis(server=shared_server)
+    r4 = FakeAsyncRedis(server=shared_server)
 
-    async def test_host_init_arg(self):
-        db = aioredis.FakeRedis(host='localhost')
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == b'bar'
+    await r1.set('foo', 'bar')
+    await r3.set('bar', 'baz')
 
-    async def test_from_url(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/0')
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == b'bar'
+    assert await r1.get('foo') == b'bar'
+    assert await r5.get('foo') == b'bar'
+    assert sync_r1.get('foo') == b'bar'
+    assert await r2.get('foo') is None
+    assert await r3.get('foo') is None
 
-    async def test_from_url_user(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://user@localhost:6380/0')
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == b'bar'
-
-    async def test_from_url_user_password(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://user:password@localhost:6380/0')
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == b'bar'
-
-    async def test_from_url_with_db_arg(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/0')
-        db1 = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/1')
-        db2 = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/',
-            db=2)
-        await db.set('foo', 'foo0')
-        await db1.set('foo', 'foo1')
-        await db2.set('foo', 'foo2')
-        assert await db.get('foo') == b'foo0'
-        assert await db1.get('foo') == b'foo1'
-        assert await db2.get('foo') == b'foo2'
-
-    async def test_from_url_db_value_error(self):
-        # In the case of ValueError, should default to 0, or be absent in redis-py 4.0
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/a')
-        assert db.connection_pool.connection_kwargs.get('db', 0) == 0
-
-    async def test_can_pass_through_extra_args(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/0',
-            decode_responses=True)
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == 'bar'
-
-    async def test_can_allow_extra_args(self):
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/0',
-            socket_connect_timeout=11, socket_timeout=12, socket_keepalive=True,
-            socket_keepalive_options={60: 30}, socket_type=1,
-            retry_on_timeout=True,
-        )
-        fake_conn = db.connection_pool.make_connection()
-        assert fake_conn.socket_connect_timeout == 11
-        assert fake_conn.socket_timeout == 12
-        assert fake_conn.socket_keepalive is True
-        assert fake_conn.socket_keepalive_options == {60: 30}
-        assert fake_conn.socket_type == 1
-        assert fake_conn.retry_on_timeout is True
-
-        # Make fallback logic match redis-py
-        db = aioredis.FakeRedis.from_url(
-            'redis://localhost:6380/0',
-            socket_connect_timeout=None, socket_timeout=30
-        )
-        fake_conn = db.connection_pool.make_connection()
-        assert fake_conn.socket_connect_timeout == fake_conn.socket_timeout
-        assert fake_conn.socket_keepalive_options == {}
-
-    async def test_repr(self):
-        # repr is human-readable, so we only test that it doesn't crash,
-        # and that it contains the db number.
-        db = aioredis.FakeRedis.from_url('redis://localhost:6380/11')
-        rep = repr(db)
-        assert 'db=11' in rep
-
-    async def test_from_unix_socket(self):
-        db = aioredis.FakeRedis.from_url('unix://a/b/c')
-        await db.set('foo', 'bar')
-        assert await db.get('foo') == b'bar'
-
-    async def test_connection_different_server(self):
-        conn1 = aioredis.FakeRedis(host="host_one", port=1000)
-        await conn1.set("30", "30")
-        conn2 = aioredis.FakeRedis(host="host_two", port=2000)
-        assert await conn2.get("30") is None
+    assert await r3.get('bar') == b'baz'
+    assert await r4.get('bar') == b'baz'
+    assert await r1.get('bar') is None

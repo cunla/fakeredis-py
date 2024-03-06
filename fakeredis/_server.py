@@ -145,7 +145,7 @@ class FakeRedisMixin:
                      ]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-        kwargs.setdefault("host", uuid.uuid4().hex)
+        kwargs.setdefault("host", "localhost")
         kwds = {
             p.name: kwargs.get(p.name, p.default)
             for ind, p in enumerate(parameters)
