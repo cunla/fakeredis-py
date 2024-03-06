@@ -5,6 +5,10 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+### 🐛 Bug Fixes
+
+- Connection params are defaulted to be the same between async and sync connections #290
+
 ## v2.21.1
 
 ### 🐛 Bug Fixes

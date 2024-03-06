@@ -3,7 +3,6 @@ import logging
 import queue
 import threading
 import time
-import uuid
 import warnings
 import weakref
 from collections import defaultdict
