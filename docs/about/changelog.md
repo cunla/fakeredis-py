@@ -8,6 +8,7 @@ description: Change log of all fakeredis releases
 ### 🐛 Bug Fixes
 
 - Connection params are defaulted to be the same between async and sync connections #290
+- `xinfo_stream` raises exception when stream does not exist #296
 
 ## v2.21.1
 
