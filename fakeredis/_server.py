@@ -7,6 +7,7 @@ import warnings
 import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional
+import uuid
 
 import redis
 
@@ -144,7 +145,7 @@ class FakeRedisMixin:
                      ]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-        kwargs.setdefault("host", "localhost")
+        kwargs.setdefault("host", uuid.uuid4().hex)
         kwds = {
             p.name: kwargs.get(p.name, p.default)
             for ind, p in enumerate(parameters)
