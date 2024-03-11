@@ -381,7 +381,7 @@ async def test_init_args():
     await r3.set('bar', 'baz')
 
     assert await r1.get('foo') == b'bar'
-    assert await r5.get('foo') == b'bar'
+    assert await r5.get('foo') is None
     assert sync_r1.get('foo') is None
     assert await r2.get('foo') is None
     assert await r3.get('foo') is None
