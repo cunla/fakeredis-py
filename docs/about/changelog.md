@@ -7,6 +7,10 @@ description: Change log of all fakeredis releases
 
 ## v2.21.2
 
+> Note: Since connection params are defaulted to be the same between async and sync connections, different FakeRedis
+> connections with the same connection params (or without connection parameters) will share the same server data
+> structure.
+
 ### 🐛 Bug Fixes
 
 - Connection params are defaulted to be the same between async and sync connections #290
