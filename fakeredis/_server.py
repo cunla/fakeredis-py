@@ -6,7 +6,7 @@ import time
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional
+from typing import Dict, Tuple, Any, List, Optional, Union
 import uuid
 
 import redis
@@ -17,22 +17,24 @@ from . import _msgs as msgs
 
 LOGGER = logging.getLogger("fakeredis")
 
+VersionType = Union[Tuple[int, ...], int, str]
 
-def _create_version(v: Tuple[int, ...]) -> Tuple[int, ...]:
+
+def _create_version(v: VersionType) -> Tuple[int, ...]:
     if isinstance(v, tuple):
         return v
     if isinstance(v, int):
         return (v,)
     if isinstance(v, str):
-        v = v.split(".")
-        return tuple(int(x) for x in v)
+        v_split = v.split(".")
+        return tuple(int(x) for x in v_split)
     return v
 
 
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: Tuple[int, ...] = (7,)):
+    def __init__(self, version: VersionType = (7,)):
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
@@ -46,19 +48,18 @@ class FakeServer:
         self.version = _create_version(version)
 
     @staticmethod
-    def get_server(key: str, version: Tuple[int, ...]) -> "FakeServer":
+    def get_server(key: str, version: VersionType) -> "FakeServer":
         return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
 
 
 class FakeBaseConnectionMixin(object):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, version: VersionType = (7, 0), **kwargs: Any) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str
         self._sock = None
         self._selector: Optional[FakeSelector] = None
         self._server = kwargs.pop("server", None)
         path = kwargs.pop("path", None)
-        version = kwargs.pop("version", (7, 0))
         connected = kwargs.pop("connected", True)
         if self._server is None:
             if path:
@@ -136,7 +137,7 @@ class FakeRedisMixin:
     def __init__(
             self, *args: Any,
             server: Optional[FakeServer] = None,
-            version: Tuple[int, ...] = (7,),
+            version: VersionType = (7,),
             **kwargs: Any) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
