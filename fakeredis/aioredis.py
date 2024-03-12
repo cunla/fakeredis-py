@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List
+import uuid
 
 from redis import ResponseError
 
@@ -184,7 +185,7 @@ class FakeRedis(redis_async.Redis):
     def __init__(
             self,
             *,
-            host: str = "localhost",
+            host: Optional[str] = None,
             port: int = 6379,
             db: Union[str, int] = 0,
             password: Optional[str] = None,
@@ -206,7 +207,7 @@ class FakeRedis(redis_async.Redis):
         if not connection_pool:
             # Adapted from aioredis
             connection_kwargs = dict(
-                host=host,
+                host=host or uuid.uuid4().hex,
                 port=port,
                 db=db,
                 # Ignoring because AUTH is not implemented
