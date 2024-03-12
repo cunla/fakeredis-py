@@ -5,6 +5,13 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.21.3
+
+### 🐛 Bug Fixes
+
+- Revert behavior of defaulting to share the same server data structure between connections @howamith #303
+- Fix type hint for version #302
+
 ## v2.21.2
 
 > Note: Since connection params are defaulted to be the same between async and sync connections, different FakeRedis
