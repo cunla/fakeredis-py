@@ -8,7 +8,7 @@ import uuid
 from redis import ResponseError
 
 from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin
+from ._server import FakeBaseConnectionMixin, VersionType
 
 if sys.version_info >= (3, 11):
     from asyncio import timeout as async_timeout
@@ -201,7 +201,7 @@ class FakeRedis(redis_async.Redis):
             username: Optional[str] = None,
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
-            version: Tuple[int, ...] = (7,),
+            version: VersionType = (7,),
             **kwargs: Any,
     ) -> None:
         if not connection_pool:
