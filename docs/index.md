@@ -135,7 +135,7 @@ CACHES = {
 }
 ```
 
-For [django-redis](https://github.com/jazzband/django-redis) library, use the following `OPTIONS`:
+For [django-redis][8] library, use the following `OPTIONS`:
 
 ```
 'OPTIONS': {
@@ -144,7 +144,7 @@ For [django-redis](https://github.com/jazzband/django-redis) library, use the fo
 ```
 
 You can use
-django [`@override_settings` decorator](https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings)
+django [`@override_settings` decorator][9]
 
 ### Use to test django-rq
 
@@ -181,7 +181,7 @@ django_rq.queues.get_redis_connection = get_fake_connection
 
 ### Use to test FastAPI
 
-See info on https://github.com/cunla/fakeredis-py/issues/292
+See info on [this issue][7]
 
 ```python
 from fakeredis.aioredis import FakeRedis
@@ -317,3 +317,9 @@ You can support this project by becoming a sponsor using [this link][2].
 [5]:https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
 
 [6]:./redis-commands/
+
+[7]:https://github.com/cunla/fakeredis-py/issues/292
+
+[8]:https://github.com/jazzband/django-redis
+
+[9]:https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings
