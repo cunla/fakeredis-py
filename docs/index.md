@@ -179,6 +179,35 @@ def get_fake_connection(config: Dict[str, Any], strict: bool):
 django_rq.queues.get_redis_connection = get_fake_connection
 ```
 
+### Use to test FastAPI
+
+See info on https://github.com/cunla/fakeredis-py/issues/292
+
+```python
+from fakeredis.aioredis import FakeRedis
+from httpx import AsyncClient
+from .main import app  # this is the fastapi app object
+from .main import RedisBackend  # this is a class with a bunch of methods with the Redis code for the actions I perform
+
+
+@pytest_asyncio.fixture(scope="function")
+async def redis_conn() -> AsyncIterator[Redis[str]]:
+    # Actually I have some code here to return fakeredis or real redis according to a pytest 
+    # command-line option, but that's not really relevant. It's the reason I bother here with
+    # the async context, though. There's no cleanup needed with FakeRedis alone.
+    async with FakeRedis(decode_responses=True, version=(6,)) as redis_conn:
+        await redis_conn.flushdb()
+        yield redis_conn
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client(redis_conn: Redis[str]) -> AsyncIterator[AsyncClient]:
+    with mock.patch("main.create_backend", return_value=RedisBackend(redis_conn)):
+        app.dependency_overrides[_some_other_injected_dependency] = _some_other_override
+        async with AsyncClient(app=app, base_url="http://testserver") as client:
+            yield client
+```
+
 ## Known Limitations
 
 Apart from unimplemented commands, there are a number of cases where fakeredis won't give identical results to real
@@ -188,6 +217,7 @@ commands that do not support all features) which should be filed as bugs in GitH
 
 - Hyperloglogs are implemented using sets underneath. This means that the `type` command will return the wrong answer,
   you can't use `get` to retrieve the encoded value, and counts will be slightly different (they will in fact be exact).
+
 - When a command has multiple error conditions, such as operating on a key of the wrong type and an integer argument is
   not well-formed, the choice of error to return may not match redis.
 
