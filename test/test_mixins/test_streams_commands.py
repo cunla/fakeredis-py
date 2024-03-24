@@ -543,6 +543,7 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     with pytest.raises(redis.exceptions.ResponseError):
         r.xinfo_stream('non-existing-key')
 
+
 def test_xinfo_stream_full(r: redis.Redis):
     stream, group = "stream", "group"
     m1 = r.xadd(stream, {"foo": "bar"})

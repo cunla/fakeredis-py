@@ -26,7 +26,6 @@ __lua_version = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
 __lua_module = importlib.import_module(__LUA_RUNTIMES_MAP[__lua_version])
 LUA_RUNTIME_CLASS = __lua_module.LuaRuntime
 
-
 LOGGER = logging.getLogger("fakeredis")
 REDIS_LOG_LEVELS = {
     b"LOG_DEBUG": 0,
@@ -152,7 +151,9 @@ class ScriptingCommandsMixin:
             return 1 if result else None
         return result
 
-    def _lua_redis_call(self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
+    def _lua_redis_call(
+            self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes, *args: Any
+    ) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
