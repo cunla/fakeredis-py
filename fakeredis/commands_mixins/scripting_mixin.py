@@ -4,7 +4,7 @@ import itertools
 import logging
 from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 
-from lupa import LuaRuntime
+from lupa.lua51 import LuaRuntime
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int, Signature
@@ -111,7 +111,7 @@ class ScriptingCommandsMixin:
             )
 
     def _convert_lua_result(self, result: Any, nested: bool = True) -> Any:
-        from lupa import lua_type
+        from lupa.lua51 import lua_type
 
         if lua_type(result) == "table":
             for key in (b"ok", b"err"):
@@ -157,7 +157,7 @@ class ScriptingCommandsMixin:
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes) -> Any:
-        from lupa import LuaError, LuaRuntime, as_attrgetter
+        from lupa.lua51 import LuaError, LuaRuntime, as_attrgetter
 
         if numkeys > len(keys_and_args):
             raise SimpleError(msgs.TOO_MANY_KEYS_MSG)

@@ -9,7 +9,7 @@ from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
 
 try:
-    from lupa import LuaRuntime  # noqa: F401
+    from lupa.lua51 import LuaRuntime  # noqa: F401
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 except ImportError:
     class ScriptingCommandsMixin:  # type: ignore  # noqa: E303

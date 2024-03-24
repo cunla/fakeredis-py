@@ -5,6 +5,13 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.21.4
+
+### 🐛 Bug Fixes
+
+- Fix the type hint for the version parameter in the async client #302
+- Using LUA 5.1 like real redis #287
+
 ## v2.21.3
 
 ### 🐛 Bug Fixes
