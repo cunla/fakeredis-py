@@ -1,10 +1,10 @@
 import functools
 import hashlib
+import importlib
 import itertools
 import logging
+import os
 from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
-
-from lupa.lua51 import LuaRuntime
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int, Signature
@@ -15,6 +15,17 @@ from fakeredis._helpers import (
     OK,
     decode_command_bytes,
 )
+
+__LUA_RUNTIMES_MAP = {
+    "5.1": "lupa.lua51",
+    "5.2": "lupa.lua52",
+    "5.3": "lupa.lua53",
+    "5.4": "lupa.lua54",
+}
+__lua_version = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
+__lua_module = importlib.import_module(__LUA_RUNTIMES_MAP[__lua_version])
+LUA_RUNTIME_CLASS = __lua_module.LuaRuntime
+
 
 LOGGER = logging.getLogger("fakeredis")
 REDIS_LOG_LEVELS = {
@@ -39,7 +50,7 @@ def _ensure_str(s: AnyStr, encoding: str, replaceerr: str) -> str:
     return res
 
 
-def _check_for_lua_globals(lua_runtime: LuaRuntime, expected_globals: Set[Any]) -> None:
+def _check_for_lua_globals(lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any]) -> None:
     unexpected_globals = set(lua_runtime.globals().keys()) - expected_globals
     if len(unexpected_globals) > 0:
         unexpected = [
@@ -48,7 +59,7 @@ def _check_for_lua_globals(lua_runtime: LuaRuntime, expected_globals: Set[Any]) 
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
 
-def _lua_redis_log(lua_runtime: LuaRuntime, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
+def _lua_redis_log(lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
@@ -74,7 +85,7 @@ class ScriptingCommandsMixin:
         self.script_cache: Dict[bytes, bytes] = {}
         self.version: Tuple[int]
 
-    def _convert_redis_arg(self, lua_runtime: LuaRuntime, value: Any) -> bytes:
+    def _convert_redis_arg(self, lua_runtime: LUA_RUNTIME_CLASS, value: Any) -> bytes:
         # Type checks are exact to avoid issues like bool being a subclass of int.
         if type(value) is bytes:
             return value
@@ -89,7 +100,7 @@ class ScriptingCommandsMixin:
             )
             raise SimpleError(msg)
 
-    def _convert_redis_result(self, lua_runtime: LuaRuntime, result: Any) -> Any:
+    def _convert_redis_result(self, lua_runtime: LUA_RUNTIME_CLASS, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
             return result
         elif isinstance(result, SimpleString):
@@ -141,7 +152,7 @@ class ScriptingCommandsMixin:
             return 1 if result else None
         return result
 
-    def _lua_redis_call(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
+    def _lua_redis_call(self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
@@ -149,7 +160,8 @@ class ScriptingCommandsMixin:
         result = self._run_command(func, sig, new_args, True)
         return self._convert_redis_result(lua_runtime, result)
 
-    def _lua_redis_pcall(self, lua_runtime: LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
+    def _lua_redis_pcall(self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes,
+                         *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:

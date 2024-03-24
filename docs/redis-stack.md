@@ -79,7 +79,11 @@ you can use Redis Functions to manage and run your scripts. In Redis 6.2 and bel
 command to program the server.
 
 If you wish to have Lua scripting support (this includes features like ``redis.lock.Lock``, which are implemented in
-Lua), you will need [lupa](https://pypi.org/project/lupa/), you can install it using `pip install 'fakeredis[lua]'`
+Lua), you will need [lupa][10], you can install it using `pip install 'fakeredis[lua]'`
+
+By default, FakeRedis works with LUA version 5.1, to use a different version supported by lupa,
+set the `FAKEREDIS_LUA_VERSION` environment variable to the desired version (e.g., `5.2`).
+
 
 [1]:./redis-commands/RedisJson/
 
@@ -98,3 +102,5 @@ Lua), you will need [lupa](https://pypi.org/project/lupa/), you can install it u
 [8]:https://redis.io/docs/data-types/probabilistic/count-min-sketch/
 
 [9]:https://redis.io/docs/data-types/probabilistic/cuckoo-filter/
+
+[10]:https://pypi.org/project/lupa/

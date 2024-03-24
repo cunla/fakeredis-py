@@ -5,7 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
-## v2.21.4
+## v2.22.0
+
+### 🚀 Features
+
+- Support for setting LUA version from environment variable  `FAKEREDIS_LUA_VERSION` #287
 
 ### 🐛 Bug Fixes
 
