@@ -6,6 +6,8 @@ import logging
 import os
 from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 
+import lupa
+
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int, Signature
 from fakeredis._helpers import (
@@ -23,7 +25,6 @@ __LUA_RUNTIMES_MAP = {
     "5.4": "lupa.lua54",
 }
 LUA_VERSION = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
-import lupa
 
 with lupa.allow_lua_module_loading():
     LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
