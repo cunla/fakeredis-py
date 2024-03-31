@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 
 import pytest
@@ -8,8 +9,8 @@ import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
-from test.testtools import raw_command
 from test import testtools
+from test.testtools import raw_command
 
 json_tests = pytest.importorskip("lupa")
 
@@ -601,6 +602,35 @@ def test_hscan_cursors_are_bytes(r: redis.Redis):
 
     assert result == b'0'
     assert isinstance(result, bytes)
+
+
+@pytest.mark.xfail  # TODO
+def test_asgi_ratelimit_script(r: redis.Redis):
+    SCRIPT = """
+local ruleset = cjson.decode(ARGV[1])
+
+-- Set limits
+for i, key in pairs(KEYS) do
+    redis.call('SET', key, ruleset[key][1], 'EX', ruleset[key][2], 'NX')
+end
+
+-- Check limits
+for i = 1, #KEYS do
+    local value = redis.call('GET', KEYS[i])
+    if value and tonumber(value) < 1 then
+        return ruleset[KEYS[i]][2]
+    end
+end
+
+-- Decrease limits
+for i, key in pairs(KEYS) do
+    redis.call('DECR', key)
+end
+return 0
+"""
+    script = r.register_script(SCRIPT)
+    ruleset = {"path:get:user:name": (1, 1)}
+    script(keys=list(ruleset.keys()), args=[json.dumps(ruleset)])
 
 
 @pytest.mark.xfail  # TODO

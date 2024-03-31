@@ -22,10 +22,11 @@ __LUA_RUNTIMES_MAP = {
     "5.3": "lupa.lua53",
     "5.4": "lupa.lua54",
 }
-__lua_version = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
-__lua_module = importlib.import_module(__LUA_RUNTIMES_MAP[__lua_version])
-LUA_RUNTIME_CLASS = __lua_module.LuaRuntime
+LUA_VERSION = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
+import lupa
 
+with lupa.allow_lua_module_loading():
+    LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
 LOGGER = logging.getLogger("fakeredis")
 REDIS_LOG_LEVELS = {
     b"LOG_DEBUG": 0,
@@ -49,7 +50,7 @@ def _ensure_str(s: AnyStr, encoding: str, replaceerr: str) -> str:
     return res
 
 
-def _check_for_lua_globals(lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any]) -> None:
+def _check_for_lua_globals(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any]) -> None:
     unexpected_globals = set(lua_runtime.globals().keys()) - expected_globals
     if len(unexpected_globals) > 0:
         unexpected = [
@@ -58,7 +59,7 @@ def _check_for_lua_globals(lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
 
-def _lua_redis_log(lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
+def _lua_redis_log(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
@@ -84,7 +85,7 @@ class ScriptingCommandsMixin:
         self.script_cache: Dict[bytes, bytes] = {}
         self.version: Tuple[int]
 
-    def _convert_redis_arg(self, lua_runtime: LUA_RUNTIME_CLASS, value: Any) -> bytes:
+    def _convert_redis_arg(self, lua_runtime: LUA_MODULE.LuaRuntime, value: Any) -> bytes:
         # Type checks are exact to avoid issues like bool being a subclass of int.
         if type(value) is bytes:
             return value
@@ -99,7 +100,7 @@ class ScriptingCommandsMixin:
             )
             raise SimpleError(msg)
 
-    def _convert_redis_result(self, lua_runtime: LUA_RUNTIME_CLASS, result: Any) -> Any:
+    def _convert_redis_result(self, lua_runtime: LUA_MODULE.LuaRuntime, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
             return result
         elif isinstance(result, SimpleString):
@@ -121,9 +122,7 @@ class ScriptingCommandsMixin:
             )
 
     def _convert_lua_result(self, result: Any, nested: bool = True) -> Any:
-        from lupa.lua51 import lua_type
-
-        if lua_type(result) == "table":
+        if LUA_MODULE.lua_type(result) == "table":
             for key in (b"ok", b"err"):
                 if key in result:
                     msg = self._convert_lua_result(result[key])
@@ -152,8 +151,7 @@ class ScriptingCommandsMixin:
         return result
 
     def _lua_redis_call(
-            self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes, *args: Any
-    ) -> Any:
+            self, lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
@@ -161,8 +159,9 @@ class ScriptingCommandsMixin:
         result = self._run_command(func, sig, new_args, True)
         return self._convert_redis_result(lua_runtime, result)
 
-    def _lua_redis_pcall(self, lua_runtime: LUA_RUNTIME_CLASS, expected_globals: Set[Any], op: bytes,
-                         *args: Any) -> Any:
+    def _lua_redis_pcall(
+            self, lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], op: bytes,
+            *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:
@@ -170,15 +169,13 @@ class ScriptingCommandsMixin:
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes) -> Any:
-        from lupa.lua51 import LuaError, LuaRuntime, as_attrgetter
-
         if numkeys > len(keys_and_args):
             raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
         if numkeys < 0:
             raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
         sha1 = hashlib.sha1(script).hexdigest().encode()
         self.script_cache[sha1] = script
-        lua_runtime: LuaRuntime = LuaRuntime(encoding=None, unpack_returned_tuples=True)
+        lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
 
         set_globals = lua_runtime.eval(
             """
@@ -204,7 +201,7 @@ class ScriptingCommandsMixin:
             functools.partial(self._lua_redis_call, lua_runtime, expected_globals),
             functools.partial(self._lua_redis_pcall, lua_runtime, expected_globals),
             functools.partial(_lua_redis_log, lua_runtime, expected_globals),
-            as_attrgetter(REDIS_LOG_LEVELS),
+            LUA_MODULE.as_attrgetter(REDIS_LOG_LEVELS),
         )
         expected_globals.update(lua_runtime.globals().keys())
 
@@ -214,7 +211,7 @@ class ScriptingCommandsMixin:
             if self.version < (7,):
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(ex.value)
-        except LuaError as ex:
+        except LUA_MODULE.LuaError as ex:
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
 
         _check_for_lua_globals(lua_runtime, expected_globals)
@@ -246,9 +243,7 @@ class ScriptingCommandsMixin:
 
     @command(name="SCRIPT FLUSH", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_flush(self, *args: bytes) -> SimpleString:
-        if len(args) > 1 or (
-                len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}
-        ):
+        if len(args) > 1 or (len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
         self.script_cache = {}
         return OK
