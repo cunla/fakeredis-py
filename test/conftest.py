@@ -85,3 +85,40 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
         return cls('localhost', port=6380, db=db, decode_responses=decode_responses)
 
     return factory
+
+
+@pytest_asyncio.fixture(
+    name='async_redis',
+    params=[
+        pytest.param('fake', marks=pytest.mark.fake),
+        pytest.param('real', marks=pytest.mark.real)
+    ]
+)
+async def _req_aioredis2(request) -> redis.asyncio.Redis:
+    server_version = request.getfixturevalue('real_redis_version')
+    if request.param != 'fake' and not server_version:
+        pytest.skip('Redis is not running')
+    server_version = _create_version(server_version) or (6,)
+    min_server_marker = _marker_version_value(request, 'min_server')
+    max_server_marker = _marker_version_value(request, 'max_server')
+    if server_version < min_server_marker:
+        pytest.skip(f'Redis server {min_server_marker} or more required but {server_version} found')
+    if server_version > max_server_marker:
+        pytest.skip(f'Redis server {max_server_marker} or less required but {server_version} found')
+    lua_modules_marker = request.node.get_closest_marker('load_lua_modules')
+    lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
+
+    if request.param == 'fake':
+        fake_server = request.getfixturevalue('fake_server')
+        ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules)
+    else:
+        ret = redis.asyncio.Redis(host='localhost', port=6380, db=2)
+        fake_server = None
+    if not fake_server or fake_server.connected:
+        await ret.flushall()
+
+    yield ret
+
+    if not fake_server or fake_server.connected:
+        await ret.flushall()
+    await ret.connection_pool.disconnect()

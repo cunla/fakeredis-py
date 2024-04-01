@@ -202,6 +202,7 @@ class FakeRedisMixin:
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
+        kwds.pop("lua_modules", None)
         super().__init__(**kwds)
 
     @classmethod
