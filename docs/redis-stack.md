@@ -82,8 +82,29 @@ If you wish to have Lua scripting support (this includes features like ``redis.l
 Lua), you will need [lupa][10], you can install it using `pip install 'fakeredis[lua]'`
 
 By default, FakeRedis works with LUA version 5.1, to use a different version supported by lupa,
-set the `FAKEREDIS_LUA_VERSION` environment variable to the desired version (e.g., `5.2`).
+set the `FAKEREDIS_LUA_VERSION` environment variable to the desired version (e.g., `5.4`).
 
+### LUA binary modules
+
+fakeredis supports using LUA binary modules as well. In order to have your FakeRedis instance load a LUA binary module,
+you can use the `lua_modules` parameter.
+
+```pycon
+>>> import fakeredis
+>>> r = fakeredis.FakeStrictRedis(lua_modules={"my_module.so"})
+```
+
+The module `.so`/`.dll` file should be in the working directory.
+
+To install LUA modules, you can use [luarocks][11] to install the module and then copy the `.so`/`.dll` file to the
+working directory.
+
+For example, to install `lua-cjson`:
+
+```sh
+luarocks install lua-cjson
+cp /opt/homebrew/lib/lua/5.4/cjson.so `pwd`
+```
 
 [1]:./redis-commands/RedisJson/
 
@@ -104,3 +125,5 @@ set the `FAKEREDIS_LUA_VERSION` environment variable to the desired version (e.g
 [9]:https://redis.io/docs/data-types/probabilistic/cuckoo-filter/
 
 [10]:https://pypi.org/project/lupa/
+
+[11]:https://luarocks.org/

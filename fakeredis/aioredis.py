@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 import uuid
 
 from redis import ResponseError
@@ -119,7 +119,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
     async def _connect(self) -> None:
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(self._server, self.db)
+        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(self._server, self.db, lua_modules=self._lua_modules)
         self._reader: Optional[FakeReader] = FakeReader(self._sock)
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
@@ -202,6 +202,7 @@ class FakeRedis(redis_async.Redis):
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
             version: VersionType = (7,),
+            lua_modules: Set[str] = None,
             **kwargs: Any,
     ) -> None:
         if not connection_pool:
@@ -225,6 +226,7 @@ class FakeRedis(redis_async.Redis):
                 connection_class=FakeConnection,
                 max_connections=max_connections,
                 version=version,
+                lua_modules=lua_modules,
             )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)  # type:ignore
         kwargs.update(dict(db=db,

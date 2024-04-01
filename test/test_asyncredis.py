@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 import sys
 
@@ -47,9 +48,12 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
         pytest.skip(f'Redis server {min_server_marker} or more required but {server_version} found')
     if server_version > max_server_marker:
         pytest.skip(f'Redis server {max_server_marker} or less required but {server_version} found')
+    lua_modules_marker = request.node.get_closest_marker('load_lua_modules')
+    lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
+
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
-        ret = aioredis.FakeRedis(server=fake_server)
+        ret = aioredis.FakeRedis(server=fake_server, lua_modules=lua_modules)
     else:
         ret = redis.asyncio.Redis(host='localhost', port=6380, db=2)
         fake_server = None
@@ -389,3 +393,33 @@ async def test_init_args():
     assert await r3.get('bar') == b'baz'
     assert await r4.get('bar') == b'baz'
     assert await r1.get('bar') is None
+
+
+@pytest.mark.load_lua_modules('cjson')
+async def test_asgi_ratelimit_script(req_aioredis2: redis.Redis):
+    script = """
+local ruleset = cjson.decode(ARGV[1])
+
+-- Set limits
+for i, key in pairs(KEYS) do
+    redis.call('SET', key, ruleset[key][1], 'EX', ruleset[key][2], 'NX')
+end
+
+-- Check limits
+for i = 1, #KEYS do
+    local value = redis.call('GET', KEYS[i])
+    if value and tonumber(value) < 1 then
+        return ruleset[KEYS[i]][2]
+    end
+end
+
+-- Decrease limits
+for i, key in pairs(KEYS) do
+    redis.call('DECR', key)
+end
+return 0
+"""
+
+    script = req_aioredis2.register_script(script)
+    ruleset = {"path:get:user:name": (1, 1)}
+    await script(keys=list(ruleset.keys()), args=[json.dumps(ruleset)])
