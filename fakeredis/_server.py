@@ -3,11 +3,11 @@ import logging
 import queue
 import threading
 import time
+import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union
-import uuid
+from typing import Dict, Tuple, Any, List, Optional, Union, Set
 
 import redis
 
@@ -59,6 +59,7 @@ class FakeBaseConnectionMixin(object):
         self._sock = None
         self._selector: Optional[FakeSelector] = None
         self._server = kwargs.pop("server", None)
+        self._lua_modules = kwargs.pop("lua_modules", set())
         path = kwargs.pop("path", None)
         connected = kwargs.pop("connected", True)
         if self._server is None:
@@ -82,7 +83,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        return FakeSocket(self._server, db=self.db)
+        return FakeSocket(self._server, db=self.db, lua_modules=self._lua_modules)
 
     def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self._server.connected:
@@ -138,6 +139,7 @@ class FakeRedisMixin:
             self, *args: Any,
             server: Optional[FakeServer] = None,
             version: VersionType = (7,),
+            lua_modules: Set[str] = None,
             **kwargs: Any) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
@@ -191,6 +193,7 @@ class FakeRedisMixin:
                 "connection_class": FakeConnection,
                 "server": server,
                 "version": version,
+                "lua_modules": lua_modules,
             }
             connection_kwargs.update(
                 {arg: kwds[arg] for arg in conn_pool_args if arg in kwds}

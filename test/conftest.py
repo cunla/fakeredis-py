@@ -72,12 +72,14 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     if server_version > max_server:
         pytest.skip(f'Redis server {max_server} or less required but {server_version} found')
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
+    lua_modules_marker = request.node.get_closest_marker('load_lua_modules')
+    lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
 
     def factory(db=2):
         if cls_name.startswith('Fake'):
             fake_server = request.getfixturevalue('fake_server')
             cls = getattr(fakeredis, cls_name)
-            return cls(db=db, decode_responses=decode_responses, server=fake_server)
+            return cls(db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules)
         # Real
         cls = getattr(redis, cls_name)
         return cls('localhost', port=6380, db=db, decode_responses=decode_responses)

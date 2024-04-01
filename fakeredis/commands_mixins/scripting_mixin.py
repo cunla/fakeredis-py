@@ -81,10 +81,10 @@ class ScriptingCommandsMixin:
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
-        # Maps SHA1 to the script source
-        self.script_cache: Dict[bytes, bytes] = {}
+        self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
         self.version: Tuple[int]
+        self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
+        super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
     def _convert_redis_arg(self, lua_runtime: LUA_MODULE.LuaRuntime, value: Any) -> bytes:
         # Type checks are exact to avoid issues like bool being a subclass of int.
@@ -177,21 +177,22 @@ class ScriptingCommandsMixin:
         sha1 = hashlib.sha1(script).hexdigest().encode()
         self.script_cache[sha1] = script
         lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
-
+        modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
         set_globals = lua_runtime.eval(
-            """
-            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels)
-                redis = {}
+            f"""
+            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels)                
+                redis = {{}}
                 redis.call = redis_call
                 redis.pcall = redis_pcall
                 redis.log = redis_log
                 for level, pylevel in python.iterex(redis_log_levels.items()) do
                     redis[level] = pylevel
                 end
-                redis.error_reply = function(msg) return {err=msg} end
-                redis.status_reply = function(msg) return {ok=msg} end
+                redis.error_reply = function(msg) return {{err=msg}} end
+                redis.status_reply = function(msg) return {{ok=msg}} end
                 KEYS = keys
                 ARGV = argv
+                {modules_import_str}
             end
             """
         )

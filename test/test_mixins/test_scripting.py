@@ -604,9 +604,9 @@ def test_hscan_cursors_are_bytes(r: redis.Redis):
     assert isinstance(result, bytes)
 
 
-@pytest.mark.xfail  # TODO
+@pytest.mark.load_lua_modules('cjson')
 def test_asgi_ratelimit_script(r: redis.Redis):
-    SCRIPT = """
+    script = """
 local ruleset = cjson.decode(ARGV[1])
 
 -- Set limits
@@ -628,7 +628,8 @@ for i, key in pairs(KEYS) do
 end
 return 0
 """
-    script = r.register_script(SCRIPT)
+
+    script = r.register_script(script)
     ruleset = {"path:get:user:name": (1, 1)}
     script(keys=list(ruleset.keys()), args=[json.dumps(ruleset)])
 
