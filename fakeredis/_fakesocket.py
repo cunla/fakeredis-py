@@ -49,6 +49,6 @@ class FakeSocket(
     TopkCommandsMixin,
 ):
     def __init__(
-            self, server: "FakeServer", db: int, lua_modules: Optional[Set[str]] = None
-    ) -> None:  # type: ignore # noqa: F821
+            self, server: "FakeServer", db: int, lua_modules: Optional[Set[str]] = None,  # type: ignore # noqa: F821
+    ) -> None:
         super(FakeSocket, self).__init__(server, db, lua_modules=lua_modules)

@@ -190,7 +190,7 @@ class ScriptingCommandsMixin:
         modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
         set_globals = lua_runtime.eval(
             f"""
-            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels)                
+            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels)
                 redis = {{}}
                 redis.call = redis_call
                 redis.pcall = redis_pcall
