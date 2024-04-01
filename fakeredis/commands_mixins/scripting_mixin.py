@@ -83,7 +83,17 @@ class ScriptingCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any):
         self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
         self.version: Tuple[int]
-        self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
+        self.load_lua_modules = set()
+        lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
+        if len(lua_modules_set) > 0:
+            lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+            for module in lua_modules_set:
+                try:
+                    lua_runtime.require(module.encode())
+                    self.load_lua_modules.add(module)
+                except LUA_MODULE.LuaError as ex:
+                    LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
+
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
     def _convert_redis_arg(self, lua_runtime: LUA_MODULE.LuaRuntime, value: Any) -> bytes:

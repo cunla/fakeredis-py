@@ -14,7 +14,9 @@ try:
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 except ImportError:
     class ScriptingCommandsMixin:  # type: ignore  # noqa: E303
-        pass
+        def __init__(self, *args, **kwargs) -> None:
+            kwargs.pop("lua_modules", None)
+            super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.set_mixin import SetCommandsMixin
