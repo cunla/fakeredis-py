@@ -3,6 +3,8 @@ import json
 import pytest
 import redis
 
+import fakeredis
+
 pytestmark = [
 ]
 pytestmark.extend([

@@ -8,6 +8,15 @@ import fakeredis
 from fakeredis._server import _create_version
 
 
+def _check_lua_module_supported() -> bool:
+    redis = fakeredis.FakeRedis(lua_modules={'cjson'})
+    try:
+        redis.eval("return cjson.encode({})", 0)
+        return True
+    except Exception:
+        return False
+
+
 @pytest_asyncio.fixture(scope="session")
 def real_redis_version() -> Union[None, str]:
     """Returns server's version or None if server is not running"""
@@ -74,6 +83,8 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     decode_responses = request.node.get_closest_marker('decode_responses') is not None
     lua_modules_marker = request.node.get_closest_marker('load_lua_modules')
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
+    if lua_modules and not _check_lua_module_supported():
+        pytest.skip('LUA modules not supported by fakeredis')
 
     def factory(db=2):
         if cls_name.startswith('Fake'):
@@ -107,7 +118,8 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
         pytest.skip(f'Redis server {max_server_marker} or less required but {server_version} found')
     lua_modules_marker = request.node.get_closest_marker('load_lua_modules')
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
-
+    if lua_modules and not _check_lua_module_supported():
+        pytest.skip('LUA modules not supported by fakeredis')
     if request.param == 'fake':
         fake_server = request.getfixturevalue('fake_server')
         ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules)
