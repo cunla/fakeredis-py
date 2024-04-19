@@ -8,7 +8,11 @@ import warnings
 import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union, Set
-from typing_extensions import Self
+
+try:
+    from typing_extensions import Self
+except ImportError:
+    from typing import Self
 
 import redis
 

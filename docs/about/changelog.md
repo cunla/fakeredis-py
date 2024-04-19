@@ -16,6 +16,7 @@ description: Change log of all fakeredis releases
 
 - Fix the type hint for the version parameter in the async client #302
 - Using LUA 5.1 like real redis #287
+- fix: FakeRedisMixin.from_url() return type is really Self. @ben-xo #305
 
 ## v2.21.3
 
