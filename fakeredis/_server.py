@@ -8,6 +8,7 @@ import warnings
 import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union, Set
+from typing_extensions import Self
 
 import redis
 
@@ -139,7 +140,7 @@ class FakeRedisMixin:
             self, *args: Any,
             server: Optional[FakeServer] = None,
             version: VersionType = (7,),
-            lua_modules: Set[str] = None,
+            lua_modules: Optional[Set[str]] = None,
             **kwargs: Any) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
@@ -204,7 +205,7 @@ class FakeRedisMixin:
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, *args: Any, **kwargs: Any) -> "FakeRedisMixin":
+    def from_url(cls, *args: Any, **kwargs: Any) -> Self:
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
