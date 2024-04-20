@@ -7,8 +7,13 @@ on:
     types: [published]
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fakeredis
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -23,13 +28,13 @@ jobs:
           pip install build
       - name: Build package
         run: python -m build
-      - name: Publish package
+
+      - name: Publish package to pypi
         uses: pypa/gh-action-pypi-publish@v1.8.14
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           print_hash: true
-      - name: Deploy documentation
+
+      - name: Publish documentation
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
