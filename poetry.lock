@@ -1641,4 +1641,4 @@ probabilistic = ["pyprobables"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "2d483531c18a437481e96e6d624ab5571e2c06edc504910666b6aeaad5d29243"
+content-hash = "3c00e470e471f06745ccd475b197e78659249821afaddbc33c12ab8a67475939"

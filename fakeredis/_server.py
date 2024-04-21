@@ -1,6 +1,7 @@
 import inspect
 import logging
 import queue
+import sys
 import threading
 import time
 import uuid
@@ -9,10 +10,10 @@ import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union, Set
 
-try:
-    from typing_extensions import Self
-except ImportError:
+if sys.version_info >= (3, 11):
     from typing import Self
+else:
+    from typing_extensions import Self
 
 import redis
 
