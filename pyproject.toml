@@ -49,6 +49,7 @@ typing_extensions = { version = "^4.7", python = "<3.11" }
 lupa = { version = ">=1.14,<3.0", optional = true }
 jsonpath-ng = { version = "^1.6", optional = true }
 pyprobables = { version = "^0.6", optional = true }
+tdigest = { version = "^0.5", optional = true }
 
 [tool.poetry.extras]
 lua = ["lupa"]
@@ -56,6 +57,7 @@ json = ["jsonpath-ng"]
 bf = ["pyprobables"]
 cf = ["pyprobables"]
 probabilistic = ["pyprobables"]
+tdigest = ["tdigest"]
 
 [tool.poetry.dev-dependencies]
 coverage = "^7"
