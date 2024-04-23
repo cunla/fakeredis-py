@@ -1,196 +1,155 @@
-import sortedcontainers
-
-class Centroid(object):
-
-    def __init__(self, mean, n, cumn):
-        # cumn: cumulative count
-        self.mean = float(mean)
-        self.n = n
-        self.cumn = cumn
+import json
+from random import shuffle
 
 
-class Tdigest(object):
+class TDigest(object):
+    def __init__(self, delta=0.01, compression=20):
+        self.delta = float(delta)
+        self.compression = compression
+        self.tdc = TDigestCore(self.delta)
 
-    def __init__(self, delta=0.01, K=25, CX=1.1):
-        self.delta = delta
-        self.K = K
-        self.CX = CX
-        self.centroids = RBTree()
-        self.nreset = 0
-        self.reset()
-
-    def reset(self):
-        self.centroids.clear()
-        self.n = 0
-        self.nreset += 1
-        self.last_cumulate = 0
-        self.compressing = False
-
-    def push(self, x, n=1):
-        if not isinstance(x, list):
-            x = [x]
-        for item in x:
-            self._digest(item, n)
-
-    def percentile(self, p):
-        if self.size() == 0:
-            return None
-        self._cumulate(True)
-        cumn = self.n * p
-        lower = self.centroids.min_item()[1]
-        upper = self.centroids.max_item()[1]
-        for c in self.centroids.values():
-            if c.cumn <= cumn:
-                lower = c
-            else:
-                upper = c
-                break
-        if lower == upper:
-            return lower.mean
-        return lower.mean + (cumn - lower.cumn) * (upper.mean - lower.mean) / (upper.cumn - lower.cumn)
-
-    def serialize(self):
-        result = '%s~%s~%s~' % (self.delta, self.K, self.size())
-        if self.size() == 0:
-            return result
-        self._cumulate(True)
-        means = []
-        counts = []
-        for c in self.centroids.values():
-            means.append(str(c.mean))
-            counts.append(str(c.n))
-        return '%s%s~%s' % (result, '~'.join(means), '~'.join(counts))
-
-    def simpleSerialize(self):
-        if self.size() == 0:
-            return ''
-        self._cumulate(True)
-        result = []
-        for c in self.centroids.values():
-            result.append(str(c.mean))
-            result.append(str(c.n))
-        return '~'.join(result)
-
-    @classmethod
-    def deserialize(cls, serialized_str):
-        if not isinstance(serialized_str, str):
-            raise Exception(u'serialized_str must be str')
-        data = serialized_str.split('~')
-        t = Tdigest(delta=float(data[0]), K=int(data[1]))
-        size = int(data[2])
-        for i in range(size):
-            t.push(float(data[i + 3]), int(data[size + i + 3]))
-        t._cumulate(True)
-        return t
-
-    def _digest(self, x, n):
-        if self.size() == 0:
-            self._new_centroid(x, n, 0)
-        else:
-            _min = self.centroids.min_item()[1]
-            _max = self.centroids.max_item()[1]
-            nearest = self.find_nearest(x)
-            if nearest and nearest.mean == x:
-                self._addweight(nearest, x, n)
-            elif nearest == _min:
-                self._new_centroid(x, n, 0)
-            elif nearest == _max:
-                self._new_centroid(x, n, self.n)
-            else:
-                p = (nearest.cumn + nearest.n / 2.0) / self.n
-                max_n = int(4 * self.n * self.delta * p * (1 - p))
-                if max_n >= nearest.n + n:
-                    self._addweight(nearest, x, n)
-                else:
-                    self._new_centroid(x, n, nearest.cumn)
-        self._cumulate(False)
-        if self.K and self.size() > self.K / self.delta:
+    def push(self, x, w):
+        self.tdc.push(x, w)
+        if len(self) > self.compression / self.delta:
             self.compress()
 
-    def find_nearest(self, x):
-        if self.size() == 0:
-            return None
-        try:
-            lower = self.centroids.ceiling_item(x)[1]
-        except KeyError:
-            lower = None
-
-        if lower and lower.mean == x:
-            return lower
-
-        try:
-            prev = self.centroids.floor_item(x)[1]
-        except KeyError:
-            prev = None
-
-        if not lower:
-            return prev
-        if not prev:
-            return lower
-        if abs(prev.mean - x) < abs(lower.mean - x):
-            return prev
-        else:
-            return lower
-
-    def size(self):
-        return len(self.centroids)
-
     def compress(self):
-        if self.compressing:
-            return
-        points = self.toList()
-        self.reset()
-        self.compressing = True
-        for point in sorted(points, key=lambda x: random()):
-            self.push(point['mean'], point['n'])
-        self._cumulate(True)
-        self.compressing = False
+        aux_tdc = TDigestCore(self.delta)
+        centroid_list = self.tdc.centroid_list
+        shuffle(centroid_list)
+        for c in centroid_list:
+            aux_tdc.push(c.mean, c.count)
+        self.tdc = aux_tdc
 
-    def _cumulate(self, exact):
-        if self.n == self.last_cumulate:
-            return
-        if not exact and self.CX and self.last_cumulate and \
-                self.CX > (self.n / self.last_cumulate):
-            return
-        cumn = 0
-        for c in self.centroids.values():
-            cumn = c.cumn = cumn + c.n
-        self.n = self.last_cumulate = cumn
+    def quantile(self, x):
+        return self.tdc.quantile(x)
 
-    def toList(self):
-        return [dict(mean=c.mean, n=c.n, cumn=c.cumn) for
-                c in self.centroids.values()]
+    def serialize(self):
+        centroids = [[c.mean, c.count] for c in self.tdc.centroid_list]
+        return json.dumps(centroids)
 
-    def _addweight(self, nearest, x, n):
-        if x != nearest.mean:
-            nearest.mean += n * (x - nearest.mean) / (nearest.n + n)
-        nearest.cumn += n
-        nearest.n += n
-        self.n += n
+    def __len__(self):
+        return len(self.tdc)
 
-    def _new_centroid(self, x, n, cumn):
-        c = Centroid(x, n, cumn)
-        self.centroids.insert(x, c)
-        self.n += n
-        return c
+    def __repr__(self):
+        return str(self.tdc)
 
 
-if __name__ == '__main__':
-    from random import random
+class Centroid(object):
+    def __init__(self, x, w, id):
+        self.mean = float(x)
+        self.count = float(w)
+        self.id = id
 
-    t = Tdigest(K=25)
-    for i in range(1000):
-        t.push(random())
-    print('P0 = ', t.percentile(0))
-    print('P10 = ', t.percentile(0.1))
-    print('P50 = ', t.percentile(0.5))
-    print('P90 = ', t.percentile(0.9))
-    print('P100 = ', t.percentile(1.0))
+    def push(self, x, w):
+        self.count += w
+        self.mean += w * (x - self.mean) / self.count
 
-    t1 = Tdigest(K=25)
-    t1.push(100)
-    t1.push(200)
-    t1.push(300)
-    t1.push(400)
-    print('serialize = ', t1.serialize())
-    print('simpleSerialize = ', t1.simpleSerialize())
+    def equals(self, c):
+        if c.id == self.id:
+            return True
+        else:
+            return False
+
+    def distance(self, x):
+        return abs(self.mean - x)
+
+    def __repr__(self):
+        return "Centroid{mean=%.1f, count=%d}" % (self.mean, self.count)
+
+
+class TDigestCore(object):
+    def __init__(self, delta):
+        self.delta = delta
+        self.centroid_list = []
+        self.n = 0
+        self.id_counter = 0
+
+    def push(self, x, w):
+        self.n += 1
+
+        if self.centroid_list:
+            S = self._closest_centroids(x)
+            shuffle(S)
+            for c in S:
+                if w == 0:
+                    break
+                q = self._centroid_quantile(c)
+                delta_w = min(4 * self.n * self.delta * q * (1 - q) - c.count, w)
+                c.push(x, delta_w)
+                w -= delta_w
+
+        if w > 0:
+            self.centroid_list.append(Centroid(x, w, self.id_counter))
+            self.centroid_list.sort(key=lambda c: c.mean)
+            self.id_counter += 1
+
+    def quantile(self, x):
+        if len(self.centroid_list) < 3:
+            return 0.0
+        total_weight = sum([centroid.count for centroid in self.centroid_list])
+        q = x * total_weight
+        m = len(self.centroid_list)
+        cumulated_weight = 0
+        for nr in range(m):
+            current_weight = self.centroid_list[nr].count
+            if cumulated_weight + current_weight > q:
+                if nr == 0:
+                    delta = (
+                            self.centroid_list[nr + 1].mean - self.centroid_list[nr].mean
+                    )
+                elif nr == m - 1:
+                    delta = (
+                            self.centroid_list[nr].mean - self.centroid_list[nr - 1].mean
+                    )
+                else:
+                    delta = (
+                                    self.centroid_list[nr + 1].mean
+                                    - self.centroid_list[nr - 1].mean
+                            ) / 2
+                return (
+                        self.centroid_list[nr].mean
+                        + ((q - cumulated_weight) / (current_weight) - 0.5) * delta
+                )
+            cumulated_weight += current_weight
+        return self.centroid_list[nr].mean
+
+    def _closest_centroids(self, x):
+        S = []
+        z = None
+        for centroid in self.centroid_list:
+            d = centroid.distance(x)
+            if z is None:
+                z = d
+                S.append(centroid)
+            elif z == d:
+                S.append(centroid)
+            elif z > d:
+                S = [centroid]
+                z = d
+            elif x > centroid.mean:
+                break
+        T = []
+        for centroid in S:
+            q = self._centroid_quantile(centroid)
+            if centroid.count + 1 <= 4 * self.n * self.delta * q * (1 - q):
+                T.append(centroid)
+        return T
+
+    def _centroid_quantile(self, c):
+        q = 0
+        for centroid in self.centroid_list:
+            if centroid.equals(c):
+                q += c.count / 2
+                break
+            else:
+                q += centroid.count
+        return q / sum([centroid.count for centroid in self.centroid_list])
+
+    def __len__(self):
+        return len(self.centroid_list)
+
+    def __repr__(self):
+        return "[ %s ]" % ", ".join([str(c) for c in self.centroid_list])
+
+
