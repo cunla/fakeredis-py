@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Callable
 
 from sortedcontainers import SortedList
 
@@ -15,6 +15,8 @@ class TDigest(SortedList):
 
 
 class TDigestCommandsMixin:
+    _encodefloat: Callable[[float, bool], bytes]
+
     def __init__(self, *args, **kwargs):
         self._db: Database
 
@@ -126,7 +128,7 @@ class TDigestCommandsMixin:
 
     @command(name="TDIGEST.REVRANK", fixed=(Key(TDigest), Float), repeat=(Float,),
              flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_revrank(self, key: CommandItem, *values: float) -> List[bytes]:
+    def tdigest_revrank(self, key: CommandItem, *values: float) -> List[int]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
@@ -138,6 +140,23 @@ class TDigestCommandsMixin:
             if loc == length:
                 loc += 1
             res.append(length - loc)
+        return res
+
+    @command(name="TDIGEST.QUANTILE", fixed=(Key(TDigest), Float), repeat=(Float,),
+             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> List[bytes]:
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if len(key.value) == 0:
+            return [b"nan", ]
+        res: List[bytes] = []
+        for q in quantiles:
+            if q < 0 or q > 1:
+                raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
+            ind = int(q * len(key.value))
+            if ind == len(key.value):
+                ind -= 1
+            res.append(self._encodefloat(key.value[ind], True))
         return res
 
     @command(
@@ -161,11 +180,6 @@ class TDigestCommandsMixin:
             b"Total compressions", len(key.value),
             b"Memory usage", len(key.value),
         ]
-
-    @command(name="TDIGEST.QUANTILE", fixed=(Key(TDigest), Float), repeat=(Float,),
-             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_quantile(self, key: CommandItem, *values: float) -> List[bytes]:
-        raise NotImplementedError
 
     @command(name="TDIGEST.TRIMMED_MEAN", fixed=(Key(TDigest), Float, Float), repeat=(),
              flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)

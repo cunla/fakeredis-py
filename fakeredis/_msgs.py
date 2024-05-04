@@ -107,4 +107,4 @@ INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
 TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
 TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
-
+TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
