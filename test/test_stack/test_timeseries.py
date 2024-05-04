@@ -375,8 +375,8 @@ def test_revrange_empty(r: redis.Redis):
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
     assert timeseries.revrange(
-            "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10
-        ) ==  [(70, 5.0), (50, 3.0), (10, 4.0)]
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10
+    ) == [(70, 5.0), (50, 3.0), (10, 4.0)]
     res = timeseries.revrange(
         "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True
     )
@@ -394,476 +394,330 @@ def test_revrange_empty(r: redis.Redis):
     ]
 
 
-# @pytest.mark.onlynoncluster
-# def test_mrange(r: redis.Redis):
-#     r.ts().create(1, labels={"Test": "This", "team": "ny"})
-#     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
-#     for i in range(100):
-#         r.ts().add(1, i, i % 7)
-#         r.ts().add(2, i, i % 11)
-#
-#     res = r.ts().mrange(0, 200, filters=["Test=This"])
-#     assert 2 == len(res)
-#     if is_resp2_connection(r):
-#         assert 100 == len(res[0]["1"][1])
-#
-#         res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-#         assert 10 == len(res[0]["1"][1])
-#
-#         for i in range(100):
-#             r.ts().add(1, i + 200, i % 7)
-#         res = r.ts().mrange(
-#             0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10
-#         )
-#         assert 2 == len(res)
-#         assert 20 == len(res[0]["1"][1])
-#
-#         # test withlabels
-#         assert {} == res[0]["1"][0]
-#         res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
-#         assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
-#     else:
-#         assert 100 == len(res["1"][2])
-#
-#         res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-#         assert 10 == len(res["1"][2])
-#
-#         for i in range(100):
-#             r.ts().add(1, i + 200, i % 7)
-#         res = r.ts().mrange(
-#             0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10
-#         )
-#         assert 2 == len(res)
-#         assert 20 == len(res["1"][2])
-#
-#         # test withlabels
-#         assert {} == res["1"][0]
-#         res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
-#         assert {"Test": "This", "team": "ny"} == res["1"][0]
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_multi_range_advanced(r: redis.Redis):
-#     r.ts().create(1, labels={"Test": "This", "team": "ny"})
-#     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
-#     for i in range(100):
-#         r.ts().add(1, i, i % 7)
-#         r.ts().add(2, i, i % 11)
-#
-#     # test with selected labels
-#     res = r.ts().mrange(0, 200, filters=["Test=This"], select_labels=["team"])
-#     if is_resp2_connection(r):
-#         assert {"team": "ny"} == res[0]["1"][0]
-#         assert {"team": "sf"} == res[1]["2"][0]
-#
-#         # test with filterby
-#         res = r.ts().mrange(
-#             0,
-#             200,
-#             filters=["Test=This"],
-#             filter_by_ts=[i for i in range(10, 20)],
-#             filter_by_min_value=1,
-#             filter_by_max_value=2,
-#         )
-#         assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
-#
-#         # test groupby
-#         res = r.ts().mrange(
-#             0, 3, filters=["Test=This"], groupby="Test", reduce="sum"
-#         )
-#         assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
-#         res = r.ts().mrange(
-#             0, 3, filters=["Test=This"], groupby="Test", reduce="max"
-#         )
-#         assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
-#         res = r.ts().mrange(
-#             0, 3, filters=["Test=This"], groupby="team", reduce="min"
-#         )
-#         assert 2 == len(res)
-#         assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
-#         assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
-#
-#         # test align
-#         res = r.ts().mrange(
-#             0,
-#             10,
-#             filters=["team=ny"],
-#             aggregation_type="count",
-#             bucket_size_msec=10,
-#             align="-",
-#         )
-#         assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
-#         res = r.ts().mrange(
-#             0,
-#             10,
-#             filters=["team=ny"],
-#             aggregation_type="count",
-#             bucket_size_msec=10,
-#             align=5,
-#         )
-#         assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
-#
-#     else:
-#         assert {"team": "ny"} == res["1"][0]
-#     assert {"team": "sf"} == res["2"][0]
-#
-#     # test with filterby
-#     res = r.ts().mrange(
-#         0,
-#         200,
-#         filters=["Test=This"],
-#         filter_by_ts=[i for i in range(10, 20)],
-#         filter_by_min_value=1,
-#         filter_by_max_value=2,
-#     )
-#     assert [[15, 1.0], [16, 2.0]] == res["1"][2]
-#
-#     # test groupby
-#     res = r.ts().mrange(
-#         0, 3, filters=["Test=This"], groupby="Test", reduce="sum"
-#     )
-#     assert [[0, 0.0], [1, 2.0], [2, 4.0], [3, 6.0]] == res["Test=This"][3]
-#     res = r.ts().mrange(
-#         0, 3, filters=["Test=This"], groupby="Test", reduce="max"
-#     )
-#     assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res["Test=This"][3]
-#     res = r.ts().mrange(
-#         0, 3, filters=["Test=This"], groupby="team", reduce="min"
-#     )
-#     assert 2 == len(res)
-#     assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res["team=ny"][3]
-#     assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res["team=sf"][3]
-#
-#     # test align
-#     res = r.ts().mrange(
-#         0,
-#         10,
-#         filters=["team=ny"],
-#         aggregation_type="count",
-#         bucket_size_msec=10,
-#         align="-",
-#     )
-#     assert [[0, 10.0], [10, 1.0]] == res["1"][2]
-#     res = r.ts().mrange(
-#         0,
-#         10,
-#         filters=["team=ny"],
-#         aggregation_type="count",
-#         bucket_size_msec=10,
-#         align=5,
-#     )
-#     assert [[0, 5.0], [5, 6.0]] == res["1"][2]
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_mrange_latest(r: redis.Redis):
-#     timeseries = r.ts()
-#     timeseries.create("t1")
-#     timeseries.create("t2", labels={"is_compaction": "true"})
-#     timeseries.create("t3")
-#     timeseries.create("t4", labels={"is_compaction": "true"})
-#     timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.createrule("t3", "t4", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.add("t1", 1, 1)
-#     timeseries.add("t1", 2, 3)
-#     timeseries.add("t1", 11, 7)
-#     timeseries.add("t1", 13, 1)
-#     timeseries.add("t3", 1, 1)
-#     timeseries.add("t3", 2, 3)
-#     timeseries.add("t3", 11, 7)
-#     timeseries.add("t3", 13, 1)
-#     assert_resp_response(
-#         r,
-#         r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True),
-#         [{"t2": [{}, [(0, 4.0), (10, 8.0)]]}, {"t4": [{}, [(0, 4.0), (10, 8.0)]]}],
-#         {
-#             "t2": [{}, {"aggregators": []}, [[0, 4.0], [10, 8.0]]],
-#             "t4": [{}, {"aggregators": []}, [[0, 4.0], [10, 8.0]]],
-#         },
-#     )
-#
-#
-# @pytest.mark.onlynoncluster
-# @skip_ifmodversion_lt("99.99.99", "timeseries")
-# def test_multi_reverse_range(r: redis.Redis):
-#     r.ts().create(1, labels={"Test": "This", "team": "ny"})
-#     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
-#     for i in range(100):
-#         r.ts().add(1, i, i % 7)
-#         r.ts().add(2, i, i % 11)
-#
-#     res = r.ts().mrange(0, 200, filters=["Test=This"])
-#     assert 2 == len(res)
-#     if is_resp2_connection(r):
-#         assert 100 == len(res[0]["1"][1])
-#
-#     else:
-#         assert 100 == len(res["1"][2])
-#
-#     res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-#     if is_resp2_connection(r):
-#         assert 10 == len(res[0]["1"][1])
-#     else:
-#         assert 10 == len(res["1"][2])
-#
-#     for i in range(100):
-#         r.ts().add(1, i + 200, i % 7)
-#     res = r.ts().mrevrange(
-#         0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10
-#     )
-#     assert 2 == len(res)
-#     if is_resp2_connection(r):
-#         assert 20 == len(res[0]["1"][1])
-#         assert {} == res[0]["1"][0]
-#     else:
-#         assert 20 == len(res["1"][2])
-#         assert {} == res["1"][0]
-#
-#     # test withlabels
-#     res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
-#     if is_resp2_connection(r):
-#         assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
-#     else:
-#         assert {"Test": "This", "team": "ny"} == res["1"][0]
-#
-#     # test with selected labels
-#     res = r.ts().mrevrange(0, 200, filters=["Test=This"], select_labels=["team"])
-#     if is_resp2_connection(r):
-#         assert {"team": "ny"} == res[0]["1"][0]
-#         assert {"team": "sf"} == res[1]["2"][0]
-#     else:
-#         assert {"team": "ny"} == res["1"][0]
-#         assert {"team": "sf"} == res["2"][0]
-#
-#     # test filterby
-#     res = r.ts().mrevrange(
-#         0,
-#         200,
-#         filters=["Test=This"],
-#         filter_by_ts=[i for i in range(10, 20)],
-#         filter_by_min_value=1,
-#         filter_by_max_value=2,
-#     )
-#     if is_resp2_connection(r):
-#         assert [(16, 2.0), (15, 1.0)] == res[0]["1"][1]
-#     else:
-#         assert [[16, 2.0], [15, 1.0]] == res["1"][2]
-#
-#     # test groupby
-#     res = r.ts().mrevrange(
-#         0, 3, filters=["Test=This"], groupby="Test", reduce="sum"
-#     )
-#     if is_resp2_connection(r):
-#         assert [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)] == res[0]["Test=This"][1]
-#     else:
-#         assert [[3, 6.0], [2, 4.0], [1, 2.0], [0, 0.0]] == res["Test=This"][3]
-#     res = r.ts().mrevrange(
-#         0, 3, filters=["Test=This"], groupby="Test", reduce="max"
-#     )
-#     if is_resp2_connection(r):
-#         assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["Test=This"][1]
-#     else:
-#         assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res["Test=This"][3]
-#     res = r.ts().mrevrange(
-#         0, 3, filters=["Test=This"], groupby="team", reduce="min"
-#     )
-#     assert 2 == len(res)
-#     if is_resp2_connection(r):
-#         assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
-#         assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
-#     else:
-#         assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res["team=ny"][3]
-#         assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res["team=sf"][3]
-#
-#     # test align
-#     res = r.ts().mrevrange(
-#         0,
-#         10,
-#         filters=["team=ny"],
-#         aggregation_type="count",
-#         bucket_size_msec=10,
-#         align="-",
-#     )
-#     if is_resp2_connection(r):
-#         assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
-#     else:
-#         assert [[10, 1.0], [0, 10.0]] == res["1"][2]
-#     res = r.ts().mrevrange(
-#         0,
-#         10,
-#         filters=["team=ny"],
-#         aggregation_type="count",
-#         bucket_size_msec=10,
-#         align=1,
-#     )
-#     if is_resp2_connection(r):
-#         assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
-#     else:
-#         assert [[1, 10.0], [0, 1.0]] == res["1"][2]
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_mrevrange_latest(r: redis.Redis):
-#     timeseries = r.ts()
-#     timeseries.create("t1")
-#     timeseries.create("t2", labels={"is_compaction": "true"})
-#     timeseries.create("t3")
-#     timeseries.create("t4", labels={"is_compaction": "true"})
-#     timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.createrule("t3", "t4", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.add("t1", 1, 1)
-#     timeseries.add("t1", 2, 3)
-#     timeseries.add("t1", 11, 7)
-#     timeseries.add("t1", 13, 1)
-#     timeseries.add("t3", 1, 1)
-#     timeseries.add("t3", 2, 3)
-#     timeseries.add("t3", 11, 7)
-#     timeseries.add("t3", 13, 1)
-#     assert_resp_response(
-#         r,
-#         r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True),
-#         [{"t2": [{}, [(10, 8.0), (0, 4.0)]]}, {"t4": [{}, [(10, 8.0), (0, 4.0)]]}],
-#         {
-#             "t2": [{}, {"aggregators": []}, [[10, 8.0], [0, 4.0]]],
-#             "t4": [{}, {"aggregators": []}, [[10, 8.0], [0, 4.0]]],
-#         },
-#     )
-#
-#
-# def test_get(r: redis.Redis):
-#     name = "test"
-#     r.ts().create(name)
-#     assert not r.ts().get(name)
-#     r.ts().add(name, 2, 3)
-#     assert 2 == r.ts().get(name)[0]
-#     r.ts().add(name, 3, 4)
-#     assert 4 == r.ts().get(name)[1]
-#
-#
-# @pytest.mark.onlynoncluster
-# @skip_ifmodversion_lt("1.8.0", "timeseries")
-# def test_get_latest(r: redis.Redis):
-#     timeseries = r.ts()
-#     timeseries.create("t1")
-#     timeseries.create("t2")
-#     timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.add("t1", 1, 1)
-#     timeseries.add("t1", 2, 3)
-#     timeseries.add("t1", 11, 7)
-#     timeseries.add("t1", 13, 1)
-#     assert_resp_response(r, timeseries.get("t2"), (0, 4.0), [0, 4.0])
-#     assert_resp_response(
-#         r, timeseries.get("t2", latest=True), (10, 8.0), [10, 8.0]
-#     )
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_mget(r: redis.Redis):
-#     r.ts().create(1, labels={"Test": "This"})
-#     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
-#     act_res = r.ts().mget(["Test=This"])
-#     exp_res = [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
-#     exp_res_resp3 = {"1": [{}, []], "2": [{}, []]}
-#     assert_resp_response(r, act_res, exp_res, exp_res_resp3)
-#     r.ts().add(1, "*", 15)
-#     r.ts().add(2, "*", 25)
-#     res = r.ts().mget(["Test=This"])
-#     if is_resp2_connection(r):
-#         assert 15 == res[0]["1"][2]
-#         assert 25 == res[1]["2"][2]
-#
-#     else:
-#         assert 15 == res["1"][1][1]
-#         assert 25 == res["2"][1][1]
-#     res = r.ts().mget(["Taste=That"])
-#     if is_resp2_connection(r):
-#         assert 25 == res[0]["2"][2]
-#     else:
-#         assert 25 == res["2"][1][1]
-#
-#     # test with_labels
-#     if is_resp2_connection(r):
-#         assert {} == res[0]["2"][0]
-#     else:
-#         assert {} == res["2"][0]
-#     res = r.ts().mget(["Taste=That"], with_labels=True)
-#     if is_resp2_connection(r):
-#         assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
-#     else:
-#         assert {"Taste": "That", "Test": "This"} == res["2"][0]
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_mget_latest(r: redis.Redis):
-#     timeseries = r.ts()
-#     timeseries.create("t1")
-#     timeseries.create("t2", labels={"is_compaction": "true"})
-#     timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
-#     timeseries.add("t1", 1, 1)
-#     timeseries.add("t1", 2, 3)
-#     timeseries.add("t1", 11, 7)
-#     timeseries.add("t1", 13, 1)
-#     res = timeseries.mget(filters=["is_compaction=true"])
-#     assert_resp_response(r, res, [{"t2": [{}, 0, 4.0]}], {"t2": [{}, [0, 4.0]]})
-#     res = timeseries.mget(filters=["is_compaction=true"], latest=True)
-#     assert_resp_response(r, res, [{"t2": [{}, 10, 8.0]}], {"t2": [{}, [10, 8.0]]})
-#
-#
-# def test_info(r: redis.Redis):
-#     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
-#     info = r.ts().info(1)
-#     assert_resp_response(
-#         r, 5, info.get("retention_msecs"), info.get("retentionTime")
-#     )
-#     assert info["labels"]["currentLabel"] == "currentData"
-#
-#
-# @skip_ifmodversion_lt("1.4.0", "timeseries")
-# def testInfoDuplicatePolicy(r: redis.Redis):
-#     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
-#     info = r.ts().info(1)
-#     assert_resp_response(
-#         r, None, info.get("duplicate_policy"), info.get("duplicatePolicy")
-#     )
-#
-#     r.ts().create("time-serie-2", duplicate_policy="min")
-#     info = r.ts().info("time-serie-2")
-#     assert_resp_response(
-#         r, "min", info.get("duplicate_policy"), info.get("duplicatePolicy")
-#     )
-#
-#
-# @pytest.mark.onlynoncluster
-# def test_query_index(r: redis.Redis):
-#     r.ts().create(1, labels={"Test": "This"})
-#     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
-#     assert 2 == len(r.ts().queryindex(["Test=This"]))
-#     assert 1 == len(r.ts().queryindex(["Taste=That"]))
-#     assert_resp_response(r, r.ts().queryindex(["Taste=That"]), [2], {"2"})
-#
-#
-# def test_pipeline(r: redis.Redis):
-#     pipeline = r.ts().pipeline()
-#     pipeline.create("with_pipeline")
-#     for i in range(100):
-#         pipeline.add("with_pipeline", i, 1.1 * i)
-#     pipeline.execute()
-#
-#     info = r.ts().info("with_pipeline")
-#
-#     assert_resp_response(
-#         r, 99, info.get("last_timestamp"), info.get("lastTimestamp")
-#     )
-#     assert_resp_response(
-#         r, 100, info.get("total_samples"), info.get("totalSamples")
-#     )
-#     assert r.ts().get("with_pipeline")[1] == 99 * 1.1
-#
-#
-# def test_uncompressed(r: redis.Redis):
-#     r.ts().create("compressed")
-#     r.ts().create("uncompressed", uncompressed=True)
-#     compressed_info = r.ts().info("compressed")
-#     uncompressed_info = r.ts().info("uncompressed")
-#
-#     assert compressed_info["memoryUsage"] != uncompressed_info["memoryUsage"]
+@pytest.mark.onlynoncluster
+def test_mrange(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This", "team": "ny"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
+    for i in range(100):
+        r.ts().add(1, i, i % 7)
+        r.ts().add(2, i, i % 11)
+
+    res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(res)
+
+    assert 100 == len(res[0]["1"][1])
+
+    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    assert 10 == len(res[0]["1"][1])
+
+    for i in range(100):
+        r.ts().add(1, i + 200, i % 7)
+    res = r.ts().mrange(
+        0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10
+    )
+    assert 2 == len(res)
+    assert 20 == len(res[0]["1"][1])
+
+    # test withlabels
+    assert {} == res[0]["1"][0]
+    res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
+    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+
+
+@pytest.mark.onlynoncluster
+def test_multi_range_advanced(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This", "team": "ny"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
+    for i in range(100):
+        r.ts().add(1, i, i % 7)
+        r.ts().add(2, i, i % 11)
+
+    # test with selected labels
+    res = r.ts().mrange(0, 200, filters=["Test=This"], select_labels=["team"])
+
+    assert {"team": "ny"} == res[0]["1"][0]
+    assert {"team": "sf"} == res[1]["2"][0]
+
+    # test with filterby
+    res = r.ts().mrange(
+        0,
+        200,
+        filters=["Test=This"],
+        filter_by_ts=[i for i in range(10, 20)],
+        filter_by_min_value=1,
+        filter_by_max_value=2,
+    )
+    assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
+
+    # test groupby
+    res = r.ts().mrange(
+        0, 3, filters=["Test=This"], groupby="Test", reduce="sum"
+    )
+    assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
+    res = r.ts().mrange(
+        0, 3, filters=["Test=This"], groupby="Test", reduce="max"
+    )
+    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
+    res = r.ts().mrange(
+        0, 3, filters=["Test=This"], groupby="team", reduce="min"
+    )
+    assert 2 == len(res)
+    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
+    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
+
+    # test align
+    res = r.ts().mrange(
+        0,
+        10,
+        filters=["team=ny"],
+        aggregation_type="count",
+        bucket_size_msec=10,
+        align="-",
+    )
+    assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
+    res = r.ts().mrange(
+        0,
+        10,
+        filters=["team=ny"],
+        aggregation_type="count",
+        bucket_size_msec=10,
+        align=5,
+    )
+    assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
+
+
+@pytest.mark.onlynoncluster
+def test_mrange_latest(r: redis.Redis):
+    timeseries = r.ts()
+    timeseries.create("t1")
+    timeseries.create("t2", labels={"is_compaction": "true"})
+    timeseries.create("t3")
+    timeseries.create("t4", labels={"is_compaction": "true"})
+    timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.createrule("t3", "t4", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.add("t1", 1, 1)
+    timeseries.add("t1", 2, 3)
+    timeseries.add("t1", 11, 7)
+    timeseries.add("t1", 13, 1)
+    timeseries.add("t3", 1, 1)
+    timeseries.add("t3", 2, 3)
+    timeseries.add("t3", 11, 7)
+    timeseries.add("t3", 13, 1)
+
+    assert r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True) == [{'t2': [{}, [(0, 4.0)]]},
+                                                                                 {'t4': [{}, [(0, 4.0)]]}]
+
+
+@pytest.mark.onlynoncluster
+def test_multi_reverse_range(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This", "team": "ny"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
+    for i in range(100):
+        r.ts().add(1, i, i % 7)
+        r.ts().add(2, i, i % 11)
+
+    res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(res)
+    assert 100 == len(res[0]["1"][1])
+
+    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    assert 10 == len(res[0]["1"][1])
+
+    for i in range(100):
+        r.ts().add(1, i + 200, i % 7)
+    res = r.ts().mrevrange(
+        0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10
+    )
+    assert 2 == len(res)
+
+    assert 20 == len(res[0]["1"][1])
+    assert {} == res[0]["1"][0]
+
+    # test withlabels
+    res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
+    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+
+    # test with selected labels
+    res = r.ts().mrevrange(0, 200, filters=["Test=This"], select_labels=["team"])
+    assert {"team": "ny"} == res[0]["1"][0]
+    assert {"team": "sf"} == res[1]["2"][0]
+
+    # test filterby
+    res = r.ts().mrevrange(
+        0,
+        200,
+        filters=["Test=This"],
+        filter_by_ts=[i for i in range(10, 20)],
+        filter_by_min_value=1,
+        filter_by_max_value=2,
+    )
+    assert [(16, 2.0), (15, 1.0)] == res[0]["1"][1]
+
+    # test groupby
+    res = r.ts().mrevrange(
+        0, 3, filters=["Test=This"], groupby="Test", reduce="sum"
+    )
+    assert [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)] == res[0]["Test=This"][1]
+    res = r.ts().mrevrange(
+        0, 3, filters=["Test=This"], groupby="Test", reduce="max"
+    )
+    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["Test=This"][1]
+    res = r.ts().mrevrange(
+        0, 3, filters=["Test=This"], groupby="team", reduce="min"
+    )
+    assert 2 == len(res)
+    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
+    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
+
+    # test align
+    res = r.ts().mrevrange(
+        0,
+        10,
+        filters=["team=ny"],
+        aggregation_type="count",
+        bucket_size_msec=10,
+        align="-",
+    )
+    assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
+    res = r.ts().mrevrange(
+        0,
+        10,
+        filters=["team=ny"],
+        aggregation_type="count",
+        bucket_size_msec=10,
+        align=1,
+    )
+    assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
+
+
+@pytest.mark.onlynoncluster
+def test_mrevrange_latest(r: redis.Redis):
+    timeseries = r.ts()
+    timeseries.create("t1")
+    timeseries.create("t2", labels={"is_compaction": "true"})
+    timeseries.create("t3")
+    timeseries.create("t4", labels={"is_compaction": "true"})
+    timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.createrule("t3", "t4", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.add("t1", 1, 1)
+    timeseries.add("t1", 2, 3)
+    timeseries.add("t1", 11, 7)
+    timeseries.add("t1", 13, 1)
+    timeseries.add("t3", 1, 1)
+    timeseries.add("t3", 2, 3)
+    timeseries.add("t3", 11, 7)
+    timeseries.add("t3", 13, 1)
+
+    assert r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True) == [{'t2': [{}, [(0, 4.0)]]},
+                                                                                    {'t4': [{}, [(0, 4.0)]]}]
+
+
+def test_get(r: redis.Redis):
+    name = "test"
+    r.ts().create(name)
+    assert not r.ts().get(name)
+    r.ts().add(name, 2, 3)
+    assert 2 == r.ts().get(name)[0]
+    r.ts().add(name, 3, 4)
+    assert 4 == r.ts().get(name)[1]
+
+
+@pytest.mark.onlynoncluster
+def test_get_latest(r: redis.Redis):
+    timeseries = r.ts()
+    timeseries.create("t1")
+    timeseries.create("t2")
+    timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.add("t1", 1, 1)
+    timeseries.add("t1", 2, 3)
+    timeseries.add("t1", 11, 7)
+    timeseries.add("t1", 13, 1)
+    assert timeseries.get("t2") == (0, 4.0)
+    assert timeseries.get("t2", latest=True) == (0, 4.0)
+
+
+@pytest.mark.onlynoncluster
+def test_mget(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That"})
+    act_res = r.ts().mget(["Test=This"])
+    exp_res = [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
+    assert act_res == exp_res
+
+    r.ts().add(1, "*", 15)
+    r.ts().add(2, "*", 25)
+    res = r.ts().mget(["Test=This"])
+    assert 15 == res[0]["1"][2]
+    assert 25 == res[1]["2"][2]
+    res = r.ts().mget(["Taste=That"])
+    assert 25 == res[0]["2"][2]
+
+    # test with_labels
+    assert {} == res[0]["2"][0]
+    res = r.ts().mget(["Taste=That"], with_labels=True)
+    assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
+
+
+@pytest.mark.onlynoncluster
+def test_mget_latest(r: redis.Redis):
+    timeseries = r.ts()
+    timeseries.create("t1")
+    timeseries.create("t2", labels={"is_compaction": "true"})
+    timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    timeseries.add("t1", 1, 1)
+    timeseries.add("t1", 2, 3)
+    timeseries.add("t1", 11, 7)
+    timeseries.add("t1", 13, 1)
+    res = timeseries.mget(filters=["is_compaction=true"])
+    assert res == [{"t2": [{}, 0, 4.0]}]
+    res = timeseries.mget(filters=["is_compaction=true"], latest=True)
+    assert res == [{"t2": [{}, 0, 4.0]}]
+
+
+def test_info(r: redis.Redis):
+    r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
+    info = r.ts().info(1)
+    assert 5 == info.get("retention_msecs")
+    assert info["labels"]["currentLabel"] == "currentData"
+
+
+def testInfoDuplicatePolicy(r: redis.Redis):
+    r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
+    info = r.ts().info(1)
+    assert info.get("duplicate_policy") is None
+
+    r.ts().create("time-serie-2", duplicate_policy="min")
+    info = r.ts().info("time-serie-2")
+    assert info.get("duplicate_policy") == 'min'
+
+
+@pytest.mark.onlynoncluster
+def test_query_index(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That"})
+    assert 2 == len(r.ts().queryindex(["Test=This"]))
+    assert 1 == len(r.ts().queryindex(["Taste=That"]))
+    assert r.ts().queryindex(["Taste=That"]) == [2]
+
+
+def test_pipeline(r: redis.Redis):
+    pipeline = r.ts().pipeline()
+    pipeline.create("with_pipeline")
+    for i in range(100):
+        pipeline.add("with_pipeline", i, 1.1 * i)
+    pipeline.execute()
+
+    info = r.ts().info("with_pipeline")
+    assert 99 == info.get("last_timestamp")
+    assert 100 == info.get("total_samples")
+
+    assert r.ts().get("with_pipeline")[1] == 99 * 1.1
+
+
+def test_uncompressed(r: redis.Redis):
+    r.ts().create("compressed")
+    r.ts().create("uncompressed", uncompressed=True)
+    compressed_info = r.ts().info("compressed")
+    uncompressed_info = r.ts().info("uncompressed")
+
+    assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
