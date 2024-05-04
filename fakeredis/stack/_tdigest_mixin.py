@@ -56,18 +56,6 @@ class TDigestCommandsMixin:
         return OK
 
     @command(
-        name="TDIGEST.BYRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
-        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
-        raise NotImplementedError
-
-    @command(
-        name="TDIGEST.BYREVRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
-        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
-        raise NotImplementedError
-
-    @command(
         name="TDIGEST.MERGE", fixed=(Key(TDigest), Int, bytes), repeat=(bytes,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
     def tdigest_merge(self, dest: CommandItem, numkeys: int, *args: bytes) -> SimpleString:
@@ -199,4 +187,16 @@ class TDigestCommandsMixin:
     @command(name="TDIGEST.TRIMMED_MEAN", fixed=(Key(TDigest), Float, Float), repeat=(),
              flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
     def tdigest_trimmed_mean(self, key: CommandItem, lower: float, upper: float) -> List[bytes]:
+        raise NotImplementedError
+
+    @command(
+        name="TDIGEST.BYRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
+        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
+        raise NotImplementedError
+
+    @command(
+        name="TDIGEST.BYREVRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
+        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
         raise NotImplementedError
