@@ -109,6 +109,37 @@ class TDigestCommandsMixin:
             return b"nan"
         return str(key.value[0]).encode()
 
+    @command(name="TDIGEST.RANK", fixed=(Key(TDigest), Float), repeat=(Float,),
+             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    def tdigest_rank(self, key: CommandItem, *values: float) -> List[int]:
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if len(key.value) == 0:
+            return [-2, ]
+        res = []
+        for v in values:
+            if v > key.value[-1]:
+                res.append(len(key.value))
+            else:
+                res.append(key.value.bisect_right(v) - 1)
+        return res
+
+    @command(name="TDIGEST.REVRANK", fixed=(Key(TDigest), Float), repeat=(Float,),
+             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    def tdigest_revrank(self, key: CommandItem, *values: float) -> List[bytes]:
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if len(key.value) == 0:
+            return [-2, ]
+        res = []
+        length = len(key.value)
+        for v in values:
+            loc = key.value.bisect_right(v)
+            if loc == length:
+                loc += 1
+            res.append(length - loc)
+        return res
+
     @command(
         name="TDIGEST.CDF", fixed=(Key(TDigest), Float), repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
@@ -134,16 +165,6 @@ class TDigestCommandsMixin:
     @command(name="TDIGEST.QUANTILE", fixed=(Key(TDigest), Float), repeat=(Float,),
              flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
     def tdigest_quantile(self, key: CommandItem, *values: float) -> List[bytes]:
-        raise NotImplementedError
-
-    @command(name="TDIGEST.RANK", fixed=(Key(TDigest), Float), repeat=(Float,),
-             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_rank(self, key: CommandItem, *values: float) -> List[bytes]:
-        raise NotImplementedError
-
-    @command(name="TDIGEST.REVRANK", fixed=(Key(TDigest), Float), repeat=(Float,),
-             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_revrank(self, key: CommandItem, *values: float) -> List[bytes]:
         raise NotImplementedError
 
     @command(name="TDIGEST.TRIMMED_MEAN", fixed=(Key(TDigest), Float, Float), repeat=(),
