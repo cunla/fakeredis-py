@@ -162,8 +162,23 @@ class TDigestCommandsMixin:
     @command(
         name="TDIGEST.CDF", fixed=(Key(TDigest), Float), repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_cdf(self, key: CommandItem, *values: float) -> List[bytes]:
-        raise NotImplementedError
+    def tdigest_cdf(self, key: CommandItem, *values: float) -> List[bytes]:  # Cumulative Distribution Function
+        """Returns, for each input value, an estimation of the fraction (floating-point) of
+           (observations smaller than the given value + half the observations equal to the given value).
+        """
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        res: List[bytes] = []
+        for v in values:
+            left = key.value.bisect_left(v)
+            right = key.value.bisect_right(v)
+            if right == 0:
+                res.append(b"0")
+            elif left == len(key.value):
+                res.append(b"1")
+            else:
+                res.append(self._encodefloat(float((left + right) / 2) / len(key.value), True))
+        return res
 
     @command(
         name="TDIGEST.INFO", fixed=(Key(TDigest),), repeat=(),
