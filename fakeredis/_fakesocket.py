@@ -9,6 +9,7 @@ from .commands_mixins.geo_mixin import GeoCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
+from .stack._tdigest_mixin import TDigestCommandsMixin
 
 try:
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
@@ -47,6 +48,7 @@ class FakeSocket(
     CFCommandsMixin,
     CMSCommandsMixin,
     TopkCommandsMixin,
+    TDigestCommandsMixin,
 ):
     def __init__(
             self, server: "FakeServer", db: int, lua_modules: Optional[Set[str]] = None,  # type: ignore # noqa: F821

@@ -246,7 +246,7 @@ class StreamsCommandsMixin:
         res: List[List[bytes]] = key.value.groups_info()
         return res
 
-    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_NO_INITIATE)
+    @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def xinfo_stream(self, key: CommandItem, *args: bytes) -> List[bytes]:
         (full,), _ = extract_args(args, ("full",))
         if key.value is None:

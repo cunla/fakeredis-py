@@ -87,7 +87,7 @@ XGROUP_KEY_NOT_FOUND_MSG = (
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"
 FLAG_TRANSACTION = "t"
-FLAG_NO_INITIATE = "i"
+FLAG_DO_NOT_CREATE = "i"
 GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "

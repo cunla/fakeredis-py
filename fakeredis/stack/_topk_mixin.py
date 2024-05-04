@@ -114,7 +114,7 @@ class TopkCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    @command(name="TOPK.ADD", fixed=(Key(HeavyKeeper), bytes,), repeat=(bytes,), flags=msgs.FLAG_NO_INITIATE, )
+    @command(name="TOPK.ADD", fixed=(Key(HeavyKeeper), bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_add(self, key: CommandItem, *args: bytes) -> List[Optional[bytes]]:
         if key.value is None:
             raise SimpleError("TOPK: key does not exist")
@@ -127,7 +127,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.COUNT",
              fixed=(Key(HeavyKeeper), bytes,),
              repeat=(bytes,),
-             flags=msgs.FLAG_NO_INITIATE, )
+             flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_count(self, key: CommandItem, *args: bytes) -> List[int]:
         if key.value is None:
             raise SimpleError("TOPK: key does not exist")
@@ -139,7 +139,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.QUERY",
              fixed=(Key(HeavyKeeper), bytes,),
              repeat=(bytes,),
-             flags=msgs.FLAG_NO_INITIATE, )
+             flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_query(self, key: CommandItem, *args: bytes) -> List[int]:
         if key.value is None:
             raise SimpleError("TOPK: key does not exist")
@@ -149,7 +149,7 @@ class TopkCommandsMixin:
         res: List[int] = [1 if _item in topk else 0 for _item in args]
         return res
 
-    @command(name="TOPK.INCRBY", fixed=(Key(), bytes, Int,), repeat=(bytes, Int), flags=msgs.FLAG_NO_INITIATE, )
+    @command(name="TOPK.INCRBY", fixed=(Key(), bytes, Int,), repeat=(bytes, Int), flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_incrby(self, key: CommandItem, *args: Any) -> List[Optional[bytes]]:
         if key.value is None:
             raise SimpleError("TOPK: key does not exist")
@@ -164,7 +164,7 @@ class TopkCommandsMixin:
         key.updated()
         return res
 
-    @command(name="TOPK.INFO", fixed=(Key(),), repeat=(), flags=msgs.FLAG_NO_INITIATE, )
+    @command(name="TOPK.INFO", fixed=(Key(),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_info(self, key: CommandItem) -> List[Any]:
         if key.value is None:
             raise SimpleError("TOPK: key does not exist")
@@ -177,7 +177,7 @@ class TopkCommandsMixin:
             b"decay", key.value.decay,
         ]
 
-    @command(name="TOPK.LIST", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_NO_INITIATE, )
+    @command(name="TOPK.LIST", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_list(self, key: CommandItem, *args: Any) -> List[Any]:
         (withcount,), _ = extract_args(args, ("withcount",))
         if key.value is None:
@@ -191,7 +191,7 @@ class TopkCommandsMixin:
             temp = [[item[1], item[0]] for item in value_list]
             return [item for sublist in temp for item in sublist]
 
-    @command(name="TOPK.RESERVE", fixed=(Key(), Int,), repeat=(Int, Int, Float,), flags=msgs.FLAG_NO_INITIATE, )
+    @command(name="TOPK.RESERVE", fixed=(Key(), Int,), repeat=(Int, Int, Float,), flags=msgs.FLAG_DO_NOT_CREATE, )
     def topk_reserve(self, key: CommandItem, topk: int, *args: Any) -> SimpleString:
         if len(args) == 3:
             width, depth, decay = args

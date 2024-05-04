@@ -7,10 +7,17 @@ from fakeredis._helpers import SimpleString
 
 
 class TDigest(SortedList):
-    pass
+    def __init__(self, compression: int = 100):
+        super().__init__()
+        self.compression = compression
 
 
 class TDigestCommandsMixin:
+
+    @command(name="TDIGEST.CREATE", fixed=(Key(TDigest),), repeat=(bytes,))
+    def tdigest_create(self, key: CommandItem, *args: bytes) -> SimpleString:
+        raise NotImplementedError
+
     @command(name="TDIGEST.ADD", fixed=(Key(TDigest), Float), repeat=(Float,))
     def tdigest_add(self, key: CommandItem, *values: float) -> SimpleString:
         raise NotImplementedError
@@ -25,10 +32,6 @@ class TDigestCommandsMixin:
 
     @command(name="TDIGEST.CDF", fixed=(Key(TDigest), Float), repeat=(Float,))
     def tdigest_cdf(self, key: CommandItem, *values: float) -> List[bytes]:
-        raise NotImplementedError
-
-    @command(name="TDIGEST.CREATE", fixed=(Key(TDigest),), repeat=(bytes,))
-    def tdigest_create(self, key: CommandItem, *args: bytes) -> SimpleString:
         raise NotImplementedError
 
     @command(name="TDIGEST.INFO", fixed=(Key(TDigest),), repeat=())
