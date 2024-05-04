@@ -204,10 +204,34 @@ class TDigestCommandsMixin:
         name="TDIGEST.BYRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
     def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
-        raise NotImplementedError
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if len(key.value) == 0:
+            return [b"nan", ]
+        res: List[bytes] = []
+        for rank in ranks:
+            if rank < 0:
+                raise SimpleError(msgs.TDIGEST_BAD_RANK)
+            if rank >= len(key.value):
+                res.append(b"inf")
+            else:
+                res.append(self._encodefloat(key.value[rank], True))
+        return res
 
     @command(
         name="TDIGEST.BYREVRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
     def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
-        raise NotImplementedError
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if len(key.value) == 0:
+            return [b"nan", ]
+        res: List[bytes] = []
+        for rank in ranks:
+            if rank < 0:
+                raise SimpleError(msgs.TDIGEST_BAD_RANK)
+            if rank >= len(key.value):
+                res.append(b"-inf")
+            else:
+                res.append(self._encodefloat(key.value[-rank - 1], True))
+        return res
