@@ -87,7 +87,7 @@ XGROUP_KEY_NOT_FOUND_MSG = (
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"
 FLAG_TRANSACTION = "t"
-FLAG_NO_INITIATE = "i"
+FLAG_DO_NOT_CREATE = "i"
 GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
@@ -103,3 +103,9 @@ INVALID_BITFIELD_TYPE = (
     "Note that u64 is not supported but i64 is."
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
+
+TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
+TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
+TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
+TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
+TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"

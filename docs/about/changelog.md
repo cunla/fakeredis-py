@@ -5,6 +5,22 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.23.0
+
+### 🚀 Features
+
+- Support for TDigest commands.
+
+### 🐛 Bug Fixes
+
+- Import `Self` from typing vs. typing_extension
+
+### 🧰 Maintenance
+
+- Update dependencies
+- Add redis-py 5.0.4 to tests
+- Update lupa version constraint #306 @noamkush
+
 ## v2.22.0
 
 ### 🚀 Features

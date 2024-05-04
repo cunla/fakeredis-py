@@ -28,7 +28,7 @@ class CMSCommandsMixin:
         name="CMS.INCRBY",
         fixed=(Key(CountMinSketch), bytes, bytes),
         repeat=(bytes, bytes,),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_incrby(self, key: CommandItem, *args: bytes) -> List[Tuple[bytes, int]]:
         if key.value is None:
@@ -49,7 +49,7 @@ class CMSCommandsMixin:
         name="CMS.INFO",
         fixed=(Key(CountMinSketch),),
         repeat=(),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_info(self, key: CommandItem) -> List[bytes]:
         if key.value is None:
@@ -64,7 +64,7 @@ class CMSCommandsMixin:
         name="CMS.INITBYDIM",
         fixed=(Key(CountMinSketch), Int, Int),
         repeat=(),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_initbydim(self, key: CommandItem, width: int, depth: int) -> SimpleString:
         if key.value is not None:
@@ -80,7 +80,7 @@ class CMSCommandsMixin:
         name="CMS.INITBYPROB",
         fixed=(Key(CountMinSketch), Float, Float),
         repeat=(),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_initby_prob(self, key: CommandItem, error_rate: float, probability: float) -> SimpleString:
         if key.value is not None:
@@ -96,7 +96,7 @@ class CMSCommandsMixin:
         name="CMS.MERGE",
         fixed=(Key(CountMinSketch), Int, bytes),
         repeat=(bytes,),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_merge(self, dest_key: CommandItem, num_keys: int, *args: bytes) -> SimpleString:
         if dest_key.value is None:
@@ -125,7 +125,7 @@ class CMSCommandsMixin:
         name="CMS.QUERY",
         fixed=(Key(CountMinSketch), bytes),
         repeat=(bytes,),
-        flags=msgs.FLAG_NO_INITIATE,
+        flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_query(self, key: CommandItem, *items: bytes) -> List[int]:
         if key.value is None:
