@@ -365,50 +365,35 @@ def test_revrange_bucket_timestamp(r: redis.Redis):
         bucket_timestamp="+",
     ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
 
-#
-# def test_revrange_empty(r: redis.Redis):
-#     timeseries = r.ts()
-#     timeseries.create("t1")
-#     timeseries.add("t1", 15, 1)
-#     timeseries.add("t1", 17, 4)
-#     timeseries.add("t1", 51, 3)
-#     timeseries.add("t1", 73, 5)
-#     timeseries.add("t1", 75, 3)
-#     assert_resp_response(
-#         r,
-#         timeseries.revrange(
-#             "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10
-#         ),
-#         [(70, 5.0), (50, 3.0), (10, 4.0)],
-#         [[70, 5.0], [50, 3.0], [10, 4.0]],
-#     )
-#     res = timeseries.revrange(
-#         "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True
-#     )
-#     for i in range(len(res)):
-#         if math.isnan(res[i][1]):
-#             res[i] = (res[i][0], None)
-#     resp2_expected = [
-#         (70, 5.0),
-#         (60, None),
-#         (50, 3.0),
-#         (40, None),
-#         (30, None),
-#         (20, None),
-#         (10, 4.0),
-#     ]
-#     resp3_expected = [
-#         [70, 5.0],
-#         (60, None),
-#         [50, 3.0],
-#         (40, None),
-#         (30, None),
-#         (20, None),
-#         [10, 4.0],
-#     ]
-#     assert_resp_response(r, res, resp2_expected, resp3_expected)
-#
-#
+
+def test_revrange_empty(r: redis.Redis):
+    timeseries = r.ts()
+    timeseries.create("t1")
+    timeseries.add("t1", 15, 1)
+    timeseries.add("t1", 17, 4)
+    timeseries.add("t1", 51, 3)
+    timeseries.add("t1", 73, 5)
+    timeseries.add("t1", 75, 3)
+    assert timeseries.revrange(
+            "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10
+        ) ==  [(70, 5.0), (50, 3.0), (10, 4.0)]
+    res = timeseries.revrange(
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True
+    )
+    for i in range(len(res)):
+        if math.isnan(res[i][1]):
+            res[i] = (res[i][0], None)
+    assert res == [
+        (70, 5.0),
+        (60, None),
+        (50, 3.0),
+        (40, None),
+        (30, None),
+        (20, None),
+        (10, 4.0),
+    ]
+
+
 # @pytest.mark.onlynoncluster
 # def test_mrange(r: redis.Redis):
 #     r.ts().create(1, labels={"Test": "This", "team": "ny"})
