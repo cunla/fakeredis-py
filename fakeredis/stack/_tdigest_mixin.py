@@ -186,8 +186,19 @@ class TDigestCommandsMixin:
 
     @command(name="TDIGEST.TRIMMED_MEAN", fixed=(Key(TDigest), Float, Float), repeat=(),
              flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
-    def tdigest_trimmed_mean(self, key: CommandItem, lower: float, upper: float) -> List[bytes]:
-        raise NotImplementedError
+    def tdigest_trimmed_mean(self, key: CommandItem, lower: float, upper: float) -> bytes:
+        if key.value is None:
+            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+        if lower < 0 or upper > 1 or lower > upper:
+            raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
+        if len(key.value) == 0:
+            return b"nan"
+        left = int(lower * len(key.value))
+        right = int(upper * len(key.value))
+        res = key.value[(left + right) // 2]
+        if right == left + 1:
+            res = (res + key.value[right]) / 2
+        return self._encodefloat(res, True)
 
     @command(
         name="TDIGEST.BYRANK", fixed=(Key(TDigest), Int), repeat=(Int,),
