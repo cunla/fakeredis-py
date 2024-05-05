@@ -152,4 +152,3 @@ class TDigestCore(object):
     def __repr__(self):
         return "[ %s ]" % ", ".join([str(c) for c in self.centroid_list])
 
-
