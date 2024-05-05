@@ -9,7 +9,10 @@ description: Change log of all fakeredis releases
 
 ### 🚀 Features
 
-- Support for TDigest commands.
+- Support for TDigest
+  commands: `TDIGEST.ADD`,`TDIGEST.BYRANK`,`TDIGEST.BYREVRANK`,`TDIGEST.CDF`, `TDIGEST.CREATE`, `TDIGEST.INFO`,
+  `TDIGEST.MAX`, `TDIGEST.MERGE`, `TDIGEST.MIN`, `TDIGEST.QUANTILE`, `TDIGEST.RANK`, `TDIGEST.RESET`, `TDIGEST.REVRANK`,
+  `TDIGEST.TRIMMED_MEAN`.
 
 ### 🐛 Bug Fixes
 
