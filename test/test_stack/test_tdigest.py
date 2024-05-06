@@ -3,6 +3,8 @@ from math import inf
 import pytest
 import redis
 
+topk_tests = pytest.importorskip("probables")
+
 
 @pytest.mark.experimental
 def test_tdigest_reset(r: redis.Redis):
