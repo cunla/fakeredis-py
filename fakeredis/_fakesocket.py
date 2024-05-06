@@ -1,6 +1,9 @@
 from typing import Optional, Set
 
-from fakeredis.stack import JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin
+from fakeredis.stack import (
+    JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin,
+    TDigestCommandsMixin,
+)
 from ._basefakesocket import BaseFakeSocket
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
@@ -9,7 +12,6 @@ from .commands_mixins.geo_mixin import GeoCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
-from .stack._tdigest_mixin import TDigestCommandsMixin
 
 try:
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
