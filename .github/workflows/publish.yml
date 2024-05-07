@@ -10,6 +10,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     environment:
       name: pypi
@@ -36,7 +37,7 @@ jobs:
 
       - name: Publish documentation
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
         run: |
           pip install -r docs/requirements.txt
