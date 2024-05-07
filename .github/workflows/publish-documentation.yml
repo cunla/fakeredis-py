@@ -5,6 +5,7 @@ name: Generate and publish documentation
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   publish:
