@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.23.1
+
+### 🐛 Bug Fixes
+
+- Fix `XREAD` behavior when `COUNT` is not provided but `BLOCKING` is provided #308
+
 ## v2.23.0
 
 ### 🚀 Features
