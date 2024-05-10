@@ -32,4 +32,4 @@ jobs:
       - name: Publish package to pypi
         uses: pypa/gh-action-pypi-publish@v1.8.14
         with:
-          print_hash: true
+          print-hash: true
