@@ -61,8 +61,8 @@ def test_xadd_redis__green(r: redis.Redis):
     stream = "stream"
     before = int(1000 * time.time())
     m1 = r.xadd(stream, {"some": "other"})
-    after = int(1000 * time.time()) + 1
     ts1, seq1 = m1.decode().split('-')
+    after = int(1000 * time.time()) + 1
     assert before <= int(ts1) <= after
     seq1 = int(seq1)
     m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-{seq1 + 1}')
@@ -231,6 +231,14 @@ def get_stream_message(client, stream, message_id):
     response = client.xrange(stream, min=message_id, max=message_id)
     assert len(response) == 1
     return response[0]
+
+
+def test_xread_blocking_no_count(r: redis.Redis):
+    k = "key"
+    r.xadd(k, {"value": 1234})
+    streams = {k: "0"}
+    m1 = r.xread(streams=streams, block=10)
+    assert m1[0][1][0][1] == {b'value': b'1234'}
 
 
 def test_xread(r: redis.Redis):

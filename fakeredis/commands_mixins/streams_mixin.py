@@ -368,10 +368,10 @@ class StreamsCommandsMixin:
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
-            if first_pass and (count is None):
-                return None
             if len(stream_results) > 0:
                 res.append([item.key, stream_results])
+            if first_pass and (count is None):
+                return res
         if blocking and count and len(res) == 0:
             return None
         return res
