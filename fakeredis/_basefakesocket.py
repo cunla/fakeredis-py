@@ -221,7 +221,7 @@ class BaseFakeSocket:
 
         Returns the function return value, or None if the timeout has passed.
         """
-        ret = func(True)
+        ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
             return ret
         deadline = time.time() + timeout if timeout else None
@@ -231,7 +231,7 @@ class BaseFakeSocket:
                 return None
             if self._db.condition.wait(timeout=timeout) is False:
                 return None  # Timeout expired
-            ret = func(False)
+            ret = func(False)  # Second pass => first_pass=False
             if ret is not None:
                 return ret
 

@@ -370,8 +370,8 @@ class StreamsCommandsMixin:
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
             if len(stream_results) > 0:
                 res.append([item.key, stream_results])
-            if first_pass and (count is None) and len(res) == len(stream_start_id_list):
-                return res
+
+        # On blocking read, when count is not None, and there are no results, return None (instead of an empty list)
         if blocking and count and len(res) == 0:
             return None
         return res
