@@ -5,6 +5,12 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+## v2.23.2
+
+### 🐛 Bug Fixes
+
+- Fix reading multiple streams with blocking #309
+
 ## v2.23.1
 
 ### 🐛 Bug Fixes
