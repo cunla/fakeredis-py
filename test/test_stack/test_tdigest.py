@@ -3,6 +3,8 @@ from math import inf
 import pytest
 import redis
 
+topk_tests = pytest.importorskip("probables")
+
 
 @pytest.mark.experimental
 def test_tdigest_reset(r: redis.Redis):
@@ -28,7 +30,7 @@ def test_tdigest_merge(r: redis.Redis):
     # merge from-tdigest into to-tdigest
     assert r.tdigest().merge("to-tDigest", 1, "from-tDigest")
     # we should now have 110 weight on to-histogram
-    info = r.tdigest().info("to-tDigest")    
+    info = r.tdigest().info("to-tDigest")
     assert 20 == float(info["merged_weight"]) + float(info["unmerged_weight"])
     # test override
     assert r.tdigest().create("from-override", 10)
@@ -131,4 +133,3 @@ def test_tdigest_byrevrank(r: redis.Redis):
     assert r.tdigest().byrevrank("t-digest", 100)[0] == -inf
     with pytest.raises(redis.ResponseError):
         r.tdigest().byrevrank("t-digest", -1)[0]
-

@@ -1,6 +1,6 @@
 ---
 
-name: Upload Python Package
+name: Upload Python Package to PyPI
 
 on:
   release:
@@ -32,13 +32,4 @@ jobs:
       - name: Publish package to pypi
         uses: pypa/gh-action-pypi-publish@v1.8.14
         with:
-          print_hash: true
-
-      - name: Publish documentation
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
-        run: |
-          pip install -r docs/requirements.txt
-          mkdocs gh-deploy --force
-          mkdocs --version
+          print-hash: true

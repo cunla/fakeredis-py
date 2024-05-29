@@ -202,7 +202,7 @@ class FakeRedis(redis_async.Redis):
             server: Optional[_server.FakeServer] = None,
             connected: bool = True,
             version: VersionType = (7,),
-            lua_modules: Set[str] = None,
+            lua_modules: Optional[Set[str]] = None,
             **kwargs: Any,
     ) -> None:
         if not connection_pool:

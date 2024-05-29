@@ -1,3 +1,4 @@
+from ._tdigest_mixin import TDigestCommandsMixin
 from ._topk_mixin import TopkCommandsMixin  # noqa: F401
 
 try:
@@ -40,4 +41,6 @@ __all__ = [
     "JSONObject",
     "BFCommandsMixin",
     "CFCommandsMixin",
-    "CMSCommandsMixin", ]
+    "CMSCommandsMixin",
+    "TDigestCommandsMixin",
+]
