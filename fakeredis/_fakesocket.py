@@ -2,7 +2,7 @@ from typing import Optional, Set
 
 from fakeredis.stack import (
     JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin,
-    TDigestCommandsMixin,
+    TDigestCommandsMixin, TimeSeriesCommandsMixin,
 )
 from ._basefakesocket import BaseFakeSocket
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
@@ -12,8 +12,6 @@ from .commands_mixins.geo_mixin import GeoCommandsMixin
 from .commands_mixins.hash_mixin import HashCommandsMixin
 from .commands_mixins.list_mixin import ListCommandsMixin
 from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
-from .stack._tdigest_mixin import TDigestCommandsMixin
-from .stack._time_series_mixin import TimeSeriesCommandsMixin
 
 try:
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
