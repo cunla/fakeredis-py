@@ -183,29 +183,64 @@ django_rq.queues.get_redis_connection = get_fake_connection
 
 See info on [this issue][7]
 
+If you're using FastAPI dependency injection to provide a Redis connection,
+then you can override that dependency for testing.
+
+Your FastAPI application main.py:
+
 ```python
-from fakeredis.aioredis import FakeRedis
-from httpx import AsyncClient
-from .main import app  # this is the fastapi app object
-from .main import RedisBackend  # this is a class with a bunch of methods with the Redis code for the actions I perform
+from typing import Annotated, Any, AsyncIterator
 
+from redis import asyncio as redis
+from fastapi import Depends, FastAPI
 
-@pytest_asyncio.fixture(scope="function")
-async def redis_conn() -> AsyncIterator[Redis[str]]:
-    # Actually I have some code here to return fakeredis or real redis according to a pytest 
-    # command-line option, but that's not really relevant. It's the reason I bother here with
-    # the async context, though. There's no cleanup needed with FakeRedis alone.
-    async with FakeRedis(decode_responses=True, version=(6,)) as redis_conn:
-        await redis_conn.flushdb()
-        yield redis_conn
+app = FastAPI()
 
+async def get_redis() -> AsyncIterator[redis.Redis]:
+    # Code to handle creating a redis connection goes here, for example
+    async with redis.from_url("redis://localhost:6379") as client:  # type: ignore[no-untyped-call]
+        yield client
 
-@pytest_asyncio.fixture(scope="function")
-async def client(redis_conn: Redis[str]) -> AsyncIterator[AsyncClient]:
-    with mock.patch("main.create_backend", return_value=RedisBackend(redis_conn)):
-        app.dependency_overrides[_some_other_injected_dependency] = _some_other_override
-        async with AsyncClient(app=app, base_url="http://testserver") as client:
-            yield client
+@app.get("/")
+async def root(redis_client: Annotated[redis.Redis, Depends(get_redis)]) -> Any:
+    # Code that does something with redis goes here, for example:
+    await redis_client.set("foo", "bar")
+    return {"redis_keys": await redis_client.keys()}
+```
+
+Assuming you use pytest-asyncio, your test file
+(or you can put the fixtures in conftest.py as usual):
+
+```python
+from typing import AsyncIterator
+from unittest import mock
+
+import fakeredis
+import httpx
+import pytest
+import pytest_asyncio
+from redis import asyncio as redis
+
+from main import app, get_redis
+
+@pytest_asyncio.fixture
+async def redis_client() -> AsyncIterator[redis.Redis]:
+    async with fakeredis.FakeAsyncRedis() as client:
+        yield client
+
+@pytest_asyncio.fixture
+async def app_client(redis_client: redis.Redis) -> AsyncIterator[httpx.AsyncClient]:
+    async def get_redis_override() -> redis.Redis:
+        return redis_client
+    transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type] # https://github.com/encode/httpx/issues/3111
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as app_client:
+        with mock.patch.dict(app.dependency_overrides, {get_redis: get_redis_override}):
+            yield app_client
+
+@pytest.mark.asyncio
+async def test_app(app_client: httpx.AsyncClient) -> None:
+    response = await app_client.get("/")
+    assert response.json()["redis_keys"] == ["foo"]
 ```
 
 ## Known Limitations
