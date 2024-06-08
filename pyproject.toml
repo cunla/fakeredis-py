@@ -66,6 +66,7 @@ pytest = "^7.4"
 pytest-asyncio = "^0.21"
 pytest-cov = "^4.1"
 pygithub = "^2.3"
+pytest-mock = { version = "^3.14", python = ">=3.8.1" }
 mypy = { version = "^1.10", python = ">=3.8.1" }
 python-dotenv = { version = "^1", python = ">=3.8.1" }
 
