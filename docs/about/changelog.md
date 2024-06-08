@@ -5,6 +5,11 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+### 🧰 Maintenance
+
+- Documented how to use fakeredis with FastAPI. @ sjjessop #292
+
+
 ## v2.23.2
 
 ### 🐛 Bug Fixes
