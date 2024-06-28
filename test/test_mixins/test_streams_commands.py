@@ -792,4 +792,16 @@ def test_xread_blocking(create_redis):
     t.join()
     assert result[0][0] == b"stream"
     assert result[0][1][0][1] == {b'x': b'1'}
-    pass
+
+
+def test_stream_ttl(r: redis.Redis):
+    stream = "stream"
+
+    m1 = r.xadd(stream, {'foo': 'bar'})
+    expected = [[
+        stream.encode(),
+        [get_stream_message(r, stream, m1)],
+    ]]
+    assert r.xread(streams={stream: 0}) == expected
+    assert r.xtrim(stream, 0) == 1
+    assert r.ttl(stream) == -1
