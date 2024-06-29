@@ -30,9 +30,11 @@ def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
     :return: A tuple of the command and command arguments.
 
     Example:
+        ```
         fields = [b'GET', b'key1']
         result = _extract_command(fields)
         print(result) # ('GET', ['key1'])
+        ```
     """
     cmd = decode_command_bytes(fields[0])
     if cmd in COMMANDS_WITH_SUB and len(fields) >= 2:
@@ -310,11 +312,11 @@ class BaseFakeSocket:
 
         - A full iteration always retrieves all the elements that were present in the collection from the start to the
           end of a full iteration. This means that if a given element is inside the collection when an iteration is
-          started, and is still there when an iteration terminates, then at some point the SCAN command returned it to
+          started and is still there when an iteration terminates, then at some point the SCAN command returned it to
           the user.
 
         - A full iteration never returns any element that was NOT present in the collection from the start to the end
-          of a full iteration. So if an element was removed before the start of an iteration, and is never added back
+          of a full iteration. So if an element was removed before the start of an iteration and is never added back
           to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
           be returned.
 
