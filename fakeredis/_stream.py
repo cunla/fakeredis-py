@@ -428,6 +428,9 @@ class XStream:
         self._entries_added += 1
         return ts_seq.encode()
 
+    def __bool__(self):
+        return True
+
     def __len__(self) -> int:
         return len(self._ids)
 

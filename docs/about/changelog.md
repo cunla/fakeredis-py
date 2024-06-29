@@ -5,6 +5,20 @@ description: Change log of all fakeredis releases
 
 ## Next release
 
+### 🧰 Maintenance
+
+- Documented how to use fakeredis with FastAPI. @ sjjessop #292
+
+## v2.23.3
+
+### 🧰 Maintenance
+
+- docs: Full code for FastAPI integration (#312)
+
+### 🐛 Bug Fixes
+
+- Fix ttl for empty stream #313
+
 ## v2.23.2
 
 ### 🐛 Bug Fixes
