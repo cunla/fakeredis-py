@@ -1,4 +1,5 @@
 from ._tdigest_mixin import TDigestCommandsMixin
+from ._time_series_mixin import TimeSeriesCommandsMixin
 from ._topk_mixin import TopkCommandsMixin  # noqa: F401
 
 try:
@@ -43,4 +44,5 @@ __all__ = [
     "CFCommandsMixin",
     "CMSCommandsMixin",
     "TDigestCommandsMixin",
+    "TimeSeriesCommandsMixin",
 ]

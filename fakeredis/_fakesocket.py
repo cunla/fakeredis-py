@@ -2,7 +2,7 @@ from typing import Optional, Set
 
 from fakeredis.stack import (
     JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin,
-    TDigestCommandsMixin,
+    TDigestCommandsMixin, TimeSeriesCommandsMixin,
 )
 from ._basefakesocket import BaseFakeSocket
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
@@ -51,6 +51,7 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
     TDigestCommandsMixin,
+    TimeSeriesCommandsMixin,
 ):
     def __init__(
             self, server: "FakeServer", db: int, lua_modules: Optional[Set[str]] = None,  # type: ignore # noqa: F821
