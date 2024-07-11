@@ -119,3 +119,8 @@ include = [
     "fakeredis",
     "test",
 ]
+exclude = '''
+(
+  /fakeredis/commands\.json
+)
+'''
