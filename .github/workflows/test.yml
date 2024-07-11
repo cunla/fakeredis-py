@@ -34,11 +34,10 @@ jobs:
         shell: bash
         run: |
           poetry run flake8 fakeredis/
-      - uses: psf/black@stable
-        with:
-          options: "--check --verbose"
-          use_pyproject: true
-          src: "fakeredis"
+      - name: Run black
+        shell: bash
+        run: |
+          poetry run black --check --verbose fakeredis test
       - name: Test import
         run: |
           poetry build
