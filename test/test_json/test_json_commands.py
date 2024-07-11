@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, List, Tuple, )
+from typing import (
+    Any,
+    Dict,
+    List,
+    Tuple,
+)
 
 import pytest
 
@@ -61,8 +66,7 @@ def json_data() -> Dict[str, Any]:
 
 
 def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[bytes]]:
-    """Generate a structure with sample of all types
-    """
+    """Generate a structure with sample of all types"""
     type_samples = {
         "object": {},
         "array": [],
@@ -74,7 +78,7 @@ def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[bytes]]:
     }
     jdata = {}
 
-    for (k, v) in type_samples.items():
+    for k, v in type_samples.items():
         jdata[f"nested_{k}"] = {nested_key_name: v}
 
     return jdata, [k.encode() for k in type_samples.keys()]
