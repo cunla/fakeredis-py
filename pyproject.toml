@@ -32,6 +32,8 @@ classifiers = [
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 homepage = "https://github.com/cunla/fakeredis-py"
@@ -57,18 +59,22 @@ bf = ["pyprobables"]
 cf = ["pyprobables"]
 probabilistic = ["pyprobables"]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 coverage = "^7"
 flake8 = { version = "^7", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
 hypothesis = "^6.70"
+mypy = { version = "^1.10", python = ">=3.8.1" }
+
+[tool.poetry.group.test.dependencies]
 pytest = "^7.4"
 pytest-asyncio = "^0.21"
 pytest-cov = "^4.1"
-pygithub = "^2.3"
 pytest-mock = { version = "^3.14", python = ">=3.8.1" }
-mypy = { version = "^1.10", python = ">=3.8.1" }
+
+[tool.poetry.group.docs.dependencies]
 python-dotenv = { version = "^1", python = ">=3.8.1" }
+pygithub = "^2.3"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
@@ -102,3 +108,8 @@ exclude = [
     '.github',
     '__pycache__',
 ]
+
+[tool.black]
+color = true
+line-length = 120
+target-version = ['py310']
