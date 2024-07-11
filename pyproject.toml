@@ -120,7 +120,19 @@ include = [
     "test",
 ]
 exclude = '''
-(
-  /fakeredis/commands\.json
+ (
+  /(
+    | \.git          # root of the project
+    | \.github
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | .*/__pycache__/.*
+  | /fakeredis/commands.json
 )
 '''
