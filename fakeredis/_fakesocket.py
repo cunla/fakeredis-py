@@ -1,7 +1,11 @@
 from typing import Optional, Set
 
 from fakeredis.stack import (
-    JSONCommandsMixin, BFCommandsMixin, CFCommandsMixin, CMSCommandsMixin, TopkCommandsMixin,
+    JSONCommandsMixin,
+    BFCommandsMixin,
+    CFCommandsMixin,
+    CMSCommandsMixin,
+    TopkCommandsMixin,
     TDigestCommandsMixin,
 )
 from ._basefakesocket import BaseFakeSocket
@@ -16,10 +20,12 @@ from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
 try:
     from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
 except ImportError:
+
     class ScriptingCommandsMixin:  # type: ignore  # noqa: E303
         def __init__(self, *args, **kwargs) -> None:
             kwargs.pop("lua_modules", None)
             super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
+
 
 from .commands_mixins.server_mixin import ServerCommandsMixin
 from .commands_mixins.set_mixin import SetCommandsMixin
@@ -53,6 +59,9 @@ class FakeSocket(
     TDigestCommandsMixin,
 ):
     def __init__(
-            self, server: "FakeServer", db: int, lua_modules: Optional[Set[str]] = None,  # type: ignore # noqa: F821
+        self,
+        server: "FakeServer",
+        db: int,
+        lua_modules: Optional[Set[str]] = None,  # type: ignore # noqa: F821
     ) -> None:
         super(FakeSocket, self).__init__(server, db, lua_modules=lua_modules)

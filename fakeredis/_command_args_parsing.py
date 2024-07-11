@@ -7,17 +7,17 @@ from ._helpers import SimpleError, null_terminate
 
 def _count_params(s: str) -> int:
     res = 0
-    while res < len(s) and s[res] in '.+*~':
+    while res < len(s) and s[res] in ".+*~":
         res += 1
     return res
 
 
 def _encode_arg(s: str) -> bytes:
-    return s[_count_params(s):].encode()
+    return s[_count_params(s) :].encode()
 
 
 def _default_value(s: str) -> Any:
-    if s[0] == '~':
+    if s[0] == "~":
         return None
     ind = _count_params(s)
     if ind == 0:
@@ -29,11 +29,11 @@ def _default_value(s: str) -> Any:
 
 
 def extract_args(
-        actual_args: Tuple[bytes, ...],
-        expected: Tuple[str, ...],
-        error_on_unexpected: bool = True,
-        left_from_first_unexpected: bool = True,
-        exception: Optional[str] = None
+    actual_args: Tuple[bytes, ...],
+    expected: Tuple[str, ...],
+    error_on_unexpected: bool = True,
+    left_from_first_unexpected: bool = True,
+    exception: Optional[str] = None,
 ) -> Tuple[List[Any], Sequence[Any]]:
     """Parse argument values.
 
@@ -68,10 +68,7 @@ def extract_args(
         ('~+maxlen', 'nx', 'xx', '+ex', 'keepttl'))
     10, [True, True, 324, False], None
     """
-    args_info: Dict[bytes, Tuple[int, int]] = {
-        _encode_arg(k): (i, _count_params(k))
-        for (i, k) in enumerate(expected)
-    }
+    args_info: Dict[bytes, Tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
 
     def _parse_params(key: bytes, ind: int, _actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
         """Parse an argument from actual args.
@@ -84,16 +81,16 @@ def extract_args(
 
         # Deal with parameters with optional ~/= before numerical value.
         arg: Any
-        if argument_name[0] == '~':
+        if argument_name[0] == "~":
             if ind + 1 >= len(_actual_args):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-            if _actual_args[ind + 1] != b'~' and _actual_args[ind + 1] != b'=':
+            if _actual_args[ind + 1] != b"~" and _actual_args[ind + 1] != b"=":
                 arg, _parsed = _actual_args[ind + 1], 1
             elif ind + 2 >= len(_actual_args):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             else:
                 arg, _parsed = _actual_args[ind + 2], 2
-            if argument_name[1] == '+':
+            if argument_name[1] == "+":
                 arg = Int.decode(arg)
             return arg, _parsed
         # Boolean parameters
@@ -105,9 +102,9 @@ def extract_args(
         temp_res = []
         for i in range(expected_following):
             curr_arg: Any = _actual_args[ind + i + 1]
-            if argument_name[i] == '+':
+            if argument_name[i] == "+":
                 curr_arg = Int.decode(curr_arg)
-            elif argument_name[i] == '.':
+            elif argument_name[i] == ".":
                 curr_arg = Float.decode(curr_arg)
             temp_res.append(curr_arg)
 
@@ -134,7 +131,8 @@ def extract_args(
                 raise (
                     SimpleError(msgs.SYNTAX_ERROR_MSG)
                     if exception is None
-                    else SimpleError(exception.format(actual_args[i])))
+                    else SimpleError(exception.format(actual_args[i]))
+                )
             if left_from_first_unexpected:
                 return results, actual_args[i:]
             left_args.append(actual_args[i])

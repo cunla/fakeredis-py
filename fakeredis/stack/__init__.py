@@ -9,9 +9,9 @@ except ImportError as e:
     if e.name == "fakeredis.stack._json_mixin":
         raise e
 
-
     class JSONCommandsMixin:  # type: ignore # noqa: E303
         pass
+
 
 try:
     import probables  # noqa: F401
@@ -23,17 +23,15 @@ except ImportError as e:
     if e.name == "fakeredis.stack._bf_mixin" or e.name == "fakeredis.stack._cf_mixin":
         raise e
 
-
     class BFCommandsMixin:  # type: ignore # noqa: E303
         pass
-
 
     class CFCommandsMixin:  # type: ignore # noqa: E303
         pass
 
-
     class CMSCommandsMixin:  # type: ignore # noqa: E303
         pass
+
 
 __all__ = [
     "TopkCommandsMixin",

@@ -8,8 +8,8 @@ from test.testtools import key_val_dict
 
 def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
     size = 600
-    name = 'sscan-test'
-    all_keys_set = {f'{i}'.encode() for i in range(size)}
+    name = "sscan-test"
+    all_keys_set = {f"{i}".encode() for i in range(size)}
     r.sadd(name, *[k for k in all_keys_set])
     assert r.scard(name) == size
 
@@ -29,7 +29,7 @@ def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.
 
 def test_hscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
     size = 600
-    name = 'hscan-test'
+    name = "hscan-test"
     all_keys_dict = key_val_dict(size=size)
     r.hset(name, mapping=all_keys_dict)
     assert len(r.hgetall(name)) == size
@@ -97,7 +97,7 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
 
     cursor, keys = r.scan()
 
-    r.set('new_key', 'new val')
+    r.set("new_key", "new val")
     while cursor != 0:
         cursor, data = r.scan(cursor=cursor)
         keys.extend(data)
@@ -109,15 +109,15 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
 def test_scan(r: redis.Redis):
     # Set up the data
     for ix in range(20):
-        k = 'scan-test:%s' % ix
-        v = 'result:%s' % ix
+        k = "scan-test:%s" % ix
+        v = "result:%s" % ix
         r.set(k, v)
     expected = r.keys()
     assert len(expected) == 20  # Ensure we know what we're testing
 
     # Test that we page through the results and get everything out
     results = []
-    cursor = '0'
+    cursor = "0"
     while cursor != 0:
         cursor, data = r.scan(cursor, count=6)
         results.extend(data)
@@ -125,33 +125,35 @@ def test_scan(r: redis.Redis):
 
     # Now test that the MATCH functionality works
     results = []
-    cursor = '0'
+    cursor = "0"
     while cursor != 0:
-        cursor, data = r.scan(cursor, match='*7', count=100)
+        cursor, data = r.scan(cursor, match="*7", count=100)
         results.extend(data)
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
+    assert b"scan-test:7" in results
+    assert b"scan-test:17" in results
     assert len(set(results)) == 2
 
     # Test the match on iterator
-    results = [r for r in r.scan_iter(match='*7')]
-    assert b'scan-test:7' in results
-    assert b'scan-test:17' in results
+    results = [r for r in r.scan_iter(match="*7")]
+    assert b"scan-test:7" in results
+    assert b"scan-test:17" in results
     assert len(set(results)) == 2
 
 
 def test_scan_single(r: redis.Redis):
-    r.set('foo1', 'bar1')
-    assert r.scan(match="foo*") == (0, [b'foo1'])
+    r.set("foo1", "bar1")
+    assert r.scan(match="foo*") == (0, [b"foo1"])
 
 
 def test_scan_iter_single_page(r: redis.Redis):
-    r.set('foo1', 'bar1')
-    r.set('foo2', 'bar2')
-    assert set(r.scan_iter(match="foo*")) == {b'foo1', b'foo2'}
-    assert set(r.scan_iter()) == {b'foo1', b'foo2'}
+    r.set("foo1", "bar1")
+    r.set("foo2", "bar2")
+    assert set(r.scan_iter(match="foo*")) == {b"foo1", b"foo2"}
+    assert set(r.scan_iter()) == {b"foo1", b"foo2"}
     assert set(r.scan_iter(match="")) == set()
-    assert set(r.scan_iter(match="foo1", _type="string")) == {b'foo1', }
+    assert set(r.scan_iter(match="foo1", _type="string")) == {
+        b"foo1",
+    }
 
 
 def test_scan_iter_multiple_pages(r: redis.Redis):
@@ -164,9 +166,9 @@ def test_scan_iter_multiple_pages_with_match(r: redis.Redis):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     # Now add a few keys that don't match the key:<number> pattern.
-    r.set('otherkey', 'foo')
-    r.set('andanother', 'bar')
-    actual = set(r.scan_iter(match='key:*'))
+    r.set("otherkey", "foo")
+    r.set("andanother", "bar")
+    actual = set(r.scan_iter(match="key:*"))
     assert actual == set(all_keys)
 
 
@@ -187,8 +189,8 @@ def test_scan_all_in_single_call(r: redis.Redis):
 
 @pytest.mark.slow
 def test_scan_expired_key(r: redis.Redis):
-    r.set('expiringkey', 'value')
-    r.pexpire('expiringkey', 1)
+    r.set("expiringkey", "value")
+    r.pexpire("expiringkey", 1)
     sleep(1)
     assert r.scan()[1] == []
 

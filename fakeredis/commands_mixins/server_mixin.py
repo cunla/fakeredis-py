@@ -23,7 +23,7 @@ def convert_obj(obj: Any) -> Any:
 def _load_command_info() -> None:
     global _COMMAND_INFO
     if _COMMAND_INFO is None:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'commands.json')) as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "commands.json")) as f:
             _COMMAND_INFO = convert_obj(json.load(f))
 
 
@@ -31,6 +31,7 @@ class ServerCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         from fakeredis._server import FakeServer
+
         self._server: "FakeServer"
         self._db: Database
 

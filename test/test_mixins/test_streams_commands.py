@@ -24,36 +24,43 @@ def add_items(r: redis.Redis, stream: str, n: int):
 @pytest.mark.fake
 def test_xstream():
     stream = XStream()
-    stream.add([0, 0, 1, 1, 2, 2, 3, 3], '0-1')
-    stream.add([1, 1, 2, 2, 3, 3, 4, 4], '1-2')
-    stream.add([2, 2, 3, 3, 4, 4], '1-3')
-    stream.add([3, 3, 4, 4], '2-1')
-    stream.add([3, 3, 4, 4], '2-2')
-    stream.add([3, 3, 4, 4], '3-1')
-    assert stream.add([3, 3, 4, 4], '4-*') == b'4-0'
-    assert stream.last_item_key() == b'4-0'
-    assert stream.add([3, 3, 4, 4], '4-*-*') is None
+    stream.add([0, 0, 1, 1, 2, 2, 3, 3], "0-1")
+    stream.add([1, 1, 2, 2, 3, 3, 4, 4], "1-2")
+    stream.add([2, 2, 3, 3, 4, 4], "1-3")
+    stream.add([3, 3, 4, 4], "2-1")
+    stream.add([3, 3, 4, 4], "2-2")
+    stream.add([3, 3, 4, 4], "3-1")
+    assert stream.add([3, 3, 4, 4], "4-*") == b"4-0"
+    assert stream.last_item_key() == b"4-0"
+    assert stream.add([3, 3, 4, 4], "4-*-*") is None
     assert len(stream) == 7
     i = iter(stream)
-    assert next(i) == [b'0-1', [0, 0, 1, 1, 2, 2, 3, 3]]
-    assert next(i) == [b'1-2', [1, 1, 2, 2, 3, 3, 4, 4]]
-    assert next(i) == [b'1-3', [2, 2, 3, 3, 4, 4]]
-    assert next(i) == [b'2-1', [3, 3, 4, 4]]
-    assert next(i) == [b'2-2', [3, 3, 4, 4]]
+    assert next(i) == [b"0-1", [0, 0, 1, 1, 2, 2, 3, 3]]
+    assert next(i) == [b"1-2", [1, 1, 2, 2, 3, 3, 4, 4]]
+    assert next(i) == [b"1-3", [2, 2, 3, 3, 4, 4]]
+    assert next(i) == [b"2-1", [3, 3, 4, 4]]
+    assert next(i) == [b"2-2", [3, 3, 4, 4]]
 
-    assert stream.find_index_key_as_str('1-2') == (1, True)
-    assert stream.find_index_key_as_str('0-1') == (0, True)
-    assert stream.find_index_key_as_str('2-1') == (3, True)
-    assert stream.find_index_key_as_str('1-4') == (3, False)
+    assert stream.find_index_key_as_str("1-2") == (1, True)
+    assert stream.find_index_key_as_str("0-1") == (0, True)
+    assert stream.find_index_key_as_str("2-1") == (3, True)
+    assert stream.find_index_key_as_str("1-4") == (3, False)
 
-    lst = stream.irange(StreamRangeTest.decode(b'0-2'), StreamRangeTest.decode(b'3-0'))
+    lst = stream.irange(StreamRangeTest.decode(b"0-2"), StreamRangeTest.decode(b"3-0"))
     assert len(lst) == 4
 
     stream = XStream()
-    assert stream.delete(['1']) == 0
+    assert stream.delete(["1"]) == 0
     entry_key: bytes = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
     assert len(stream) == 1
-    assert stream.delete([entry_key, ]) == 1
+    assert (
+        stream.delete(
+            [
+                entry_key,
+            ]
+        )
+        == 1
+    )
     assert len(stream) == 0
 
 
@@ -61,32 +68,32 @@ def test_xadd_redis__green(r: redis.Redis):
     stream = "stream"
     before = int(1000 * time.time())
     m1 = r.xadd(stream, {"some": "other"})
-    ts1, seq1 = m1.decode().split('-')
+    ts1, seq1 = m1.decode().split("-")
     after = int(1000 * time.time()) + 1
     assert before <= int(ts1) <= after
     seq1 = int(seq1)
-    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-{seq1 + 1}')
-    ts2, seq2 = m2.decode().split('-')
+    m2 = r.xadd(stream, {"add": "more"}, id=f"{ts1}-{seq1 + 1}")
+    ts2, seq2 = m2.decode().split("-")
     assert ts1 == ts2
     assert int(seq2) == int(seq1) + 1
 
     stream = "stream2"
     m1 = r.xadd(stream, {"some": "other"})
-    ts1, seq1 = m1.decode().split('-')
+    ts1, seq1 = m1.decode().split("-")
     ts1 = int(ts1) - 1
     with pytest.raises(redis.ResponseError):
-        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
+        r.xadd(stream, {"add": "more"}, id=f"{ts1}-*")
     with pytest.raises(redis.ResponseError):
-        r.xadd(stream, {'add': 'more'}, id=f'{ts1}-1')
+        r.xadd(stream, {"add": "more"}, id=f"{ts1}-1")
 
 
-@pytest.mark.min_server('7')
+@pytest.mark.min_server("7")
 def test_xadd_redis7(r: redis.Redis):  # Using ts-*
     stream = "stream"
     m1 = r.xadd(stream, {"some": "other"})
-    ts1, seq1 = m1.decode().split('-')
-    m2 = r.xadd(stream, {'add': 'more'}, id=f'{ts1}-*')
-    ts2, seq2 = m2.decode().split('-')
+    ts1, seq1 = m1.decode().split("-")
+    m2 = r.xadd(stream, {"add": "more"}, id=f"{ts1}-*")
+    ts2, seq2 = m2.decode().split("-")
     ts1, seq1 = int(ts1), int(seq1)
     ts2, seq2 = int(ts2), int(seq2)
     assert ts2 == ts1
@@ -97,24 +104,22 @@ def test_xadd_maxlen(r: redis.Redis):
     stream = "stream"
     id_list = add_items(r, stream, 10)
     maxlen = 5
-    id_list.append(r.xadd(stream, {'k': 'new'}, maxlen=maxlen, approximate=False))
+    id_list.append(r.xadd(stream, {"k": "new"}, maxlen=maxlen, approximate=False))
     assert r.xlen(stream) == maxlen
     results = r.xrange(stream, id_list[0])
-    assert get_ids(results) == id_list[len(id_list) - maxlen:]
+    assert get_ids(results) == id_list[len(id_list) - maxlen :]
     with pytest.raises(redis.ResponseError):
-        testtools.raw_command(
-            r, 'xadd', stream,
-            'maxlen', '3', 'minid', 'sometestvalue', 'field', 'value')
-    assert r.set('non-a-stream', 1) == 1
+        testtools.raw_command(r, "xadd", stream, "maxlen", "3", "minid", "sometestvalue", "field", "value")
+    assert r.set("non-a-stream", 1) == 1
     with pytest.raises(redis.ResponseError):
-        r.xlen('non-a-stream')
+        r.xlen("non-a-stream")
 
 
 def test_xadd_minid(r: redis.Redis):
     stream = "stream"
     id_list = add_items(r, stream, 10)
     minid = id_list[6]
-    id_list.append(r.xadd(stream, {'k': 'new'}, minid=minid, approximate=False))
+    id_list.append(r.xadd(stream, {"k": "new"}, minid=minid, approximate=False))
     assert r.xlen(stream) == len(id_list) - 6
     results = r.xrange(stream, id_list[0])
     assert get_ids(results) == id_list[6:]
@@ -147,9 +152,9 @@ def test_xtrim_minlen_and_length_args(r: redis.Redis):
         assert r.xtrim(stream, maxlen=3, minid="sometestvalue")
 
     with pytest.raises(redis.ResponseError):
-        testtools.raw_command(r, 'xtrim', stream, 'maxlen', '3', 'minid', 'sometestvalue')
+        testtools.raw_command(r, "xtrim", stream, "maxlen", "3", "minid", "sometestvalue")
     # minid with a limit
-    stream = 's2'
+    stream = "s2"
     m1 = add_items(r, stream, 4)[0]
     assert r.xtrim(stream, minid=m1, limit=3) == 0
 
@@ -166,8 +171,8 @@ def test_xtrim_minlen_and_length_args(r: redis.Redis):
 
 
 def test_xadd_nomkstream(r: redis.Redis):
-    r.xadd('stream2', {"some": "other"}, nomkstream=True)
-    assert r.xlen('stream2') == 0
+    r.xadd("stream2", {"some": "other"}, nomkstream=True)
+    assert r.xlen("stream2") == 0
     # nomkstream option
     stream = "stream"
     r.xadd(stream, {"foo": "bar"})
@@ -202,13 +207,17 @@ def test_xrevrange(r: redis.Redis):
 
 
 def test_xrange(r: redis.Redis):
-    m = r.xadd('stream1', {"foo": "bar"})
-    assert r.xrange('stream1') == [(m, {b"foo": b"bar"}), ]
+    m = r.xadd("stream1", {"foo": "bar"})
+    assert r.xrange("stream1") == [
+        (m, {b"foo": b"bar"}),
+    ]
 
-    stream = 'stream2'
-    m = testtools.raw_command(r, 'xadd', stream, '*', b'field', b'value', b'foo', b'bar')
+    stream = "stream2"
+    m = testtools.raw_command(r, "xadd", stream, "*", b"field", b"value", b"foo", b"bar")
 
-    assert r.xrevrange(stream) == [(m, {b'field': b'value', b'foo': b'bar'}), ]
+    assert r.xrevrange(stream) == [
+        (m, {b"field": b"value", b"foo": b"bar"}),
+    ]
 
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
@@ -248,7 +257,7 @@ def test_xread_blocking_no_count(r: redis.Redis):
     r.xadd(k, {"value": 1234})
     streams = {k: "0"}
     m1 = r.xread(streams=streams, block=10)
-    assert m1[0][1][0][1] == {b'value': b'1234'}
+    assert m1[0][1][0][1] == {b"value": b"1234"}
 
 
 def test_xread(r: redis.Redis):
@@ -256,10 +265,12 @@ def test_xread(r: redis.Redis):
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
 
-    expected = [[
-        stream.encode(),
-        [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-    ]]
+    expected = [
+        [
+            stream.encode(),
+            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+        ]
+    ]
     # xread starting at 0 returns both messages
     assert r.xread(streams={stream: 0}) == expected
 
@@ -279,15 +290,20 @@ def test_xread_count(r: redis.Redis):
     r.xadd("test", {"x": 1})
     result = r.xread(streams={"test": "0"}, count=100, block=10)
     assert result[0][0] == b"test"
-    assert result[0][1][0][1] == {b'x': b'1'}
+    assert result[0][1][0][1] == {b"x": b"1"}
 
 
 def test_xread_bad_commands(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as exc_info:
-        testtools.raw_command(r, 'xread', 'foo', '11-1')
+        testtools.raw_command(r, "xread", "foo", "11-1")
     print(exc_info)
     with pytest.raises(redis.ResponseError) as ex2:
-        testtools.raw_command(r, 'xread', 'streams', 'foo', )
+        testtools.raw_command(
+            r,
+            "xread",
+            "streams",
+            "foo",
+        )
     print(ex2)
 
 
@@ -306,9 +322,9 @@ def test_xdel(r: redis.Redis):
     assert r.xdel(stream, m2, m3) == 2
 
     with pytest.raises(redis.ResponseError) as ex:
-        testtools.raw_command(r, 'XDEL', stream)
-    assert ex.value.args[0] == msgs.WRONG_ARGS_MSG6.format('xdel')[4:]
-    assert r.xdel('non-existing-key', '1-1') == 0
+        testtools.raw_command(r, "XDEL", stream)
+    assert ex.value.args[0] == msgs.WRONG_ARGS_MSG6.format("xdel")[4:]
+    assert r.xdel("non-existing-key", "1-1") == 0
 
 
 def test_xgroup_destroy(r: redis.Redis):
@@ -322,7 +338,7 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.max_server('6.3')
+@pytest.mark.max_server("6.3")
 def test_xgroup_create_redis6(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -330,30 +346,32 @@ def test_xgroup_create_redis6(r: redis.Redis):
     r.xadd(stream, {"foo": "bar"})
     res = r.xinfo_groups(stream)
     assert len(res) == 1
-    assert res[0]['name'] == group.encode()
-    assert res[0]['consumers'] == 0
-    assert res[0]['pending'] == 0
-    assert res[0]['last-delivered-id'] == message_id
+    assert res[0]["name"] == group.encode()
+    assert res[0]["consumers"] == 0
+    assert res[0]["pending"] == 0
+    assert res[0]["last-delivered-id"] == message_id
 
 
-@pytest.mark.min_server('7')
+@pytest.mark.min_server("7")
 def test_xgroup_create_redis7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
     r.xadd(stream, {"foo": "bar"})
-    expected = [{
-        "name": group.encode(),
-        "consumers": 0,
-        "pending": 0,
-        "last-delivered-id": message_id,
-        "entries-read": None,
-        "lag": 1,
-    }]
+    expected = [
+        {
+            "name": group.encode(),
+            "consumers": 0,
+            "pending": 0,
+            "last-delivered-id": message_id,
+            "entries-read": None,
+            "lag": 1,
+        }
+    ]
     assert r.xinfo_groups(stream) == expected
 
 
-@pytest.mark.min_server('7')
+@pytest.mark.min_server("7")
 def test_xgroup_setid_redis7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -361,14 +379,16 @@ def test_xgroup_setid_redis7(r: redis.Redis):
     r.xgroup_create(stream, group, 0)
     # advance the last_delivered_id to the message_id
     r.xgroup_setid(stream, group, message_id, entries_read=2)
-    expected = [{
-        "name": group.encode(),
-        "consumers": 0,
-        "pending": 0,
-        "last-delivered-id": message_id,
-        "entries-read": 2,
-        "lag": -1,
-    }]
+    expected = [
+        {
+            "name": group.encode(),
+            "consumers": 0,
+            "pending": 0,
+            "last-delivered-id": message_id,
+            "entries-read": 2,
+            "lag": -1,
+        }
+    ]
     assert r.xinfo_groups(stream) == expected
 
 
@@ -437,15 +457,17 @@ def test_xreadgroup(r: redis.Redis):
     m1 = r.xadd(stream, c1)
     m2 = r.xadd(stream, c2)
     with pytest.raises(
-            redis.exceptions.ResponseError,
-            match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)):
+        redis.exceptions.ResponseError, match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)
+    ):
         r.xreadgroup(group, consumer, streams={stream: ">"})
     r.xgroup_create(stream, group, 0)
 
-    expected = [[
-        stream.encode(),
-        [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-    ]]
+    expected = [
+        [
+            stream.encode(),
+            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+        ]
+    ]
     # xread starting at 0 returns both messages
     assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
 
@@ -483,7 +505,7 @@ def test_xreadgroup(r: redis.Redis):
     # TODO groups keep ids of deleted messages
     # expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
     # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
-    r.xreadgroup(group, consumer, streams={stream: '>'}, count=10, block=500)
+    r.xreadgroup(group, consumer, streams={stream: ">"}, count=10, block=500)
 
 
 def test_xinfo_stream(r: redis.Redis):
@@ -497,16 +519,15 @@ def test_xinfo_stream(r: redis.Redis):
     assert info["last-entry"] == get_stream_message(r, stream, m2)
 
 
-def assert_consumer_info(
-        r: redis.Redis, stream: str, group: str, equal_keys: List) -> List:
+def assert_consumer_info(r: redis.Redis, stream: str, group: str, equal_keys: List) -> List:
     res = r.xinfo_consumers(stream, group)
     assert len(res) == len(equal_keys)
     for i in range(len(equal_keys)):
         for k in res[i]:
             if k in equal_keys[i]:
-                assert res[i][k] == equal_keys[i][k], f'res[{i}][{k}] mismatch, {res}!={equal_keys}'
+                assert res[i][k] == equal_keys[i][k], f"res[{i}][{k}] mismatch, {res}!={equal_keys}"
             else:
-                print(f'res[{i}][{k}]={res[i][k]}')
+                print(f"res[{i}][{k}]={res[i][k]}")
     return res
 
 
@@ -524,16 +545,16 @@ def test_xack(r: redis.Redis):
 
     r.xgroup_create(stream, group, 0)
     r.xreadgroup(group, consumer, streams={stream: ">"})
-    assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 3}])
+    assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 3}])
     assert r.xack(stream, group, m1) == 1
     time.sleep(0.01)
-    res = assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 2}])
-    assert 'idle' in res[0] and res[0]['idle'] > 0
+    res = assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 2}])
+    assert "idle" in res[0] and res[0]["idle"] > 0
     assert r.xack(stream, group, m2, m3) == 2
-    assert_consumer_info(r, stream, group, [{'name': b'consumer', 'pending': 0}])
+    assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 0}])
 
 
-@pytest.mark.min_server('7')
+@pytest.mark.min_server("7")
 def test_xinfo_stream_redis7(r: redis.Redis):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -559,7 +580,7 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     assert info["recorded-first-entry-id"] == b"0-0"
 
     with pytest.raises(redis.exceptions.ResponseError):
-        r.xinfo_stream('non-existing-key')
+        r.xinfo_stream("non-existing-key")
 
 
 def test_xinfo_stream_full(r: redis.Redis):
@@ -661,8 +682,8 @@ def test_xpending_range_negative(r: redis.Redis):
         r.xpending_range(stream, group, min=None, max=None, count=None, consumername=0)
 
 
-@pytest.mark.max_server('6.3')
-@testtools.run_test_if_redispy_ver('gte', '4.4')
+@pytest.mark.max_server("6.3")
+@testtools.run_test_if_redispy_ver("gte", "4.4")
 def test_xautoclaim_redis6(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
@@ -685,12 +706,14 @@ def test_xautoclaim_redis6(r: redis.Redis):
     # reclaim the messages as consumer1, but use the justid argument
     # which only returns message ids
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
-        message_id1, message_id2]
+        message_id1,
+        message_id2,
+    ]
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.min_server('7')
-@testtools.run_test_if_redispy_ver('gte', '4.4')
+@pytest.mark.min_server("7")
+@testtools.run_test_if_redispy_ver("gte", "4.4")
 def test_xautoclaim_redis7(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
@@ -713,11 +736,13 @@ def test_xautoclaim_redis7(r: redis.Redis):
     # reclaim the messages as consumer1, but use the justid argument
     # which only returns message ids
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
-        message_id1, message_id2]
+        message_id1,
+        message_id2,
+    ]
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.min_server('7')
+@pytest.mark.min_server("7")
 def test_xclaim_trimmed_redis7(r: redis.Redis):
     # xclaim should not raise an exception if the item is not there
     stream, group = "stream", "group"
@@ -750,24 +775,28 @@ def test_xclaim(r: redis.Redis):
 
     # trying to claim a message that isn't already pending doesn't
     # do anything
-    assert r.xclaim(
-        stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)
-    ) == []
+    assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == []
 
     # read the group as consumer1 to initially claim the messages
     r.xreadgroup(group, consumer1, streams={stream: ">"})
 
     # claim the message as consumer2
-    assert r.xclaim(
-        stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)
-    ) == [message, ]
+    assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == [
+        message,
+    ]
 
     # reclaim the message as consumer1, but use the justid argument
     # which only returns message ids
     assert r.xclaim(
-        stream, group, consumer1,
-        min_idle_time=0, message_ids=(message_id,), justid=True,
-    ) == [message_id, ]
+        stream,
+        group,
+        consumer1,
+        min_idle_time=0,
+        message_ids=(message_id,),
+        justid=True,
+    ) == [
+        message_id,
+    ]
 
 
 def test_xread_blocking(create_redis):
@@ -791,17 +820,19 @@ def test_xread_blocking(create_redis):
     event.clear()
     t.join()
     assert result[0][0] == b"stream"
-    assert result[0][1][0][1] == {b'x': b'1'}
+    assert result[0][1][0][1] == {b"x": b"1"}
 
 
 def test_stream_ttl(r: redis.Redis):
     stream = "stream"
 
-    m1 = r.xadd(stream, {'foo': 'bar'})
-    expected = [[
-        stream.encode(),
-        [get_stream_message(r, stream, m1)],
-    ]]
+    m1 = r.xadd(stream, {"foo": "bar"})
+    expected = [
+        [
+            stream.encode(),
+            [get_stream_message(r, stream, m1)],
+        ]
+    ]
     assert r.xread(streams={stream: 0}) == expected
     assert r.xtrim(stream, 0) == 1
     assert r.ttl(stream) == -1

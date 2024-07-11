@@ -7,6 +7,7 @@ fakeredis: A fake version of a redis-py
 [![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
 [![badge](https://img.shields.io/pypi/l/fakeredis)](./LICENSE)
 [![Open Source Helpers](https://www.codetriage.com/cunla/fakeredis-py/badges/users.svg)](https://www.codetriage.com/cunla/fakeredis-py)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 --------------------
 
 
