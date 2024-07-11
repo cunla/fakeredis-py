@@ -24,8 +24,7 @@ class PubSubCommandsMixin:
             self.put_response(msg)
         return NoResponse()
 
-    def _unsubscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any],
-                     mtype: bytes) -> NoResponse:
+    def _unsubscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
         if not channels:
             channels = []
             for channel, subs in subscribers.items():
@@ -141,32 +140,24 @@ class PubSubCommandsMixin:
             help_strings = [
                 "PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
                 "CHANNELS [<pattern>]",
-                "    Return the currently active channels matching a <pattern> (default: '*')"
-                ".",
+                "    Return the currently active channels matching a <pattern> (default: '*')" ".",
                 "NUMPAT",
                 "    Return number of subscriptions to patterns.",
                 "NUMSUB [<channel> ...]",
                 "    Return the number of subscribers for the specified channels, excluding",
                 "    pattern subscriptions(default: no channels).",
                 "SHARDCHANNELS [<pattern>]",
-                "    Return the currently active shard level channels matching a <pattern> (d"
-                "efault: '*').",
+                "    Return the currently active shard level channels matching a <pattern> (d" "efault: '*').",
                 "SHARDNUMSUB [<shardchannel> ...]",
-                "    Return the number of subscribers for the specified shard level channel(s"
-                ")",
+                "    Return the number of subscribers for the specified shard level channel(s" ")",
                 "HELP",
-                (
-                    "    Prints this help."
-                    if self.version < (7, 1)
-                    else "    Print this help."
-                ),
+                ("    Prints this help." if self.version < (7, 1) else "    Print this help."),
             ]
         else:
             help_strings = [
                 "PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
                 "CHANNELS [<pattern>]",
-                "    Return the currently active channels matching a <pattern> (default: '*')"
-                ".",
+                "    Return the currently active channels matching a <pattern> (default: '*')" ".",
                 "NUMPAT",
                 "    Return number of subscriptions to patterns.",
                 "NUMSUB [<channel> ...]",

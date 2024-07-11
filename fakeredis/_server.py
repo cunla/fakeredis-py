@@ -142,11 +142,13 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
 class FakeRedisMixin:
     def __init__(
-            self, *args: Any,
-            server: Optional[FakeServer] = None,
-            version: VersionType = (7,),
-            lua_modules: Optional[Set[str]] = None,
-            **kwargs: Any) -> None:
+        self,
+        *args: Any,
+        server: Optional[FakeServer] = None,
+        version: VersionType = (7,),
+        lua_modules: Optional[Set[str]] = None,
+        **kwargs: Any,
+    ) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
@@ -163,18 +165,10 @@ class FakeRedisMixin:
             errors = kwds.get("errors", None)
             # Adapted from redis-py
             if charset is not None:
-                warnings.warn(
-                    DeprecationWarning(
-                        '"charset" is deprecated. Use "encoding" instead'
-                    )
-                )
+                warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
                 kwds["encoding"] = charset
             if errors is not None:
-                warnings.warn(
-                    DeprecationWarning(
-                        '"errors" is deprecated. Use "encoding_errors" instead'
-                    )
-                )
+                warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds["encoding_errors"] = errors
             conn_pool_args = {
                 "host",
@@ -199,9 +193,7 @@ class FakeRedisMixin:
                 "version": version,
                 "lua_modules": lua_modules,
             }
-            connection_kwargs.update(
-                {arg: kwds[arg] for arg in conn_pool_args if arg in kwds}
-            )
+            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
         kwds.pop("server", None)
         kwds.pop("connected", None)

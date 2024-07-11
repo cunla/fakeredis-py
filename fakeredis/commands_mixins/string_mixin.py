@@ -10,7 +10,8 @@ from fakeredis._commands import (
     Float,
     MAX_STRING_SIZE,
     delete_keys,
-    fix_range_string, CommandItem,
+    fix_range_string,
+    CommandItem,
 )
 from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 
@@ -70,7 +71,12 @@ def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
 
 
 class StringCommandsMixin:
-    _encodeint: Callable[[int, ], bytes]
+    _encodeint: Callable[
+        [
+            int,
+        ],
+        bytes,
+    ]
     _encodefloat: Callable[[float, bool], bytes]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -160,7 +166,7 @@ class StringCommandsMixin:
 
     @command((Key(), Int, bytes))
     def psetex(self, key: CommandItem, ms: int, value: bytes) -> SimpleString:
-        if ms <= 0 or self._db.time * 1000 + ms >= 2 ** 63:
+        if ms <= 0 or self._db.time * 1000 + ms >= 2**63:
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("psetex"))
         key.value = value
         key.expireat = int(self._db.time + ms / 1000.0)
@@ -171,13 +177,13 @@ class StringCommandsMixin:
         (ex, px, exat, pxat, xx, nx, keepttl, get), _ = extract_args(
             args, ("+ex", "+px", "+exat", "+pxat", "xx", "nx", "keepttl", "get")
         )
-        if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2 ** 63):
+        if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2**63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
-        if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2 ** 63):
+        if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2**63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
-        if exat is not None and (exat <= 0 or exat * 1000 >= 2 ** 63):
+        if exat is not None and (exat <= 0 or exat * 1000 >= 2**63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
-        if pxat is not None and (pxat <= 0 or pxat >= 2 ** 63):
+        if pxat is not None and (pxat <= 0 or pxat >= 2**63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("set"))
 
         if (xx and nx) or (sum(x is not None for x in [ex, px, exat, pxat]) + keepttl > 1):
@@ -212,7 +218,7 @@ class StringCommandsMixin:
 
     @command((Key(), Int, bytes))
     def setex(self, key: CommandItem, seconds: int, value: bytes) -> SimpleString:
-        if seconds <= 0 or (self._db.time + seconds) * 1000 >= 2 ** 63:
+        if seconds <= 0 or (self._db.time + seconds) * 1000 >= 2**63:
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("setex"))
         key.value = value
         key.expireat = int(self._db.time + seconds)
@@ -236,7 +242,7 @@ class StringCommandsMixin:
         out = key.get(b"")
         if len(out) < offset:
             out += b"\x00" * (offset - len(out))
-        out = out[0:offset] + value + out[offset + len(value):]
+        out = out[0:offset] + value + out[offset + len(value) :]
         key.update(out)
         return len(out)
 
@@ -269,8 +275,9 @@ class StringCommandsMixin:
                 i += 1
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if ((expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2 ** 63))
-                or (diff is not None and (diff <= 0 or diff * 1000 >= 2 ** 63))):
+        if (expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2**63)) or (
+            diff is not None and (diff <= 0 or diff * 1000 >= 2**63)
+        ):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("getex"))
         if count_options > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)

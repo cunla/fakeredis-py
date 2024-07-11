@@ -1,4 +1,5 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
+
 from typing import Optional, Tuple, List, Any
 
 import probables
@@ -10,11 +11,11 @@ from fakeredis._helpers import OK, SimpleString, SimpleError, casematch, Databas
 
 class CountMinSketch(probables.CountMinSketch):
     def __init__(
-            self,
-            width: Optional[int] = None,
-            depth: Optional[int] = None,
-            probability: Optional[float] = None,
-            error_rate: Optional[float] = None,
+        self,
+        width: Optional[int] = None,
+        depth: Optional[int] = None,
+        probability: Optional[float] = None,
+        error_rate: Optional[float] = None,
     ):
         super().__init__(width=width, depth=depth, error_rate=error_rate, confidence=probability)
 
@@ -27,7 +28,10 @@ class CMSCommandsMixin:
     @command(
         name="CMS.INCRBY",
         fixed=(Key(CountMinSketch), bytes, bytes),
-        repeat=(bytes, bytes,),
+        repeat=(
+            bytes,
+            bytes,
+        ),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_incrby(self, key: CommandItem, *args: bytes) -> List[Tuple[bytes, int]]:
@@ -55,9 +59,12 @@ class CMSCommandsMixin:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
         return [
-            b"width", key.value.width,
-            b"depth", key.value.depth,
-            b"count", key.value.elements_added,
+            b"width",
+            key.value.width,
+            b"depth",
+            key.value.depth,
+            b"count",
+            key.value.elements_added,
         ]
 
     @command(
@@ -104,10 +111,12 @@ class CMSCommandsMixin:
 
         if num_keys < 1:
             raise SimpleError("CMS: wrong number of keys")
-        weights = [1, ]
+        weights = [
+            1,
+        ]
         for i, arg in enumerate(args):
             if casematch(b"weights", arg):
-                weights = [int(i) for i in args[i + 1:]]
+                weights = [int(i) for i in args[i + 1 :]]
                 if len(weights) != num_keys:
                     raise SimpleError("CMS: wrong number of keys/weights")
                 args = args[:i]

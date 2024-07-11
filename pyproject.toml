@@ -61,6 +61,7 @@ probabilistic = ["pyprobables"]
 
 [tool.poetry.group.dev.dependencies]
 coverage = "^7"
+black = { version = "^24.4.2", python = ">=3.8.1" }
 flake8 = { version = "^7", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
 hypothesis = "^6.70"
@@ -108,8 +109,13 @@ exclude = [
     '.github',
     '__pycache__',
 ]
+ignore = ["E203", "E501", "W503"]
 
 [tool.black]
 color = true
 line-length = 120
 target-version = ['py310']
+include = [
+    "fakeredis",
+    "test",
+]

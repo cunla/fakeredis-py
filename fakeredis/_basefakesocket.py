@@ -18,7 +18,8 @@ from ._helpers import (
     casematch,
     compile_pattern,
     QUEUED,
-    decode_command_bytes, )
+    decode_command_bytes,
+)
 from ._stream import XStream
 from ._zset import ZSet
 
@@ -70,6 +71,7 @@ class BaseFakeSocket:
     def __init__(self, server: "FakeServer", db: int, *args: Any, **kwargs: Any):  # noqa: F821
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
+
         self._server: FakeServer = server
         self._db_num = db
         self._db = server.dbs[self._db_num]
@@ -170,7 +172,7 @@ class BaseFakeSocket:
                 while len(buf) < length + 2:
                     buf += yield
                 fields.append(buf[:length])
-                buf = buf[length + 2:]  # +2 to skip the CRLF
+                buf = buf[length + 2 :]  # +2 to skip the CRLF
             self._process_command(fields)
 
     def _run_command(self, func: Callable[..., Any], sig: Signature, args: List[Any], from_script: bool) -> Any:
@@ -179,10 +181,7 @@ class BaseFakeSocket:
             ret = sig.apply(args, self._db, self.version)
             if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
                 raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
-            if (
-                    self._pubsub
-                    and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB
-            ):
+            if self._pubsub and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB:
                 raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
             if len(ret) == 1:
                 result = ret[0]
@@ -193,9 +192,7 @@ class BaseFakeSocket:
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
-            command_item.writeback(
-                remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags
-            )
+            command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
         return result
 
     def _decode_error(self, error):
@@ -276,10 +273,7 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(cmd_arguments, self.version)
-                if (
-                        self._transaction is not None
-                        and msgs.FLAG_TRANSACTION not in sig.flags
-                ):
+                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
@@ -290,9 +284,7 @@ class BaseFakeSocket:
                 # e.g. watch inside multi
                 self._transaction_failed = True
             if cmd == "exec" and exc.value.startswith("ERR "):
-                exc.value = (
-                        "EXECABORT Transaction discarded because of: " + exc.value[4:]
-                )
+                exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
                 self._transaction = None
                 self._transaction_failed = False
                 self._clear_watches()
@@ -355,7 +347,7 @@ class BaseFakeSocket:
                 if match_key(compare_val) and match_type(compare_val):
                     result_data.append(val)
         else:
-            result_data = data[cursor: cursor + count]
+            result_data = data[cursor : cursor + count]
 
         if result_cursor >= len(data):
             result_cursor = 0

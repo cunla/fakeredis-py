@@ -61,9 +61,7 @@ def encode(latitude: float, longitude: float, precision: int = 12) -> str:
     bit, ch = 0, 0
     is_longitude = True
 
-    def next_interval(
-            curr: float, interval: Tuple[float, float], ch: int
-    ) -> Tuple[Tuple[float, float], int]:
+    def next_interval(curr: float, interval: Tuple[float, float], ch: int) -> Tuple[Tuple[float, float], int]:
         mid = (interval[0] + interval[1]) / 2
         if curr > mid:
             ch |= bits[bit]

@@ -83,9 +83,7 @@ class ListCommandsMixin:
                 return None
         if not src.value:
             return None  # Empty list
-        dst = CommandItem(
-            destination, self._db, item=self._db.get(destination), default=[]
-        )
+        dst = CommandItem(destination, self._db, item=self._db.get(destination), default=[])
         if not isinstance(dst.value, list):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         el = src.value.pop()
@@ -98,13 +96,9 @@ class ListCommandsMixin:
             dst.writeback()
         return el
 
-    @command(
-        name="BRPOPLPUSH", fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT
-    )
+    @command(name="BRPOPLPUSH", fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
     def brpoplpush(self, source, destination, timeout):
-        return self._blocking(
-            timeout, functools.partial(self._brpoplpush_pass, source, destination)
-        )
+        return self._blocking(timeout, functools.partial(self._brpoplpush_pass, source, destination))
 
     @command((Key(list, None), Int))
     def lindex(self, key, index):
@@ -136,16 +130,12 @@ class ListCommandsMixin:
 
     def _lmove(self, first_list, second_list, src, dst, first_pass):
         if (not casematch(src, b"left") and not casematch(src, b"right")) or (
-                not casematch(dst, b"left") and not casematch(dst, b"right")
+            not casematch(dst, b"left") and not casematch(dst, b"right")
         ):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        el = (
-            self.rpop(first_list) if casematch(src, b"RIGHT") else self.lpop(first_list)
-        )
-        self.lpush(second_list, el) if casematch(dst, b"LEFT") else self.rpush(
-            second_list, el
-        )
+        el = self.rpop(first_list) if casematch(src, b"RIGHT") else self.lpop(first_list)
+        self.lpush(second_list, el) if casematch(dst, b"LEFT") else self.rpush(second_list, el)
         return el
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString))
@@ -154,9 +144,7 @@ class ListCommandsMixin:
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString, Timeout))
     def blmove(self, first_list, second_list, src, dst, timeout):
-        return self._blocking(
-            timeout, functools.partial(self._lmove, first_list, second_list, src, dst)
-        )
+        return self._blocking(timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
 
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key, *args):
@@ -184,17 +172,15 @@ class ListCommandsMixin:
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (
-                not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
-        ):
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b"left") and not casematch(args[-1], b"right")):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         return self._lmpop(args[:-1], count, casematch(args[-1], b"left"), False)
 
     @command(
         fixed=(
-                Timeout,
-                Int,
+            Timeout,
+            Int,
         ),
         repeat=(bytes,),
     )
@@ -206,16 +192,12 @@ class ListCommandsMixin:
             args = args[:-2]
         else:
             count = 1
-        if len(args) != numkeys + 1 or (
-                not casematch(args[-1], b"left") and not casematch(args[-1], b"right")
-        ):
+        if len(args) != numkeys + 1 or (not casematch(args[-1], b"left") and not casematch(args[-1], b"right")):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         return self._blocking(
             timeout,
-            functools.partial(
-                self._lmpop, args[:-1], count, casematch(args[-1], b"left")
-            ),
+            functools.partial(self._lmpop, args[:-1], count, casematch(args[-1], b"left")),
         )
 
     @command((Key(list), bytes), (bytes,))
@@ -307,8 +289,8 @@ class ListCommandsMixin:
 
     @command(
         fixed=(
-                Key(list),
-                bytes,
+            Key(list),
+            bytes,
         ),
         repeat=(bytes,),
     )
@@ -330,11 +312,7 @@ class ListCommandsMixin:
         maxlen = maxlen or len(key.value)
         res: List[int] = []
         comparisons = 0
-        while (
-                0 <= ind <= len(key.value) - 1
-                and len(res) < parse_count
-                and comparisons < maxlen
-        ):
+        while 0 <= ind <= len(key.value) - 1 and len(res) < parse_count and comparisons < maxlen:
             comparisons += 1
             if key.value[ind] == elem:
                 if rank > 1:

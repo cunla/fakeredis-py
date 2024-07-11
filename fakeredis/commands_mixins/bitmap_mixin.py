@@ -9,7 +9,8 @@ from fakeredis._commands import (
     BitOffset,
     BitValue,
     fix_range_string,
-    fix_range, CommandItem,
+    fix_range,
+    CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
 
@@ -19,11 +20,11 @@ class BitfieldEncoding:
     size: int
 
     def __init__(self, encoding: bytes) -> None:
-        match = re.match(br'^([ui])(\d+)$', encoding)
+        match = re.match(rb"^([ui])(\d+)$", encoding)
         if match is None:
             raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
 
-        self.signed = match[1] == b'i'
+        self.signed = match[1] == b"i"
         self.size = int(match[2])
 
         if self.size < 1 or self.size > (64 if self.signed else 63):
@@ -133,9 +134,7 @@ class BitmapCommandsMixin:
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        if bytes(reconstructed) != key.value or (
-                self.version == (6,) and old_byte != new_byte
-        ):
+        if bytes(reconstructed) != key.value or (self.version == (6,) and old_byte != new_byte):
             key.update(bytes(reconstructed))
         return old_value
 
@@ -179,8 +178,14 @@ class BitmapCommandsMixin:
         return ans
 
     def _bitfield_set(
-            self, key: CommandItem, encoding: BitfieldEncoding, offset: int, overflow: bytes,
-            value: Optional[int] = None, incr: int = 0) -> Optional[int]:
+        self,
+        key: CommandItem,
+        encoding: BitfieldEncoding,
+        offset: int,
+        overflow: bytes,
+        value: Optional[int] = None,
+        incr: int = 0,
+    ) -> Optional[int]:
         if encoding.signed:
             min_value = -(1 << (encoding.size - 1))
             max_value = (1 << (encoding.size - 1)) - 1
@@ -235,7 +240,7 @@ class BitmapCommandsMixin:
                     encoding=BitfieldEncoding(args[i + 1]),
                     offset=BitOffset.decode(args[i + 2]),
                     value=Int.decode(args[i + 3]),
-                    overflow=overflow
+                    overflow=overflow,
                 )
                 results.append(old_value)
                 i += 4
@@ -245,7 +250,7 @@ class BitmapCommandsMixin:
                     encoding=BitfieldEncoding(args[i + 1]),
                     offset=BitOffset.decode(args[i + 2]),
                     incr=Int.decode(args[i + 3]),
-                    overflow=overflow
+                    overflow=overflow,
                 )
                 results.append(old_value)
                 i += 4
