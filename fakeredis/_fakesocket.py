@@ -59,7 +59,7 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
     TDigestCommandsMixin,
-TimeSeriesCommandsMixin,
+    TimeSeriesCommandsMixin,
 ):
     def __init__(
         self,

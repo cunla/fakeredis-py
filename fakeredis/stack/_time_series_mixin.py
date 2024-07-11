@@ -5,7 +5,7 @@ from fakeredis._commands import command, Key, CommandItem, Int, Float
 from fakeredis._helpers import Database, SimpleString
 
 
-class TimeSeries():
+class TimeSeries:
     pass
 
 
@@ -14,8 +14,12 @@ class TimeSeriesCommandsMixin:
     def __init__(self, *args, **kwargs):
         self._db: Database
 
-    @command(name="TS.ADD", fixed=(Key(TimeSeries), bytes, bytes), repeat=(bytes,),
-             flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="TS.ADD",
+        fixed=(Key(TimeSeries), bytes, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
+    )
     def ts_add(self, key: CommandItem, timestamp: bytes, value: bytes, *args: bytes) -> bytes:
         pass
 
@@ -29,8 +33,14 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(bytes,))
     def ts_createrule(
-            self, source_key: CommandItem, dest_key: CommandItem,
-            _: bytes, aggregator: bytes, bucket_duration: int, *args: bytes) -> SimpleString:
+        self,
+        source_key: CommandItem,
+        dest_key: CommandItem,
+        _: bytes,
+        aggregator: bytes,
+        bucket_duration: int,
+        *args: bytes,
+    ) -> SimpleString:
         pass
 
     @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
@@ -57,7 +67,15 @@ class TimeSeriesCommandsMixin:
     def ts_info(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.MADD", fixed=(Key(TimeSeries), Int, bytes), repeat=(Key(TimeSeries), Int, bytes,))
+    @command(
+        name="TS.MADD",
+        fixed=(Key(TimeSeries), Int, bytes),
+        repeat=(
+            Key(TimeSeries),
+            Int,
+            bytes,
+        ),
+    )
     def ts_madd(self, *args: bytes) -> List[int]:
         pass
 
@@ -68,7 +86,6 @@ class TimeSeriesCommandsMixin:
     @command(name="TS.MRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
     def ts_mrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
         pass
-
 
 
 # TS.MRANGE
