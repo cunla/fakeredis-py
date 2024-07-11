@@ -206,9 +206,7 @@ class Database(MutableMapping):  # type: ignore
 def valid_response_type(value: Any, nested: bool = False) -> bool:
     if isinstance(value, NoResponse) and not nested:
         return True
-    if value is not None and not isinstance(
-            value, (bytes, SimpleString, SimpleError, float, int, list)
-    ):
+    if value is not None and not isinstance(value, (bytes, SimpleString, SimpleError, float, int, list)):
         return False
     if isinstance(value, list):
         if any(not valid_response_type(item, True) for item in value):

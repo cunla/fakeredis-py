@@ -9,16 +9,19 @@ from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
 class HashCommandsMixin:
-    _encodeint: Callable[[int, ], bytes]
+    _encodeint: Callable[
+        [
+            int,
+        ],
+        bytes,
+    ]
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
         keys_count = len(h.keys())
-        h.update(
-            dict(zip(*[iter(args)] * 2))  # type: ignore
-        )  # https://stackoverflow.com/a/12739974/1056460
+        h.update(dict(zip(*[iter(args)] * 2)))  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
         created = len(h.keys()) - keys_count
 
         key.updated()
@@ -50,9 +53,7 @@ class HashCommandsMixin:
     @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key: CommandItem, field: bytes, amount_bytes: bytes) -> int:
         amount = Int.decode(amount_bytes)
-        field_value = Int.decode(
-            key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG
-        )
+        field_value = Int.decode(key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG)
         c = field_value + amount
         key.value[field] = self._encodeint(c)
         key.updated()

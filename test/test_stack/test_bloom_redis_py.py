@@ -89,7 +89,7 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
         r.bf().loadchunk("myBloom1", *cmd)
 
     for x in range(1000):
-        assert r.bf().exists("myBloom1", x), f'{x} not in filter'
+        assert r.bf().exists("myBloom1", x), f"{x} not in filter"
 
 
 def test_bf_info(r: redis.Redis):

@@ -1,4 +1,5 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
+
 from typing import Any, List, Union
 
 from probables import ExpandingBloomFilter
@@ -71,7 +72,16 @@ class BFCommandsMixin:
             res.append(BFCommandsMixin._bf_exist(key, value))
         return res
 
-    @command(name="BF.RESERVE", fixed=(Key(), Float, Int,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="BF.RESERVE",
+        fixed=(
+            Key(),
+            Float,
+            Int,
+        ),
+        repeat=(bytes,),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+    )
     def bf_reserve(self, key: CommandItem, error_rate: float, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
@@ -87,11 +97,14 @@ class BFCommandsMixin:
     @command(name="BF.INSERT", fixed=(Key(),), repeat=(bytes,))
     def bf_insert(self, key: CommandItem, *args: bytes) -> List[int]:
         (capacity, error_rate, expansion, non_scaling, no_create), left_args = extract_args(
-            args, ("+capacity", ".error", "+expansion", "nonscaling", "nocreate"),
-            error_on_unexpected=False, left_from_first_unexpected=True)
+            args,
+            ("+capacity", ".error", "+expansion", "nonscaling", "nocreate"),
+            error_on_unexpected=False,
+            left_from_first_unexpected=True,
+        )
         # if no_create and (capacity is not None or error_rate is not None):
         #     raise SimpleError("...")
-        if len(left_args) < 2 or not casematch(left_args[0], b'items'):
+        if len(left_args) < 2 or not casematch(left_args[0], b"items"):
             raise SimpleError("...")
         items = left_args[1:]
 
@@ -115,31 +128,44 @@ class BFCommandsMixin:
     @command(name="BF.INFO", fixed=(Key(),), repeat=(bytes,))
     def bf_info(self, key: CommandItem, *args: bytes) -> Union[Any, List[Any]]:
         if key.value is None or type(key.value) is not ScalableBloomFilter:
-            raise SimpleError('...')
+            raise SimpleError("...")
         if len(args) > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(args) == 0:
             return [
-                b'Capacity', key.value.estimated_elements,
-                b'Size', key.value.elements_added,
-                b'Number of filters', key.value.expansions + 1,
-                b'Number of items inserted', key.value.elements_added,
-                b'Expansion rate', key.value.scale if key.value.scale > 0 else None,
+                b"Capacity",
+                key.value.estimated_elements,
+                b"Size",
+                key.value.elements_added,
+                b"Number of filters",
+                key.value.expansions + 1,
+                b"Number of items inserted",
+                key.value.elements_added,
+                b"Expansion rate",
+                key.value.scale if key.value.scale > 0 else None,
             ]
-        if casematch(args[0], b'CAPACITY'):
+        if casematch(args[0], b"CAPACITY"):
             return key.value.estimated_elements
-        elif casematch(args[0], b'SIZE'):
+        elif casematch(args[0], b"SIZE"):
             return key.value.estimated_elements
-        elif casematch(args[0], b'FILTERS'):
+        elif casematch(args[0], b"FILTERS"):
             return key.value.expansions + 1
-        elif casematch(args[0], b'ITEMS'):
+        elif casematch(args[0], b"ITEMS"):
             return key.value.elements_added
-        elif casematch(args[0], b'EXPANSION'):
+        elif casematch(args[0], b"EXPANSION"):
             return key.value.expansions if key.value.expansions > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-    @command(name="BF.SCANDUMP", fixed=(Key(), Int,), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="BF.SCANDUMP",
+        fixed=(
+            Key(),
+            Int,
+        ),
+        repeat=(),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+    )
     def bf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)

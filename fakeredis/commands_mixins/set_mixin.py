@@ -24,11 +24,8 @@ def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem,
 
 
 def _setop(
-        op: Callable[..., Any],
-        stop_if_missing: bool,
-        dst: Optional[CommandItem],
-        key: CommandItem,
-        *keys: CommandItem) -> Any:
+    op: Callable[..., Any], stop_if_missing: bool, dst: Optional[CommandItem], key: CommandItem, *keys: CommandItem
+) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
     If `stop_if_missing`, the output will be made an empty set as soon as
@@ -87,10 +84,7 @@ class SetCommandsMixin:
             args = args[:-2]
         if numkeys != len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        keys = [
-            CommandItem(args[i], self._db, item=self._db.get(args[i], default=None))
-            for i in range(numkeys)
-        ]
+        keys = [CommandItem(args[i], self._db, item=self._db.get(args[i], default=None)) for i in range(numkeys)]
 
         res = _setop(lambda a, b: a & b, False, None, *keys)
         return len(res) if limit == 0 else min(limit, len(res))

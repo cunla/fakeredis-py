@@ -11,17 +11,17 @@ from test.testtools import fake_only
 
 def test_swapdb(r, create_redis):
     r1 = create_redis(3)
-    r.set('foo', 'abc')
-    r.set('bar', 'xyz')
-    r1.set('foo', 'foo')
-    r1.set('baz', 'baz')
+    r.set("foo", "abc")
+    r.set("bar", "xyz")
+    r1.set("foo", "foo")
+    r1.set("baz", "baz")
     assert r.swapdb(2, 3)
-    assert r.get('foo') == b'foo'
-    assert r.get('bar') is None
-    assert r.get('baz') == b'baz'
-    assert r1.get('foo') == b'abc'
-    assert r1.get('bar') == b'xyz'
-    assert r1.get('baz') is None
+    assert r.get("foo") == b"foo"
+    assert r.get("bar") is None
+    assert r.get("baz") == b"baz"
+    assert r1.get("foo") == b"abc"
+    assert r1.get("bar") == b"xyz"
+    assert r1.get("baz") is None
 
 
 def test_swapdb_same_db(r: redis.Redis):
@@ -35,9 +35,9 @@ def test_save(r: redis.Redis):
 def test_bgsave(r: redis.Redis):
     assert r.bgsave()
     with pytest.raises(ResponseError):
-        r.execute_command('BGSAVE', 'SCHEDULE', 'FOO')
+        r.execute_command("BGSAVE", "SCHEDULE", "FOO")
     with pytest.raises(ResponseError):
-        r.execute_command('BGSAVE', 'FOO')
+        r.execute_command("BGSAVE", "FOO")
 
 
 def test_lastsave(r: redis.Redis):
@@ -47,12 +47,12 @@ def test_lastsave(r: redis.Redis):
 @fake_only
 def test_command(r: redis.Redis):
     commands_dict = r.command()
-    one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if ' ' not in cmd}
+    one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd}
     assert one_word_commands - set(commands_dict.keys()) == set()
 
 
 def test_command_count(r: redis.Redis):
-    assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if ' ' not in cmd])
+    assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd])
 
 
 @pytest.mark.slow
@@ -76,13 +76,13 @@ def test_save_timestamp_update(r: redis.Redis):
 
 def test_dbsize(r: redis.Redis):
     assert r.dbsize() == 0
-    r.set('foo', 'bar')
-    r.set('bar', 'foo')
+    r.set("foo", "bar")
+    r.set("bar", "foo")
     assert r.dbsize() == 2
 
 
 def test_flushdb_redispy4(r: redis.Redis):
-    r.set('foo', 'bar')
-    assert r.keys() == [b'foo']
+    r.set("foo", "bar")
+    assert r.keys() == [b"foo"]
     assert r.flushdb() is True
     assert r.keys() == []

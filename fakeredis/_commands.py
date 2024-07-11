@@ -2,6 +2,7 @@
 Helper classes and methods used in mixins implementing various commands.
 Unlike _helpers.py, here the methods should be used only in mixins.
 """
+
 import functools
 import math
 import re
@@ -87,8 +88,7 @@ class CommandItem:
     def writeback(self, remove_empty_val: bool = True) -> None:
         if self._modified:
             self.db.notify_watch(self.key)
-            if (not isinstance(self.value, bytes)
-                    and (self.value is None or (not self.value and remove_empty_val))):
+            if not isinstance(self.value, bytes) and (self.value is None or (not self.value and remove_empty_val)):
                 self.db.pop(self.key, None)
                 return
             item = self.db.setdefault(self.key, Item(None))
@@ -121,8 +121,8 @@ class Int(RedisType):
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
     ENCODE_ERROR = msgs.OVERFLOW_MSG
-    MIN_VALUE = -(2 ** 63)
-    MAX_VALUE = 2 ** 63 - 1
+    MIN_VALUE = -(2**63)
+    MAX_VALUE = 2**63 - 1
 
     @classmethod
     def valid(cls, value: int) -> bool:
@@ -180,13 +180,13 @@ class Float(RedisType):
 
     @classmethod
     def decode(
-            cls,
-            value: bytes,
-            allow_leading_whitespace: bool = False,
-            allow_erange: bool = False,
-            allow_empty: bool = False,
-            crop_null: bool = False,
-            decode_error: Optional[str] = None,
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = False,
+        allow_erange: bool = False,
+        allow_empty: bool = False,
+        crop_null: bool = False,
+        decode_error: Optional[str] = None,
     ) -> float:
         # Redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
@@ -237,17 +237,15 @@ class SortFloat(Float):
 
     @classmethod
     def decode(
-            cls,
-            value: bytes,
-            allow_leading_whitespace: bool = True,
-            allow_erange: bool = False,
-            allow_empty: bool = True,
-            crop_null: bool = True,
-            decode_error: Optional[str] = None,
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = True,
+        allow_erange: bool = False,
+        allow_empty: bool = True,
+        crop_null: bool = True,
+        decode_error: Optional[str] = None,
     ) -> float:
-        return super().decode(
-            value, allow_leading_whitespace=True, allow_empty=True, crop_null=True
-        )
+        return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
 
 @functools.total_ordering
@@ -347,12 +345,13 @@ class StringTest(RedisType):
 
 class Signature:
     def __init__(
-            self, name: str,
-            func_name: str,
-            fixed: Tuple[Type[Union[RedisType, bytes]]],
-            repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
-            args: Tuple[str] = (),  # type:ignore
-            flags: str = "",
+        self,
+        name: str,
+        func_name: str,
+        fixed: Tuple[Type[Union[RedisType, bytes]]],
+        repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
+        args: Tuple[str] = (),  # type:ignore
+        flags: str = "",
     ):
         self.name = name
         self.func_name = func_name
@@ -369,15 +368,11 @@ class Signature:
             msg = msgs.WRONG_ARGS_MSG6.format(self.name)
             raise SimpleError(msg)
         if delta % len(self.repeat) != 0:
-            msg = (
-                msgs.WRONG_ARGS_MSG7
-                if version >= (7,)
-                else msgs.WRONG_ARGS_MSG6.format(self.name)
-            )
+            msg = msgs.WRONG_ARGS_MSG7 if version >= (7,) else msgs.WRONG_ARGS_MSG6.format(self.name)
             raise SimpleError(msg)
 
     def apply(
-            self, args: Sequence[Any], db: Database, version: Tuple[int]
+        self, args: Sequence[Any], db: Database, version: Tuple[int]
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
@@ -406,16 +401,14 @@ class Signature:
             if isinstance(type_, Key):
                 item = db.get(arg)
                 default = None
-                if (
-                        type_.type_ is not None
-                        and item is not None
-                        and type(item.value) is not type_.type_
-                ):
+                if type_.type_ is not None and item is not None and type(item.value) is not type_.type_:
                     raise SimpleError(msgs.WRONGTYPE_MSG)
-                if (msgs.FLAG_DO_NOT_CREATE not in self.flags
-                        and type_.type_ is not None
-                        and item is None
-                        and type_.type_ is not bytes):
+                if (
+                    msgs.FLAG_DO_NOT_CREATE not in self.flags
+                    and type_.type_ is not None
+                    and item is None
+                    and type_.type_ is not bytes
+                ):
                     default = type_.type_()
                 args_list[i] = CommandItem(arg, db, item, default=default)
                 command_items.append(args_list[i])
@@ -427,9 +420,7 @@ def command(*args, **kwargs) -> Callable:  # type:ignore
     def create_signature(func: Callable[..., Any], cmd_name: str) -> None:
         if " " in cmd_name:
             COMMANDS_WITH_SUB.add(cmd_name.split(" ")[0])
-        SUPPORTED_COMMANDS[cmd_name] = Signature(
-            cmd_name, func.__name__, *args, **kwargs
-        )
+        SUPPORTED_COMMANDS[cmd_name] = Signature(cmd_name, func.__name__, *args, **kwargs)
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         cmd_names = kwargs.pop("name", func.__name__)

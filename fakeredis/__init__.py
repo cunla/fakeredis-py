@@ -1,9 +1,9 @@
-from ._server import (
-    FakeServer,
+from ._connection import (
     FakeRedis,
     FakeStrictRedis,
     FakeConnection,
 )
+from ._server import FakeServer
 from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,

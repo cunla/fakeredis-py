@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   lint:
-    name: "flake8 on code"
+    name: "Code linting (flake8/black)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +34,10 @@ jobs:
         shell: bash
         run: |
           poetry run flake8 fakeredis/
+      - name: Run black
+        shell: bash
+        run: |
+          poetry run black --check --verbose fakeredis test
       - name: Test import
         run: |
           poetry build

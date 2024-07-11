@@ -13,7 +13,8 @@ from fakeredis._commands import (
     BeforeAny,
     CommandItem,
     SortFloat,
-    delete_keys, Item,
+    delete_keys,
+    Item,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
 from fakeredis._zset import ZSet
@@ -39,10 +40,10 @@ class GenericCommandsMixin:
         if p == -1:
             return None
         prefix = pattern[:p]
-        suffix = pattern[p + 1:]
+        suffix = pattern[p + 1 :]
         arrow = suffix.find(b"->", 0, -1)
         if arrow != -1:
-            field = suffix[arrow + 2:]
+            field = suffix[arrow + 2 :]
             suffix = suffix[:arrow]
         else:
             field = None
@@ -81,11 +82,11 @@ class GenericCommandsMixin:
         if (counter > 1) or (nx and xx):
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
         if (
-                not key
-                or (xx and key.expireat is None)
-                or (nx and key.expireat is not None)
-                or (gt and key.expireat is not None and timestamp < key.expireat)
-                or (lt and key.expireat is not None and timestamp > key.expireat)
+            not key
+            or (xx and key.expireat is None)
+            or (nx and key.expireat is not None)
+            or (gt and key.expireat is not None and timestamp < key.expireat)
+            or (lt and key.expireat is not None and timestamp > key.expireat)
         ):
             return 0
         key.expireat = timestamp
@@ -111,8 +112,8 @@ class GenericCommandsMixin:
 
     @command(
         (
-                Key(),
-                Int,
+            Key(),
+            Int,
         ),
         (bytes,),
         name="expire",
@@ -216,7 +217,14 @@ class GenericCommandsMixin:
     def sort(self, key, *args):
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (asc, desc, alpha, store, sortby, (limit_start, limit_count),), left_args = extract_args(
+        (
+            asc,
+            desc,
+            alpha,
+            store,
+            sortby,
+            (limit_start, limit_count),
+        ), left_args = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,

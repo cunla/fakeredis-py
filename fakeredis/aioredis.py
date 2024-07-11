@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 import uuid
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 
 from redis import ResponseError
 
@@ -41,11 +41,17 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self.responses.put_nowait(msg)
 
     async def _async_blocking(
-            self,
-            timeout: Optional[Union[float, int]],
-            func: Callable[[bool, ], Any],
-            event: asyncio.Event,
-            callback: Callable[[], None]) -> None:
+        self,
+        timeout: Optional[Union[float, int]],
+        func: Callable[
+            [
+                bool,
+            ],
+            Any,
+        ],
+        event: asyncio.Event,
+        callback: Callable[[], None],
+    ) -> None:
         result = None
         try:
             async with async_timeout(timeout if timeout else None):
@@ -68,7 +74,16 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
             self.put_response(result)
             self.resume()
 
-    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable[[bool, ], None]) -> Any:
+    def _blocking(
+        self,
+        timeout: Optional[Union[float, int]],
+        func: Callable[
+            [
+                bool,
+            ],
+            None,
+        ],
+    ) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
@@ -183,27 +198,27 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
 class FakeRedis(redis_async.Redis):
     def __init__(
-            self,
-            *,
-            host: Optional[str] = None,
-            port: int = 6379,
-            db: Union[str, int] = 0,
-            password: Optional[str] = None,
-            socket_timeout: Optional[float] = None,
-            connection_pool: Optional[redis_async.ConnectionPool] = None,
-            encoding: str = "utf-8",
-            encoding_errors: str = "strict",
-            decode_responses: bool = False,
-            retry_on_timeout: bool = False,
-            max_connections: Optional[int] = None,
-            health_check_interval: int = 0,
-            client_name: Optional[str] = None,
-            username: Optional[str] = None,
-            server: Optional[_server.FakeServer] = None,
-            connected: bool = True,
-            version: VersionType = (7,),
-            lua_modules: Optional[Set[str]] = None,
-            **kwargs: Any,
+        self,
+        *,
+        host: Optional[str] = None,
+        port: int = 6379,
+        db: Union[str, int] = 0,
+        password: Optional[str] = None,
+        socket_timeout: Optional[float] = None,
+        connection_pool: Optional[redis_async.ConnectionPool] = None,
+        encoding: str = "utf-8",
+        encoding_errors: str = "strict",
+        decode_responses: bool = False,
+        retry_on_timeout: bool = False,
+        max_connections: Optional[int] = None,
+        health_check_interval: int = 0,
+        client_name: Optional[str] = None,
+        username: Optional[str] = None,
+        server: Optional[_server.FakeServer] = None,
+        connected: bool = True,
+        version: VersionType = (7,),
+        lua_modules: Optional[Set[str]] = None,
+        **kwargs: Any,
     ) -> None:
         if not connection_pool:
             # Adapted from aioredis
@@ -229,18 +244,22 @@ class FakeRedis(redis_async.Redis):
                 lua_modules=lua_modules,
             )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)  # type:ignore
-        kwargs.update(dict(db=db,
-                           password=password,
-                           socket_timeout=socket_timeout,
-                           connection_pool=connection_pool,
-                           encoding=encoding,
-                           encoding_errors=encoding_errors,
-                           decode_responses=decode_responses,
-                           retry_on_timeout=retry_on_timeout,
-                           max_connections=max_connections,
-                           health_check_interval=health_check_interval,
-                           client_name=client_name,
-                           username=username))
+        kwargs.update(
+            dict(
+                db=db,
+                password=password,
+                socket_timeout=socket_timeout,
+                connection_pool=connection_pool,
+                encoding=encoding,
+                encoding_errors=encoding_errors,
+                decode_responses=decode_responses,
+                retry_on_timeout=retry_on_timeout,
+                max_connections=max_connections,
+                health_check_interval=health_check_interval,
+                client_name=client_name,
+                username=username,
+            )
+        )
         super().__init__(**kwargs)
 
     @classmethod

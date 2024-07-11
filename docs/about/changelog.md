@@ -8,6 +8,7 @@ description: Change log of all fakeredis releases
 ### 🧰 Maintenance
 
 - Documented how to use fakeredis with FastAPI. @ sjjessop #292
+- Using black for linting python code.
 
 ## v2.23.3
 
