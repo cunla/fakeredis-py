@@ -33,13 +33,13 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(bytes,))
     def ts_createrule(
-        self,
-        source_key: CommandItem,
-        dest_key: CommandItem,
-        _: bytes,
-        aggregator: bytes,
-        bucket_duration: int,
-        *args: bytes,
+            self,
+            source_key: CommandItem,
+            dest_key: CommandItem,
+            _: bytes,
+            aggregator: bytes,
+            bucket_duration: int,
+            *args: bytes,
     ) -> SimpleString:
         pass
 
@@ -71,9 +71,9 @@ class TimeSeriesCommandsMixin:
         name="TS.MADD",
         fixed=(Key(TimeSeries), Int, bytes),
         repeat=(
-            Key(TimeSeries),
-            Int,
-            bytes,
+                Key(TimeSeries),
+                Int,
+                bytes,
         ),
     )
     def ts_madd(self, *args: bytes) -> List[int]:
@@ -83,14 +83,22 @@ class TimeSeriesCommandsMixin:
     def ts_mget(self, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.MRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
-    def ts_mrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+    @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
+    def ts_mrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:
         pass
 
+    @command(name="TS.MREVRANGE", fixed=(Int, Int), repeat=(bytes,))
+    def ts_mrevrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        pass
 
-# TS.MRANGE
-# TS.MREVRANGE
-# TS.QUERYINDEX
-# TS.RANGE
-# TS.REVRANGE
-#
+    @command(name="TS.QUERYINDEX", fixed=(bytes,), repeat=(bytes,))
+    def ts_queryindex(self, filterExpr: bytes, *args: bytes) -> bytes:
+        pass
+
+    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
+    def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        pass
+
+    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
+    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        pass
