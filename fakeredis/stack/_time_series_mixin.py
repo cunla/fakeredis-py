@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -20,13 +20,20 @@ class TimeSeries:
         self.encoding = encoding
         self.chunk_size = chunk_size
         self.duplicate_policy = duplicate_policy
-        self.values: List[Tuple[int, float]] = list()
+        self.map: Dict[int, float] = dict()
+        self.sorted_list: List[Tuple[int, float]] = list()
         self.labels = labels or {}
 
     def add(self, timestamp: int, value: float):
         if self.retention != 0 and time.time() - timestamp > self.retention:
             return
-        self.values.append((timestamp, value))
+        self.map[timestamp] = value
+        self.sorted_list.append((timestamp, value))
+
+    def get(self) -> Optional[List[Union[int, float]]]:
+        if len(self.sorted_list) == 0:
+            return None
+        return [self.sorted_list[-1][0], self.sorted_list[-1][1]]
 
 
 class TimeSeriesCommandsMixin:
@@ -83,6 +90,13 @@ class TimeSeriesCommandsMixin:
             key.value = self._create_timeseries(*args)
         key.value.add(timestamp, float(value))
 
+    @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
+    def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
+        if key.value is None:
+            raise SimpleError(msgs.NO_KEY_MSG)
+
+        return key.value.get()
+
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
         pass
@@ -113,10 +127,6 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=())
     def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
-        pass
-
-    @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_get(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))

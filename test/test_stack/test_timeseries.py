@@ -596,7 +596,7 @@ def test_mrevrange_latest(r: redis.Redis):
 def test_get(r: redis.Redis):
     name = "test"
     r.ts().create(name)
-    assert not r.ts().get(name)
+    assert r.ts().get(name) is None
     r.ts().add(name, 2, 3)
     assert 2 == r.ts().get(name)[0]
     r.ts().add(name, 3, 4)
