@@ -74,10 +74,6 @@ XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
     " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
 )
-FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
-FLAG_LEAVE_EMPTY_VAL = "v"
-FLAG_TRANSACTION = "t"
-FLAG_DO_NOT_CREATE = "i"
 GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
@@ -98,3 +94,8 @@ TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
 TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
 TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
 TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"
+TIMESERIES_KEY_EXISTS = "TSDB: key already exists"
+FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
+FLAG_LEAVE_EMPTY_VAL = "v"
+FLAG_TRANSACTION = "t"
+FLAG_DO_NOT_CREATE = "i"

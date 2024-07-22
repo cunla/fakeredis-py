@@ -5,6 +5,15 @@ from time import sleep
 import pytest
 import redis
 
+from fakeredis import _msgs as msgs
+
+
+def test_create_key_exist(r: redis.Redis):
+    assert r.ts().create(1)
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().create(1)
+    assert str(e.value) == msgs.TIMESERIES_KEY_EXISTS
+
 
 def test_create(r: redis.Redis):
     assert r.ts().create(1)

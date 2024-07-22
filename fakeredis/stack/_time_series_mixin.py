@@ -2,7 +2,7 @@ from typing import List
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, CommandItem, Int, Float
-from fakeredis._helpers import Database, SimpleString
+from fakeredis._helpers import Database, SimpleString, OK, SimpleError
 
 
 class TimeSeries:
@@ -13,6 +13,13 @@ class TimeSeriesCommandsMixin:
     # TimeSeries commands
     def __init__(self, *args, **kwargs):
         self._db: Database
+
+    @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_create(self, key: CommandItem, *args: bytes) -> SimpleString:
+        if key.value is not None:
+            raise SimpleError(msgs.TIMESERIES_KEY_EXISTS)
+        key.update(TimeSeries())
+        return OK
 
     @command(
         name="TS.ADD",
@@ -25,10 +32,6 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_create(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
     @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(bytes,))
