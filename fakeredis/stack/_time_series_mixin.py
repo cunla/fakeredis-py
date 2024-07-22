@@ -1,12 +1,32 @@
-from typing import List
+import time
+from typing import List, Dict, Tuple
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, CommandItem, Int, Float
-from fakeredis._helpers import Database, SimpleString, OK, SimpleError
+from fakeredis._command_args_parsing import extract_args
+from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
+from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
 
 
 class TimeSeries:
-    pass
+    def __init__(
+            self,
+            retention: int = 0, encoding: str = "compressed", chunk_size: int = 0,
+            duplicate_policy: str = None,
+            ignore_max_time_diff: int = 0, ignore_max_val_diff: int = 0,
+            labels: Dict[str, str] = None,
+    ):
+        super().__init__()
+        self.retention = retention
+        self.encoding = encoding
+        self.chunk_size = chunk_size
+        self.duplicate_policy = duplicate_policy
+        self.values: List[Tuple[int, float]] = list()
+        self.labels = labels or {}
+
+    def add(self, timestamp: int, value: float):
+        if self.retention != 0 and time.time() - timestamp > self.retention:
+            return
+        self.values.append((timestamp, value))
 
 
 class TimeSeriesCommandsMixin:
@@ -14,21 +34,54 @@ class TimeSeriesCommandsMixin:
     def __init__(self, *args, **kwargs):
         self._db: Database
 
+    def _create_timeseries(self, *args) -> TimeSeries:
+        (retention, encoding, chunk_size, duplicate_policy,
+         (ignore_max_time_diff, ignore_max_val_diff)), left_args = extract_args(
+            args, ("+retention", "+encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
+            error_on_unexpected=False,
+        )
+        retention = retention or 0
+        encoding = encoding or b"COMPRESSED"
+        if not (casematch(encoding, b"COMPRESSED") or casematch(encoding, b"UNCOMPRESSED")):
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
+        encoding = encoding.decode().lower()
+        chunk_size = chunk_size or 4096
+        if chunk_size % 8 != 0:
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
+        duplicate_policy = duplicate_policy or b"BLOCK"
+        if (not casematch(duplicate_policy, b"BLOCK")
+                and not casematch(duplicate_policy, b"FIRST")
+                and not casematch(duplicate_policy, b"LAST")
+                and not casematch(duplicate_policy, b"MIN")
+                and not casematch(duplicate_policy, b"MAX")
+                and not casematch(duplicate_policy, b"SUM")):
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
+        duplicate_policy = duplicate_policy.decode().lower()
+        if len(left_args) > 0 and (not casematch(left_args[0], b"LABELS") or len(left_args) % 2 != 1):
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
+        labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
+
+        return TimeSeries(
+            retention=retention, encoding=encoding, chunk_size=chunk_size, duplicate_policy=duplicate_policy,
+            ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff,
+            labels=labels)
+
     @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_create(self, key: CommandItem, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.TIMESERIES_KEY_EXISTS)
-        key.update(TimeSeries())
+        key.value = self._create_timeseries(*args)
         return OK
 
     @command(
         name="TS.ADD",
-        fixed=(Key(TimeSeries), bytes, bytes),
+        fixed=(Key(TimeSeries), Timestamp, bytes),
         repeat=(bytes,),
-        flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def ts_add(self, key: CommandItem, timestamp: bytes, value: bytes, *args: bytes) -> bytes:
-        pass
+    def ts_add(self, key: CommandItem, timestamp: int, value: bytes, *args: bytes) -> bytes:
+        if key.value is None:
+            key.value = self._create_timeseries(*args)
+        key.value.add(timestamp, float(value))
 
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
