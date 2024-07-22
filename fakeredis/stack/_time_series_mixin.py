@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List, Dict, Tuple, Union, Optional, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -24,11 +24,14 @@ class TimeSeries:
         self.sorted_list: List[Tuple[int, float]] = list()
         self.labels = labels or {}
 
-    def add(self, timestamp: int, value: float):
+    def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
         if self.retention != 0 and time.time() - timestamp > self.retention:
-            return
+            if len(self.sorted_list) > 0:
+                return self.sorted_list[-1][0]
+            return []
         self.map[timestamp] = value
         self.sorted_list.append((timestamp, value))
+        return timestamp
 
     def get(self) -> Optional[List[Union[int, float]]]:
         if len(self.sorted_list) == 0:
@@ -80,22 +83,34 @@ class TimeSeriesCommandsMixin:
         key.value = self._create_timeseries(*args)
         return OK
 
-    @command(
-        name="TS.ADD",
-        fixed=(Key(TimeSeries), Timestamp, bytes),
-        repeat=(bytes,),
-    )
-    def ts_add(self, key: CommandItem, timestamp: int, value: bytes, *args: bytes) -> bytes:
+    @command(name="TS.ADD", fixed=(Key(TimeSeries), Timestamp, Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> bytes:
         if key.value is None:
             key.value = self._create_timeseries(*args)
-        key.value.add(timestamp, float(value))
+        key.value.add(timestamp, value)
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
+    def ts_get(self, key: CommandItem) -> Optional[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-
         return key.value.get()
+
+    @command(
+        name="TS.MADD",
+        fixed=(Key(TimeSeries), Timestamp, Float),
+        repeat=(Key(TimeSeries), Timestamp, Float),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
+    def ts_madd(self, *args: Any) -> List[int]:
+        if len(args) % 3 != 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        results: List[int] = list()
+        for i in range(0, len(args), 3):
+            key, timestamp, value = args[i:i + 3]
+            if key.value is None:
+                raise SimpleError(msgs.NO_KEY_MSG)
+            results.append(key.value.add(timestamp, value))
+        return results
 
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
@@ -131,18 +146,6 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_info(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
-
-    @command(
-        name="TS.MADD",
-        fixed=(Key(TimeSeries), Int, bytes),
-        repeat=(
-                Key(TimeSeries),
-                Int,
-                bytes,
-        ),
-    )
-    def ts_madd(self, *args: bytes) -> List[int]:
         pass
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
