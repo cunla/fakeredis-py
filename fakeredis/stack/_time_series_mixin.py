@@ -38,6 +38,15 @@ class TimeSeries:
             return None
         return [self.sorted_list[-1][0], self.sorted_list[-1][1]]
 
+    def delete(self, from_ts: int, to_ts: int) -> int:
+        prev_size = len(self.sorted_list)
+        self.sorted_list = [x for x in self.sorted_list if not (from_ts <= x[0] <= to_ts)]
+        self.map = {k: v for k, v in self.map.items() if not (from_ts <= k <= to_ts)}
+        return prev_size - len(self.sorted_list)
+
+
+_timeseries: List[TimeSeries] = list()
+
 
 class TimeSeriesCommandsMixin:
     # TimeSeries commands
@@ -47,7 +56,7 @@ class TimeSeriesCommandsMixin:
     def _create_timeseries(self, *args) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy,
          (ignore_max_time_diff, ignore_max_val_diff)), left_args = extract_args(
-            args, ("+retention", "+encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
+            args, ("+retention", "*encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
             error_on_unexpected=False,
         )
         retention = retention or 0
@@ -81,16 +90,18 @@ class TimeSeriesCommandsMixin:
         if key.value is not None:
             raise SimpleError(msgs.TIMESERIES_KEY_EXISTS)
         key.value = self._create_timeseries(*args)
+        _timeseries.append(key.value)
         return OK
 
     @command(name="TS.ADD", fixed=(Key(TimeSeries), Timestamp, Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> bytes:
+    def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> int:
         if key.value is None:
-            key.value = self._create_timeseries(*args)
-        key.value.add(timestamp, value)
+            key.update(self._create_timeseries(*args))
+            _timeseries.append(key.value)
+        return key.value.add(timestamp, value)
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_get(self, key: CommandItem) -> Optional[List[Union[int, float]]]:
+    def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         return key.value.get()
@@ -111,6 +122,18 @@ class TimeSeriesCommandsMixin:
                 raise SimpleError(msgs.NO_KEY_MSG)
             results.append(key.value.add(timestamp, value))
         return results
+
+    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=())
+    def ts_del(self, key: CommandItem, from_ts: int, to_ts: int) -> bytes:
+        if key.value is None:
+            raise SimpleError(msgs.NO_KEY_MSG)
+        if from_ts > to_ts:
+            raise SimpleError(msgs.WRONG_ARGS_MSG7)
+        return key.value.delete(from_ts, to_ts)
+
+    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
+    def ts_mget(self, *args: bytes) -> bytes:
+        pass
 
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
@@ -136,20 +159,12 @@ class TimeSeriesCommandsMixin:
     def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=())
-    def ts_del(self, key: CommandItem, from_ts: int, to_ts: int) -> bytes:
-        pass
-
     @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=())
     def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
         pass
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_info(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
-    def ts_mget(self, *args: bytes) -> bytes:
         pass
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
