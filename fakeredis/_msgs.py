@@ -95,6 +95,7 @@ TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
 TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
 TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"
 TIMESERIES_KEY_EXISTS = "TSDB: key already exists"
+TIMESERIES_KEY_DOES_NOT_EXIST = "ERR TSDB: the key does not exist"
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"
 FLAG_TRANSACTION = "t"

@@ -63,7 +63,7 @@ class TimeSeriesCommandsMixin:
         encoding = encoding or b"COMPRESSED"
         if not (casematch(encoding, b"COMPRESSED") or casematch(encoding, b"UNCOMPRESSED")):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
-        encoding = encoding.decode().lower()
+        encoding = encoding.lower()
         chunk_size = chunk_size or 4096
         if chunk_size % 8 != 0:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
@@ -75,7 +75,7 @@ class TimeSeriesCommandsMixin:
                 and not casematch(duplicate_policy, b"MAX")
                 and not casematch(duplicate_policy, b"SUM")):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
-        duplicate_policy = duplicate_policy.decode().lower()
+        duplicate_policy = duplicate_policy.lower()
         if len(left_args) > 0 and (not casematch(left_args[0], b"LABELS") or len(left_args) % 2 != 1):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
@@ -84,6 +84,27 @@ class TimeSeriesCommandsMixin:
             retention=retention, encoding=encoding, chunk_size=chunk_size, duplicate_policy=duplicate_policy,
             ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff,
             labels=labels)
+
+    @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
+    def ts_info(self, key: CommandItem, *args: bytes) -> List[Any]:
+        if key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        return [
+            b"totalSamples", len(key.value.sorted_list),
+            b"memoryUsage", len(key.value.sorted_list) * 8 + len(key.value.encoding),
+            b"firstTimestamp", key.value.sorted_list[0][0] if len(key.value.sorted_list) > 0 else 0,
+            b"lastTimestamp", key.value.sorted_list[-1][0] if len(key.value.sorted_list) > 0 else 0,
+            b"retentionTime", key.value.retention,
+            b"chunkCount", len(key.value.sorted_list) * 8 // key.value.chunk_size,
+            b"chunkSize", key.value.chunk_size,
+            b"chunkType", key.value.encoding,
+            b"duplicatePolicy", key.value.duplicate_policy,
+            b"labels", [[k, v] for k, v in key.value.labels.items()],
+            b"sourceKey", None,
+            b"rules", [],
+            b"keySelfName", key.key,
+            b"Chunks", [],
+        ]
 
     @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_create(self, key: CommandItem, *args: bytes) -> SimpleString:
@@ -103,7 +124,7 @@ class TimeSeriesCommandsMixin:
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
         if key.value is None:
-            raise SimpleError(msgs.NO_KEY_MSG)
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         return key.value.get()
 
     @command(
@@ -119,7 +140,7 @@ class TimeSeriesCommandsMixin:
         for i in range(0, len(args), 3):
             key, timestamp, value = args[i:i + 3]
             if key.value is None:
-                raise SimpleError(msgs.NO_KEY_MSG)
+                raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
             results.append(key.value.add(timestamp, value))
         return results
 
@@ -161,10 +182,6 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=())
     def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
-        pass
-
-    @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_info(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
