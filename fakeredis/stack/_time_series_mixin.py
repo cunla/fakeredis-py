@@ -10,10 +10,11 @@ from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematc
 class TimeSeries:
     def __init__(
             self,
-            retention: int = 0, encoding: str = "compressed", chunk_size: int = 0,
-            duplicate_policy: str = None,
+            retention: int = 0, encoding: bytes = b"compressed", chunk_size: int = 4096,
+            duplicate_policy: bytes = b"block",
             ignore_max_time_diff: int = 0, ignore_max_val_diff: int = 0,
             labels: Dict[str, str] = None,
+            source_key: Optional[bytes] = None,
     ):
         super().__init__()
         self.retention = retention
@@ -23,6 +24,7 @@ class TimeSeries:
         self.map: Dict[int, float] = dict()
         self.sorted_list: List[Tuple[int, float]] = list()
         self.labels = labels or {}
+        self.source_key = source_key
 
     def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
         if self.retention != 0 and time.time() - timestamp > self.retention:
@@ -100,7 +102,7 @@ class TimeSeriesCommandsMixin:
             b"chunkType", key.value.encoding,
             b"duplicatePolicy", key.value.duplicate_policy,
             b"labels", [[k, v] for k, v in key.value.labels.items()],
-            b"sourceKey", None,
+            b"sourceKey", key.value.source_key,
             b"rules", [],
             b"keySelfName", key.key,
             b"Chunks", [],
