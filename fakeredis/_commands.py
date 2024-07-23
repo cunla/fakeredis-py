@@ -6,6 +6,7 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
+import sys
 import time
 from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
 
@@ -478,5 +479,9 @@ class Timestamp(Int):
     @classmethod
     def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
         if value == b"*":
-            return time.time_ns() // 1_000_000
+            return int(time.time())
+        if value == b"-":
+            return -1
+        if value == b"+":
+            return sys.maxsize
         return super().decode(value, decode_error=msgs.INVALID_EXPIRE_MSG)

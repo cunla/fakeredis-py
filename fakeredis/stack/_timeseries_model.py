@@ -66,6 +66,21 @@ class TimeSeries:
     def delete_rule(self, rule: "TimeSeriesRule") -> None:
         self.rules.remove(rule)
 
+    def range(
+            self, from_ts: int, to_ts: int,
+            latest: bool, value_min: Optional[float], value_max: Optional[float], count: Optional[int],
+    ) -> List[List[Union[int, float]]]:
+        value_min = value_min or float("-inf")
+        value_max = value_max or float("inf")
+        res: List[List[Union[int, float]]] = [
+            [x[0], x[1]] for x in self.sorted_list
+            if (from_ts <= x[0] <= to_ts
+                and value_min <= x[1] <= value_max)
+        ]
+        if count:
+            res = res[:count]
+        return res
+
 
 class Aggregators:
     @staticmethod

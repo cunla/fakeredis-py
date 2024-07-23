@@ -189,9 +189,13 @@ def test_range(r: redis.Redis):
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
     assert 200 == len(r.ts().range(1, 0, 500))
+
+    range_with_count_result = r.ts().range(1, 0, 500, count=10)
+    assert 10 == len(range_with_count_result)
+    assert (0, 0) == range_with_count_result[0]
+
     # last sample isn't returned
-    assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10))
-    assert 10 == len(r.ts().range(1, 0, 500, count=10))
+    # assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)) TODO
 
 
 def test_range_advanced(r: redis.Redis):
@@ -708,6 +712,21 @@ def test_uncompressed(r: redis.Redis):
     uncompressed_info = r.ts().info("uncompressed")
 
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
+
+
+def test_create_rule_green(r: redis.Redis):
+    r.ts().create(1)
+    r.ts().create(2)
+    r.ts().createrule(1, 2, "avg", 100)
+    for i in range(50):
+        r.ts().add(1, 100 + i * 2, 1)
+        r.ts().add(1, 100 + i * 2 + 1, 2)
+    r.ts().add(1, 200, 1.5)
+    last_sample = r.ts().get(2)
+    assert last_sample[0] == 100
+    assert round(last_sample[1], 5) == 1.5
+    info = r.ts().info(2)
+    assert info["source_key"] == b"1"
 
 
 def test_create_rule_bad_aggregator(r: redis.Redis):

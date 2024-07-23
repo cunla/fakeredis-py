@@ -158,6 +158,20 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         source_key.value.delete_rule(res)
         return OK
 
+    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
+             flags=msgs.FLAG_DO_NOT_CREATE, )
+    def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        if key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        (latest, (value_min, value_max), count,), left_args = extract_args(
+            args, ("latest", "++filter_by_value", "+count"), error_on_unexpected=False, )
+
+        return key.value.range(from_ts, to_ts, latest, value_min, value_max, count)
+
+    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
+    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        pass
+
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
     def ts_mget(self, *args: bytes) -> bytes:
         pass
@@ -184,12 +198,4 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.QUERYINDEX", fixed=(bytes,), repeat=(bytes,))
     def ts_queryindex(self, filterExpr: bytes, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
-    def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
-    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
         pass
