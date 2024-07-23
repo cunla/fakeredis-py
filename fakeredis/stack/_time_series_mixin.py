@@ -7,9 +7,9 @@ from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematc
 from ._timeseries_model import TimeSeries, TimeSeriesRule
 
 
-class TimeSeriesCommandsMixin:
-    # TimeSeries commands
+class TimeSeriesCommandsMixin:  # TimeSeries commands
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._db: Database
 
     def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
