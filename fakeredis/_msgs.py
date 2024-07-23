@@ -89,13 +89,20 @@ INVALID_BITFIELD_TYPE = (
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 
+# TDigest error messages
 TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
 TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
 TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
 TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
 TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"
+
+# TimeSeries error messages
 TIMESERIES_KEY_EXISTS = "TSDB: key already exists"
-TIMESERIES_KEY_DOES_NOT_EXIST = "ERR TSDB: the key does not exist"
+TIMESERIES_KEY_DOES_NOT_EXIST = "TSDB: the key does not exist"
+TIMESERIES_RULE_EXISTS = "TSDB: the destination key already has a src rule"
+TIMESERIES_BAD_AGGREGATION_TYPE = "TSDB: Unknown aggregation type"
+
+# Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"
 FLAG_TRANSACTION = "t"

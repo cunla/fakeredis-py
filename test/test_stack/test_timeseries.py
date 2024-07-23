@@ -702,3 +702,26 @@ def test_uncompressed(r: redis.Redis):
     uncompressed_info = r.ts().info("uncompressed")
 
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
+
+
+def test_create_rule_bad_aggregator(r: redis.Redis):
+    r.ts().create(1)
+    r.ts().create(2)
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().createrule(1, 2, "bad", 100, align_timestamp=50)
+    assert str(e.value) == msgs.TIMESERIES_BAD_AGGREGATION_TYPE
+
+
+def test_create_rule_key_not_exist(r: redis.Redis):
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().createrule(1, 2, "avg", 100)
+    assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
+
+
+def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
+    r.ts().create(1)
+    r.ts().create(2)
+    r.ts().createrule(1, 2, "avg", 100)
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().createrule(1, 2, "avg", 100)
+    assert str(e.value) == msgs.TIMESERIES_RULE_EXISTS

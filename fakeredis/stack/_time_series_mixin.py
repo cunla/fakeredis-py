@@ -1,4 +1,3 @@
-import time
 from typing import List, Dict, Tuple, Union, Optional, Any
 
 from fakeredis import _msgs as msgs
@@ -26,12 +25,13 @@ class TimeSeries:
         self.duplicate_policy = duplicate_policy
         self.ts_ind_map: Dict[int, int] = dict()  # Map from timestamp to index in sorted_list
         self.sorted_list: List[Tuple[int, float]] = list()
+        self.max_timestamp: int = 0
         self.labels = labels or {}
         self.source_key = source_key
         self.rules: List[TimeSeriesRule] = list()
 
     def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
-        if self.retention != 0 and time.time() - timestamp > self.retention:
+        if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
             if len(self.sorted_list) > 0:
                 return self.sorted_list[-1][0]
             return []
@@ -43,7 +43,7 @@ class TimeSeries:
         self.rules = [rule for rule in self.rules if rule.dest_key.name in self._db]
         for rule in self.rules:
             rule.apply((timestamp, value))
-
+        self.max_timestamp = max(self.max_timestamp, timestamp)
         return timestamp
 
     def get(self) -> Optional[List[Union[int, float]]]:
@@ -56,6 +56,12 @@ class TimeSeries:
         self.sorted_list = [x for x in self.sorted_list if not (from_ts <= x[0] <= to_ts)]
         self.ts_ind_map = {k: v for k, v in self.ts_ind_map.items() if not (from_ts <= k <= to_ts)}
         return prev_size - len(self.sorted_list)
+
+    def get_rule(self, dest_key: bytes) -> Optional["TimeSeriesRule"]:
+        for rule in self.rules:
+            if rule.dest_key.name == dest_key:
+                return rule
+        return None
 
     def add_rule(self, rule: "TimeSeriesRule") -> None:
         self.rules.append(rule)
@@ -117,6 +123,7 @@ class TimeSeriesRule:
         self.align_timestamp = align_timestamp
         self.current_bucket_start_ts: int = 0
         self.current_bucket: List[Tuple[int, float]] = list()
+        self.dest_key.source_key = source_key.name
 
     def apply(self, record: Tuple[int, float]) -> None:
         ts, val = record
@@ -250,7 +257,12 @@ class TimeSeriesCommandsMixin:
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(Int,))
+    @command(
+        name="TS.CREATERULE",
+        fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int),
+        repeat=(Int,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_createrule(
             self,
             source_key: CommandItem,
@@ -262,11 +274,31 @@ class TimeSeriesCommandsMixin:
     ) -> SimpleString:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        if dest_key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         if len(args) > 1:
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
-        align_timestamp = args[0] if len(args) == 1 else 0
+        try:
+            align_timestamp = int(args[0]) if len(args) == 1 else 0
+        except ValueError:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        existing_rule = source_key.value.get_rule(dest_key.key)
+        if existing_rule is not None:
+            raise SimpleError(msgs.TIMESERIES_RULE_EXISTS)
+        if aggregator not in TimeSeriesRule.AGGREGATORS:
+            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         rule = TimeSeriesRule(source_key.value, dest_key.value, aggregator, bucket_duration, align_timestamp)
         source_key.value.add_rule(rule)
+        return OK
+
+    @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE, )
+    def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
+        if source_key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        res: Optional[TimeSeriesRule] = source_key.value.get_rule(dest_key.key)
+        if res is None:
+            raise SimpleError(msgs.NOT_FOUND_MSG)
+        source_key.value.delete_rule(res)
         return OK
 
     @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
@@ -275,10 +307,6 @@ class TimeSeriesCommandsMixin:
 
     @command(name="TS.INCRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
     def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=())
-    def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
         pass
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
