@@ -10,7 +10,7 @@ on:
       - master
 
 concurrency:
-  group: test-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           cache-dependency-path: poetry.lock
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Install dependencies
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
@@ -57,14 +57,14 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.14", "redis:7.0.15", "redis:7.2.4" ]
         python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
-        redis-py: [ "4.3.6", "4.6.0", "5.0.7", "5.1.0b6" ]
+        redis-py: [ "4.3.6", "4.6.0", "5.0.7", "5.1.0b7" ]
         include:
-          - python-version: "3.11"
+          - python-version: "3.12"
             redis-image: "redis/redis-stack:6.2.6-v13"
             redis-py: "5.0.7"
             extra: true  # json, bf, lupa, cf
             hypothesis: true
-          - python-version: "3.11"
+          - python-version: "3.12"
             redis-image: "redis/redis-stack-server:7.2.0-v9"
             redis-py: "5.0.7"
             extra: true  # json, bf, lupa, cf
