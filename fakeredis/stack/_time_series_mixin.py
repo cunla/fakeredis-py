@@ -10,6 +10,7 @@ from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematc
 class TimeSeries:
     def __init__(
             self,
+            name: bytes, database: Database,
             retention: int = 0, encoding: bytes = b"compressed", chunk_size: int = 4096,
             duplicate_policy: bytes = b"block",
             ignore_max_time_diff: int = 0, ignore_max_val_diff: int = 0,
@@ -17,22 +18,32 @@ class TimeSeries:
             source_key: Optional[bytes] = None,
     ):
         super().__init__()
+        self.name = name
+        self._db = database
         self.retention = retention
         self.encoding = encoding
         self.chunk_size = chunk_size
         self.duplicate_policy = duplicate_policy
-        self.map: Dict[int, float] = dict()
+        self.ts_ind_map: Dict[int, int] = dict()  # Map from timestamp to index in sorted_list
         self.sorted_list: List[Tuple[int, float]] = list()
         self.labels = labels or {}
         self.source_key = source_key
+        self.rules: List[TimeSeriesRule] = list()
 
     def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
         if self.retention != 0 and time.time() - timestamp > self.retention:
             if len(self.sorted_list) > 0:
                 return self.sorted_list[-1][0]
             return []
-        self.map[timestamp] = value
+        if timestamp in self.ts_ind_map:
+            self.sorted_list[self.ts_ind_map[timestamp]] = (timestamp, value)
+            return timestamp
         self.sorted_list.append((timestamp, value))
+        self.ts_ind_map[timestamp] = len(self.sorted_list) - 1
+        self.rules = [rule for rule in self.rules if rule.dest_key.name in self._db]
+        for rule in self.rules:
+            rule.apply((timestamp, value))
+
         return timestamp
 
     def get(self) -> Optional[List[Union[int, float]]]:
@@ -43,11 +54,87 @@ class TimeSeries:
     def delete(self, from_ts: int, to_ts: int) -> int:
         prev_size = len(self.sorted_list)
         self.sorted_list = [x for x in self.sorted_list if not (from_ts <= x[0] <= to_ts)]
-        self.map = {k: v for k, v in self.map.items() if not (from_ts <= k <= to_ts)}
+        self.ts_ind_map = {k: v for k, v in self.ts_ind_map.items() if not (from_ts <= k <= to_ts)}
         return prev_size - len(self.sorted_list)
 
+    def add_rule(self, rule: "TimeSeriesRule") -> None:
+        self.rules.append(rule)
 
-_timeseries: List[TimeSeries] = list()
+    def delete_rule(self, rule: "TimeSeriesRule") -> None:
+        self.rules.remove(rule)
+
+
+class Aggregators:
+    @staticmethod
+    def var_p(values: List[float]) -> float:
+        if len(values) == 0:
+            return 0
+        avg = sum(values) / len(values)
+        return sum((x - avg) ** 2 for x in values) / len(values)
+
+    @staticmethod
+    def var_s(values: List[float]) -> float:
+        if len(values) == 0:
+            return 0
+        avg = sum(values) / len(values)
+        return sum((x - avg) ** 2 for x in values) / (len(values) - 1)
+
+    @staticmethod
+    def std_p(values: List[float]) -> float:
+        return Aggregators.var_p(values) ** 0.5
+
+    @staticmethod
+    def std_s(values: List[float]) -> float:
+        return Aggregators.var_s(values) ** 0.5
+
+
+class TimeSeriesRule:
+    AGGREGATORS = {
+        b"avg": lambda x: sum(x) / len(x),
+        b"sum": sum,
+        b"min": min,
+        b"max": max,
+        b"range": lambda x: max(x) - min(x),
+        b"count": len,
+        b"first": lambda x: x[0],
+        b"last": lambda x: x[-1],
+        b"std.p": Aggregators.std_p,
+        b"std.s": Aggregators.std_s,
+        b"var.p": Aggregators.var_p,
+        b"var.s": Aggregators.var_s,
+        b"twa": lambda x: 0,
+    }
+
+    def __init__(
+            self, source_key: TimeSeries, dest_key: TimeSeries,
+            aggregator: bytes, bucket_duration: int,
+            align_timestamp: int = 0,
+    ):
+        self.source_key = source_key
+        self.dest_key = dest_key
+        self.aggregator = aggregator.lower()
+        self.bucket_duration = bucket_duration
+        self.align_timestamp = align_timestamp
+        self.current_bucket_start_ts: int = 0
+        self.current_bucket: List[Tuple[int, float]] = list()
+
+    def apply(self, record: Tuple[int, float]) -> None:
+        ts, val = record
+        bucket_start_ts = ts - (ts % self.bucket_duration) + self.align_timestamp
+        if self.current_bucket_start_ts != bucket_start_ts:
+            self._apply_bucket()
+            self.current_bucket_start_ts = bucket_start_ts
+            self.current_bucket = list()
+        self.current_bucket.append(record)
+
+    def _apply_bucket(self) -> None:
+        if len(self.current_bucket) == 0:
+            return
+        if self.aggregator == b"twa":
+            return
+        relevant_values = [x[1] for x in self.current_bucket]
+        value = TimeSeriesRule.AGGREGATORS[self.aggregator](relevant_values)
+        self.dest_key.add(self.current_bucket_start_ts, value)
 
 
 class TimeSeriesCommandsMixin:
@@ -55,7 +142,7 @@ class TimeSeriesCommandsMixin:
     def __init__(self, *args, **kwargs):
         self._db: Database
 
-    def _create_timeseries(self, *args) -> TimeSeries:
+    def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy,
          (ignore_max_time_diff, ignore_max_val_diff)), left_args = extract_args(
             args, ("+retention", "*encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
@@ -82,10 +169,12 @@ class TimeSeriesCommandsMixin:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
 
-        return TimeSeries(
+        res = TimeSeries(
+            name=name, database=self._db,
             retention=retention, encoding=encoding, chunk_size=chunk_size, duplicate_policy=duplicate_policy,
-            ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff,
-            labels=labels)
+            ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff, labels=labels,
+        )
+        return res
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_info(self, key: CommandItem, *args: bytes) -> List[Any]:
@@ -104,7 +193,7 @@ class TimeSeriesCommandsMixin:
             b"labels", [[k, v] for k, v in key.value.labels.items()],
             b"sourceKey", key.value.source_key,
             b"rules", [],
-            b"keySelfName", key.key,
+            b"keySelfName", key.value.name,
             b"Chunks", [],
         ]
 
@@ -112,16 +201,15 @@ class TimeSeriesCommandsMixin:
     def ts_create(self, key: CommandItem, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.TIMESERIES_KEY_EXISTS)
-        key.value = self._create_timeseries(*args)
-        _timeseries.append(key.value)
+        key.value = self._create_timeseries(key.key, *args)
         return OK
 
     @command(name="TS.ADD", fixed=(Key(TimeSeries), Timestamp, Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> int:
         if key.value is None:
-            key.update(self._create_timeseries(*args))
-            _timeseries.append(key.value)
-        return key.value.add(timestamp, value)
+            key.update(self._create_timeseries(key.key, *args))
+        res = key.value.add(timestamp, value)
+        return res
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
@@ -162,7 +250,7 @@ class TimeSeriesCommandsMixin:
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(bytes,))
+    @command(name="TS.CREATERULE", fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int), repeat=(Int,))
     def ts_createrule(
             self,
             source_key: CommandItem,
@@ -170,9 +258,16 @@ class TimeSeriesCommandsMixin:
             _: bytes,
             aggregator: bytes,
             bucket_duration: int,
-            *args: bytes,
+            *args: int,
     ) -> SimpleString:
-        pass
+        if source_key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        if len(args) > 1:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        align_timestamp = args[0] if len(args) == 1 else 0
+        rule = TimeSeriesRule(source_key.value, dest_key.value, aggregator, bucket_duration, align_timestamp)
+        source_key.value.add_rule(rule)
+        return OK
 
     @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
     def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
