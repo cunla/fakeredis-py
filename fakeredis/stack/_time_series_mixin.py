@@ -26,15 +26,14 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         chunk_size = chunk_size or 4096
         if chunk_size % 8 != 0:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
-        duplicate_policy = duplicate_policy or b"BLOCK"
-        if (not casematch(duplicate_policy, b"BLOCK")
-                and not casematch(duplicate_policy, b"FIRST")
-                and not casematch(duplicate_policy, b"LAST")
-                and not casematch(duplicate_policy, b"MIN")
-                and not casematch(duplicate_policy, b"MAX")
-                and not casematch(duplicate_policy, b"SUM")):
-            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
-        duplicate_policy = duplicate_policy.lower()
+        if (duplicate_policy and (not casematch(duplicate_policy, b"BLOCK")
+                                  and not casematch(duplicate_policy, b"FIRST")
+                                  and not casematch(duplicate_policy, b"LAST")
+                                  and not casematch(duplicate_policy, b"MIN")
+                                  and not casematch(duplicate_policy, b"MAX")
+                                  and not casematch(duplicate_policy, b"SUM"))):
+            raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
+        duplicate_policy = duplicate_policy.lower() if duplicate_policy else None
         if len(left_args) > 0 and (not casematch(left_args[0], b"LABELS") or len(left_args) % 2 != 1):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
@@ -112,14 +111,6 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         return key.value.delete(from_ts, to_ts)
 
-    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
-    def ts_mget(self, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
-    def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
-
     @command(
         name="TS.CREATERULE",
         fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int),
@@ -163,6 +154,14 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.NOT_FOUND_MSG)
         source_key.value.delete_rule(res)
         return OK
+
+    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
+    def ts_mget(self, *args: bytes) -> bytes:
+        pass
+
+    @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
+    def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
+        pass
 
     @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
     def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:

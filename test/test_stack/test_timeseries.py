@@ -15,6 +15,12 @@ def test_create_key_exist(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_KEY_EXISTS
 
 
+def test_create_bad_duplicate_policy(r: redis.Redis):
+    with pytest.raises(redis.ResponseError) as e:
+        assert r.ts().create(1, duplicate_policy="bad")
+    assert str(e.value) == msgs.TIMESERIES_INVALID_DUPLICATE_POLICY
+
+
 def test_create(r: redis.Redis):
     assert r.ts().create(1)
     assert r.ts().create(2, retention_msecs=5)

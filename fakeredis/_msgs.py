@@ -98,6 +98,7 @@ TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"
 
 # TimeSeries error messages
 TIMESERIES_KEY_EXISTS = "TSDB: key already exists"
+TIMESERIES_INVALID_DUPLICATE_POLICY = "TSDB: Unknown DUPLICATE_POLICY"
 TIMESERIES_KEY_DOES_NOT_EXIST = "TSDB: the key does not exist"
 TIMESERIES_RULE_EXISTS = "TSDB: the destination key already has a src rule"
 TIMESERIES_BAD_AGGREGATION_TYPE = "TSDB: Unknown aggregation type"
