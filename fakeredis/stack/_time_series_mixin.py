@@ -61,7 +61,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             b"duplicatePolicy", key.value.duplicate_policy,
             b"labels", [[k, v] for k, v in key.value.labels.items()],
             b"sourceKey", key.value.source_key,
-            b"rules", [],
+            b"rules", [
+                [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp] for rule in
+                key.value.rules
+            ],
             b"keySelfName", key.value.name,
             b"Chunks", [],
         ]
