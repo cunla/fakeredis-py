@@ -6,6 +6,13 @@ import pytest
 import redis
 
 from fakeredis import _msgs as msgs
+from test import testtools
+
+
+@testtools.fake_only
+def test_add_ts_close(r: redis.Redis):
+    ts = r.ts().add(5, "*", 1)
+    assert abs(time.time() - ts) < 1.0
 
 
 def test_create_key_exist(r: redis.Redis):
@@ -75,8 +82,6 @@ def test_add(r: redis.Redis):
     assert 2 == r.ts().add(2, 2, 3, retention_msecs=10)
     assert 3 == r.ts().add(3, 3, 2, labels={"Redis": "Labs"})
     assert 4 == r.ts().add(4, 4, 2, retention_msecs=10, labels={"Redis": "Labs", "Time": "Series"})
-
-    assert abs(time.time() - float(r.ts().add(5, "*", 1)) / 1000) < 1.0
 
     info = r.ts().info(4)
     assert 10 == info.get("retention_msecs")
