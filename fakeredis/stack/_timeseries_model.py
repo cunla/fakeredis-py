@@ -43,6 +43,17 @@ class TimeSeries:
         self.max_timestamp = max(self.max_timestamp, timestamp)
         return timestamp
 
+    def incrby(self, timestamp: int, value: float) -> Union[int, None]:
+        if len(self.sorted_list) == 0:
+            return self.add(timestamp, value)
+        if timestamp == self.sorted_list[-1][0]:
+            self.sorted_list[-1] = (timestamp, self.sorted_list[-1][1] + value)
+        elif timestamp > self.sorted_list[-1][0]:
+            self.add(timestamp, self.sorted_list[-1][1] + value)
+        else:  # timestamp < self.sorted_list[-1][0]
+            raise ValueError("Timestamp is less than the last timestamp")
+        return timestamp
+
     def get(self) -> Optional[List[Union[int, float]]]:
         if len(self.sorted_list) == 0:
             return None

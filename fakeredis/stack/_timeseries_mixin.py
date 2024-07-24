@@ -1,3 +1,4 @@
+import time
 from typing import List, Union, Optional, Any
 
 from fakeredis import _msgs as msgs
@@ -158,6 +159,28 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         source_key.value.delete_rule(res)
         return OK
 
+    def _ts_inc_or_dec(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
+        (ts,), left_args = extract_args(args, ("+timestamp",), error_on_unexpected=False, )
+        if key.value is None:
+            key.update(self._create_timeseries(key.key, *left_args))
+        timeseries = key.value
+        if ts is None:
+            if len(timeseries.sorted_list) == 0:
+                ts = int(time.time())
+            else:
+                ts = timeseries.sorted_list[-1][0]
+        if len(timeseries.sorted_list) > 0 and ts < timeseries.sorted_list[-1][0]:
+            raise SimpleError(msgs.TIMESERIES_INVALID_TIMESTAMP)
+        return key.value.incrby(ts, addend)
+
+    @command(name="TS.INCRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
+    def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
+        return self._ts_inc_or_dec(key, addend, *args)
+
+    @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
+    def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
+        return self._ts_inc_or_dec(key, -subtrahend, *args)
+
     @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
              flags=msgs.FLAG_DO_NOT_CREATE, )
     def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
@@ -178,14 +201,6 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
-    def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.INCRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,))
-    def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
         pass
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
