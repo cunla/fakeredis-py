@@ -53,7 +53,7 @@ class TimeSeries:
             ind = self.ts_ind_map[timestamp]
             self.sorted_list[ind] = (timestamp, self.sorted_list[ind][1] + value)
         elif timestamp > self.max_timestamp:
-            ind = self.ts_ind_map[timestamp]
+            ind = self.ts_ind_map[self.max_timestamp]
             self.add(timestamp, self.sorted_list[ind][1] + value)
         else:  # timestamp < self.sorted_list[ind][0]
             raise SimpleError(msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX)
@@ -62,7 +62,8 @@ class TimeSeries:
     def get(self) -> Optional[List[Union[int, float]]]:
         if len(self.sorted_list) == 0:
             return None
-        return [self.sorted_list[-1][0], self.sorted_list[-1][1]]
+        ind = self.ts_ind_map[self.max_timestamp]
+        return [self.sorted_list[ind][0], self.sorted_list[ind][1]]
 
     def delete(self, from_ts: int, to_ts: int) -> int:
         prev_size = len(self.sorted_list)

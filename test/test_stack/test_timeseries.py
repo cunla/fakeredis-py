@@ -198,16 +198,17 @@ def test_create_and_delete_rule(r: redis.Redis):
 
 
 def test_del_range(r: redis.Redis):
-    try:
+    with pytest.raises(redis.ResponseError) as e:
         r.ts().delete("test", 0, 100)
-    except Exception as e:
-        assert e.__str__() != ""
+    assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
     for i in range(100):
         r.ts().add(1, i, i % 7)
     assert 22 == r.ts().delete(1, 0, 21)
     assert [] == r.ts().range(1, 0, 21)
     assert r.ts().range(1, 22, 22) == [(22, 1.0)]
+
+    assert r.ts().delete(1, 60, 3) == 0
 
 
 def test_range(r: redis.Redis):

@@ -108,12 +108,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             results.append(key.value.add(timestamp, value))
         return results
 
-    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=())
+    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE, )
     def ts_del(self, key: CommandItem, from_ts: int, to_ts: int) -> bytes:
         if key.value is None:
-            raise SimpleError(msgs.NO_KEY_MSG)
-        if from_ts > to_ts:
-            raise SimpleError(msgs.WRONG_ARGS_MSG7)
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         return key.value.delete(from_ts, to_ts)
 
     @command(
