@@ -101,6 +101,17 @@ def test_add_before_retention(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION
 
 
+def test_add_before_last(r: redis.Redis):
+    r.ts().create("time-serie-1", retention_msecs=1000)
+    assert r.ts().add("time-serie-1", 100, 10.0) == 100
+    assert r.ts().add("time-serie-1", 2, 20.0) == 2
+
+    assert r.ts().incrby("time-serie-1", 10.0, timestamp=100) == 100
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().incrby("time-serie-1", 20.0, timestamp=2)
+    assert str(e.value) == "TSDB: timestamp must be equal to or higher than the maximum existing timestamp"
+
+
 def test_add_duplicate_policy(r: redis.Redis):
     # Test for duplicate policy BLOCK
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)

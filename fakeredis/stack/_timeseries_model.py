@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple, Union, Optional
 
-from fakeredis._helpers import Database, SimpleError
 from fakeredis import _msgs as msgs
+from fakeredis._helpers import Database, SimpleError
 
 
 class TimeSeries:
@@ -33,7 +33,9 @@ class TimeSeries:
     ) -> Union[int, None, List[None]]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
             raise SimpleError(msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION)
-        if timestamp in self.ts_ind_map:
+        if duplicate_policy is None:
+            duplicate_policy = self.duplicate_policy
+        if timestamp in self.ts_ind_map:  # Duplicate policy
             self.sorted_list[self.ts_ind_map[timestamp]] = (timestamp, value)
             return timestamp
         self.sorted_list.append((timestamp, value))
@@ -47,12 +49,14 @@ class TimeSeries:
     def incrby(self, timestamp: int, value: float) -> Union[int, None]:
         if len(self.sorted_list) == 0:
             return self.add(timestamp, value)
-        if timestamp == self.sorted_list[-1][0]:
-            self.sorted_list[-1] = (timestamp, self.sorted_list[-1][1] + value)
-        elif timestamp > self.sorted_list[-1][0]:
-            self.add(timestamp, self.sorted_list[-1][1] + value)
-        else:  # timestamp < self.sorted_list[-1][0]
-            raise ValueError("Timestamp is less than the last timestamp")
+        if timestamp == self.max_timestamp:
+            ind = self.ts_ind_map[timestamp]
+            self.sorted_list[ind] = (timestamp, self.sorted_list[ind][1] + value)
+        elif timestamp > self.max_timestamp:
+            ind = self.ts_ind_map[timestamp]
+            self.add(timestamp, self.sorted_list[ind][1] + value)
+        else:  # timestamp < self.sorted_list[ind][0]
+            raise SimpleError(msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX)
         return timestamp
 
     def get(self) -> Optional[List[Union[int, float]]]:
