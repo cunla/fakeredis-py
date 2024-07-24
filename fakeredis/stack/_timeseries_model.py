@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple, Union, Optional
 
-from fakeredis._helpers import Database
+from fakeredis._helpers import Database, SimpleError
+from fakeredis import _msgs as msgs
 
 
 class TimeSeries:
@@ -27,11 +28,11 @@ class TimeSeries:
         self.source_key = source_key
         self.rules: List[TimeSeriesRule] = list()
 
-    def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
+    def add(
+            self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None
+    ) -> Union[int, None, List[None]]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
-            if len(self.sorted_list) > 0:
-                return self.sorted_list[-1][0]
-            return []
+            raise SimpleError(msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION)
         if timestamp in self.ts_ind_map:
             self.sorted_list[self.ts_ind_map[timestamp]] = (timestamp, value)
             return timestamp

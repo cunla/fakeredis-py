@@ -93,6 +93,14 @@ def test_add(r: redis.Redis):
     assert 128 == info.get("chunk_size")
 
 
+def test_add_before_retention(r: redis.Redis):
+    r.ts().create("time-serie-1", retention_msecs=1000)
+    assert r.ts().add("time-serie-1", 10000, 10.0)
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().add("time-serie-1", 2, 20.0)
+    assert str(e.value) == msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION
+
+
 def test_add_duplicate_policy(r: redis.Redis):
     # Test for duplicate policy BLOCK
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)
@@ -101,22 +109,22 @@ def test_add_duplicate_policy(r: redis.Redis):
 
     # Test for duplicate policy LAST
     assert 1 == r.ts().add("time-serie-add-ooo-last", 1, 5.0)
-    assert 1 == r.ts().add("time-serie-add-ooo-last", 1, 10.0, duplicate_policy="last")
+    assert 1 == r.ts().add("time-serie-add-ooo-last", 1, 10.0, on_duplicate="last")
     assert 10.0 == r.ts().get("time-serie-add-ooo-last")[1]
 
     # Test for duplicate policy FIRST
     assert 1 == r.ts().add("time-serie-add-ooo-first", 1, 5.0)
-    assert 1 == r.ts().add("time-serie-add-ooo-first", 1, 10.0, duplicate_policy="first")
+    assert 1 == r.ts().add("time-serie-add-ooo-first", 1, 10.0, on_duplicate="first")
     assert 5.0 == r.ts().get("time-serie-add-ooo-first")[1]
 
     # Test for duplicate policy MAX
     assert 1 == r.ts().add("time-serie-add-ooo-max", 1, 5.0)
-    assert 1 == r.ts().add("time-serie-add-ooo-max", 1, 10.0, duplicate_policy="max")
+    assert 1 == r.ts().add("time-serie-add-ooo-max", 1, 10.0, on_duplicate="max")
     assert 10.0 == r.ts().get("time-serie-add-ooo-max")[1]
 
     # Test for duplicate policy MIN
     assert 1 == r.ts().add("time-serie-add-ooo-min", 1, 5.0)
-    assert 1 == r.ts().add("time-serie-add-ooo-min", 1, 10.0, duplicate_policy="min")
+    assert 1 == r.ts().add("time-serie-add-ooo-min", 1, 10.0, on_duplicate="min")
     assert 5.0 == r.ts().get("time-serie-add-ooo-min")[1]
 
 

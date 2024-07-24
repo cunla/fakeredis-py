@@ -103,6 +103,7 @@ TIMESERIES_KEY_DOES_NOT_EXIST = "TSDB: the key does not exist"
 TIMESERIES_RULE_EXISTS = "TSDB: the destination key already has a src rule"
 TIMESERIES_BAD_AGGREGATION_TYPE = "TSDB: Unknown aggregation type"
 TIMESERIES_INVALID_TIMESTAMP = "TSDB: invalid timestamp"
+TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION = "TSDB: Timestamp is older than retention"
 
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
