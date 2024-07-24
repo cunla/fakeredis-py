@@ -76,6 +76,7 @@ class TimeSeries:
 
     def delete_rule(self, rule: "TimeSeriesRule") -> None:
         self.rules.remove(rule)
+        rule.dest_key.source_key = None
 
     def range(
             self, from_ts: int, to_ts: int,

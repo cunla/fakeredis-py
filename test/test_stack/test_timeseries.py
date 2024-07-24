@@ -172,6 +172,8 @@ def test_create_and_delete_rule(r: redis.Redis):
     r.ts().deleterule(1, 2)
     info = r.ts().info(1)
     assert not info["rules"]
+    info2 = r.ts().info(2)
+    assert info2["source_key"] is None
 
 
 def test_del_range(r: redis.Redis):
