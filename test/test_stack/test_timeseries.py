@@ -165,8 +165,10 @@ def test_create_and_delete_rule(r: redis.Redis):
         r.ts().add(1, time + i * 2 + 1, 2)
     r.ts().add(1, time * 2, 1.5)
     assert round(r.ts().get(2)[1], 5) == 1.5
-    info = r.ts().info(1)
-    assert info.rules[0][1] == 100
+    info1 = r.ts().info(1)
+    assert info1.rules[0][1] == 100
+    info2 = r.ts().info(2)
+    assert info2["source_key"] == b'1'
 
     # test rule deletion
     r.ts().deleterule(1, 2)
