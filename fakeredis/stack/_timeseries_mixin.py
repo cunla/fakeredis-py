@@ -225,13 +225,15 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if aggregator is not None and aggregator not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         if aggregator is None:
-            return key.value.range(from_ts, to_ts, value_min, value_max, count, reverse)
-
-        return key.value.aggregate(
-            from_ts, to_ts,
-            latest, value_min, value_max, count, align, aggregator,
-            bucket_duration,
-            bucket_timestamp, empty)
+            res = key.value.range(from_ts, to_ts, value_min, value_max, count, reverse)
+        else:
+            res = key.value.aggregate(
+                from_ts, to_ts,
+                latest, value_min, value_max, count, align, aggregator,
+                bucket_duration,
+                bucket_timestamp, empty)
+        res = [[x[0], x[1]] for x in res]
+        return res
 
     @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
              flags=msgs.FLAG_DO_NOT_CREATE, )

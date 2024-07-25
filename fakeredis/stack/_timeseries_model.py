@@ -100,17 +100,11 @@ class TimeSeries:
             self, from_ts: int, to_ts: int,
             value_min: Optional[float], value_max: Optional[float],
             count: Optional[int], reverse: bool,
-    ) -> List[List[Union[int, float]]]:
+    ) -> List[Tuple[int, float]]:
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
-        if count is None:
-            return [
-                [x[0], x[1]] for x in self.sorted_list
-                if (from_ts <= x[0] <= to_ts
-                    and value_min <= x[1] <= value_max)
-            ]
-        res: List[List[Union[int, float]]] = [
-            [x[0], x[1]] for x in self.sorted_list
+        res: List[Tuple[int, float]] = [
+            x for x in self.sorted_list
             if (from_ts <= x[0] <= to_ts) and value_min <= x[1] <= value_max
         ]
         if reverse:
@@ -219,7 +213,7 @@ class TimeSeriesRule:
 
     def add_record(self, record: Tuple[int, float]) -> bool:
         ts, val = record
-        bucket_start_ts = ts - (ts % self.bucket_duration) + self.align_timestamp
+        bucket_start_ts = (ts + 1) - ((ts + 1) % self.bucket_duration) + self.align_timestamp
         if self.current_bucket_start_ts != bucket_start_ts:
             self.apply_curr_bucket()
             self.current_bucket_start_ts = bucket_start_ts
