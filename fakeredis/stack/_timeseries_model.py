@@ -26,6 +26,8 @@ class TimeSeries:
         self.max_timestamp: int = 0
         self.labels = labels or {}
         self.source_key = source_key
+        self.ignore_max_time_diff = ignore_max_time_diff
+        self.ignore_max_val_diff = ignore_max_val_diff
         self.rules: List[TimeSeriesRule] = list()
 
     def add(

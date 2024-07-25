@@ -13,6 +13,16 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         super().__init__(*args, **kwargs)
         self._db: Database
 
+    @staticmethod
+    def _validate_duplicate_policy(duplicate_policy: bytes) -> bool:
+        return not (duplicate_policy
+                    and (not casematch(duplicate_policy, b"BLOCK")
+                         and not casematch(duplicate_policy, b"FIRST")
+                         and not casematch(duplicate_policy, b"LAST")
+                         and not casematch(duplicate_policy, b"MIN")
+                         and not casematch(duplicate_policy, b"MAX")
+                         and not casematch(duplicate_policy, b"SUM")))
+
     def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy,
          (ignore_max_time_diff, ignore_max_val_diff)), left_args = extract_args(
@@ -26,13 +36,8 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         encoding = encoding.lower()
         chunk_size = chunk_size or 4096
         if chunk_size % 8 != 0:
-            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.CREATE"))
-        if (duplicate_policy and (not casematch(duplicate_policy, b"BLOCK")
-                                  and not casematch(duplicate_policy, b"FIRST")
-                                  and not casematch(duplicate_policy, b"LAST")
-                                  and not casematch(duplicate_policy, b"MIN")
-                                  and not casematch(duplicate_policy, b"MAX")
-                                  and not casematch(duplicate_policy, b"SUM"))):
+            raise SimpleError(msgs.TIMESERIES_BAD_CHUNK_SIZE)
+        if not self._validate_duplicate_policy(duplicate_policy):
             raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
         duplicate_policy = duplicate_policy.lower() if duplicate_policy else None
         if len(left_args) > 0 and (not casematch(left_args[0], b"LABELS") or len(left_args) % 2 != 1):
@@ -82,6 +87,8 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         (on_duplicate,), left_args = extract_args(args, ("*on_duplicate",), error_on_unexpected=False)
         if key.value is None:
             key.update(self._create_timeseries(key.key, *args))
+        if not self._validate_duplicate_policy(on_duplicate):
+            raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
         res = key.value.add(timestamp, value, on_duplicate)
         return res
 
@@ -198,9 +205,32 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_mget(self, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,))
+    @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
-        pass
+        if key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+
+        ((retention, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)),
+         left_args) = extract_args(
+            args, ("+retention", "+chunk_size", "*duplicate_policy", "++ignore"), error_on_unexpected=False)
+
+        if chunk_size is not None and chunk_size % 8 != 0:
+            raise SimpleError(msgs.TIMESERIES_BAD_CHUNK_SIZE)
+        if not self._validate_duplicate_policy(duplicate_policy):
+            raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
+        duplicate_policy = duplicate_policy.lower() if duplicate_policy else None
+        if len(left_args) > 0 and (not casematch(left_args[0], b"LABELS") or len(left_args) % 2 != 1):
+            raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
+        labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
+
+        key.value.retention = retention or key.value.retention
+        key.value.chunk_size = chunk_size or key.value.chunk_size
+        key.value.duplicate_policy = duplicate_policy or key.value.duplicate_policy
+        key.value.ignore_max_time_diff = ignore_max_time_diff or key.value.ignore_max_time_diff
+        key.value.ignore_max_val_diff = ignore_max_val_diff or key.value.ignore_max_val_diff
+        key.value.labels = labels or key.value.labels
+        key.updated()
+        return OK
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
     def ts_mrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:

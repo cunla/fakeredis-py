@@ -66,6 +66,11 @@ def test_alter(r: redis.Redis):
     info = r.ts().info(1)
     assert 10 == info.get("retention_msecs")
 
+    # Test for a chunk size of 50 Bytes on TS.ALTER
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().alter(1, chunk_size=50)
+    assert str(e.value) == "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
+
 
 def test_alter_diplicate_policy(r: redis.Redis):
     assert r.ts().create(1)
