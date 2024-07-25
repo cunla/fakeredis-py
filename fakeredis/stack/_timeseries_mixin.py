@@ -211,7 +211,9 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         key.updated()
         return OK
 
-    def _range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
+    def _range(
+            self, reverse: bool, key: CommandItem, from_ts: int, to_ts: int, *args: bytes
+    ) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "+align", "*+aggregation", "+buckettimestamp", "empty")
@@ -220,10 +222,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
         if aggregator is None and (align is not None or bucket_timestamp is not None or empty):
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
-        if aggregator is not None and aggregator not in TimeSeriesRule.AGGREGATORS:
+        if aggregator is not None and aggregator not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         if aggregator is None:
-            return key.value.range(from_ts, to_ts, value_min, value_max, count)
+            return key.value.range(from_ts, to_ts, value_min, value_max, count, reverse)
 
         return key.value.aggregate(
             from_ts, to_ts,
@@ -234,11 +236,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
              flags=msgs.FLAG_DO_NOT_CREATE, )
     def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
-        return self._range(key, from_ts, to_ts, *args)
+        return self._range(False, key, from_ts, to_ts, *args)
 
     @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
     def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
-        res = self._range(key, from_ts, to_ts, *args).reverse()
+        res = self._range(True, key, from_ts, to_ts, *args)
         return res
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))

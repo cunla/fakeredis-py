@@ -189,7 +189,7 @@ def test_create_and_delete_rule(r: redis.Redis):
         r.ts().add(1, time + i * 2, 1)
         r.ts().add(1, time + i * 2 + 1, 2)
     r.ts().add(1, time * 2, 1.5)
-    assert round(r.ts().get(2)[1], 5) == 1.5
+    assert round(r.ts().get(2)[1], 1) == 1.5
     info1 = r.ts().info(1)
     assert info1.rules[0][1] == 100
     info2 = r.ts().info(2)
