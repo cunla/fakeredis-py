@@ -13,15 +13,12 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         super().__init__(*args, **kwargs)
         self._db: Database
 
+    DUPLICATE_POLICIES = [b"BLOCK", b"FIRST", b"LAST", b"MIN", b"MAX", b"SUM"]
+
     @staticmethod
     def _validate_duplicate_policy(duplicate_policy: bytes) -> bool:
-        return not (duplicate_policy
-                    and (not casematch(duplicate_policy, b"BLOCK")
-                         and not casematch(duplicate_policy, b"FIRST")
-                         and not casematch(duplicate_policy, b"LAST")
-                         and not casematch(duplicate_policy, b"MIN")
-                         and not casematch(duplicate_policy, b"MAX")
-                         and not casematch(duplicate_policy, b"SUM")))
+        return duplicate_policy is None or any(
+            [casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES])
 
     def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy,
@@ -197,14 +194,6 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
         return key.value.range(from_ts, to_ts, latest, value_min, value_max, count)
 
-    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
-    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
-        pass
-
-    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
-    def ts_mget(self, *args: bytes) -> bytes:
-        pass
-
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
         if key.value is None:
@@ -231,6 +220,14 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         key.value.labels = labels or key.value.labels
         key.updated()
         return OK
+
+    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
+    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
+        pass
+
+    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
+    def ts_mget(self, *args: bytes) -> bytes:
+        pass
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
     def ts_mrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:

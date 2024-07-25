@@ -38,7 +38,17 @@ class TimeSeries:
         if duplicate_policy is None:
             duplicate_policy = self.duplicate_policy
         if timestamp in self.ts_ind_map:  # Duplicate policy
-            self.sorted_list[self.ts_ind_map[timestamp]] = (timestamp, value)
+            if duplicate_policy == b"block":
+                raise SimpleError(msgs.TIMESERIES_DUPLICATE_POLICY_BLOCK)
+            if duplicate_policy == b"first":
+                return timestamp
+            ind = self.ts_ind_map[timestamp]
+            curr_value = self.sorted_list[ind][1]
+            if duplicate_policy == b"max":
+                value = max(curr_value, value)
+            elif duplicate_policy == b"min":
+                value = min(curr_value, value)
+            self.sorted_list[ind] = (timestamp, value)
             return timestamp
         self.sorted_list.append((timestamp, value))
         self.ts_ind_map[timestamp] = len(self.sorted_list) - 1

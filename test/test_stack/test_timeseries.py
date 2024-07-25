@@ -120,8 +120,9 @@ def test_add_before_last(r: redis.Redis):
 def test_add_duplicate_policy(r: redis.Redis):
     # Test for duplicate policy BLOCK
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)
-    with pytest.raises(Exception):
-        r.ts().add("time-serie-add-ooo-block", 1, 5.0, duplicate_policy="block")
+    with pytest.raises(Exception) as e:
+        r.ts().add("time-serie-add-ooo-block", 1, 5.0, on_duplicate="block")
+    assert str(e.value) == "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
 
     # Test for duplicate policy LAST
     assert 1 == r.ts().add("time-serie-add-ooo-last", 1, 5.0)

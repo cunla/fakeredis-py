@@ -106,6 +106,7 @@ TIMESERIES_INVALID_TIMESTAMP = "TSDB: invalid timestamp"
 TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION = "TSDB: Timestamp is older than retention"
 TIMESERIES_TIMESTAMP_LOWER_THAN_MAX = "TSDB: timestamp must be equal to or higher than the maximum existing timestamp"
 TIMESERIES_BAD_CHUNK_SIZE = "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
+TIMESERIES_DUPLICATE_POLICY_BLOCK = "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
 
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
