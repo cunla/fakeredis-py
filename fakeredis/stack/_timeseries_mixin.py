@@ -216,22 +216,35 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     ) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        RANGE_ARGS = ("latest", "++filter_by_value", "+count", "+align", "*+aggregation", "+buckettimestamp", "empty")
+        RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "+buckettimestamp", "empty")
         (latest, (value_min, value_max), count, align, (aggregator, bucket_duration), bucket_timestamp,
-         empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, )
-
+         empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
+        latest = True
+        filter_ts: Optional[List[int]] = None
+        if len(left_args) > 0:
+            if not casematch(left_args[0], b"FILTER_BY_TS"):
+                raise SimpleError(msgs.WRONG_ARGS_MSG6)
+            left_args = left_args[1:]
+            filter_ts = [int(x) for x in left_args]
         if aggregator is None and (align is not None or bucket_timestamp is not None or empty):
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        if align is not None:
+            if align == b"+":
+                align = to_ts
+            elif align == b"-":
+                align = from_ts
+            else:
+                align = int(align)
         if aggregator is not None and aggregator not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         if aggregator is None:
-            res = key.value.range(from_ts, to_ts, value_min, value_max, count, reverse)
+            res = key.value.range(from_ts, to_ts, value_min, value_max, count, filter_ts, reverse)
         else:
-            res = key.value.aggregate(
-                from_ts, to_ts,
-                latest, value_min, value_max, count, align, aggregator,
-                bucket_duration,
-                bucket_timestamp, empty)
+            res = key.value.aggregate(from_ts, to_ts,
+                                      latest, value_min, value_max, count, filter_ts,
+                                      align, aggregator, bucket_duration,
+                                      bucket_timestamp, empty, reverse)
+
         res = [[x[0], x[1]] for x in res]
         return res
 

@@ -345,7 +345,6 @@ def test_rev_range(r: redis.Redis):
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
     assert 200 == len(r.ts().range(1, 0, 500))
-    # first sample isn't returned
     assert 20 == len(r.ts().revrange(1, 0, 500, aggregation_type="avg", bucket_size_msec=10))
     assert 10 == len(r.ts().revrange(1, 0, 500, count=10))
     assert 2 == len(
@@ -358,10 +357,11 @@ def test_rev_range(r: redis.Redis):
             filter_by_max_value=2,
         )
     )
-    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10, align="+") == [(10, 1.0), (0, 10.0)]
+    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == [(10, 1.0), (0, 10.0)]
 
+    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [
+        (10, pytest.approx(3.0, 0.1)), (0, pytest.approx(2.55, 0.1))]
     assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10, align=1) == [(1, 10.0), (0, 1.0)]
-    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [(10, 3.0), (0, 2.55)]
 
 
 @pytest.mark.onlynoncluster

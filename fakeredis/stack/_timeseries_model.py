@@ -99,13 +99,16 @@ class TimeSeries:
     def range(
             self, from_ts: int, to_ts: int,
             value_min: Optional[float], value_max: Optional[float],
-            count: Optional[int], reverse: bool,
+            count: Optional[int], filter_ts: Optional[List[int]], reverse: bool,
     ) -> List[Tuple[int, float]]:
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
         res: List[Tuple[int, float]] = [
             x for x in self.sorted_list
-            if (from_ts <= x[0] <= to_ts) and value_min <= x[1] <= value_max
+            if ((from_ts <= x[0] <= to_ts)
+                and value_min <= x[1] <= value_max
+                and (filter_ts is None or x[0] in filter_ts)
+                )
         ]
         if reverse:
             res.reverse()
@@ -113,22 +116,29 @@ class TimeSeries:
             return res[:count]
         return res
 
-    def aggregate(self, from_ts: int, to_ts: int,
-                  latest: bool,
-                  value_min: Optional[float], value_max: Optional[float],
-                  count: Optional[int],
-                  align: Optional[int], aggregator: bytes, bucket_duration: int,
-                  bucket_timestamp: Optional[int], empty: Optional[bool]) -> List[Tuple[int, float]]:
+    def aggregate(
+            self, from_ts: int, to_ts: int,
+            latest: bool,
+            value_min: Optional[float], value_max: Optional[float],
+            count: Optional[int],
+            filter_ts: Optional[List[int]],
+            align: Optional[int], aggregator: bytes, bucket_duration: int,
+            bucket_timestamp: Optional[int], empty: Optional[bool],
+            reverse: bool,
+    ) -> List[Tuple[int, float]]:
         align = align or 0
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
         rule = TimeSeriesRule(self, TimeSeries(b"", self._db), aggregator, bucket_duration)
         for x in self.sorted_list:
-            if from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max:
+            if (from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max
+                    and (filter_ts is None or x[0] in filter_ts)):
                 rule.add_record((x[0] + align, x[1]))
 
         if latest and len(rule.current_bucket) > 0:
             rule.apply_curr_bucket()
+        if reverse:
+            rule.dest_key.sorted_list.reverse()
         if count:
             return rule.dest_key.sorted_list[:count]
         return rule.dest_key.sorted_list
@@ -213,13 +223,16 @@ class TimeSeriesRule:
 
     def add_record(self, record: Tuple[int, float]) -> bool:
         ts, val = record
-        bucket_start_ts = (ts + 1) - ((ts + 1) % self.bucket_duration) + self.align_timestamp
-        if self.current_bucket_start_ts != bucket_start_ts:
+        bucket_start_ts = ts - (ts % self.bucket_duration) + self.align_timestamp
+        if self.current_bucket_start_ts == bucket_start_ts:
+            self.current_bucket.append(record)
+        if self.current_bucket_start_ts != bucket_start_ts or ts == self.current_bucket_start_ts + self.bucket_duration - 1:
             self.apply_curr_bucket()
-            self.current_bucket_start_ts = bucket_start_ts
+            self.current_bucket_start_ts = (bucket_start_ts
+                                            if self.current_bucket_start_ts != bucket_start_ts
+                                            else self.current_bucket_start_ts + self.bucket_duration)
             self.current_bucket = list()
             return True
-        self.current_bucket.append(record)
         return False
 
     def apply_curr_bucket(self) -> None:
