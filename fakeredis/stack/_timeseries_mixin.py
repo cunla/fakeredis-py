@@ -184,16 +184,6 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
         return self._ts_inc_or_dec(key, -subtrahend, *args)
 
-    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
-             flags=msgs.FLAG_DO_NOT_CREATE, )
-    def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
-        if key.value is None:
-            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        (latest, (value_min, value_max), count,), left_args = extract_args(
-            args, ("latest", "++filter_by_value", "+count"), error_on_unexpected=False, )
-
-        return key.value.range(from_ts, to_ts, latest, value_min, value_max, count)
-
     @command(name="TS.ALTER", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_alter(self, key: CommandItem, *args: bytes) -> bytes:
         if key.value is None:
@@ -221,9 +211,23 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         key.updated()
         return OK
 
+    def _range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
+        if key.value is None:
+            raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+        (latest, (value_min, value_max), count,), left_args = extract_args(
+            args, ("latest", "++filter_by_value", "+count"), error_on_unexpected=False, )
+
+        return key.value.range(from_ts, to_ts, latest, value_min, value_max, count)
+
+    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
+             flags=msgs.FLAG_DO_NOT_CREATE, )
+    def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
+        return self._range(key, from_ts, to_ts, *args)
+
     @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
-    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> bytes:
-        pass
+    def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
+        res = self._range(key, from_ts, to_ts, *args).reverse()
+        return res
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
     def ts_mget(self, *args: bytes) -> bytes:
