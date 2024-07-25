@@ -5,7 +5,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
 from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
-from ._timeseries_model import TimeSeries, TimeSeriesRule
+from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 
 
 class TimeSeriesCommandsMixin:  # TimeSeries commands
@@ -146,7 +146,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         existing_rule = source_key.value.get_rule(dest_key.key)
         if existing_rule is not None:
             raise SimpleError(msgs.TIMESERIES_RULE_EXISTS)
-        if aggregator not in TimeSeriesRule.AGGREGATORS:
+        if aggregator not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         rule = TimeSeriesRule(source_key.value, dest_key.value, aggregator, bucket_duration, align_timestamp)
         source_key.value.add_rule(rule)
@@ -214,10 +214,22 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def _range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        (latest, (value_min, value_max), count,), left_args = extract_args(
-            args, ("latest", "++filter_by_value", "+count"), error_on_unexpected=False, )
+        RANGE_ARGS = ("latest", "++filter_by_value", "+count", "+align", "*+aggregation", "+buckettimestamp", "empty")
+        (latest, (value_min, value_max), count, align, (aggregator, bucket_duration), bucket_timestamp,
+         empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, )
 
-        return key.value.range(from_ts, to_ts, latest, value_min, value_max, count)
+        if aggregator is None and (align is not None or bucket_timestamp is not None or empty):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        if aggregator is not None and aggregator not in TimeSeriesRule.AGGREGATORS:
+            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
+        if aggregator is None:
+            return key.value.range(from_ts, to_ts, value_min, value_max, count)
+
+        return key.value.aggregate(
+            from_ts, to_ts,
+            latest, value_min, value_max, count, align, aggregator,
+            bucket_duration,
+            bucket_timestamp, empty)
 
     @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
              flags=msgs.FLAG_DO_NOT_CREATE, )

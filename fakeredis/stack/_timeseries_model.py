@@ -98,18 +98,39 @@ class TimeSeries:
 
     def range(
             self, from_ts: int, to_ts: int,
-            latest: bool, value_min: Optional[float], value_max: Optional[float], count: Optional[int],
+            value_min: Optional[float], value_max: Optional[float],
+            count: Optional[int],
     ) -> List[List[Union[int, float]]]:
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
-        res: List[List[Union[int, float]]] = [
-            [x[0], x[1]] for x in self.sorted_list
-            if (from_ts <= x[0] <= to_ts
-                and value_min <= x[1] <= value_max)
-        ]
-        if count:
-            res = res[:count]
+        if count is None:
+            return [
+                [x[0], x[1]] for x in self.sorted_list
+                if (from_ts <= x[0] <= to_ts
+                    and value_min <= x[1] <= value_max)
+            ]
+        res: List[List[Union[int, float]]] = list()
+        for x in self.sorted_list:
+            if from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max:
+                res.append([x[0], x[1]])
+                count -= 1
+            if count == 0:
+                break
         return res
+
+    def aggregate(self, from_ts: int, to_ts: int,
+                  latest: bool,
+                  value_min: Optional[float], value_max: Optional[float],
+                  count: Optional[int],
+                  align: Optional[int], aggregator: bytes, bucket_duration: int,
+                  bucket_timestamp: Optional[int], empty: Optional[bool]) -> List[Tuple[int, float]]:
+        res: List[Tuple[int, float]] = list()
+        rule = TimeSeriesRule(self, TimeSeries(b"", self._db), aggregator, bucket_duration)
+        for x in self.sorted_list:
+            if from_ts <= x[0] <= to_ts:
+                rule.apply(x)
+        rule._apply_bucket()
+        return rule.dest_key.sorted_list
 
 
 class Aggregators:
@@ -136,22 +157,44 @@ class Aggregators:
         return Aggregators.var_s(values) ** 0.5
 
 
+AGGREGATORS = {
+    b"avg": lambda x: sum(x) / len(x),
+    b"sum": sum,
+    b"min": min,
+    b"max": max,
+    b"range": lambda x: max(x) - min(x),
+    b"count": len,
+    b"first": lambda x: x[0],
+    b"last": lambda x: x[-1],
+    b"std.p": Aggregators.std_p,
+    b"std.s": Aggregators.std_s,
+    b"var.p": Aggregators.var_p,
+    b"var.s": Aggregators.var_s,
+    b"twa": lambda x: 0,
+}
+
+
+def apply_aggregator(
+        bucket: List[Tuple[int, float]], bucket_start_ts: int, bucket_duration: int, aggregator: bytes
+) -> float:
+    if len(bucket) == 0:
+        return 0.0
+    if aggregator == b"twa":
+        total = 0.0
+        curr_ts = bucket_start_ts
+        for i, (ts, val) in enumerate(bucket):
+            # next_ts = bucket[i + 1][0] if len(bucket) > i + 1 else bucket_start_ts + bucket_duration
+            total += (ts - curr_ts) * val
+            curr_ts = ts
+        total += val * (bucket_start_ts + bucket_duration - curr_ts)
+
+        return total / bucket_duration
+
+    relevant_values = [x[1] for x in bucket]
+    return AGGREGATORS[aggregator](relevant_values)
+
+
 class TimeSeriesRule:
-    AGGREGATORS = {
-        b"avg": lambda x: sum(x) / len(x),
-        b"sum": sum,
-        b"min": min,
-        b"max": max,
-        b"range": lambda x: max(x) - min(x),
-        b"count": len,
-        b"first": lambda x: x[0],
-        b"last": lambda x: x[-1],
-        b"std.p": Aggregators.std_p,
-        b"std.s": Aggregators.std_s,
-        b"var.p": Aggregators.var_p,
-        b"var.s": Aggregators.var_s,
-        b"twa": lambda x: 0,
-    }
 
     def __init__(
             self, source_key: TimeSeries, dest_key: TimeSeries,
@@ -179,8 +222,6 @@ class TimeSeriesRule:
     def _apply_bucket(self) -> None:
         if len(self.current_bucket) == 0:
             return
-        if self.aggregator == b"twa":
-            return
-        relevant_values = [x[1] for x in self.current_bucket]
-        value = TimeSeriesRule.AGGREGATORS[self.aggregator](relevant_values)
+        value = apply_aggregator(
+            self.current_bucket, self.current_bucket_start_ts, self.bucket_duration, self.aggregator)
         self.dest_key.add(self.current_bucket_start_ts, value)
