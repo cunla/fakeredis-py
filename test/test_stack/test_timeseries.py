@@ -669,6 +669,10 @@ def test_mget_errors(r: redis.Redis):
         r.ts().mget([])
     assert str(e.value) == "wrong number of arguments for 'ts.mget' command"
 
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().mget(["Test=(Th=is"], with_labels="true")
+    assert str(e.value) == "TSDB: failed parsing labels"
+
 
 def test_mget(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
