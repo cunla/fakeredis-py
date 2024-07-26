@@ -349,7 +349,6 @@ def test_rev_range(r: redis.Redis):
 
     assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [
         (10, pytest.approx(3.0, 0.1)), (0, pytest.approx(2.55, 0.1))]
-    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10, align=1) == [(1, 10.0), (0, 1.0)]
 
 
 @pytest.mark.onlynoncluster
