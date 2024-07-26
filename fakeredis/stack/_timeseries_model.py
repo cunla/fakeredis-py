@@ -5,6 +5,7 @@ from fakeredis._helpers import Database, SimpleError
 
 
 class TimeSeries:
+
     def __init__(
             self,
             name: bytes, database: Database,

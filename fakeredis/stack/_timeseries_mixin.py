@@ -1,5 +1,5 @@
 import time
-from typing import List, Union, Optional, Any
+from typing import List, Union, Optional, Any, Set
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -9,11 +9,49 @@ from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 
 
 class TimeSeriesCommandsMixin:  # TimeSeries commands
+    _timeseries_keys: Set[bytes] = set()
+    DUPLICATE_POLICIES = [b"BLOCK", b"FIRST", b"LAST", b"MIN", b"MAX", b"SUM"]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._db: Database
 
-    DUPLICATE_POLICIES = [b"BLOCK", b"FIRST", b"LAST", b"MIN", b"MAX", b"SUM"]
+    @staticmethod
+    def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:
+        if not filter_expression:
+            return True
+        if filter_expression.find(b"!=") != -1:
+            if len(filter_expression.split(b"!=")) != 2:
+                raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
+            label, value = filter_expression.split(b"!=")
+            if value == "-":
+                return label in ts.labels
+
+            if value[0] == b"(" and value[-1] == b")":
+                values = set(value[1:-1].split(b","))
+                return label in ts.labels and ts.labels[label] not in values
+            return label not in ts.labels or ts.labels[label] != value
+        if filter_expression.find(b"=") != -1:
+            if len(filter_expression.split(b"=")) != 2:
+                raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
+            label, value = filter_expression.split(b"=")
+            if value == "-":
+                return label not in ts.labels
+            if value[0] == b"(" and value[-1] == b")":
+                values = set(value[1:-1].split(b","))
+                return label in ts.labels and ts.labels[label] in values
+            return label in ts.labels and ts.labels[label] == value
+        raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
+
+    def _get_timeseries(self, filter_expressions: List[str]) -> List["TimeSeries"]:
+        res: List["TimeSeries"] = list()
+        TimeSeriesCommandsMixin._timeseries_keys = {k for k in TimeSeriesCommandsMixin._timeseries_keys if
+                                                    k in self._db}
+        for ts_key in TimeSeriesCommandsMixin._timeseries_keys:
+            ts = self._db.get(ts_key).value
+            if all([self._filter_expression_check(ts, expr) for expr in filter_expressions]):
+                res.append(ts)
+        return res
 
     @staticmethod
     def _validate_duplicate_policy(duplicate_policy: bytes) -> bool:
@@ -46,6 +84,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             retention=retention, encoding=encoding, chunk_size=chunk_size, duplicate_policy=duplicate_policy,
             ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff, labels=labels,
         )
+        self._timeseries_keys.add(name)
         return res
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
@@ -261,7 +300,44 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mget(self, *args: bytes) -> bytes:
-        pass
+        latest, with_labels, selected_labels, filter_expression = False, False, None, None
+        i = 0
+        while i < len(args):
+            if casematch(args[i], b"LATEST"):
+                latest = True
+                i += 1
+            elif casematch(args[i], b"WITHLABELS"):
+                with_labels = True
+                i += 1
+            elif casematch(args[i], b"SELECTED_LABELS"):
+                selected_labels = list()
+                i += 1
+                while i < len(args) and casematch(args[i], b"FILTER"):
+                    selected_labels.append(args[i])
+            elif casematch(args[i], b"FILTER"):
+                filter_expression = list()
+                i += 1
+                while i < len(args):
+                    filter_expression.append(args[i])
+                    i += 1
+
+        if with_labels and selected_labels is not None:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mget"))
+        if filter_expression is None or len(filter_expression) == 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mget"))
+
+        timeseries = self._get_timeseries(filter_expression)
+        if with_labels:
+            return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
+        if selected_labels is not None:
+            res = [[
+                ts.name,
+                [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
+                ts.get()] for ts in timeseries
+            ]
+        else:
+            res = [[ts.name, [], ts.get()] for ts in timeseries]
+        return res
 
     @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:

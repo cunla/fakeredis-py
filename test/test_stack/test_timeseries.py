@@ -662,7 +662,14 @@ def test_get_latest(r: redis.Redis):
     assert timeseries.get("t2", latest=True) == (0, 4.0)
 
 
-@pytest.mark.onlynoncluster
+def test_mget_errors(r: redis.Redis):
+    r.ts().create(1, labels={"Test": "This"})
+    r.ts().create(2, labels={"Test": "This", "Taste": "That"})
+    with pytest.raises(redis.ResponseError) as e:
+        r.ts().mget([])
+    assert str(e.value) == "wrong number of arguments for 'ts.mget' command"
+
+
 def test_mget(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
