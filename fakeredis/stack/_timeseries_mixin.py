@@ -420,4 +420,4 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_mrevrange(
             self, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
-        return self._mrange(False, from_ts, to_ts, *args)
+        return self._mrange(True, from_ts, to_ts, *args)
