@@ -11,7 +11,6 @@ from redis.client import PubSub
 
 import fakeredis
 from .. import testtools
-from ..testtools import raw_command
 
 
 def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> Optional[Dict[str, Any]]:
@@ -358,13 +357,13 @@ def test_pubsub_channels_pattern(r: redis.Redis):
 
 def test_pubsub_no_subcommands(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
-        raw_command(r, "PUBSUB")
+        testtools.raw_command(r, "PUBSUB")
 
 
 @pytest.mark.min_server("7")
 @pytest.mark.max_server("7")
 def test_pubsub_help_redis7(r: redis.Redis):
-    assert raw_command(r, "PUBSUB HELP") == [
+    assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"CHANNELS [<pattern>]",
         b"    Return the currently active channels matching a <pattern> (default: '*')" b".",
@@ -384,7 +383,7 @@ def test_pubsub_help_redis7(r: redis.Redis):
 
 @pytest.mark.min_server("7.1")
 def test_pubsub_help_redis71(r: redis.Redis):
-    assert raw_command(r, "PUBSUB HELP") == [
+    assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"CHANNELS [<pattern>]",
         b"    Return the currently active channels matching a <pattern> (default: '*')" b".",
@@ -404,7 +403,7 @@ def test_pubsub_help_redis71(r: redis.Redis):
 
 @pytest.mark.max_server("6.2.7")
 def test_pubsub_help_redis6(r: redis.Redis):
-    assert raw_command(r, "PUBSUB HELP") == [
+    assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"CHANNELS [<pattern>]",
         b"    Return the currently active channels matching a <pattern> (default: '*')" b".",
