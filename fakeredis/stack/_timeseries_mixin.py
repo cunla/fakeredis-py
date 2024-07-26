@@ -249,27 +249,28 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return res
 
     @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
-             flags=msgs.FLAG_DO_NOT_CREATE, )
+             flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
         return self._range(False, key, from_ts, to_ts, *args)
 
-    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Int, Int), repeat=(bytes,))
+    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
+             flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
         res = self._range(True, key, from_ts, to_ts, *args)
         return res
 
-    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,))
+    @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mget(self, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,))
+    @command(name="TS.MRANGE", fixed=(Int, Int), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.MREVRANGE", fixed=(Int, Int), repeat=(bytes,))
+    @command(name="TS.MREVRANGE", fixed=(Int, Int), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrevrange(self, from_ts: int, to_ts: int, *args: bytes) -> bytes:
         pass
 
-    @command(name="TS.QUERYINDEX", fixed=(bytes,), repeat=(bytes,))
+    @command(name="TS.QUERYINDEX", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_queryindex(self, filterExpr: bytes, *args: bytes) -> bytes:
         pass
