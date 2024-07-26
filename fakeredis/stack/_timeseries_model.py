@@ -138,6 +138,12 @@ class TimeSeries:
 
         if latest and len(rule.current_bucket) > 0:
             rule.apply_curr_bucket()
+        if empty:
+            min_bucket_ts = rule.dest_key.sorted_list[0][0]
+            for ts in range(min_bucket_ts, rule.current_bucket_start_ts, bucket_duration):
+                if ts not in rule.dest_key.ts_ind_map:
+                    rule.dest_key.add(ts, float("nan"))
+            rule.dest_key.sorted_list = sorted(rule.dest_key.sorted_list)
         if reverse:
             rule.dest_key.sorted_list.reverse()
         if count:
@@ -228,11 +234,13 @@ class TimeSeriesRule:
         if self.current_bucket_start_ts == bucket_start_ts:
             self.current_bucket.append(record)
         if self.current_bucket_start_ts != bucket_start_ts or ts == self.current_bucket_start_ts + self.bucket_duration - 1:
+            should_add = self.current_bucket_start_ts != bucket_start_ts
             self.apply_curr_bucket()
             self.current_bucket_start_ts = (bucket_start_ts
                                             if self.current_bucket_start_ts != bucket_start_ts
                                             else self.current_bucket_start_ts + self.bucket_duration)
-            self.current_bucket = list()
+            if should_add:
+                self.current_bucket.append(record)
             return True
         return False
 
@@ -241,4 +249,5 @@ class TimeSeriesRule:
             return
         value = apply_aggregator(
             self.current_bucket, self.current_bucket_start_ts, self.bucket_duration, self.aggregator)
+        self.current_bucket = list()
         self.dest_key.add(self.current_bucket_start_ts, value)

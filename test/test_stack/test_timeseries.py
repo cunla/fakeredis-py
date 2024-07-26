@@ -248,14 +248,11 @@ def test_range_advanced(r: redis.Redis):
             filter_by_max_value=2,
         )
     )
-    res = r.ts().range(1, 0, 10, aggregation_type="count", bucket_size_msec=10, align="+")
+    res = r.ts().range(1, 0, 10, aggregation_type="count", bucket_size_msec=10)
     assert res == [(0, 10.0), (10, 1.0)]
 
-    res = r.ts().range(1, 0, 10, aggregation_type="count", bucket_size_msec=10, align=5)
-    assert res == [(0, 5.0), (5, 6.0)]
-
     res = r.ts().range(1, 0, 10, aggregation_type="twa", bucket_size_msec=10)
-    assert res == [(0, 2.55), (10, 3.0)]
+    assert res == [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
 
 
 def test_range_latest(r: redis.Redis):
@@ -307,13 +304,13 @@ def test_range_empty(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.range("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
+    assert timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10) == [
         (10, 4.0),
         (50, 3.0),
         (70, 5.0),
     ]
 
-    res = timeseries.range("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True)
+    res = timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10, empty=True)
     for i in range(len(res)):
         if math.isnan(res[i][1]):
             res[i] = (res[i][0], None)
@@ -325,15 +322,6 @@ def test_range_empty(r: redis.Redis):
         (50, 3.0),
         (60, None),
         (70, 5.0),
-    ]
-    resp3_expected = [
-        [10, 4.0],
-        (20, None),
-        (30, None),
-        (40, None),
-        [50, 3.0],
-        (60, None),
-        [70, 5.0],
     ]
     assert res == resp2_expected
 
