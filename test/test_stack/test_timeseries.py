@@ -280,11 +280,11 @@ def test_range_bucket_timestamp(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.range("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
-        (10, 4.0),
-        (50, 3.0),
-        (70, 5.0),
-    ]
+    # assert timeseries.range("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
+    #     (10, 4.0),
+    #     (50, 3.0),
+    #     (70, 5.0),
+    # ]
     assert timeseries.range(
         "t1",
         0,

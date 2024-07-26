@@ -124,7 +124,7 @@ class TimeSeries:
             count: Optional[int],
             filter_ts: Optional[List[int]],
             align: Optional[int], aggregator: bytes, bucket_duration: int,
-            bucket_timestamp: Optional[int], empty: Optional[bool],
+            bucket_timestamp: Optional[bytes], empty: Optional[bool],
             reverse: bool,
     ) -> List[Tuple[int, float]]:
         align = align or 0
@@ -134,10 +134,10 @@ class TimeSeries:
         for x in self.sorted_list:
             if (from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max
                     and (filter_ts is None or x[0] in filter_ts)):
-                rule.add_record((x[0], x[1]))
+                rule.add_record((x[0], x[1]), bucket_timestamp)
 
         if latest and len(rule.current_bucket) > 0:
-            rule.apply_curr_bucket()
+            rule.apply_curr_bucket(bucket_timestamp)
         if empty:
             min_bucket_ts = rule.dest_key.sorted_list[0][0]
             for ts in range(min_bucket_ts, rule.current_bucket_start_ts, bucket_duration):
@@ -228,14 +228,14 @@ class TimeSeriesRule:
         self.current_bucket: List[Tuple[int, float]] = list()
         self.dest_key.source_key = source_key.name
 
-    def add_record(self, record: Tuple[int, float]) -> bool:
+    def add_record(self, record: Tuple[int, float], bucket_timestamp: Optional[bytes] = None) -> bool:
         ts, val = record
         bucket_start_ts = ts - (ts % self.bucket_duration) + self.align_timestamp
         if self.current_bucket_start_ts == bucket_start_ts:
             self.current_bucket.append(record)
         if self.current_bucket_start_ts != bucket_start_ts or ts == self.current_bucket_start_ts + self.bucket_duration - 1:
             should_add = self.current_bucket_start_ts != bucket_start_ts
-            self.apply_curr_bucket()
+            self.apply_curr_bucket(bucket_timestamp)
             self.current_bucket_start_ts = (bucket_start_ts
                                             if self.current_bucket_start_ts != bucket_start_ts
                                             else self.current_bucket_start_ts + self.bucket_duration)
@@ -244,10 +244,15 @@ class TimeSeriesRule:
             return True
         return False
 
-    def apply_curr_bucket(self) -> None:
+    def apply_curr_bucket(self, bucket_timestamp: Optional[bytes] = None) -> None:
         if len(self.current_bucket) == 0:
             return
         value = apply_aggregator(
             self.current_bucket, self.current_bucket_start_ts, self.bucket_duration, self.aggregator)
         self.current_bucket = list()
-        self.dest_key.add(self.current_bucket_start_ts, value)
+        timestamp = self.current_bucket_start_ts
+        if bucket_timestamp == b"+":
+            timestamp = int(self.current_bucket_start_ts + self.bucket_duration)
+        elif bucket_timestamp == b"~":
+            timestamp = int(self.current_bucket_start_ts + self.bucket_duration / 2)
+        self.dest_key.add(timestamp, value)

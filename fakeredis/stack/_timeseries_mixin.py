@@ -255,7 +255,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     ) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "+buckettimestamp", "empty")
+        RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
         (latest, (value_min, value_max), count, align, (aggregator, bucket_duration), bucket_timestamp,
          empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
         latest = True
@@ -266,6 +266,8 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             left_args = left_args[1:]
             filter_ts = [int(x) for x in left_args]
         if aggregator is None and (align is not None or bucket_timestamp is not None or empty):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+        if bucket_timestamp is not None and bucket_timestamp not in (b"-", b"+", b"~"):
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
         if align is not None:
             if align == b"+":
@@ -299,7 +301,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return res
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def ts_mget(self, *args: bytes) -> bytes:
+    def ts_mget(self, *args: bytes) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
         latest, with_labels, selected_labels, filter_expression = False, False, None, None
         i = 0
         while i < len(args):
