@@ -5,9 +5,6 @@ import redis.client
 from test import testtools
 
 
-# Tests for the hash type.
-
-
 def test_hstrlen_missing(r: redis.Redis):
     assert r.hstrlen("foo", "doesnotexist") == 0
 
