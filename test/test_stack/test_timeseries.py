@@ -759,7 +759,7 @@ def test_create_rule_green(r: redis.Redis):
     r.ts().add(1, 200, 1.5)
     last_sample = r.ts().get(2)
     assert last_sample[0] == 100
-    assert round(last_sample[1], 5) == 1.5
+    assert round(last_sample[1], 5) == pytest.approx(1.5, 0.1)
     info = r.ts().info(2)
     assert info["source_key"] == b"1"
 

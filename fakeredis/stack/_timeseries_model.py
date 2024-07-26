@@ -133,7 +133,7 @@ class TimeSeries:
         for x in self.sorted_list:
             if (from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max
                     and (filter_ts is None or x[0] in filter_ts)):
-                rule.add_record((x[0] + align, x[1]))
+                rule.add_record((x[0], x[1]))
 
         if latest and len(rule.current_bucket) > 0:
             rule.apply_curr_bucket()
