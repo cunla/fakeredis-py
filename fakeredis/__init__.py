@@ -18,8 +18,8 @@ __author__ = "Daniel Moran"
 __maintainer__ = "Daniel Moran"
 __email__ = "daniel@moransoftware.ca"
 __license__ = "BSD-3-Clause"
-__url__ = "https://github.com/cunla/fakeredis"
-__bugtrack_url__ = "https://github.com/cunla/fakeredis/issues"
+__url__ = "https://github.com/cunla/fakeredis-py"
+__bugtrack_url__ = "https://github.com/cunla/fakeredis-py/issues"
 
 __all__ = [
     "FakeServer",
