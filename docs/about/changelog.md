@@ -3,7 +3,11 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
-## Next release
+## v2.23.4
+
+### 🐛 Bug Fixes
+
+- fix:move random seed to HeavyKeeper to avoid issues #315
 
 ### 🧰 Maintenance
 

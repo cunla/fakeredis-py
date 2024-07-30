@@ -33,7 +33,7 @@ class Bucket(object):
 
     def _decay(self, decay: float) -> bool:
         if self.counter > 0:
-            probability = decay ** self.counter
+            probability = decay**self.counter
             if probability >= 1 or random.random() < probability:
                 self.counter -= 1
         return self.counter == 0
