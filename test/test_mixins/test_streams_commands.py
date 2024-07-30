@@ -54,12 +54,12 @@ def test_xstream():
     entry_key: bytes = stream.add([0, 0, 1, 1, 2, 2, 3, 3])
     assert len(stream) == 1
     assert (
-        stream.delete(
-            [
-                entry_key,
-            ]
-        )
-        == 1
+            stream.delete(
+                [
+                    entry_key,
+                ]
+            )
+            == 1
     )
     assert len(stream) == 0
 
@@ -107,7 +107,7 @@ def test_xadd_maxlen(r: redis.Redis):
     id_list.append(r.xadd(stream, {"k": "new"}, maxlen=maxlen, approximate=False))
     assert r.xlen(stream) == maxlen
     results = r.xrange(stream, id_list[0])
-    assert get_ids(results) == id_list[len(id_list) - maxlen :]
+    assert get_ids(results) == id_list[len(id_list) - maxlen:]
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, "xadd", stream, "maxlen", "3", "minid", "sometestvalue", "field", "value")
     assert r.set("non-a-stream", 1) == 1
@@ -457,7 +457,7 @@ def test_xreadgroup(r: redis.Redis):
     m1 = r.xadd(stream, c1)
     m2 = r.xadd(stream, c2)
     with pytest.raises(
-        redis.exceptions.ResponseError, match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)
+            redis.exceptions.ResponseError, match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)
     ):
         r.xreadgroup(group, consumer, streams={stream: ">"})
     r.xgroup_create(stream, group, 0)
@@ -795,8 +795,8 @@ def test_xclaim(r: redis.Redis):
         message_ids=(message_id,),
         justid=True,
     ) == [
-        message_id,
-    ]
+               message_id,
+           ]
 
 
 def test_xread_blocking(create_redis):

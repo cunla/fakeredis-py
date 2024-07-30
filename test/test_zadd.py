@@ -70,13 +70,13 @@ def test_zadd_with_nx(r, param, return_value, state, ch):
     [
         ({"four": 2.0, "three": 1.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
         (
-            {"four": 5.0, "three": 1.0, "zero": 0.0},
-            2,
-            [
-                (b"zero", 0.0),
-                (b"three", 3.0),
-                (b"four", 5.0),
-            ],
+                {"four": 5.0, "three": 1.0, "zero": 0.0},
+                2,
+                [
+                    (b"zero", 0.0),
+                    (b"three", 3.0),
+                    (b"four", 5.0),
+                ],
         ),
         ({"two": 2.0, "one": 1.0}, 2, [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0), (b"four", 4.0)]),
     ],

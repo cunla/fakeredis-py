@@ -887,6 +887,7 @@ def test_zunionstore_badkey(r: redis.Redis):
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
     assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
 
+
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_zunionstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
