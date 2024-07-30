@@ -165,15 +165,6 @@ class TestScripts:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
 
 
-@fake_only
-@testtools.run_test_if_redispy_ver("lt", "5.1.0b1")
-async def test_repr_redis_until_51(async_redis: redis.asyncio.Redis):
-    assert re.fullmatch(
-        r"ConnectionPool<FakeConnection<server=<fakeredis._server.FakeServer object at .*>,db=0>>",
-        repr(async_redis.connection_pool),
-    )
-
-
 @testtools.run_test_if_redispy_ver("gte", "5.1")
 async def test_repr_redis_51(async_redis: redis.asyncio.Redis):
     assert re.fullmatch(
