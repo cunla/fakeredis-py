@@ -89,7 +89,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         self._timeseries_keys.add(name)
         return res
 
-    @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,))
+    @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_info(self, key: CommandItem, *args: bytes) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -138,8 +138,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(
         name="TS.MADD",
-        fixed=(Key(TimeSeries), Timestamp, Float),
-        repeat=(Key(TimeSeries), Timestamp, Float),
+        fixed=(Key(TimeSeries), Timestamp, Float), repeat=(Key(TimeSeries), Timestamp, Float),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def ts_madd(self, *args: Any) -> List[int]:
@@ -311,7 +310,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         i = 0
         while i < len(args):
             if casematch(args[i], b"LATEST"):
-                latest = True
+                latest = True  # noqa: F841
                 i += 1
             elif casematch(args[i], b"WITHLABELS"):
                 with_labels = True
@@ -361,7 +360,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         i = 0
         while i < len(args_lower):
             if args_lower[i] == b"latest":
-                latest = True
+                latest = True  # noqa: F841
                 i += 1
             elif args_lower[i] == b"withlabels":
                 with_labels = True
