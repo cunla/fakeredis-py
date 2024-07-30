@@ -9,6 +9,7 @@ from fakeredis._commands import SUPPORTED_COMMANDS
 from test.testtools import fake_only
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_swapdb(r, create_redis):
     r1 = create_redis(3)
     r.set("foo", "abc")
@@ -24,6 +25,7 @@ def test_swapdb(r, create_redis):
     assert r1.get("baz") is None
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_swapdb_same_db(r: redis.Redis):
     assert r.swapdb(1, 1)
 
@@ -32,6 +34,7 @@ def test_save(r: redis.Redis):
     assert r.save()
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bgsave(r: redis.Redis):
     assert r.bgsave()
     with pytest.raises(ResponseError):
@@ -51,10 +54,12 @@ def test_command(r: redis.Redis):
     assert one_word_commands - set(commands_dict.keys()) == set()
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_command_count(r: redis.Redis):
     assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd])
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.slow
 def test_bgsave_timestamp_update(r: redis.Redis):
     early_timestamp = r.lastsave()

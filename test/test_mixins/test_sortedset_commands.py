@@ -867,6 +867,7 @@ def test_zunionstore_nan_to_zero_ordering(r: redis.Redis):
     assert r.zscore("baz", "e1") == 0.0
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_zunionstore_mixed_set_types(r: redis.Redis):
     # No score, redis will use 1.0.
     r.sadd("foo", "one")
@@ -886,7 +887,7 @@ def test_zunionstore_badkey(r: redis.Redis):
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
     assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
 
-
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_zunionstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     with pytest.raises(redis.ResponseError):
@@ -903,6 +904,7 @@ def test_zinterstore(r: redis.Redis):
     assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"two", 4)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_zinterstore_mixed_set_types(r: redis.Redis):
     r.sadd("foo", "one")
     r.sadd("foo", "two")

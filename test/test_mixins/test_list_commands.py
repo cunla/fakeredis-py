@@ -521,6 +521,7 @@ def test_brpoplpush_multi_keys(r: redis.Redis):
     assert r.lrem("bar", -1, "two") == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_brpoplpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     r.rpush("list", "element")
