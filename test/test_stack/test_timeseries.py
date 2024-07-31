@@ -655,7 +655,7 @@ def test_mget_errors(r: redis.Redis):
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     with pytest.raises(redis.ResponseError) as e:
         r.ts().mget([])
-    assert str(e.value) == "wrong number of arguments for 'ts.mget' command"
+    assert str(e.value).lower() == "wrong number of arguments for 'ts.mget' command"
 
     with pytest.raises(redis.ResponseError) as e:
         r.ts().mget(["Test=(Th=is"], with_labels="true")
