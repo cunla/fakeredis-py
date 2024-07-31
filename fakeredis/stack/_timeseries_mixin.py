@@ -46,8 +46,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def _get_timeseries(self, filter_expressions: List[bytes]) -> List["TimeSeries"]:
         res: List["TimeSeries"] = list()
         TimeSeriesCommandsMixin._timeseries_keys = {
-            k for k in TimeSeriesCommandsMixin._timeseries_keys if
-            k in self._db
+            k for k in TimeSeriesCommandsMixin._timeseries_keys if k in self._db
         }
         for ts_key in TimeSeriesCommandsMixin._timeseries_keys:
             ts = self._db.get(ts_key).value
@@ -58,13 +57,16 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     @staticmethod
     def _validate_duplicate_policy(duplicate_policy: bytes) -> bool:
         return duplicate_policy is None or any(
-            [casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES])
+            [casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES]
+        )
 
     def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
-        (retention, encoding, chunk_size, duplicate_policy,
-         (ignore_max_time_diff, ignore_max_val_diff)), left_args = extract_args(
-            args, ("+retention", "*encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
-            error_on_unexpected=False,
+        (retention, encoding, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)), left_args = (
+            extract_args(
+                args,
+                ("+retention", "*encoding", "+chunk_size", "*duplicate_policy", "++ignore"),
+                error_on_unexpected=False,
+            )
         )
         retention = retention or 0
         encoding = encoding or b"COMPRESSED"
@@ -82,9 +84,15 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
 
         res = TimeSeries(
-            name=name, database=self._db,
-            retention=retention, encoding=encoding, chunk_size=chunk_size, duplicate_policy=duplicate_policy,
-            ignore_max_time_diff=ignore_max_time_diff, ignore_max_val_diff=ignore_max_val_diff, labels=labels,
+            name=name,
+            database=self._db,
+            retention=retention,
+            encoding=encoding,
+            chunk_size=chunk_size,
+            duplicate_policy=duplicate_policy,
+            ignore_max_time_diff=ignore_max_time_diff,
+            ignore_max_val_diff=ignore_max_val_diff,
+            labels=labels,
         )
         self._timeseries_keys.add(name)
         return res
@@ -94,23 +102,37 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         return [
-            b"totalSamples", len(key.value.sorted_list),
-            b"memoryUsage", len(key.value.sorted_list) * 8 + len(key.value.encoding),
-            b"firstTimestamp", key.value.sorted_list[0][0] if len(key.value.sorted_list) > 0 else 0,
-            b"lastTimestamp", key.value.sorted_list[-1][0] if len(key.value.sorted_list) > 0 else 0,
-            b"retentionTime", key.value.retention,
-            b"chunkCount", len(key.value.sorted_list) * 8 // key.value.chunk_size,
-            b"chunkSize", key.value.chunk_size,
-            b"chunkType", key.value.encoding,
-            b"duplicatePolicy", key.value.duplicate_policy,
-            b"labels", [[k, v] for k, v in key.value.labels.items()],
-            b"sourceKey", key.value.source_key,
-            b"rules", [
-                [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp] for rule in
-                key.value.rules
+            b"totalSamples",
+            len(key.value.sorted_list),
+            b"memoryUsage",
+            len(key.value.sorted_list) * 8 + len(key.value.encoding),
+            b"firstTimestamp",
+            key.value.sorted_list[0][0] if len(key.value.sorted_list) > 0 else 0,
+            b"lastTimestamp",
+            key.value.sorted_list[-1][0] if len(key.value.sorted_list) > 0 else 0,
+            b"retentionTime",
+            key.value.retention,
+            b"chunkCount",
+            len(key.value.sorted_list) * 8 // key.value.chunk_size,
+            b"chunkSize",
+            key.value.chunk_size,
+            b"chunkType",
+            key.value.encoding,
+            b"duplicatePolicy",
+            key.value.duplicate_policy,
+            b"labels",
+            [[k, v] for k, v in key.value.labels.items()],
+            b"sourceKey",
+            key.value.source_key,
+            b"rules",
+            [
+                [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
+                for rule in key.value.rules
             ],
-            b"keySelfName", key.value.name,
-            b"Chunks", [],
+            b"keySelfName",
+            key.value.name,
+            b"Chunks",
+            [],
         ]
 
     @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -138,7 +160,8 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(
         name="TS.MADD",
-        fixed=(Key(TimeSeries), Timestamp, Float), repeat=(Key(TimeSeries), Timestamp, Float),
+        fixed=(Key(TimeSeries), Timestamp, Float),
+        repeat=(Key(TimeSeries), Timestamp, Float),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def ts_madd(self, *args: Any) -> List[int]:
@@ -146,13 +169,18 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
         results: List[int] = list()
         for i in range(0, len(args), 3):
-            key, timestamp, value = args[i:i + 3]
+            key, timestamp, value = args[i : i + 3]
             if key.value is None:
                 raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
             results.append(key.value.add(timestamp, value))
         return results
 
-    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE, )
+    @command(
+        name="TS.DEL",
+        fixed=(Key(TimeSeries), Int, Int),
+        repeat=(),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_del(self, key: CommandItem, from_ts: int, to_ts: int) -> bytes:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -165,13 +193,13 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def ts_createrule(
-            self,
-            source_key: CommandItem,
-            dest_key: CommandItem,
-            _: bytes,
-            aggregator: bytes,
-            bucket_duration: int,
-            *args: int,
+        self,
+        source_key: CommandItem,
+        dest_key: CommandItem,
+        _: bytes,
+        aggregator: bytes,
+        bucket_duration: int,
+        *args: int,
     ) -> SimpleString:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -192,7 +220,12 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         source_key.value.add_rule(rule)
         return OK
 
-    @command(name="TS.DELETERULE", fixed=(Key(TimeSeries), Key(TimeSeries)), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE, )
+    @command(
+        name="TS.DELETERULE",
+        fixed=(Key(TimeSeries), Key(TimeSeries)),
+        repeat=(),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -203,7 +236,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return OK
 
     def _ts_inc_or_dec(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
-        (ts,), left_args = extract_args(args, ("+timestamp",), error_on_unexpected=False, )
+        (ts,), left_args = extract_args(
+            args,
+            ("+timestamp",),
+            error_on_unexpected=False,
+        )
         if key.value is None:
             key.update(self._create_timeseries(key.key, *left_args))
         timeseries = key.value
@@ -216,11 +253,21 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.TIMESERIES_INVALID_TIMESTAMP)
         return key.value.incrby(ts, addend)
 
-    @command(name="TS.INCRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
+    @command(
+        name="TS.INCRBY",
+        fixed=(Key(TimeSeries), Float),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
         return self._ts_inc_or_dec(key, addend, *args)
 
-    @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, )
+    @command(
+        name="TS.DECRBY",
+        fixed=(Key(TimeSeries), Float),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
         return self._ts_inc_or_dec(key, -subtrahend, *args)
 
@@ -229,9 +276,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
 
-        ((retention, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)),
-         left_args) = extract_args(
-            args, ("+retention", "+chunk_size", "*duplicate_policy", "++ignore"), error_on_unexpected=False)
+        ((retention, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)), left_args) = (
+            extract_args(
+                args, ("+retention", "+chunk_size", "*duplicate_policy", "++ignore"), error_on_unexpected=False
+            )
+        )
 
         if chunk_size is not None and chunk_size % 8 != 0:
             raise SimpleError(msgs.TIMESERIES_BAD_CHUNK_SIZE)
@@ -252,11 +301,18 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return OK
 
     def _range(
-            self, reverse: bool, ts: TimeSeries, from_ts: int, to_ts: int, *args: bytes
+        self, reverse: bool, ts: TimeSeries, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[int, float]]]:
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
-        (latest, (value_min, value_max), count, align, (aggregator, bucket_duration), bucket_timestamp,
-         empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
+        (
+            latest,
+            (value_min, value_max),
+            count,
+            align,
+            (aggregator, bucket_duration),
+            bucket_timestamp,
+            empty,
+        ), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
         latest = True
         filter_ts: Optional[List[int]] = None
         if len(left_args) > 0:
@@ -280,23 +336,39 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if aggregator is None:
             res = ts.range(from_ts, to_ts, value_min, value_max, count, filter_ts, reverse)
         else:
-            res = ts.aggregate(from_ts, to_ts,
-                               latest, value_min, value_max, count, filter_ts,
-                               align, aggregator, bucket_duration,
-                               bucket_timestamp, empty, reverse)
+            res = ts.aggregate(
+                from_ts,
+                to_ts,
+                latest,
+                value_min,
+                value_max,
+                count,
+                filter_ts,
+                align,
+                aggregator,
+                bucket_duration,
+                bucket_timestamp,
+                empty,
+                reverse,
+            )
 
         res = [[x[0], x[1]] for x in res]
         return res
 
-    @command(name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
-             flags=msgs.FLAG_DO_NOT_CREATE)
+    @command(
+        name="TS.RANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE
+    )
     def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         return self._range(False, key.value, from_ts, to_ts, *args)
 
-    @command(name="TS.REVRANGE", fixed=(Key(TimeSeries), Timestamp, Timestamp), repeat=(bytes,),
-             flags=msgs.FLAG_DO_NOT_CREATE)
+    @command(
+        name="TS.REVRANGE",
+        fixed=(Key(TimeSeries), Timestamp, Timestamp),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> List[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -335,10 +407,9 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if with_labels:
             return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
         if selected_labels is not None:
-            res = [[
-                ts.name,
-                [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
-                ts.get()] for ts in timeseries
+            res = [
+                [ts.name, [[label, ts.labels[label]] for label in selected_labels if label in ts.labels], ts.get()]
+                for ts in timeseries
             ]
         else:
             res = [[ts.name, [], ts.get()] for ts in timeseries]
@@ -379,25 +450,38 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             sources = (", ".join([ts[0].decode() for ts in ts_list])).encode("utf-8")
             labels = {label: label_value, b"__reducer__": reducer, b"__source__": sources}
             measurements: List[int, float] = [
-                [timestamp, float(AGGREGATORS[reducer](timestamp_values[timestamp]))]
-                for timestamp in sorted_timestamps
+                [timestamp, float(AGGREGATORS[reducer](timestamp_values[timestamp]))] for timestamp in sorted_timestamps
             ]
             if reverse:
                 measurements.reverse()
-            res.append([
-                name.encode("utf-8"),
-                [[k, v] for (k, v) in labels.items()],
-                measurements
-            ])
+            res.append([name.encode("utf-8"), [[k, v] for (k, v) in labels.items()], measurements])
         return res
 
     def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes):
         args_lower = [arg.lower() for arg in args]
-        arg_words = {b'latest', b'withlabels', b'selected_labels', b'filter', b'groupby', b'reduce', b'count',
-                     b'aggregation', b'filter_by_value', b'filter_by_ts', b'align', b'aggregation'}
+        arg_words = {
+            b"latest",
+            b"withlabels",
+            b"selected_labels",
+            b"filter",
+            b"groupby",
+            b"reduce",
+            b"count",
+            b"aggregation",
+            b"filter_by_value",
+            b"filter_by_ts",
+            b"align",
+            b"aggregation",
+        }
         left_args = []
         latest, with_labels, selected_labels, filter_expression, group_by, reducer = (
-            False, False, None, None, None, None)
+            False,
+            False,
+            None,
+            None,
+            None,
+            None,
+        )
         i = 0
         while i < len(args_lower):
             if args_lower[i] == b"latest":
@@ -437,33 +521,33 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
                 [
                     ts.name,
                     [[k, v] for (k, v) in ts.labels.items()],
-                    self._range(reverse, ts, from_ts, to_ts, *left_args)
-                ] for ts in timeseries
+                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+                ]
+                for ts in timeseries
             ]
         elif selected_labels is not None:
             res = [
                 [
                     ts.name,
                     [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
-                    self._range(reverse, ts, from_ts, to_ts, *left_args)
-                ] for ts in timeseries
+                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+                ]
+                for ts in timeseries
             ]
         else:
-            res = [
-                [ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries
-            ]
+            res = [[ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries]
         if group_by is not None and reducer is not None:
             return self._group_by_label(reverse, res, group_by, reducer)
         return res
 
     @command(name="TS.MRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrange(
-            self, from_ts: int, to_ts: int, *args: bytes
+        self, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
         return self._mrange(False, from_ts, to_ts, *args)
 
     @command(name="TS.MREVRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrevrange(
-            self, from_ts: int, to_ts: int, *args: bytes
+        self, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
         return self._mrange(True, from_ts, to_ts, *args)
