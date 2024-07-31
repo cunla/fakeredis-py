@@ -57,7 +57,7 @@ class TimeSeries:
             return timestamp
         self.sorted_list.append((timestamp, value))
         self.ts_ind_map[timestamp] = len(self.sorted_list) - 1
-        self.rules = [rule for rule in self.rules if rule.dest_key.name in self._server]
+        self.rules = [rule for rule in self.rules if rule.dest_key.name in self._db]
         for rule in self.rules:
             rule.add_record((timestamp, value))
         self.max_timestamp = max(self.max_timestamp, timestamp)
