@@ -169,7 +169,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
         results: List[int] = list()
         for i in range(0, len(args), 3):
-            key, timestamp, value = args[i: i + 3]
+            key, timestamp, value = args[i : i + 3]
             if key.value is None:
                 raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
             results.append(key.value.add(timestamp, value))
@@ -193,13 +193,13 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def ts_createrule(
-            self,
-            source_key: CommandItem,
-            dest_key: CommandItem,
-            _: bytes,
-            aggregator: bytes,
-            bucket_duration: int,
-            *args: int,
+        self,
+        source_key: CommandItem,
+        dest_key: CommandItem,
+        _: bytes,
+        aggregator: bytes,
+        bucket_duration: int,
+        *args: int,
     ) -> SimpleString:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -254,8 +254,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         try:
             return key.value.incrby(ts, addend)
         except ValueError:
-            msg = (msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7
-                   if self.version >= (7,) else msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6)
+            msg = (
+                msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7
+                if self.version >= (7,)
+                else msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6
+            )
             raise SimpleError(msg)
 
     @command(
@@ -306,7 +309,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return OK
 
     def _range(
-            self, reverse: bool, ts: TimeSeries, from_ts: int, to_ts: int, *args: bytes
+        self, reverse: bool, ts: TimeSeries, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[int, float]]]:
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
         (
@@ -547,12 +550,12 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.MRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrange(
-            self, from_ts: int, to_ts: int, *args: bytes
+        self, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
         return self._mrange(False, from_ts, to_ts, *args)
 
     @command(name="TS.MREVRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrevrange(
-            self, from_ts: int, to_ts: int, *args: bytes
+        self, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[bytes, List[List[Union[int, float]]]]]]:
         return self._mrange(True, from_ts, to_ts, *args)
