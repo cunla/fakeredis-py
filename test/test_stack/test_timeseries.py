@@ -6,6 +6,8 @@ import redis
 
 from fakeredis import _msgs as msgs
 
+timeseries_tests = pytest.importorskip("probables")
+
 
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
