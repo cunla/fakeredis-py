@@ -1,5 +1,5 @@
 import time
-from typing import List, Union, Optional, Any, Set
+from typing import List, Union, Optional, Any, Set, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -254,7 +254,6 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def _range(
             self, reverse: bool, ts: TimeSeries, from_ts: int, to_ts: int, *args: bytes
     ) -> List[List[Union[int, float]]]:
-
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
         (latest, (value_min, value_max), count, align, (aggregator, bucket_duration), bucket_timestamp,
          empty), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
@@ -351,12 +350,54 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         timeseries = self._get_timeseries(filter_expressions)
         return [ts.name for ts in timeseries]
 
+    def _group_by_label(self, reverse: bool, ts_list: List[Any], label: bytes, reducer: bytes) -> TimeSeries:
+        # ts_list: [[name, labels, measurements], ...]
+        reducer = reducer.lower()
+        if reducer not in AGGREGATORS:
+            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
+        ts_map: Dict[bytes, Dict[int, List[float]]] = dict()  # label_value -> timestamp -> values
+        for ts in ts_list:
+            # Find label value
+            labels, label_value = ts[1], None
+            for label_name, current_value in labels:
+                if label_name == label:
+                    label_value = current_value
+                    break
+            if not label_value:
+                raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
+            if label_value not in ts_map:
+                ts_map[label_value] = dict()
+            # Collect measurements
+            for timestamp, value in ts[2]:
+                if timestamp not in ts_map[label_value]:
+                    ts_map[label_value][timestamp] = list()
+                ts_map[label_value][timestamp].append(value)
+        res = []
+        for label_value, timestamp_values in ts_map.items():
+            sorted_timestamps = sorted(timestamp_values.keys())
+            name = f"{label.decode()}={label_value.decode()}"
+            sources = (", ".join([ts[0].decode() for ts in ts_list])).encode("utf-8")
+            labels = {label: label_value, b"__reducer__": reducer, b"__source__": sources}
+            measurements: List[int, float] = [
+                [timestamp, float(AGGREGATORS[reducer](timestamp_values[timestamp]))]
+                for timestamp in sorted_timestamps
+            ]
+            if reverse:
+                measurements.reverse()
+            res.append([
+                name.encode("utf-8"),
+                [[k, v] for (k, v) in labels.items()],
+                measurements
+            ])
+        return res
+
     def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes):
         args_lower = [arg.lower() for arg in args]
         arg_words = {b'latest', b'withlabels', b'selected_labels', b'filter', b'groupby', b'reduce', b'count',
                      b'aggregation', b'filter_by_value', b'filter_by_ts', b'align', b'aggregation'}
         left_args = []
-        latest, with_labels, selected_labels, filter_expression = False, False, None, None
+        latest, with_labels, selected_labels, filter_expression, group_by, reducer = (
+            False, False, None, None, None, None)
         i = 0
         while i < len(args_lower):
             if args_lower[i] == b"latest":
@@ -377,6 +418,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
                 while i < len(args_lower) and args_lower[i] not in arg_words:
                     filter_expression.append(args[i])
                     i += 1
+            elif i + 3 < len(args_lower) and args_lower[i] == b"groupby" and args_lower[i + 2] == b"reduce":
+                group_by = args[i + 1]
+                reducer = args_lower[i + 3]
+                i += 4
             else:
                 left_args.append(args[i])
                 i += 1
@@ -387,7 +432,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mrange"))
 
         timeseries = self._get_timeseries(filter_expression)
-        if with_labels:
+        if with_labels or (group_by is not None and reducer is not None):
             res = [
                 [
                     ts.name,
@@ -407,6 +452,8 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             res = [
                 [ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries
             ]
+        if group_by is not None and reducer is not None:
+            return self._group_by_label(reverse, res, group_by, reducer)
         return res
 
     @command(name="TS.MRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)

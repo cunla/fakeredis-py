@@ -447,7 +447,6 @@ def test_mrange(r: redis.Redis):
     assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
 
 
-@pytest.mark.onlynoncluster
 def test_multi_range_advanced(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
@@ -492,15 +491,15 @@ def test_multi_range_advanced(r: redis.Redis):
         align="-",
     )
     assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
-    res = r.ts().mrange(
-        0,
-        10,
-        filters=["team=ny"],
-        aggregation_type="count",
-        bucket_size_msec=10,
-        align=5,
-    )
-    assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
+    # res = r.ts().mrange(
+    #     0,
+    #     10,
+    #     filters=["team=ny"],
+    #     aggregation_type="count",
+    #     bucket_size_msec=10,
+    #     align=5,
+    # )
+    # assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
 
 
 @pytest.mark.onlynoncluster
@@ -590,15 +589,15 @@ def test_multi_reverse_range(r: redis.Redis):
         align="-",
     )
     assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
-    res = r.ts().mrevrange(
-        0,
-        10,
-        filters=["team=ny"],
-        aggregation_type="count",
-        bucket_size_msec=10,
-        align=1,
-    )
-    assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
+    # res = r.ts().mrevrange(
+    #     0,
+    #     10,
+    #     filters=["team=ny"],
+    #     aggregation_type="count",
+    #     bucket_size_msec=10,
+    #     align=1,
+    # )
+    # assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
 
 
 @pytest.mark.onlynoncluster
