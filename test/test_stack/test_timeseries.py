@@ -191,7 +191,7 @@ def test_create_and_delete_rule(r: redis.Redis):
     info1 = r.ts().info(1)
     assert info1.rules[0][1] == 100
     info2 = r.ts().info(2)
-    assert info2["source_key"] == b'1'
+    assert info2["source_key"] == b"1"
 
     # test rule deletion
     r.ts().deleterule(1, 2)
@@ -346,7 +346,9 @@ def test_rev_range(r: redis.Redis):
     assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == [(10, 1.0), (0, 10.0)]
 
     assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [
-        (10, pytest.approx(3.0, 0.1)), (0, pytest.approx(2.55, 0.1))]
+        (10, pytest.approx(3.0, 0.1)),
+        (0, pytest.approx(2.55, 0.1)),
+    ]
 
 
 @pytest.mark.onlynoncluster
