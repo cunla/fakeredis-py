@@ -7,17 +7,17 @@ from fakeredis._helpers import Database, SimpleError
 class TimeSeries:
 
     def __init__(
-        self,
-        name: bytes,
-        database: Database,
-        retention: int = 0,
-        encoding: bytes = b"compressed",
-        chunk_size: int = 4096,
-        duplicate_policy: bytes = b"block",
-        ignore_max_time_diff: int = 0,
-        ignore_max_val_diff: int = 0,
-        labels: Dict[str, str] = None,
-        source_key: Optional[bytes] = None,
+            self,
+            name: bytes,
+            database: Database,
+            retention: int = 0,
+            encoding: bytes = b"compressed",
+            chunk_size: int = 4096,
+            duplicate_policy: bytes = b"block",
+            ignore_max_time_diff: int = 0,
+            ignore_max_val_diff: int = 0,
+            labels: Dict[str, str] = None,
+            source_key: Optional[bytes] = None,
     ):
         super().__init__()
         self.name = name
@@ -36,7 +36,7 @@ class TimeSeries:
         self.rules: List[TimeSeriesRule] = list()
 
     def add(
-        self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None
+            self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None
     ) -> Union[int, None, List[None]]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
             raise SimpleError(msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION)
@@ -57,7 +57,7 @@ class TimeSeries:
             return timestamp
         self.sorted_list.append((timestamp, value))
         self.ts_ind_map[timestamp] = len(self.sorted_list) - 1
-        self.rules = [rule for rule in self.rules if rule.dest_key.name in self._db]
+        self.rules = [rule for rule in self.rules if rule.dest_key.name in self._server]
         for rule in self.rules:
             rule.add_record((timestamp, value))
         self.max_timestamp = max(self.max_timestamp, timestamp)
@@ -73,7 +73,8 @@ class TimeSeries:
             ind = self.ts_ind_map[self.max_timestamp]
             self.add(timestamp, self.sorted_list[ind][1] + value)
         else:  # timestamp < self.sorted_list[ind][0]
-            raise SimpleError(msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX)
+            raise ValueError()
+
         return timestamp
 
     def get(self) -> Optional[List[Union[int, float]]]:
@@ -102,14 +103,14 @@ class TimeSeries:
         rule.dest_key.source_key = None
 
     def range(
-        self,
-        from_ts: int,
-        to_ts: int,
-        value_min: Optional[float],
-        value_max: Optional[float],
-        count: Optional[int],
-        filter_ts: Optional[List[int]],
-        reverse: bool,
+            self,
+            from_ts: int,
+            to_ts: int,
+            value_min: Optional[float],
+            value_max: Optional[float],
+            count: Optional[int],
+            filter_ts: Optional[List[int]],
+            reverse: bool,
     ) -> List[Tuple[int, float]]:
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
@@ -117,9 +118,9 @@ class TimeSeries:
             x
             for x in self.sorted_list
             if (
-                (from_ts <= x[0] <= to_ts)
-                and value_min <= x[1] <= value_max
-                and (filter_ts is None or x[0] in filter_ts)
+                    (from_ts <= x[0] <= to_ts)
+                    and value_min <= x[1] <= value_max
+                    and (filter_ts is None or x[0] in filter_ts)
             )
         ]
         if reverse:
@@ -129,20 +130,20 @@ class TimeSeries:
         return res
 
     def aggregate(
-        self,
-        from_ts: int,
-        to_ts: int,
-        latest: bool,
-        value_min: Optional[float],
-        value_max: Optional[float],
-        count: Optional[int],
-        filter_ts: Optional[List[int]],
-        align: Optional[int],
-        aggregator: bytes,
-        bucket_duration: int,
-        bucket_timestamp: Optional[bytes],
-        empty: Optional[bool],
-        reverse: bool,
+            self,
+            from_ts: int,
+            to_ts: int,
+            latest: bool,
+            value_min: Optional[float],
+            value_max: Optional[float],
+            count: Optional[int],
+            filter_ts: Optional[List[int]],
+            align: Optional[int],
+            aggregator: bytes,
+            bucket_duration: int,
+            bucket_timestamp: Optional[bytes],
+            empty: Optional[bool],
+            reverse: bool,
     ) -> List[Tuple[int, float]]:
         align = align or 0
         value_min = value_min or float("-inf")
@@ -209,7 +210,7 @@ AGGREGATORS = {
 
 
 def apply_aggregator(
-    bucket: List[Tuple[int, float]], bucket_start_ts: int, bucket_duration: int, aggregator: bytes
+        bucket: List[Tuple[int, float]], bucket_start_ts: int, bucket_duration: int, aggregator: bytes
 ) -> float:
     if len(bucket) == 0:
         return 0.0
@@ -231,12 +232,12 @@ def apply_aggregator(
 class TimeSeriesRule:
 
     def __init__(
-        self,
-        source_key: TimeSeries,
-        dest_key: TimeSeries,
-        aggregator: bytes,
-        bucket_duration: int,
-        align_timestamp: int = 0,
+            self,
+            source_key: TimeSeries,
+            dest_key: TimeSeries,
+            aggregator: bytes,
+            bucket_duration: int,
+            align_timestamp: int = 0,
     ):
         self.source_key = source_key
         self.dest_key = dest_key
@@ -253,8 +254,8 @@ class TimeSeriesRule:
         if self.current_bucket_start_ts == bucket_start_ts:
             self.current_bucket.append(record)
         if (
-            self.current_bucket_start_ts != bucket_start_ts
-            or ts == self.current_bucket_start_ts + self.bucket_duration - 1
+                self.current_bucket_start_ts != bucket_start_ts
+                or ts == self.current_bucket_start_ts + self.bucket_duration - 1
         ):
             should_add = self.current_bucket_start_ts != bucket_start_ts
             self.apply_curr_bucket(bucket_timestamp)

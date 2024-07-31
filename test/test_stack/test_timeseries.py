@@ -1,4 +1,5 @@
 import math
+import time
 from time import sleep
 
 import pytest
@@ -11,6 +12,7 @@ timeseries_tests = pytest.importorskip("probables")
 
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
+    time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
     assert abs(ts2 - ts1) < 5
 
