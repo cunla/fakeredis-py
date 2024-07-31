@@ -1,18 +1,16 @@
 import math
-import time
 from time import sleep
 
 import pytest
 import redis
 
 from fakeredis import _msgs as msgs
-from test import testtools
 
 
-@testtools.fake_only
 def test_add_ts_close(r: redis.Redis):
-    ts = r.ts().add(5, "*", 1)
-    assert abs(time.time() - ts) < 1.0
+    ts1 = r.ts().add(5, "*", 1)
+    ts2 = r.ts().add(5, "*", 1)
+    assert abs(ts2 - ts1) < 5
 
 
 def test_create_key_exist(r: redis.Redis):
