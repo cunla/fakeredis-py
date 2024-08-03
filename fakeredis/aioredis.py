@@ -41,16 +41,11 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self.responses.put_nowait(msg)
 
     async def _async_blocking(
-        self,
-        timeout: Optional[Union[float, int]],
-        func: Callable[
-            [
-                bool,
-            ],
-            Any,
-        ],
-        event: asyncio.Event,
-        callback: Callable[[], None],
+            self,
+            timeout: Optional[Union[float, int]],
+            func: Callable[[bool], Any],
+            event: asyncio.Event,
+            callback: Callable[[], None],
     ) -> None:
         result = None
         try:
@@ -64,7 +59,6 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
                         ret = func(False)
                         if ret is not None:
                             result = self._decode_result(ret)
-                            self.put_response(result)
                             break
         except asyncio.TimeoutError:
             pass
@@ -75,14 +69,9 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
             self.resume()
 
     def _blocking(
-        self,
-        timeout: Optional[Union[float, int]],
-        func: Callable[
-            [
-                bool,
-            ],
-            None,
-        ],
+            self,
+            timeout: Optional[Union[float, int]],
+            func: Callable[[bool], None],
     ) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)
@@ -198,27 +187,27 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
 class FakeRedis(redis_async.Redis):
     def __init__(
-        self,
-        *,
-        host: Optional[str] = None,
-        port: int = 6379,
-        db: Union[str, int] = 0,
-        password: Optional[str] = None,
-        socket_timeout: Optional[float] = None,
-        connection_pool: Optional[redis_async.ConnectionPool] = None,
-        encoding: str = "utf-8",
-        encoding_errors: str = "strict",
-        decode_responses: bool = False,
-        retry_on_timeout: bool = False,
-        max_connections: Optional[int] = None,
-        health_check_interval: int = 0,
-        client_name: Optional[str] = None,
-        username: Optional[str] = None,
-        server: Optional[_server.FakeServer] = None,
-        connected: bool = True,
-        version: VersionType = (7,),
-        lua_modules: Optional[Set[str]] = None,
-        **kwargs: Any,
+            self,
+            *,
+            host: Optional[str] = None,
+            port: int = 6379,
+            db: Union[str, int] = 0,
+            password: Optional[str] = None,
+            socket_timeout: Optional[float] = None,
+            connection_pool: Optional[redis_async.ConnectionPool] = None,
+            encoding: str = "utf-8",
+            encoding_errors: str = "strict",
+            decode_responses: bool = False,
+            retry_on_timeout: bool = False,
+            max_connections: Optional[int] = None,
+            health_check_interval: int = 0,
+            client_name: Optional[str] = None,
+            username: Optional[str] = None,
+            server: Optional[_server.FakeServer] = None,
+            connected: bool = True,
+            version: VersionType = (7,),
+            lua_modules: Optional[Set[str]] = None,
+            **kwargs: Any,
     ) -> None:
         if not connection_pool:
             # Adapted from aioredis

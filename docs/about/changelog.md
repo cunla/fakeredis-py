@@ -3,6 +3,12 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
+## v2.23.5
+
+### 🐛 Bug Fixes
+
+- fix:issue with async connection and blocking operations writing responses twice to socket #316
+
 ## v2.23.4
 
 ### 🐛 Bug Fixes
