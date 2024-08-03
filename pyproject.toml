@@ -8,10 +8,10 @@ name = "fakeredis"
 packages = [
     { include = "fakeredis" },
 ]
-version = "2.23.4"
+version = "2.23.5"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
-keywords = ["redis", "RedisJson", "tests", "redis-stack"]
+keywords = ["redis", "RedisJson", "RedisBloom","tests", "redis-stack"]
 authors = [
     "Daniel Moran <daniel@moransoftware.ca>",
     "Bruce Merry <bmerry@ska.ac.za>",
