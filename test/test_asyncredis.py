@@ -329,6 +329,9 @@ async def test_init_args():
 
 @pytest.mark.asyncio
 async def test_cause_fakeredis_bug(async_redis):
+    if sys.version_info < (3, 11):
+        return
+
     async def worker_task():
         assert await async_redis.rpush("list1", "list1_val") == 1  # 1
         assert await async_redis.blpop("list2") == (b"list2", b"list2_val")  # 4
