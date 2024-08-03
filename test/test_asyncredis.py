@@ -325,3 +325,20 @@ async def test_init_args():
     assert await r3.get("bar") == b"baz"
     assert await r4.get("bar") == b"baz"
     assert await r1.get("bar") is None
+
+
+@pytest.mark.asyncio
+async def test_cause_fakeredis_bug(async_redis):
+
+    async def worker_task():
+        await async_redis.rpush("list1", "list1_val")
+        assert await async_redis.blpop("list2") == (b"list2", b"list2_val")
+        await async_redis.set("foo", "bar")
+
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(worker_task())
+        assert await async_redis.blpop("list1") == (b"list1", b"list1_val")
+        await async_redis.rpush("list2", "list2_val")
+
+    # await async_redis.get("foo")  # uncomment to make test pass
+    assert await async_redis.get("foo") == b"bar"
