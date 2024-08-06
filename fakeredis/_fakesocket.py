@@ -7,6 +7,7 @@ from fakeredis.stack import (
     CMSCommandsMixin,
     TopkCommandsMixin,
     TDigestCommandsMixin,
+    TimeSeriesCommandsMixin,
 )
 from ._server import FakeServer
 from ._basefakesocket import BaseFakeSocket
@@ -58,6 +59,7 @@ class FakeSocket(
     CMSCommandsMixin,
     TopkCommandsMixin,
     TDigestCommandsMixin,
+    TimeSeriesCommandsMixin,
 ):
     def __init__(
         self,

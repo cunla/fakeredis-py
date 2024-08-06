@@ -6,6 +6,8 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
+import sys
+import time
 from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
 
 from . import _msgs as msgs
@@ -469,3 +471,17 @@ def fix_range_string(start: int, end: int, length: int) -> Tuple[int, int]:
         end = max(0, end + length)
     end = min(end, length - 1)
     return start, end + 1
+
+
+class Timestamp(Int):
+    """Argument converter for timestamps"""
+
+    @classmethod
+    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
+        if value == b"*":
+            return int(time.time())
+        if value == b"-":
+            return -1
+        if value == b"+":
+            return sys.maxsize
+        return super().decode(value, decode_error=msgs.INVALID_EXPIRE_MSG)

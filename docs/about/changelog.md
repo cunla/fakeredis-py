@@ -3,6 +3,12 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
+## v2.24.0
+
+### 🚀 Features
+
+- Support for TIME SERIES commands (no support for align arguments on some commands) #310
+
 ## v2.23.5
 
 ### 🐛 Bug Fixes

@@ -512,7 +512,11 @@ Enables read-only queries for a connection to a Redis Cluster replica node.
 Enables read-write queries for a connection to a Reids Cluster replica node.
 
 
-## `connection` commands (3/25 implemented)
+## `connection` commands (4/25 implemented)
+
+### [CLIENT SETINFO](https://redis.io/commands/client-setinfo/)
+
+Sets information specific to the client or connection.
 
 ### [ECHO](https://redis.io/commands/echo/)
 
@@ -581,10 +585,6 @@ Suspends commands processing.
 #### [CLIENT REPLY](https://redis.io/commands/client-reply/) <small>(not implemented)</small>
 
 Instructs the server whether to reply to commands.
-
-#### [CLIENT SETINFO](https://redis.io/commands/client-setinfo/) <small>(not implemented)</small>
-
-Sets information specific to the client or connection.
 
 #### [CLIENT SETNAME](https://redis.io/commands/client-setname/) <small>(not implemented)</small>
 
