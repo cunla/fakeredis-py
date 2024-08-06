@@ -116,8 +116,10 @@ def test_add_before_last(r: redis.Redis):
     assert r.ts().incrby("time-serie-1", 10.0, timestamp=100) == 100
     with pytest.raises(redis.ResponseError) as e:
         r.ts().incrby("time-serie-1", 20.0, timestamp=2)
-    assert (str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7
-            or str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6)
+    assert (
+        str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7
+        or str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6
+    )
 
 
 def test_add_duplicate_policy(r: redis.Redis):
