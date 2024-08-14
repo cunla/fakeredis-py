@@ -25,7 +25,7 @@ def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
         client = redis.StrictRedis("localhost", port=6380, db=2)
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
-        server_version = client_info["redis_version"]
+        server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
         server_version = _create_version(server_version) or (7,)
         return server_type, server_version
     except redis.ConnectionError:
