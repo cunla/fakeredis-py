@@ -65,5 +65,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tests-result
-          path: report.html
+          name: tests-result-${{ matrix.tests }}
+          path: report-${{ matrix.tests }}.html
