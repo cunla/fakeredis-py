@@ -29,7 +29,8 @@ jobs:
           - "test_general.py"
           - "test_scan.py"
           - "test_zadd.py"
-          - "test_transcations.py"
+          - "test_translations.py"
+          - "test_sortedset_commands.py"
     permissions:
       pull-requests: write
     services:
