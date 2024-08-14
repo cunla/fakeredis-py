@@ -73,3 +73,5 @@ jobs:
     steps:
       - name: Collect Tests Result
         uses: actions/upload-artifact/merge@v4
+        with:
+          delete-merged: true
