@@ -17,6 +17,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        tests:
+          - "test_json"
+          - "test_mixin"
+          - "test_stack"
+          - "test_connection.py"
+          - "test_asyncredis.py"
+          - "test_general.py"
+          - "test_scan.py"
+          - "test_zadd.py"
+          - "test_lua_modules.py"
     permissions:
       pull-requests: write
     services:
@@ -47,7 +59,7 @@ jobs:
 
       - name: Test without coverage
         run: |
-          poetry run pytest --maxfail=100 --html=report.html --self-contained-html -v -m "not slow"
+          poetry run pytest test/${{ matrix.tests }} --html=report-${{ matrix.tests }}.html --self-contained-html -v -m "not slow"
 
       - name: Collect Tests Result
         if: always()
