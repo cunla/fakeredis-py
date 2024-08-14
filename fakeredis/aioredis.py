@@ -43,12 +43,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     async def _async_blocking(
         self,
         timeout: Optional[Union[float, int]],
-        func: Callable[
-            [
-                bool,
-            ],
-            Any,
-        ],
+        func: Callable[[bool], Any],
         event: asyncio.Event,
         callback: Callable[[], None],
     ) -> None:
@@ -64,7 +59,6 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
                         ret = func(False)
                         if ret is not None:
                             result = self._decode_result(ret)
-                            self.put_response(result)
                             break
         except asyncio.TimeoutError:
             pass
@@ -77,12 +71,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     def _blocking(
         self,
         timeout: Optional[Union[float, int]],
-        func: Callable[
-            [
-                bool,
-            ],
-            None,
-        ],
+        func: Callable[[bool], None],
     ) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)

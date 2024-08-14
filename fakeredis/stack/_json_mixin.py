@@ -167,10 +167,9 @@ class JSONCommandsMixin:
         ZSet: b"zset",
     }
 
-    _db: helpers.Database
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self._db: helpers.Database
 
     @staticmethod
     def _get_single(

@@ -74,10 +74,6 @@ XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
     " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
 )
-FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
-FLAG_LEAVE_EMPTY_VAL = "v"
-FLAG_TRANSACTION = "t"
-FLAG_DO_NOT_CREATE = "i"
 GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
@@ -93,8 +89,33 @@ INVALID_BITFIELD_TYPE = (
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 
+# TDigest error messages
 TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
 TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
 TDIGEST_ERROR_PARSING_VALUE = "T-Digest: error parsing val parameter"
 TDIGEST_BAD_QUANTILE = "T-Digest: quantile should be in [0,1]"
 TDIGEST_BAD_RANK = "T-Digest: rank needs to be non negative"
+
+# TimeSeries error messages
+TIMESERIES_KEY_EXISTS = "TSDB: key already exists"
+TIMESERIES_INVALID_DUPLICATE_POLICY = "TSDB: Unknown DUPLICATE_POLICY"
+TIMESERIES_KEY_DOES_NOT_EXIST = "TSDB: the key does not exist"
+TIMESERIES_RULE_EXISTS = "TSDB: the destination key already has a src rule"
+TIMESERIES_BAD_AGGREGATION_TYPE = "TSDB: Unknown aggregation type"
+TIMESERIES_INVALID_TIMESTAMP = "TSDB: invalid timestamp"
+TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION = "TSDB: Timestamp is older than retention"
+TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7 = (
+    "TSDB: timestamp must be equal to or higher than the maximum existing timestamp"
+)
+TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6 = "TSDB: for incrby/decrby, timestamp should be newer than the lastest one"
+TIMESERIES_BAD_CHUNK_SIZE = "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
+TIMESERIES_DUPLICATE_POLICY_BLOCK = (
+    "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
+)
+TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
+
+# Command flags
+FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
+FLAG_LEAVE_EMPTY_VAL = "v"
+FLAG_TRANSACTION = "t"
+FLAG_DO_NOT_CREATE = "i"

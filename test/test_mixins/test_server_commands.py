@@ -54,7 +54,7 @@ def test_command(r: redis.Redis):
     assert one_word_commands - set(commands_dict.keys()) == set()
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
+@fake_only
 def test_command_count(r: redis.Redis):
     assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd])
 
