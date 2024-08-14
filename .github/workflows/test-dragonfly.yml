@@ -61,6 +61,7 @@ jobs:
         run: |
           poetry run pytest test/${{ matrix.tests }} --html=report-${{ matrix.tests }}.html --self-contained-html -v -m "not slow"
       - name: Upload Tests Result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tests-result-${{ matrix.tests }}
