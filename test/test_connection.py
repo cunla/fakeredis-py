@@ -411,6 +411,7 @@ class TestFakeStrictRedisConnectionErrors:
 
     def test_transaction(self, r):
         with pytest.raises(redis.ConnectionError):
+
             def func(a):
                 return a * a
 

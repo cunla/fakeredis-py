@@ -14,11 +14,11 @@ def test_arrlen(r: redis.Redis):
         [0, 1, 2, 3, 4],
     )
     assert (
-            r.json().arrlen(
-                "arr",
-                Path.root_path(),
-            )
-            == 5
+        r.json().arrlen(
+            "arr",
+            Path.root_path(),
+        )
+        == 5
     )
     assert r.json().arrlen("arr") == 5
     assert r.json().arrlen("fake-key") is None
@@ -382,12 +382,12 @@ def test_arrinsert(r: redis.Redis):
         [0, 4],
     )
 
-    assert (r.json().arrinsert("arr", Path.root_path(), 1, *[1, 2, 3]) == 5)
+    assert r.json().arrinsert("arr", Path.root_path(), 1, *[1, 2, 3]) == 5
     assert r.json().get("arr") == [0, 1, 2, 3, 4]
 
     # test prepends
     r.json().set("val2", Path.root_path(), [5, 6, 7, 8, 9])
-    assert (r.json().arrinsert("val2", Path.root_path(), 0, ["some", "thing"]) == 6)
+    assert r.json().arrinsert("val2", Path.root_path(), 0, ["some", "thing"]) == 6
     assert r.json().get("val2") == [["some", "thing"], 5, 6, 7, 8, 9]
     r.json().set(
         "doc1",
@@ -436,10 +436,10 @@ def test_arrpop(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrpop("arr", Path.root_path(), 4) == 4)
-    assert (r.json().arrpop("arr", Path.root_path(), -1) == 3)
-    assert (r.json().arrpop("arr", Path.root_path()) == 2)
-    assert (r.json().arrpop("arr", Path.root_path(), 0) == 0)
+    assert r.json().arrpop("arr", Path.root_path(), 4) == 4
+    assert r.json().arrpop("arr", Path.root_path(), -1) == 3
+    assert r.json().arrpop("arr", Path.root_path()) == 2
+    assert r.json().arrpop("arr", Path.root_path(), 0) == 0
     assert r.json().get("arr") == [1]
 
     # test out of bounds
@@ -448,7 +448,7 @@ def test_arrpop(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrpop("arr", Path.root_path(), 99) == 4)
+    assert r.json().arrpop("arr", Path.root_path(), 99) == 4
 
     # none test
     r.json().set(
@@ -494,7 +494,7 @@ def test_arrtrim(r: redis.Redis):
         [0, 1, 2, 3, 4],
     )
 
-    assert (r.json().arrtrim("arr", Path.root_path(), 1, 3) == 3)
+    assert r.json().arrtrim("arr", Path.root_path(), 1, 3) == 3
     assert r.json().get("arr") == [1, 2, 3]
 
     # <0 test, should be 0 equivalent
@@ -503,7 +503,7 @@ def test_arrtrim(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrtrim("arr", Path.root_path(), -1, 3) == 0)
+    assert r.json().arrtrim("arr", Path.root_path(), -1, 3) == 0
 
     # testing stop > end
     r.json().set(
@@ -511,7 +511,7 @@ def test_arrtrim(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrtrim("arr", Path.root_path(), 3, 99) == 2)
+    assert r.json().arrtrim("arr", Path.root_path(), 3, 99) == 2
 
     # start > array size and stop
     r.json().set(
@@ -519,7 +519,7 @@ def test_arrtrim(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrtrim("arr", Path.root_path(), 9, 1) == 0)
+    assert r.json().arrtrim("arr", Path.root_path(), 9, 1) == 0
 
     # all larger
     r.json().set(
@@ -527,7 +527,7 @@ def test_arrtrim(r: redis.Redis):
         Path.root_path(),
         [0, 1, 2, 3, 4],
     )
-    assert (r.json().arrtrim("arr", Path.root_path(), 9, 11) == 0)
+    assert r.json().arrtrim("arr", Path.root_path(), 9, 11) == 0
 
     r.json().set(
         "doc1",

@@ -264,7 +264,7 @@ def test_set_ex_overflow(r: redis.Redis):
 
 def test_set_px_overflow(r: redis.Redis):
     with pytest.raises(ResponseError):
-        r.set("foo", "bar", px=2 ** 63 - 2)  # Overflows after adding current time
+        r.set("foo", "bar", px=2**63 - 2)  # Overflows after adding current time
 
 
 def test_set_px(r: redis.Redis):

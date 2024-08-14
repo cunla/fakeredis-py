@@ -45,8 +45,6 @@ def _fake_server(request) -> fakeredis.FakeServer:
     return server
 
 
-
-
 @pytest_asyncio.fixture
 def r(request, create_redis) -> redis.Redis:
     rconn = create_redis(db=2)

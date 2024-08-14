@@ -133,24 +133,24 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
 
     # Test that flags prevent updates when conditions are unmet
     assert (
-            r.json().set(
-                "obj",
-                Path("foo"),
-                "baz",
-                nx=True,
-            )
-            is None
+        r.json().set(
+            "obj",
+            Path("foo"),
+            "baz",
+            nx=True,
+        )
+        is None
     )
     assert r.json().get("obj") == obj
 
     assert (
-            r.json().set(
-                "obj",
-                Path("qaz"),
-                "baz",
-                xx=True,
-            )
-            is None
+        r.json().set(
+            "obj",
+            Path("qaz"),
+            "baz",
+            xx=True,
+        )
+        is None
     )
     assert r.json().get("obj") == obj
 
@@ -435,7 +435,7 @@ def test_decode_response_disabaled_null(r: redis.Redis):
 
 
 def test_json_get_jset(r: redis.Redis):
-    assert (r.json().set("foo", Path.root_path(), "bar") == 1)
+    assert r.json().set("foo", Path.root_path(), "bar") == 1
     assert "bar" == r.json().get("foo")
     assert r.json().get("baz") is None
     assert 1 == r.json().delete("foo")
@@ -504,7 +504,7 @@ def test_set_path(r: redis.Redis):
 def test_type(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1)
 
-    assert (r.json().type("1", Path.root_path()) == b"integer")
+    assert r.json().type("1", Path.root_path()) == b"integer"
     assert r.json().type("1") == b"integer"  # noqa: E721
 
     meta_data = {

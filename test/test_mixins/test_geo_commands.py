@@ -229,16 +229,16 @@ def test_georadius_with(r: redis.Redis):
 
     # test no values.
     assert (
-            r.georadius(
-                "barcelona",
-                2,
-                1,
-                1,
-                unit="km",
-                withdist=True,
-                withcoord=True,
-            )
-            == []
+        r.georadius(
+            "barcelona",
+            2,
+            1,
+            1,
+            unit="km",
+            withdist=True,
+            withcoord=True,
+        )
+        == []
     )
 
 
@@ -271,10 +271,10 @@ def test_georadius_count(r: redis.Redis):
 
     r.geoadd("Sicily", values)
     assert (
-            testtools.raw_command(
-                r, "GEORADIUS", "Sicily", "15", "37", "200", "km", "STOREDIST", "neardist", "STORE", "near"
-            )
-            == 2
+        testtools.raw_command(
+            r, "GEORADIUS", "Sicily", "15", "37", "200", "km", "STOREDIST", "neardist", "STORE", "near"
+        )
+        == 2
     )
     assert r.zcard("near") == 2
     assert r.zcard("neardist") == 0
