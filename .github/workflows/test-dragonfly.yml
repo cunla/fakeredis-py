@@ -60,6 +60,11 @@ jobs:
       - name: Test without coverage
         run: |
           poetry run pytest test/${{ matrix.tests }} --html=report-${{ matrix.tests }}.html --self-contained-html -v -m "not slow"
+      - name: Upload Tests Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-result-${{ matrix.tests }}
+          path: report-${{ matrix.tests }}.html
 
   upload-results:
     needs: test
@@ -67,7 +72,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Collect Tests Result
-        uses: actions/upload-artifact@v4
-        with:
-          name: tests-result
-          path: report-*.html
+        uses: actions/upload-artifact/merge@v4
