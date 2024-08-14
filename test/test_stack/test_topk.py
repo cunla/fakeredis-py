@@ -3,6 +3,7 @@ import redis
 
 topk_tests = pytest.importorskip("probables")
 
+
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_topk_incrby(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
@@ -10,6 +11,7 @@ def test_topk_incrby(r: redis.Redis):
     assert [None, "bar"] == r.topk().incrby("topk", ["42", "xyzzy"], [8, 4])
     with pytest.deprecated_call():
         assert [3, 6, 10, 4, 0] == r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)
+
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_topk(r: redis.Redis):

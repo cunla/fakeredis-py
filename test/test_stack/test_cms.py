@@ -5,6 +5,7 @@ from test import testtools
 
 json_tests = pytest.importorskip("probables")
 
+
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_cms_create(r: redis.Redis):
     assert r.cms().initbydim("cmsDim", 100, 5)
@@ -107,7 +108,6 @@ def test_cms_info(r: redis.Redis):
 
     with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
         r.cms().info("noexist")
-
 
 
 @pytest.mark.xfail(reason="Bug in pyprobables")
