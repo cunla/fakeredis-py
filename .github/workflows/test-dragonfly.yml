@@ -47,9 +47,10 @@ jobs:
 
       - name: Test without coverage
         run: |
-          poetry run pytest --html=report.html --self-contained-html -v -m "not slow"
+          poetry run pytest --maxfail=100 --html=report.html --self-contained-html -v -m "not slow"
 
       - name: Collect Tests Result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tests-result
