@@ -1,0 +1,67 @@
+---
+name: Unit tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request_target:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+    services:
+      redis:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    outputs:
+      version: ${{ steps.getVersion.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          cache-dependency-path: poetry.lock
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          python -m pip --quiet install poetry
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+          poetry install
+          poetry run pip install redis==${{ matrix.redis-py }}
+      - name: Install json
+        if: ${{ matrix.extra }}
+        run: |
+          poetry run pip install "fakeredis[json,bf,cf,lua]"
+      - name: Get version
+        id: getVersion
+        shell: bash
+        run: |
+          VERSION=$(poetry version -s --no-ansi -n)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      - name: Test without coverage
+        run: |
+          poetry run pytest --maxfail=10 --html=report.html --self-contained-html -v -m "not slow"
+
+      - name: Collect Tests Result
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-result
+          path: report.html

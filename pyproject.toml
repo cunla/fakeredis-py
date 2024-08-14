@@ -75,6 +75,7 @@ pytest-timeout = "^2.3.1"
 pytest-asyncio = "^0.21"
 pytest-cov = "^4.1"
 pytest-mock = { version = "^3.14", python = ">=3.8.1" }
+pytest-html = { version = "^4.1", python = ">=3.8.1" }
 
 [tool.poetry.group.docs.dependencies]
 python-dotenv = { version = "^1", python = ">=3.8.1" }
@@ -96,6 +97,7 @@ markers = [
     "decode_responses",
 ]
 asyncio_mode = "strict"
+generate_report_on_test = true
 
 [tool.mypy]
 packages = ['fakeredis', ]
