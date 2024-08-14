@@ -198,6 +198,7 @@ def test_georadiusbymember(r: redis.Redis, member: str, radius: float, extra: Di
     assert r.zcard("extract") == len(expected)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_with(r: redis.Redis):
     values = (
         2.1909389952632,
@@ -242,6 +243,7 @@ def test_georadius_with(r: redis.Redis):
     )
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_count(r: redis.Redis):
     values = (
         2.1909389952632,
