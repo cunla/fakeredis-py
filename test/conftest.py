@@ -26,9 +26,10 @@ def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
         server_version = client_info["redis_version"]
-        server_version = _create_version(server_version) or (6,)
+        server_version = _create_version(server_version) or (7,)
         return server_type, server_version
     except redis.ConnectionError:
+        pytest.exit("Redis is not running")
         return "redis", (6,)
     finally:
         if hasattr(client, "close"):
@@ -42,6 +43,8 @@ def _fake_server(request) -> fakeredis.FakeServer:
     server = fakeredis.FakeServer(version=server_version)
     server.connected = request.node.get_closest_marker("disconnected") is None
     return server
+
+
 
 
 @pytest_asyncio.fixture
