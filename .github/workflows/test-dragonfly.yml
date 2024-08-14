@@ -8,12 +8,6 @@ on:
   pull_request:
     branches:
       - master
-  workflow_dispatch:
-    inputs:
-      max-failures:
-        description: 'Maximum number of failures before stopping the test'
-        required: false
-        default: 10
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -53,7 +47,7 @@ jobs:
 
       - name: Test without coverage
         run: |
-          poetry run pytest --maxfail=${{inputs.max-failures}} --html=report.html --self-contained-html -v -m "not slow"
+          poetry run pytest --html=report.html --self-contained-html -v -m "not slow"
 
       - name: Collect Tests Result
         uses: actions/upload-artifact@v4
