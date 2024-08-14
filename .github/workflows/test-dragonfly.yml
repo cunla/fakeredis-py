@@ -22,7 +22,7 @@ jobs:
       matrix:
         tests:
           - "test_json"
-          - "test_mixin"
+          - "test_mixins"
           - "test_stack"
           - "test_connection.py"
           - "test_asyncredis.py"
