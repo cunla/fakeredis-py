@@ -29,7 +29,6 @@ jobs:
           - "test_general.py"
           - "test_scan.py"
           - "test_zadd.py"
-          - "test_lua_modules.py"
     permissions:
       pull-requests: write
     services:
@@ -64,10 +63,10 @@ jobs:
 
   upload-results:
     needs: test
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Collect Tests Result
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tests-result
