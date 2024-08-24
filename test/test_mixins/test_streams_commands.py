@@ -206,6 +206,26 @@ def test_xrevrange(r: redis.Redis):
     assert get_ids(results) == [m4]
 
 
+def test_xrevrange_exclusive(r: redis.Redis):
+    stream = "stream"
+    m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
+
+    def _exc(key: bytes) -> bytes:
+        return b"(" + key
+
+    results = r.xrevrange(stream, max=_exc(m4))
+    assert get_ids(results) == [m3, m2, m1]
+
+    results = r.xrevrange(stream, max=_exc(m3), min=m2)
+    assert get_ids(results) == [m2]
+
+    results = r.xrevrange(stream, min=_exc(m3))
+    assert get_ids(results) == [m4]
+
+    results = r.xrevrange(stream, min=_exc(m1))
+    assert get_ids(results) == [m4, m3, m2]
+
+
 def test_xrange(r: redis.Redis):
     m = r.xadd("stream1", {"foo": "bar"})
     assert r.xrange("stream1") == [
