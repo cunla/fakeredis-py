@@ -11,7 +11,7 @@ description: Change log of all fakeredis releases
 
 ### 🐛 Bug Fixes
 
-- fix:xrevrange to work with exclusive ranges #319
+- fix:xrevrange to work with exclusive ranges @hurlenko #319
 
 ### 🧰 Maintenance
 
