@@ -433,9 +433,11 @@ class XStream:
             return 0, False
         if from_left:
             ind = bisect.bisect_left(self._ids, entry_key)
+            check_idx = ind
         else:
             ind = bisect.bisect_right(self._ids, entry_key)
-        return ind, (ind < len(self._ids) and self._ids[ind] == entry_key)
+            check_idx = ind - 1
+        return ind, (check_idx < len(self._ids) and self._ids[check_idx] == entry_key)
 
     def find_index_key_as_str(self, entry_key_str: Union[str, bytes]) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
@@ -500,7 +502,7 @@ class XStream:
                 return len(self._ids)
             ind, found = self.find_index(elem.value, from_left)
             if found and elem.exclusive:
-                ind += 1
+                ind += 1 if from_left else -1
             return ind
 
         start_ind = _find_index(start)
