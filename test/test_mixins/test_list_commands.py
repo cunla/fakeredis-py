@@ -521,6 +521,7 @@ def test_brpoplpush_multi_keys(r: redis.Redis):
     assert r.lrem("bar", -1, "two") == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO Should this be supported?
 def test_brpoplpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     r.rpush("list", "element")
@@ -654,6 +655,7 @@ def test_lpos(r: redis.Redis):
     assert r.lpos("a", "c", count=0, maxlen=7, rank=2) == [6]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.min_server("7")
 def test_blmpop(r: redis.Redis):
     r.rpush("a", "1", "2", "3", "4", "5")
@@ -666,6 +668,7 @@ def test_blmpop(r: redis.Redis):
     assert r.blmpop(1, "2", "foo", "bar", direction="RIGHT") is None
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.min_server("7")
 def test_lmpop(r: redis.Redis):
     r.rpush("foo", "1", "2", "3", "4", "5")

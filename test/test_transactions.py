@@ -5,7 +5,7 @@ import redis
 import redis.client
 
 import fakeredis
-from .. import testtools
+from . import testtools
 
 
 def test_multiple_successful_watch_calls(r: redis.Redis):

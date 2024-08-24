@@ -1,4 +1,4 @@
-from typing import Callable, Union
+from typing import Callable, Tuple, Union, Optional
 
 import pytest
 import pytest_asyncio
@@ -18,22 +18,26 @@ def _check_lua_module_supported() -> bool:
 
 
 @pytest_asyncio.fixture(scope="session")
-def real_redis_version() -> Union[None, str]:
+def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
         client = redis.StrictRedis("localhost", port=6380, db=2)
-        server_version = client.info()["redis_version"]
-        return server_version
+        client_info = client.info()
+        server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
+        server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
+        server_version = _create_version(server_version) or (7,)
+        return server_type, server_version
     except redis.ConnectionError:
-        return None
+        pytest.exit("Redis is not running")
+        return "redis", (6,)
     finally:
         if hasattr(client, "close"):
             client.close()  # Absent in older versions of redis-py
 
 
 @pytest_asyncio.fixture(name="fake_server")
-def _fake_server(request):
+def _fake_server(request) -> fakeredis.FakeServer:
     min_server_marker = request.node.get_closest_marker("min_server")
     server_version = min_server_marker.args[0] if min_server_marker else "6.2"
     server = fakeredis.FakeServer(version=server_version)
@@ -70,10 +74,12 @@ def _marker_version_value(request, marker_name: str):
 )
 def _create_redis(request) -> Callable[[int], redis.Redis]:
     cls_name = request.param
-    server_version = request.getfixturevalue("real_redis_version")
+    server_type, server_version = request.getfixturevalue("real_redis_version")
     if not cls_name.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
-    server_version = _create_version(server_version) or (6,)
+    unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
+    if unsupported_server_types and server_type in unsupported_server_types.args:
+        pytest.skip(f"Server type {server_type} is not supported")
     min_server = _marker_version_value(request, "min_server")
     max_server = _marker_version_value(request, "max_server")
     if server_version < min_server:
@@ -103,10 +109,12 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
     params=[pytest.param("fake", marks=pytest.mark.fake), pytest.param("real", marks=pytest.mark.real)],
 )
 async def _req_aioredis2(request) -> redis.asyncio.Redis:
-    server_version = request.getfixturevalue("real_redis_version")
+    server_type, server_version = request.getfixturevalue("real_redis_version")
     if request.param != "fake" and not server_version:
         pytest.skip("Redis is not running")
-    server_version = _create_version(server_version) or (6,)
+    unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
+    if unsupported_server_types and server_type in unsupported_server_types.args:
+        pytest.skip(f"Server type {server_type} is not supported")
     min_server_marker = _marker_version_value(request, "min_server")
     max_server_marker = _marker_version_value(request, "max_server")
     if server_version < min_server_marker:
@@ -117,6 +125,7 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
+    fake_server: Optional[fakeredis.FakeServer]
     if request.param == "fake":
         fake_server = request.getfixturevalue("fake_server")
         ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules)

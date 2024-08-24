@@ -149,6 +149,7 @@ def test_geodist_missing_one_member(r: redis.Redis):
     assert r.geodist("barcelona", "place1", "missing_member", "km") is None
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize(
     "long,lat,radius,extra,expected",
     [
@@ -172,6 +173,7 @@ def test_georadius(r: redis.Redis, long: float, lat: float, radius: float, extra
     assert r.georadius("barcelona", long, lat, radius, **extra) == expected
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize(
     "member,radius,extra,expected",
     [
@@ -196,6 +198,7 @@ def test_georadiusbymember(r: redis.Redis, member: str, radius: float, extra: Di
     assert r.zcard("extract") == len(expected)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_with(r: redis.Redis):
     values = (
         2.1909389952632,
@@ -240,6 +243,7 @@ def test_georadius_with(r: redis.Redis):
     )
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_count(r: redis.Redis):
     values = (
         2.1909389952632,

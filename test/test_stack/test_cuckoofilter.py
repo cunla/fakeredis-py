@@ -4,6 +4,7 @@ import redis
 cuckoofilters_tests = pytest.importorskip("probables")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_cf_add_and_insert(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
@@ -23,6 +24,7 @@ def test_cf_add_and_insert(r: redis.Redis):
     assert info.get("filterNum") == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_cf_exists_and_del(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")

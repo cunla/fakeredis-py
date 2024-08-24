@@ -9,11 +9,15 @@ def intlist(obj):
     return [int(v) for v in obj]
 
 
-def test_create(r: redis.Redis):
+def test_create_bf(r: redis.Redis):
     """Test CREATE/RESERVE calls"""
     assert r.bf().create("bloom", 0.01, 1000)
     assert r.bf().create("bloom_e", 0.01, 1000, expansion=1)
     assert r.bf().create("bloom_ns", 0.01, 1000, noScale=True)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_create_cf(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().create("cuckoo_e", 1000, expansion=1)
     assert r.cf().create("cuckoo_bs", 1000, bucket_size=4)
@@ -42,6 +46,7 @@ def test_bf_add(r: redis.Redis):
     assert [1, 0] == intlist(r.bf().mexists("bloom", "foo", "noexist"))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_insert(r: redis.Redis):
     assert r.bf().create("bloom", 0.01, 1000)
     assert [1] == intlist(r.bf().insert("bloom", ["foo"]))
@@ -57,6 +62,7 @@ def test_bf_insert(r: redis.Redis):
     assert 1 == info.get("filterNum")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_scandump_and_loadchunk(r: redis.Redis):
     r.bf().create("myBloom", "0.0001", "1000")
 
@@ -92,6 +98,7 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
         assert r.bf().exists("myBloom1", x), f"{x} not in filter"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_info(r: redis.Redis):
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
@@ -106,6 +113,7 @@ def test_bf_info(r: redis.Redis):
     assert info.insertedNum == 0
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_card(r: redis.Redis):
     # return 0 if the key does not exist
     assert r.bf().card("not_exist") == 0

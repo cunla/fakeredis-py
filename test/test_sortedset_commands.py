@@ -867,6 +867,7 @@ def test_zunionstore_nan_to_zero_ordering(r: redis.Redis):
     assert r.zscore("baz", "e1") == 0.0
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
 def test_zunionstore_mixed_set_types(r: redis.Redis):
     # No score, redis will use 1.0.
     r.sadd("foo", "one")
@@ -887,6 +888,7 @@ def test_zunionstore_badkey(r: redis.Redis):
     assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
 def test_zunionstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     with pytest.raises(redis.ResponseError):
@@ -903,6 +905,7 @@ def test_zinterstore(r: redis.Redis):
     assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"two", 4)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_zinterstore_mixed_set_types(r: redis.Redis):
     r.sadd("foo", "one")
     r.sadd("foo", "two")
@@ -934,6 +937,7 @@ def test_zinterstore_nokey(r: redis.Redis):
         r.zinterstore("baz", [], aggregate="MAX")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO causes a crash!
 def test_zinterstore_nan_to_zero(r: redis.Redis):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
@@ -946,6 +950,7 @@ def test_zunionstore_nokey(r: redis.Redis):
         r.zunionstore("baz", [], aggregate="MAX")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO Hang server
 def test_zinterstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     with pytest.raises(redis.ResponseError):

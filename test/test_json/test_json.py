@@ -435,14 +435,7 @@ def test_decode_response_disabaled_null(r: redis.Redis):
 
 
 def test_json_get_jset(r: redis.Redis):
-    assert (
-        r.json().set(
-            "foo",
-            Path.root_path(),
-            "bar",
-        )
-        == 1
-    )
+    assert r.json().set("foo", Path.root_path(), "bar") == 1
     assert "bar" == r.json().get("foo")
     assert r.json().get("baz") is None
     assert 1 == r.json().delete("foo")
@@ -509,19 +502,9 @@ def test_set_path(r: redis.Redis):
 
 
 def test_type(r: redis.Redis):
-    r.json().set(
-        "1",
-        Path.root_path(),
-        1,
-    )
+    r.json().set("1", Path.root_path(), 1)
 
-    assert (
-        r.json().type(
-            "1",
-            Path.root_path(),
-        )
-        == b"integer"
-    )
+    assert r.json().type("1", Path.root_path()) == b"integer"
     assert r.json().type("1") == b"integer"  # noqa: E721
 
     meta_data = {
@@ -553,15 +536,8 @@ def test_objlen(r: redis.Redis):
 
     obj = {"foo": "bar", "baz": "qaz"}
 
-    r.json().set(
-        "obj",
-        Path.root_path(),
-        obj,
-    )
-    assert len(obj) == r.json().objlen(
-        "obj",
-        Path.root_path(),
-    )
+    r.json().set("obj", Path.root_path(), obj)
+    assert len(obj) == r.json().objlen("obj", Path.root_path())
 
     r.json().set("obj", Path.root_path(), obj)
     assert len(obj) == r.json().objlen("obj")

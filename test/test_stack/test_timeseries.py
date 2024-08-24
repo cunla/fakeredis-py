@@ -10,6 +10,7 @@ from fakeredis import _msgs as msgs
 timeseries_tests = pytest.importorskip("probables")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)
@@ -17,6 +18,7 @@ def test_add_ts_close(r: redis.Redis):
     assert abs(ts2 - ts1) < 5
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_key_exist(r: redis.Redis):
     assert r.ts().create(1)
     with pytest.raises(redis.ResponseError) as e:
@@ -24,12 +26,14 @@ def test_create_key_exist(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_KEY_EXISTS
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_bad_duplicate_policy(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as e:
         assert r.ts().create(1, duplicate_policy="bad")
     assert str(e.value) == msgs.TIMESERIES_INVALID_DUPLICATE_POLICY
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create(r: redis.Redis):
     assert r.ts().create(1)
     assert r.ts().create(2, retention_msecs=5)
@@ -45,6 +49,7 @@ def test_create(r: redis.Redis):
     assert 128 == info.get("chunk_size")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_duplicate_policy(r: redis.Redis):
     # Test for duplicate policy
     for duplicate_policy in ["block", "last", "first", "min", "max"]:
@@ -54,6 +59,7 @@ def test_create_duplicate_policy(r: redis.Redis):
         assert duplicate_policy == info.get("duplicate_policy")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_alter(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
@@ -74,6 +80,7 @@ def test_alter(r: redis.Redis):
     assert str(e.value) == "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_alter_diplicate_policy(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
@@ -84,6 +91,7 @@ def test_alter_diplicate_policy(r: redis.Redis):
     assert "min" == info.get("duplicate_policy")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_add(r: redis.Redis):
     assert 1 == r.ts().add(1, 1, 1)
     assert 2 == r.ts().add(2, 2, 3, retention_msecs=10)
@@ -100,6 +108,7 @@ def test_add(r: redis.Redis):
     assert 128 == info.get("chunk_size")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_add_before_retention(r: redis.Redis):
     r.ts().create("time-serie-1", retention_msecs=1000)
     assert r.ts().add("time-serie-1", 10000, 10.0)
@@ -108,6 +117,7 @@ def test_add_before_retention(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_add_before_last(r: redis.Redis):
     r.ts().create("time-serie-1", retention_msecs=1000)
     assert r.ts().add("time-serie-1", 100, 10.0) == 100
@@ -122,6 +132,7 @@ def test_add_before_last(r: redis.Redis):
     )
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_add_duplicate_policy(r: redis.Redis):
     # Test for duplicate policy BLOCK
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)
@@ -150,11 +161,13 @@ def test_add_duplicate_policy(r: redis.Redis):
     assert 5.0 == r.ts().get("time-serie-add-ooo-min")[1]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_madd(r: redis.Redis):
     r.ts().create("a")
     assert [1, 2, 3] == r.ts().madd([("a", 1, 5), ("a", 2, 10), ("a", 3, 15)])
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_incrby_decrby(r: redis.Redis):
     for _ in range(100):
         assert r.ts().incrby(1, 1)
@@ -184,6 +197,7 @@ def test_incrby_decrby(r: redis.Redis):
     assert 128 == info.get("chunk_size")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_and_delete_rule(r: redis.Redis):
     # test rule creation
     time = 100
@@ -208,6 +222,7 @@ def test_create_and_delete_rule(r: redis.Redis):
     assert info2["source_key"] is None
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_del_range(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as e:
         r.ts().delete("test", 0, 100)
@@ -222,6 +237,7 @@ def test_del_range(r: redis.Redis):
     assert r.ts().delete(1, 60, 3) == 0
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_range(r: redis.Redis):
     for i in range(100):
         r.ts().add(1, i, i % 7)
@@ -238,6 +254,7 @@ def test_range(r: redis.Redis):
     # assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)) TODO
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_range_advanced(r: redis.Redis):
     for i in range(100):
         r.ts().add(1, i, i % 7)
@@ -260,6 +277,7 @@ def test_range_advanced(r: redis.Redis):
     assert res == [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_range_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -277,6 +295,7 @@ def test_range_latest(r: redis.Redis):
     assert timeseries.range("t2", 0, 9) == [(0, 4.0)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_range_bucket_timestamp(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -301,6 +320,7 @@ def test_range_bucket_timestamp(r: redis.Redis):
     ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_range_empty(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -331,6 +351,7 @@ def test_range_empty(r: redis.Redis):
     assert res == resp2_expected
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_rev_range(r: redis.Redis):
     for i in range(100):
         r.ts().add(1, i, i % 7)
@@ -359,6 +380,7 @@ def test_rev_range(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_revrange_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -374,6 +396,7 @@ def test_revrange_latest(r: redis.Redis):
     assert timeseries.revrange("t2", 0, 9, latest=True) == [(0, 4.0)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_revrange_bucket_timestamp(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -398,6 +421,7 @@ def test_revrange_bucket_timestamp(r: redis.Redis):
     ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_revrange_empty(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -427,6 +451,7 @@ def test_revrange_empty(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mrange(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
@@ -454,6 +479,7 @@ def test_mrange(r: redis.Redis):
     assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_multi_range_advanced(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
@@ -510,6 +536,7 @@ def test_multi_range_advanced(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mrange_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -534,6 +561,7 @@ def test_mrange_latest(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_multi_reverse_range(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
@@ -608,6 +636,7 @@ def test_multi_reverse_range(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mrevrange_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -631,6 +660,7 @@ def test_mrevrange_latest(r: redis.Redis):
     ]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_get(r: redis.Redis):
     name = "test"
     r.ts().create(name)
@@ -642,6 +672,7 @@ def test_get(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_get_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -655,6 +686,7 @@ def test_get_latest(r: redis.Redis):
     assert timeseries.get("t2", latest=True) == (0, 4.0)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mget_errors(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
@@ -667,6 +699,7 @@ def test_mget_errors(r: redis.Redis):
     assert str(e.value) == "TSDB: failed parsing labels"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mget(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
@@ -689,6 +722,7 @@ def test_mget(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_mget_latest(r: redis.Redis):
     timeseries = r.ts()
     timeseries.create("t1")
@@ -704,6 +738,7 @@ def test_mget_latest(r: redis.Redis):
     assert res == [{"t2": [{}, 0, 4.0]}]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_info(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
@@ -711,6 +746,7 @@ def test_info(r: redis.Redis):
     assert info["labels"]["currentLabel"] == "currentData"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
@@ -722,6 +758,7 @@ def testInfoDuplicatePolicy(r: redis.Redis):
 
 
 @pytest.mark.onlynoncluster
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_query_index(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
@@ -730,6 +767,7 @@ def test_query_index(r: redis.Redis):
     assert r.ts().queryindex(["Taste=That"]) == [2]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_pipeline(r: redis.Redis):
     pipeline = r.ts().pipeline()
     pipeline.create("with_pipeline")
@@ -744,6 +782,7 @@ def test_pipeline(r: redis.Redis):
     assert r.ts().get("with_pipeline")[1] == 99 * 1.1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_uncompressed(r: redis.Redis):
     r.ts().create("compressed")
     r.ts().create("uncompressed", uncompressed=True)
@@ -753,6 +792,7 @@ def test_uncompressed(r: redis.Redis):
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_rule_green(r: redis.Redis):
     r.ts().create(1)
     r.ts().create(2)
@@ -768,6 +808,7 @@ def test_create_rule_green(r: redis.Redis):
     assert info["source_key"] == b"1"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_rule_bad_aggregator(r: redis.Redis):
     r.ts().create(1)
     r.ts().create(2)
@@ -776,12 +817,14 @@ def test_create_rule_bad_aggregator(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_BAD_AGGREGATION_TYPE
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_rule_key_not_exist(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as e:
         r.ts().createrule(1, 2, "avg", 100)
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
     r.ts().create(1)
     r.ts().create(2)

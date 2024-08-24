@@ -24,6 +24,7 @@ def test_bf_madd(r: redis.Redis):
         r.bf().add("key1", "v")
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_card(r: redis.Redis):
     assert r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
     assert r.bf().card("key") == 3
@@ -69,6 +70,7 @@ def test_bf_reserve(r: redis.Redis):
         assert r.bf().reserve("bloom", 0.01, 1000)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_insert(r: redis.Redis):
     assert r.bf().create("bloom", 0.01, 1000)
     assert r.bf().insert("bloom", ["foo"]) == [1]
