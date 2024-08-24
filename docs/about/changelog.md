@@ -9,6 +9,16 @@ description: Change log of all fakeredis releases
 
 - Support for TIME SERIES commands (no support for align arguments on some commands) #310
 
+### 🐛 Bug Fixes
+
+- fix:xrevrange to work with exclusive ranges #319
+
+### 🧰 Maintenance
+
+- Update all dependencies, particularly pytest to v8
+- Add tests against Dragonfly server #318
+- Implement decocator `unsupported_server_types` to enable excluding tests from running against certain server types #318
+
 ## v2.23.5
 
 ### 🐛 Bug Fixes

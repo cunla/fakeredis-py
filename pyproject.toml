@@ -9,7 +9,7 @@ packages = [
     { include = "fakeredis" },
     { include = "LICENSE" },
 ]
-version = "2.23.6"
+version = "2.24.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", "RedisBloom", "tests", "redis-stack"]
