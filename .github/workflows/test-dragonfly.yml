@@ -2,12 +2,8 @@
 name: Test Dragonfly
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch:
+
 
 concurrency:
   group: dragon-fly-${{ github.workflow }}-${{ github.ref }}
@@ -61,7 +57,10 @@ jobs:
 
       - name: Test without coverage
         run: |
-          poetry run pytest test/${{ matrix.tests }} --html=report-${{ matrix.tests }}.html --self-contained-html -v -m "not slow"
+          poetry run pytest test/${{ matrix.tests }} \
+          --html=report-${{ matrix.tests }}.html \
+          --self-contained-html \
+          -v
       - name: Upload Tests Result
         if: always()
         uses: actions/upload-artifact@v4

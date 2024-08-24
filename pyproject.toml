@@ -9,7 +9,7 @@ packages = [
     { include = "fakeredis" },
     { include = "LICENSE" },
 ]
-version = "2.23.5"
+version = "2.23.6"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", "RedisBloom", "tests", "redis-stack"]
@@ -66,14 +66,14 @@ coverage = "^7"
 black = { version = "^24.4.2", python = ">=3.8.1" }
 flake8 = { version = "^7", python = ">=3.8.1" }
 flake8-pyproject = { version = "^1", python = ">=3.8.1" }
-hypothesis = "^6.70"
 mypy = { version = "^1.10", python = ">=3.8.1" }
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.4"
+pytest = { version = "^8.3", python = ">=3.8.1" }
+hypothesis = { version = "^6.111", python = ">=3.8.1" }
 pytest-timeout = "^2.3.1"
-pytest-asyncio = "^0.21"
-pytest-cov = "^4.1"
+pytest-asyncio =  { version = "^0.24", python = ">=3.8.1" }
+pytest-cov = { version = "^5.0", python = ">=3.8.1" }
 pytest-mock = { version = "^3.14", python = ">=3.8.1" }
 pytest-html = { version = "^4.1", python = ">=3.8.1" }
 
@@ -95,6 +95,7 @@ markers = [
     "min_server",
     "max_server",
     "decode_responses",
+    "unsupported_server_types",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true
