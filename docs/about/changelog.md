@@ -3,6 +3,12 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
+## v2.24.1
+
+### 🐛 Bug Fixes
+
+- Fix license file added to site-packages #320
+
 ## v2.24.0
 
 ### 🚀 Features
@@ -17,7 +23,8 @@ description: Change log of all fakeredis releases
 
 - Update all dependencies, particularly pytest to v8
 - Add tests against Dragonfly server #318
-- Implement decocator `unsupported_server_types` to enable excluding tests from running against certain server types #318
+- Implement decocator `unsupported_server_types` to enable excluding tests from running against certain server types
+  #318
 
 ## v2.23.5
 
