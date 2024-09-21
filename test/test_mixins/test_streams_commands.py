@@ -265,8 +265,8 @@ def get_stream_message(client, stream, message_id):
 def test_xread_multiple_streams_blocking(r: redis.Redis):
     stream1 = "stream1"
     stream2 = "stream2"
-    m1 = r.xadd(stream1, {"foo": "bar"})
-    m2 = r.xadd(stream2, {"bing": "baz"})
+    r.xadd(stream1, {"foo": "bar"})
+    r.xadd(stream2, {"bing": "baz"})
 
     res = r.xread(streams={stream1: 0, stream2: 0}, block=10)
     assert len(res) == 2
