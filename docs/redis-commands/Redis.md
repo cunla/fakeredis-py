@@ -883,7 +883,7 @@ Stores the union of multiple sorted sets in a key.
 
 
 
-## `generic` commands (20/33 implemented)
+## `generic` commands (20/26 implemented)
 
 ### [DEL](https://redis.io/commands/del/)
 
@@ -977,30 +977,6 @@ Copies the value of a key to a new key.
 
 Returns the expiration time of a key as a Unix timestamp.
 
-#### [MIGRATE](https://redis.io/commands/migrate/) <small>(not implemented)</small>
-
-Atomically transfers a key from one Redis instance to another.
-
-#### [OBJECT](https://redis.io/commands/object/) <small>(not implemented)</small>
-
-A container for object introspection commands.
-
-#### [OBJECT ENCODING](https://redis.io/commands/object-encoding/) <small>(not implemented)</small>
-
-Returns the internal encoding of a Redis object.
-
-#### [OBJECT FREQ](https://redis.io/commands/object-freq/) <small>(not implemented)</small>
-
-Returns the logarithmic access frequency counter of a Redis object.
-
-#### [OBJECT IDLETIME](https://redis.io/commands/object-idletime/) <small>(not implemented)</small>
-
-Returns the time since the last access to a Redis object.
-
-#### [OBJECT REFCOUNT](https://redis.io/commands/object-refcount/) <small>(not implemented)</small>
-
-Returns the reference count of a value of a key.
-
 #### [PEXPIRETIME](https://redis.io/commands/pexpiretime/) <small>(not implemented)</small>
 
 Returns the expiration time of a key as a Unix milliseconds timestamp.
@@ -1008,10 +984,6 @@ Returns the expiration time of a key as a Unix milliseconds timestamp.
 #### [SORT_RO](https://redis.io/commands/sort_ro/) <small>(not implemented)</small>
 
 Returns the sorted elements of a list, a set, or a sorted set.
-
-#### [TOUCH](https://redis.io/commands/touch/) <small>(not implemented)</small>
-
-Returns the number of existing keys out of those specified after updating the time they were last accessed.
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
@@ -1185,7 +1157,7 @@ Queries a geospatial index for members inside an area of a box or a circle, opti
 
 
 
-## `hash` commands (16/16 implemented)
+## `hash` commands (16/27 implemented)
 
 ### [HDEL](https://redis.io/commands/hdel/)
 
@@ -1251,6 +1223,53 @@ Returns the length of the value of a field.
 
 Returns all values in a hash.
 
+
+### Unsupported hash commands 
+> To implement support for a command, see [here](../../guides/implement-command/) 
+
+#### [HEXPIRE](https://redis.io/commands/hexpire/) <small>(not implemented)</small>
+
+Set expiry for hash field using relative time to expire (seconds)
+
+#### [HEXPIREAT](https://redis.io/commands/hexpireat/) <small>(not implemented)</small>
+
+Set expiry for hash field using an absolute Unix timestamp (seconds)
+
+#### [HEXPIRETIME](https://redis.io/commands/hexpiretime/) <small>(not implemented)</small>
+
+Returns the expiration time of a hash field as a Unix timestamp, in seconds.
+
+#### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
+
+For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
+
+#### [HPERSIST](https://redis.io/commands/hpersist/) <small>(not implemented)</small>
+
+Removes the expiration time for each specified field
+
+#### [HPEXPIRE](https://redis.io/commands/hpexpire/) <small>(not implemented)</small>
+
+Set expiry for hash field using relative time to expire (milliseconds)
+
+#### [HPEXPIREAT](https://redis.io/commands/hpexpireat/) <small>(not implemented)</small>
+
+Set expiry for hash field using an absolute Unix timestamp (milliseconds)
+
+#### [HPEXPIRETIME](https://redis.io/commands/hpexpiretime/) <small>(not implemented)</small>
+
+Returns the expiration time of a hash field as a Unix timestamp, in msec.
+
+#### [HPTTL](https://redis.io/commands/hpttl/) <small>(not implemented)</small>
+
+Returns the TTL in milliseconds of a hash field.
+
+#### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
+
+For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
+
+#### [HTTL](https://redis.io/commands/httl/) <small>(not implemented)</small>
+
+Returns the TTL in seconds of a hash field.
 
 
 ## `hyperloglog` commands (3/3 implemented)

@@ -11,12 +11,14 @@ import requests
 from fakeredis._commands import SUPPORTED_COMMANDS
 
 IGNORE_COMMANDS = {
-    'PUBSUB HELP', 'OBJECT HELP', 'FUNCTION HELP', 'SCRIPT HELP',
+    'PUBSUB HELP', 'FUNCTION HELP', 'SCRIPT HELP',
     'JSON.DEBUG', 'JSON.DEBUG HELP', 'JSON.DEBUG MEMORY', 'JSON.RESP',
     'XINFO', 'XINFO HELP', 'XGROUP', 'XGROUP HELP', 'XSETID',
     'ACL HELP', 'COMMAND HELP', 'CONFIG HELP', 'DEBUG',
     'MEMORY HELP', 'MODULE HELP', 'CLIENT HELP',
     'PFDEBUG', 'PFSELFTEST', 'BITFIELD_RO',
+    'OBJECT', 'OBJECT HELP', 'OBJECT IDLETIME', 'OBJECT REFCOUNT', 'OBJECT FREQ', 'OBJECT ENCODING',
+    'MIGRATE', 'TOUCH',
 }
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -32,11 +34,9 @@ class CommandsMeta:
 
 METADATA = [
     CommandsMeta('.commands.json', 'Redis', 'Redis',
-                 'https://raw.githubusercontent.com/redis/redis-doc/master/commands.json', ),
+                 'https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json', ),
     CommandsMeta('.json.commands.json', 'RedisJson', 'JSON',
                  'https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json', ),
-    CommandsMeta('.graph.commands.json', 'RedisGraph', 'Graph',
-                 'https://raw.githubusercontent.com/RedisGraph/RedisGraph/master/commands.json', ),
     CommandsMeta('.ts.commands.json', 'RedisTimeSeries', 'Time Series',
                  'https://raw.githubusercontent.com/RedisTimeSeries/RedisTimeSeries/master/commands.json', ),
     CommandsMeta('.ft.commands.json', 'RedisSearch', 'Search',

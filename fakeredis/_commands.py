@@ -166,6 +166,25 @@ class Hash(dict):  # type:ignore
     def items(self) -> Iterable[Tuple[bytes, Any]]:
         return [(k, v) for k, v in super().items() if not self._is_expired(k)]
 
+    def __init__(self):
+        super().__init__()
+        self.expirations: Dict[bytes, int] = {}
+
+    def _check_expire(self, key: bytes) -> None:
+        if key in self.expirations and self.expirations[key] < int(time.time()):
+            del self[key]
+            del self.expirations[key]
+
+    def __get__(self, key: bytes) -> Any:
+        self._check_expire(key)
+        if key in self:
+            return self[key]
+        return self.__get__(key)
+
+    def __contains__(self, item):
+        self._check_expire(item)
+        return super().__contains__(item)
+
 
 class RedisType:
     @classmethod

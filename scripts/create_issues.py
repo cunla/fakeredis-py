@@ -8,6 +8,7 @@ To run this:
 import json
 import os
 
+import click
 import requests
 from dotenv import load_dotenv
 from github import Github
@@ -21,7 +22,7 @@ THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 IGNORE_GROUPS = {
     'suggestion', 'tdigest', 'scripting', 'cf',
     'graph', 'timeseries', 'connection',
-    'server', 'generic', 'cms', 'cluster', 'search',
+    'server', 'cms', 'cluster', 'search', 'hash'
 }
 
 
@@ -60,8 +61,11 @@ def get_unimplemented_and_implemented_commands() -> tuple[dict[str, list[str]], 
     groups = sorted(implemented_dict.keys(), key=lambda x: len(unimplemented_dict[x]))
     for group in groups:
         unimplemented_count = len(unimplemented_dict[group])
+        if unimplemented_count == 0:
+            click.secho(f'{group} has all commands implemented', fg='green')
+            continue
         total_count = len(implemented_dict.get(group)) + unimplemented_count
-        print(f'{group} has {unimplemented_count}/{total_count} unimplemented commands')
+        click.secho(f'{group} has {unimplemented_count}/{total_count} unimplemented commands')
     return unimplemented_dict, implemented_dict
 
 
@@ -78,7 +82,7 @@ class GithubData:
 
     def create_label(self, name):
         if self.dry:
-            print(f'Creating label "{name}"')
+            click.secho(f'Creating label "{name}"', fg='cyan')
         else:
             self.gh_repo.create_label(name, "f29513")
         self.labels.add(name)
@@ -111,7 +115,7 @@ def created_issues_for_commands(commands: dict, unimplemented: dict):
                 continue
             if len(unimplemented[group]) == 0:
                 continue
-            print(f'### Creating issues for {group} commands')
+            click.secho(f'### Creating issues for {group} commands', fg='green')
             for cmd in unimplemented[group]:
                 if cmd.upper() in IGNORE_COMMANDS:
                     continue
