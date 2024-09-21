@@ -62,7 +62,6 @@ nav:
       - Redis commands: redis-commands/Redis.md
       - RedisJSON commands: redis-commands/RedisJson.md
       - Search commands: redis-commands/RedisSearch.md
-      - Graph commands: redis-commands/RedisGraph.md
       - Time Series commands: redis-commands/RedisTimeSeries.md
       - Probabilistic commands: redis-commands/RedisBloom.md
   - Guides:
