@@ -238,3 +238,10 @@ class FakeSelector(object):
     @staticmethod
     def check_is_ready_for_command(_: Any) -> bool:
         return True
+
+
+class HexpireResult(enum.IntEnum):
+    NO_SUCH_KEY = -2
+    CONDITION_UNMET = 0
+    SUCCESS = 1
+    EXPIRED_IMMEDIATELY = 2

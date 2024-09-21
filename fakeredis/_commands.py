@@ -8,10 +8,10 @@ import math
 import re
 import sys
 import time
-from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
+from typing import Iterable, Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError, Database
+from ._helpers import null_terminate, SimpleError, Database, HexpireResult
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature
@@ -110,6 +110,61 @@ class CommandItem:
 class Hash(dict):  # type:ignore
     DECODE_ERROR = msgs.INVALID_HASH_MSG
     redis_type = b"hash"
+    _expirations: Dict[bytes, int | float]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._expirations = {}
+
+    def _prune_key_with_expiration(self, key: bytes) -> None:
+        self.pop(key, None)
+        self._expirations.pop(key, None)
+
+    def _is_expired(self, key: bytes) -> bool:
+        if self._expirations.get(key, 0) < time.time():
+            self._prune_key_with_expiration(key)
+            return True
+        return False
+    
+    def _set_expiration(self, key: bytes, when: Union[int, float]) -> HexpireResult:
+        now = time.time()
+        if isinstance(when, int):
+            now = int(now)
+        if when <= now:
+            self._prune_key_with_expiration(key)
+            return HexpireResult.EXPIRED_IMMEDIATELY
+        self._expirations[key] = when
+        return HexpireResult.SUCCESS
+    
+    def _clear_expiration(self, key: bytes) -> bool:
+        result = self._expirations.pop(key, None)
+        return result is not None
+    
+    def _get_expiration(self, key: bytes) -> Union[None, int, float]:
+        if not self._is_expired(key):
+            return self._expirations.get(key, None)
+        return None
+
+    def __get__(self, key: bytes) -> Any:
+        self._is_expired(key)
+        return super().__get__(key)
+
+    def __contains__(self, key: bytes) -> bool:
+        self._is_expired(key)
+        return super().__contains__(key)
+
+    def __set__(self, key: bytes, value: Any) -> None:
+        self._expirations.pop(key, None)
+        super().__set__(key, value)
+
+    def keys(self) -> Iterable[bytes]:
+        return [k for k in super().keys() if not self._is_expired(k)]
+
+    def values(self) -> Iterable[Any]:
+        return [v for k, v in self.items()]
+
+    def items(self) -> Iterable[Tuple[bytes, Any]]:
+        return [(k, v) for k, v in super().items() if not self._is_expired(k)]
 
 
 class RedisType:
