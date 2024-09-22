@@ -8,6 +8,7 @@ import redis
 import redis.client
 from redis.exceptions import ResponseError
 
+from fakeredis._helpers import current_time
 from ..testtools import raw_command
 
 
@@ -245,7 +246,7 @@ def test_set_exat(r: redis.Redis):
 
 @pytest.mark.min_server("6.2")
 def test_set_pxat(r: redis.Redis):
-    curr_time = int(time.time() * 1000)
+    curr_time = current_time()
     assert r.set("foo", "bar", pxat=curr_time + 100) is True
     assert r.get("foo") == b"bar"
     time.sleep(0.15)

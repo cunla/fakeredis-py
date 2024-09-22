@@ -9,7 +9,7 @@ from redis.connection import DefaultParser
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature, CommandItem
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Item, Signature, CommandItem, Hash
 from ._helpers import (
     SimpleError,
     valid_response_type,
@@ -383,7 +383,7 @@ class BaseFakeSocket:
             return SimpleString(b"set")
         elif isinstance(key.value, ZSet):
             return SimpleString(b"zset")
-        elif isinstance(key.value, dict):
+        elif isinstance(key.value, Hash):
             return SimpleString(b"hash")
         elif isinstance(key.value, XStream):
             return SimpleString(b"stream")

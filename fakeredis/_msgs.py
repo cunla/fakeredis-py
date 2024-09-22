@@ -113,6 +113,7 @@ TIMESERIES_DUPLICATE_POLICY_BLOCK = (
     "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
 )
 TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
+HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
 
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts

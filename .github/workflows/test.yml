@@ -55,7 +55,7 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image: [ "redis:6.2.14", "redis:7.0.15", "redis:7.2.4" ]
+        redis-image: [ "redis:6.2.14", "redis:7.0.15", "redis:7.4.0" ]
         python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
         redis-py: [ "4.3.6", "4.6.0", "5.0.8", "5.1.0b7" ]
         include:
@@ -98,6 +98,10 @@ jobs:
           python -m pip --quiet install poetry
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
           poetry install
+          # if python version is below 3.10 and redis-py is 5.0.9 - change it to 5.0.8
+          if [[ ${{ matrix.python-version }} != "3.10" && ${{ matrix.redis-py }} == "5.0.9" ]]; then
+              poetry run pip install redis==5.0.8
+          fi
           poetry run pip install redis==${{ matrix.redis-py }}
       - name: Install json
         if: ${{ matrix.extra }}

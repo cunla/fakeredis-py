@@ -1,3 +1,5 @@
+from typing import Optional, Dict
+
 import pytest
 import redis
 import redis.client
