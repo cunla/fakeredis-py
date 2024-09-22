@@ -7,10 +7,10 @@ import redis.client
 
 from test import testtools
 
+pytest.mark.min_server("7.4")
 testtools.run_test_if_redispy_ver("gte", "5")
 
 
-@pytest.mark.min_server("7.4")
 @pytest.mark.parametrize(
     "expiration_seconds,preset_expiration,flags,expected_result",
     [
