@@ -418,8 +418,37 @@ class TestHash(BaseTest):
         | commands(st.just("hsetnx"), keys, fields, values)
         | commands(st.just("hstrlen"), keys, fields)
     )
+    hash_expire_commands = (
+        commands(st.just("hpersist"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+        | commands(st.just("hexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+        | commands(st.just("hpexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+        | commands(
+            st.just("hexpire"),
+            keys,
+            expires_seconds,
+            st.none() | st.just("nx"),
+            st.none() | st.just("xx"),
+            st.none() | st.just("gt"),
+            st.none() | st.just("lt"),
+            st.just("fields"),
+            st.just(2),
+            st.lists(fields, min_size=2, max_size=2),
+        )
+        | commands(
+            st.just("hpexpire"),
+            keys,
+            expires_ms,
+            st.none() | st.just("nx"),
+            st.none() | st.just("xx"),
+            st.none() | st.just("gt"),
+            st.none() | st.just("lt"),
+            st.just("fields"),
+            st.just(2),
+            st.lists(fields, min_size=2, max_size=2),
+        )
+    )
     create_command_strategy = commands(st.just("hset"), keys, st.lists(st.tuples(fields, values), min_size=1))
-    command_strategy = hash_commands | common_commands
+    command_strategy = hash_commands | common_commands | hash_expire_commands
 
 
 class TestList(BaseTest):
