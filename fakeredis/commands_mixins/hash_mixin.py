@@ -7,7 +7,7 @@ from typing import Callable, List, Tuple, Any, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Hash, Int, Float, CommandItem
-from fakeredis._helpers import HexpireResult
+from fakeredis._helpers import HEXPIRE_CONDITION_UNMET, HEXPIRE_NO_SUCH_KEY
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
@@ -148,10 +148,10 @@ class HashCommandsMixin:
         xx: bool = False,
         gt: bool = False,
         lt: bool = False,
-    ) -> HexpireResult:
+    ) -> int:
         hash_val: Hash = key.value
         if field not in hash_val:
-            return HexpireResult.NO_SUCH_KEY
+            return HEXPIRE_NO_SUCH_KEY
         current_expiration = hash_val._get_expiration(field)
         if isinstance(expiration, datetime.datetime):
             final_expiration = expiration.timestamp()
@@ -169,7 +169,7 @@ class HashCommandsMixin:
             or (gt and final_expiration <= current_expiration)
             or (lt and final_expiration >= current_expiration)
         ):
-            return HexpireResult.CONDITION_UNMET
+            return HEXPIRE_CONDITION_UNMET
         return hash_val._set_expiration(field, final_expiration)
 
     @command(name="HEXPIRE", fixed=(Key, Union[int, datetime.timedelta]), repeat=(bytes,))
@@ -182,7 +182,7 @@ class HashCommandsMixin:
         xx: bool = False,
         gt: bool = False,
         lt: bool = False,
-    ) -> List[HexpireResult]:
+    ) -> List[int]:
         return [self._set_key_expiration(key, field, seconds, False, nx, xx, gt, lt) for field in fields]
 
     @command(name="HPEXPIRE", fixed=(Key, Union[float, datetime.timedelta]), repeat=(bytes,))
@@ -195,7 +195,7 @@ class HashCommandsMixin:
         xx: bool = False,
         gt: bool = False,
         lt: bool = False,
-    ) -> List[HexpireResult]:
+    ) -> List[int]:
         return [self._set_key_expiration(key, field, milliseconds, True, nx, xx, gt, lt) for field in fields]
 
     @command(name="HEXPIREAT", fixed=(Key, Union[int, datetime.datetime]), repeat=(bytes,))
@@ -208,7 +208,7 @@ class HashCommandsMixin:
         xx: bool = False,
         gt: bool = False,
         lt: bool = False,
-    ) -> List[HexpireResult]:
+    ) -> List[int]:
         return [self._set_key_expiration(key, field, unix_time_seconds, False, nx, xx, gt, lt) for field in fields]
 
     @command(name="HPEXPIREAT", fixed=(Key, Union[float, datetime.datetime]), repeat=(bytes,))
@@ -221,7 +221,7 @@ class HashCommandsMixin:
         xx: bool = False,
         gt: bool = False,
         lt: bool = False,
-    ) -> List[HexpireResult]:
+    ) -> List[int]:
         return [self._set_key_expiration(key, field, unix_time_milliseconds, True, nx, xx, gt, lt) for field in fields]
 
     @command(name="HPERSIST", fixed=(Key,), repeat=(bytes,))

@@ -1,13 +1,11 @@
 import datetime
-import time
 from typing import Union
-from unittest.mock import patch
 
 import pytest
 import redis
 import redis.client
 
-from fakeredis._helpers import HexpireResult
+from fakeredis._helpers import HEXPIRE_SUCCESS, HEXPIRE_CONDITION_UNMET
 from test import testtools
 
 
@@ -320,52 +318,47 @@ def test_hrandfield(r: redis.Redis):
         testtools.raw_command(r, "HRANDFIELD", "key", 3, "WITHVALUES", 3)
 
 
-BASE_TIME = 1000.0
-
-
 @pytest.mark.min_server("7.4")
 @pytest.mark.parametrize(
     "expiration,preset_expiration,nx,xx,gt,lt,expected_result",
     [
         # No flags
-        (BASE_TIME + 100, None, False, False, False, False, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), None, False, False, False, False, HexpireResult.SUCCESS),
-        (BASE_TIME + 100, BASE_TIME + 50, False, False, False, False, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), BASE_TIME + 50, False, False, False, False, HexpireResult.SUCCESS),
+        (100, None, False, False, False, False, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), None, False, False, False, False, HEXPIRE_SUCCESS),
+        (100, 50, False, False, False, False, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), 50, False, False, False, False, HEXPIRE_SUCCESS),
         # NX
-        (BASE_TIME + 100, None, True, False, False, False, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), None, True, False, False, False, HexpireResult.SUCCESS),
-        (BASE_TIME + 100, BASE_TIME + 50, True, False, False, False, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), BASE_TIME + 50, True, False, False, False, HexpireResult.CONDITION_UNMET),
+        (100, None, True, False, False, False, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), None, True, False, False, False, HEXPIRE_SUCCESS),
+        (100, 50, True, False, False, False, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), 50, True, False, False, False, HEXPIRE_CONDITION_UNMET),
         # XX
-        (BASE_TIME + 100, None, False, True, False, False, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, True, False, False, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 50, False, True, False, False, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), BASE_TIME + 50, False, True, False, False, HexpireResult.SUCCESS),
+        (100, None, False, True, False, False, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), None, False, True, False, False, HEXPIRE_CONDITION_UNMET),
+        (100, 50, False, True, False, False, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), 50, False, True, False, False, HEXPIRE_SUCCESS),
         # GT
-        (BASE_TIME + 100, None, False, False, True, False, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, False, True, False, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 50, False, False, True, False, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), BASE_TIME + 50, False, False, True, False, HexpireResult.SUCCESS),
-        (BASE_TIME + 100, BASE_TIME + 100, False, False, True, False, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), BASE_TIME + 100, False, False, True, False, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 200, False, False, True, False, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), BASE_TIME + 200, False, False, True, False, HexpireResult.CONDITION_UNMET),
+        (100, None, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), None, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (100, 50, False, False, True, False, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), 50, False, False, True, False, HEXPIRE_SUCCESS),
+        (100, 100, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), 100, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (100, 200, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), 200, False, False, True, False, HEXPIRE_CONDITION_UNMET),
         # LT
-        (BASE_TIME + 100, None, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 50, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), BASE_TIME + 50, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 100, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), BASE_TIME + 100, False, False, False, True, HexpireResult.CONDITION_UNMET),
-        (BASE_TIME + 100, BASE_TIME + 200, False, False, False, True, HexpireResult.SUCCESS),
-        (datetime.timedelta(seconds=100), BASE_TIME + 200, False, False, False, True, HexpireResult.SUCCESS),
+        (100, None, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), None, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (100, 50, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), 50, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (100, 100, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (datetime.timedelta(seconds=100), 100, False, False, False, True, HEXPIRE_CONDITION_UNMET),
+        (100, 200, False, False, False, True, HEXPIRE_SUCCESS),
+        (datetime.timedelta(seconds=100), 200, False, False, False, True, HEXPIRE_SUCCESS),
     ],
 )
-@patch.object(time, "time", BASE_TIME)
 def test_hexpire(
     r: redis.Redis,
-    current_time: float,
     expiration: Union[int, datetime.timedelta],
     preset_expiration: Union[float, None],
     nx: bool,
@@ -376,8 +369,10 @@ def test_hexpire(
 ) -> None:
     key = "test_hash_commands"
     field = "test_hexpire"
-    r.hset(key, field)
+    r.hset(key, field, "value")
     if preset_expiration is not None:
         r.hexpire(key, preset_expiration, field)
     result = r.hexpire(key, expiration, field, nx=nx, xx=xx, gt=gt, lt=lt)
-    assert result == expected_result
+    assert result == [
+        expected_result,
+    ]

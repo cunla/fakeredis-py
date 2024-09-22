@@ -11,7 +11,7 @@ import time
 from typing import Iterable, Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError, Database, HexpireResult
+from ._helpers import null_terminate, SimpleError, Database, HEXPIRE_EXPIRED_IMMEDIATELY, HEXPIRE_SUCCESS
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature
@@ -126,15 +126,15 @@ class Hash(dict):  # type:ignore
             return True
         return False
 
-    def _set_expiration(self, key: bytes, when: Union[int, float]) -> HexpireResult:
+    def _set_expiration(self, key: bytes, when: Union[int, float]) -> int:
         now = time.time()
         if isinstance(when, int):
             now = int(now)
         if when <= now:
             self._prune_key_with_expiration(key)
-            return HexpireResult.EXPIRED_IMMEDIATELY
+            return HEXPIRE_EXPIRED_IMMEDIATELY
         self._expirations[key] = when
-        return HexpireResult.SUCCESS
+        return HEXPIRE_SUCCESS
 
     def _clear_expiration(self, key: bytes) -> bool:
         result = self._expirations.pop(key, None)
