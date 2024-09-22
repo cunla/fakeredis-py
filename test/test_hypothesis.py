@@ -351,15 +351,14 @@ class BaseTest:
 
     command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
+    command_strategy_redis7 = st.nothing()
 
     @pytest.mark.slow
     def test(self):
         class Machine(CommonMachine):
             create_command_strategy = self.create_command_strategy
             command_strategy = (
-                self.command_strategy
-                if hasattr(self, "command_strategy_redis7")
-                else (self.command_strategy | self.command_strategy_redis7)
+                self.command_strategy | self.command_strategy_redis7 if redis_ver >= (7,) else self.command_strategy
             )
 
         # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
