@@ -152,8 +152,8 @@ class HashCommandsMixin:
         hash_val: Hash = key.value
         if hash_val is None:
             return [-2] * num_fields
-        # process command
         fields = left_args[2:]
+        # process command
         res = []
         for field in fields:
             if field not in hash_val:
@@ -173,7 +173,7 @@ class HashCommandsMixin:
 
     def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
         if len(args) < 3 or not casematch(args[0], command):
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(""))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
         num_fields = Int.decode(args[1])
         if num_fields != len(args) - 2:
             raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
@@ -211,18 +211,23 @@ class HashCommandsMixin:
         return self._hexpire(key, unix_time_ms, *args)
 
     @command(name="HPERSIST", fixed=(Key(Hash),), repeat=(bytes,))
-    def hpersist(self, key: CommandItem, *fields: bytes) -> List[int]:
+    def hpersist(self, key: CommandItem, *args: bytes) -> List[int]:
+        if len(args) < 3 or not casematch(args[0], b"fields"):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("HEXPIRE"))
+        num_fields = Int.decode(args[1])
+        if num_fields != len(args) - 2:
+            raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+        fields = args[2:]
         hash_val: Hash = key.value
         res = list()
         for field in fields:
-            r = hash_val.get_key_expireat(field)
-            if r is None:
+            if field not in hash_val:
                 res.append(-2)
                 continue
-            if hash_val.clear_key_expireat(field) is None:
-                res.append(-1)
-            else:
+            if hash_val.clear_key_expireat(field):
                 res.append(1)
+            else:
+                res.append(-1)
         return res
 
     @command(name="HEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)

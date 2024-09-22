@@ -117,13 +117,17 @@ class Hash:  # type:ignore
         self._values: Dict[bytes, Any] = dict()
 
     def _expire_keys(self):
+        removed = []
+        now = current_time()
         for k in self._expirations:
-            if self._expirations[k] < current_time():
+            if self._expirations[k] < now:
                 self._values.pop(k, None)
-                self._expirations.pop(k, None)
+                removed.append(k)
+        for k in removed:
+            self._expirations.pop(k, None)
 
     def set_key_expireat(self, key: bytes, when_ms: int) -> int:
-        now = int(time.time())
+        now = current_time()
         if when_ms <= now:
             self._values.pop(key, None)
             self._expirations.pop(key, None)
@@ -131,7 +135,7 @@ class Hash:  # type:ignore
         self._expirations[key] = when_ms
         return 1
 
-    def clear_key_expireat(self, key: bytes) -> int:
+    def clear_key_expireat(self, key: bytes) -> bool:
         return self._expirations.pop(key, None) is not None
 
     def get_key_expireat(self, key: bytes) -> Optional[int]:
