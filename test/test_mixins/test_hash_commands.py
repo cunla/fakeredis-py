@@ -364,15 +364,15 @@ BASE_TIME = 1000.0
 )
 @patch.object(time, "time", BASE_TIME)
 def test_hexpire(
-        r: redis.Redis,
-        current_time: float,
-        expiration: Union[int, datetime.timedelta],
-        preset_expiration: Union[float, None],
-        nx: bool,
-        xx: bool,
-        gt: bool,
-        lt: bool,
-        expected_result: int,
+    r: redis.Redis,
+    current_time: float,
+    expiration: Union[int, datetime.timedelta],
+    preset_expiration: Union[float, None],
+    nx: bool,
+    xx: bool,
+    gt: bool,
+    lt: bool,
+    expected_result: int,
 ) -> None:
     key = "test_hash_commands"
     field = "test_hexpire"
