@@ -334,7 +334,6 @@ def test_hrandfield(r: redis.Redis):
         (100, 50, dict(gt=True), 1),
         (100, 100, dict(gt=True), 0),
         (100, 200, dict(gt=True), 0),
-
         # LT
         (100, None, dict(lt=True), 1),
         (100, 50, dict(lt=True), 0),
@@ -343,11 +342,11 @@ def test_hrandfield(r: redis.Redis):
     ],
 )
 def test_hexpire(
-        r: redis.Redis,
-        expiration_seconds: int,
-        preset_expiration: Optional[int],
-        flags: Dict[str, bool],
-        expected_result: int,
+    r: redis.Redis,
+    expiration_seconds: int,
+    preset_expiration: Optional[int],
+    flags: Dict[str, bool],
+    expected_result: int,
 ) -> None:
     key = "test_hash_commands"
     field = "test_hexpire"

@@ -176,8 +176,8 @@ class Int(RedisType):
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
     ENCODE_ERROR = msgs.OVERFLOW_MSG
-    MIN_VALUE = -(2 ** 63)
-    MAX_VALUE = 2 ** 63 - 1
+    MIN_VALUE = -(2**63)
+    MAX_VALUE = 2**63 - 1
 
     @classmethod
     def valid(cls, value: int) -> bool:
@@ -235,13 +235,13 @@ class Float(RedisType):
 
     @classmethod
     def decode(
-            cls,
-            value: bytes,
-            allow_leading_whitespace: bool = False,
-            allow_erange: bool = False,
-            allow_empty: bool = False,
-            crop_null: bool = False,
-            decode_error: Optional[str] = None,
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = False,
+        allow_erange: bool = False,
+        allow_empty: bool = False,
+        crop_null: bool = False,
+        decode_error: Optional[str] = None,
     ) -> float:
         # Redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
@@ -292,13 +292,13 @@ class SortFloat(Float):
 
     @classmethod
     def decode(
-            cls,
-            value: bytes,
-            allow_leading_whitespace: bool = True,
-            allow_erange: bool = False,
-            allow_empty: bool = True,
-            crop_null: bool = True,
-            decode_error: Optional[str] = None,
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = True,
+        allow_erange: bool = False,
+        allow_empty: bool = True,
+        crop_null: bool = True,
+        decode_error: Optional[str] = None,
     ) -> float:
         return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
@@ -400,13 +400,13 @@ class StringTest(RedisType):
 
 class Signature:
     def __init__(
-            self,
-            name: str,
-            func_name: str,
-            fixed: Tuple[Type[Union[RedisType, bytes]]],
-            repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
-            args: Tuple[str] = (),  # type:ignore
-            flags: str = "",
+        self,
+        name: str,
+        func_name: str,
+        fixed: Tuple[Type[Union[RedisType, bytes]]],
+        repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
+        args: Tuple[str] = (),  # type:ignore
+        flags: str = "",
     ):
         self.name = name
         self.func_name = func_name
@@ -427,7 +427,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-            self, args: Sequence[Any], db: Database, version: Tuple[int]
+        self, args: Sequence[Any], db: Database, version: Tuple[int]
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
@@ -459,10 +459,10 @@ class Signature:
                 if type_.type_ is not None and item is not None and type(item.value) is not type_.type_:
                     raise SimpleError(msgs.WRONGTYPE_MSG)
                 if (
-                        msgs.FLAG_DO_NOT_CREATE not in self.flags
-                        and type_.type_ is not None
-                        and item is None
-                        and type_.type_ is not bytes
+                    msgs.FLAG_DO_NOT_CREATE not in self.flags
+                    and type_.type_ is not None
+                    and item is None
+                    and type_.type_ is not bytes
                 ):
                     default = type_.type_()
                 args_list[i] = CommandItem(arg, db, item, default=default)
