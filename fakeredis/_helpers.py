@@ -35,11 +35,6 @@ OK = SimpleString(b"OK")
 QUEUED = SimpleString(b"QUEUED")
 BGSAVE_STARTED = SimpleString(b"Background saving started")
 
-HEXPIRE_NO_SUCH_KEY = -2
-HEXPIRE_CONDITION_UNMET = 0
-HEXPIRE_SUCCESS = 1
-HEXPIRE_EXPIRED_IMMEDIATELY = 2
-
 
 def current_time() -> int:
     return int(time.time() * 1000)

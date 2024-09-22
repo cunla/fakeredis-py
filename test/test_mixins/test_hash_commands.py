@@ -1,11 +1,10 @@
 import datetime
-from typing import Union
+from typing import Union, Optional
 
 import pytest
 import redis
 import redis.client
 
-from fakeredis._helpers import HEXPIRE_SUCCESS, HEXPIRE_CONDITION_UNMET
 from test import testtools
 
 
@@ -320,47 +319,47 @@ def test_hrandfield(r: redis.Redis):
 
 @pytest.mark.min_server("7.4")
 @pytest.mark.parametrize(
-    "expiration,preset_expiration,nx,xx,gt,lt,expected_result",
+    "expiration_seconds,preset_expiration,nx,xx,gt,lt,expected_result",
     [
-        # No flags
-        (100, None, False, False, False, False, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), None, False, False, False, False, HEXPIRE_SUCCESS),
-        (100, 50, False, False, False, False, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), 50, False, False, False, False, HEXPIRE_SUCCESS),
+        # # No flags
+        (100, None, False, False, False, False, 1),
+        (datetime.timedelta(seconds=100), None, False, False, False, False, 1),
+        (100, 50, False, False, False, False, 1),
+        (datetime.timedelta(seconds=100), 50, False, False, False, False, 1),
         # NX
-        (100, None, True, False, False, False, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), None, True, False, False, False, HEXPIRE_SUCCESS),
-        (100, 50, True, False, False, False, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), 50, True, False, False, False, HEXPIRE_CONDITION_UNMET),
+        (100, None, True, False, False, False, 1),
+        (datetime.timedelta(seconds=100), None, True, False, False, False, 1),
+        (100, 50, True, False, False, False, 0),
+        (datetime.timedelta(seconds=100), 50, True, False, False, False, 0),
         # XX
-        (100, None, False, True, False, False, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, True, False, False, HEXPIRE_CONDITION_UNMET),
-        (100, 50, False, True, False, False, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), 50, False, True, False, False, HEXPIRE_SUCCESS),
+        (100, None, False, True, False, False, 0),
+        (datetime.timedelta(seconds=100), None, False, True, False, False, 0),
+        (100, 50, False, True, False, False, 1),
+        (datetime.timedelta(seconds=100), 50, False, True, False, False, 1),
         # GT
-        (100, None, False, False, True, False, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, False, True, False, HEXPIRE_CONDITION_UNMET),
-        (100, 50, False, False, True, False, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), 50, False, False, True, False, HEXPIRE_SUCCESS),
-        (100, 100, False, False, True, False, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), 100, False, False, True, False, HEXPIRE_CONDITION_UNMET),
-        (100, 200, False, False, True, False, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), 200, False, False, True, False, HEXPIRE_CONDITION_UNMET),
+        (100, None, False, False, True, False, 0),
+        (datetime.timedelta(seconds=100), None, False, False, True, False, 0),
+        (100, 50, False, False, True, False, 1),
+        (datetime.timedelta(seconds=100), 50, False, False, True, False, 1),
+        (100, 100, False, False, True, False, 0),
+        (datetime.timedelta(seconds=100), 100, False, False, True, False, 0),
+        (100, 200, False, False, True, False, 0),
+        (datetime.timedelta(seconds=100), 200, False, False, True, False, 0),
         # LT
-        (100, None, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), None, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (100, 50, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), 50, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (100, 100, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (datetime.timedelta(seconds=100), 100, False, False, False, True, HEXPIRE_CONDITION_UNMET),
-        (100, 200, False, False, False, True, HEXPIRE_SUCCESS),
-        (datetime.timedelta(seconds=100), 200, False, False, False, True, HEXPIRE_SUCCESS),
+        (100, None, False, False, False, True, 0),
+        (datetime.timedelta(seconds=100), None, False, False, False, True, 0),
+        (100, 50, False, False, False, True, 0),
+        (datetime.timedelta(seconds=100), 50, False, False, False, True, 0),
+        (100, 100, False, False, False, True, 0),
+        (datetime.timedelta(seconds=100), 100, False, False, False, True, 0),
+        (100, 200, False, False, False, True, 1),
+        (datetime.timedelta(seconds=100), 200, False, False, False, True, 1),
     ],
 )
 def test_hexpire(
     r: redis.Redis,
-    expiration: Union[int, datetime.timedelta],
-    preset_expiration: Union[float, None],
+    expiration_seconds: int,
+    preset_expiration: Optional[int],
     nx: bool,
     xx: bool,
     gt: bool,
@@ -372,7 +371,7 @@ def test_hexpire(
     r.hset(key, field, "value")
     if preset_expiration is not None:
         r.hexpire(key, preset_expiration, field)
-    result = r.hexpire(key, expiration, field, nx=nx, xx=xx, gt=gt, lt=lt)
+    result = r.hexpire(key, expiration_seconds, field, nx=nx, xx=xx, gt=gt, lt=lt)
     assert result == [
         expected_result,
     ]
