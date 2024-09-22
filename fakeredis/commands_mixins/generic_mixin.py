@@ -15,6 +15,7 @@ from fakeredis._commands import (
     SortFloat,
     delete_keys,
     Item,
+    Hash,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
 from fakeredis._zset import ZSet
@@ -52,7 +53,7 @@ class GenericCommandsMixin:
         if item.value is None:
             return None
         if field is not None:
-            if not isinstance(item.value, dict):
+            if not isinstance(item.value, Hash):
                 return None
             return item.value.get(field)
         else:
