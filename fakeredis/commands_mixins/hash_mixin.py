@@ -172,7 +172,7 @@ class HashCommandsMixin:
         return res
 
     def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
-        if len(args) < 3 or not casematch(args[0], command):
+        if len(args) < 3 or not casematch(args[0], b"fields"):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
         num_fields = Int.decode(args[1])
         if num_fields != len(args) - 2:
