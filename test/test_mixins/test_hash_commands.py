@@ -1,5 +1,5 @@
 import datetime
-from typing import Union, Optional
+from typing import Optional, Dict
 
 import pytest
 import redis
@@ -319,59 +319,56 @@ def test_hrandfield(r: redis.Redis):
 
 @pytest.mark.min_server("7.4")
 @pytest.mark.parametrize(
-    "expiration_seconds,preset_expiration,nx,xx,gt,lt,expected_result",
+    "expiration_seconds,preset_expiration,flags,expected_result",
     [
-        # # No flags
-        (100, None, False, False, False, False, 1),
-        (datetime.timedelta(seconds=100), None, False, False, False, False, 1),
-        (100, 50, False, False, False, False, 1),
-        (datetime.timedelta(seconds=100), 50, False, False, False, False, 1),
+        # No flags
+        (100, None, dict(), 1),
+        (datetime.timedelta(seconds=100), None, dict(), 1),
+        (100, 50, dict(), 1),
+        (datetime.timedelta(seconds=100), 50, dict(), 1),
         # NX
-        (100, None, True, False, False, False, 1),
-        (datetime.timedelta(seconds=100), None, True, False, False, False, 1),
-        (100, 50, True, False, False, False, 0),
-        (datetime.timedelta(seconds=100), 50, True, False, False, False, 0),
+        (100, None, dict(nx=True), 1),
+        (datetime.timedelta(seconds=100), None, dict(nx=True), 1),
+        (100, 50, dict(nx=True), 0),
+        (datetime.timedelta(seconds=100), 50, dict(nx=True), 0),
         # XX
-        (100, None, False, True, False, False, 0),
-        (datetime.timedelta(seconds=100), None, False, True, False, False, 0),
-        (100, 50, False, True, False, False, 1),
-        (datetime.timedelta(seconds=100), 50, False, True, False, False, 1),
+        (100, None, dict(xx=True), 0),
+        (datetime.timedelta(seconds=100), None, dict(xx=True), 0),
+        (100, 50, dict(xx=True), 1),
+        (datetime.timedelta(seconds=100), 50, dict(xx=True), 1),
         # GT
-        (100, None, False, False, True, False, 0),
-        (datetime.timedelta(seconds=100), None, False, False, True, False, 0),
-        (100, 50, False, False, True, False, 1),
-        (datetime.timedelta(seconds=100), 50, False, False, True, False, 1),
-        (100, 100, False, False, True, False, 0),
-        (datetime.timedelta(seconds=100), 100, False, False, True, False, 0),
-        (100, 200, False, False, True, False, 0),
-        (datetime.timedelta(seconds=100), 200, False, False, True, False, 0),
+        (100, None, dict(gt=True), 0),
+        (datetime.timedelta(seconds=100), None, dict(gt=True), 0),
+        (100, 50, dict(gt=True), 1),
+        (datetime.timedelta(seconds=100), 50, dict(gt=True), 1),
+        (100, 100, dict(gt=True), 0),
+        (datetime.timedelta(seconds=100), 100, dict(gt=True), 0),
+        (100, 200, dict(gt=True), 0),
+        (datetime.timedelta(seconds=100), 200, dict(gt=True), 0),
         # LT
-        (100, None, False, False, False, True, 0),
-        (datetime.timedelta(seconds=100), None, False, False, False, True, 0),
-        (100, 50, False, False, False, True, 0),
-        (datetime.timedelta(seconds=100), 50, False, False, False, True, 0),
-        (100, 100, False, False, False, True, 0),
-        (datetime.timedelta(seconds=100), 100, False, False, False, True, 0),
-        (100, 200, False, False, False, True, 1),
-        (datetime.timedelta(seconds=100), 200, False, False, False, True, 1),
+        (100, None, dict(lt=True), 0),
+        (datetime.timedelta(seconds=100), None, dict(lt=True), 0),
+        (100, 50, dict(lt=True), 0),
+        (datetime.timedelta(seconds=100), 50, dict(lt=True), 0),
+        (100, 100, dict(lt=True), 0),
+        (datetime.timedelta(seconds=100), 100, dict(lt=True), 0),
+        (100, 200, dict(lt=True), 1),
+        (datetime.timedelta(seconds=100), 200, dict(lt=True), 1),
     ],
 )
 def test_hexpire(
-    r: redis.Redis,
-    expiration_seconds: int,
-    preset_expiration: Optional[int],
-    nx: bool,
-    xx: bool,
-    gt: bool,
-    lt: bool,
-    expected_result: int,
+        r: redis.Redis,
+        expiration_seconds: int,
+        preset_expiration: Optional[int],
+        flags: Dict[str, bool],
+        expected_result: int,
 ) -> None:
     key = "test_hash_commands"
     field = "test_hexpire"
     r.hset(key, field, "value")
     if preset_expiration is not None:
         r.hexpire(key, preset_expiration, field)
-    result = r.hexpire(key, expiration_seconds, field, nx=nx, xx=xx, gt=gt, lt=lt)
+    result = r.hexpire(key, expiration_seconds, field, **flags)
     assert result == [
         expected_result,
     ]
