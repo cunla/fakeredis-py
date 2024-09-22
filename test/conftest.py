@@ -22,14 +22,16 @@ def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
-        client = redis.StrictRedis("localhost", port=6390, db=2)
+        client = redis.Redis("localhost", port=6390, db=2)
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
+        if "server_name" in client_info:
+            server_type = client_info["server_name"]
         server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
         server_version = _create_version(server_version) or (7,)
         return server_type, server_version
-    except redis.ConnectionError:
-        pytest.exit("Redis is not running")
+    except redis.ConnectionError as e:
+        pytest.exit(f"Redis is not running {e}")
         return "redis", (6,)
     finally:
         if hasattr(client, "close"):
@@ -72,7 +74,7 @@ def _marker_version_value(request, marker_name: str):
         pytest.param("FakeStrictRedis", marks=pytest.mark.fake),
     ],
 )
-def _create_redis(request) -> Callable[[int], redis.Redis]:
+def _create_connection(request) -> Callable[[int], redis.Redis]:
     cls_name = request.param
     server_type, server_version = request.getfixturevalue("real_redis_version")
     if not cls_name.startswith("Fake") and not server_version:
