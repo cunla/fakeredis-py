@@ -883,7 +883,7 @@ Stores the union of multiple sorted sets in a key.
 
 
 
-## `generic` commands (21/26 implemented)
+## `generic` commands (23/26 implemented)
 
 ### [DEL](https://redis.io/commands/del/)
 
@@ -905,6 +905,10 @@ Sets the expiration time of a key in seconds.
 
 Sets the expiration time of a key to a Unix timestamp.
 
+### [EXPIRETIME](https://redis.io/commands/expiretime/)
+
+Returns the expiration time of a key as a Unix timestamp.
+
 ### [KEYS](https://redis.io/commands/keys/)
 
 Returns all key names that match a pattern.
@@ -924,6 +928,10 @@ Sets the expiration time of a key in milliseconds.
 ### [PEXPIREAT](https://redis.io/commands/pexpireat/)
 
 Sets the expiration time of a key to a Unix milliseconds timestamp.
+
+### [PEXPIRETIME](https://redis.io/commands/pexpiretime/)
+
+Returns the expiration time of a key as a Unix milliseconds timestamp.
 
 ### [PTTL](https://redis.io/commands/pttl/)
 
@@ -976,14 +984,6 @@ Asynchronously deletes one or more keys.
 #### [COPY](https://redis.io/commands/copy/) <small>(not implemented)</small>
 
 Copies the value of a key to a new key.
-
-#### [EXPIRETIME](https://redis.io/commands/expiretime/) <small>(not implemented)</small>
-
-Returns the expiration time of a key as a Unix timestamp.
-
-#### [PEXPIRETIME](https://redis.io/commands/pexpiretime/) <small>(not implemented)</small>
-
-Returns the expiration time of a key as a Unix milliseconds timestamp.
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
