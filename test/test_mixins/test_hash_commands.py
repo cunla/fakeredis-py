@@ -348,12 +348,9 @@ def test_hexpire(
     flags: Dict[str, bool],
     expected_result: int,
 ) -> None:
-    key = "test_hash_commands"
-    field = "test_hexpire"
+    key, field = "redis-key", "hash-key"
     r.hset(key, field, "value")
     if preset_expiration is not None:
-        r.hexpire(key, preset_expiration, field)
+        assert r.hexpire(key, preset_expiration, field) == [1]
     result = r.hexpire(key, expiration_seconds, field, **flags)
-    assert result == [
-        expected_result,
-    ]
+    assert result == [expected_result]
