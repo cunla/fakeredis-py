@@ -7,8 +7,8 @@ import pytest
 import redis
 import redis.client
 
-from test import testtools
 from fakeredis._helpers import HexpireResult
+from test import testtools
 
 
 def test_hstrlen_missing(r: redis.Redis):
@@ -323,6 +323,7 @@ def test_hrandfield(r: redis.Redis):
 BASE_TIME = 1000.0
 
 
+@pytest.mark.min_server("7.4")
 @pytest.mark.parametrize(
     "expiration,preset_expiration,nx,xx,gt,lt,expected_result",
     [
@@ -359,10 +360,20 @@ BASE_TIME = 1000.0
         (datetime.timedelta(seconds=100), BASE_TIME + 100, False, False, False, True, HexpireResult.CONDITION_UNMET),
         (BASE_TIME + 100, BASE_TIME + 200, False, False, False, True, HexpireResult.SUCCESS),
         (datetime.timedelta(seconds=100), BASE_TIME + 200, False, False, False, True, HexpireResult.SUCCESS),
-    ]
+    ],
 )
 @patch.object(time, "time", BASE_TIME)
-def test_hexpire(r: redis.Redis, current_time: float, expiration: Union[int, datetime.timedelta], preset_expiration: Union[float, None], nx: bool, xx: bool, gt: bool, lt: bool, expected_result: int) -> None:
+def test_hexpire(
+        r: redis.Redis,
+        current_time: float,
+        expiration: Union[int, datetime.timedelta],
+        preset_expiration: Union[float, None],
+        nx: bool,
+        xx: bool,
+        gt: bool,
+        lt: bool,
+        expected_result: int,
+) -> None:
     key = "test_hash_commands"
     field = "test_hexpire"
     r.hset(key, field)

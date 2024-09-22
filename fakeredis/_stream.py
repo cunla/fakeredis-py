@@ -352,7 +352,7 @@ class XStream:
                 res += 1
         return res
 
-    def add(self, fields: Sequence[bytes], entry_key: str = "*") -> Union[None, bytes]:
+    def add(self, fields: Sequence[Union[bytes, int]], entry_key: str = "*") -> Union[None, bytes]:
         """Add entry to a stream.
 
         If the entry_key cannot be added (because its timestamp is before the last entry, etc.),

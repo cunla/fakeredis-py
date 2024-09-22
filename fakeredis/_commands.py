@@ -121,11 +121,11 @@ class Hash(dict):  # type:ignore
         self._expirations.pop(key, None)
 
     def _is_expired(self, key: bytes) -> bool:
-        if self._expirations.get(key, 0) < time.time():
+        if key in self._expirations and self._expirations[key] < time.time():
             self._prune_key_with_expiration(key)
             return True
         return False
-    
+
     def _set_expiration(self, key: bytes, when: Union[int, float]) -> HexpireResult:
         now = time.time()
         if isinstance(when, int):
@@ -135,11 +135,11 @@ class Hash(dict):  # type:ignore
             return HexpireResult.EXPIRED_IMMEDIATELY
         self._expirations[key] = when
         return HexpireResult.SUCCESS
-    
+
     def _clear_expiration(self, key: bytes) -> bool:
         result = self._expirations.pop(key, None)
         return result is not None
-    
+
     def _get_expiration(self, key: bytes) -> Union[None, int, float]:
         if not self._is_expired(key):
             return self._expirations.get(key, None)
@@ -165,25 +165,6 @@ class Hash(dict):  # type:ignore
 
     def items(self) -> Iterable[Tuple[bytes, Any]]:
         return [(k, v) for k, v in super().items() if not self._is_expired(k)]
-
-    def __init__(self):
-        super().__init__()
-        self.expirations: Dict[bytes, int] = {}
-
-    def _check_expire(self, key: bytes) -> None:
-        if key in self.expirations and self.expirations[key] < int(time.time()):
-            del self[key]
-            del self.expirations[key]
-
-    def __get__(self, key: bytes) -> Any:
-        self._check_expire(key)
-        if key in self:
-            return self[key]
-        return self.__get__(key)
-
-    def __contains__(self, item):
-        self._check_expire(item)
-        return super().__contains__(item)
 
 
 class RedisType:
