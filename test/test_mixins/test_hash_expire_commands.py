@@ -7,8 +7,8 @@ import redis.client
 
 from test import testtools
 
-pytest.mark.min_server("7.4")
-testtools.run_test_if_redispy_ver("gte", "5")
+pytestmark = []
+pytestmark.extend([pytest.mark.min_server("7.4"), testtools.run_test_if_redispy_ver("gte", "5")])
 
 
 @pytest.mark.parametrize(
