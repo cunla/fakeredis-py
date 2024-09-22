@@ -9,9 +9,8 @@ description: Change log of all fakeredis releases
 
 - Implement support for hash expiration related commands @j00bar #328
     - `HEXPIRE`, `HEXPIREAT`, `HEXPIRETIME`, `HPERSIST`, `HPEXPIRE`, `HPEXPIREAT`, `HPEXPIRETIME`, `HPTTL`, `HTTL`,
-- Implement support for `SORT_RO` #325
-- 
-      
+- Implement support for `SORT_RO` #325, `EXPIRETIME` #323, and `PEXPIRETIME` #324
+
 ## v2.24.1
 
 ### 🐛 Bug Fixes

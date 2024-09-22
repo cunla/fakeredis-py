@@ -161,9 +161,25 @@ class GenericCommandsMixin:
     def pexpireat(self, key, ms_timestamp):
         return self._expireat(key, ms_timestamp / 1000.0)
 
-    @command((Key(),))
-    def pttl(self, key):
+    @command(name="PTTL", fixed=(Key(),))
+    def pttl(self, key: CommandItem) -> int:
         return self._ttl(key, 1000.0)
+
+    @command(name="EXPIRETIME", fixed=(Key(),))
+    def expiretime(self, key: CommandItem) -> int:
+        if key.value is None:
+            return -2
+        if key.expireat is None:
+            return -1
+        return key.expireat
+
+    @command(name="PEXPIRETIME", fixed=(Key(),))
+    def pexpiretime(self, key: CommandItem) -> int:
+        if key.value is None:
+            return -2
+        if key.expireat is None:
+            return -1
+        return key.expireat * 1000
 
     @command(())
     def randomkey(self):

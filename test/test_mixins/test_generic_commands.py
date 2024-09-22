@@ -127,6 +127,20 @@ def test_sort_ro(r: redis.Redis):
     assert r.sort_ro("b", desc=True) == [b"3", b"2", b"1"]
 
 
+@pytest.mark.min_server("7")
+def test_expiretime(r: redis.Redis):
+    r.set("a", "foo")
+    r.expireat("a", 33177117420)
+    assert r.expiretime("a") == 33177117420
+
+
+@pytest.mark.min_server("7")
+def test_pexpiretime(r: redis.Redis):
+    r.set("a", "foo")
+    r.pexpireat("a", 33177117420000)
+    assert r.pexpiretime("a") == 33177117420000
+
+
 def test_sort_empty(r: redis.Redis):
     assert r.sort("foo") == []
 
