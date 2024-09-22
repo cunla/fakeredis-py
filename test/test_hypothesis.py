@@ -356,7 +356,11 @@ class BaseTest:
     def test(self):
         class Machine(CommonMachine):
             create_command_strategy = self.create_command_strategy
-            command_strategy = self.command_strategy
+            command_strategy = (
+                self.command_strategy
+                if hasattr(self, "command_strategy_redis7")
+                else (self.command_strategy | self.command_strategy_redis7)
+            )
 
         # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
         # hypothesis.settings.load_profile("debug")
@@ -419,7 +423,7 @@ class TestHash(BaseTest):
         | commands(st.just("hsetnx"), keys, fields, values)
         | commands(st.just("hstrlen"), keys, fields)
     )
-    hash_expire_commands = (
+    command_strategy_redis7 = (
         commands(st.just("hpersist"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
         | commands(st.just("hexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
         | commands(st.just("hpexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
@@ -449,7 +453,7 @@ class TestHash(BaseTest):
         )
     )
     create_command_strategy = commands(st.just("hset"), keys, st.lists(st.tuples(fields, values), min_size=1))
-    command_strategy = hash_commands | common_commands | hash_expire_commands
+    command_strategy = hash_commands | common_commands
 
 
 class TestList(BaseTest):
