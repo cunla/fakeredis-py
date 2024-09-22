@@ -81,8 +81,7 @@ class BitmapCommandsMixin:
             if key.value is None:
                 return 0
             return bin(int.from_bytes(key.value, "little")).count("1")
-        if key.value is None:
-            return 0
+
         if not 2 <= len(args) <= 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         try:
@@ -91,6 +90,8 @@ class BitmapCommandsMixin:
         except SimpleError as e:
             if self.version >= (7, 4):
                 raise e
+            return 0
+        if key.value is None:
             return 0
         bit_mode = False
         if len(args) == 3 and self.version < (7,):
