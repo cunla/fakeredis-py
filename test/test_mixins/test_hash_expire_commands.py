@@ -34,11 +34,11 @@ testtools.run_test_if_redispy_ver("gte", "5")
     ],
 )
 def test_hexpire(
-        r: redis.Redis,
-        expiration_seconds: int,
-        preset_expiration: Optional[int],
-        flags: Dict[str, bool],
-        expected_result: int,
+    r: redis.Redis,
+    expiration_seconds: int,
+    preset_expiration: Optional[int],
+    flags: Dict[str, bool],
+    expected_result: int,
 ) -> None:
     key, field = "redis-key", "hash-key"
     r.hset(key, field, "value")
