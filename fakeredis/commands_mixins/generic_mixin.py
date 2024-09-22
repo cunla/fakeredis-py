@@ -275,13 +275,7 @@ class GenericCommandsMixin:
 
                 def sort_key(val):
                     byval = self._lookup_key(val, sortby)
-                    score = (
-                        SortFloat.decode(
-                            byval,
-                        )
-                        if byval is not None
-                        else 0.0
-                    )
+                    score = SortFloat.decode(byval) if byval is not None else 0.0
                     return score, val
 
             items.sort(key=sort_key, reverse=desc)
@@ -302,6 +296,80 @@ class GenericCommandsMixin:
             return len(out)
         else:
             return out
+
+    @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
+    def sort_ro(self, key, *args):
+        if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        (
+            asc,
+            desc,
+            alpha,
+            sortby,
+            (limit_start, limit_count),
+        ), left_args = extract_args(
+            args,
+            ("asc", "desc", "alpha", "*by", "++limit"),
+            error_on_unexpected=False,
+            left_from_first_unexpected=False,
+        )
+        limit_start = limit_start or 0
+        limit_count = -1 if limit_count is None else limit_count
+        dontsort = sortby is not None and b"*" not in sortby
+
+        i = 0
+        get = []
+        while i < len(left_args):
+            if casematch(left_args[i], b"get") and i + 1 < len(left_args):
+                get.append(left_args[i + 1])
+                i += 2
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        # TODO: force sorting if the object is a set and either in Lua or
+        #  storing to a key, to match redis behaviour.
+        items = list(key.value) if key.value is not None else []
+
+        # These transformations are based on the redis implementation, but
+        # changed to produce a half-open range.
+        start = max(limit_start, 0)
+        end = len(items) if limit_count < 0 else start + limit_count
+        if start >= len(items):
+            start = end = len(items) - 1
+        end = min(end, len(items))
+
+        if not get:
+            get.append(b"#")
+        if sortby is None:
+            sortby = b"#"
+
+        if not dontsort:
+            if alpha:
+
+                def sort_key(val):
+                    byval = self._lookup_key(val, sortby)
+                    # TODO: use locale.strxfrm when not storing? But then need to decode too.
+                    if byval is None:
+                        byval = BeforeAny()
+                    return byval
+
+            else:
+
+                def sort_key(val):
+                    byval = self._lookup_key(val, sortby)
+                    score = SortFloat.decode(byval) if byval is not None else 0.0
+                    return score, val
+
+            items.sort(key=sort_key, reverse=desc)
+        elif isinstance(key.value, (list, ZSet)):
+            items.reverse()
+
+        out = []
+        for row in items[start:end]:
+            for g in get:
+                v = self._lookup_key(row, g)
+                out.append(v)
+        return out
 
     @command((Key(),))
     def ttl(self, key: CommandItem):

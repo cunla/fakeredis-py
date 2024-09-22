@@ -883,7 +883,7 @@ Stores the union of multiple sorted sets in a key.
 
 
 
-## `generic` commands (20/26 implemented)
+## `generic` commands (21/26 implemented)
 
 ### [DEL](https://redis.io/commands/del/)
 
@@ -953,6 +953,10 @@ Iterates over the key names in the database.
 
 Sorts the elements in a list, a set, or a sorted set, optionally storing the result.
 
+### [SORT_RO](https://redis.io/commands/sort_ro/)
+
+Returns the sorted elements of a list, a set, or a sorted set.
+
 ### [TTL](https://redis.io/commands/ttl/)
 
 Returns the expiration time in seconds of a key.
@@ -980,10 +984,6 @@ Returns the expiration time of a key as a Unix timestamp.
 #### [PEXPIRETIME](https://redis.io/commands/pexpiretime/) <small>(not implemented)</small>
 
 Returns the expiration time of a key as a Unix milliseconds timestamp.
-
-#### [SORT_RO](https://redis.io/commands/sort_ro/) <small>(not implemented)</small>
-
-Returns the sorted elements of a list, a set, or a sorted set.
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
