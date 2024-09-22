@@ -167,6 +167,7 @@ class HashCommandsMixin:
                     or (lt and when_ms >= current_expiration)
             ):
                 res.append(0)
+                continue
             res.append(hash_val.set_key_expireat(field, when_ms))
         return res
 
