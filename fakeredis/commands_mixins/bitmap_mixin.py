@@ -91,8 +91,6 @@ class BitmapCommandsMixin:
             if self.version >= (7, 4):
                 raise e
             return 0
-        if key.value is None:
-            return 0
         bit_mode = False
         if len(args) == 3 and self.version < (7,):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -101,6 +99,8 @@ class BitmapCommandsMixin:
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
+        if key.value is None:
+            return 0
         if bit_mode:
             value = self._bytes_as_bin_string(key.value if key.value else b"")
             start, end = fix_range_string(start, end, len(value))

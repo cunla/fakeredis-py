@@ -2,7 +2,7 @@ import functools
 import math
 import operator
 import sys
-from typing import Tuple, Any
+from typing import Any, Tuple, Union
 
 import hypothesis
 import hypothesis.stateful
@@ -18,18 +18,6 @@ from fakeredis._server import _create_version
 self_strategy = st.runner()
 
 
-def get_redis_version() -> Tuple[int]:
-    try:
-        r = redis.StrictRedis("localhost", port=6390, db=2)
-        r.ping()
-        return _create_version(r.info()["redis_version"])
-    except redis.ConnectionError:
-        return (6,)
-    finally:
-        if hasattr(r, "close"):
-            r.close()  # Absent in older versions of redis-py
-
-
 @st.composite
 def sample_attr(draw, name):
     """Strategy for sampling a specific attribute from a state machine"""
@@ -39,7 +27,25 @@ def sample_attr(draw, name):
     return values[position]
 
 
-redis_ver = get_redis_version()
+def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
+    """Returns server's version or None if server is not running"""
+    client = None
+    try:
+        client = redis.StrictRedis("localhost", port=6390, db=2)
+        client_info = client.info()
+        server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
+        server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
+        server_version = _create_version(server_version) or (7,)
+        return server_type, server_version
+    except redis.ConnectionError:
+        pytest.exit("Redis is not running")
+        return "redis", (6,)
+    finally:
+        if hasattr(client, "close"):
+            client.close()  # Absent in older versions of redis-py
+
+
+server_type, redis_ver = real_redis_version()
 
 keys = sample_attr("keys")
 fields = sample_attr("fields")
