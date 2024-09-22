@@ -178,6 +178,8 @@ class HashCommandsMixin:
         if num_fields != len(args) - 2:
             raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
         hash_val: Hash = key.value
+        if hash_val is None:
+            return [-2] * num_fields
         fields = args[2:]
         res = list()
         for field in fields:
