@@ -22,7 +22,7 @@ def real_redis_version() -> Tuple[str, Union[None, Tuple[int, ...]]]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
-        client = redis.StrictRedis("localhost", port=6380, db=2)
+        client = redis.StrictRedis("localhost", port=6390, db=2)
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
         server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
@@ -99,7 +99,7 @@ def _create_redis(request) -> Callable[[int], redis.Redis]:
             return cls(db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules)
         # Real
         cls = getattr(redis, cls_name)
-        return cls("localhost", port=6380, db=db, decode_responses=decode_responses)
+        return cls("localhost", port=6390, db=db, decode_responses=decode_responses)
 
     return factory
 
@@ -130,7 +130,7 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
         fake_server = request.getfixturevalue("fake_server")
         ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules)
     else:
-        ret = redis.asyncio.Redis(host="localhost", port=6380, db=2)
+        ret = redis.asyncio.Redis(host="localhost", port=6390, db=2)
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()

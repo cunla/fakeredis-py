@@ -20,7 +20,7 @@ self_strategy = st.runner()
 
 def get_redis_version() -> Tuple[int]:
     try:
-        r = redis.StrictRedis("localhost", port=6380, db=2)
+        r = redis.StrictRedis("localhost", port=6390, db=2)
         r.ping()
         return _create_version(r.info()["redis_version"])
     except redis.ConnectionError:
@@ -248,14 +248,14 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
     def __init__(self):
         super().__init__()
         try:
-            self.real = redis.StrictRedis("localhost", port=6380, db=2)
+            self.real = redis.StrictRedis("localhost", port=6390, db=2)
             self.real.ping()
         except redis.ConnectionError:
             pytest.skip("redis is not running")
         if self.real.info("server").get("arch_bits") != 64:
             self.real.connection_pool.disconnect()
             pytest.skip("redis server is not 64-bit")
-        self.fake = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer(version=redis_ver), port=6380, db=2)
+        self.fake = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer(version=redis_ver), port=6390, db=2)
         # Disable the response parsing so that we can check the raw values returned
         self.fake.response_callbacks.clear()
         self.real.response_callbacks.clear()

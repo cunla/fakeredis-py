@@ -33,7 +33,7 @@ jobs:
       redis:
         image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
         ports:
-          - 6380:6379
+          - 6390:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s

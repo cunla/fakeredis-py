@@ -77,7 +77,7 @@ jobs:
       redis:
         image: ${{ matrix.redis-image }}
         ports:
-          - 6380:6379
+          - 6390:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
