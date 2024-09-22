@@ -73,18 +73,24 @@ class BitmapCommandsMixin:
             result += start if bit_mode else (start * 8)
         return result
 
-    @command((Key(bytes, 0),), (bytes,))
+    @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def bitcount(self, key: CommandItem, *args: bytes) -> int:
         # Redis checks the argument count before decoding integers. That's why
         # we can't declare them as Int.
         if len(args) == 0:
-            value = key.value
-            return bin(int.from_bytes(value, "little")).count("1")
+            if key.value is None:
+                return 0
+            return bin(int.from_bytes(key.value, "little")).count("1")
 
         if not 2 <= len(args) <= 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        start = Int.decode(args[0])
-        end = Int.decode(args[1])
+        try:
+            start = Int.decode(args[0])
+            end = Int.decode(args[1])
+        except SimpleError as e:
+            if self.version >= (7, 4):
+                raise e
+            return 0
         bit_mode = False
         if len(args) == 3 and self.version < (7,):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)

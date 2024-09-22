@@ -21,6 +21,19 @@ def test_getbit_wrong_type(r: redis.Redis):
         r.getbit("foo", 1)
 
 
+@pytest.mark.min_server("7.4")
+def test_bitcount_error(r: redis.Redis):
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, b"BITCOUNT", b"", b"", b"")
+    assert str(e.value) == "value is not an integer or out of range"
+
+
+@pytest.mark.max_server("7.2")
+def test_bitcount_error_v6(r: redis.Redis):
+    r = raw_command(r, b"BITCOUNT", b"", b"", b"")
+    assert r == 0
+
+
 def test_multiple_bits_set(r: redis.Redis):
     r.setbit("foo", 1, 1)
     r.setbit("foo", 3, 1)
