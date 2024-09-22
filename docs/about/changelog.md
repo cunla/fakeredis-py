@@ -3,6 +3,13 @@ title: Change log
 description: Change log of all fakeredis releases
 ---
 
+## v2.25.0
+
+### 🚀 Features
+
+- Implement support for hash expiration related commands @j00bar #328
+    - `HEXPIRE`, `HEXPIREAT`, `HEXPIRETIME`, `HPERSIST`, `HPEXPIRE`, `HPEXPIREAT`, `HPEXPIRETIME`, `HPTTL`, `HTTL`,
+      
 ## v2.24.1
 
 ### 🐛 Bug Fixes

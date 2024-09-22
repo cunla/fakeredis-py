@@ -1157,7 +1157,7 @@ Queries a geospatial index for members inside an area of a box or a circle, opti
 
 
 
-## `hash` commands (16/27 implemented)
+## `hash` commands (25/27 implemented)
 
 ### [HDEL](https://redis.io/commands/hdel/)
 
@@ -1166,6 +1166,18 @@ Deletes one or more fields and their values from a hash. Deletes the hash if no 
 ### [HEXISTS](https://redis.io/commands/hexists/)
 
 Determines whether a field exists in a hash.
+
+### [HEXPIRE](https://redis.io/commands/hexpire/)
+
+Set expiry for hash field using relative time to expire (seconds)
+
+### [HEXPIREAT](https://redis.io/commands/hexpireat/)
+
+Set expiry for hash field using an absolute Unix timestamp (seconds)
+
+### [HEXPIRETIME](https://redis.io/commands/hexpiretime/)
+
+Returns the expiration time of a hash field as a Unix timestamp, in seconds.
 
 ### [HGET](https://redis.io/commands/hget/)
 
@@ -1199,6 +1211,26 @@ Returns the values of all fields in a hash.
 
 Sets the values of multiple fields.
 
+### [HPERSIST](https://redis.io/commands/hpersist/)
+
+Removes the expiration time for each specified field
+
+### [HPEXPIRE](https://redis.io/commands/hpexpire/)
+
+Set expiry for hash field using relative time to expire (milliseconds)
+
+### [HPEXPIREAT](https://redis.io/commands/hpexpireat/)
+
+Set expiry for hash field using an absolute Unix timestamp (milliseconds)
+
+### [HPEXPIRETIME](https://redis.io/commands/hpexpiretime/)
+
+Returns the expiration time of a hash field as a Unix timestamp, in msec.
+
+### [HPTTL](https://redis.io/commands/hpttl/)
+
+Returns the TTL in milliseconds of a hash field.
+
 ### [HRANDFIELD](https://redis.io/commands/hrandfield/)
 
 Returns one or more random fields from a hash.
@@ -1219,6 +1251,10 @@ Sets the value of a field in a hash only when the field doesn't exist.
 
 Returns the length of the value of a field.
 
+### [HTTL](https://redis.io/commands/httl/)
+
+Returns the TTL in seconds of a hash field.
+
 ### [HVALS](https://redis.io/commands/hvals/)
 
 Returns all values in a hash.
@@ -1227,49 +1263,13 @@ Returns all values in a hash.
 ### Unsupported hash commands 
 > To implement support for a command, see [here](../../guides/implement-command/) 
 
-#### [HEXPIRE](https://redis.io/commands/hexpire/) <small>(not implemented)</small>
-
-Set expiry for hash field using relative time to expire (seconds)
-
-#### [HEXPIREAT](https://redis.io/commands/hexpireat/) <small>(not implemented)</small>
-
-Set expiry for hash field using an absolute Unix timestamp (seconds)
-
-#### [HEXPIRETIME](https://redis.io/commands/hexpiretime/) <small>(not implemented)</small>
-
-Returns the expiration time of a hash field as a Unix timestamp, in seconds.
-
 #### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
 
 For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
 
-#### [HPERSIST](https://redis.io/commands/hpersist/) <small>(not implemented)</small>
-
-Removes the expiration time for each specified field
-
-#### [HPEXPIRE](https://redis.io/commands/hpexpire/) <small>(not implemented)</small>
-
-Set expiry for hash field using relative time to expire (milliseconds)
-
-#### [HPEXPIREAT](https://redis.io/commands/hpexpireat/) <small>(not implemented)</small>
-
-Set expiry for hash field using an absolute Unix timestamp (milliseconds)
-
-#### [HPEXPIRETIME](https://redis.io/commands/hpexpiretime/) <small>(not implemented)</small>
-
-Returns the expiration time of a hash field as a Unix timestamp, in msec.
-
-#### [HPTTL](https://redis.io/commands/hpttl/) <small>(not implemented)</small>
-
-Returns the TTL in milliseconds of a hash field.
-
 #### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
 
 For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
-
-#### [HTTL](https://redis.io/commands/httl/) <small>(not implemented)</small>
-
-Returns the TTL in seconds of a hash field.
 
 
 ## `hyperloglog` commands (3/3 implemented)
