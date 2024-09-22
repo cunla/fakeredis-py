@@ -28,6 +28,12 @@ def test_bitcount_error(r: redis.Redis):
     assert str(e.value) == "value is not an integer or out of range"
 
 
+@pytest.mark.min_server("7.4")
+def test_bitcount_does_not_exist(r: redis.Redis):
+    res = raw_command(r, b"BITCOUNT", b"", 0, 0)
+    assert res == 0
+
+
 @pytest.mark.max_server("7.2")
 def test_bitcount_error_v6(r: redis.Redis):
     r = raw_command(r, b"BITCOUNT", b"", b"", b"")
