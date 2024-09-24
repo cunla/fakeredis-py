@@ -120,7 +120,6 @@ markdown_filename_template = "docs/redis-commands/{}.md"
 
 def generate_markdown_files(commands: dict, implemented_commands: set[str], stack: str) -> None:
     groups = _commands_groups(commands)
-    implemeted_count = 0
     for group in groups:
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
         f = open(filename, "w")
