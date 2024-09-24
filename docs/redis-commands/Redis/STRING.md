@@ -1,4 +1,4 @@
-# `string` commands (22/22 implemented)
+# Redis `string` commands (22/22 implemented)
 
 ## [APPEND](https://redis.io/commands/append/)
 

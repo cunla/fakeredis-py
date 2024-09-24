@@ -1,4 +1,4 @@
-# `stream` commands (20/20 implemented)
+# Redis `stream` commands (20/20 implemented)
 
 ## [XACK](https://redis.io/commands/xack/)
 

@@ -1,4 +1,4 @@
-# `scripting` commands (7/22 implemented)
+# Redis `scripting` commands (7/22 implemented)
 
 ## [EVAL](https://redis.io/commands/eval/)
 

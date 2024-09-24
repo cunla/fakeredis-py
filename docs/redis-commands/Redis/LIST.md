@@ -1,4 +1,4 @@
-# `list` commands (22/22 implemented)
+# Redis `list` commands (22/22 implemented)
 
 ## [BLMOVE](https://redis.io/commands/blmove/)
 

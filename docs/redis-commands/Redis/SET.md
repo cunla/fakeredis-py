@@ -1,4 +1,4 @@
-# `set` commands (17/17 implemented)
+# Redis `set` commands (17/17 implemented)
 
 ## [SADD](https://redis.io/commands/sadd/)
 

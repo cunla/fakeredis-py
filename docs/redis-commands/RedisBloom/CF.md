@@ -1,4 +1,4 @@
-# `cf` commands (12/12 implemented)
+# RedisBloom `cf` commands (12/12 implemented)
 
 ## [CF.RESERVE](https://redis.io/commands/cf.reserve/)
 

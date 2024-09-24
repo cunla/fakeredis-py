@@ -1,4 +1,4 @@
-# `bf` commands (10/10 implemented)
+# RedisBloom `bf` commands (10/10 implemented)
 
 ## [BF.RESERVE](https://redis.io/commands/bf.reserve/)
 

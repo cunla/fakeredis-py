@@ -1,4 +1,4 @@
-# `bitmap` commands (6/6 implemented)
+# Redis `bitmap` commands (6/6 implemented)
 
 ## [BITCOUNT](https://redis.io/commands/bitcount/)
 

@@ -1,4 +1,4 @@
-# `topk` commands (7/7 implemented)
+# RedisBloom `topk` commands (7/7 implemented)
 
 ## [TOPK.RESERVE](https://redis.io/commands/topk.reserve/)
 

@@ -1,4 +1,4 @@
-# `transactions` commands (5/5 implemented)
+# Redis `transactions` commands (5/5 implemented)
 
 ## [DISCARD](https://redis.io/commands/discard/)
 

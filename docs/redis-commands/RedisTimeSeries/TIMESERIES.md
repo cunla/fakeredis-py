@@ -1,4 +1,4 @@
-# `timeseries` commands (17/17 implemented)
+# RedisTimeSeries `timeseries` commands (17/17 implemented)
 
 ## [TS.CREATE](https://redis.io/commands/ts.create/)
 

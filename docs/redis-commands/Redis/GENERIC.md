@@ -1,4 +1,4 @@
-# `generic` commands (23/26 implemented)
+# Redis `generic` commands (23/26 implemented)
 
 ## [DEL](https://redis.io/commands/del/)
 

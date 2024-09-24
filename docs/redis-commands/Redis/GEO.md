@@ -1,4 +1,4 @@
-# `geo` commands (10/10 implemented)
+# Redis `geo` commands (10/10 implemented)
 
 ## [GEOADD](https://redis.io/commands/geoadd/)
 

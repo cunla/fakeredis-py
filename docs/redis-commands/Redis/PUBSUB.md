@@ -1,4 +1,4 @@
-# `pubsub` commands (15/15 implemented)
+# Redis `pubsub` commands (15/15 implemented)
 
 ## [PSUBSCRIBE](https://redis.io/commands/psubscribe/)
 

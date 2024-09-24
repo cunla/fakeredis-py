@@ -1,4 +1,4 @@
-# `hyperloglog` commands (3/3 implemented)
+# Redis `hyperloglog` commands (3/3 implemented)
 
 ## [PFADD](https://redis.io/commands/pfadd/)
 

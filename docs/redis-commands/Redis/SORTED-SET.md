@@ -1,4 +1,4 @@
-# `sorted-set` commands (35/35 implemented)
+# Redis `sorted-set` commands (35/35 implemented)
 
 ## [BZMPOP](https://redis.io/commands/bzmpop/)
 

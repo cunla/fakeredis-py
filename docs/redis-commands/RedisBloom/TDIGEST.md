@@ -1,4 +1,4 @@
-# `tdigest` commands (14/14 implemented)
+# RedisBloom `tdigest` commands (14/14 implemented)
 
 ## [TDIGEST.CREATE](https://redis.io/commands/tdigest.create/)
 

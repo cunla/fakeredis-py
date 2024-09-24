@@ -1,4 +1,4 @@
-# `connection` commands (4/25 implemented)
+# Redis `connection` commands (4/25 implemented)
 
 ## [CLIENT SETINFO](https://redis.io/commands/client-setinfo/)
 

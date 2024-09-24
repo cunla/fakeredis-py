@@ -118,7 +118,7 @@ def _commands_groups(commands: dict) -> dict[str, list[str]]:
 markdown_filename_template = "docs/redis-commands/{}.md"
 
 
-def generate_markdown_files(commands: dict, implemented_commands: set[str], stack: str) -> None:
+def generate_markdown_files(commands: dict, implemented_commands: set[str], stack: str, title: str) -> None:
     groups = _commands_groups(commands)
     for group in groups:
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
@@ -129,7 +129,7 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
         )
         if len(implemented_in_group) > 0:
             f.write(
-                f"# `{group}` commands "
+                f"# {stack} `{group}` commands "
                 f"({len(implemented_in_group)}/{len(unimplemented_in_group) + len(implemented_in_group)} "
                 f"implemented)\n\n"
             )
@@ -154,5 +154,4 @@ if __name__ == "__main__":
     implemented = implemented_commands()
     for cmd_meta in METADATA:
         cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url)
-        markdown_filename = f"docs/redis-commands/{cmd_meta.stack}.md"
-        generate_markdown_files(cmds, implemented, cmd_meta.title)
+        generate_markdown_files(cmds, implemented, cmd_meta.stack, cmd_meta.title)

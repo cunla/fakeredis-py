@@ -1,4 +1,4 @@
-# `hash` commands (25/27 implemented)
+# Redis `hash` commands (25/27 implemented)
 
 ## [HDEL](https://redis.io/commands/hdel/)
 

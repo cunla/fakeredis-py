@@ -1,4 +1,4 @@
-# `cms` commands (6/6 implemented)
+# RedisBloom `cms` commands (6/6 implemented)
 
 ## [CMS.INITBYDIM](https://redis.io/commands/cms.initbydim/)
 

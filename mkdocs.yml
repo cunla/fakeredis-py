@@ -77,16 +77,16 @@ nav:
           - Stream commands: redis-commands/Redis/STREAM.md
           - String commands: redis-commands/Redis/STRING.md
           - Transactions commands: redis-commands/Redis/TRANSACTIONS.md
-      - RedisJSON commands: redis-commands/JSON/JSON.md
-      - Search commands: redis-commands/Search/SEARCH.md
-      - Suggestion commands: redis-commands/Search/SUGGESTION.md
-      - Time Series commands: redis-commands/Time Series/TIMESERIES.md
+      - RedisJSON commands: redis-commands/RedisJSON/JSON
+      - Search commands: redis-commands/RedisSearch/SEARCH
+      - Suggestion commands: redis-commands/RedisSearch/SUGGESTION.md
+      - Time Series commands: redis-commands/RedisTimeSeries/TIMESERIES.md
       - Probabilistic commands:
-          - Bloom Filter commands: redis-commands/Probabilistic/BF.md
-          - Cuckoo Filter commands: redis-commands/Probabilistic/CF.md
-          - Count-Min Sketch commands: redis-commands/Probabilistic/CMS.md
-          - t-digest commands: redis-commands/Probabilistic/TDIGEST.md
-          - top-k commands: redis-commands/Probabilistic/TOPK.md
+          - Bloom Filter commands: redis-commands/RedisBloom/BF.md
+          - Cuckoo Filter commands: redis-commands/RedisBloom/CF.md
+          - Count-Min Sketch commands: redis-commands/RedisBloom/CMS.md
+          - t-digest commands: redis-commands/RedisBloom/TDIGEST.md
+          - top-k commands: redis-commands/RedisBloom/TOPK.md
   - Guides:
       - Implementing support for a command: guides/implement-command.md
       - Write a new test case: guides/test-case.md
