@@ -1,7 +1,7 @@
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any, Callable, List
+from typing import Tuple, Any, Callable, List, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -14,7 +14,6 @@ from fakeredis._commands import (
     CommandItem,
     SortFloat,
     delete_keys,
-    Item,
     Hash,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
@@ -24,7 +23,7 @@ from fakeredis._zset import ZSet
 class GenericCommandsMixin:
     _ttl: Callable[[CommandItem, float], int]
     _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
-    _key_value_type: Callable[[Item], SimpleString]
+    _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
@@ -33,7 +32,7 @@ class GenericCommandsMixin:
         self._db: Database
         self._db_num: int
 
-    def _lookup_key(self, key, pattern):
+    def _lookup_key(self, key: bytes, pattern: bytes) -> Optional[bytes]:
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b"#":
             return key
@@ -55,13 +54,13 @@ class GenericCommandsMixin:
         if field is not None:
             if not isinstance(item.value, Hash):
                 return None
-            return item.value.get(field)
+            return item.value.get(field)  # type: ignore
         else:
             if not isinstance(item.value, bytes):
                 return None
             return item.value
 
-    def _expireat(self, key, timestamp, *args):
+    def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
         (
             nx,
             xx,
@@ -93,17 +92,17 @@ class GenericCommandsMixin:
         key.expireat = timestamp
         return 1
 
-    @command((Key(),), (Key(),), name="del")
-    def del_(self, *keys):
+    @command(name="DEL", fixed=(Key(),), repeat=(Key(),))
+    def del_(self, *keys: CommandItem):
         return delete_keys(*keys)
 
-    @command((Key(missing_return=None),))
-    def dump(self, key):
+    @command(name="DUMP", fixed=(Key(missing_return=None),))
+    def dump(self, key: CommandItem) -> Optional[bytes]:
         value = pickle.dumps(key.value)
         checksum = hashlib.sha1(value).digest()
         return checksum + value
 
-    @command((Key(),), (Key(),))
+    @command(name="EXISTS", fixed=(Key(),), repeat=(Key(),))
     def exists(self, *keys):
         ret = 0
         for key in keys:
@@ -112,31 +111,28 @@ class GenericCommandsMixin:
         return ret
 
     @command(
-        (
-            Key(),
-            Int,
-        ),
-        (bytes,),
         name="expire",
+        fixed=(Key(), Int),
+        repeat=(bytes,),
     )
-    def expire(self, key, seconds, *args):
+    def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
         res = self._expireat(key, self._db.time + seconds, *args)
         return res
 
-    @command((Key(), Int))
-    def expireat(self, key, timestamp):
+    @command(name="EXPIREAT", fixed=(Key(), Int))
+    def expireat(self, key: CommandItem, timestamp: int) -> int:
         return self._expireat(key, float(timestamp))
 
-    @command((bytes,))
-    def keys(self, pattern):
+    @command(name="KEYS", fixed=(bytes,))
+    def keys(self, pattern: bytes) -> List[bytes]:
         if pattern == b"*":
             return list(self._db)
         else:
             regex = compile_pattern(pattern)
             return [key for key in self._db if regex.match(key)]
 
-    @command((Key(), DbIndex))
-    def move(self, key, db):
+    @command(name="MOVE", fixed=(Key(), DbIndex))
+    def move(self, key: CommandItem, db: int) -> int:
         if db == self._db_num:
             raise SimpleError(msgs.SRC_DST_SAME_MSG)
         if not key or key.key in self._server.dbs[db]:
@@ -146,19 +142,19 @@ class GenericCommandsMixin:
         key.value = None  # Causes deletion
         return 1
 
-    @command((Key(),))
-    def persist(self, key):
+    @command(name="PERSIST", fixed=(Key(),))
+    def persist(self, key: CommandItem) -> int:
         if key.expireat is None:
             return 0
         key.expireat = None
         return 1
 
-    @command((Key(), Int))
-    def pexpire(self, key, ms):
+    @command(name="PEXPIRE", fixed=(Key(), Int))
+    def pexpire(self, key: CommandItem, ms: int) -> int:
         return self._expireat(key, self._db.time + ms / 1000.0)
 
-    @command((Key(), Int))
-    def pexpireat(self, key, ms_timestamp):
+    @command(name="PEXPIREAT", fixed=(Key(), Int))
+    def pexpireat(self, key: CommandItem, ms_timestamp: int) -> int:
         return self._expireat(key, ms_timestamp / 1000.0)
 
     @command(name="PTTL", fixed=(Key(),))
@@ -174,22 +170,22 @@ class GenericCommandsMixin:
         return key.expireat
 
     @command(name="PEXPIRETIME", fixed=(Key(),))
-    def pexpiretime(self, key: CommandItem) -> int:
+    def pexpiretime(self, key: CommandItem) -> float:
         if key.value is None:
             return -2
         if key.expireat is None:
             return -1
         return key.expireat * 1000
 
-    @command(())
+    @command(name="RANDOMKEY", fixed=())
     def randomkey(self):
         keys = list(self._db.keys())
         if not keys:
             return None
         return random.choice(keys)
 
-    @command((Key(), Key()))
-    def rename(self, key, newkey):
+    @command(name="RENAME", fixed=(Key(), Key()))
+    def rename(self, key: CommandItem, newkey: CommandItem) -> SimpleString:
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
         # TODO: check interaction with WATCH
@@ -199,8 +195,8 @@ class GenericCommandsMixin:
             key.value = None
         return OK
 
-    @command((Key(), Key()))
-    def renamenx(self, key, newkey):
+    @command(name="RENAMENX", fixed=(Key(), Key()))
+    def renamenx(self, key: CommandItem, newkey: CommandItem) -> int:
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
         if newkey:
@@ -208,8 +204,8 @@ class GenericCommandsMixin:
         self.rename(key, newkey)
         return 1
 
-    @command((Key(), Int, bytes), (bytes,))
-    def restore(self, key, ttl, value, *args):
+    @command(name="RESTORE", fixed=(Key(), Int, bytes), repeat=(bytes,))
+    def restore(self, key: CommandItem, ttl: int, value: bytes, *args: bytes) -> str:
         (replace,), _ = extract_args(args, ("replace",))
         if key and not replace:
             raise SimpleError(msgs.RESTORE_KEY_EXISTS)
@@ -226,11 +222,11 @@ class GenericCommandsMixin:
         key.expireat = expireat
         return OK
 
-    @command((Int,), (bytes, bytes))
+    @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
     def scan(self, cursor, *args):
         return self._scan(list(self._db), cursor, *args)
 
-    @command((Key(),), (bytes,))
+    @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
     def sort(self, key, *args):
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
@@ -278,23 +274,21 @@ class GenericCommandsMixin:
             sortby = b"#"
 
         if not dontsort:
-            if alpha:
 
-                def sort_key(val):
-                    byval = self._lookup_key(val, sortby)
-                    # TODO: use locale.strxfrm when not storing? But then need to decode too.
-                    if byval is None:
-                        byval = BeforeAny()
-                    return byval
+            def sort_key(val: bytes) -> bytes:
+                byval = self._lookup_key(val, sortby)
+                # TODO: use locale.strxfrm when not storing? But then need to decode too.
+                if byval is None:
+                    byval = BeforeAny()
+                return byval
 
-            else:
+            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+                byval = self._lookup_key(val, sortby)
+                score = SortFloat.decode(byval) if byval is not None else 0.0
+                return score, val
 
-                def sort_key(val):
-                    byval = self._lookup_key(val, sortby)
-                    score = SortFloat.decode(byval) if byval is not None else 0.0
-                    return score, val
-
-            items.sort(key=sort_key, reverse=desc)
+            sort_func = sort_key if alpha else sort_key_score
+            items.sort(key=sort_func, reverse=desc)
         elif isinstance(key.value, (list, ZSet)):
             items.reverse()
 
@@ -314,7 +308,7 @@ class GenericCommandsMixin:
             return out
 
     @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
-    def sort_ro(self, key, *args):
+    def sort_ro(self, key: CommandItem, *args: bytes) -> List[bytes]:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
@@ -360,41 +354,39 @@ class GenericCommandsMixin:
             sortby = b"#"
 
         if not dontsort:
-            if alpha:
 
-                def sort_key(val):
-                    byval = self._lookup_key(val, sortby)
-                    # TODO: use locale.strxfrm when not storing? But then need to decode too.
-                    if byval is None:
-                        byval = BeforeAny()
-                    return byval
+            def sort_key(val: bytes) -> bytes:
+                byval = self._lookup_key(val, sortby)
+                # TODO: use locale.strxfrm when not storing? But then need to decode too.
+                if byval is None:
+                    byval = BeforeAny()
+                return byval
 
-            else:
+            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+                byval = self._lookup_key(val, sortby)
+                score = SortFloat.decode(byval) if byval is not None else 0.0
+                return score, val
 
-                def sort_key(val):
-                    byval = self._lookup_key(val, sortby)
-                    score = SortFloat.decode(byval) if byval is not None else 0.0
-                    return score, val
-
-            items.sort(key=sort_key, reverse=desc)
+            sort_func = sort_key if alpha else sort_key_score
+            items.sort(key=sort_func, reverse=desc)
         elif isinstance(key.value, (list, ZSet)):
             items.reverse()
 
-        out = []
+        out: List[bytes] = []
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
                 out.append(v)
         return out
 
-    @command((Key(),))
-    def ttl(self, key: CommandItem):
+    @command(name="TTL", fixed=(Key(),))
+    def ttl(self, key: CommandItem) -> int:
         return self._ttl(key, 1.0)
 
-    @command((Key(),))
-    def type(self, key: CommandItem):
+    @command(name="TYPE", fixed=(Key(),))
+    def type_cmd(self, key: CommandItem) -> SimpleString:
         return self._key_value_type(key)
 
-    @command((Key(),), (Key(),), name="unlink")
-    def unlink(self, *keys: CommandItem):
+    @command(name="UNLINK", fixed=(Key(),), repeat=(Key(),))
+    def unlink(self, *keys: CommandItem) -> int:
         return delete_keys(*keys)

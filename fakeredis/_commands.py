@@ -45,7 +45,7 @@ class CommandItem:
     """
 
     def __init__(self, key: bytes, db: Database, item: Optional["CommandItem"] = None, default: Any = None) -> None:
-        self._expireat: Optional[int]
+        self._expireat: Optional[float]
         if item is None:
             self._value = default
             self._expireat = None
@@ -68,11 +68,11 @@ class CommandItem:
         self.expireat = None
 
     @property
-    def expireat(self) -> Optional[int]:
+    def expireat(self) -> Optional[float]:
         return self._expireat
 
     @expireat.setter
-    def expireat(self, value: Optional[int]) -> None:
+    def expireat(self, value: Optional[float]) -> None:
         self._expireat = value
         self._expireat_modified = True
         self._modified = True  # Since redis 6.0.7
