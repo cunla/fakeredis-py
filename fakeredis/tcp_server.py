@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import count
 from socket import socket
 from socketserver import ThreadingTCPServer, StreamRequestHandler
-from typing import BinaryIO, AnyStr, Dict
+from typing import BinaryIO, AnyStr, Dict, Tuple
 
 from redis import ResponseError
 
@@ -134,7 +134,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 
 
 class TcpFakeServer(ThreadingTCPServer):
-    def __init__(self, server_address, bind_and_activate=True):
+    def __init__(self, server_address: Tuple[str | bytes | bytearray, int], bind_and_activate: bool = True):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.server = FakeServer(version=(7, 4))
         self.client_ids = count(0)

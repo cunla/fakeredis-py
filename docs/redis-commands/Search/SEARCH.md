@@ -1,10 +1,6 @@
-# Search commands
 
-Module currently not implemented in fakeredis.
-
-
-### Unsupported search commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
+## Unsupported search commands 
+> To implement support for a command, see [here](/guides/implement-command/) 
 
 #### [FT.CREATE](https://redis.io/commands/ft.create/) <small>(not implemented)</small>
 
@@ -105,26 +101,5 @@ Reads from a cursor
 #### [FT.CURSOR DEL](https://redis.io/commands/ft.cursor-del/) <small>(not implemented)</small>
 
 Deletes a cursor
-
-
-
-### Unsupported suggestion commands 
-> To implement support for a command, see [here](../../guides/implement-command/) 
-
-#### [FT.SUGADD](https://redis.io/commands/ft.sugadd/) <small>(not implemented)</small>
-
-Adds a suggestion string to an auto-complete suggestion dictionary
-
-#### [FT.SUGGET](https://redis.io/commands/ft.sugget/) <small>(not implemented)</small>
-
-Gets completion suggestions for a prefix
-
-#### [FT.SUGDEL](https://redis.io/commands/ft.sugdel/) <small>(not implemented)</small>
-
-Deletes a string from a suggestion index
-
-#### [FT.SUGLEN](https://redis.io/commands/ft.suglen/) <small>(not implemented)</small>
-
-Gets the size of an auto-complete suggestion dictionary
 
 
