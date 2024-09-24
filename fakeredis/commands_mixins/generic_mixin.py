@@ -282,7 +282,7 @@ class GenericCommandsMixin:
                     byval = BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
                 return score, val
@@ -362,7 +362,7 @@ class GenericCommandsMixin:
                     byval = BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
                 return score, val
