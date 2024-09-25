@@ -1,4 +1,11 @@
-## fakeredis: A python implementation of redis server
+---
+toc:
+  toc_depth: 3
+---
+
+fakeredis: A python implementation of redis server
+=================================================
+
 
 FakeRedis is a pure-Python implementation of the Redis key-value store.
 
@@ -29,6 +36,8 @@ pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFil
 ```
 
 ## How to Use
+
+### Start a server on a thread
 
 ### Use as a pytest fixture
 
@@ -196,10 +205,12 @@ from fastapi import Depends, FastAPI
 
 app = FastAPI()
 
+
 async def get_redis() -> AsyncIterator[redis.Redis]:
     # Code to handle creating a redis connection goes here, for example
     async with redis.from_url("redis://localhost:6379") as client:  # type: ignore[no-untyped-call]
         yield client
+
 
 @app.get("/")
 async def root(redis_client: Annotated[redis.Redis, Depends(get_redis)]) -> Any:
@@ -223,19 +234,23 @@ from redis import asyncio as redis
 
 from main import app, get_redis
 
+
 @pytest_asyncio.fixture
 async def redis_client() -> AsyncIterator[redis.Redis]:
     async with fakeredis.FakeAsyncRedis() as client:
         yield client
 
+
 @pytest_asyncio.fixture
 async def app_client(redis_client: redis.Redis) -> AsyncIterator[httpx.AsyncClient]:
     async def get_redis_override() -> redis.Redis:
         return redis_client
+
     transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type] # https://github.com/encode/httpx/issues/3111
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as app_client:
         with mock.patch.dict(app.dependency_overrides, {get_redis: get_redis_override}):
             yield app_client
+
 
 @pytest.mark.asyncio
 async def test_app(app_client: httpx.AsyncClient) -> None:

@@ -8,6 +8,7 @@ from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,
 )
+from ._tcp_server import TcpFakeServer
 
 try:
     from importlib import metadata
@@ -28,4 +29,5 @@ __all__ = [
     "FakeConnection",
     "FakeAsyncRedis",
     "FakeAsyncConnection",
+    "TcpFakeServer",
 ]

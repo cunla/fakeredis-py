@@ -1,6 +1,10 @@
 ---
 title: Change log
-description: Change log of all fakeredis releases
+description: Changelog of all fakeredis releases
+tags:
+  - changelog
+  - release-notes
+toc_depth: 2
 ---
 
 ## v2.25.0
@@ -10,6 +14,7 @@ description: Change log of all fakeredis releases
 - Implement support for hash expiration related commands @j00bar #328
     - `HEXPIRE`, `HEXPIREAT`, `HEXPIRETIME`, `HPERSIST`, `HPEXPIRE`, `HPEXPIREAT`, `HPEXPIRETIME`, `HPTTL`, `HTTL`,
 - Implement support for `SORT_RO` #325, `EXPIRETIME` #323, and `PEXPIRETIME` #324
+- Support for creating a tcp server listening to multiple clients
 
 ## v2.24.1
 
