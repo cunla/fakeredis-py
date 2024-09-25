@@ -39,6 +39,25 @@ pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFil
 
 ### Start a server on a thread
 
+It is possible to start a server on a thread and use it as a connect to it as you would a real redis server.
+
+```pycon
+from threading import Thread
+from fakeredis import TcpFakeServer
+
+server_address = ("127.0.0.1", 6379)
+server = TcpFakeServer(server_address)
+t = Thread(target=server.serve_forever, daemon=True)
+t.start()
+
+import redis
+
+r = redis.Redis(host=server_address[0], port=server_address[1])
+r.set("foo", "bar")
+assert r.get("foo") == b"bar"
+
+```
+
 ### Use as a pytest fixture
 
 ```python
