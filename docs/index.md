@@ -41,7 +41,7 @@ pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFil
 
 It is possible to start a server on a thread and use it as a connect to it as you would a real redis server.
 
-```pycon
+```python
 from threading import Thread
 from fakeredis import TcpFakeServer
 
