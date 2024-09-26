@@ -1,9 +1,14 @@
+import sys
 import time
 from threading import Thread
 
+import pytest
 import redis
 
 from fakeredis import TcpFakeServer
+
+if sys.version_info < (3, 11):
+    pytest.skip("TcpFakeServer is only available in Python 3.11+", allow_module_level=True)
 
 
 def test_tcp_server_started():

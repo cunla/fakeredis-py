@@ -16,7 +16,8 @@ if sys.version_info >= (3, 11):
 else:
 
     class TcpFakeServer:
-        pass
+        def __init__(self, *args, **kwargs):
+            raise NotImplementedError("TcpFakeServer is only available in Python 3.11+")
 
 
 try:
