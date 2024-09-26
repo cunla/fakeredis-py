@@ -258,6 +258,8 @@ class FakeRedis(redis_async.Redis):
         self = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection
+        pool.connection_kwargs.setdefault("version", "7.4")
+        pool.connection_kwargs.setdefault("server_type", "redis")
         pool.connection_kwargs.pop("username", None)
         pool.connection_kwargs.pop("password", None)
         return self
