@@ -105,8 +105,9 @@ def test_script_help(r: redis.Redis):
     ]
 
 
-@pytest.mark.min_server("7.3")
-def test_script_help71(r: redis.Redis):
+@pytest.mark.min_server("7.1")
+@pytest.mark.unsupported_server_types("valkey")
+def test_script_help73(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"DEBUG (YES|SYNC|NO)",
