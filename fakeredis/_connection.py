@@ -145,6 +145,8 @@ class FakeRedisMixin:
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        kwargs.setdefault("version", "7.4")
+        kwargs.setdefault("server_type", "redis")
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
