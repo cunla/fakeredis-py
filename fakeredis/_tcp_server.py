@@ -4,8 +4,6 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import BinaryIO, Dict, Tuple
 
-from redis import ResponseError
-
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
 
@@ -96,14 +94,8 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         while True:
             try:
                 self.data = self.reader.load()
-
                 LOGGER.debug(f">>> {self.client_address[0]}: {self.data}")
-
-                try:
-                    res = self.current_client.connection.execute_command(*self.data)
-                except ResponseError as e:
-                    res = e
-
+                res = self.current_client.connection.execute_command(*self.data)
                 LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
                 self.writer.dump(res)
             except Exception as e:
@@ -112,7 +104,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 break
 
     def finish(self) -> None:
-        del self.server.clients[self.current_client.client_id]
+        del self.server.clients[self.current_client.client_address]
         super().finish()
 
 
