@@ -54,39 +54,40 @@ markdown_extensions:
   - toc:
       permalink: true
 
-
 nav:
   - Home: index.md
   - Redis stack: redis-stack.md
-  - Commands documentation:
-      - Redis commands:
-          - Bitmap commands: redis-commands/Redis/BITMAP.md
-          - Cluster commands: redis-commands/Redis/CLUSTER.md
-          - Connection commands: redis-commands/Redis/CONNECTION.md
-          - Generic commands: redis-commands/Redis/GENERIC.md
-          - Geospatial indices commands: redis-commands/Redis/GEO.md
-          - Bitmap commands: redis-commands/Redis/BITMAP.md
-          - Hash commands: redis-commands/Redis/HASH.md
-          - HyperLogLog commands: redis-commands/Redis/HYPERLOGLOG.md
-          - List commands: redis-commands/Redis/LIST.md
-          - Pub/Sub commands: redis-commands/Redis/PUBSUB.md
-          - Scripting commands: redis-commands/Redis/SCRIPTING.md
-          - Server commands: redis-commands/Redis/SERVER.md
-          - Set commands: redis-commands/Redis/SET.md
-          - Sorted Set commands: redis-commands/Redis/SORTEDSET.md
-          - Stream commands: redis-commands/Redis/STREAM.md
-          - String commands: redis-commands/Redis/STRING.md
-          - Transactions commands: redis-commands/Redis/TRANSACTIONS.md
-      - RedisJSON commands: redis-commands/RedisJSON/JSON
-      - Search commands: redis-commands/RedisSearch/SEARCH
-      - Suggestion commands: redis-commands/RedisSearch/SUGGESTION.md
-      - Time Series commands: redis-commands/RedisTimeSeries/TIMESERIES.md
-      - Probabilistic commands:
-          - Bloom Filter commands: redis-commands/RedisBloom/BF.md
-          - Cuckoo Filter commands: redis-commands/RedisBloom/CF.md
-          - Count-Min Sketch commands: redis-commands/RedisBloom/CMS.md
-          - t-digest commands: redis-commands/RedisBloom/TDIGEST.md
-          - top-k commands: redis-commands/RedisBloom/TOPK.md
+  - Valkey support: valkey-support.md
+  - Supported commands:
+    - 'redis-commands/index.md'
+    - Redis commands:
+        - Bitmap: redis-commands/Redis/BITMAP.md
+        - Cluster: redis-commands/Redis/CLUSTER.md
+        - Connection: redis-commands/Redis/CONNECTION.md
+        - Generic: redis-commands/Redis/GENERIC.md
+        - Geospatial indices: redis-commands/Redis/GEO.md
+        - Bitmap: redis-commands/Redis/BITMAP.md
+        - Hash: redis-commands/Redis/HASH.md
+        - HyperLogLog: redis-commands/Redis/HYPERLOGLOG.md
+        - List: redis-commands/Redis/LIST.md
+        - Pub/Sub: redis-commands/Redis/PUBSUB.md
+        - Scripting: redis-commands/Redis/SCRIPTING.md
+        - Server: redis-commands/Redis/SERVER.md
+        - Set: redis-commands/Redis/SET.md
+        - Sorted Set: redis-commands/Redis/SORTEDSET.md
+        - Stream: redis-commands/Redis/STREAM.md
+        - String: redis-commands/Redis/STRING.md
+        - Transactions: redis-commands/Redis/TRANSACTIONS.md
+    - RedisJSON commands: redis-commands/RedisJSON/JSON
+    - Time Series commands: redis-commands/RedisTimeSeries/TIMESERIES.md
+    - Probabilistic commands:
+        - Bloom Filter: redis-commands/RedisBloom/BF.md
+        - Cuckoo Filter: redis-commands/RedisBloom/CF.md
+        - Count-Min Sketch: redis-commands/RedisBloom/CMS.md
+        - t-digest: redis-commands/RedisBloom/TDIGEST.md
+        - top-k: redis-commands/RedisBloom/TOPK.md
+    - Search commands: redis-commands/RedisSearch/SEARCH.md
+    - Suggestion commands: redis-commands/RedisSearch/SUGGESTION.md
   - Guides:
       - Implementing support for a command: guides/implement-command.md
       - Write a new test case: guides/test-case.md
@@ -120,11 +121,11 @@ theme:
     # - content.tabs.link
     - content.tooltips
     # - header.autohide
-    # - navigation.expand
+#    - navigation.expand
     - navigation.footer
     - navigation.indexes
     # - navigation.instant
-    # - navigation.prune
+    - navigation.prune
     - navigation.sections
     # - navigation.tabs.sticky
     - navigation.tracking
