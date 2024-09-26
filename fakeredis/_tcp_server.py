@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
@@ -7,7 +8,8 @@ from redis import ResponseError
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
-from fakeredis.commands_mixins.scripting_mixin import LOGGER
+
+LOGGER = logging.getLogger("fakeredis")
 
 
 def to_bytes(value) -> bytes:
