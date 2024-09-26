@@ -43,7 +43,7 @@ jobs:
           poetry build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
-  test-redis:
+  test:
     name: >
       redis tests
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
