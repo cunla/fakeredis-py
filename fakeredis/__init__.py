@@ -1,3 +1,5 @@
+import sys
+
 from ._connection import (
     FakeRedis,
     FakeStrictRedis,
@@ -8,7 +10,14 @@ from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,
 )
-from ._tcp_server import TcpFakeServer
+
+if sys.version_info >= (3, 11):
+    from ._tcp_server import TcpFakeServer
+else:
+
+    class TcpFakeServer:
+        pass
+
 
 try:
     from importlib import metadata
