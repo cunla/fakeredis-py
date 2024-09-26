@@ -189,7 +189,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     @command(
         name="TS.CREATERULE",
         fixed=(Key(TimeSeries), Key(TimeSeries), bytes, bytes, Int),
-        repeat=(Int,),
+        repeat=(bytes,),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def ts_createrule(
@@ -199,18 +199,18 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         _: bytes,
         aggregator: bytes,
         bucket_duration: int,
-        *args: int,
+        *args: bytes,
     ) -> SimpleString:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         if dest_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         if len(args) > 1:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.createrule"))
         try:
             align_timestamp = int(args[0]) if len(args) == 1 else 0
         except ValueError:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6)
+            raise SimpleError(msgs.TIMESERIES_BAD_TIMESTAMP)
         existing_rule = source_key.value.get_rule(dest_key.key)
         if existing_rule is not None:
             raise SimpleError(msgs.TIMESERIES_RULE_EXISTS)
@@ -231,7 +231,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         res: Optional[TimeSeriesRule] = source_key.value.get_rule(dest_key.key)
         if res is None:
-            raise SimpleError(msgs.NOT_FOUND_MSG)
+            raise SimpleError(msgs.TIMESERIES_RULE_DOES_NOT_EXIST)
         source_key.value.delete_rule(res)
         return OK
 

@@ -6,6 +6,7 @@ import pytest
 import redis
 
 from fakeredis import _msgs as msgs
+from test.testtools import raw_command
 
 timeseries_tests = pytest.importorskip("probables")
 
@@ -16,6 +17,50 @@ def test_add_ts_close(r: redis.Redis):
     time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
     assert abs(ts2 - ts1) < 5
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_createrule_errors(r: redis.Redis):
+    timeseries = r.ts()
+    with pytest.raises(redis.ResponseError) as e:
+        timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
+
+    timeseries.create("t1")
+    with pytest.raises(redis.ResponseError) as e:
+        timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
+
+    timeseries.create("t2")
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, 1, 2)
+    assert str(e.value) in msgs.WRONG_ARGS_MSG6.format("ts.createrule")
+
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, "20c")
+    assert str(e.value) == msgs.TIMESERIES_BAD_TIMESTAMP
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_deleterule_errors(r: redis.Redis):
+    timeseries = r.ts()
+    with pytest.raises(redis.ResponseError) as e:
+        timeseries.deleterule("t1", "t2")
+    assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
+
+    timeseries.create("t1")
+    with pytest.raises(redis.ResponseError) as e:
+        timeseries.deleterule("t1", "t2")
+    assert str(e.value) == msgs.TIMESERIES_RULE_DOES_NOT_EXIST
+
+    timeseries.create("t2")
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, 1, 2)
+    assert str(e.value) in msgs.WRONG_ARGS_MSG6.format("ts.createrule")
+
+    with pytest.raises(redis.ResponseError) as e:
+        raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, "20c")
+    assert str(e.value) == msgs.TIMESERIES_BAD_TIMESTAMP
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -635,7 +680,6 @@ def test_multi_reverse_range(r: redis.Redis):
     # assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_mrevrange_latest(r: redis.Redis):
     timeseries = r.ts()
@@ -671,7 +715,6 @@ def test_get(r: redis.Redis):
     assert 4 == r.ts().get(name)[1]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_get_latest(r: redis.Redis):
     timeseries = r.ts()
