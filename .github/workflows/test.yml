@@ -43,8 +43,9 @@ jobs:
           poetry build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
-  test:
+  test-redis:
     name: >
+      redis tests
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
       extra:${{matrix.extra}}
@@ -56,18 +57,23 @@ jobs:
       fail-fast: false
       matrix:
         redis-image: [ "redis:6.2.14", "redis:7.0.15", "redis:7.4.0" ]
-        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
+        python-version: [ "3.8", "3.9", "3.11", "3.12" ]
         redis-py: [ "4.3.6", "4.6.0", "5.0.8", "5.1.0b7" ]
         include:
           - python-version: "3.12"
+            redis-image: "valkey/valkey:8.0"
+            redis-py: "5.0.8"
+            extra: "lupa"
+            hypothesis: true
+          - python-version: "3.12"
             redis-image: "redis/redis-stack-server:6.2.6-v15"
             redis-py: "5.0.8"
-            extra: true  # json, bf, lupa, cf
+            extra: "json, bf, lupa, cf"
             hypothesis: true
           - python-version: "3.12"
             redis-image: "redis/redis-stack-server:7.4.0-v0"
             redis-py: "5.0.8"
-            extra: true  # json, bf, lupa, cf
+            extra: "json, bf, lupa, cf"
             coverage: true
             hypothesis: true
 
@@ -106,7 +112,7 @@ jobs:
       - name: Install json
         if: ${{ matrix.extra }}
         run: |
-          poetry run pip install "fakeredis[json,bf,cf,lua]"
+          poetry run pip install "fakeredis[${{ matrix.extra }}]"
       - name: Get version
         id: getVersion
         shell: bash

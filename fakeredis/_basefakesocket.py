@@ -83,12 +83,19 @@ class BaseFakeSocket:
         self._paused = False
         self._parser = self._parse_commands()
         self._parser.send(None)
-        self.version = server.version
         # Assigned elsewhere
         self._transaction: Optional[List[Any]]
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+
+    @property
+    def version(self) -> Tuple[int, ...]:
+        return self._server.version
+
+    @property
+    def server_type(self) -> str:
+        return self._server.server_type
 
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.

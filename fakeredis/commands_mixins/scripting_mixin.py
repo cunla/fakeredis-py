@@ -79,6 +79,7 @@ class ScriptingCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any):
         self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
+        self.server_type: str
         self.version: Tuple[int]
         self.load_lua_modules = set()
         lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
@@ -100,9 +101,7 @@ class ScriptingCommandsMixin:
         elif type(value) in {int, float}:
             return "{:.17g}".format(value).encode()
         else:
-            # TODO: add the context
-            msg = msgs.LUA_COMMAND_ARG_MSG6 if self.version < (7,) else msgs.LUA_COMMAND_ARG_MSG
-            raise SimpleError(msg)
+            raise SimpleError(msgs.LUA_COMMAND_ARG_MSG)
 
     def _convert_redis_result(self, lua_runtime: LUA_MODULE.LuaRuntime, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
@@ -210,6 +209,13 @@ class ScriptingCommandsMixin:
         try:
             result = lua_runtime.execute(script)
         except SimpleError as ex:
+            if ex.value == msgs.LUA_COMMAND_ARG_MSG:
+                if self.version < (7,):
+                    raise SimpleError(msgs.LUA_COMMAND_ARG_MSG6)
+                elif self.server_type == "valkey":
+                    raise SimpleError(msgs.VALKEY_LUA_COMMAND_ARG_MSG.format(sha1.decode()))
+                else:
+                    raise SimpleError(msgs.LUA_COMMAND_ARG_MSG)
             if self.version < (7,):
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(ex.value)

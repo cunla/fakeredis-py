@@ -5,6 +5,7 @@ import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
 
+from test.test_hypothesis import server_type
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType
 
 if sys.version_info >= (3, 11):
@@ -85,6 +86,7 @@ class FakeRedisMixin:
         *args: Any,
         server: Optional[FakeServer] = None,
         version: VersionType = (7,),
+        server_type: str = "redis",
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
@@ -130,6 +132,7 @@ class FakeRedisMixin:
                 "connection_class": FakeConnection,
                 "server": server,
                 "version": version,
+                "server_type": server_type,
                 "lua_modules": lua_modules,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
@@ -137,6 +140,7 @@ class FakeRedisMixin:
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
+        kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
         super().__init__(**kwds)
 

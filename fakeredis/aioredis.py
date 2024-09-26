@@ -206,6 +206,7 @@ class FakeRedis(redis_async.Redis):
         server: Optional[_server.FakeServer] = None,
         connected: bool = True,
         version: VersionType = (7,),
+        server_type: str = "redis",
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
@@ -230,6 +231,7 @@ class FakeRedis(redis_async.Redis):
                 connection_class=FakeConnection,
                 max_connections=max_connections,
                 version=version,
+                server_type=server_type,
                 lua_modules=lua_modules,
             )
             connection_pool = redis_async.ConnectionPool(**connection_kwargs)  # type:ignore
