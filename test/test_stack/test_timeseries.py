@@ -417,7 +417,6 @@ def test_rev_range(r: redis.Redis):
     ]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_revrange_latest(r: redis.Redis):
     timeseries = r.ts()
@@ -488,7 +487,6 @@ def test_revrange_empty(r: redis.Redis):
     ]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_mrange(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
@@ -573,7 +571,6 @@ def test_multi_range_advanced(r: redis.Redis):
     # assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_mrange_latest(r: redis.Redis):
     timeseries = r.ts()
@@ -598,7 +595,6 @@ def test_mrange_latest(r: redis.Redis):
     ]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_multi_reverse_range(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
@@ -757,7 +753,6 @@ def test_mget(r: redis.Redis):
     assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_mget_latest(r: redis.Redis):
     timeseries = r.ts()
@@ -793,7 +788,6 @@ def testInfoDuplicatePolicy(r: redis.Redis):
     assert info.get("duplicate_policy") == "min"
 
 
-@pytest.mark.onlynoncluster
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_query_index(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
