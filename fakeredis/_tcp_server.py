@@ -115,9 +115,15 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 
 
 class TcpFakeServer(ThreadingTCPServer):
-    def __init__(self, server_address: Tuple[str | bytes | bytearray, int], bind_and_activate: bool = True):
+    def __init__(
+        self,
+        server_address: Tuple[str | bytes | bytearray, int],
+        bind_and_activate: bool = True,
+        server_type: str = "redis",
+        server_version: Tuple[int, ...] = (7, 4),
+    ):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
-        self.fake_server = FakeServer(version=(7, 4))
+        self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
         self.clients: Dict[int, FakeRedis] = dict()
 
