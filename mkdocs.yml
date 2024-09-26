@@ -53,17 +53,40 @@ markdown_extensions:
   - pymdownx.tilde
   - toc:
       permalink: true
-      toc_depth: 2
+
 
 nav:
   - Home: index.md
   - Redis stack: redis-stack.md
-  - Redis commands:
-      - Redis commands: redis-commands/Redis.md
-      - RedisJSON commands: redis-commands/RedisJson.md
-      - Search commands: redis-commands/RedisSearch.md
-      - Time Series commands: redis-commands/RedisTimeSeries.md
-      - Probabilistic commands: redis-commands/RedisBloom.md
+  - Commands documentation:
+      - Redis commands:
+          - Bitmap commands: redis-commands/Redis/BITMAP.md
+          - Cluster commands: redis-commands/Redis/CLUSTER.md
+          - Connection commands: redis-commands/Redis/CONNECTION.md
+          - Generic commands: redis-commands/Redis/GENERIC.md
+          - Geospatial indices commands: redis-commands/Redis/GEO.md
+          - Bitmap commands: redis-commands/Redis/BITMAP.md
+          - Hash commands: redis-commands/Redis/HASH.md
+          - HyperLogLog commands: redis-commands/Redis/HYPERLOGLOG.md
+          - List commands: redis-commands/Redis/LIST.md
+          - Pub/Sub commands: redis-commands/Redis/PUBSUB.md
+          - Scripting commands: redis-commands/Redis/SCRIPTING.md
+          - Server commands: redis-commands/Redis/SERVER.md
+          - Set commands: redis-commands/Redis/SET.md
+          - Sorted Set commands: redis-commands/Redis/SORTEDSET.md
+          - Stream commands: redis-commands/Redis/STREAM.md
+          - String commands: redis-commands/Redis/STRING.md
+          - Transactions commands: redis-commands/Redis/TRANSACTIONS.md
+      - RedisJSON commands: redis-commands/RedisJSON/JSON
+      - Search commands: redis-commands/RedisSearch/SEARCH
+      - Suggestion commands: redis-commands/RedisSearch/SUGGESTION.md
+      - Time Series commands: redis-commands/RedisTimeSeries/TIMESERIES.md
+      - Probabilistic commands:
+          - Bloom Filter commands: redis-commands/RedisBloom/BF.md
+          - Cuckoo Filter commands: redis-commands/RedisBloom/CF.md
+          - Count-Min Sketch commands: redis-commands/RedisBloom/CMS.md
+          - t-digest commands: redis-commands/RedisBloom/TDIGEST.md
+          - top-k commands: redis-commands/RedisBloom/TOPK.md
   - Guides:
       - Implementing support for a command: guides/implement-command.md
       - Write a new test case: guides/test-case.md
