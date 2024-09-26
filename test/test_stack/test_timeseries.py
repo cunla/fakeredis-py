@@ -19,6 +19,7 @@ def test_add_ts_close(r: redis.Redis):
     assert abs(ts2 - ts1) < 5
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_createrule_errors(r: redis.Redis):
     timeseries = r.ts()
