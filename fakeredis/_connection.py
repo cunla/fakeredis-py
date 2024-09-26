@@ -5,7 +5,6 @@ import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
 
-from test.test_hypothesis import server_type
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType
 
 if sys.version_info >= (3, 11):
