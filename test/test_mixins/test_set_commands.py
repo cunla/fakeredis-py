@@ -178,7 +178,7 @@ def test_sismember_wrong_type(r: redis.Redis):
 
 
 def test_smembers(r: redis.Redis):
-    assert r.smembers("foo") == []
+    assert set(r.smembers("foo")) == set()
 
 
 def test_smembers_copy(r: redis.Redis):
