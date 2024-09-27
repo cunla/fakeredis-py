@@ -361,8 +361,8 @@ class BaseTest:
                 self.command_strategy | self.command_strategy_redis7 if redis_ver >= (7,) else self.command_strategy
             )
 
-        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        # hypothesis.settings.load_profile("debug")
+        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)
 
 
@@ -705,8 +705,3 @@ def mutated_commands(commands):
         | add_arg(x, args)
         | swap_args(x),
     )
-
-
-class TestFuzz(BaseTest):
-    command_strategy = mutated_commands(TestJoint.command_strategy)
-    command_strategy = command_strategy.filter(lambda command: command.testable)

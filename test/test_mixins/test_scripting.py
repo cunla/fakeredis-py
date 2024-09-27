@@ -106,7 +106,8 @@ def test_script_help(r: redis.Redis):
 
 
 @pytest.mark.min_server("7.1")
-def test_script_help71(r: redis.Redis):
+@pytest.mark.unsupported_server_types("valkey")
+def test_script_help73(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"DEBUG (YES|SYNC|NO)",
@@ -341,10 +342,21 @@ def test_eval_call_bool6(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
-def test_eval_call_bool7(r: redis.Redis):
+@pytest.mark.unsupported_server_types("valkey")
+def test_eval_call_bool7_redis(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError, match=r"Lua redis lib command arguments must be strings or integers"):
+    with pytest.raises(redis.ResponseError) as exc_info:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert "Lua redis lib command arguments must be strings or integers" in str(exc_info.value)
+
+
+@pytest.mark.min_server("7")
+@pytest.mark.unsupported_server_types("redis")
+def test_eval_call_bool7_valkey(r: redis.Redis):
+    # Redis doesn't allow Lua bools to be passed to [p]call
+    with pytest.raises(redis.ResponseError) as exc_info:
+        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert "Command arguments must be strings or integers script" in str(exc_info.value)
 
 
 def test_eval_return_error(r: redis.Redis):

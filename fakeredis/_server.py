@@ -32,7 +32,7 @@ def _create_version(v: VersionType) -> Tuple[int, ...]:
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: VersionType = (7,)):
+    def __init__(self, version: VersionType = (7,), server_type: str = "redis") -> None:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
@@ -43,15 +43,18 @@ class FakeServer:
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
         self.closed_sockets: List[Any] = []
-        self.version = _create_version(version)
+        self.version: Tuple[int, ...] = _create_version(version)
+        if server_type not in ("redis", "dragonfly", "valkey"):
+            raise ValueError(f"Unsupported server type: {server_type}")
+        self.server_type: str = server_type
 
     @staticmethod
-    def get_server(key: str, version: VersionType) -> "FakeServer":
-        return FakeServer._servers_map.setdefault(key, FakeServer(version=version))
+    def get_server(key: str, version: VersionType, server_type: str) -> "FakeServer":
+        return FakeServer._servers_map.setdefault(key, FakeServer(version=version, server_type=server_type))
 
 
 class FakeBaseConnectionMixin(object):
-    def __init__(self, *args: Any, version: VersionType = (7, 0), **kwargs: Any) -> None:
+    def __init__(self, *args: Any, version: VersionType, server_type: str, **kwargs: Any) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str
         self._sock = None
@@ -66,7 +69,7 @@ class FakeBaseConnectionMixin(object):
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"
-            self.server_key += f":v{version}"
-            self._server = FakeServer.get_server(self.server_key, version=version)
+            self.server_key += f":{server_type}:v{version}"
+            self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)

@@ -85,6 +85,7 @@ class FakeRedisMixin:
         *args: Any,
         server: Optional[FakeServer] = None,
         version: VersionType = (7,),
+        server_type: str = "redis",
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
@@ -130,6 +131,7 @@ class FakeRedisMixin:
                 "connection_class": FakeConnection,
                 "server": server,
                 "version": version,
+                "server_type": server_type,
                 "lua_modules": lua_modules,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
@@ -137,11 +139,14 @@ class FakeRedisMixin:
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
+        kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
         super().__init__(**kwds)
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        kwargs.setdefault("version", "7.4")
+        kwargs.setdefault("server_type", "redis")
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection

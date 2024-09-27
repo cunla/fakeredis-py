@@ -20,6 +20,11 @@ def test_echo(r: redis.Redis):
     assert r.echo("hello") == b"hello"
 
 
+def test_unknown_command(r: redis.Redis):
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, "0 3 3")
+
+
 @testtools.fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch("time.time")
