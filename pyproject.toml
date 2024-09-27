@@ -69,13 +69,13 @@ flake8-pyproject = { version = "^1", python = "^3.9" }
 mypy = { version = "^1.10", python = "^3.9" }
 
 [tool.poetry.group.test.dependencies]
-pytest = { version = "^8.3", python = "^3.9" }
-hypothesis = { version = "^6.111", python = "^3.9" }
-pytest-timeout = { version = "^2.3.1", python = "^3.9" }
-pytest-asyncio = { version = "^0.24", python = "^3.9" }
-pytest-cov = { version = "^5.0", python = "^3.9" }
-pytest-mock = { version = "^3.14", python = "^3.9" }
-pytest-html = { version = "^4.1", python = "^3.9" }
+pytest = { version = "^8.3", python = "^3.8" }
+hypothesis = { version = "^6.111", python = "^3.8" }
+pytest-timeout = { version = "^2.3.1", python = "^3.8" }
+pytest-asyncio = { version = "^0.24", python = "^3.8" }
+pytest-cov = { version = "^5.0", python = "^3.8" }
+pytest-mock = { version = "^3.14", python = "^3.8" }
+pytest-html = { version = "^4.1", python = "^3.8" }
 
 [tool.poetry.group.docs.dependencies]
 python-dotenv = { version = "^1", python = "^3.9" }
