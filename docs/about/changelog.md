@@ -18,6 +18,10 @@ toc_depth: 2
 - Testing against valkey 8.0 #333
 - Improve documentation #332
 
+### 🐛 Bug Fixes
+
+- Replace `typing_extensions` dependency with `typing-extensions` #330
+
 ## v2.24.1
 
 ### 🐛 Bug Fixes
