@@ -44,7 +44,7 @@ class TestDecodeResponses:
 
     def test_decode_set(self, r):
         r.sadd("foo", "member1")
-        assert r.smembers("foo") == {"member1"}
+        assert set(r.smembers("foo")) == {"member1"}
 
     def test_decode_list(self, r):
         r.rpush("foo", "a", "b")
