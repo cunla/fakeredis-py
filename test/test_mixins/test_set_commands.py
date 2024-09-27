@@ -291,7 +291,7 @@ def test_sunionstore(r: redis.Redis):
     r.sadd("bar", "member2")
     r.sadd("bar", "member3")
     assert r.sunionstore("baz", "foo", "bar") == 3
-    assert r.smembers("baz") == {b"member1", b"member2", b"member3"}
+    assert set(r.smembers("baz")) == {b"member1", b"member2", b"member3"}
 
     # Catch instances where we store bytes and strings inconsistently
     # and thus baz = {b'member1', b'member2', b'member3', 'member3'}
