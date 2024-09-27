@@ -15,6 +15,8 @@ toc_depth: 2
     - `HEXPIRE`, `HEXPIREAT`, `HEXPIRETIME`, `HPERSIST`, `HPEXPIRE`, `HPEXPIREAT`, `HPEXPIRETIME`, `HPTTL`, `HTTL`,
 - Implement support for `SORT_RO` #325, `EXPIRETIME` #323, and `PEXPIRETIME` #324
 - Support for creating a tcp server listening to multiple clients
+- Testing against valkey 8.0 #333
+- Improve documentation #332
 
 ## v2.24.1
 
