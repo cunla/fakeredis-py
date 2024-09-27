@@ -2,9 +2,7 @@ from typing import Any, Self, Dict
 
 from . import FakeStrictRedis
 from ._connection import FakeRedis
-from .aioredis import (
-    FakeRedis as FakeAsyncRedis,
-)
+from .aioredis import FakeRedis as FakeAsyncRedis
 
 
 def _validate_server_type(args_dict: Dict[str, Any]) -> None:
