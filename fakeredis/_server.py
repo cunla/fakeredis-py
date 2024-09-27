@@ -6,11 +6,6 @@ import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union
 
-if sys.version_info >= (3, 11):
-    pass
-else:
-    pass
-
 from fakeredis._helpers import Database, FakeSelector
 
 LOGGER = logging.getLogger("fakeredis")

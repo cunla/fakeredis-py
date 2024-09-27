@@ -7,7 +7,15 @@ licenses.
 
 FakeRedis can be used as a valkey replacement for testing and development purposes as well.
 
-To make the process more straightforward, we have added a `FakeValkey` module to fakeredis that provides the same API as
-`FakeRedis` but with the valkey-specific commands/exceptions.
+To make the process more straightforward, the `FakeValkey` class sets all relevant arguments in `FakeRedis` to the
+valkey values.
+
+```python
+from fakeredis import FakeValkey
+
+valkey = FakeValkey()
+valkey.set("key", "value")
+print(valkey.get("key"))
+```
 
 [1]: https://github.com/valkey-io/valkey

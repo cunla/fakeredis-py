@@ -6,6 +6,7 @@ from ._connection import (
     FakeConnection,
 )
 from ._server import FakeServer
+from ._valkey import FakeValkey, FakeAsyncValkey, FakeStrictValkey
 from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,
@@ -40,4 +41,7 @@ __all__ = [
     "FakeAsyncRedis",
     "FakeAsyncConnection",
     "TcpFakeServer",
+    "FakeValkey",
+    "FakeAsyncValkey",
+    "FakeStrictValkey",
 ]
