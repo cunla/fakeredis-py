@@ -1,5 +1,4 @@
 import asyncio
-import re
 import sys
 
 if sys.version_info >= (3, 11):
@@ -11,7 +10,7 @@ import pytest_asyncio
 import redis
 import redis.asyncio
 
-from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
+from fakeredis import FakeServer, aioredis
 from test import testtools
 
 pytestmark = []

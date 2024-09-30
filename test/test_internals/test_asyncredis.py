@@ -1,13 +1,6 @@
-import asyncio
 import re
-import sys
 
-if sys.version_info >= (3, 11):
-    from asyncio import timeout as async_timeout
-else:
-    from async_timeout import timeout as async_timeout
 import pytest
-import pytest_asyncio
 import redis
 import redis.asyncio
 
@@ -144,4 +137,3 @@ async def test_init_args():
     assert await r3.get("bar") == b"baz"
     assert await r4.get("bar") == b"baz"
     assert await r1.get("bar") is None
-
