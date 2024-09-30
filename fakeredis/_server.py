@@ -48,7 +48,7 @@ class FakeServer:
 
 
 class FakeBaseConnectionMixin(object):
-    def __init__(self, *args: Any, version: VersionType, server_type: str, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, version: VersionType = (7, 0), server_type: str = "redis", **kwargs: Any) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str
         self._sock = None
