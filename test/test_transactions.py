@@ -4,7 +4,6 @@ import pytest
 import redis
 import redis.client
 
-import fakeredis
 from . import testtools
 
 
@@ -293,22 +292,6 @@ def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
         p.reset()
 
 
-@pytest.mark.fake
-def test_socket_cleanup_watch(fake_server):
-    r1 = fakeredis.FakeStrictRedis(server=fake_server)
-    r2 = fakeredis.FakeStrictRedis(server=fake_server)
-    pipeline = r1.pipeline(transaction=False)
-    # This needs some poking into redis-py internals to ensure that we reach
-    # FakeSocket._cleanup. We need to close the socket while there is still
-    # a watch in place, but not allow it to be garbage collected (hence we
-    # set 'sock' even though it is unused).
-    with pipeline:
-        pipeline.watch("test")
-        sock = pipeline.connection._sock  # noqa: F841
-        pipeline.connection.disconnect()
-    r2.set("test", "foo")
-
-
 def test_get_within_pipeline(r: redis.Redis):
     r.set("test", "foo")
     r.set("test2", "foo2")
@@ -319,25 +302,20 @@ def test_get_within_pipeline(r: redis.Redis):
         assert set(r.keys()) == expected_keys
 
 
-@pytest.mark.fake
-def test_get_within_pipeline_w_host():
-    r = fakeredis.FakeRedis("localhost")
-    r.set("test", "foo")
-    r.set("test2", "foo2")
-    expected_keys = set(r.keys())
-    with r.pipeline() as p:
-        assert set(r.keys()) == expected_keys
-        p.watch("test")
-        assert set(r.keys()) == expected_keys
+def test_multidb(create_redis):
+    r1 = create_redis(db=2)
+    r2 = create_redis(db=3)
 
+    r1["r1"] = "r1"
+    r2["r2"] = "r2"
 
-@pytest.mark.fake
-def test_get_within_pipeline_no_args():
-    r = fakeredis.FakeRedis()
-    r.set("test", "foo")
-    r.set("test2", "foo2")
-    expected_keys = set(r.keys())
-    with r.pipeline() as p:
-        assert set(r.keys()) == expected_keys
-        p.watch("test")
-        assert set(r.keys()) == expected_keys
+    assert "r2" not in r1
+    assert "r1" not in r2
+
+    assert r1["r1"] == b"r1"
+    assert r2["r2"] == b"r2"
+
+    assert r1.flushall() is True
+
+    assert "r1" not in r1
+    assert "r2" not in r2
