@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.25.1
+
+### 🐛 Bug Fixes
+
+- Fix missing default values for version/server_type in `FakeBaseConnectionMixin` #334
+
 ## v2.25.0
 
 ### 🚀 Features
