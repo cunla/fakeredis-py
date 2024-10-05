@@ -78,7 +78,7 @@ nav:
         - Stream: redis-commands/Redis/STREAM.md
         - String: redis-commands/Redis/STRING.md
         - Transactions: redis-commands/Redis/TRANSACTIONS.md
-    - RedisJSON commands: redis-commands/RedisJSON/JSON
+    - RedisJSON commands: redis-commands/RedisJson/JSON.md
     - Time Series commands: redis-commands/RedisTimeSeries/TIMESERIES.md
     - Probabilistic commands:
         - Bloom Filter: redis-commands/RedisBloom/BF.md
