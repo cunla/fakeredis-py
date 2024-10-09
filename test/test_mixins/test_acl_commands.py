@@ -48,3 +48,130 @@ def test_auth(r: redis.Redis):
 
     with pytest.raises(redis.AuthenticationError):
         r.auth(username=username, password="wrong_password")
+
+
+def test_acl_list(r: redis.Redis):
+    username = "fakeredis-user"
+    r.acl_deluser(username)
+    start = r.acl_list()
+
+    assert r.acl_setuser(username, enabled=False, reset=True)
+    users = r.acl_list()
+    assert len(users) == len(start) + 1
+
+
+def test_acl_getuser_setuser(r: redis.Redis):
+    username = "fakeredis-user"
+
+    # test enabled=False
+    assert r.acl_setuser(username, enabled=False, reset=True)
+    acl = r.acl_getuser(username)
+    assert acl["categories"] == ["-@all"]
+    assert acl["commands"] == []
+    assert acl["keys"] == []
+    assert acl["passwords"] == []
+    assert "off" in acl["flags"]
+    assert acl["enabled"] is False
+
+    # test nopass=True
+    assert r.acl_setuser(username, enabled=True, reset=True, nopass=True)
+    acl = r.acl_getuser(username)
+    assert acl["categories"] == ["-@all"]
+    assert acl["commands"] == []
+    assert acl["keys"] == []
+    assert acl["passwords"] == []
+    assert "on" in acl["flags"]
+    assert "nopass" in acl["flags"]
+    assert acl["enabled"] is True
+
+    # test all args
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        passwords=["+pass1", "+pass2"],
+        categories=["+set", "+@hash", "-@geo"],
+        commands=["+get", "+mget", "-hset"],
+        keys=["cache:*", "objects:*"],
+    )
+    acl = r.acl_getuser(username)
+    assert set(acl["categories"]) == {"+@hash", "+@set", "-@all", "-@geo"}
+    assert set(acl["commands"]) == {"+get", "+mget", "-hset"}
+    assert acl["enabled"] is True
+    assert "on" in acl["flags"]
+    assert set(acl["keys"]) == {"~cache:*", "~objects:*"}
+    assert len(acl["passwords"]) == 2
+
+    # # test reset=False keeps existing ACL and applies new ACL on top
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        passwords=["+pass1"],
+        categories=["+@set"],
+        commands=["+get"],
+        keys=["cache:*"],
+    )
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        passwords=["+pass2"],
+        categories=["+@hash"],
+        commands=["+mget"],
+        keys=["objects:*"],
+    )
+    acl = r.acl_getuser(username)
+    assert set(acl["commands"]) == {"+get", "+mget"}
+    assert acl["enabled"] is True
+    assert "on" in acl["flags"]
+    assert set(acl["keys"]) == {"~cache:*", "~objects:*"}
+    assert len(acl["passwords"]) == 2
+
+    # # test removal of passwords
+    assert r.acl_setuser(username, enabled=True, reset=True, passwords=["+pass1", "+pass2"])
+    assert len(r.acl_getuser(username)["passwords"]) == 2
+    assert r.acl_setuser(username, enabled=True, passwords=["-pass2"])
+    assert len(r.acl_getuser(username)["passwords"]) == 1
+
+    # # Resets and tests that hashed passwords are set properly.
+    hashed_password = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+    assert r.acl_setuser(username, enabled=True, reset=True, hashed_passwords=["+" + hashed_password])
+    acl = r.acl_getuser(username)
+    assert acl["passwords"] == [hashed_password]
+
+    # test removal of hashed passwords
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        hashed_passwords=["+" + hashed_password],
+        passwords=["+pass1"],
+    )
+    assert len(r.acl_getuser(username)["passwords"]) == 2
+    assert r.acl_setuser(username, enabled=True, hashed_passwords=["-" + hashed_password])
+    assert len(r.acl_getuser(username)["passwords"]) == 1
+
+    # # test selectors
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        passwords=["+pass1", "+pass2"],
+        categories=["+set", "+@hash", "-geo"],
+        commands=["+get", "+mget", "-hset"],
+        keys=["cache:*", "objects:*"],
+        channels=["message:*"],
+        selectors=[("+set", "%W~app*")],
+    )
+    acl = r.acl_getuser(username)
+    assert set(acl["categories"]) == {"+@hash", "+@set", "-@all", "-@geo"}
+    assert set(acl["commands"]) == {"+get", "+mget", "-hset"}
+    assert acl["enabled"] is True
+    assert "on" in acl["flags"]
+    assert set(acl["keys"]) == {"~cache:*", "~objects:*"}
+    assert len(acl["passwords"]) == 2
+    assert set(acl["channels"]) == {"&message:*"}
+    r.acl_deluser(username)
+    assert acl["selectors"] == [["commands", "-@all +set", "keys", "%W~app*", "channels", ""]]
+
+    # [{"commands": "-@all +set", "keys": "%W~app*", "channels": ""}],

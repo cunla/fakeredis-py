@@ -4,7 +4,7 @@ from typing import Any, Tuple, List, Callable, Dict
 from fakeredis import _msgs as msgs
 from fakeredis._command_info import get_categories, get_commands_by_category
 from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, OK
+from fakeredis._helpers import SimpleError, OK, casematch
 
 
 class AclCommandsMixin:
@@ -15,12 +15,16 @@ class AclCommandsMixin:
         self.version: Tuple[int]
         self._server: Any
 
-    def _check_user_password(self, username: bytes, password: bytes) -> bool:
-        return self._server.acl.check_user_password(username, password)
-
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
         return self._server.config
+
+    @property
+    def _acl(self) -> "AccessControlList":
+        return self._server.acl
+
+    def _check_user_password(self, username: bytes, password: bytes) -> bool:
+        return self._acl.get_user_acl(username).check_password(password)
 
     @command(name="CONFIG SET", fixed=(bytes, bytes), repeat=(bytes, bytes))
     def config_set(self, *args: bytes):
@@ -63,14 +67,63 @@ class AclCommandsMixin:
 
     @command(name="ACL SETUSER", fixed=(bytes,), repeat=(bytes,))
     def acl_setuser(self, username: bytes, *args: bytes) -> bytes:
+        user_acl = self._acl.get_user_acl(username)
         for arg in args:
-            if arg[0] == ord(">"):
-                self._server.acl.add_user_password(username, arg[1:])
-            elif arg[0] == ord("<"):
-                self._server.acl.remove_user_password(username, arg[1:])
-            elif arg[0] == ord("#"):
-                self._server.acl.add_user_password_hex(username, arg[1:])
-            elif arg[0] == ord("!"):
-                self._server.acl.remove_user_password_hex(username, arg[1:])
+            if casematch(arg, b"resetchannels"):
+                user_acl.reset_channels_patterns()
+                continue
 
+            elif casematch(arg, b"resetkeys"):
+                user_acl.reset_key_patterns()
+                continue
+            elif casematch(arg, b"on"):
+                user_acl.set_enable(True)
+                continue
+            elif casematch(arg, b"off"):
+                user_acl.set_enable(False)
+                continue
+            elif casematch(arg, b"nopass"):
+                user_acl.set_nopass()
+                continue
+            elif casematch(arg, b"reset"):
+                user_acl.reset()
+                continue
+            elif casematch(arg, b"nocommands"):
+                arg = b"-@all"
+            elif casematch(arg, b"allcommands"):
+                arg = b"+@all"
+            elif casematch(arg, b"allkeys"):
+                arg = b"~*"
+            elif casematch(arg, b"allchannels"):
+                arg = b"&*"
+
+            prefix = arg[0]
+            if prefix == ord(">"):
+                user_acl.add_password(arg[1:])
+            elif prefix == ord("<"):
+                user_acl.remove_password(arg[1:])
+            elif prefix == ord("#"):
+                user_acl.add_password_hex(arg[1:])
+            elif prefix == ord("!"):
+                user_acl.remove_password_hex(arg[1:])
+            elif prefix == ord("+") or prefix == ord("-"):
+                user_acl.add_command_or_category(arg)
+            elif prefix == ord("~"):
+                user_acl.add_key_pattern(arg[1:])
+            elif prefix == ord("&"):
+                user_acl.add_channel_pattern(arg[1:])
         return OK
+
+    @command(name="ACL LIST", fixed=(), repeat=())
+    def acl_list(self) -> bytes:
+        return self._acl.as_rules()
+
+    @command(name="ACL DELUSER", fixed=(bytes,), repeat=())
+    def acl_deluser(self, username: bytes) -> bytes:
+        self._acl.del_user(username)
+        return OK
+
+    @command(name="ACL GETUSER", fixed=(bytes,), repeat=())
+    def acl_getuser(self, username: bytes) -> List[bytes]:
+        res = self._acl.get_user_acl(username).as_array()
+        return res
