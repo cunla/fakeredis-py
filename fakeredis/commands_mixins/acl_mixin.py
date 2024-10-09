@@ -35,9 +35,9 @@ class AclCommandsMixin:
             and password == self._server.config[b"requirepass"]
         ):
             return OK
-        if len(args) == 2 and username in self._server.users:
-            user_rules = self._server.users[args[0]]
-            if b">" + args[1] in user_rules:
+        if len(args) == 2 and username in self._server.user_passwords:
+            user_passwords = self._server.user_passwords[args[0]]
+            if args[1] in user_passwords:
                 return OK
         raise SimpleError(msgs.AUTH_FAILURE)
 

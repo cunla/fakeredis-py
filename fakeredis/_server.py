@@ -42,7 +42,7 @@ class FakeServer:
             raise ValueError(f"Unsupported server type: {server_type}")
         self.server_type: str = server_type
         self.config: Dict[bytes, bytes] = dict()
-        self.users: Dict[bytes, List[bytes]] = dict()
+        self.user_passwords: Dict[bytes, List[bytes]] = dict()
 
     @staticmethod
     def get_server(key: str, version: VersionType, server_type: str) -> "FakeServer":
