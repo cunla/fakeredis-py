@@ -1,30 +1,10 @@
-import json
-import os
 import time
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional
 
 from fakeredis import _msgs as msgs
+from fakeredis._command_info import load_command_info, get_command_info
 from fakeredis._commands import command, DbIndex
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database, SimpleString
-
-_COMMAND_INFO: Optional[Dict[bytes, List[Any]]] = None
-
-
-def convert_obj(obj: Any) -> Any:
-    if isinstance(obj, str):
-        return obj.encode()
-    if isinstance(obj, list):
-        return [convert_obj(x) for x in obj]
-    if isinstance(obj, dict):
-        return {convert_obj(k): convert_obj(obj[k]) for k in obj}
-    return obj
-
-
-def _load_command_info() -> None:
-    global _COMMAND_INFO
-    if _COMMAND_INFO is None:
-        with open(os.path.join(os.path.dirname(__file__), "..", "commands.json")) as f:
-            _COMMAND_INFO = convert_obj(json.load(f))
 
 
 class ServerCommandsMixin:
@@ -37,10 +17,7 @@ class ServerCommandsMixin:
 
     @staticmethod
     def _get_command_info(cmd: bytes) -> Optional[List[Any]]:
-        _load_command_info()
-        if _COMMAND_INFO is None or cmd not in _COMMAND_INFO:
-            return None
-        return _COMMAND_INFO.get(cmd, None)
+        return get_command_info(cmd)
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args: bytes) -> SimpleString:

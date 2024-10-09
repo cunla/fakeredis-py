@@ -11,6 +11,7 @@ from fakeredis.stack import (
 )
 from ._basefakesocket import BaseFakeSocket
 from ._server import FakeServer
+from .commands_mixins.acl_mixin import AclCommandsMixin
 from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
 from .commands_mixins.connection_mixin import ConnectionCommandsMixin
 from .commands_mixins.generic_mixin import GenericCommandsMixin
@@ -60,6 +61,7 @@ class FakeSocket(
     TopkCommandsMixin,
     TDigestCommandsMixin,
     TimeSeriesCommandsMixin,
+    AclCommandsMixin,
 ):
     def __init__(
         self,
