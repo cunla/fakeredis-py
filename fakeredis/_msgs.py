@@ -90,6 +90,9 @@ INVALID_BITFIELD_TYPE = (
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 
+# ACL specific errors
+AUTH_FAILURE = "WRONGPASS invalid username-password pair or user is disabled."
+
 # TDigest error messages
 TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
 TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
