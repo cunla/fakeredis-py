@@ -519,6 +519,14 @@ def delete_keys(*keys: CommandItem) -> int:
             ans += 1
     return ans
 
+def positive_range(start: int, end: int, length: int) -> Tuple[int, int]:
+    # Redis handles negative slightly differently for zrange
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end += length
+    end = min(end, length - 1)
+    return start, end + 1
 
 def fix_range(start: int, end: int, length: int) -> Tuple[int, int]:
     # Redis handles negative slightly differently for zrange

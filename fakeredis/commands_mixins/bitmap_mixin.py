@@ -10,6 +10,7 @@ from fakeredis._commands import (
     BitValue,
     fix_range_string,
     fix_range,
+    positive_range,
     CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
@@ -54,6 +55,13 @@ class BitmapCommandsMixin:
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        # Redis treats non-existent key as an infinite array of 0 bits.
+        # If the user is looking for the first clear bit return 0,
+        # If the user is looking for the first set bit, return -1.
+        if not key.value:
+            return -1 if bit == 1 else 0
+
         start = 0 if len(args) == 0 else Int.decode(args[0])
         bit_chr = str(bit)
         key_value = key.value if key.value else b""
@@ -61,16 +69,24 @@ class BitmapCommandsMixin:
         if bit_mode:
             value = self._bytes_as_bin_string(key_value)
             end = len(value) if len(args) <= 1 else Int.decode(args[1])
-            start, end = fix_range(start, end, len(value))
-            value = value[start:end]
+            length = len(value)
         else:
             end = len(key_value) if len(args) <= 1 else Int.decode(args[1])
-            start, end = fix_range(start, end, len(key_value))
-            value = self._bytes_as_bin_string(key_value[start:end])
+            length = len(key_value)
 
+        start, end = positive_range(start, end, length)
+
+        if start > end or start >= length:
+            return -1
+
+        value  = value[start:end] if bit_mode else self._bytes_as_bin_string(key_value[start:end])
         result = value.find(bit_chr)
         if result != -1:
             result += start if bit_mode else (start * 8)
+        # Redis treats the value as padded with zero bytes to an infinity
+        # if the user is looking for the first clear bit and no end is set.
+        elif bit == 0 and len(args) <= 1:
+            result = len(key_value) * 8
         return result
 
     @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
