@@ -72,7 +72,6 @@ class AclCommandsMixin:
             if casematch(arg, b"resetchannels"):
                 user_acl.reset_channels_patterns()
                 continue
-
             elif casematch(arg, b"resetkeys"):
                 user_acl.reset_key_patterns()
                 continue
@@ -96,6 +95,9 @@ class AclCommandsMixin:
                 arg = b"~*"
             elif casematch(arg, b"allchannels"):
                 arg = b"&*"
+            elif arg[0] == ord("(") and arg[-1] == ord(")"):
+                user_acl.add_selector(arg[1:-1])
+                continue
 
             prefix = arg[0]
             if prefix == ord(">"):

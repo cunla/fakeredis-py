@@ -1,10 +1,12 @@
 import hashlib
 from typing import Dict, Set, List, Tuple
 
+from fakeredis._command_info import get_commands_by_category
+
 
 class UserAccessControlList:
     def __init__(self):
-        self._passwords: Set[str] = set()
+        self._passwords: Set[bytes] = set()
         self._enabled: bool = True
         self._nopass: bool = False
         self._key_patterns: Set[bytes] = set()
@@ -30,28 +32,33 @@ class UserAccessControlList:
         self._passwords.clear()
 
     def check_password(self, password: bytes) -> bool:
-        password_hex = hashlib.sha256(password).hexdigest()
+        password_hex = hashlib.sha256(password).hexdigest().encode()
         return password_hex in self._passwords and self._enabled
 
-    def add_password_hex(self, password_hex: str) -> None:
+    def add_password_hex(self, password_hex: bytes) -> None:
         self._nopass = True
         self._passwords.add(password_hex)
 
     def add_password(self, password: bytes) -> None:
-        password_hex = hashlib.sha256(password).hexdigest()
+        password_hex = hashlib.sha256(password).hexdigest().encode()
         self.add_password_hex(password_hex)
 
-    def remove_password_hex(self, password_hex: str) -> None:
+    def remove_password_hex(self, password_hex: bytes) -> None:
         self._passwords.discard(password_hex)
 
     def remove_password(self, password: bytes) -> None:
-        password_hex = hashlib.sha256(password).hexdigest()
+        password_hex = hashlib.sha256(password).hexdigest().encode()
         self.remove_password_hex(password_hex)
 
     def add_command_or_category(self, selector: bytes) -> None:
         enabled, command = selector[0] == ord("+"), selector[1:]
         if command[0] == ord("@"):
-            self._categories[command[1:]] = enabled
+            category = command[1:]
+            self._categories[category] = enabled
+            category_commands = get_commands_by_category(category)
+            for command in category_commands:
+                if command in self._commands:
+                    del self._commands[command]
         else:
             self._commands[command] = enabled
 
@@ -67,12 +74,31 @@ class UserAccessControlList:
     def add_channel_pattern(self, channel_pattern: bytes) -> None:
         self._channel_patterns.add(channel_pattern)
 
+    def add_selector(self, selector: bytes) -> None:
+        command, data = selector.split(b" ", 1)
+        allowed, command = command[0] == ord("+"), command[1:]
+        data = data.split(b" ")
+        keys = []
+        channels = []
+        for item in data:
+            if item.startswith(b"&"):
+                channels.append(item)
+                continue
+            if item.startswith(b"%RW"):
+                item = item[3:]
+            key = item
+            if key.startswith(b"%"):
+                key = key[2:]
+            if key.startswith(b"~"):
+                keys.append(item)
+        self._selectors[command] = (allowed, b" ".join(keys), b" ".join(channels))
+
     def as_rule(self) -> bytes:
         results = []
         results.append(b"on" if self._enabled else b"off")
         if self._nopass:
             results.append(b"nopass")
-        results.extend(b"#" + password.encode() for password in self._passwords)
+        results.extend(b"#" + password for password in self._passwords)
         results.extend(b"~" + key_pattern for key_pattern in self._key_patterns)
         if len(self._channel_patterns) == 0:
             results.append(b"resetchannels")
@@ -87,8 +113,10 @@ class UserAccessControlList:
     def _get_selectors(self) -> List[List[bytes]]:
         results = []
         for command, data in self._selectors.items():
-            selector = (b"+" if data[0] else b"-") + command
-            results.append([selector, b"keys", b"~" + data[1], b"channels", b"&" + data[2]])
+            selector = b"-@all " + (b"+" if data[0] else b"-") + command
+            keys = data[1]
+            channel = data[2]
+            results.append([b"commands", selector, b"keys", keys, b"channels", channel])
         return results
 
     def _get_commands(self) -> List[bytes]:
@@ -104,6 +132,9 @@ class UserAccessControlList:
     def _get_key_patterns(self) -> List[bytes]:
         return [b"~" + key_pattern for key_pattern in self._key_patterns]
 
+    def _get_channel_patterns(self):
+        return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
+
     def as_array(self) -> List[bytes]:
         flags = list()
         flags.append(b"on" if self._enabled else b"off")
@@ -115,10 +146,10 @@ class UserAccessControlList:
             flags.append(b"allchannels")
         results = list()
         results.extend([b"flags", flags])
-        results.extend([b"passwords", [b"#" + password.encode() for password in self._passwords]])
+        results.extend([b"passwords", list(self._passwords)])
         results.extend([b"commands", b" ".join(self._get_commands())])
         results.extend([b"keys", b" ".join(self._get_key_patterns())])
-        results.extend([b"channels", self._channel_patterns or [b""]])
+        results.extend([b"channels", b" ".join(self._get_channel_patterns())])
         results.extend([b"selectors", self._get_selectors()])
         return results
 

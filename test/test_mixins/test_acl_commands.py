@@ -174,4 +174,20 @@ def test_acl_getuser_setuser(r: redis.Redis):
     r.acl_deluser(username)
     assert acl["selectors"] == [["commands", "-@all +set", "keys", "%W~app*", "channels", ""]]
 
-    # [{"commands": "-@all +set", "keys": "%W~app*", "channels": ""}],
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        passwords=["+pass1", "+pass2"],
+        categories=["+set", "+@hash", "-geo"],
+        commands=["+get", "+mget", "-hset"],
+        keys=["cache:*", "objects:*"],
+        channels=["message:*"],
+        selectors=[("+set", "%W~app*"), ("+get", "%RW~app* &x"), ("-hset", "%W~app*")],
+    )
+    acl = r.acl_getuser(username)
+    assert acl["selectors"] == [
+        ["commands", "-@all +set", "keys", "%W~app*", "channels", ""],
+        ["commands", "-@all +get", "keys", "~app*", "channels", "&x"],
+        ["commands", "-@all -hset", "keys", "%W~app*", "channels", ""],
+    ]
