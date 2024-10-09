@@ -27,9 +27,15 @@ class AclCommandsMixin:
     def auth(self, *args: bytes) -> bytes:
         if not 1 <= len(args) <= 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
-        if len(args) == 1 and b"requirepass" in self._server.config and args[0] != self._server.config[b"requirepass"]:
+        username = None if len(args) == 1 else args[0]
+        password = args[1] if len(args) == 2 else args[0]
+        if (
+            (username is None or username == b"default")
+            and b"requirepass" in self._server.config
+            and password == self._server.config[b"requirepass"]
+        ):
             return OK
-        if len(args) == 2 and args[0] in self._server.users:
+        if len(args) == 2 and username in self._server.users:
             user_rules = self._server.users[args[0]]
             if b">" + args[1] in user_rules:
                 return OK

@@ -62,7 +62,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
-        if isinstance(response, redis.ResponseError):
+        if isinstance(response, (redis.ResponseError, redis.AuthenticationError)):
             raise response
         if kwargs.get("disable_decoding", False):
             return response

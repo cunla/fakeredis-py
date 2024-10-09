@@ -24,11 +24,8 @@ def test_acl_genpass(r: redis.Redis):
 
 
 def test_auth(r: redis.Redis):
-    try:
-        res = r.auth("some_password")
-        pytest.fail(f"Expected an exception, got {res}")
-    except redis.AuthenticationError as e:
-        pass
+    with pytest.raises(redis.AuthenticationError):
+        r.auth("some_password")
 
     with pytest.raises(redis.AuthenticationError):
         r.auth("some_password", "some_user")
