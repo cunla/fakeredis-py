@@ -15,3 +15,8 @@ def test_acl_cat(r: redis.Redis):
         assert len(commands) > 0
         diff = set(commands) - set(r.acl_cat(cat))
         assert len(diff) == 0
+
+
+def test_acl_genpass(r: redis.Redis):
+    assert len(r.acl_genpass()) == 64
+    assert len(r.acl_genpass(128)) == 32
