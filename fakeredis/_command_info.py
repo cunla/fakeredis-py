@@ -22,6 +22,11 @@ def load_command_info() -> None:
             _COMMAND_INFO = _encode_obj(json.load(f))
 
 
+def get_all_commands_info() -> Dict[bytes, List[Any]]:
+    load_command_info()
+    return _COMMAND_INFO
+
+
 def get_command_info(cmd: bytes) -> Optional[List[Any]]:
     load_command_info()
     if _COMMAND_INFO is None or cmd not in _COMMAND_INFO:
