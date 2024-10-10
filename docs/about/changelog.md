@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.25.2
+
+### 🐛 Bug Fixes
+
+- Fix bug in bitpos function for the clear bit mode @Diskein #337
+
 ## v2.25.1
 
 ### 🐛 Bug Fixes

@@ -41,7 +41,7 @@ class BitmapCommandsMixin:
     def _bytes_as_bin_string(value: bytes) -> str:
         return "".join([bin(i).lstrip("0b").rjust(8, "0") for i in value])
 
-    @command((Key(bytes), Int), (bytes,))
+    @command((Key(bytes), Int), (bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def bitpos(self, key: CommandItem, bit: int, *args: bytes) -> int:
         if bit != 0 and bit != 1:
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
@@ -54,23 +54,27 @@ class BitmapCommandsMixin:
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        if key.value is None:
+            # The first clear bit is at 0, the first set bit is not found (-1).
+            return -1 if bit == 1 else 0
+
         start = 0 if len(args) == 0 else Int.decode(args[0])
-        bit_chr = str(bit)
-        key_value = key.value if key.value else b""
+        source_value = self._bytes_as_bin_string(key.value) if bit_mode else key.value
+        end = len(source_value) if len(args) <= 1 else Int.decode(args[1])
+        length = len(source_value)
+        start, end = fix_range(start, end, length)
+        if start == end == -1:
+            return -1
+        source_value = source_value[start:end] if bit_mode else self._bytes_as_bin_string(source_value[start:end])
 
-        if bit_mode:
-            value = self._bytes_as_bin_string(key_value)
-            end = len(value) if len(args) <= 1 else Int.decode(args[1])
-            start, end = fix_range(start, end, len(value))
-            value = value[start:end]
-        else:
-            end = len(key_value) if len(args) <= 1 else Int.decode(args[1])
-            start, end = fix_range(start, end, len(key_value))
-            value = self._bytes_as_bin_string(key_value[start:end])
-
-        result = value.find(bit_chr)
+        result = source_value.find(str(bit))
         if result != -1:
             result += start if bit_mode else (start * 8)
+        elif bit == 0 and len(args) <= 1:
+            # Redis treats the value as padded with zero bytes to an infinity
+            # if the user is looking for the first clear bit and no end is set.
+            result = len(key.value) * 8
         return result
 
     @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
