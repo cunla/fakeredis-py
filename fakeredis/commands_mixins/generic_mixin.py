@@ -17,7 +17,7 @@ from fakeredis._commands import (
     Hash,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
-from fakeredis._zset import ZSet
+from fakeredis.model import ZSet
 
 
 class GenericCommandsMixin:

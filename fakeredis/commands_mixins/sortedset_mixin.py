@@ -26,7 +26,7 @@ from fakeredis._helpers import (
     null_terminate,
     Database,
 )
-from fakeredis._zset import ZSet
+from fakeredis.model import ZSet
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
