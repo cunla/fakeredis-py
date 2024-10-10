@@ -7,8 +7,8 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Float, CommandItem
 from fakeredis._helpers import SimpleError, Database
 from fakeredis.model import ZSet
-from fakeredis.geo import geohash
-from fakeredis.geo.haversine import distance
+from fakeredis.geo import distance, geo_encode, geo_decode
+
 
 UNIT_TO_M = {"km": 0.001, "mi": 0.000621371, "ft": 3.28084, "m": 1}
 
@@ -71,7 +71,7 @@ def _find_near(
     """
     results = list()
     for name, _hash in zset.items():
-        p_lat, p_long, _, _ = geohash.decode(_hash)
+        p_lat, p_long, _, _ = geo_decode(_hash)
         dist = distance((p_lat, p_long), (lat, long)) * conv
         if dist < radius:
             results.append(GeoResult(name, p_long, p_lat, _hash, dist))
@@ -120,7 +120,7 @@ class GeoCommandsMixin:
                 data[i + 2],
             )
             if (name in zset and not xx) or (name not in zset and not nx):
-                if zset.add(name, geohash.encode(lat, long, 10)):
+                if zset.add(name, geo_encode(lat, long, 10)):
                     changed_items += 1
         if changed_items:
             key.updated()
@@ -137,7 +137,7 @@ class GeoCommandsMixin:
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def geopos(self, key: CommandItem, *members: bytes) -> List[Optional[List[bytes]]]:
         gospositions = map(
-            lambda x: geohash.decode(x) if x is not None else x,
+            lambda x: geo_decode(x) if x is not None else x,
             map(key.value.get, members),
         )
         res = [
@@ -158,7 +158,7 @@ class GeoCommandsMixin:
         geohashes = [key.value.get(m1), key.value.get(m2)]
         if any(elem is None for elem in geohashes):
             return None
-        geo_locs = [geohash.decode(x) for x in geohashes]
+        geo_locs = [geo_decode(x) for x in geohashes]
         res = distance((geo_locs[0][0], geo_locs[0][1]), (geo_locs[1][0], geo_locs[1][1]))
         unit = translate_meters_to_unit(args[0]) if len(args) == 1 else 1
         return res * unit
@@ -236,13 +236,13 @@ class GeoCommandsMixin:
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
     def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes):
         member_score = key.value.get(member_name)
-        lat, long, _, _ = geohash.decode(member_score)
+        lat, long, _, _ = geo_decode(member_score)
         return self.georadius(key, long, lat, radius, *args)
 
     @command(name="GEORADIUSBYMEMBER_RO", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
     def georadiusbymember_ro(self, key: CommandItem, member_name: bytes, radius: float, *args: float) -> List[Any]:
         member_score = key.value.get(member_name)
-        lat, long, _, _ = geohash.decode(member_score)
+        lat, long, _, _ = geo_decode(member_score)
         return self.georadius_ro(key, long, lat, radius, *args)
 
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))

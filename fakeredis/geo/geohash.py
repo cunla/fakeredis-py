@@ -7,13 +7,11 @@ base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 decodemap = {base32[i]: i for i in range(len(base32))}
 
 
-def decode(geohash: str) -> Tuple[float, float, float, float]:
+def geo_decode(geohash: str) -> Tuple[float, float, float, float]:
     """
-    Decode the geohash to its exact values, including the error
-    margins of the result.  Returns four float values: latitude,
-    longitude, the plus/minus error for latitude (as a positive
-    number) and the plus/minus error for longitude (as a positive
-    number).
+    Decode the geohash to its exact values, including the error margins of the result.  Returns four float values:
+    latitude, longitude, the plus/minus error for latitude (as a positive number) and the plus/minus error for longitude
+    (as a positive number).
     """
     lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
     lat_err, lon_err = 90.0, 180.0
@@ -51,10 +49,10 @@ def decode(geohash: str) -> Tuple[float, float, float, float]:
     return lat, lon, lat_err, lon_err
 
 
-def encode(latitude: float, longitude: float, precision: int = 12) -> str:
+def geo_encode(latitude: float, longitude: float, precision: int = 12) -> str:
     """
-    Encode a position given in float arguments latitude, longitude to
-    a geohash which will have the character count precision.
+    Encode a position given in float arguments latitude, longitude to a geohash which will have the character count
+    precision.
     """
     lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
     geohash, bits = [], [16, 8, 4, 2, 1]  # type: ignore
