@@ -2,23 +2,6 @@ import math
 from typing import Tuple
 
 
-# class GeoMember:
-#     def __init__(self, name: bytes, lat: float, long: float):
-#         self.name = name
-#         self.long = long
-#         self.lat = lat
-#
-#     @staticmethod
-#     def from_bytes_tuple(t: Tuple[bytes, bytes, bytes]) -> 'GeoMember':
-#         long = Float.decode(t[0])
-#         lat = Float.decode(t[1])
-#         name = t[2]
-#         return GeoMember(name, lat, long)
-#
-#     def geohash(self):
-#         return geohash.encode(self.lat, self.long)
-
-
 def distance(origin: Tuple[float, float], destination: Tuple[float, float]) -> float:
     """Calculate the Haversine distance in meters."""
     radius = 6372797.560856  # Earth's quatratic mean radius for WGS-84
