@@ -60,24 +60,15 @@ class BitmapCommandsMixin:
             return -1 if bit == 1 else 0
 
         start = 0 if len(args) == 0 else Int.decode(args[0])
-        bit_chr = str(bit)
-
-        if bit_mode:
-            value = self._bytes_as_bin_string(key.value)
-            end = len(value) if len(args) <= 1 else Int.decode(args[1])
-            length = len(value)
-            start, end = fix_range(start, end, length)
-            value = value[start:end]
-        else:
-            end = len(key.value) if len(args) <= 1 else Int.decode(args[1])
-            length = len(key.value)
-            start, end = fix_range(start, end, length)
-            value = self._bytes_as_bin_string(key.value[start:end])
-
+        source_value = self._bytes_as_bin_string(key.value) if bit_mode else key.value
+        end = len(source_value) if len(args) <= 1 else Int.decode(args[1])
+        length = len(source_value)
+        start, end = fix_range(start, end, length)
         if start == end == -1:
             return -1
+        source_value = source_value[start:end] if bit_mode else self._bytes_as_bin_string(source_value[start:end])
 
-        result = value.find(bit_chr)
+        result = source_value.find(str(bit))
         if result != -1:
             result += start if bit_mode else (start * 8)
         elif bit == 0 and len(args) <= 1:
