@@ -2,8 +2,8 @@ import secrets
 from typing import Any, Tuple, List, Callable, Dict
 
 from fakeredis import _msgs as msgs
-from fakeredis._acl import AccessControlList
-from fakeredis._command_info import get_categories, get_commands_by_category
+from fakeredis.model import AccessControlList
+from fakeredis.model import get_categories, get_commands_by_category
 from fakeredis._commands import command, Int
 from fakeredis._helpers import SimpleError, OK, casematch
 

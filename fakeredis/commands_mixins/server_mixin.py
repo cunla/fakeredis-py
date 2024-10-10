@@ -2,9 +2,9 @@ import time
 from typing import Any, List, Optional
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_info import get_command_info, load_command_info, _COMMAND_INFO, get_all_commands_info
 from fakeredis._commands import command, DbIndex
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database, SimpleString
+from fakeredis.model import get_command_info, get_all_commands_info
 
 
 class ServerCommandsMixin:

@@ -15,27 +15,27 @@ def _encode_obj(obj: Any) -> Any:
     return obj
 
 
-def load_command_info() -> None:
+def _load_command_info() -> None:
     global _COMMAND_INFO
     if _COMMAND_INFO is None:
-        with open(os.path.join(os.path.dirname(__file__), "commands.json")) as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "commands.json")) as f:
             _COMMAND_INFO = _encode_obj(json.load(f))
 
 
 def get_all_commands_info() -> Dict[bytes, List[Any]]:
-    load_command_info()
+    _load_command_info()
     return _COMMAND_INFO
 
 
 def get_command_info(cmd: bytes) -> Optional[List[Any]]:
-    load_command_info()
+    _load_command_info()
     if _COMMAND_INFO is None or cmd not in _COMMAND_INFO:
         return None
     return _COMMAND_INFO.get(cmd, None)
 
 
 def get_categories() -> List[bytes]:
-    load_command_info()
+    _load_command_info()
     if _COMMAND_INFO is None:
         return []
     categories = set()
@@ -46,7 +46,7 @@ def get_categories() -> List[bytes]:
 
 
 def get_commands_by_category(category: Union[str, bytes]) -> List[bytes]:
-    load_command_info()
+    _load_command_info()
     if _COMMAND_INFO is None:
         return []
     if isinstance(category, str):

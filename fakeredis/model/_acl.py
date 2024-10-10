@@ -1,7 +1,7 @@
 import hashlib
 from typing import Dict, Set, List, Tuple
 
-from fakeredis._command_info import get_commands_by_category
+from ._command_info import get_commands_by_category
 
 
 class UserAccessControlList:
