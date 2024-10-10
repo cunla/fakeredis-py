@@ -10,7 +10,6 @@ from fakeredis._commands import (
     BitValue,
     fix_range_string,
     fix_range,
-    positive_range,
     CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
@@ -74,12 +73,12 @@ class BitmapCommandsMixin:
             end = len(key_value) if len(args) <= 1 else Int.decode(args[1])
             length = len(key_value)
 
-        start, end = positive_range(start, end, length)
+        start, end = fix_range(start, end, length)
 
-        if start > end or start >= length:
+        if start == end == -1:
             return -1
 
-        value  = value[start:end] if bit_mode else self._bytes_as_bin_string(key_value[start:end])
+        value = value[start:end] if bit_mode else self._bytes_as_bin_string(key_value[start:end])
         result = value.find(bit_chr)
         if result != -1:
             result += start if bit_mode else (start * 8)

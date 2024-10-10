@@ -212,7 +212,6 @@ def test_bitpos(r: redis.Redis):
     assert r.bitpos("nokey:bitpos", 1, 1) == -1
 
 
-
 @pytest.mark.min_server("7")
 def test_bitops_mode_redis7(r: redis.Redis):
     key = "key:bitpos"
