@@ -197,7 +197,19 @@ def test_bitpos(r: redis.Redis):
     assert r.bitpos(key, 1, 1) == 8
     r.set(key, b"\x00\x00\x00")
     assert r.bitpos(key, 1) == -1
+    r.set(key, b"\xff\xff\xff")
+    assert r.bitpos(key, 1) == 0
+    assert r.bitpos(key, 1, 1) == 8
+    assert r.bitpos(key, 1, 3) == -1
+    assert r.bitpos(key, 0) == 24
+    assert r.bitpos(key, 0, 1) == 24
+    assert r.bitpos(key, 0, 3) == -1
+    assert r.bitpos(key, 0, 0, -1) == -1
     r.set(key, b"\xff\xf0\x00")
+    assert r.bitpos("nokey:bitpos", 0) == 0
+    assert r.bitpos("nokey:bitpos", 1) == -1
+    assert r.bitpos("nokey:bitpos", 0, 1) == 0
+    assert r.bitpos("nokey:bitpos", 1, 1) == -1
 
 
 @pytest.mark.min_server("7")
