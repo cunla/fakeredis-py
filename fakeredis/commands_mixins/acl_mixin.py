@@ -2,6 +2,7 @@ import secrets
 from typing import Any, Tuple, List, Callable, Dict
 
 from fakeredis import _msgs as msgs
+from fakeredis._acl import AccessControlList
 from fakeredis._command_info import get_categories, get_commands_by_category
 from fakeredis._commands import command, Int
 from fakeredis._helpers import SimpleError, OK, casematch
@@ -20,7 +21,7 @@ class AclCommandsMixin:
         return self._server.config
 
     @property
-    def _acl(self) -> "AccessControlList":
+    def _acl(self) -> AccessControlList:
         return self._server.acl
 
     def _check_user_password(self, username: bytes, password: bytes) -> bool:

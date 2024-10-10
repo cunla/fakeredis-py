@@ -2,7 +2,7 @@ import time
 from typing import Any, List, Optional
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_info import load_command_info, get_command_info
+from fakeredis._command_info import get_command_info, load_command_info, _COMMAND_INFO
 from fakeredis._commands import command, DbIndex
 from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database, SimpleString
 
@@ -77,12 +77,12 @@ class ServerCommandsMixin:
 
     @command(name="COMMAND COUNT", fixed=(), repeat=())
     def command_count(self) -> int:
-        _load_command_info()
+        load_command_info()
         return len(_COMMAND_INFO) if _COMMAND_INFO is not None else 0
 
     @command(name="COMMAND", fixed=(), repeat=())
     def command_(self) -> List[Any]:
-        _load_command_info()
+        load_command_info()
         if _COMMAND_INFO is None:
             return []
         res = [self._get_command_info(cmd) for cmd in _COMMAND_INFO]
