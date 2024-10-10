@@ -14,7 +14,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
-from fakeredis._zset import ZSet
+from fakeredis.model import ZSet
 
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 

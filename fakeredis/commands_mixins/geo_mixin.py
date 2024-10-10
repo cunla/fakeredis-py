@@ -6,7 +6,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Float, CommandItem
 from fakeredis._helpers import SimpleError, Database
-from fakeredis._zset import ZSet
+from fakeredis.model import ZSet
 from fakeredis.geo import geohash
 from fakeredis.geo.haversine import distance
 

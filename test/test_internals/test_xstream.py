@@ -1,6 +1,6 @@
 import pytest
 
-from fakeredis._stream import XStream, StreamRangeTest
+from fakeredis.model import XStream, StreamRangeTest
 
 
 @pytest.mark.fake

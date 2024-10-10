@@ -8,6 +8,8 @@ from xmlrpc.client import ResponseError
 import redis
 from redis.connection import DefaultParser
 
+from fakeredis.model import XStream
+from fakeredis.model import ZSet
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem, Hash
@@ -21,8 +23,6 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
-from ._stream import XStream
-from ._zset import ZSet
 
 
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
