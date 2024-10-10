@@ -1,7 +1,7 @@
 import pytest
 import redis
 
-from fakeredis._command_info import get_categories, get_commands_by_category
+from fakeredis.model import get_categories, get_commands_by_category
 
 
 def test_acl_cat(r: redis.Redis):
@@ -40,7 +40,7 @@ def test_auth(r: redis.Redis):
     r.config_set("requirepass", "")
 
     # test for other users
-    username = "redis-py-auth"
+    username = "fakeredis-authuser"
 
     assert r.acl_setuser(username, enabled=True, passwords=["+strong_password"], commands=["+acl"])
 
@@ -58,6 +58,28 @@ def test_acl_list(r: redis.Redis):
     assert r.acl_setuser(username, enabled=False, reset=True)
     users = r.acl_list()
     assert len(users) == len(start) + 1
+    assert r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        passwords=["+pass1", "+pass2"],
+        categories=["+set", "+@hash", "-geo"],
+        commands=["+get", "+mget", "-hset"],
+        keys=["cache:*", "objects:*"],
+        channels=["message:*"],
+        selectors=[("+set", "%W~app*"), ("+get", "%RW~app* &x"), ("-hset", "%W~app*")],
+    )
+    rules = r.acl_list()
+    user_rule = next(filter(lambda x: x.startswith(f"user {username}"), rules), None)
+    assert user_rule is not None
+
+    assert "#e6c3da5b206634d7f3f3586d747ffdb36b5c675757b380c6a5fe5c570c714349" in user_rule
+    assert "#1ba3d16e9881959f8c9a9762854f72c6e6321cdd44358a10a4e939033117eab9" in user_rule
+    assert "on" in user_rule
+    assert "~cache:* ~objects:* resetchannels &message:*" in user_rule
+    assert "(%W~app* resetchannels -@all +set)" in user_rule
+    assert "(~app* resetchannels &x -@all +get)" in user_rule
+    assert "(%W~app* resetchannels -@all -hset)" in user_rule
 
 
 def test_acl_getuser_setuser(r: redis.Redis):

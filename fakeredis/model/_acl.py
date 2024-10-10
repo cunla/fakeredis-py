@@ -1,7 +1,39 @@
 import hashlib
-from typing import Dict, Set, List, Tuple
+from typing import Dict, Set, List, Union
 
 from ._command_info import get_commands_by_category
+
+
+class Selector:
+    def __init__(self, command: bytes, allowed: bool, keys: bytes, channels: bytes):
+        self.command: bytes = command
+        self.allowed: bool = allowed
+        self.keys: bytes = keys
+        self.channels: bytes = channels
+
+    def as_array(self) -> List[bytes]:
+        return [b"+" if self.allowed else b"-", self.command, b"keys", self.keys, b"channels", self.channels]
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Selector":
+        allowed = data[0] == ord("+")
+        data = data[1:]
+        command, data = data.split(b" ", 1)
+        keys = b""
+        channels = b""
+        data = data.split(b" ")
+        for item in data:
+            if item.startswith(b"&"):
+                channels = item
+                continue
+            if item.startswith(b"%RW"):
+                item = item[3:]
+            key = item
+            if key.startswith(b"%"):
+                key = key[2:]
+            if key.startswith(b"~"):
+                keys = item
+        return cls(command, allowed, keys, channels)
 
 
 class UserAccessControlList:
@@ -13,7 +45,7 @@ class UserAccessControlList:
         self._channel_patterns: Set[bytes] = set()
         self._categories: Dict[bytes, bool] = {b"all": False}
         self._commands: Dict[bytes, bool] = dict()
-        self._selectors: Dict[bytes, Tuple[bool, bytes, bytes]] = dict()
+        self._selectors: Dict[bytes, Selector] = dict()
 
     def reset(self):
         self._enabled = False
@@ -75,48 +107,14 @@ class UserAccessControlList:
         self._channel_patterns.add(channel_pattern)
 
     def add_selector(self, selector: bytes) -> None:
-        command, data = selector.split(b" ", 1)
-        allowed, command = command[0] == ord("+"), command[1:]
-        data = data.split(b" ")
-        keys = []
-        channels = []
-        for item in data:
-            if item.startswith(b"&"):
-                channels.append(item)
-                continue
-            if item.startswith(b"%RW"):
-                item = item[3:]
-            key = item
-            if key.startswith(b"%"):
-                key = key[2:]
-            if key.startswith(b"~"):
-                keys.append(item)
-        self._selectors[command] = (allowed, b" ".join(keys), b" ".join(channels))
-
-    def as_rule(self) -> bytes:
-        results = []
-        results.append(b"on" if self._enabled else b"off")
-        if self._nopass:
-            results.append(b"nopass")
-        results.extend(b"#" + password for password in self._passwords)
-        results.extend(b"~" + key_pattern for key_pattern in self._key_patterns)
-        if len(self._channel_patterns) == 0:
-            results.append(b"resetchannels")
-        else:
-            results.extend(b"&" + channel_pattern for channel_pattern in self._channel_patterns)
-        if len(self._categories) == 0:
-            results.append(b"-@all")
-        else:
-            results.extend(b"+@" + category for category in self._categories)
-        return b" ".join(results)
+        selector = Selector.from_bytes(selector)
+        self._selectors[selector.command] = selector
 
     def _get_selectors(self) -> List[List[bytes]]:
         results = []
-        for command, data in self._selectors.items():
-            selector = b"-@all " + (b"+" if data[0] else b"-") + command
-            keys = data[1]
-            channel = data[2]
-            results.append([b"commands", selector, b"keys", keys, b"channels", channel])
+        for command, selector in self._selectors.items():
+            s = b"-@all " + (b"+" if selector.allowed else b"-") + command
+            results.append([b"commands", s, b"keys", selector.keys, b"channels", selector.channels])
         return results
 
     def _get_commands(self) -> List[bytes]:
@@ -135,7 +133,7 @@ class UserAccessControlList:
     def _get_channel_patterns(self):
         return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
 
-    def as_array(self) -> List[bytes]:
+    def as_array(self) -> List[Union[bytes, List[bytes]]]:
         flags = list()
         flags.append(b"on" if self._enabled else b"off")
         if self._nopass:
@@ -144,7 +142,7 @@ class UserAccessControlList:
             flags.append(b"allkeys")
         if "*" in self._channel_patterns:
             flags.append(b"allchannels")
-        results = list()
+        results: List[Union[bytes, List[bytes]]] = list()
         results.extend([b"flags", flags])
         results.extend([b"passwords", list(self._passwords)])
         results.extend([b"commands", b" ".join(self._get_commands())])
@@ -152,6 +150,25 @@ class UserAccessControlList:
         results.extend([b"channels", b" ".join(self._get_channel_patterns())])
         results.extend([b"selectors", self._get_selectors()])
         return results
+
+    def as_rule(self) -> bytes:
+        flags = list()
+        flags.append(b"on" if self._enabled else b"off")
+        if self._nopass:
+            flags.append(b"nopass")
+        if "*" in self._key_patterns:
+            flags.append(b"allkeys")
+        if "*" in self._channel_patterns:
+            flags.append(b"allchannels")
+
+        rule_parts: List[bytes] = list()
+        rule_parts.extend(flags)
+        rule_parts.extend(list(self._passwords))
+        rule_parts.extend(self._get_commands())
+        rule_parts.extend(self._get_key_patterns())
+        rule_parts.extend(self._get_channel_patterns())
+        rule_parts.extend([b"selectors"] + self._get_selectors())
+        return b" ".join(rule_parts)
 
 
 class AccessControlList:
@@ -163,7 +180,11 @@ class AccessControlList:
         return self._user_acl.setdefault(username, UserAccessControlList())
 
     def as_rules(self) -> List[bytes]:
-        return [username + b" " + user_acl.as_rule() for username, user_acl in self._user_acl.items()]
+        res: List[bytes] = list()
+        for username, user_acl in self._user_acl.items():
+            rule_str = b"user " + username + b" " + user_acl.as_rule()
+            res.append(rule_str)
+        return res
 
     def del_user(self, username: bytes) -> None:
         self._user_acl.pop(username, None)
