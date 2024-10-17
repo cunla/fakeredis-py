@@ -110,11 +110,7 @@ class GenericCommandsMixin:
                 ret += 1
         return ret
 
-    @command(
-        name="expire",
-        fixed=(Key(), Int),
-        repeat=(bytes,),
-    )
+    @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
         res = self._expireat(key, self._db.time + seconds, *args)
         return res

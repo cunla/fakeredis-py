@@ -32,7 +32,7 @@ class ConnectionCommandsMixin:
         else:
             return args[0] if args else PONG
 
-    @command((DbIndex,))
+    @command(name="SELECT", fixed=(DbIndex,))
     def select(self, index: DbIndex) -> SimpleString:
         self._db = self._server.dbs[index]
         self._db_num = index  # type: ignore

@@ -50,7 +50,8 @@ def test_lastsave(r: redis.Redis):
 @fake_only
 def test_command(r: redis.Redis):
     commands_dict = r.command()
-    one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd}
+    r.info()
+    one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
     assert one_word_commands - set(commands_dict.keys()) == set()
 
 

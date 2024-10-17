@@ -425,6 +425,7 @@ class Signature:
         repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
         args: Tuple[str] = (),  # type:ignore
         flags: str = "",
+        server_types: Tuple[str] = ("redis", "valkey", "dragonfly"),  # supported server types: redis, dragonfly, valkey
     ):
         self.name = name
         self.func_name = func_name
@@ -432,6 +433,7 @@ class Signature:
         self.repeat = repeat
         self.flags = set(flags)
         self.command_args = args
+        self.server_types: Set[str] = set(server_types)
 
     def check_arity(self, args: Sequence[Any], version: Tuple[int]) -> None:
         if len(args) == len(self.fixed):
