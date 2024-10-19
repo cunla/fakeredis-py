@@ -11,7 +11,7 @@ LOGGER = logging.getLogger("fakeredis")
 
 VersionType = Union[Tuple[int, ...], int, str]
 
-ServerType = Union[Literal["redis"], Literal["dragonfly"], Literal["valkey"]]
+ServerType = Literal["redis", "dragonfly", "valkey"]
 
 
 def _create_version(v: VersionType) -> Tuple[int, ...]:
