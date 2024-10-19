@@ -14,6 +14,7 @@ from fakeredis.commands_mixins import (
     TransactionsCommandsMixin,
     SetCommandsMixin,
     StreamsCommandsMixin,
+    AclCommandsMixin,
 )
 from fakeredis.stack import (
     JSONCommandsMixin,
