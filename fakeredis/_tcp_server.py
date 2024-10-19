@@ -6,6 +6,7 @@ from typing import BinaryIO, Dict, Tuple
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
+from fakeredis._server import ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -113,7 +114,7 @@ class TcpFakeServer(ThreadingTCPServer):
         self,
         server_address: Tuple[str | bytes | bytearray, int],
         bind_and_activate: bool = True,
-        server_type: str = "redis",
+        server_type: ServerType = "redis",
         server_version: Tuple[int, ...] = (7, 4),
     ):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)

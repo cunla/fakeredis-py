@@ -1,5 +1,20 @@
-from typing import Optional, Set, Any
+from typing import Optional, Set
 
+from fakeredis.commands_mixins import (
+    BitmapCommandsMixin,
+    ConnectionCommandsMixin,
+    GenericCommandsMixin,
+    GeoCommandsMixin,
+    HashCommandsMixin,
+    ListCommandsMixin,
+    PubSubCommandsMixin,
+    ScriptingCommandsMixin,
+    ServerCommandsMixin,
+    StringCommandsMixin,
+    TransactionsCommandsMixin,
+    SetCommandsMixin,
+    StreamsCommandsMixin,
+)
 from fakeredis.stack import (
     JSONCommandsMixin,
     BFCommandsMixin,
@@ -11,31 +26,8 @@ from fakeredis.stack import (
 )
 from ._basefakesocket import BaseFakeSocket
 from ._server import FakeServer
-from .commands_mixins.acl_mixin import AclCommandsMixin
-from .commands_mixins.bitmap_mixin import BitmapCommandsMixin
-from .commands_mixins.connection_mixin import ConnectionCommandsMixin
-from .commands_mixins.generic_mixin import GenericCommandsMixin
-from .commands_mixins.geo_mixin import GeoCommandsMixin
-from .commands_mixins.hash_mixin import HashCommandsMixin
-from .commands_mixins.list_mixin import ListCommandsMixin
-from .commands_mixins.pubsub_mixin import PubSubCommandsMixin
-
-try:
-    from .commands_mixins.scripting_mixin import ScriptingCommandsMixin
-except ImportError:
-
-    class ScriptingCommandsMixin:  # type: ignore  # noqa: E303
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            kwargs.pop("lua_modules", None)
-            super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)  # type: ignore
-
-
-from .commands_mixins.server_mixin import ServerCommandsMixin
-from .commands_mixins.set_mixin import SetCommandsMixin
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
-from .commands_mixins.streams_mixin import StreamsCommandsMixin
-from .commands_mixins.string_mixin import StringCommandsMixin
-from .commands_mixins.transactions_mixin import TransactionsCommandsMixin
+from .server_specific_commands import DragonflyCommandsMixin
 
 
 class FakeSocket(
@@ -61,6 +53,7 @@ class FakeSocket(
     TopkCommandsMixin,
     TDigestCommandsMixin,
     TimeSeriesCommandsMixin,
+    DragonflyCommandsMixin,
     AclCommandsMixin,
 ):
     def __init__(
