@@ -7,7 +7,12 @@ tags:
 toc_depth: 2
 ---
 
-## v2.25.2
+## v2.26.0
+
+### 🚀 Features
+
+- Support for server-type specific commands #340
+- Support for Dragonfly `SADDEX` command #340
 
 ### 🐛 Bug Fixes
 
