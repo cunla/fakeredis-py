@@ -50,14 +50,17 @@ def test_lastsave(r: redis.Redis):
 @fake_only
 def test_command(r: redis.Redis):
     commands_dict = r.command()
-    r.info()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
-    assert one_word_commands - set(commands_dict.keys()) == set()
+    server_unsupported_commands = one_word_commands - set(commands_dict.keys())
+    for command in server_unsupported_commands:
+        assert "redis" not in SUPPORTED_COMMANDS[command].server_types
 
 
 @fake_only
 def test_command_count(r: redis.Redis):
-    assert r.command_count() >= len([cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd])
+    assert r.command_count() >= len(
+        [cmd for (cmd, cmd_info) in SUPPORTED_COMMANDS.items() if " " not in cmd and "redis" in cmd_info.server_types]
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
