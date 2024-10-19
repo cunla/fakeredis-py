@@ -3,7 +3,7 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union
+from typing import Dict, Tuple, Any, List, Optional, Union, Literal
 
 from fakeredis._helpers import Database, FakeSelector
 
@@ -11,7 +11,7 @@ LOGGER = logging.getLogger("fakeredis")
 
 VersionType = Union[Tuple[int, ...], int, str]
 
-ServerType = Union["redis", "dragonfly", "valkey"]
+ServerType = Union[Literal["redis"], Literal["dragonfly"], Literal["valkey"]]
 
 
 def _create_version(v: VersionType) -> Tuple[int, ...]:
