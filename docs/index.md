@@ -1,6 +1,6 @@
----
+from test.test_hypothesis import server_typefrom test.test_hypothesis import server_type---
 toc:
-  toc_depth: 3
+toc_depth: 3
 ---
 
 fakeredis: A python implementation of redis server
@@ -46,7 +46,7 @@ from threading import Thread
 from fakeredis import TcpFakeServer
 
 server_address = ("127.0.0.1", 6379)
-server = TcpFakeServer(server_address)
+server = TcpFakeServer(server_address, server_type="redis")
 t = Thread(target=server.serve_forever, daemon=True)
 t.start()
 
@@ -73,14 +73,15 @@ def redis_client(request):
 
 ### General usage
 
-FakeRedis can imitate Redis server version 6.x or 7.x. Version 7 is used by default.
+FakeRedis can imitate Redis server version 6.x or 7.x, [Valkey server](./valkey-support),
+and [dragonfly server][dragonfly]. Redis version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real redis server.
 It does this by storing the state internally. For example:
 
 ```pycon
 >>> import fakeredis
->>> r = fakeredis.FakeStrictRedis(version=6)
+>>> r = fakeredis.FakeStrictRedis(server_type="redis")
 >>> r.set('foo', 'bar')
 True
 >>> r.get('foo')
@@ -392,3 +393,5 @@ You can support this project by becoming a sponsor using [this link][2].
 [8]:https://github.com/jazzband/django-redis
 
 [9]:https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings
+
+[dragonfly]:https://www.dragonflydb.io/

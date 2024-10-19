@@ -11,6 +11,8 @@ LOGGER = logging.getLogger("fakeredis")
 
 VersionType = Union[Tuple[int, ...], int, str]
 
+ServerType = Union["redis", "dragonfly", "valkey"]
+
 
 def _create_version(v: VersionType) -> Tuple[int, ...]:
     if isinstance(v, tuple):
@@ -26,7 +28,7 @@ def _create_version(v: VersionType) -> Tuple[int, ...]:
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: VersionType = (7,), server_type: str = "redis") -> None:
+    def __init__(self, version: VersionType = (7,), server_type: ServerType = "redis") -> None:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
