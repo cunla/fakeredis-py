@@ -3,13 +3,15 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union
+from typing import Dict, Tuple, Any, List, Optional, Union, Literal
 
 from fakeredis._helpers import Database, FakeSelector
 
 LOGGER = logging.getLogger("fakeredis")
 
 VersionType = Union[Tuple[int, ...], int, str]
+
+ServerType = Literal["redis", "dragonfly", "valkey"]
 
 
 def _create_version(v: VersionType) -> Tuple[int, ...]:
@@ -26,7 +28,7 @@ def _create_version(v: VersionType) -> Tuple[int, ...]:
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: VersionType = (7,), server_type: str = "redis") -> None:
+    def __init__(self, version: VersionType = (7,), server_type: ServerType = "redis") -> None:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets

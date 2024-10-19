@@ -251,6 +251,10 @@ class BaseFakeSocket:
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
         sig = SUPPORTED_COMMANDS[cmd_name]
+        if self._server.server_type not in sig.server_types:
+            # redis remaps \r or \n in an error to ' ' to make it legal protocol
+            clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
         func = getattr(self, sig.func_name, None)
         return func, sig
 

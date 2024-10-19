@@ -18,4 +18,23 @@ valkey.set("key", "value")
 print(valkey.get("key"))
 ```
 
+Alternatively, you can start a thread with a Fake Valkey server.
+
+```python
+from threading import Thread
+from fakeredis import TcpFakeServer
+
+server_address = ("127.0.0.1", 6379)
+server = TcpFakeServer(server_address, server_type="valkey")
+t = Thread(target=server.serve_forever, daemon=True)
+t.start()
+
+import valkey
+
+r = valkey.Valkey(host=server_address[0], port=server_address[1])
+r.set("foo", "bar")
+assert r.get("foo") == b"bar"
+
+```
+
 [1]: https://github.com/valkey-io/valkey
