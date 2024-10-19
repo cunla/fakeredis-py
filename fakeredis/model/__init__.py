@@ -10,6 +10,7 @@ from ._command_info import (
     get_categories,
     get_commands_by_category,
 )
+
 __all__ = [
     "XStream",
     "StreamRangeTest",
