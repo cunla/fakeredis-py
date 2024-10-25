@@ -3,7 +3,13 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union, Literal
+from typing import Dict, Tuple, Any, List, Optional, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector

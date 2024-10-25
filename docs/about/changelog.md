@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.26.1
+
+### 🐛 Bug Fixes
+
+- Minor fix: using typing_extensions instead of typing for python 3.7 support #341/#343
+
 ## v2.26.0
 
 ### 🚀 Features
