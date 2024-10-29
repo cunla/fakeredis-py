@@ -3,7 +3,7 @@ from typing import Any, Tuple, List, Callable, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, OK, casematch
+from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis.model import AccessControlList
 from fakeredis.model import get_categories, get_commands_by_category
 
@@ -118,7 +118,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL LIST", fixed=(), repeat=())
-    def acl_list(self) -> bytes:
+    def acl_list(self) -> List[bytes]:
         return self._acl.as_rules()
 
     @command(name="ACL DELUSER", fixed=(bytes,), repeat=())
@@ -130,3 +130,20 @@ class AclCommandsMixin:
     def acl_getuser(self, username: bytes) -> List[bytes]:
         res = self._acl.get_user_acl(username).as_array()
         return res
+
+    @command(name="ACL USERS", fixed=(), repeat=())
+    def acl_users(self) -> List[bytes]:
+        res = self._acl.get_users()
+        return res
+
+    @command(name="ACL WHOAMI", fixed=(), repeat=())
+    def acl_whoami(self) -> bytes:
+        return b"default"  # TODO
+
+    @command(name="ACL SAVE", fixed=(), repeat=())
+    def acl_save(self) -> SimpleString:
+        return OK  # TODO
+
+    @command(name="ACL LOAD", fixed=(), repeat=())
+    def acl_load(self) -> SimpleString:
+        return OK  # TODO

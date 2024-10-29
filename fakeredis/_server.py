@@ -54,12 +54,14 @@ class FakeServer:
         self.acl: AccessControlList = AccessControlList()
 
     @staticmethod
-    def get_server(key: str, version: VersionType, server_type: str) -> "FakeServer":
+    def get_server(key: str, version: VersionType, server_type: ServerType) -> "FakeServer":
         return FakeServer._servers_map.setdefault(key, FakeServer(version=version, server_type=server_type))
 
 
 class FakeBaseConnectionMixin(object):
-    def __init__(self, *args: Any, version: VersionType = (7, 0), server_type: str = "redis", **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, version: VersionType = (7, 0), server_type: ServerType = "redis", **kwargs: Any
+    ) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str
         self._sock = None

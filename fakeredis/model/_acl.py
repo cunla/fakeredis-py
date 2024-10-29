@@ -188,6 +188,9 @@ class AccessControlList:
     def __init__(self):
         self._user_acl: Dict[bytes, UserAccessControlList] = dict()
 
+    def get_users(self) -> List[bytes]:
+        return list(self._user_acl.keys())
+
     def get_user_acl(self, username: bytes) -> UserAccessControlList:
         return self._user_acl.setdefault(username, UserAccessControlList())
 

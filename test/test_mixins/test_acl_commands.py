@@ -2,6 +2,10 @@ import pytest
 import redis
 
 from fakeredis.model import get_categories, get_commands_by_category
+from test import testtools
+
+pytestmark = []
+pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
 
 
 def test_acl_cat(r: redis.Redis):
@@ -215,3 +219,33 @@ def test_acl_getuser_setuser(r: redis.Redis):
         ["commands", "-@all +get", "keys", "~app*", "channels", "&x"],
         ["commands", "-@all -hset", "keys", "%W~app*", "channels", ""],
     ]
+
+
+def test_acl_users(r: redis.Redis):
+    username = "fakeredis-user"
+    r.acl_deluser(username)
+    start = r.acl_users()
+
+    assert r.acl_setuser(username, enabled=False, reset=True)
+    users = r.acl_users()
+    assert len(users) == len(start) + 1
+    assert username in users
+
+
+def test_acl_whoami(r: redis.Redis):
+    # first, test for default user (`username` is supposed to be optional)
+    default_username = "default"
+    temp_pass = "temp_pass"
+    r.config_set("requirepass", temp_pass)
+
+    assert r.auth(temp_pass, default_username) is True
+    assert r.auth(temp_pass) is True
+    assert r.acl_whoami() == default_username
+
+    username = "fakeredis-authuser"
+    r.acl_deluser(username)
+    r.acl_setuser(username, enabled=True, passwords=["+strong_password"], commands=["+acl"])
+    r.auth(username=username, password="strong_password")
+    assert r.acl_whoami() == username
+    assert r.auth(temp_pass, default_username) is True
+    r.config_set("requirepass", "")
