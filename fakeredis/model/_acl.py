@@ -159,14 +159,26 @@ class UserAccessControlList:
         )
         return results
 
+    def _get_selectors_for_rule(self) -> List[bytes]:
+        results: List[bytes] = list()
+        for command, selector in self._selectors.items():
+            s = b"-@all " + (b"+" if selector.allowed else b"-") + command
+            channels = b"resetchannels" + ((b" " + selector.channels) if selector.channels != b"" else b"")
+            results.append(b"(" + b" ".join([selector.keys, channels, s]) + b")")
+        return results
+
     def as_rule(self) -> bytes:
+        selectors = self._get_selectors_for_rule()
+        channels = self._get_channel_patterns()
+        if channels != [b"&*"]:
+            channels = [b"resetchannels"] + channels
         rule_parts: List[bytes] = (
             self._get_flags()
-            + list(self._passwords)
+            + [b"#" + password for password in self._passwords]
             + self._get_commands()
             + self._get_key_patterns()
-            + self._get_channel_patterns()
-            + self._get_selectors()
+            + channels
+            + selectors
         )
         return b" ".join(rule_parts)
 

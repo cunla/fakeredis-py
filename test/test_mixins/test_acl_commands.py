@@ -76,7 +76,9 @@ def test_acl_list(r: redis.Redis):
     assert "#e6c3da5b206634d7f3f3586d747ffdb36b5c675757b380c6a5fe5c570c714349" in user_rule
     assert "#1ba3d16e9881959f8c9a9762854f72c6e6321cdd44358a10a4e939033117eab9" in user_rule
     assert "on" in user_rule
-    assert "~cache:* ~objects:* resetchannels &message:*" in user_rule
+    assert "~cache:*" in user_rule
+    assert "~objects:*" in user_rule
+    assert "resetchannels &message:*" in user_rule
     assert "(%W~app* resetchannels -@all +set)" in user_rule
     assert "(~app* resetchannels &x -@all +get)" in user_rule
     assert "(%W~app* resetchannels -@all -hset)" in user_rule
