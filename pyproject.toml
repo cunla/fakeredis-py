@@ -139,6 +139,7 @@ exclude = '''
     | build
     | dist
   )/
+  | .*/\.hypothesis/.*
   | .*/__pycache__/.*
   | /fakeredis/commands.json
 )
