@@ -40,12 +40,8 @@ class AclCommandsMixin:
         if not 1 <= len(args) <= 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
         username = None if len(args) == 1 else args[0]
-        password = args[1] if len(args) == 2 else None
-        if (
-            (username is None or username == b"default")
-            and b"requirepass" in self._server_config
-            and password == self._server_config[b"requirepass"]
-        ):
+        password = args[1] if len(args) == 2 else args[0]
+        if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", None)):
             return OK
         if len(args) >= 1 and self._check_user_password(username, password):
             return OK

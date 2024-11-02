@@ -65,6 +65,8 @@ class UserAccessControlList:
     def check_password(self, password: Optional[bytes]) -> bool:
         if self._nopass and not password:
             return True
+        if not password:
+            return False
         password_hex = hashlib.sha256(password).hexdigest().encode()
         return password_hex in self._passwords and self._enabled
 
