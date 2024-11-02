@@ -138,7 +138,10 @@ class AclCommandsMixin:
 
     @command(name="ACL SAVE", fixed=(), repeat=())
     def acl_save(self) -> SimpleString:
-        return OK  # TODO
+        if b"aclfile" not in self._server_config:
+            raise SimpleError(msgs.MISSING_ACLFILE_CONFIG)
+        # TODO
+        return OK
 
     @command(name="ACL LOAD", fixed=(), repeat=())
     def acl_load(self) -> SimpleString:

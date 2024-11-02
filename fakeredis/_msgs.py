@@ -121,6 +121,8 @@ TIMESERIES_DUPLICATE_POLICY_BLOCK = (
 TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
 HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
 
+MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an ACL file. You may want to specify users via the ACL SETUSER command and then issue a CONFIG REWRITE (assuming you have a Redis configuration file set) in order to store users in the Redis configuration."
+
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"

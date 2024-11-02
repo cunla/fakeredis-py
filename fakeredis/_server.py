@@ -35,7 +35,21 @@ def _create_version(v: VersionType) -> Tuple[int, ...]:
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
-    def __init__(self, version: VersionType = (7,), server_type: ServerType = "redis") -> None:
+    def __init__(
+        self,
+        version: VersionType = (7,),
+        server_type: ServerType = "redis",
+        config: Dict[bytes, bytes] = None,
+    ) -> None:
+        """Initialize a new FakeServer instance.
+        :param version: The version of the server (e.g. 6, 7.4, "7.4.1", can also be a tuple)
+        :param server_type: The type of server (redis, dragonfly, valkey)
+        :param config: A dictionary of configuration options.
+
+        Configuration options:
+        - `requirepass`: The password required to authenticate to the server.
+        - `aclfile`: The path to the ACL file.
+        """
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
@@ -50,7 +64,7 @@ class FakeServer:
         if server_type not in ("redis", "dragonfly", "valkey"):
             raise ValueError(f"Unsupported server type: {server_type}")
         self.server_type: str = server_type
-        self.config: Dict[bytes, bytes] = dict()
+        self.config: Dict[bytes, bytes] = config or dict()
         self.acl: AccessControlList = AccessControlList()
 
     @staticmethod
@@ -78,7 +92,8 @@ class FakeBaseConnectionMixin(object):
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"
-            self.server_key += f":{server_type}:v{version[0]}"
+            version_str = ".".join(version) if isinstance(version, tuple) else str(version)
+            self.server_key += f":{server_type}:v{version_str}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)
