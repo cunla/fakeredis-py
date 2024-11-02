@@ -100,6 +100,7 @@ class FakeRedisMixin:
             for ind, p in enumerate(parameters)
             if p.default != inspect.Parameter.empty
         }
+        kwds["server"] = server
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)
             errors = kwds.get("errors", None)
@@ -114,9 +115,8 @@ class FakeRedisMixin:
                 "host",
                 "port",
                 "db",
-                # Ignoring because AUTH is not implemented
-                # 'username',
-                # 'password',
+                "username",
+                "password",
                 "socket_timeout",
                 "encoding",
                 "encoding_errors",
@@ -126,10 +126,10 @@ class FakeRedisMixin:
                 "health_check_interval",
                 "client_name",
                 "connected",
+                "server",
             }
             connection_kwargs = {
                 "connection_class": FakeConnection,
-                "server": server,
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
@@ -150,11 +150,7 @@ class FakeRedisMixin:
         pool = redis.ConnectionPool.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = FakeConnection
-        # Using username and password fails since AUTH is not implemented.
-        # https://github.com/cunla/fakeredis-py/issues/9
-        pool.connection_kwargs.pop("username", None)
-        pool.connection_kwargs.pop("password", None)
-        return cls(connection_pool=pool)
+        return cls(connection_pool=pool, *args, **kwargs)
 
 
 class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):  # type: ignore
