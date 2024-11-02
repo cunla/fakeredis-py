@@ -55,7 +55,9 @@ class FakeServer:
 
     @staticmethod
     def get_server(key: str, version: VersionType, server_type: ServerType) -> "FakeServer":
-        return FakeServer._servers_map.setdefault(key, FakeServer(version=version, server_type=server_type))
+        if key not in FakeServer._servers_map:
+            FakeServer._servers_map[key] = FakeServer(version=version, server_type=server_type)
+        return FakeServer._servers_map[key]
 
 
 class FakeBaseConnectionMixin(object):
@@ -76,7 +78,7 @@ class FakeBaseConnectionMixin(object):
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"
-            self.server_key += f":{server_type}:v{version}"
+            self.server_key += f":{server_type}:v{version[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)

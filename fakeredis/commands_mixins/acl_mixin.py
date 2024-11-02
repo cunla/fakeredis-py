@@ -1,5 +1,5 @@
 import secrets
-from typing import Any, Tuple, List, Callable, Dict
+from typing import Any, Tuple, List, Callable, Dict, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
@@ -24,7 +24,7 @@ class AclCommandsMixin:
     def _acl(self) -> AccessControlList:
         return self._server.acl
 
-    def _check_user_password(self, username: bytes, password: bytes) -> bool:
+    def _check_user_password(self, username: bytes, password: Optional[bytes]) -> bool:
         return self._acl.get_user_acl(username).check_password(password)
 
     @command(name="CONFIG SET", fixed=(bytes, bytes), repeat=(bytes, bytes))
@@ -40,14 +40,14 @@ class AclCommandsMixin:
         if not 1 <= len(args) <= 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
         username = None if len(args) == 1 else args[0]
-        password = args[1] if len(args) == 2 else args[0]
+        password = args[1] if len(args) == 2 else None
         if (
             (username is None or username == b"default")
             and b"requirepass" in self._server_config
             and password == self._server_config[b"requirepass"]
         ):
             return OK
-        if len(args) == 2 and self._check_user_password(username, password):
+        if len(args) >= 1 and self._check_user_password(username, password):
             return OK
         raise SimpleError(msgs.AUTH_FAILURE)
 

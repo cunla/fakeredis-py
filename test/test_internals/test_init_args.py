@@ -55,12 +55,11 @@ class TestInitArgs:
     def test_from_url_user_password(self):
         username = "fakeredis-user"
         password = "fakeredis-password"
-        db = fakeredis.FakeStrictRedis(host="localhost", server=fakeredis.FakeServer())
+        server = fakeredis.FakeServer()
+        db = fakeredis.FakeStrictRedis(host="localhost", port=6390, server=server)
         db.acl_setuser(username, enabled=True, passwords=[f"+{password}"], commands=["+set", "+get"])
 
-        db = fakeredis.FakeStrictRedis.from_url(
-            f"redis://{username}:{password}@localhost:6390/0", server=fakeredis.FakeServer()
-        )
+        db = fakeredis.FakeStrictRedis.from_url(f"redis://{username}:{password}@localhost:6390/0", server=server)
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 

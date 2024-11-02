@@ -1,5 +1,5 @@
 import hashlib
-from typing import Dict, Set, List, Union
+from typing import Dict, Set, List, Union, Optional
 
 from ._command_info import get_commands_by_category
 
@@ -62,7 +62,9 @@ class UserAccessControlList:
         self._nopass = True
         self._passwords.clear()
 
-    def check_password(self, password: bytes) -> bool:
+    def check_password(self, password: Optional[bytes]) -> bool:
+        if self._nopass and not password:
+            return True
         password_hex = hashlib.sha256(password).hexdigest().encode()
         return password_hex in self._passwords and self._enabled
 
