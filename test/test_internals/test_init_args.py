@@ -45,7 +45,6 @@ class TestInitArgs:
 
     def test_from_url_user(self):
         username = "fakeredis-user"
-        password = "fakeredis-password"
         db = fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0)
         db.acl_setuser(username, enabled=True, nopass=True, commands=["+set", "+get"])
 
