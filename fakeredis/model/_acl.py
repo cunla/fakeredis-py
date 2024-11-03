@@ -16,23 +16,28 @@ class Selector:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "Selector":
-        allowed = data[0] == ord("+")
-        data = data[1:]
-        command, data = data.split(b" ", 1)
         keys = b""
         channels = b""
+        command = b""
+        allowed = False
         data = data.split(b" ")
         for item in data:
-            if item.startswith(b"&"):
+            if item.startswith(b"&"):  # channels
                 channels = item
                 continue
-            if item.startswith(b"%RW"):
+            if item.startswith(b"%RW"):  # keys
                 item = item[3:]
             key = item
             if key.startswith(b"%"):
                 key = key[2:]
             if key.startswith(b"~"):
                 keys = item
+                continue
+            # command
+            if item[0] == ord("+") or item[0] == ord("-"):
+                command = item[1:]
+                allowed = item[0] == ord("+")
+
         return cls(command, allowed, keys, channels)
 
 

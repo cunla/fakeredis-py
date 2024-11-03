@@ -159,6 +159,19 @@ class AclCommandsMixin:
         with open(acl_filename, "rb") as f:
             rules_list = f.readlines()
             for rule in rules_list:
+                if not rule.startswith(b"user "):
+                    continue
                 splitted = rule.split(b" ")
-                self._set_user_acl(splitted[0], *splitted[1:])
+                components = list()
+                i = 1
+                while i < len(splitted):
+                    current_component = splitted[i]
+                    if current_component.startswith(b"("):
+                        while not current_component.endswith(b")"):
+                            i += 1
+                            current_component += b" " + splitted[i]
+                    components.append(current_component)
+                    i += 1
+
+                self._set_user_acl(components[0], *components[1:])
         return OK
