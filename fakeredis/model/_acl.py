@@ -2,6 +2,7 @@ import hashlib
 from typing import Dict, Set, List, Union, Optional
 
 from ._command_info import get_commands_by_category
+from .._helpers import SimpleError
 
 
 class Selector:
@@ -44,7 +45,7 @@ class Selector:
 class UserAccessControlList:
     def __init__(self):
         self._passwords: Set[bytes] = set()
-        self._enabled: bool = True
+        self.enabled: bool = True
         self._nopass: bool = False
         self._key_patterns: Set[bytes] = set()
         self._channel_patterns: Set[bytes] = set()
@@ -52,16 +53,13 @@ class UserAccessControlList:
         self._selectors: Dict[bytes, Selector] = dict()
 
     def reset(self):
-        self._enabled = False
+        self.enabled = False
         self._nopass = False
         self._commands = {b"@all": False}
         self._passwords.clear()
         self._key_patterns.clear()
         self._channel_patterns.clear()
         self._selectors.clear()
-
-    def set_enable(self, enabled: bool) -> None:
-        self._enabled = enabled
 
     def set_nopass(self) -> None:
         self._nopass = True
@@ -73,13 +71,14 @@ class UserAccessControlList:
         if not password:
             return False
         password_hex = hashlib.sha256(password).hexdigest().encode()
-        return password_hex in self._passwords and self._enabled
+        return password_hex in self._passwords and self.enabled
 
     def add_password_hex(self, password_hex: bytes) -> None:
         self._nopass = False
         self._passwords.add(password_hex)
 
     def add_password(self, password: bytes) -> None:
+        self._nopass = False
         password_hex = hashlib.sha256(password).hexdigest().encode()
         self.add_password_hex(password_hex)
 
@@ -139,7 +138,7 @@ class UserAccessControlList:
 
     def _get_flags(self) -> List[bytes]:
         flags = list()
-        flags.append(b"on" if self._enabled else b"off")
+        flags.append(b"on" if self.enabled else b"off")
         if self._nopass:
             flags.append(b"nopass")
         if "*" in self._key_patterns:
@@ -212,3 +211,11 @@ class AccessControlList:
 
     def del_user(self, username: bytes) -> None:
         self._user_acl.pop(username, None)
+
+    def validate_command(self, username: bytes, fields: List[bytes]):
+        if username not in self._user_acl:
+            return
+        user_acl = self._user_acl[username]
+        if not user_acl.enabled:
+            raise SimpleError("ACL disabled")
+        command = fields[0]

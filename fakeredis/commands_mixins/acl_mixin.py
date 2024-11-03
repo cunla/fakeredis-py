@@ -15,7 +15,7 @@ class AclCommandsMixin:
         super(AclCommandsMixin).__init__(*args, **kwargs)
         self.version: Tuple[int]
         self._server: Any
-        self._current_user: bytes = b"default"
+        self._current_user: bytes
 
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
@@ -38,10 +38,10 @@ class AclCommandsMixin:
                 user_acl.reset_key_patterns()
                 continue
             elif casematch(arg, b"on"):
-                user_acl.set_enable(True)
+                user_acl.enabled = True
                 continue
             elif casematch(arg, b"off"):
-                user_acl.set_enable(False)
+                user_acl.enabled = False
                 continue
             elif casematch(arg, b"nopass"):
                 user_acl.set_nopass()
