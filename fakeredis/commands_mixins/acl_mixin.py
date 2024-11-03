@@ -15,6 +15,7 @@ class AclCommandsMixin:
         super(AclCommandsMixin).__init__(*args, **kwargs)
         self.version: Tuple[int]
         self._server: Any
+        self._current_user: bytes = b"default"
 
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
@@ -42,8 +43,10 @@ class AclCommandsMixin:
         username = None if len(args) == 1 else args[0]
         password = args[1] if len(args) == 2 else args[0]
         if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", None)):
+            self._current_user = b"default"
             return OK
         if len(args) >= 1 and self._check_user_password(username, password):
+            self._current_user = username
             return OK
         raise SimpleError(msgs.AUTH_FAILURE)
 
@@ -134,7 +137,7 @@ class AclCommandsMixin:
 
     @command(name="ACL WHOAMI", fixed=(), repeat=())
     def acl_whoami(self) -> bytes:
-        return b"default"  # TODO
+        return self._current_user
 
     @command(name="ACL SAVE", fixed=(), repeat=())
     def acl_save(self) -> SimpleString:
