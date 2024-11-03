@@ -71,7 +71,7 @@ class UserAccessControlList:
         return password_hex in self._passwords and self._enabled
 
     def add_password_hex(self, password_hex: bytes) -> None:
-        self._nopass = True
+        self._nopass = False
         self._passwords.add(password_hex)
 
     def add_password(self, password: bytes) -> None:
