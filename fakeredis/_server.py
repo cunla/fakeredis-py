@@ -32,6 +32,12 @@ def _create_version(v: VersionType) -> Tuple[int, ...]:
     return v
 
 
+def _version_to_str(v: VersionType) -> str:
+    if isinstance(v, tuple):
+        return ".".join(str(x) for x in v)
+    return str(v)
+
+
 class FakeServer:
     _servers_map: Dict[str, "FakeServer"] = dict()
 
@@ -92,8 +98,7 @@ class FakeBaseConnectionMixin(object):
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"
-            version_str = ".".join(version) if isinstance(version, tuple) else str(version)
-            self.server_key += f":{server_type}:v{version_str}"
+            self.server_key += f":{server_type}:v{_version_to_str(version)[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)
