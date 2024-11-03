@@ -219,3 +219,4 @@ class AccessControlList:
         if not user_acl.enabled:
             raise SimpleError("ACL disabled")
         command = fields[0]
+        # todo
