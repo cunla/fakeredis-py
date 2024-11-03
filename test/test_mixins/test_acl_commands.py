@@ -3,6 +3,7 @@ import redis
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
+from test.testtools import fake_only
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])

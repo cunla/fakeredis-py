@@ -28,45 +28,7 @@ class AclCommandsMixin:
     def _check_user_password(self, username: bytes, password: Optional[bytes]) -> bool:
         return self._acl.get_user_acl(username).check_password(password)
 
-    @command(name="CONFIG SET", fixed=(bytes, bytes), repeat=(bytes, bytes))
-    def config_set(self, *args: bytes):
-        if len(args) % 2 != 0:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("CONFIG SET"))
-        for i in range(0, len(args), 2):
-            self._server_config[args[i]] = args[i + 1]
-        return OK
-
-    @command(name="AUTH", fixed=(), repeat=(bytes,))
-    def auth(self, *args: bytes) -> bytes:
-        if not 1 <= len(args) <= 2:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
-        username = None if len(args) == 1 else args[0]
-        password = args[1] if len(args) == 2 else args[0]
-        if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", None)):
-            self._current_user = b"default"
-            return OK
-        if len(args) >= 1 and self._check_user_password(username, password):
-            self._current_user = username
-            return OK
-        raise SimpleError(msgs.AUTH_FAILURE)
-
-    @command(name="ACL CAT", fixed=(), repeat=(bytes,))
-    def acl_cat(self, *category: bytes) -> List[bytes]:
-        if len(category) == 0:
-            res = get_categories()
-        else:
-            res = get_commands_by_category(category[0])
-        return res
-
-    @command(name="ACL GENPASS", fixed=(), repeat=(bytes,))
-    def acl_genpass(self, *args: bytes) -> bytes:
-        bits = Int.decode(args[0]) if len(args) > 0 else 256
-        bits = bits + bits % 4  # Round to 4
-        nbytes: int = bits // 8
-        return secrets.token_hex(nbytes).encode()
-
-    @command(name="ACL SETUSER", fixed=(bytes,), repeat=(bytes,))
-    def acl_setuser(self, username: bytes, *args: bytes) -> bytes:
+    def _set_user_acl(self, username: bytes, *args: bytes) -> None:
         user_acl = self._acl.get_user_acl(username)
         for arg in args:
             if casematch(arg, b"resetchannels"):
@@ -114,6 +76,47 @@ class AclCommandsMixin:
                 user_acl.add_key_pattern(arg[1:])
             elif prefix == ord("&"):
                 user_acl.add_channel_pattern(arg[1:])
+
+    @command(name="CONFIG SET", fixed=(bytes, bytes), repeat=(bytes, bytes))
+    def config_set(self, *args: bytes):
+        if len(args) % 2 != 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("CONFIG SET"))
+        for i in range(0, len(args), 2):
+            self._server_config[args[i]] = args[i + 1]
+        return OK
+
+    @command(name="AUTH", fixed=(), repeat=(bytes,))
+    def auth(self, *args: bytes) -> bytes:
+        if not 1 <= len(args) <= 2:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
+        username = None if len(args) == 1 else args[0]
+        password = args[1] if len(args) == 2 else args[0]
+        if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", None)):
+            self._current_user = b"default"
+            return OK
+        if len(args) >= 1 and self._check_user_password(username, password):
+            self._current_user = username
+            return OK
+        raise SimpleError(msgs.AUTH_FAILURE)
+
+    @command(name="ACL CAT", fixed=(), repeat=(bytes,))
+    def acl_cat(self, *category: bytes) -> List[bytes]:
+        if len(category) == 0:
+            res = get_categories()
+        else:
+            res = get_commands_by_category(category[0])
+        return res
+
+    @command(name="ACL GENPASS", fixed=(), repeat=(bytes,))
+    def acl_genpass(self, *args: bytes) -> bytes:
+        bits = Int.decode(args[0]) if len(args) > 0 else 256
+        bits = bits + bits % 4  # Round to 4
+        nbytes: int = bits // 8
+        return secrets.token_hex(nbytes).encode()
+
+    @command(name="ACL SETUSER", fixed=(bytes,), repeat=(bytes,))
+    def acl_setuser(self, username: bytes, *args: bytes) -> bytes:
+        self._set_user_acl(username, *args)
         return OK
 
     @command(name="ACL LIST", fixed=(), repeat=())
@@ -143,9 +146,19 @@ class AclCommandsMixin:
     def acl_save(self) -> SimpleString:
         if b"aclfile" not in self._server_config:
             raise SimpleError(msgs.MISSING_ACLFILE_CONFIG)
-        # TODO
+        acl_filename = self._server_config[b"aclfile"]
+        with open(acl_filename, "wb") as f:
+            f.write(b"\n".join(self._acl.as_rules()))
         return OK
 
     @command(name="ACL LOAD", fixed=(), repeat=())
     def acl_load(self) -> SimpleString:
-        return OK  # TODO
+        if b"aclfile" not in self._server_config:
+            raise SimpleError(msgs.MISSING_ACLFILE_CONFIG)
+        acl_filename = self._server_config[b"aclfile"]
+        with open(acl_filename, "rb") as f:
+            rules_list = f.readlines()
+            for rule in rules_list:
+                splitted = rule.split(b" ")
+                self._set_user_acl(splitted[0], *splitted[1:])
+        return OK
