@@ -63,7 +63,6 @@ class BaseFakeSocket:
         "unsubscribe",
         "psubscribe",
         "punsubscribe",
-        "quit",
         "ssubscribe",
         "sunsubscribe",
     }

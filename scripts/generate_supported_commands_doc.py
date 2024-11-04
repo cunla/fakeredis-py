@@ -11,6 +11,7 @@ import requests
 from fakeredis._commands import SUPPORTED_COMMANDS
 
 IGNORE_COMMANDS = {
+    "QUIT",
     "PUBSUB HELP",
     "FUNCTION HELP",
     "SCRIPT HELP",
