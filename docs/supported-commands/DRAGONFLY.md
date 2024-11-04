@@ -2,13 +2,11 @@
 
 > To implement support for a command, see [here](/guides/implement-command/)
 
-This are commands that are not implemented in Redis but supported in Dragonfly and FakeRedis.
-
-To use these commands, you can call `execute_command` with the command name and arguments as follows:
+These are commands that are not implemented in Redis but supported in Dragonfly and FakeRedis. To use these commands,
+you can call `execute_command` with the command name and arguments as follows:
 
 ```python
 client = FakeRedis(server_type="dragonfly")
-
 client.execute_command("SADDEX", 10, "key", "value")
 ```
 
