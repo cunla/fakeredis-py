@@ -50,7 +50,6 @@ THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 class CommandsMeta:
     local_filename: str
     stack: str
-    title: str
     url: str
 
 
@@ -58,31 +57,26 @@ METADATA = [
     CommandsMeta(
         ".commands.json",
         "Redis",
-        "Redis",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
     ),
     CommandsMeta(
         ".json.commands.json",
         "RedisJson",
-        "JSON",
         "https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json",
     ),
     CommandsMeta(
         ".ts.commands.json",
         "RedisTimeSeries",
-        "Time Series",
         "https://raw.githubusercontent.com/RedisTimeSeries/RedisTimeSeries/master/commands.json",
     ),
     CommandsMeta(
         ".ft.commands.json",
         "RedisSearch",
-        "Search",
         "https://raw.githubusercontent.com/RediSearch/RediSearch/master/commands.json",
     ),
     CommandsMeta(
         ".bloom.commands.json",
         "RedisBloom",
-        "Probabilistic",
         "https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json",
     ),
 ]
@@ -118,14 +112,14 @@ def _commands_groups(commands: dict) -> dict[str, list[str]]:
 markdown_filename_template = "docs/redis-commands/{}.md"
 
 
-def generate_markdown_files(commands: dict, implemented_commands: set[str], stack: str, title: str) -> None:
-    groups = _commands_groups(commands)
+def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_commands: set[str], stack: str) -> None:
+    groups = _commands_groups(redis_commands)
     for group in groups:
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
         f = open(filename, "w")
-        implemented_in_group = list(filter(lambda cmd: cmd in implemented_commands, groups[group]))
+        implemented_in_group = list(filter(lambda cmd: cmd in fakeredis_commands, groups[group]))
         unimplemented_in_group = list(
-            filter(lambda cmd: cmd not in implemented_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group])
+            filter(lambda cmd: cmd not in fakeredis_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group])
         )
         if len(implemented_in_group) > 0:
             f.write(
@@ -135,7 +129,7 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
             )
         for cmd in implemented_in_group:
             f.write(f"## [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
-            f.write(f"{commands[cmd]['summary']}\n\n")
+            f.write(f"{redis_commands[cmd]['summary']}\n\n")
         f.write("\n")
 
         if len(unimplemented_in_group) > 0:
@@ -146,12 +140,16 @@ def generate_markdown_files(commands: dict, implemented_commands: set[str], stac
                     f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)"
                     f" <small>(not implemented)</small>\n\n"
                 )
-                f.write(f"{commands[cmd]['summary']}\n\n")
+                f.write(f"{redis_commands[cmd]['summary']}\n\n")
         f.write("\n")
 
 
 if __name__ == "__main__":
     implemented = implemented_commands()
+    non_redis_commands = implemented
     for cmd_meta in METADATA:
         cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url)
-        generate_markdown_files(cmds, implemented, cmd_meta.stack, cmd_meta.title)
+        generate_redis_commands_markdown_files(cmds, implemented, cmd_meta.stack)
+        non_redis_commands = non_redis_commands - set(cmds.keys())
+    print("Commands not in any redis stack:")
+    print(non_redis_commands)
