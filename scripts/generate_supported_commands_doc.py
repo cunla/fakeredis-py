@@ -44,6 +44,7 @@ IGNORE_COMMANDS = {
 }
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+markdown_filename_template = "docs/supported-commands/{}.md"
 
 
 @dataclass
@@ -109,39 +110,36 @@ def _commands_groups(commands: dict) -> dict[str, list[str]]:
     return groups
 
 
-markdown_filename_template = "docs/redis-commands/{}.md"
-
-
 def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_commands: set[str], stack: str) -> None:
     groups = _commands_groups(redis_commands)
     for group in groups:
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
-        f = open(filename, "w")
-        implemented_in_group = list(filter(lambda cmd: cmd in fakeredis_commands, groups[group]))
-        unimplemented_in_group = list(
-            filter(lambda cmd: cmd not in fakeredis_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group])
-        )
-        if len(implemented_in_group) > 0:
-            f.write(
-                f"# {stack} `{group}` commands "
-                f"({len(implemented_in_group)}/{len(unimplemented_in_group) + len(implemented_in_group)} "
-                f"implemented)\n\n"
+        with open(filename, "w") as f:
+            implemented_in_group = list(filter(lambda cmd: cmd in fakeredis_commands, groups[group]))
+            unimplemented_in_group = list(
+                filter(lambda cmd: cmd not in fakeredis_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group])
             )
-        for cmd in implemented_in_group:
-            f.write(f"## [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
-            f.write(f"{redis_commands[cmd]['summary']}\n\n")
-        f.write("\n")
-
-        if len(unimplemented_in_group) > 0:
-            f.write(f"## Unsupported {group} commands \n")
-            f.write("> To implement support for a command, see [here](/guides/implement-command/) \n\n")
-            for cmd in unimplemented_in_group:
+            if len(implemented_in_group) > 0:
                 f.write(
-                    f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)"
-                    f" <small>(not implemented)</small>\n\n"
+                    f"# {stack} `{group}` commands "
+                    f"({len(implemented_in_group)}/{len(unimplemented_in_group) + len(implemented_in_group)} "
+                    f"implemented)\n\n"
                 )
+            for cmd in implemented_in_group:
+                f.write(f"## [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)\n\n")
                 f.write(f"{redis_commands[cmd]['summary']}\n\n")
-        f.write("\n")
+            f.write("\n")
+
+            if len(unimplemented_in_group) > 0:
+                f.write(f"## Unsupported {group} commands \n")
+                f.write("> To implement support for a command, see [here](/guides/implement-command/) \n\n")
+                for cmd in unimplemented_in_group:
+                    f.write(
+                        f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)"
+                        f" <small>(not implemented)</small>\n\n"
+                    )
+                    f.write(f"{redis_commands[cmd]['summary']}\n\n")
+            f.write("\n")
 
 
 if __name__ == "__main__":

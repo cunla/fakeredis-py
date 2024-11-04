@@ -106,7 +106,7 @@ luarocks install lua-cjson
 cp /opt/homebrew/lib/lua/5.4/cjson.so `pwd`
 ```
 
-[1]:./redis-commands/RedisJson/
+[1]:./supported-commands/RedisJson/
 
 [2]:https://redis.io/commands/json.get/
 
@@ -116,7 +116,7 @@ cp /opt/homebrew/lib/lua/5.4/cjson.so `pwd`
 
 [5]:https://github.com/joseph-fox/python-bloomfilter
 
-[6]:./redis-commands/BloomFilter/
+[6]:./supported-commands/BloomFilter/
 
 [7]:https://redis.io/docs/interact/programmability/
 

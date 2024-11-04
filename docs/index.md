@@ -379,15 +379,15 @@ You can support this project by becoming a sponsor using [this link][sponsor].
 
 [sponsor]:https://github.com/sponsors/cunla
 
-[guide-implement-command]:./guides/implement-command/
+[guide-implement-command]:./guides/implement-command
 
-[contributing]:./about/contributing.md
+[contributing]:./about/contributing
 
-[guide-test-case]:./guides/test-case/
+[guide-test-case]:./guides/test-case
 
 [help-wanted-issues]:https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
 
-[supported-commands]:./redis-commands/
+[supported-commands]:./supported-commands/
 
 [fastapi-issue]:https://github.com/cunla/fakeredis-py/issues/292
 
