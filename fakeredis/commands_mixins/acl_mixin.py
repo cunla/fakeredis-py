@@ -97,6 +97,7 @@ class AclCommandsMixin:
         if len(args) >= 1 and self._check_user_password(username, password):
             self._current_user = username
             return OK
+        self._acl.add_log_record(b"auth", b"auth", b"auth", username, self._client_info)
         raise SimpleError(msgs.AUTH_FAILURE)
 
     @command(name="ACL CAT", fixed=(), repeat=(bytes,))

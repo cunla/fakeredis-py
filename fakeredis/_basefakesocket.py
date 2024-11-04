@@ -87,6 +87,7 @@ class BaseFakeSocket:
         self._pubsub: int
         self._transaction_failed: bool
         self._current_user: bytes = b"default"
+        self._client_info: bytes = b""  # todo pass client info from connection
 
     @property
     def version(self) -> Tuple[int, ...]:

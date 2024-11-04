@@ -1,5 +1,6 @@
 import pytest
 import redis
+from redis import exceptions
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
@@ -250,3 +251,46 @@ def test_acl_whoami(r: redis.Redis):
     assert r.acl_whoami() == username
     assert r.auth(temp_pass, default_username) is True
     r.config_set("requirepass", "")
+
+
+@pytest.mark.usefixtures("create_redis")
+def test_acl_log(r: redis.Redis, request, create_redis):
+    username = "fredis-py-user"
+
+    def teardown():
+        r.acl_deluser(username)
+
+    request.addfinalizer(teardown)
+    r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        commands=["+get", "+set", "+select"],
+        keys=["cache:*"],
+        nopass=True,
+    )
+    r.acl_log_reset()
+
+    r.auth("", username=username)
+
+    # Valid operation and key
+    assert r.set("cache:0", 1)
+    assert r.get("cache:0") == b"1"
+
+    # Invalid key
+    with pytest.raises(exceptions.NoPermissionError):
+        r.get("violated_cache:0")
+
+    # Invalid operation
+    with pytest.raises(exceptions.NoPermissionError):
+        r.hset("cache:0", "hkey", "hval")
+
+    r.auth("", "default")
+    log = r.acl_log()
+    assert isinstance(log, list)
+    assert len(log) == 2
+    assert len(r.acl_log(count=1)) == 1
+    assert isinstance(log[0], dict)
+
+    expected = r.acl_log(count=1)[0]
+    assert expected["username"] == username
