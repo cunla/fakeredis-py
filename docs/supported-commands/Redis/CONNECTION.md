@@ -1,4 +1,4 @@
-# Redis `connection` commands (4/25 implemented)
+# Redis `connection` commands (4/24 implemented)
 
 ## [CLIENT SETINFO](https://redis.io/commands/client-setinfo/)
 
@@ -95,10 +95,6 @@ Resumes processing commands from paused clients.
 #### [HELLO](https://redis.io/commands/hello/) <small>(not implemented)</small>
 
 Handshakes with the Redis server.
-
-#### [QUIT](https://redis.io/commands/quit/) <small>(not implemented)</small>
-
-Closes the connection.
 
 #### [RESET](https://redis.io/commands/reset/) <small>(not implemented)</small>
 
