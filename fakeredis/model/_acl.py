@@ -218,5 +218,5 @@ class AccessControlList:
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
             raise SimpleError("ACL disabled")
-        command = fields[0]
+
         # todo
