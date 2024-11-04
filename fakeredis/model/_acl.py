@@ -197,7 +197,7 @@ class AclLogRecord:
         count: int,
         reason: bytes,
         context: bytes,
-        object: bytes,
+        _object: bytes,
         username: bytes,
         created_ts: int,
         updated_ts: int,
@@ -207,7 +207,7 @@ class AclLogRecord:
         self.count: int = count
         self.reason: bytes = reason  # command, key, channel, or auth
         self.context: bytes = context  # toplevel, multi, lua, or module
-        self.object: bytes = object  # resource user couldn't access. AUTH when the reason is auth
+        self.object: bytes = _object  # resource user couldn't access. AUTH when the reason is auth
         self.username: bytes = username
         self.created_ts: int = created_ts  # milliseconds
         self.updated_ts: int = updated_ts
@@ -269,6 +269,30 @@ class AccessControlList:
         if count > len(self._log) or count < 0:
             count = 0
         return [x.as_array() for x in self._log[-count:]]
+
+    def add_log_record(
+        self,
+        reason: bytes,
+        context: bytes,
+        _object: bytes,
+        username: bytes,
+        client_info: bytes,
+    ) -> None:
+        if len(self._log) > 0:
+            last_entry = self._log[-1]
+            if (
+                last_entry.reason == reason
+                and last_entry.context == context
+                and last_entry.object == _object
+                and last_entry.username == username
+            ):
+                last_entry.count += 1
+                last_entry.updated_ts = current_time()
+                return
+        entry = AclLogRecord(
+            1, reason, context, _object, username, current_time(), current_time(), client_info, len(self._log) + 1
+        )
+        self._log.append(entry)
 
     def validate_command(self, username: bytes, fields: List[bytes]):
         if username not in self._user_acl:
