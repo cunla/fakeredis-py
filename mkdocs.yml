@@ -57,6 +57,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Redis stack: redis-stack.md
+  - Dragonfly support: dragonfly-support.md
   - Valkey support: valkey-support.md
   - Supported commands:
     - 'redis-commands/index.md'
