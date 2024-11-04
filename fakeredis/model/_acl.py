@@ -2,7 +2,7 @@ import hashlib
 from typing import Dict, Set, List, Union, Optional
 
 from ._command_info import get_commands_by_category
-from .._helpers import SimpleError
+from .._helpers import SimpleError, current_time
 
 
 class Selector:
@@ -191,10 +191,60 @@ class UserAccessControlList:
         return b" ".join(rule_parts)
 
 
+class AclLogRecord:
+    def __init__(
+        self,
+        count: int,
+        reason: bytes,
+        context: bytes,
+        object: bytes,
+        username: bytes,
+        created_ts: int,
+        updated_ts: int,
+        client_info: bytes,
+        entry_id: int,
+    ):
+        self.count: int = count
+        self.reason: bytes = reason  # command, key, channel, or auth
+        self.context: bytes = context  # toplevel, multi, lua, or module
+        self.object: bytes = object  # resource user couldn't access. AUTH when the reason is auth
+        self.username: bytes = username
+        self.created_ts: int = created_ts  # milliseconds
+        self.updated_ts: int = updated_ts
+        self.client_info: bytes = client_info
+        self.entry_id: int = entry_id
+
+    def as_array(self) -> List[bytes]:
+        age_seconds = (current_time() - self.created_ts) / 1000
+        return [
+            b"count",
+            str(self.count).encode(),
+            b"reason",
+            self.reason,
+            b"context",
+            self.context,
+            b"object",
+            self.object,
+            b"username",
+            self.username,
+            b"age-seconds",
+            f"{age_seconds:.3f}".encode(),
+            b"client-info",
+            self.client_info,
+            b"entry-id",
+            str(self.entry_id).encode(),
+            b"timestamp-created",
+            str(self.created_ts).encode(),
+            b"timestamp-last-updated",
+            str(self.updated_ts).encode(),
+        ]
+
+
 class AccessControlList:
 
     def __init__(self):
         self._user_acl: Dict[bytes, UserAccessControlList] = dict()
+        self._log: List[AclLogRecord] = list()
 
     def get_users(self) -> List[bytes]:
         return list(self._user_acl.keys())
@@ -212,11 +262,19 @@ class AccessControlList:
     def del_user(self, username: bytes) -> None:
         self._user_acl.pop(username, None)
 
+    def reset_log(self) -> None:
+        self._log.clear()
+
+    def log(self, count: int) -> List[List[bytes]]:
+        if count > len(self._log) or count < 0:
+            count = 0
+        return [x.as_array() for x in self._log[-count:]]
+
     def validate_command(self, username: bytes, fields: List[bytes]):
         if username not in self._user_acl:
             return
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
-            raise SimpleError("ACL disabled")
+            raise SimpleError("User disabled")
 
         # todo

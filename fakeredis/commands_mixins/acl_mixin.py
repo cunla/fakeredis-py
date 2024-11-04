@@ -1,5 +1,5 @@
 import secrets
-from typing import Any, Tuple, List, Callable, Dict, Optional
+from typing import Any, Tuple, List, Callable, Dict, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
@@ -175,3 +175,11 @@ class AclCommandsMixin:
 
                 self._set_user_acl(components[0], *components[1:])
         return OK
+
+    @command(name="ACL LOG", fixed=(), repeat=(bytes,))
+    def acl_save(self, *args: bytes) -> Union[SimpleString, List[List[bytes]]]:
+        if len(args) == 1 and casematch(args[0], b"RESET"):
+            self._acl.reset_log()
+            return OK
+        count = Int.decode(args[0]) if len(args) == 1 else 0
+        return self._acl.log(count)
