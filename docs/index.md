@@ -1,4 +1,4 @@
-from test.test_hypothesis import server_typefrom test.test_hypothesis import server_type---
+---
 toc:
 toc_depth: 3
 ---
@@ -19,7 +19,7 @@ A single server shared by multiple programs or multiple independent servers.
 All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson,
 GeoCommands.
 
-For a list of supported/unsupported redis commands, see [Supported commands][6].
+For a list of supported/unsupported redis commands, see [Supported commands][supported-commands].
 
 ## Installation
 
@@ -74,7 +74,7 @@ def redis_client(request):
 ### General usage
 
 FakeRedis can imitate Redis server version 6.x or 7.x, [Valkey server](./valkey-support),
-and [dragonfly server][dragonfly]. Redis version 7 is used by default.
+and [dragonfly server](./dragonfly-support). Redis version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real redis server.
 It does this by storing the state internally. For example:
@@ -164,7 +164,7 @@ CACHES = {
 }
 ```
 
-For [django-redis][8] library, use the following `OPTIONS`:
+For [django-redis][django-redis] library, use the following `OPTIONS`:
 
 ```
 'OPTIONS': {
@@ -173,7 +173,7 @@ For [django-redis][8] library, use the following `OPTIONS`:
 ```
 
 You can use
-django [`@override_settings` decorator][9]
+django [`@override_settings` decorator][django-override-settings]
 
 ### Use to test django-rq
 
@@ -210,7 +210,7 @@ django_rq.queues.get_redis_connection = get_fake_connection
 
 ### Use to test FastAPI
 
-See info on [this issue][7]
+See info on [this issue][fastapi-issue]
 
 If you're using FastAPI dependency injection to provide a Redis connection,
 then you can override that dependency for testing.
@@ -363,35 +363,34 @@ poetry run pytest -m "not slow"
 Contributions are welcome. You can contribute in many ways:
 
 - Report bugs you found.
-- Check out issues with [`Help wanted`][5] label.
-- Implement commands which are not yet implemented. Follow the [guide how to implement a new command][1].
-- Write additional test cases. Follow the [guide how to write a test-case][4].
+- Check out issues with [`Help wanted`][help-wanted-issues] label.
+- Implement commands which are not yet implemented. Follow
+  the [guide how to implement a new command][guide-implement-command].
+- Write additional test cases. Follow the [guide how to write a test-case][guide-test-case].
 
-Please follow coding standards listed in the [contributing guide][3].
+Please follow coding standards listed in the [contributing guide][contributing].
 
 ## Sponsor
 
 fakeredis-py is developed for free.
 
-You can support this project by becoming a sponsor using [this link][2].
+You can support this project by becoming a sponsor using [this link][sponsor].
 
 
-[1]:./guides/implement-command/
+[sponsor]:https://github.com/sponsors/cunla
 
-[2]:https://github.com/sponsors/cunla
+[guide-implement-command]:./guides/implement-command
 
-[3]:./about/contributing.md
+[contributing]:./about/contributing
 
-[4]:./guides/test-case/
+[guide-test-case]:./guides/test-case
 
-[5]:https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
+[help-wanted-issues]:https://github.com/cunla/fakeredis-py/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
 
-[6]:./redis-commands/
+[supported-commands]:./supported-commands/
 
-[7]:https://github.com/cunla/fakeredis-py/issues/292
+[fastapi-issue]:https://github.com/cunla/fakeredis-py/issues/292
 
-[8]:https://github.com/jazzband/django-redis
+[django-override-settings]:https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings
 
-[9]:https://docs.djangoproject.com/en/4.1/topics/testing/tools/#django.test.override_settings
-
-[dragonfly]:https://www.dragonflydb.io/
+[django-redis]:https://github.com/jazzband/django-redis
