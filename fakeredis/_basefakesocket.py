@@ -8,8 +8,7 @@ from xmlrpc.client import ResponseError
 import redis
 from redis.connection import DefaultParser
 
-from fakeredis.model import XStream
-from fakeredis.model import ZSet
+from fakeredis.model import XStream, ZSet
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem, Hash
@@ -87,6 +86,8 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+        self._current_user: bytes = b"default"
+        self._client_info: bytes = b""  # todo pass client info from connection
 
     @property
     def version(self) -> Tuple[int, ...]:
@@ -182,6 +183,49 @@ class BaseFakeSocket:
                 buf = buf[length + 2 :]  # +2 to skip the CRLF
             self._process_command(fields)
 
+    def _process_command(self, fields: List[bytes]) -> None:
+        if not fields:
+            return
+        result: Any
+        cmd, cmd_arguments = _extract_command(fields)
+        try:
+            func, sig = self._name_to_func(cmd)
+            self._server.acl.validate_command(self._current_user, fields)  # ACL check
+            with self._server.lock:
+                # Clean out old connections
+                while True:
+                    try:
+                        weak_sock = self._server.closed_sockets.pop()
+                    except IndexError:
+                        break
+                    else:
+                        sock = weak_sock()
+                        if sock:
+                            sock._cleanup(self._server)
+                now = time.time()
+                for db in self._server.dbs.values():
+                    db.time = now
+                sig.check_arity(cmd_arguments, self.version)
+                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                    self._transaction.append((func, sig, cmd_arguments))
+                    result = QUEUED
+                else:
+                    result = self._run_command(func, sig, cmd_arguments, False)
+        except SimpleError as exc:
+            if self._transaction is not None:
+                # TODO: should not apply if the exception is from _run_command
+                # e.g. watch inside multi
+                self._transaction_failed = True
+            if cmd == "exec" and exc.value.startswith("ERR "):
+                exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
+                self._transaction = None
+                self._transaction_failed = False
+                self._clear_watches()
+            result = exc
+        result = self._decode_result(result)
+        if not isinstance(result, NoResponse):
+            self.put_response(result)
+
     def _run_command(
         self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
     ) -> Any:
@@ -263,48 +307,6 @@ class BaseFakeSocket:
         if isinstance(data, str):
             data = data.encode("ascii")  # type: ignore
         self._parser.send(data)
-
-    def _process_command(self, fields: List[bytes]) -> None:
-        if not fields:
-            return
-        result: Any
-        cmd, cmd_arguments = _extract_command(fields)
-        try:
-            func, sig = self._name_to_func(cmd)
-            with self._server.lock:
-                # Clean out old connections
-                while True:
-                    try:
-                        weak_sock = self._server.closed_sockets.pop()
-                    except IndexError:
-                        break
-                    else:
-                        sock = weak_sock()
-                        if sock:
-                            sock._cleanup(self._server)
-                now = time.time()
-                for db in self._server.dbs.values():
-                    db.time = now
-                sig.check_arity(cmd_arguments, self.version)
-                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
-                    self._transaction.append((func, sig, cmd_arguments))
-                    result = QUEUED
-                else:
-                    result = self._run_command(func, sig, cmd_arguments, False)
-        except SimpleError as exc:
-            if self._transaction is not None:
-                # TODO: should not apply if the exception is from _run_command
-                # e.g. watch inside multi
-                self._transaction_failed = True
-            if cmd == "exec" and exc.value.startswith("ERR "):
-                exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
-                self._transaction = None
-                self._transaction_failed = False
-                self._clear_watches()
-            result = exc
-        result = self._decode_result(result)
-        if not isinstance(result, NoResponse):
-            self.put_response(result)
 
     def _scan(self, keys, cursor, *args):
         """This is the basis of most of the ``scan`` methods.

@@ -7,6 +7,18 @@ tags:
 toc_depth: 2
 ---
 
+## v2.27.0
+
+### 🚀 Features
+
+- ACL commands support #338
+
+### 🧰 Maintenance
+
+- Remove end of life python 3.8 from test matrix
+- Add python 3.13 to test matrix
+- Improve documentation for Dragonfly/Valkey support
+
 ## v2.26.1
 
 ### 🐛 Bug Fixes
