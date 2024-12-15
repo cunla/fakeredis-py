@@ -13,6 +13,11 @@ toc_depth: 2
 
 - Fix bug in `xreadgroup` when stream length is less than COUNT with BLOCK #344
 
+### 🧰 Maintenance
+
+- Implement test for `SADDEX` (Dragonfly specific command) #348
+- Update dependencies
+
 ## v2.26.1
 
 ### 🐛 Bug Fixes
