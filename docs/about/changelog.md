@@ -19,6 +19,17 @@ toc_depth: 2
 - Add python 3.13 to test matrix
 - Improve documentation for Dragonfly/Valkey support
 
+## v2.26.2
+
+### 🐛 Bug Fixes
+
+- Fix bug in `xreadgroup` when stream length is less than COUNT with BLOCK #344
+
+### 🧰 Maintenance
+
+- Implement test for `SADDEX` (Dragonfly specific command) #348
+- Update dependencies
+
 ## v2.26.1
 
 ### 🐛 Bug Fixes

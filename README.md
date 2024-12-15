@@ -15,14 +15,14 @@ Documentation is hosted in https://fakeredis.readthedocs.io/
 
 # Intro
 
-FakeRedis is a pure-Python implementation of the Redis key-value store.
+FakeRedis is a pure-Python implementation of the Redis protocol API. It provides enhanced versions of the redis-py Python bindings for Redis.
 
-It enables running tests requiring redis server without an actual server.
+It enables running tests requiring [Redis](https://redis.io/)/[ValKey](https://github.com/valkey-io/valkey)/[DragonflyDB](https://www.dragonflydb.io/) server without an actual server.
 
-It provides enhanced versions of the redis-py Python bindings for Redis. That provide the following added functionality:
-A built-in Redis server that is automatically installed, configured and managed when the Redis bindings are used. A
-single server shared by multiple programs or multiple independent servers. All the servers provided by
-FakeRedis support all Redis functionality including advanced features such as RedisJson, GeoCommands.
+It also enables testing compatibility of different key-value datastores.
+
+That provides the following added functionality: A built-in Redis server that is automatically installed, configured and managed when the Redis bindings are used. A single server shared by multiple programs or multiple independent servers. All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson, RedisBloom, GeoCommands.
+
 
 See [official documentation](https://fakeredis.readthedocs.io/) for list of supported commands.
 
