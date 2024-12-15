@@ -8,7 +8,7 @@ import math
 import re
 import sys
 import time
-from typing import Iterable, Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set
+from typing import Iterable, Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set, Collection
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database, current_time
@@ -107,7 +107,7 @@ class CommandItem:
     __nonzero__ = __bool__  # For Python 2
 
 
-class Hash:  # type:ignore
+class Hash:
     DECODE_ERROR = msgs.INVALID_HASH_MSG
     redis_type = b"hash"
 
@@ -116,7 +116,7 @@ class Hash:  # type:ignore
         self._expirations: Dict[bytes, int] = dict()
         self._values: Dict[bytes, Any] = dict()
 
-    def _expire_keys(self):
+    def _expire_keys(self) -> None:
         removed = []
         now = current_time()
         for k in self._expirations:
@@ -154,14 +154,14 @@ class Hash:  # type:ignore
         self._expirations.pop(key, None)
         self._values[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: bytes) -> None:
         self._values.pop(key, None)
         self._expirations.pop(key, None)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._values)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[bytes]:
         return iter(self._values)
 
     def get(self, key: bytes, default: Any = None) -> Any:
@@ -425,7 +425,11 @@ class Signature:
         repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
         args: Tuple[str] = (),  # type:ignore
         flags: str = "",
-        server_types: Tuple[str] = ("redis", "valkey", "dragonfly"),  # supported server types: redis, dragonfly, valkey
+        server_types: Collection[str] = (
+            "redis",
+            "valkey",
+            "dragonfly",
+        ),  # supported server types: redis, dragonfly, valkey
     ):
         self.name = name
         self.func_name = func_name
