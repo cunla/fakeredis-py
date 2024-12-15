@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.26.2
+
+### 🐛 Bug Fixes
+
+- Fix bug in `xreadgroup` when stream length is less than COUNT with BLOCK #344
+
 ## v2.26.1
 
 ### 🐛 Bug Fixes
