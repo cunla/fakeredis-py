@@ -812,3 +812,14 @@ def test_stream_ttl(r: redis.Redis):
     assert r.xread(streams={stream: 0}) == expected
     assert r.xtrim(stream, 0) == 1
     assert r.ttl(stream) == -1
+
+
+def test_xreadgroup_length_less_than_count(r: redis.Redis):
+    r.xadd("test-events", {"message": "hello"})
+    r.xadd("test-events", {"message": "bye"})
+
+    r.xgroup_create("test-events", "group1", id="0", mkstream=True)
+    messages = r.xreadgroup(
+        groupname="group1", consumername="consumer1", streams={"test-events": ">"}, count=10, block=2000
+    )
+    assert len(messages) == 1
