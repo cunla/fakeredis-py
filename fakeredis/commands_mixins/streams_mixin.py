@@ -341,7 +341,7 @@ class StreamsCommandsMixin:
         res: List[Any] = list()
         for group, stream_name, start_id in group_params:
             stream_results = group.group_read(consumer_name, start_id, count, noack)
-            if first_pass and (count is None or len(stream_results) < count):
+            if first_pass and (count is None):
                 return None
             if len(stream_results) > 0 or start_id != b">":
                 res.append([stream_name, stream_results])
