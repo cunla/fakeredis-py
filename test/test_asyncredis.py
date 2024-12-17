@@ -144,6 +144,17 @@ async def test_syntax_error(async_redis: redis.asyncio.Redis):
         await async_redis.execute_command("get")
 
 
+@pytest.mark.decode_responses
+async def test_never_decode(async_redis: redis.asyncio.Redis):
+    assert async_redis.connection_pool.get_encoder().decode_responses
+
+    await async_redis.execute_command("set", "key", "some ascii")
+    text = await async_redis.execute_command("get", "key")
+    assert isinstance(text, str)
+    bytestr = await async_redis.execute_command("get", "key", NEVER_DECODE=True)
+    assert isinstance(bytestr, bytes)
+
+
 @testtools.run_test_if_lupa
 class TestScripts:
     async def test_no_script_error(self, async_redis: redis.asyncio.Redis):
