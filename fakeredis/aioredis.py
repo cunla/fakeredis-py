@@ -173,6 +173,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             response = await self._reader.read(0) if can_read and self._reader else None
         if isinstance(response, redis_async.ResponseError):
             raise response
+        if kwargs.get("disable_decoding", False):
+            return response
         return self._decode(response)
 
     def repr_pieces(self) -> List[Tuple[str, Any]]:
