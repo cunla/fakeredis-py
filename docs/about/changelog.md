@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - Add support disable_decoding in async read_response #349
+- Implement support for `SADDEX`, using a new set implementation with support for expiring members #350
 
 ## v2.26.2
 
