@@ -14,10 +14,9 @@ from fakeredis._commands import (
     CommandItem,
     SortFloat,
     delete_keys,
-    Hash,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
-from fakeredis.model import ZSet
+from fakeredis.model import ZSet, Hash
 
 
 class GenericCommandsMixin:

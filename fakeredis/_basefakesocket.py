@@ -8,11 +8,10 @@ from xmlrpc.client import ResponseError
 import redis
 from redis.connection import DefaultParser
 
-from fakeredis.model import XStream
-from fakeredis.model import ZSet
+from fakeredis.model import XStream, ZSet, Hash
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem, Hash
+from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
 from ._helpers import (
     SimpleError,
     valid_response_type,
