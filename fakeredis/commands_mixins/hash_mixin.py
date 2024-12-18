@@ -5,9 +5,10 @@ from typing import Callable, List, Tuple, Any, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, Key, Hash, Int, Float, CommandItem
+from fakeredis._commands import command, Key, Int, Float, CommandItem
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis._helpers import current_time
+from fakeredis.model import Hash
 
 
 class HashCommandsMixin:
