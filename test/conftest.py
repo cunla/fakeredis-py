@@ -115,6 +115,8 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
     server_type, server_version = request.getfixturevalue("real_redis_version")
     if request.param != "fake" and not server_version:
         pytest.skip("Redis is not running")
+
+    decode_responses = bool(request.node.get_closest_marker("decode_responses"))
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
@@ -131,9 +133,9 @@ async def _req_aioredis2(request) -> redis.asyncio.Redis:
     fake_server: Optional[fakeredis.FakeServer]
     if request.param == "fake":
         fake_server = request.getfixturevalue("fake_server")
-        ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules)
+        ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses)
     else:
-        ret = redis.asyncio.Redis(host="localhost", port=6390, db=2)
+        ret = redis.asyncio.Redis(host="localhost", port=6390, db=2, decode_responses=decode_responses)
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()
