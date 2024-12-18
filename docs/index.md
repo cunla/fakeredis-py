@@ -32,6 +32,9 @@ pip install fakeredis[lua]   ## Support for LUA scripts
 
 pip install fakeredis[json]  ## Support for RedisJSON commands
 
+# Note on mac you need quotes:
+pip install "fakeredis[json]" 
+
 pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
 ```
 
