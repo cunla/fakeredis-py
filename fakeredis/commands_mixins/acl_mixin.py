@@ -178,7 +178,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL LOG", fixed=(), repeat=(bytes,))
-    def acl_save(self, *args: bytes) -> Union[SimpleString, List[List[bytes]]]:
+    def acl_log(self, *args: bytes) -> Union[SimpleString, List[List[bytes]]]:
         if len(args) == 1 and casematch(args[0], b"RESET"):
             self._acl.reset_log()
             return OK
