@@ -21,6 +21,17 @@ def test_saddex(r: redis.Redis):
     assert set(r.smembers("foo")) == set()
 
 
+@pytest.mark.slow
+@pytest.mark.unsupported_server_types("redis", "valkey")
+def test_saddex_expire_members(r: redis.Redis):
+    set_name = "foo"
+    assert testtools.raw_command(r, "saddex", set_name, 1, "m1", "m2") == 2
+    assert r.sadd(set_name, "m3", "m4") == 2
+    assert testtools.raw_command(r, "saddex", set_name, 1, "m3") == 0
+    sleep(1.1)
+    assert set(r.smembers("foo")) == {b"m3", b"m4"}
+
+
 @testtools.run_test_if_redispy_ver("gte", "5.1")
 def test_sadd(r: redis.Redis):
     assert r.sadd("foo", "member1") == 1
