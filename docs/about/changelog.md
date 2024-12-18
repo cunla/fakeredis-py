@@ -12,6 +12,8 @@ toc_depth: 2
 ### 🚀 Features
 
 - ACL commands support #338
+- Add support disable_decoding in async read_response #349
+
 
 ### 🧰 Maintenance
 
