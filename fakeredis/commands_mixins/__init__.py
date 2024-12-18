@@ -1,5 +1,6 @@
 from typing import Any
 
+from .acl_mixin import AclCommandsMixin
 from .bitmap_mixin import BitmapCommandsMixin
 from .connection_mixin import ConnectionCommandsMixin
 from .generic_mixin import GenericCommandsMixin
@@ -11,6 +12,7 @@ from .server_mixin import ServerCommandsMixin
 from .set_mixin import SetCommandsMixin
 from .streams_mixin import StreamsCommandsMixin
 from .string_mixin import StringCommandsMixin
+from .transactions_mixin import TransactionsCommandsMixin
 
 try:
     from .scripting_mixin import ScriptingCommandsMixin
@@ -21,8 +23,6 @@ except ImportError:
             kwargs.pop("lua_modules", None)
             super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)  # type: ignore
 
-
-from .transactions_mixin import TransactionsCommandsMixin
 
 __all__ = [
     "BitmapCommandsMixin",
@@ -38,4 +38,5 @@ __all__ = [
     "SetCommandsMixin",
     "StreamsCommandsMixin",
     "StringCommandsMixin",
+    "AclCommandsMixin",
 ]

@@ -9,6 +9,7 @@ from fakeredis import FakeServer
 from fakeredis._server import ServerType
 
 LOGGER = logging.getLogger("fakeredis")
+LOGGER.setLevel(logging.DEBUG)
 
 
 def to_bytes(value) -> bytes:
