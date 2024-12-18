@@ -16,7 +16,7 @@ from fakeredis._commands import (
     delete_keys,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
-from fakeredis.model import ZSet, Hash
+from fakeredis.model import ZSet, Hash, ExpiringMembersSet
 
 
 class GenericCommandsMixin:
@@ -223,7 +223,7 @@ class GenericCommandsMixin:
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
     def sort(self, key, *args):
-        if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
+        if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
             asc,
