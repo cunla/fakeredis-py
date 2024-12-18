@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.27.0
+
+### 🚀 Features
+
+- Add support disable_decoding in async read_response #349
+
 ## v2.26.2
 
 ### 🐛 Bug Fixes
