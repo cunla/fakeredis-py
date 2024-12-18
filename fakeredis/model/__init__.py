@@ -1,8 +1,9 @@
+from ._expiring_members_set import ExpiringMembersSet
+from ._hash import Hash
 from ._stream import XStream, StreamEntryKey, StreamGroup, StreamRangeTest
 from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
 from ._zset import ZSet
-from ._hash import Hash
 
 __all__ = [
     "XStream",
@@ -15,4 +16,5 @@ __all__ = [
     "AGGREGATORS",
     "HeavyKeeper",
     "Hash",
+    "ExpiringMembersSet",
 ]
