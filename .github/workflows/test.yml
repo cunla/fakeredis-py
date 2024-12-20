@@ -58,21 +58,21 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.14", "redis:7.0.15", "redis:7.4.0" ]
         python-version: [ "3.9", "3.11", "3.12", "3.13" ]
-        redis-py: [ "4.3.6", "4.6.0", "5.0.8", "5.2.0" ]
+        redis-py: [ "4.3.6", "4.6.0", "5.0.8", "5.2.1", "5.3.0b3" ]
         include:
           - python-version: "3.12"
             redis-image: "valkey/valkey:8.0"
-            redis-py: "5.2.0"
+            redis-py: "5.2.1"
             extra: "lua"
             hypothesis: true
           - python-version: "3.12"
             redis-image: "redis/redis-stack-server:6.2.6-v15"
-            redis-py: "5.2.0"
+            redis-py: "5.2.1"
             extra: "json, bf, lua, cf"
             hypothesis: true
           - python-version: "3.12"
             redis-image: "redis/redis-stack-server:7.4.0-v0"
-            redis-py: "5.2.0"
+            redis-py: "5.2.1"
             extra: "json, bf, lua, cf"
             coverage: true
             hypothesis: true
