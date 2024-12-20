@@ -28,18 +28,38 @@ class TestInitArgs:
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
+    def test_with_user_password(self):
+        username = "fakeredis-user"
+        password = "fakeredis-password"
+        db = fakeredis.FakeStrictRedis(host="localhost")
+        db.acl_setuser(username, enabled=True, passwords=[f"+{password}"], commands=["+set", "+get"])
+
+        db = fakeredis.FakeStrictRedis(host="localhost", username=username, password=password)
+        db.set("foo", "bar")
+        assert db.get("foo") == b"bar"
+
     def test_from_url(self):
         db = fakeredis.FakeStrictRedis.from_url("redis://localhost:6390/0")
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
     def test_from_url_user(self):
-        db = fakeredis.FakeStrictRedis.from_url("redis://user@localhost:6390/0")
+        username = "fakeredis-user"
+        db = fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0)
+        db.acl_setuser(username, enabled=True, nopass=True, commands=["+set", "+get"])
+
+        db = fakeredis.FakeStrictRedis.from_url(f"redis://{username}@localhost:6390/0")
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
     def test_from_url_user_password(self):
-        db = fakeredis.FakeStrictRedis.from_url("redis://user:password@localhost:6390/0")
+        username = "fakeredis-user"
+        password = "fakeredis-password"
+        server = fakeredis.FakeServer()
+        db = fakeredis.FakeStrictRedis(host="localhost", port=6390, server=server)
+        db.acl_setuser(username, enabled=True, passwords=[f"+{password}"], commands=["+set", "+get"])
+
+        db = fakeredis.FakeStrictRedis.from_url(f"redis://{username}:{password}@localhost:6390/0", server=server)
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
