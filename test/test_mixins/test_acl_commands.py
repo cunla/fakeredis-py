@@ -253,8 +253,45 @@ def test_acl_whoami(r: redis.Redis):
     r.config_set("requirepass", "")
 
 
+def test_acl_log_auth_exist(r: redis.Redis, request):
+    username = "fredis-py-user"
+
+    def teardown():
+        r.auth("", username="default")
+        r.acl_deluser(username)
+
+    request.addfinalizer(teardown)
+    r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        commands=["+get", "+set", "+select"],
+        keys=["cache:*"],
+        passwords=["+pass1"],
+    )
+    r.acl_log_reset()
+
+    with pytest.raises(exceptions.AuthenticationError):
+        r.auth("xxx", username=username)
+    r.auth("pass1", username=username)
+
+    # Valid operation and key
+    assert r.set("cache:0", 1)
+    assert r.get("cache:0") == b"1"
+
+    r.auth("", "default")
+    log = r.acl_log()
+    assert isinstance(log, list)
+    assert len(log) == 1
+    assert len(r.acl_log(count=1)) == 1
+    assert isinstance(log[0], dict)
+
+    expected = r.acl_log(count=1)[0]
+    assert expected["username"] == username
+
+
 @pytest.mark.usefixtures("create_redis")
-def test_acl_log(r: redis.Redis, request, create_redis):
+def test_acl_log_invalid_key(r: redis.Redis, request, create_redis):
     username = "fredis-py-user"
 
     def teardown():
@@ -277,13 +314,15 @@ def test_acl_log(r: redis.Redis, request, create_redis):
     assert r.set("cache:0", 1)
     assert r.get("cache:0") == b"1"
 
+    # Invalid operation
+    with pytest.raises(exceptions.NoPermissionError) as command_not_permitted:
+        r.hset("cache:0", "hkey", "hval")
+
+    assert str(command_not_permitted.value) == "User fredis-py-user has no permissions to run the 'hset' command"
+
     # Invalid key
     with pytest.raises(exceptions.NoPermissionError):
         r.get("violated_cache:0")
-
-    # Invalid operation
-    with pytest.raises(exceptions.NoPermissionError):
-        r.hset("cache:0", "hkey", "hval")
 
     r.auth("", "default")
     log = r.acl_log()

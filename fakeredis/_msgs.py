@@ -123,6 +123,8 @@ HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number o
 
 MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an ACL file. You may want to specify users via the ACL SETUSER command and then issue a CONFIG REWRITE (assuming you have a Redis configuration file set) in order to store users in the Redis configuration."
 
+NO_PERMISSION_ERROR = "NOPERM User {} has no permissions to run the '{}' command"
+
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"

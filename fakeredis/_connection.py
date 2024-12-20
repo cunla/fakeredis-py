@@ -28,7 +28,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        return FakeSocket(self._server, db=self.db, lua_modules=self._lua_modules)
+        return FakeSocket(self._server, db=self.db, lua_modules=self._lua_modules, client_info=self)
 
     def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self._server.connected:

@@ -1,6 +1,7 @@
 import hashlib
 from typing import Dict, Set, List, Union, Optional
 
+from fakeredis import _msgs as msgs
 from ._command_info import get_commands_by_category
 from .._helpers import SimpleError, current_time
 
@@ -66,7 +67,7 @@ class UserAccessControlList:
         self._passwords.clear()
 
     def check_password(self, password: Optional[bytes]) -> bool:
-        if self._nopass and not password:
+        if self._nopass:
             return True
         if not password:
             return False
@@ -301,4 +302,7 @@ class AccessControlList:
         if not user_acl.enabled:
             raise SimpleError("User disabled")
 
+        command, args = fields[0], fields[1:]
+        if command.lower() not in user_acl._commands:
+            raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), command.lower().decode()))
         # todo

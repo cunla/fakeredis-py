@@ -16,6 +16,7 @@ class AclCommandsMixin:
         self.version: Tuple[int]
         self._server: Any
         self._current_user: bytes
+        self._client_info: bytes
 
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
@@ -91,7 +92,7 @@ class AclCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
         username = None if len(args) == 1 else args[0]
         password = args[1] if len(args) == 2 else args[0]
-        if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", None)):
+        if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", b"")):
             self._current_user = b"default"
             return OK
         if len(args) >= 1 and self._check_user_password(username, password):
