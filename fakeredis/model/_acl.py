@@ -1,6 +1,6 @@
 import fnmatch
 import hashlib
-from typing import Dict, Set, List, Union, Optional, Sequence
+from typing import Dict, Set, List, Union, Optional
 
 from fakeredis import _msgs as msgs
 from ._command_info import get_commands_by_category, get_command_info
