@@ -94,6 +94,8 @@ class UserAccessControlList:
         return fields[first_key : last_key + 1 : step]
 
     def keys_not_allowed(self, fields: List[bytes]) -> List[bytes]:
+        if len(self._key_patterns) == 0:
+            return []
         keys = self._get_keys(fields)
         res = set()
         for pat in self._key_patterns:
