@@ -2,7 +2,7 @@ import hashlib
 from typing import Dict, Set, List, Union, Optional
 
 from fakeredis import _msgs as msgs
-from ._command_info import get_commands_by_category
+from ._command_info import get_commands_by_category, get_command_info
 from .._helpers import SimpleError, current_time
 
 
@@ -61,6 +61,17 @@ class UserAccessControlList:
         self._key_patterns.clear()
         self._channel_patterns.clear()
         self._selectors.clear()
+
+    def command_allowed(self, command: bytes) -> bool:
+        command = command.lower()
+        res = command == b"auth" or self._commands.get(command, False)
+        res = res or self._commands.get(b"@all", False)
+        command_info = get_command_info(command)
+        if not command_info:
+            return res
+        for category in command_info[6]:
+            res = res or self._commands.get(category, False)
+        return res
 
     def set_nopass(self) -> None:
         self._nopass = True
@@ -303,8 +314,7 @@ class AccessControlList:
             raise SimpleError("User disabled")
 
         command, args = fields[0], fields[1:]
-        if command.lower() == b"auth":
-            return
-        if command.lower() not in user_acl._commands:
+
+        if not user_acl.command_allowed(command):
             raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), command.lower().decode()))
         # todo

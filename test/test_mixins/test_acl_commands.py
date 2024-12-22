@@ -19,8 +19,9 @@ def test_acl_cat(r: redis.Redis):
         if "hpersist" in commands:
             commands.remove("hpersist")
         assert len(commands) > 0
+        commands = {cmd.replace(" ", "|") for cmd in commands}
         diff = set(commands) - set(r.acl_cat(cat))
-        assert len(diff) == 0
+        assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
 
 
 def test_acl_genpass(r: redis.Redis):

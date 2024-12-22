@@ -107,6 +107,7 @@ class AclCommandsMixin:
             res = get_categories()
         else:
             res = get_commands_by_category(category[0])
+            res = [cmd.replace(b" ", b"|") for cmd in res]
         return res
 
     @command(name="ACL GENPASS", fixed=(), repeat=(bytes,))
