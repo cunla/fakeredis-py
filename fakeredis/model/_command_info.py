@@ -2,8 +2,6 @@ import json
 import os
 from typing import Optional, Dict, List, Any, Union
 
-from fakeredis._commands import SUPPORTED_COMMANDS
-
 _COMMAND_INFO: Optional[Dict[bytes, List[Any]]] = None
 
 
