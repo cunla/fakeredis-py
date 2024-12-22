@@ -87,11 +87,7 @@ class BaseFakeSocket:
         self._pubsub: int
         self._transaction_failed: bool
         self._current_user: bytes = b"default"
-        # TODO fix
-        self._client_info: bytes = kwargs.pop(
-            "client_info",
-            b"id=3 addr=127.0.0.1:57275 laddr=127.0.0.1:6379 fd=8 name= age=16 idle=0 flags=N db=0 sub=0 psub=0 ssub=0 multi=-1 qbuf=48 qbuf-free=16842 argv-mem=25 multi-mem=0 rbs=1024 rbp=0 obl=0 oll=0 omem=0 tot-mem=18737 events=r cmd=auth user=default redir=-1 resp=2",
-        )
+        self._client_info: bytes = kwargs.pop("client_info", b"")
 
     @property
     def version(self) -> Tuple[int, ...]:

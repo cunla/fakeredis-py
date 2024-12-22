@@ -303,6 +303,8 @@ class AccessControlList:
             raise SimpleError("User disabled")
 
         command, args = fields[0], fields[1:]
+        if command.lower() == b"auth":
+            return
         if command.lower() not in user_acl._commands:
             raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), command.lower().decode()))
         # todo

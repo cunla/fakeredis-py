@@ -295,6 +295,7 @@ def test_acl_log_invalid_key(r: redis.Redis, request, create_redis):
     username = "fredis-py-user"
 
     def teardown():
+        r.auth("", username="default")
         r.acl_deluser(username)
 
     request.addfinalizer(teardown)
