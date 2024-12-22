@@ -4,11 +4,13 @@ from redis import exceptions
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
+from test.testtools import fake_only
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
 
 
+@fake_only
 def test_acl_cat(r: redis.Redis):
     categories = get_categories()
     categories = [cat.decode() for cat in categories]
