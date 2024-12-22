@@ -98,6 +98,14 @@ if __name__ == "__main__":
             if cmd not in implemented:
                 continue
             command_info_dict[cmd] = get_command_info(cmd, cmds)
+            subcommand = cmd.split(" ")
+            if len(subcommand) > 1:
+                (
+                    command_info_dict.setdefault(subcommand[0], [subcommand[0], -1, [], 0, 0, 0, [], [], [], []])[
+                        9
+                    ].append(command_info_dict[cmd])
+                )
+
             print(command_info_dict[cmd])
     with open(os.path.join(os.path.dirname(__file__), "..", "fakeredis", "commands.json"), "w") as f:
         json.dump(command_info_dict, f)

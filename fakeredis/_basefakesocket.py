@@ -190,7 +190,7 @@ class BaseFakeSocket:
         cmd, cmd_arguments = _extract_command(fields)
         try:
             func, sig = self._name_to_func(cmd)
-            self._server.acl.validate_command(self._current_user, fields)  # ACL check
+            self._server.acl.validate_command(self._current_user, self._client_info, fields)  # ACL check
             with self._server.lock:
                 # Clean out old connections
                 while True:

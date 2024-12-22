@@ -317,14 +317,16 @@ def test_acl_log_invalid_key(r: redis.Redis, request, create_redis):
     assert r.get("cache:0") == b"1"
 
     # Invalid operation
-    with pytest.raises(exceptions.NoPermissionError) as command_not_permitted:
+    with pytest.raises(exceptions.NoPermissionError) as ctx:
         r.hset("cache:0", "hkey", "hval")
 
-    assert str(command_not_permitted.value) == "User fredis-py-user has no permissions to run the 'hset' command"
+    assert str(ctx.value) == "User fredis-py-user has no permissions to run the 'hset' command"
 
     # Invalid key
-    with pytest.raises(exceptions.NoPermissionError):
+    with pytest.raises(exceptions.NoPermissionError) as ctx:
         r.get("violated_cache:0")
+
+    assert str(ctx.value) == "No permissions to access a key"
 
     r.auth("", "default")
     log = r.acl_log()
