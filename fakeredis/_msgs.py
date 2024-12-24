@@ -125,6 +125,7 @@ MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an AC
 
 NO_PERMISSION_ERROR = "NOPERM User {} has no permissions to run the '{}' command"
 NO_PERMISSION_KEY_ERROR = "NOPERM No permissions to access a key"
+NO_PERMISSION_CHANNEL_ERROR = "NOPERM No permissions to access a channel"
 
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts

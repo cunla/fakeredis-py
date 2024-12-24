@@ -358,8 +358,8 @@ class AccessControlList:
         if len(keys_not_allowed) > 0:
             self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info)
             raise SimpleError(msgs.NO_PERMISSION_KEY_ERROR)
-        if "@pubsub" in command_info[6]:
+        if b"@pubsub" in command_info[6]:
             channels_not_allowed = user_acl.channels_not_allowed(command_info, fields)
             if len(channels_not_allowed) > 0:
-                self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info)
-                raise SimpleError(msgs.NO_PERMISSION_KEY_ERROR)
+                self.add_log_record(b"channel", b"toplevel", channels_not_allowed[0], username, client_info)
+                raise SimpleError(msgs.NO_PERMISSION_CHANNEL_ERROR)
