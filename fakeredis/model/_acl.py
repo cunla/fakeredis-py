@@ -309,7 +309,9 @@ class AccessControlList:
     def log(self, count: int) -> List[List[bytes]]:
         if count > len(self._log) or count < 0:
             count = 0
-        return [x.as_array() for x in self._log[-count:]]
+        res = [x.as_array() for x in self._log[-count:]]
+        res.reverse()
+        return res
 
     def add_log_record(
         self,

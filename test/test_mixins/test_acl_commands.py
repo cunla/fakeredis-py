@@ -4,7 +4,6 @@ from redis import exceptions
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
-from test.testtools import fake_only
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
@@ -288,12 +287,67 @@ def test_acl_log_auth_exist(r: redis.Redis, request):
     assert len(r.acl_log(count=1)) == 1
     assert isinstance(log[0], dict)
 
-    expected = r.acl_log(count=1)[0]
-    assert expected["username"] == username
+    auth_record = log[0]
+    assert auth_record["username"] == username
+    assert auth_record["reason"] == "auth"
+    assert auth_record["object"] == "AUTH"
 
 
-@pytest.mark.usefixtures("create_redis")
-def test_acl_log_invalid_key(r: redis.Redis, request, create_redis):
+def test_acl_log_invalid_key(r: redis.Redis, request):
+    username = "fredis-py-user"
+
+    def teardown():
+        r.auth("", username="default")
+        r.acl_deluser(username)
+
+    request.addfinalizer(teardown)
+    r.acl_setuser(
+        username,
+        enabled=True,
+        reset=True,
+        commands=["+get", "+set", "+select"],
+        keys=["cache:*"],
+        nopass=True,
+    )
+    r.acl_log_reset()
+
+    r.auth("", username=username)
+
+    # Valid operation and key
+    assert r.set("cache:0", 1)
+    assert r.get("cache:0") == b"1"
+
+    # Invalid operation
+    with pytest.raises(exceptions.NoPermissionError) as ctx:
+        r.hset("cache:0", "hkey", "hval")
+
+    assert str(ctx.value) == "User fredis-py-user has no permissions to run the 'hset' command"
+
+    # Invalid key
+    with pytest.raises(exceptions.NoPermissionError) as ctx:
+        r.get("violated_cache:0")
+
+    assert str(ctx.value) == "No permissions to access a key"
+
+    r.auth("", "default")
+    log = r.acl_log()
+    assert isinstance(log, list)
+    assert len(log) == 2
+    assert len(r.acl_log(count=1)) == 1
+    assert isinstance(log[0], dict)
+
+    bad_key_record = log[0]
+    assert bad_key_record["username"] == username
+    assert bad_key_record["reason"] == "key"
+    assert bad_key_record["object"] == "violated_cache:0"
+
+    bad_command_record = log[1]
+    assert bad_command_record["username"] == username
+    assert bad_command_record["reason"] == "command"
+    assert bad_command_record["object"].lower() == "hset"
+
+
+def test_acl_log_invalid_channel(r: redis.Redis, request):
     username = "fredis-py-user"
 
     def teardown():
