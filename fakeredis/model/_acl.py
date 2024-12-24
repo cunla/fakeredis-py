@@ -1,6 +1,6 @@
 import fnmatch
 import hashlib
-from typing import Dict, Set, List, Union, Optional
+from typing import Dict, Set, List, Union, Optional, Any
 
 from fakeredis import _msgs as msgs
 from ._command_info import get_commands_by_category, get_command_info
@@ -64,7 +64,7 @@ class UserAccessControlList:
         self._selectors.clear()
 
     @staticmethod
-    def _get_command_info(fields: List[bytes]):
+    def _get_command_info(fields: List[bytes]) -> Optional[List[Any]]:
         command = fields[0].lower()
         command_info = get_command_info(command)
         if not command_info and len(fields) > 1:
@@ -72,18 +72,16 @@ class UserAccessControlList:
             command_info = get_command_info(command)
         return command_info
 
-    def command_allowed(self, fields: List[bytes]) -> bool:
+    def command_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> bool:
         res = fields[0].lower() == b"auth" or self._commands.get(fields[0].lower(), False)
         res = res or self._commands.get(b"@all", False)
-        command_info = self._get_command_info(fields)
         if not command_info:
             return res
         for category in command_info[6]:
             res = res or self._commands.get(category, False)
         return res
 
-    def _get_keys(self, fields: List[bytes]) -> List[bytes]:
-        command_info = self._get_command_info(fields)
+    def _get_keys(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
         if not command_info:
             return []
         first_key, last_key, step = command_info[3:6]
@@ -93,14 +91,23 @@ class UserAccessControlList:
         step = step + 1
         return fields[first_key : last_key + 1 : step]
 
-    def keys_not_allowed(self, fields: List[bytes]) -> List[bytes]:
+    def keys_not_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
         if len(self._key_patterns) == 0:
             return []
-        keys = self._get_keys(fields)
+        keys = self._get_keys(command_info, fields)
         res = set()
         for pat in self._key_patterns:
             res = res.union(fnmatch.filter(keys, pat))
         return list(set(keys) - res)
+
+    def channels_not_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
+        if len(self._key_patterns) == 0:
+            return []
+        channels = fields[1:2]
+        res = set()
+        for pat in self._channel_patterns:
+            res = res.union(fnmatch.filter(channels, pat))
+        return list(set(channels) - res)
 
     def set_nopass(self) -> None:
         self._nopass = True
@@ -343,12 +350,16 @@ class AccessControlList:
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
             raise SimpleError("User disabled")
-
-        if not user_acl.command_allowed(fields):
+        command_info = UserAccessControlList._get_command_info(fields)
+        if not user_acl.command_allowed(command_info, fields):
             self.add_log_record(b"command", b"toplevel", fields[0], username, client_info)
             raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), fields[0].lower().decode()))
-        keys_not_allowed = user_acl.keys_not_allowed(fields)
+        keys_not_allowed = user_acl.keys_not_allowed(command_info, fields)
         if len(keys_not_allowed) > 0:
             self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info)
             raise SimpleError(msgs.NO_PERMISSION_KEY_ERROR)
-        # todo
+        if "@pubsub" in command_info[6]:
+            channels_not_allowed = user_acl.channels_not_allowed(command_info, fields)
+            if len(channels_not_allowed) > 0:
+                self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info)
+                raise SimpleError(msgs.NO_PERMISSION_KEY_ERROR)

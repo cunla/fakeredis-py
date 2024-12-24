@@ -359,7 +359,8 @@ def test_acl_log_invalid_channel(r: redis.Redis, request):
         username,
         enabled=True,
         reset=True,
-        commands=["+get", "+set", "+select"],
+        commands=["+get", "+set", "+select", "+publish"],
+        channels=["message:*"],
         keys=["cache:*"],
         nopass=True,
     )
@@ -371,24 +372,19 @@ def test_acl_log_invalid_channel(r: redis.Redis, request):
     assert r.set("cache:0", 1)
     assert r.get("cache:0") == b"1"
 
-    # Invalid operation
     with pytest.raises(exceptions.NoPermissionError) as ctx:
-        r.hset("cache:0", "hkey", "hval")
+        r.publish("invalid-channel", "message")
 
-    assert str(ctx.value) == "User fredis-py-user has no permissions to run the 'hset' command"
-
-    # Invalid key
-    with pytest.raises(exceptions.NoPermissionError) as ctx:
-        r.get("violated_cache:0")
-
-    assert str(ctx.value) == "No permissions to access a key"
+    assert str(ctx.value) == "No permissions to access a channel"
 
     r.auth("", "default")
     log = r.acl_log()
     assert isinstance(log, list)
-    assert len(log) == 2
+    assert len(log) == 1
     assert len(r.acl_log(count=1)) == 1
     assert isinstance(log[0], dict)
 
-    expected = r.acl_log(count=1)[0]
-    assert expected["username"] == username
+    log_record = r.acl_log(count=1)[0]
+    assert log_record["username"] == username
+    assert log_record["reason"] == "channel"
+    assert log_record["object"].lower() == "invalid-channel"
