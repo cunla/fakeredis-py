@@ -3,9 +3,18 @@ import redis
 import redis.client
 from packaging.version import Version
 
+from test import testtools
 from test.testtools import raw_command
 
 REDIS_VERSION = Version(redis.__version__)
+
+
+def test_zadd_roman(r: redis.Redis):
+    testtools.raw_command(r, "ZADD", "b", "0", "c")
+    with pytest.raises(redis.ResponseError) as ctx:
+        testtools.raw_command(r, "SORT", "b")
+
+    assert str(ctx.value) == "One or more scores can't be converted into double"
 
 
 def test_zadd(r: redis.Redis):
