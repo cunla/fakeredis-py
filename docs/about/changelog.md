@@ -11,8 +11,15 @@ toc_depth: 2
 
 ### 🚀 Features
 
+- ACL commands support #338
 - Add support disable_decoding in async read_response #349
 - Implement support for `SADDEX`, using a new set implementation with support for expiring members #350
+
+### 🧰 Maintenance
+
+- Remove end of life python 3.8 from test matrix
+- Add python 3.13 to test matrix
+- Improve documentation for Dragonfly/Valkey support
 
 ## v2.26.2
 
