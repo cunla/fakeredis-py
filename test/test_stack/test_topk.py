@@ -7,10 +7,10 @@ topk_tests = pytest.importorskip("probables")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_topk_incrby(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
-    assert [None, None, None] == r.topk().incrby("topk", ["bar", "baz", "42"], [3, 6, 2])
+    assert [None, None, None] == r.topk().incrby("topk", ["bar", "baz", "42"], [3, 6, 4])
     assert [None, "bar"] == r.topk().incrby("topk", ["42", "xyzzy"], [8, 4])
     with pytest.deprecated_call():
-        assert [3, 6, 10, 4, 0] == r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)
+        assert [3, 6, 12, 4, 0] == r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -26,24 +26,7 @@ def test_topk(r: redis.Redis):
     assert (ret == [1, 0, 0, 1, 1, 0, 0]) or (ret == [1, 1, 0, 1, 0, 0, 0])
     # test full list
     assert r.topk().reserve("topklist", 3, 50, 3, 0.9)
-    assert r.topk().add(
-        "topklist",
-        "A",
-        "B",
-        "D",
-        "E",
-        "A",
-        "A",
-        "B",
-        "C",
-        "G",
-        "D",
-        "B",
-        "A",
-        "B",
-        "E",
-        "E",
-    )
+    assert r.topk().add("topklist", "A", "B", "D", "E", "A", "A", "B", "C", "G", "D", "B", "A", "B", "E", "E")
     with pytest.deprecated_call():
         assert r.topk().count("topklist", "A", "B", "C", "D", "E", "F", "G") == [4, 4, 1, 2, 3, 0, 1]
     assert r.topk().list("topklist") == ["A", "B", "E"]
