@@ -4,21 +4,34 @@ from redis import exceptions
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
+from test.conftest import ServerDetails
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
 
+_VALKEY_UNSUPPORTED_COMMANDS = {
+    "hexpiretime",
+    "hexpireat",
+    "hpexpireat",
+    "hexpire",
+    "hpttl",
+    "hpexpire",
+    "hpexpiretime",
+    "httl",
+}
 
-def test_acl_cat(r: redis.Redis):
+
+def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     categories = get_categories()
     categories = [cat.decode() for cat in categories]
     assert set(r.acl_cat()) == set(categories)
     for cat in categories:
         commands = get_commands_by_category(cat)
         commands = {cmd.decode() for cmd in commands}
-        if "hpersist" in commands:
-            commands.remove("hpersist")
         assert len(commands) > 0
+        commands.discard("hpersist")
+        if real_server_details[0] == "valkey":
+            commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
         commands = {cmd.replace(" ", "|") for cmd in commands}
         diff = set(commands) - set(r.acl_cat(cat))
         assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
