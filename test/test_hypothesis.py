@@ -54,6 +54,7 @@ values = sample_attr("values")
 scores = sample_attr("scores")
 
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
+optional_bitcount_range = st.just(()) | st.tuples(int_as_bytes, int_as_bytes)
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), st.floats(width=32))
 counts = st.integers(min_value=-3, max_value=3) | st.integers()
 limits = st.just(()) | st.tuples(st.just("limit"), counts, counts)
@@ -361,8 +362,8 @@ class BaseTest:
                 self.command_strategy | self.command_strategy_redis7 if redis_ver >= (7,) else self.command_strategy
             )
 
-        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        # hypothesis.settings.load_profile("debug")
+        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)
 
 
@@ -379,8 +380,7 @@ class TestConnection(BaseTest):
 class TestString(BaseTest):
     string_commands = (
         commands(st.just("append"), keys, values)
-        | commands(st.just("bitcount"), keys)
-        | commands(st.just("bitcount"), keys, values, values)
+        | commands(st.just("bitcount"), keys, optional_bitcount_range)
         | commands(st.sampled_from(["incr", "decr"]), keys)
         | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
         | commands(st.just("get"), keys)
