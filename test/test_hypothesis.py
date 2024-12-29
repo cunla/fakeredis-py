@@ -135,6 +135,14 @@ def default_normalize(x: Any) -> Any:
     return x
 
 
+def optional(arg):
+    return st.none() | st.just(arg)
+
+
+def zero_or_more(*args):
+    return [optional(arg) for arg in args]
+
+
 class Command:
     def __init__(self, *args):
         args = list(flatten(args))
@@ -200,9 +208,7 @@ common_commands = (
     # TODO: find a better solution to sort instability than throwing
     #  away the sort entirely with normalize. This also prevents us
     #  using LIMIT.
-    | commands(
-        st.just("sort"), keys, st.none() | st.just("asc"), st.none() | st.just("desc"), st.none() | st.just("alpha")
-    )
+    | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
 )
 
 
@@ -222,10 +228,7 @@ zset_no_score_commands = (  # TODO: test incr
     commands(
         st.just("zadd"),
         keys,
-        st.none() | st.just("nx"),
-        st.none() | st.just("xx"),
-        st.none() | st.just("ch"),
-        st.none() | st.just("incr"),
+        *zero_or_more("nx", "xx", "ch", "incr"),
         st.lists(st.tuples(st.just(0), fields)),
     )
     | commands(st.just("zlexcount"), keys, string_tests, string_tests)
@@ -394,9 +397,7 @@ class TestString(BaseTest):
             st.just("set"),
             keys,
             values,
-            st.none() | st.just("nx"),
-            st.none() | st.just("xx"),
-            st.none() | st.just("keepttl"),
+            *zero_or_more("nx", "xx", "keepttl"),
         )
         | commands(st.just("setex"), keys, expires_seconds, values)
         | commands(st.just("psetex"), keys, expires_ms, values)
@@ -430,10 +431,7 @@ class TestHash(BaseTest):
             st.just("hexpire"),
             keys,
             expires_seconds,
-            st.none() | st.just("nx"),
-            st.none() | st.just("xx"),
-            st.none() | st.just("gt"),
-            st.none() | st.just("lt"),
+            *zero_or_more("nx", "xx", "gt", "lt"),
             st.just("fields"),
             st.just(2),
             st.lists(fields, min_size=2, max_size=2),
@@ -442,10 +440,7 @@ class TestHash(BaseTest):
             st.just("hpexpire"),
             keys,
             expires_ms,
-            st.none() | st.just("nx"),
-            st.none() | st.just("xx"),
-            st.none() | st.just("gt"),
-            st.none() | st.just("lt"),
+            *zero_or_more("nx", "xx", "gt", "lt"),
             st.just("fields"),
             st.just(2),
             st.lists(fields, min_size=2, max_size=2),
@@ -508,23 +503,20 @@ class TestZSet(BaseTest):
         commands(
             st.just("zadd"),
             keys,
-            st.none() | st.just("nx"),
-            st.none() | st.just("xx"),
-            st.none() | st.just("ch"),
-            st.none() | st.just("incr"),
+            *zero_or_more("nx", "xx", "ch", "incr"),
             st.lists(st.tuples(scores, fields)),
         )
         | commands(st.just("zcard"), keys)
         | commands(st.just("zcount"), keys, score_tests, score_tests)
         | commands(st.just("zincrby"), keys, scores, fields)
-        | commands(st.sampled_from(["zrange", "zrevrange"]), keys, counts, counts, st.none() | st.just("withscores"))
+        | commands(st.sampled_from(["zrange", "zrevrange"]), keys, counts, counts, optional("withscores"))
         | commands(
             st.sampled_from(["zrangebyscore", "zrevrangebyscore"]),
             keys,
             score_tests,
             score_tests,
             limits,
-            st.none() | st.just("withscores"),
+            optional("withscores"),
         )
         | commands(st.sampled_from(["zrank", "zrevrank"]), keys, fields)
         | commands(st.just("zrem"), keys, st.lists(fields))
@@ -570,9 +562,7 @@ class TestTransaction(BaseTest):
             st.just("set"),
             keys,
             values,
-            st.none() | st.just("nx"),
-            st.none() | st.just("xx"),
-            st.none() | st.just("keepttl"),
+            *zero_or_more("nx", "xx", "keepttl"),
         )
         | commands(st.just("setex"), keys, expires_seconds, values)
         | commands(st.just("psetex"), keys, expires_ms, values)
@@ -616,92 +606,4 @@ class TestJoint(BaseTest):
         | TestZSet.zset_commands
         | common_commands
         | bad_commands
-    )
-
-
-@st.composite
-def delete_arg(draw, commands):
-    command = draw(commands)
-    if command.args:
-        pos = draw(st.integers(min_value=0, max_value=len(command.args) - 1))
-        command.args = command.args[:pos] + command.args[pos + 1 :]
-    return command
-
-
-@st.composite
-def command_args(draw, commands):
-    """Generate an argument from some command"""
-    command = draw(commands)
-    hypothesis.assume(len(command.args))
-    return draw(st.sampled_from(command.args))
-
-
-def mutate_arg(draw, commands, mutate):
-    command = draw(commands)
-    if command.args:
-        pos = draw(st.integers(min_value=0, max_value=len(command.args) - 1))
-        arg = mutate(Command.encode(command.args[pos]))
-        command.args = command.args[:pos] + (arg,) + command.args[pos + 1 :]
-    return command
-
-
-@st.composite
-def replace_arg(draw, commands, replacements):
-    return mutate_arg(draw, commands, lambda arg: draw(replacements))
-
-
-@st.composite
-def uppercase_arg(draw, commands):
-    return mutate_arg(draw, commands, lambda arg: arg.upper())
-
-
-@st.composite
-def prefix_arg(draw, commands, prefixes):
-    return mutate_arg(draw, commands, lambda arg: draw(prefixes) + arg)
-
-
-@st.composite
-def suffix_arg(draw, commands, suffixes):
-    return mutate_arg(draw, commands, lambda arg: arg + draw(suffixes))
-
-
-@st.composite
-def add_arg(draw, commands, arguments):
-    command = draw(commands)
-    arg = draw(arguments)
-    pos = draw(st.integers(min_value=0, max_value=len(command.args)))
-    command.args = command.args[:pos] + (arg,) + command.args[pos:]
-    return command
-
-
-@st.composite
-def swap_args(draw, commands):
-    command = draw(commands)
-    if len(command.args) >= 2:
-        pos1 = draw(st.integers(min_value=0, max_value=len(command.args) - 1))
-        pos2 = draw(st.integers(min_value=0, max_value=len(command.args) - 1))
-        hypothesis.assume(pos1 != pos2)
-        args = list(command.args)
-        arg1 = args[pos1]
-        arg2 = args[pos2]
-        args[pos1] = arg2
-        args[pos2] = arg1
-        command.args = tuple(args)
-    return command
-
-
-def mutated_commands(commands):
-    args = st.sampled_from(
-        [b"withscores", b"xx", b"nx", b"ex", b"px", b"weights", b"aggregate", b"", b"0", b"-1", b"nan", b"inf", b"-inf"]
-    ) | command_args(commands)
-    affixes = st.sampled_from([b"\0", b"-", b"+", b"\t", b"\n", b"0000"]) | st.binary()
-    return st.recursive(
-        commands,
-        lambda x: delete_arg(x)
-        | replace_arg(x, args)
-        | uppercase_arg(x)
-        | prefix_arg(x, affixes)
-        | suffix_arg(x, affixes)
-        | add_arg(x, args)
-        | swap_args(x),
     )
