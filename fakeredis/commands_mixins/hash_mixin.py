@@ -233,23 +233,25 @@ class HashCommandsMixin:
                 res.append(-1)
         return res
 
-    @command(name="HEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    @command(
+        name="HEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, server_types=("redis",)
+    )
     def hexpiretime(self, key: CommandItem, *args: bytes) -> List[int]:
         res = self._get_expireat(b"HEXPIRETIME", key, *args)
         return [(i // 1000 if i > 0 else i) for i in res]
 
-    @command(name="HPEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,))
+    @command(name="HPEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hpexpiretime(self, key: CommandItem, *args: bytes) -> List[float]:
         res = self._get_expireat(b"HEXPIRETIME", key, *args)
         return res
 
-    @command(name="HTTL", fixed=(Key(Hash),), repeat=(bytes,))
+    @command(name="HTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def httl(self, key: CommandItem, *args: bytes) -> List[int]:
         curr_expireat_ms = self._get_expireat(b"HEXPIRETIME", key, *args)
         curr_time_ms = current_time()
         return [((i - curr_time_ms) // 1000) if i > 0 else i for i in curr_expireat_ms]
 
-    @command(name="HPTTL", fixed=(Key(Hash),), repeat=(bytes,))
+    @command(name="HPTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hpttl(self, key: CommandItem, *args: bytes) -> List[int]:
         curr_expireat_ms = self._get_expireat(b"HEXPIRETIME", key, *args)
         curr_time_ms = current_time()

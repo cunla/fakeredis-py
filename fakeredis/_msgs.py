@@ -90,6 +90,9 @@ INVALID_BITFIELD_TYPE = (
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 
+# ACL specific errors
+AUTH_FAILURE = "WRONGPASS invalid username-password pair or user is disabled."
+
 # TDigest error messages
 TDIGEST_KEY_EXISTS = "T-Digest: key already exists"
 TDIGEST_KEY_NOT_EXISTS = "T-Digest: key does not exist"
@@ -117,6 +120,12 @@ TIMESERIES_DUPLICATE_POLICY_BLOCK = (
 )
 TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
 HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
+
+MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an ACL file. You may want to specify users via the ACL SETUSER command and then issue a CONFIG REWRITE (assuming you have a Redis configuration file set) in order to store users in the Redis configuration."
+
+NO_PERMISSION_ERROR = "NOPERM User {} has no permissions to run the '{}' command"
+NO_PERMISSION_KEY_ERROR = "NOPERM No permissions to access a key"
+NO_PERMISSION_CHANNEL_ERROR = "NOPERM No permissions to access a channel"
 
 # Command flags
 FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts

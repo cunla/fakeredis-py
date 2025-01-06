@@ -1,4 +1,4 @@
-from typing import Optional, Set
+from typing import Optional, Set, Any
 
 from fakeredis.commands_mixins import (
     BitmapCommandsMixin,
@@ -14,6 +14,7 @@ from fakeredis.commands_mixins import (
     TransactionsCommandsMixin,
     SetCommandsMixin,
     StreamsCommandsMixin,
+    AclCommandsMixin,
 )
 from fakeredis.stack import (
     JSONCommandsMixin,
@@ -54,11 +55,14 @@ class FakeSocket(
     TDigestCommandsMixin,
     TimeSeriesCommandsMixin,
     DragonflyCommandsMixin,
+    AclCommandsMixin,
 ):
     def __init__(
         self,
         server: "FakeServer",
         db: int,
         lua_modules: Optional[Set[str]] = None,  # noqa: F821
+        *args: Any,
+        **kwargs,
     ) -> None:
-        super(FakeSocket, self).__init__(server, db, lua_modules=lua_modules)
+        super(FakeSocket, self).__init__(server, db, *args, lua_modules=lua_modules, **kwargs)
