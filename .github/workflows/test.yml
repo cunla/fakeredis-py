@@ -45,7 +45,7 @@ jobs:
           python -c "import fakeredis"
   test:
     name: >
-      redis tests
+      tests
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
       extra:${{matrix.extra}}
