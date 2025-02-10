@@ -222,6 +222,7 @@ def test_zrank(r: redis.Redis):
 
 
 @pytest.mark.min_server("7.2")
+@testtools.run_test_if_redispy_ver("gte", "4.6")
 def test_zrank_redis7_2(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
@@ -357,6 +358,7 @@ def test_zrevrank(r: redis.Redis):
 
 
 @pytest.mark.min_server("7.2")
+@testtools.run_test_if_redispy_ver("gte", "4.6")
 def test_zrevrank_redis7_2(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
