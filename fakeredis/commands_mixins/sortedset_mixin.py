@@ -332,17 +332,26 @@ class SortedSetCommandsMixin:
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
 
-    @command((Key(ZSet), bytes))
-    def zrank(self, key, member):
+    @command(name="ZRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, bytes]]]:
+        (withscore,), _ = extract_args(args, ("withscore",))
         try:
-            return key.value.rank(member)
+            rank, score = key.value.rank(member)
+            if withscore:
+                return [rank, self._encodefloat(score, False)]
+            return rank
         except KeyError:
             return None
 
-    @command((Key(ZSet), bytes))
-    def zrevrank(self, key, member):
+    @command(name="ZREVRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zrevrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, bytes]]]:
+        (withscore,), _ = extract_args(args, ("withscore",))
         try:
-            return len(key.value) - 1 - key.value.rank(member)
+            rank, score = key.value.rank(member)
+            rev_rank = len(key.value) - 1 - rank
+            if withscore:
+                return [rev_rank, self._encodefloat(score, False)]
+            return rev_rank
         except KeyError:
             return None
 
