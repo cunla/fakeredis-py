@@ -7,14 +7,20 @@ tags:
 toc_depth: 2
 ---
 
+## v2.28.0
+
+### 🚀 Features
+
+- implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
+
 ## v2.27.0
 
 ### 🚀 Features
 
 - ACL commands support #338
-  - `ACL LOAD`, `ACL SAVE`, `ACL LIST`, `ACL USERS`, `ACL GETUSER`, `ACL SETUSER`, `ACL DELUSER`, `ACL CAT`, `ACL LOG`,
-    `ACL HELP`, `ACL WHOAMI`, `ACL GENPASS`, `ACL AUTH`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`,
-    `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`
+    - `ACL LOAD`, `ACL SAVE`, `ACL LIST`, `ACL USERS`, `ACL GETUSER`, `ACL SETUSER`, `ACL DELUSER`, `ACL CAT`,
+      `ACL LOG`, `ACL HELP`, `ACL WHOAMI`, `ACL GENPASS`, `ACL AUTH`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`,
+      `ACL LOG_HELP`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`
 - Add support disable_decoding in async read_response #349
 - Implement support for `SADDEX`, using a new set implementation with support for expiring members #350
 
