@@ -6,6 +6,7 @@ from test import testtools
 from test.testtools import raw_command
 
 
+@pytest.mark.min_server("7.4")
 def test_hexpire_empty_key(r: redis.Redis):
     raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 
