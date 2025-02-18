@@ -17,6 +17,7 @@ class AclCommandsMixin:
         self._server: Any
         self._current_user: bytes
         self._client_info: bytes
+        self._current_user: bytes
 
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
