@@ -37,6 +37,11 @@ def test_hello(r: redis.Redis):
     }
 
 
+def test_client_info(r: redis.Redis):
+    client_info = r.client_info()
+    # TODO
+
+
 def test_client_setname(r: redis.Redis):
     assert r.client_setname("test") is True
     assert r.client_getname() == "test"
