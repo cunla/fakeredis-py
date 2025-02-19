@@ -119,7 +119,8 @@ class BaseFakeSocket:
         responses = self.responses
         if self.protocol_version == 2:
             if isinstance(msg, dict):
-                msg = list(msg.items())
+                msg = list(itertools.chain(*msg.items()))
+                msg = [(k.encode() if isinstance(k, str) else k, v) for k, v in msg]
         if responses:
             responses.put(msg)
 

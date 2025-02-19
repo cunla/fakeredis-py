@@ -1,6 +1,7 @@
 import itertools
 import math
 import random
+from collections.abc import Mapping
 from typing import Callable, List, Tuple, Any, Optional
 
 from fakeredis import _msgs as msgs
@@ -50,8 +51,8 @@ class HashCommandsMixin:
         return key.value.get(field)
 
     @command((Key(Hash),))
-    def hgetall(self, key: CommandItem) -> List[bytes]:
-        return list(itertools.chain(*key.value.items()))
+    def hgetall(self, key: CommandItem) -> Mapping[bytes, bytes]:
+        return key.value.getall()
 
     @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key: CommandItem, field: bytes, amount_bytes: bytes) -> int:

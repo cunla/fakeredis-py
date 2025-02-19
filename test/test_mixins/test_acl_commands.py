@@ -23,7 +23,7 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     categories = get_categories()
-    categories = [cat.decode() for cat in categories]
+    # categories = [cat.decode() for cat in categories]
     assert set(r.acl_cat()) == set(categories)
     for cat in categories:
         commands = get_commands_by_category(cat)
@@ -33,7 +33,9 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
         if real_server_details[0] == "valkey":
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
         commands = {cmd.replace(" ", "|") for cmd in commands}
-        diff = set(commands) - set(r.acl_cat(cat))
+        server_commands = r.acl_cat(cat)
+        server_commands = {cmd.decode() for cmd in server_commands}
+        diff = set(commands) - set(server_commands)
         assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
 
 
