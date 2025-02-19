@@ -1,8 +1,12 @@
-# Redis `connection` commands (8/24 implemented)
+# Redis `connection` commands (9/24 implemented)
 
 ## [AUTH](https://redis.io/commands/auth/)
 
 Authenticates the connection.
+
+## [CLIENT GETNAME](https://redis.io/commands/client-getname/)
+
+Returns the name of the connection.
 
 ## [CLIENT INFO](https://redis.io/commands/client-info/)
 
@@ -43,10 +47,6 @@ A container for client connection commands.
 #### [CLIENT CACHING](https://redis.io/commands/client-caching/) <small>(not implemented)</small>
 
 Instructs the server whether to track the keys in the next request.
-
-#### [CLIENT GETNAME](https://redis.io/commands/client-getname/) <small>(not implemented)</small>
-
-Returns the name of the connection.
 
 #### [CLIENT GETREDIR](https://redis.io/commands/client-getredir/) <small>(not implemented)</small>
 

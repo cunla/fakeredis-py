@@ -51,6 +51,10 @@ class ConnectionCommandsMixin:
         self._client_info["name"] = value.decode("utf-8")
         return OK
 
+    @command(name="CLIENT GETNAME", fixed=(), repeat=())
+    def client_getname(self) -> bytes:
+        return self._client_info.get("name", "").encode("utf-8")
+
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
         return self.client_info

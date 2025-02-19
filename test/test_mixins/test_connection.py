@@ -37,6 +37,11 @@ def test_hello(r: redis.Redis):
     }
 
 
+def test_client_setname(r: redis.Redis):
+    assert r.client_setname("test") is True
+    assert r.client_getname() == "test"
+
+
 @testtools.fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch("time.time")
