@@ -48,6 +48,12 @@ def test_client_info(r: redis.Redis):
     assert client_info["lib-ver"] == "1.0.0"
 
 
+def test_client_id(r: redis.Redis):
+    client_id = r.client_id()
+    client_info = r.client_info()
+    assert client_id == client_info["id"]
+
+
 def test_client_setname(r: redis.Redis):
     assert r.client_setname("test") is True
     assert r.client_getname() == "test"
