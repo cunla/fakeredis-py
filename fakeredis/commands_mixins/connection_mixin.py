@@ -1,19 +1,22 @@
-from typing import Any, List, Union
+from collections.abc import Callable
+from typing import Any, List, Union, Dict
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex
+from fakeredis._commands import command, DbIndex, Int
 from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
 
 PONG = SimpleString(b"PONG")
 
 
 class ConnectionCommandsMixin:
+    auth: Callable[[bytes, bytes], Any]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
         self._db_num: int
         self._pubsub: int
+        self._client_info: Dict[str, Union[str, int]]
         self._server: Any
 
     @command((bytes,))
@@ -41,3 +44,19 @@ class ConnectionCommandsMixin:
         if not casematch(lib_data, b"LIB-NAME") and not casematch(lib_data, b"LIB-VER"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         return OK
+
+    @command(name="HELLO", fixed=(), repeat=(bytes,))
+    def hello(self, *args: bytes) -> List[bytes]:
+        self._protocol = 2 if len(args) == 0 else Int.decode(args[0])
+        i = 1
+        while i < len(args):
+            if args[i] == b"SETNAME" and i + 1 < len(args):
+                self._client_info["name"] = args[i + 1].decode("utf-8")
+                i += 2
+            elif args[i] == b"AUTH" and i + 2 < len(args):
+                user = args[i + 1]
+                password = args[i + 2]
+                i += 3
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        return [b"hello", b"world"]

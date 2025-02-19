@@ -363,7 +363,7 @@ class Signature:
         self.command_args = args
         self.server_types: Set[str] = set(server_types)
 
-    def check_arity(self, args: Sequence[Any], version: Tuple[int]) -> None:
+    def check_arity(self, args: Sequence[Any], version: Tuple[int, ...]) -> None:
         if len(args) == len(self.fixed):
             return
         delta = len(args) - len(self.fixed)
