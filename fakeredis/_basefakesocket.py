@@ -24,6 +24,17 @@ from ._helpers import (
 )
 
 
+def _convert_to_resp2(val: Any) -> Any:
+    if isinstance(val, str):
+        return val.encode()
+    if isinstance(val, dict):
+        result = list(itertools.chain(*val.items()))
+        return [_convert_to_resp2(item) for item in result]
+    if isinstance(val, (list, tuple)):
+        return [_convert_to_resp2(item) for item in val]
+    return val
+
+
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
     """Extracts the command and command arguments from a list of `bytes` fields.
 
@@ -117,10 +128,6 @@ class BaseFakeSocket:
         # will set self.responses to None. We assume this will happen
         # atomically, and the code below then protects us against this.
         responses = self.responses
-        if self.protocol_version == 2:
-            if isinstance(msg, dict):
-                msg = list(itertools.chain(*msg.items()))
-                msg = [(k.encode() if isinstance(k, str) else k, v) for k, v in msg]
         if responses:
             responses.put(msg)
 
@@ -256,6 +263,8 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
+                if self.protocol_version == 2:
+                    result = _convert_to_resp2(result)
                 assert valid_response_type(result, self.protocol_version)
         except SimpleError as exc:
             result = exc
