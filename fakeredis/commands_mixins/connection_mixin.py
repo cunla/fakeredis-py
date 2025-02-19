@@ -10,7 +10,6 @@ PONG = SimpleString(b"PONG")
 
 
 class ConnectionCommandsMixin:
-    auth: Callable[[bytes, bytes], Any]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
