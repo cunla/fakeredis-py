@@ -40,6 +40,7 @@ def test_hello(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
+@testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: redis.Redis):
     client_info = r.client_info()
     assert client_info.get("lib-name", "redis-py") == "redis-py"
