@@ -101,7 +101,7 @@ class BaseFakeSocket:
 
     @property
     def client_info(self) -> bytes:
-        return " ".join([f"{k.replace("_", "-")}={v}" for k, v in self._client_info.items()]).encode()
+        return " ".join([f"""{k.replace("_", "-")}={v}""" for k, v in self._client_info.items()]).encode()
 
     @property
     def current_user(self) -> bytes:
