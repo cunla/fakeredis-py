@@ -25,6 +25,16 @@ def test_unknown_command(r: redis.Redis):
         raw_command(r, "0 3 3")
 
 
+def test_hello(r: redis.Redis):
+    r.client_setinfo()
+    assert r.hello() == {
+        "server": "fakeredis",
+        "version": "1.0.0",
+        "proto": 2,
+        "id": 1,
+    }
+
+
 @testtools.fake_only
 def test_time(r, mocker):
     fake_time = mocker.patch("time.time")

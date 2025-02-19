@@ -90,11 +90,15 @@ class BaseFakeSocket:
 
     @property
     def client_info(self) -> bytes:
-        return " ".join([f"{k}={v}" for k, v in self._client_info.items()]).encode()
+        return " ".join([f"{k.replace("_","-")}={v}" for k, v in self._client_info.items()]).encode()
 
     @property
     def current_user(self) -> bytes:
         return self._client_info.get("user", "").encode()
+
+    @property
+    def protocol_version(self) -> int:
+        return self._client_info.get("resp", 2)
 
     @property
     def version(self) -> Tuple[int, ...]:
@@ -113,6 +117,9 @@ class BaseFakeSocket:
         # will set self.responses to None. We assume this will happen
         # atomically, and the code below then protects us against this.
         responses = self.responses
+        if self.protocol_version == 2:
+            if isinstance(msg, dict):
+                msg = list(msg.items())
         if responses:
             responses.put(msg)
 
@@ -248,7 +255,7 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                assert valid_response_type(result)
+                assert valid_response_type(result, self.protocol_version)
         except SimpleError as exc:
             result = exc
         for command_item in command_items:

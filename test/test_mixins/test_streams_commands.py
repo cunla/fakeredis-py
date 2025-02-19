@@ -775,7 +775,7 @@ def test_xclaim(r: redis.Redis):
     ]
 
 
-def test_xread_blocking(create_redis):
+def test_xread_blocking(create_connection):
     # thread with xread block 0 should hang
     # putting data in the stream should unblock it
     event = threading.Event()
@@ -784,13 +784,13 @@ def test_xread_blocking(create_redis):
     def thread_func():
         while not event.is_set():
             time.sleep(0.1)
-        r = create_redis(db=1)
+        r = create_connection(db=1)
         r.xadd("stream", {"x": "1"})
         time.sleep(0.1)
 
     t = threading.Thread(target=thread_func)
     t.start()
-    r1 = create_redis(db=1)
+    r1 = create_connection(db=1)
     event.set()
     result = r1.xread({"stream": "$"}, block=0, count=1)
     event.clear()

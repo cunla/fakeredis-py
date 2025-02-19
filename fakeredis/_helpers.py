@@ -202,14 +202,17 @@ class Database(MutableMapping):  # type: ignore
     def __eq__(self, other: object) -> bool:
         return super(object, self) == other
 
+_VALID_RESPONSE_TYPES_RESP2 =(bytes, SimpleString, SimpleError, float, int, list)
+_VALID_RESPONSE_TYPES_RESP3 =(bytes, SimpleString, SimpleError, float, int, list, dict, str)
 
-def valid_response_type(value: Any, nested: bool = False) -> bool:
+def valid_response_type(value: Any, protocol_version: int, nested: bool = False) -> bool:
     if isinstance(value, NoResponse) and not nested:
         return True
-    if value is not None and not isinstance(value, (bytes, SimpleString, SimpleError, float, int, list)):
+    allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
+    if value is not None and not isinstance(value, allowed_types):
         return False
     if isinstance(value, list):
-        if any(not valid_response_type(item, True) for item in value):
+        if any(not valid_response_type(item, protocol_version, True) for item in value):
             return False
     return True
 
