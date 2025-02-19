@@ -1,8 +1,12 @@
-# Redis `connection` commands (7/24 implemented)
+# Redis `connection` commands (8/24 implemented)
 
 ## [AUTH](https://redis.io/commands/auth/)
 
 Authenticates the connection.
+
+## [CLIENT INFO](https://redis.io/commands/client-info/)
+
+Returns information about the connection.
 
 ## [CLIENT SETINFO](https://redis.io/commands/client-setinfo/)
 
@@ -51,10 +55,6 @@ Returns the client ID to which the connection's tracking notifications are redir
 #### [CLIENT ID](https://redis.io/commands/client-id/) <small>(not implemented)</small>
 
 Returns the unique client ID of the connection.
-
-#### [CLIENT INFO](https://redis.io/commands/client-info/) <small>(not implemented)</small>
-
-Returns information about the connection.
 
 #### [CLIENT KILL](https://redis.io/commands/client-kill/) <small>(not implemented)</small>
 
