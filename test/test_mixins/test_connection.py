@@ -39,7 +39,13 @@ def test_hello(r: redis.Redis):
 
 def test_client_info(r: redis.Redis):
     client_info = r.client_info()
-    # TODO
+    assert client_info["lib-name"] == "redis-py"
+    assert "lib-ver" in client_info
+    r.client_setinfo(b"lib-name", b"fakeredis")
+    r.client_setinfo(b"lib-ver", b"1.0.0")
+    client_info = r.client_info()
+    assert client_info["lib-name"] == "fakeredis"
+    assert client_info["lib-ver"] == "1.0.0"
 
 
 def test_client_setname(r: redis.Redis):
