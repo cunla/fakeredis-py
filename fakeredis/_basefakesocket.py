@@ -97,11 +97,12 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        self._client_info: Dict[str, Union[str, int]] = kwargs.pop("client_info", dict(user="default"))
+        info = kwargs.pop("client_info", dict(user="default"))
+        self._client_info: Dict[str, Union[str, int]] = {k.replace("_", "-"): v for k, v in info.items()}
 
     @property
     def client_info(self) -> bytes:
-        return " ".join([f"""{k.replace("_", "-")}={v}""" for k, v in self._client_info.items()]).encode()
+        return " ".join([f"{k}={v}" for k, v in self._client_info.items()]).encode()
 
     @property
     def current_user(self) -> bytes:

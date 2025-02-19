@@ -41,9 +41,13 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT SETINFO", fixed=(bytes, bytes), repeat=())
     def client_setinfo(self, lib_data: bytes, value: bytes) -> SimpleString:
-        if not casematch(lib_data, b"LIB-NAME") and not casematch(lib_data, b"LIB-VER"):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        return OK
+        if casematch(lib_data, b"LIB-NAME"):
+            self._client_info["lib-name"] = value.decode("utf-8")
+            return OK
+        if casematch(lib_data, b"LIB-VER"):
+            self._client_info["lib-ver"] = value.decode("utf-8")
+            return OK
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
     @command(name="CLIENT SETNAME", fixed=(bytes,), repeat=())
     def client_setname(self, value: bytes) -> SimpleString:
