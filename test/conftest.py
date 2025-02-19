@@ -1,3 +1,4 @@
+from packaging.version import Version
 from typing import Callable, Tuple, Optional, Type, Any, Generator
 
 import pytest
@@ -7,6 +8,7 @@ from redis import Redis
 
 import fakeredis
 from fakeredis._server import _create_version
+from test.testtools import REDIS_PY_VERSION
 
 ServerDetails = Type[Tuple[str, Tuple[int, ...]]]
 
@@ -74,12 +76,19 @@ def _marker_version_value(request, marker_name: str):
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        pytest.param("StrictRedis", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis", marks=pytest.mark.fake),
+        pytest.param("StrictRedis2", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
+        pytest.param("StrictRedis3", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
     ],
 )
 def _create_connection(request) -> Callable[[int], redis.Redis]:
-    cls_name = request.param
+    try:
+        cls_name, protocol = request.param[:-1], int(request.param[-1])
+    except ValueError:
+        cls_name, protocol = request.param, 2
+    if REDIS_PY_VERSION.major < 5 and protocol == 3:
+        pytest.skip("Redis-py 4.x does not support RESP3")
     server_type, server_version = request.getfixturevalue("real_server_details")
     if not cls_name.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
@@ -98,14 +107,16 @@ def _create_connection(request) -> Callable[[int], redis.Redis]:
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
 
-    def factory(db=2):
+    def factory(**kwargs):
+        if REDIS_PY_VERSION.major >= 5:
+            kwargs["protocol"] = protocol
         if cls_name.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
             cls = getattr(fakeredis, cls_name)
-            return cls(db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules)
+            return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         # Real
         cls = getattr(redis, cls_name)
-        return cls("localhost", port=6390, db=db, decode_responses=decode_responses)
+        return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory
 
