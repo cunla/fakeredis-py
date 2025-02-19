@@ -132,6 +132,7 @@ class FakeRedisMixin:
                 "client_name",
                 "connected",
                 "server",
+                "protocol",
             }
             connection_kwargs = {
                 "connection_class": FakeConnection,

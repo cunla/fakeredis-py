@@ -1,13 +1,14 @@
-from typing import Callable, Tuple, Union, Optional, Type
+from typing import Callable, Tuple, Union, Optional, Type, Any, Generator
 
 import pytest
 import pytest_asyncio
 import redis
+from redis import Redis
 
 import fakeredis
 from fakeredis._server import _create_version
 
-ServerDetails = Type[Tuple[str, Union[None, Tuple[int, ...]]]]
+ServerDetails = Type[Tuple[str, Tuple[int, ...]]]
 
 
 def _check_lua_module_supported() -> bool:
@@ -20,7 +21,7 @@ def _check_lua_module_supported() -> bool:
 
 
 @pytest_asyncio.fixture(scope="session")
-def real_server_details() -> ServerDetails:
+def real_server_details() -> Tuple[str, Tuple[int, ...]]:
     """Returns server's version or None if server is not running"""
     client = None
     try:
@@ -33,7 +34,7 @@ def real_server_details() -> ServerDetails:
         server_version = _create_version(server_version) or (7,)
         return server_type, server_version
     except redis.ConnectionError as e:
-        pytest.exit(f"Redis is not running {e}")
+        pytest.exit(f"Real server is not running {e}")
         return "redis", (6,)
     finally:
         if hasattr(client, "close"):
@@ -51,8 +52,8 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 
 
 @pytest_asyncio.fixture
-def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
-    rconn = create_redis(db=2)
+def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generator[Redis, Any, None]:
+    rconn = create_connection(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
     if connected:
         rconn.flushall()
@@ -71,7 +72,7 @@ def _marker_version_value(request, marker_name: str):
 
 
 @pytest_asyncio.fixture(
-    name="create_redis",
+    name="create_connection",
     params=[
         pytest.param("StrictRedis", marks=pytest.mark.real),
         pytest.param("FakeStrictRedis", marks=pytest.mark.fake),

@@ -4,7 +4,7 @@ import pytest
 import redis
 from packaging.version import Version
 
-REDIS_VERSION = Version(redis.__version__)
+REDIS_PY_VERSION = Version(redis.__version__)
 
 
 def key_val_dict(size=100):
@@ -28,14 +28,14 @@ def run_test_if_redispy_ver(condition: str, ver: str):
     if condition not in ALLOWED_CONDITIONS:
         raise ValueError(f"condition {condition} is not in allowed conditions ({ALLOWED_CONDITIONS})")
     cond = False
-    cond = cond or condition == "eq" and REDIS_VERSION == Version(ver)
-    cond = cond or condition == "gte" and REDIS_VERSION >= Version(ver)
-    cond = cond or condition == "lte" and REDIS_VERSION <= Version(ver)
-    cond = cond or condition == "lt" and REDIS_VERSION < Version(ver)
-    cond = cond or condition == "gt" and REDIS_VERSION > Version(ver)
-    cond = cond or condition == "ne" and REDIS_VERSION != Version(ver)
+    cond = cond or condition == "eq" and REDIS_PY_VERSION == Version(ver)
+    cond = cond or condition == "gte" and REDIS_PY_VERSION >= Version(ver)
+    cond = cond or condition == "lte" and REDIS_PY_VERSION <= Version(ver)
+    cond = cond or condition == "lt" and REDIS_PY_VERSION < Version(ver)
+    cond = cond or condition == "gt" and REDIS_PY_VERSION > Version(ver)
+    cond = cond or condition == "ne" and REDIS_PY_VERSION != Version(ver)
     return pytest.mark.skipif(
-        not cond, reason=f"Test is not applicable to redis-py {REDIS_VERSION} ({condition}, {ver})"
+        not cond, reason=f"Test is not applicable to redis-py {REDIS_PY_VERSION} ({condition}, {ver})"
     )
 
 
@@ -43,5 +43,5 @@ _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
 
 fake_only = pytest.mark.parametrize(
-    "create_redis", [pytest.param("FakeStrictRedis", marks=pytest.mark.fake)], indirect=True
+    "create_connection", [pytest.param("FakeStrictRedis", marks=pytest.mark.fake)], indirect=True
 )

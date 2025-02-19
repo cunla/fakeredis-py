@@ -88,6 +88,7 @@ class BaseFakeSocket:
         self._transaction_failed: bool
         self._current_user: bytes = b"default"
         self._client_info: bytes = kwargs.pop("client_info", b"")
+        self.protocol: int = kwargs.pop("protocol", 2)
 
     @property
     def version(self) -> Tuple[int, ...]:
