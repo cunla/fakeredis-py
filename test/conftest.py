@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, Union, Optional, Type, Any, Generator
+from typing import Callable, Tuple, Optional, Type, Any, Generator
 
 import pytest
 import pytest_asyncio

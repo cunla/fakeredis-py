@@ -1,4 +1,3 @@
-import itertools
 from collections.abc import Callable
 from typing import Any, List, Union, Dict
 
@@ -63,6 +62,7 @@ class ConnectionCommandsMixin:
             elif args[i] == b"AUTH" and i + 2 < len(args):
                 user = args[i + 1]
                 password = args[i + 2]
+                self._server._acl.get_user_acl(user).check_password(password)
                 i += 3
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

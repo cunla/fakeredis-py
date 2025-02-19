@@ -1,4 +1,3 @@
-import itertools
 import math
 import random
 from collections.abc import Mapping
