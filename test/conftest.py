@@ -102,12 +102,10 @@ def _create_connection(request) -> Callable[[int], redis.Redis]:
         if cls_name.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
             cls = getattr(fakeredis, cls_name)
-            return cls(
-                db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, protocol=2
-            )
+            return cls(db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules)
         # Real
         cls = getattr(redis, cls_name)
-        return cls("localhost", port=6390, db=db, decode_responses=decode_responses, protocol=2)
+        return cls("localhost", port=6390, db=db, decode_responses=decode_responses)
 
     return factory
 

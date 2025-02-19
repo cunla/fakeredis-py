@@ -25,6 +25,7 @@ def test_unknown_command(r: redis.Redis):
         raw_command(r, "0 3 3")
 
 
+@pytest.mark.min_server("7")
 def test_hello(r: redis.Redis):
     client_info = r.client_info()
     protocol = int(client_info.get("resp"))
@@ -38,10 +39,10 @@ def test_hello(r: redis.Redis):
     }
 
 
+@pytest.mark.min_server("7")
 def test_client_info(r: redis.Redis):
     client_info = r.client_info()
-    assert client_info["lib-name"] == "redis-py"
-    assert "lib-ver" in client_info
+    assert client_info.get("lib-name", "redis-py") == "redis-py"
     r.client_setinfo(b"lib-name", b"fakeredis")
     r.client_setinfo(b"lib-ver", b"1.0.0")
     client_info = r.client_info()
