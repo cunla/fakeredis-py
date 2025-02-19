@@ -1,12 +1,24 @@
-# Redis `connection` commands (4/24 implemented)
+# Redis `connection` commands (7/24 implemented)
+
+## [AUTH](https://redis.io/commands/auth/)
+
+Authenticates the connection.
 
 ## [CLIENT SETINFO](https://redis.io/commands/client-setinfo/)
 
 Sets information specific to the client or connection.
 
+## [CLIENT SETNAME](https://redis.io/commands/client-setname/)
+
+Sets the connection name.
+
 ## [ECHO](https://redis.io/commands/echo/)
 
 Returns the given string.
+
+## [HELLO](https://redis.io/commands/hello/)
+
+Handshakes with the Redis server.
 
 ## [PING](https://redis.io/commands/ping/)
 
@@ -19,10 +31,6 @@ Changes the selected database.
 
 ## Unsupported connection commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [AUTH](https://redis.io/commands/auth/) <small>(not implemented)</small>
-
-Authenticates the connection.
 
 #### [CLIENT](https://redis.io/commands/client/) <small>(not implemented)</small>
 
@@ -72,10 +80,6 @@ Suspends commands processing.
 
 Instructs the server whether to reply to commands.
 
-#### [CLIENT SETNAME](https://redis.io/commands/client-setname/) <small>(not implemented)</small>
-
-Sets the connection name.
-
 #### [CLIENT TRACKING](https://redis.io/commands/client-tracking/) <small>(not implemented)</small>
 
 Controls server-assisted client-side caching for the connection.
@@ -91,10 +95,6 @@ Unblocks a client blocked by a blocking command from a different connection.
 #### [CLIENT UNPAUSE](https://redis.io/commands/client-unpause/) <small>(not implemented)</small>
 
 Resumes processing commands from paused clients.
-
-#### [HELLO](https://redis.io/commands/hello/) <small>(not implemented)</small>
-
-Handshakes with the Redis server.
 
 #### [RESET](https://redis.io/commands/reset/) <small>(not implemented)</small>
 
