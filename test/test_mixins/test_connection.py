@@ -26,7 +26,6 @@ def test_unknown_command(r: redis.Redis):
 
 
 def test_hello(r: redis.Redis):
-    r.client_setinfo()
     assert r.hello() == {
         "server": "fakeredis",
         "version": "1.0.0",

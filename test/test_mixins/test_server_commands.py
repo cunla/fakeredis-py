@@ -53,7 +53,9 @@ def test_command(r: redis.Redis):
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
     server_unsupported_commands = one_word_commands - set(commands_dict.keys())
     for command in server_unsupported_commands:
-        assert "redis" not in SUPPORTED_COMMANDS[command].server_types
+        assert (
+            "redis" not in SUPPORTED_COMMANDS[command].server_types
+        ), f"{command} should not be supported by fakeredis"
 
 
 @fake_only
