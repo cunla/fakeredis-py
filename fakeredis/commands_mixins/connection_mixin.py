@@ -51,6 +51,10 @@ class ConnectionCommandsMixin:
         self._client_info["name"] = value.decode("utf-8")
         return OK
 
+    @command(name="CLIENT INFO", fixed=(), repeat=())
+    def client_info_cmd(self) -> bytes:
+        return self.client_info
+
     @command(name="HELLO", fixed=(), repeat=(bytes,))
     def hello(self, *args: bytes) -> List[bytes]:
         self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
