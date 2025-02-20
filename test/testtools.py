@@ -1,10 +1,23 @@
 import importlib.util
+import itertools
+from typing import Any
 
 import pytest
 import redis
 from packaging.version import Version
 
 REDIS_PY_VERSION = Version(redis.__version__)
+
+
+def convert_to_resp2(val: Any) -> Any:
+    if isinstance(val, str):
+        return val.encode()
+    if isinstance(val, dict):
+        result = list(itertools.chain(*val.items()))
+        return [convert_to_resp2(item) for item in result]
+    if isinstance(val, (list, tuple)):
+        return [convert_to_resp2(item) for item in val]
+    return val
 
 
 def key_val_dict(size=100):

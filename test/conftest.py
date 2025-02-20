@@ -75,20 +75,17 @@ def _marker_version_value(request, marker_name: str):
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        pytest.param("StrictRedis2", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
-        pytest.param("StrictRedis3", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
+        pytest.param(["StrictRedis", 2], id="StrictRedis2", marks=[pytest.mark.real, pytest.mark.resp2]),
+        pytest.param(["FakeStrictRedis", 2], id="FakeStrictRedis2", marks=[pytest.mark.fake, pytest.mark.resp2]),
+        pytest.param(["StrictRedis", 3], id="StrictRedis3", marks=[pytest.mark.real, pytest.mark.resp3]),
+        pytest.param(["FakeStrictRedis", 3], id="FakeStrictRedis3", marks=[pytest.mark.fake, pytest.mark.resp3]),
     ],
 )
-def _create_connection(request) -> Callable[[int], redis.Redis]:
-    try:
-        cls_name, protocol = request.param[:-1], int(request.param[-1])
-    except ValueError:
-        cls_name, protocol = request.param, 2
+def _create_connection(request, real_server_details: ServerDetails) -> Callable[[int], redis.Redis]:
+    cls_name, protocol = request.param
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
-        pytest.skip("Redis-py 4.x does not support RESP3")
-    server_type, server_version = request.getfixturevalue("real_server_details")
+        pytest.skip("redis-py 4.x does not support RESP3")
+    server_type, server_version = real_server_details
     if not cls_name.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
@@ -124,8 +121,8 @@ def _create_connection(request) -> Callable[[int], redis.Redis]:
     name="async_redis",
     params=[pytest.param("fake", marks=pytest.mark.fake), pytest.param("real", marks=pytest.mark.real)],
 )
-async def _req_aioredis2(request) -> redis.asyncio.Redis:
-    server_type, server_version = request.getfixturevalue("real_server_details")
+async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.asyncio.Redis:
+    server_type, server_version = real_server_details
     if request.param != "fake" and not server_version:
         pytest.skip("Redis is not running")
 
