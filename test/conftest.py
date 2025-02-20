@@ -75,14 +75,13 @@ def _marker_version_value(request, marker_name: str):
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        pytest.param(["StrictRedis", 2], id="StrictRedis2", marks=[pytest.mark.real, pytest.mark.resp2]),
-        pytest.param(["FakeStrictRedis", 2], id="FakeStrictRedis2", marks=[pytest.mark.fake, pytest.mark.resp2]),
-        pytest.param(["StrictRedis", 3], id="StrictRedis3", marks=[pytest.mark.real, pytest.mark.resp3]),
-        pytest.param(["FakeStrictRedis", 3], id="FakeStrictRedis3", marks=[pytest.mark.fake, pytest.mark.resp3]),
+        pytest.param("StrictRedis", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis", marks=pytest.mark.fake),
     ],
 )
 def _create_connection(request, real_server_details: ServerDetails) -> Callable[[int], redis.Redis]:
-    cls_name, protocol = request.param
+    cls_name = request.param
+    protocol = 3 if request.node.get_closest_marker("resp3") is not None else 2
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     server_type, server_version = real_server_details
