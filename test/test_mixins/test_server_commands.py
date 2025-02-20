@@ -11,7 +11,7 @@ from test.testtools import fake_only
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_swapdb(r, create_connection):
-    r1 = create_connection(3)
+    r1 = create_connection(db=3)
     r.set("foo", "abc")
     r.set("bar", "xyz")
     r1.set("foo", "foo")
