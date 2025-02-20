@@ -1,7 +1,8 @@
-from typing import Any, List, Union
+from typing import Any, List, Union, Dict
 
+import fakeredis
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex
+from fakeredis._commands import command, DbIndex, Int
 from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
 
 PONG = SimpleString(b"PONG")
@@ -14,6 +15,7 @@ class ConnectionCommandsMixin:
         self._db: Database
         self._db_num: int
         self._pubsub: int
+        self._client_info: Dict[str, Union[str, int]]
         self._server: Any
 
     @command((bytes,))
@@ -38,6 +40,53 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT SETINFO", fixed=(bytes, bytes), repeat=())
     def client_setinfo(self, lib_data: bytes, value: bytes) -> SimpleString:
-        if not casematch(lib_data, b"LIB-NAME") and not casematch(lib_data, b"LIB-VER"):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if casematch(lib_data, b"LIB-NAME"):
+            self._client_info["lib-name"] = value.decode("utf-8")
+            return OK
+        if casematch(lib_data, b"LIB-VER"):
+            self._client_info["lib-ver"] = value.decode("utf-8")
+            return OK
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+    @command(name="CLIENT SETNAME", fixed=(bytes,), repeat=())
+    def client_setname(self, value: bytes) -> SimpleString:
+        self._client_info["name"] = value.decode("utf-8")
         return OK
+
+    @command(name="CLIENT GETNAME", fixed=(), repeat=())
+    def client_getname(self) -> bytes:
+        return self._client_info.get("name", "").encode("utf-8")
+
+    @command(name="CLIENT ID", fixed=(), repeat=())
+    def client_getid(self) -> int:
+        return self._client_info.get("id", 1)
+
+    @command(name="CLIENT INFO", fixed=(), repeat=())
+    def client_info_cmd(self) -> bytes:
+        return self.client_info
+
+    @command(name="HELLO", fixed=(), repeat=(bytes,))
+    def hello(self, *args: bytes) -> List[bytes]:
+        self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
+        i = 1
+        while i < len(args):
+            if args[i] == b"SETNAME" and i + 1 < len(args):
+                self._client_info["name"] = args[i + 1].decode("utf-8")
+                i += 2
+            elif args[i] == b"AUTH" and i + 2 < len(args):
+                user = args[i + 1]
+                password = args[i + 2]
+                self._server._acl.get_user_acl(user).check_password(password)
+                i += 3
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        data = dict(
+            server="fakeredis",
+            version=fakeredis.__version__,
+            proto=self._client_info["resp"],
+            id=self._client_info.get("id", 1),
+            mode="standalone",
+            role="master",
+            modules=[],
+        )
+        return data

@@ -78,3 +78,7 @@ class Hash:
     def update(self, values: Dict[bytes, Any]) -> None:
         self._expire_keys()
         self._values.update(values)
+
+    def getall(self) -> Dict[bytes, Any]:
+        self._expire_keys()
+        return self._values.copy()
