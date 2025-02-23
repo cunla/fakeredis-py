@@ -392,9 +392,9 @@ class SortedSetCommandsMixin:
         return [new_cursor, flat]
 
     @command((Key(ZSet), bytes))
-    def zscore(self, key: CommandItem, member: bytes) -> Union[None, bytes]:
+    def zscore(self, key: CommandItem, member: bytes) -> Optional[bytes]:
         try:
-            return key.value[member]
+            return self._encodefloat(key.value[member], False)
         except KeyError:
             return None
 
