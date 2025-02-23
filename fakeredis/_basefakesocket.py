@@ -27,6 +27,8 @@ from ._helpers import (
 def _convert_to_resp2(val: Any) -> Any:
     if isinstance(val, str):
         return val.encode()
+    if isinstance(val, float):
+        return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
         return [_convert_to_resp2(item) for item in result]
