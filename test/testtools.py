@@ -9,14 +9,24 @@ from packaging.version import Version
 REDIS_PY_VERSION = Version(redis.__version__)
 
 
-def convert_to_resp2(val: Any) -> Any:
+def _get_protocol_version(r: redis.Redis) -> int:
+    return int(r.connection_pool.connection_kwargs.get("protocol"))
+
+
+def _convert_to_resp2(val: Any) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [convert_to_resp2(item) for item in result]
+        return [_convert_to_resp2(item) for item in result]
     if isinstance(val, (list, tuple)):
-        return [convert_to_resp2(item) for item in val]
+        return [_convert_to_resp2(item) for item in val]
+    return val
+
+
+def response_in_protocol(r: redis.Redis, val: Any) -> Any:
+    if _get_protocol_version(r) == 2:
+        return _convert_to_resp2(val)
     return val
 
 
