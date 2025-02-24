@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
+- implement support for Connection commands `HELLO`, `CLIENT SETNAME`, `CLIENT GETNAME`, `CLIENT ID`, `CLIENT INFO` #361
 
 ## v2.27.0
 

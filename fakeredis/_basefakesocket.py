@@ -2,7 +2,7 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Dict
 from xmlrpc.client import ResponseError
 
 import redis
@@ -86,8 +86,20 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        self._current_user: bytes = b"default"
-        self._client_info: bytes = kwargs.pop("client_info", b"")
+        info = kwargs.pop("client_info", dict(user="default"))
+        self._client_info: Dict[str, Union[str, int]] = {k.replace("_", "-"): v for k, v in info.items()}
+
+    @property
+    def client_info(self) -> bytes:
+        return " ".join([f"{k}={v}" for k, v in self._client_info.items()]).encode()
+
+    @property
+    def current_user(self) -> bytes:
+        return self._client_info.get("user", "").encode()
+
+    @property
+    def protocol_version(self) -> int:
+        return self._client_info.get("resp", 2)
 
     @property
     def version(self) -> Tuple[int, ...]:
@@ -190,7 +202,7 @@ class BaseFakeSocket:
         cmd, cmd_arguments = _extract_command(fields)
         try:
             func, sig = self._name_to_func(cmd)
-            self._server.acl.validate_command(self._current_user, self._client_info, fields)  # ACL check
+            self._server.acl.validate_command(self.current_user, self.client_info, fields)  # ACL check
             with self._server.lock:
                 # Clean out old connections
                 while True:

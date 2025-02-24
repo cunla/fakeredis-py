@@ -36,6 +36,43 @@ def test_time(r, mocker):
     assert r.time() == (1234567891, 0)
 
 
+@pytest.mark.min_server("7")
+def test_hello(r: redis.Redis):
+    client_info = r.client_info()
+    protocol = int(client_info.get("resp"))
+    if protocol == 2:
+        return
+    assert r.hello() == {
+        "server": "fakeredis",
+        "version": "1.0.0",
+        "proto": 2,
+        "id": 1,
+    }
+
+
+@pytest.mark.min_server("7")
+@testtools.run_test_if_redispy_ver("gte", "5")
+def test_client_info(r: redis.Redis):
+    client_info = r.client_info()
+    assert client_info.get("lib-name", "redis-py") == "redis-py"
+    r.client_setinfo(b"lib-name", b"fakeredis")
+    r.client_setinfo(b"lib-ver", b"1.0.0")
+    client_info = r.client_info()
+    assert client_info["lib-name"] == "fakeredis"
+    assert client_info["lib-ver"] == "1.0.0"
+
+
+def test_client_id(r: redis.Redis):
+    client_id = r.client_id()
+    client_info = r.client_info()
+    assert client_id == client_info["id"]
+
+
+def test_client_setname(r: redis.Redis):
+    assert r.client_setname("test") is True
+    assert r.client_getname() == "test"
+
+
 @pytest.mark.decode_responses
 class TestDecodeResponses:
     def test_decode_str(self, r):
