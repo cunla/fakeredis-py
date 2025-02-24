@@ -4,7 +4,7 @@ import redis.client
 from packaging.version import Version
 
 from test import testtools
-from test.testtools import raw_command, response_in_protocol
+from test.testtools import raw_command, resp_conversion
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -44,7 +44,7 @@ def test_zadd_minus_zero_redis6(r: redis.Redis):
 def test_zadd_minus_zero_redis7(r: redis.Redis):
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})
-    assert raw_command(r, "zscore", "foo", "a") == response_in_protocol(r, 0.0)
+    assert raw_command(r, "zscore", "foo", "a") == resp_conversion(r, 0.0)
 
 
 def test_zadd_wrong_type(r: redis.Redis):
@@ -139,7 +139,7 @@ def test_zadd_with_ch(r, param, return_value, state):
 def test_zadd_with_xx(r, param, changed, state, ch):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", param, xx=True, ch=ch) == (changed if ch else 0)
-    assert r.zrange("foo", 0, -1, withscores=True) == response_in_protocol(r, state)
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(r, state)
 
 
 @pytest.mark.parametrize("ch", [False, True])

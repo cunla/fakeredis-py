@@ -20,19 +20,19 @@ def _convert_to_resp2(val: Any) -> Any:
         return val.encode()
     if isinstance(val, float):
         return Float.encode(val, humanfriendly=False)
+    if isinstance(val, (list, tuple, set)):
+        return [_convert_to_resp2(item) for item in val]
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
         return [_convert_to_resp2(item) for item in result]
-    if isinstance(val, (list, tuple)):
-        return [_convert_to_resp2(item) for item in val]
     return val
 
 
-def response_in_protocol(r: redis.Redis, val: Any) -> Any:
+def resp_conversion(r: redis.Redis, val_resp3: Any, val_resp2: Any = None) -> Any:
     if _get_protocol_version(r) == 2:
-        res = _convert_to_resp2(val)
+        res = val_resp2 if val_resp2 is not None else _convert_to_resp2(val_resp3)
     else:
-        res = val
+        res = val_resp3
     return res
 
 

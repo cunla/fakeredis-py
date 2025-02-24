@@ -5,6 +5,7 @@ from redis import exceptions
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
 from test.conftest import ServerDetails
+from test.testtools import resp_conversion
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
@@ -91,6 +92,7 @@ def test_acl_list(r: redis.Redis):
         selectors=[("+set", "%W~app*"), ("+get", "%RW~app* &x"), ("-hset", "%W~app*")],
     )
     rules = r.acl_list()
+    rules = [(rule.decode() if isinstance(rule, bytes) else rule) for rule in rules]
     user_rule = next(filter(lambda x: x.startswith(f"user {username}"), rules), None)
     assert user_rule is not None
 
@@ -218,7 +220,11 @@ def test_acl_getuser_setuser(r: redis.Redis):
     assert len(acl["passwords"]) == 2
     assert set(acl["channels"]) == {"&message:*"}
     r.acl_deluser(username)
-    assert acl["selectors"] == [["commands", "-@all +set", "keys", "%W~app*", "channels", ""]]
+    assert acl["selectors"] == resp_conversion(
+        r,
+        [{"channels": "", "commands": "-@all +set", "keys": "%W~app*"}],
+        [["commands", "-@all +set", "keys", "%W~app*", "channels", ""]],
+    )
 
     assert r.acl_setuser(
         username,
@@ -232,11 +238,19 @@ def test_acl_getuser_setuser(r: redis.Redis):
         selectors=[("+set", "%W~app*"), ("+get", "%RW~app* &x"), ("-hset", "%W~app*")],
     )
     acl = r.acl_getuser(username)
-    assert acl["selectors"] == [
-        ["commands", "-@all +set", "keys", "%W~app*", "channels", ""],
-        ["commands", "-@all +get", "keys", "~app*", "channels", "&x"],
-        ["commands", "-@all -hset", "keys", "%W~app*", "channels", ""],
-    ]
+    assert acl["selectors"] == resp_conversion(
+        r,
+        [
+            {"channels": "", "commands": "-@all +set", "keys": "%W~app*"},
+            {"channels": "&x", "commands": "-@all +get", "keys": "~app*"},
+            {"channels": "", "commands": "-@all -hset", "keys": "%W~app*"},
+        ],
+        [
+            ["commands", "-@all +set", "keys", "%W~app*", "channels", ""],
+            ["commands", "-@all +get", "keys", "~app*", "channels", "&x"],
+            ["commands", "-@all -hset", "keys", "%W~app*", "channels", ""],
+        ],
+    )
 
 
 def test_acl_users(r: redis.Redis):
