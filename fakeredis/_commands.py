@@ -375,7 +375,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-        self, args: Sequence[Any], db: Database, version: Tuple[int]
+        self, args: Sequence[Any], db: Database, version: Tuple[int, ...]
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
