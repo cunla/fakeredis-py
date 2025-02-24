@@ -10,8 +10,9 @@ toc_depth: 2
 ## v2.28.0
 
 ### 🚀 Features
-
 - implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
+- implement support for Connection commands `HELLO`, `CLIENT SETNAME`, `CLIENT GETNAME`, `CLIENT ID`, `CLIENT INFO` #361
+
 
 ## v2.27.0
 
@@ -23,6 +24,7 @@ toc_depth: 2
       `ACL LOG_HELP`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`
 - Add support disable_decoding in async read_response #349
 - Implement support for `SADDEX`, using a new set implementation with support for expiring members #350
+
 
 ### 🧰 Maintenance
 
