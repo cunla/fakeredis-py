@@ -1,9 +1,8 @@
-from typing import Callable, Tuple, Optional, Type, Any, Generator
+from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 
 import pytest
 import pytest_asyncio
 import redis
-from redis import Redis
 
 import fakeredis
 from fakeredis._server import _create_version
@@ -23,7 +22,7 @@ def _check_lua_module_supported() -> bool:
 
 @pytest_asyncio.fixture(scope="session")
 def real_server_details() -> Tuple[str, Tuple[int, ...]]:
-    """Returns server's version or None if server is not running"""
+    """Returns server's version or exit if server is not running"""
     client = None
     try:
         client = redis.Redis("localhost", port=6390, db=2)
@@ -53,7 +52,7 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 
 
 @pytest_asyncio.fixture
-def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generator[Redis, Any, None]:
+def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generator[redis.Redis, Any, None]:
     rconn = create_connection(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
     if connected:
@@ -75,18 +74,25 @@ def _marker_version_value(request, marker_name: str):
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        pytest.param("StrictRedis", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis", marks=pytest.mark.fake),
+        pytest.param("StrictRedis2", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
+        pytest.param("StrictRedis3", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
     ],
 )
-def _create_connection(request, real_server_details: ServerDetails) -> Callable[[int], redis.Redis]:
-    cls_name = request.param
-    protocol = 3 if request.node.get_closest_marker("resp3") is not None else 2
+def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], redis.Redis]:
+    cls_name, protocol = request.param[:-1], int(request.param[-1])
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     server_type, server_version = real_server_details
     if not cls_name.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
+    resp2only = request.node.get_closest_marker("resp2_only")
+    if resp2only and protocol == 3:
+        pytest.skip("Test is for RESP2 only")
+    resp3only = request.node.get_closest_marker("resp3_only")
+    if resp3only and protocol == 2:
+        pytest.skip("Test is for RESP3 only")
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
@@ -102,7 +108,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
 
-    def factory(**kwargs):
+    def factory(**kwargs: Any) -> redis.Redis:
         if REDIS_PY_VERSION.major >= 5:
             kwargs["protocol"] = protocol
         if cls_name.startswith("Fake"):

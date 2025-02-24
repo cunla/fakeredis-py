@@ -6,6 +6,8 @@ import pytest
 import redis
 from packaging.version import Version
 
+from fakeredis._commands import Float
+
 REDIS_PY_VERSION = Version(redis.__version__)
 
 
@@ -16,6 +18,8 @@ def _get_protocol_version(r: redis.Redis) -> int:
 def _convert_to_resp2(val: Any) -> Any:
     if isinstance(val, str):
         return val.encode()
+    if isinstance(val, float):
+        return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
         return [_convert_to_resp2(item) for item in result]
@@ -26,8 +30,10 @@ def _convert_to_resp2(val: Any) -> Any:
 
 def response_in_protocol(r: redis.Redis, val: Any) -> Any:
     if _get_protocol_version(r) == 2:
-        return _convert_to_resp2(val)
-    return val
+        res = _convert_to_resp2(val)
+    else:
+        res = val
+    return res
 
 
 def key_val_dict(size=100):
