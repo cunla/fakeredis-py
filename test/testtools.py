@@ -72,5 +72,5 @@ _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
 
 fake_only = pytest.mark.parametrize(
-    "create_connection", [pytest.param("FakeStrictRedis", marks=pytest.mark.fake)], indirect=True
+    "create_connection", [pytest.param("FakeStrictRedis2", marks=pytest.mark.fake)], indirect=True
 )
