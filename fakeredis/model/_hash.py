@@ -79,6 +79,7 @@ class Hash:
         self._expire_keys()
         self._values.update(values)
 
-    def getall(self) -> Dict[bytes, Any]:
+    def getall(self) -> Dict[str, Any]:
         self._expire_keys()
-        return self._values.copy()
+        res = self._values.copy()
+        return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
