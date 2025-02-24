@@ -89,7 +89,7 @@ class ZSet:
         )
         return (item[1] for item in it)
 
-    def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False) -> Any:
+    def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool) -> Any:
         return self._byscore.irange(start, stop, reverse=reverse)
 
     def rank(self, member: bytes) -> Tuple[int, float]:

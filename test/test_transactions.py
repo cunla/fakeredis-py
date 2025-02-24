@@ -302,9 +302,9 @@ def test_get_within_pipeline(r: redis.Redis):
         assert set(r.keys()) == expected_keys
 
 
-def test_multidb(create_redis):
-    r1 = create_redis(db=2)
-    r2 = create_redis(db=3)
+def test_multidb(create_connection):
+    r1 = create_connection(db=2)
+    r2 = create_connection(db=3)
 
     r1["r1"] = "r1"
     r2["r2"] = "r2"

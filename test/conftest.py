@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, Union, Optional, Type
+from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 
 import pytest
 import pytest_asyncio
@@ -6,8 +6,9 @@ import redis
 
 import fakeredis
 from fakeredis._server import _create_version
+from test.testtools import REDIS_PY_VERSION
 
-ServerDetails = Type[Tuple[str, Union[None, Tuple[int, ...]]]]
+ServerDetails = Type[Tuple[str, Tuple[int, ...]]]
 
 
 def _check_lua_module_supported() -> bool:
@@ -20,8 +21,8 @@ def _check_lua_module_supported() -> bool:
 
 
 @pytest_asyncio.fixture(scope="session")
-def real_server_details() -> ServerDetails:
-    """Returns server's version or None if server is not running"""
+def real_server_details() -> Tuple[str, Tuple[int, ...]]:
+    """Returns server's version or exit if server is not running"""
     client = None
     try:
         client = redis.Redis("localhost", port=6390, db=2)
@@ -33,7 +34,7 @@ def real_server_details() -> ServerDetails:
         server_version = _create_version(server_version) or (7,)
         return server_type, server_version
     except redis.ConnectionError as e:
-        pytest.exit(f"Redis is not running {e}")
+        pytest.exit(f"Real server is not running {e}")
         return "redis", (6,)
     finally:
         if hasattr(client, "close"):
@@ -51,8 +52,8 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 
 
 @pytest_asyncio.fixture
-def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
-    rconn = create_redis(db=2)
+def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generator[redis.Redis, Any, None]:
+    rconn = create_connection(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
     if connected:
         rconn.flushall()
@@ -71,17 +72,27 @@ def _marker_version_value(request, marker_name: str):
 
 
 @pytest_asyncio.fixture(
-    name="create_redis",
+    name="create_connection",
     params=[
-        pytest.param("StrictRedis", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis", marks=pytest.mark.fake),
+        pytest.param("StrictRedis2", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
+        pytest.param("StrictRedis3", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
     ],
 )
-def _create_connection(request) -> Callable[[int], redis.Redis]:
-    cls_name = request.param
-    server_type, server_version = request.getfixturevalue("real_server_details")
+def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], redis.Redis]:
+    cls_name, protocol = request.param[:-1], int(request.param[-1])
+    if REDIS_PY_VERSION.major < 5 and protocol == 3:
+        pytest.skip("redis-py 4.x does not support RESP3")
+    server_type, server_version = real_server_details
     if not cls_name.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
+    resp2only = request.node.get_closest_marker("resp2_only")
+    if resp2only and protocol == 3:
+        pytest.skip("Test is for RESP2 only")
+    resp3only = request.node.get_closest_marker("resp3_only")
+    if resp3only and protocol == 2:
+        pytest.skip("Test is for RESP3 only")
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
@@ -97,14 +108,16 @@ def _create_connection(request) -> Callable[[int], redis.Redis]:
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
 
-    def factory(db=2):
+    def factory(**kwargs: Any) -> redis.Redis:
+        if REDIS_PY_VERSION.major >= 5:
+            kwargs["protocol"] = protocol
         if cls_name.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
             cls = getattr(fakeredis, cls_name)
-            return cls(db=db, decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules)
+            return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         # Real
         cls = getattr(redis, cls_name)
-        return cls("localhost", port=6390, db=db, decode_responses=decode_responses)
+        return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory
 
@@ -113,8 +126,8 @@ def _create_connection(request) -> Callable[[int], redis.Redis]:
     name="async_redis",
     params=[pytest.param("fake", marks=pytest.mark.fake), pytest.param("real", marks=pytest.mark.real)],
 )
-async def _req_aioredis2(request) -> redis.asyncio.Redis:
-    server_type, server_version = request.getfixturevalue("real_server_details")
+async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.asyncio.Redis:
+    server_type, server_version = real_server_details
     if request.param != "fake" and not server_version:
         pytest.skip("Redis is not running")
 
