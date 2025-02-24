@@ -5,7 +5,7 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional, List, Tuple, Callable, Any, Dict, Generator
+from typing import Union, Optional, List, Tuple, Callable, Any, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
