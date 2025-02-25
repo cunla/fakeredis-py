@@ -1,5 +1,4 @@
 import functools
-import itertools
 from typing import List, Union, Tuple, Callable, Optional, Any, Dict
 
 import fakeredis._msgs as msgs
