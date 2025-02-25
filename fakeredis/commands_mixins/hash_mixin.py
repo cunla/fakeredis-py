@@ -50,7 +50,7 @@ class HashCommandsMixin:
         return key.value.get(field)
 
     @command((Key(Hash),))
-    def hgetall(self, key: CommandItem) -> Mapping[bytes, bytes]:
+    def hgetall(self, key: CommandItem) -> Mapping[str, str]:
         return key.value.getall()
 
     @command(fixed=(Key(Hash), bytes, bytes))

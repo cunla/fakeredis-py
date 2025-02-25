@@ -123,7 +123,7 @@ class StreamGroup(object):
     def consumers_info(self) -> List[List[Union[bytes, int]]]:
         return [self.consumers[k].info(current_time()) for k in self.consumers]
 
-    def group_info(self) -> List[bytes]:
+    def group_info(self) -> Dict[bytes, Any]:
         start_index, _ = self.stream.find_index(self.start_key)
         last_delivered_index, _ = self.stream.find_index(self.last_delivered_key)
         last_ack_index, _ = self.stream.find_index(self.last_ack_key)
@@ -139,7 +139,7 @@ class StreamGroup(object):
             b"entries-read": self.entries_read,
             b"lag": lag,
         }
-        return list(itertools.chain(*res.items()))  # type: ignore
+        return res
 
     def group_read(
         self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
@@ -486,7 +486,7 @@ class XStream:
             del self._values_dict[k]
         return res
 
-    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> List[Any]:
+    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> Tuple[Any]:
         """Returns a range of the stream values from start to stop.
 
         :param start: Start key
@@ -510,7 +510,7 @@ class XStream:
         matches = map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind))
         if reverse:
             return list(reversed(tuple(matches)))
-        return list(matches)
+        return tuple(list(matches))
 
     def last_item_key(self) -> bytes:
         return self._ids[-1].encode() if len(self._ids) > 0 else "0-0".encode()

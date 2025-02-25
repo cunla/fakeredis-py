@@ -266,9 +266,10 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                if self.protocol_version == 2:
+                if self.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(result)
-                assert valid_response_type(result, self.protocol_version)
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                    assert valid_response_type(result, self.protocol_version)
         except SimpleError as exc:
             result = exc
         for command_item in command_items:

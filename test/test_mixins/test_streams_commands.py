@@ -7,6 +7,7 @@ import redis
 
 from fakeredis import _msgs as msgs
 from test import testtools
+from test.testtools import resp_conversion, get_protocol_version
 
 
 def get_ids(results):
@@ -229,11 +230,15 @@ def test_xread_multiple_streams_blocking(r: redis.Redis):
 
 
 def test_xread_blocking_no_count(r: redis.Redis):
-    k = "key"
+    k = b"key"
     r.xadd(k, {"value": 1234})
     streams = {k: "0"}
     m1 = r.xread(streams=streams, block=10)
-    assert m1[0][1][0][1] == {b"value": b"1234"}
+    if get_protocol_version(r) == 3:
+        m1 = m1[k][0]
+    else:
+        m1 = m1[0][1]
+    assert m1[0][1] == {b"value": b"1234"}
 
 
 def test_xread(r: redis.Redis):
@@ -241,32 +246,46 @@ def test_xread(r: redis.Redis):
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
 
-    expected = [
-        [
-            stream.encode(),
-            [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-        ]
-    ]
     # xread starting at 0 returns both messages
-    assert r.xread(streams={stream: 0}) == expected
+    actual = r.xread(streams={stream: 0})
+    assert actual == resp_conversion(
+        r,
+        {stream.encode(): [[get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]},
+        [
+            [
+                stream.encode(),
+                [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
+            ]
+        ],
+    )
 
-    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
     # xread starting at 0 and count=1 returns only the first message
-    assert r.xread(streams={stream: 0}, count=1) == expected
+    assert r.xread(streams={stream: 0}, count=1) == resp_conversion(
+        r,
+        {stream.encode(): [[get_stream_message(r, stream, m1)]]},
+        [[stream.encode(), [get_stream_message(r, stream, m1)]]],
+    )
 
-    expected = [[stream.encode(), [get_stream_message(r, stream, m2)]]]
     # xread starting at m1 returns only the second message
-    assert r.xread(streams={stream: m1}) == expected
+    assert r.xread(streams={stream: m1}) == resp_conversion(
+        r,
+        {stream.encode(): [[get_stream_message(r, stream, m2)]]},
+        [[stream.encode(), [get_stream_message(r, stream, m2)]]],
+    )
 
     # xread starting at the last message returns an empty list
-    assert r.xread(streams={stream: m2}) == []
+    assert r.xread(streams={stream: m2}) == resp_conversion(r, {})
 
 
 def test_xread_count(r: redis.Redis):
     r.xadd("test", {"x": 1})
     result = r.xread(streams={"test": "0"}, count=100, block=10)
-    assert result[0][0] == b"test"
-    assert result[0][1][0][1] == {b"x": b"1"}
+    if get_protocol_version(r) == 3:
+        key, values = b"test", result[b"test"][0][0][1]
+    else:
+        key, values = result[0][0], result[0][1][0][1]
+    assert key == b"test"
+    assert values == {b"x": b"1"}
 
 
 def test_xread_bad_commands(r: redis.Redis):

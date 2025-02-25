@@ -1,5 +1,6 @@
 import functools
-from typing import List, Union, Tuple, Callable, Optional, Any
+import itertools
+from typing import List, Union, Tuple, Callable, Optional, Any, Dict
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -58,18 +59,28 @@ class StreamsCommandsMixin:
     def xlen(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
+    @command(
+        name="XRANGE",
+        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
+        repeat=(bytes,),
+        flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2,
+    )
     def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
-    @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
+    @command(
+        name="XREVRANGE",
+        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
+        repeat=(bytes,),
+        flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2,
+    )
     def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
-    @command(name="XREAD", fixed=(bytes,), repeat=(bytes,))
-    def xread(self, *args: bytes) -> Optional[List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+    @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
+    def xread(self, *args: bytes) -> Optional[Dict[str, Any]]:
         (
             count,
             timeout,
@@ -241,10 +252,10 @@ class StreamsCommandsMixin:
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
-    def xinfo_groups(self, key: CommandItem) -> List[List[bytes]]:
+    def xinfo_groups(self, key: CommandItem) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: List[List[bytes]] = key.value.groups_info()
+        res: Dict[bytes, Any] = key.value.groups_info()
         return res
 
     @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -349,18 +360,20 @@ class StreamsCommandsMixin:
 
     def _xread(
         self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
-    ) -> Optional[List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+    ) -> Union[None, Dict[bytes, Any], List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
-        res: List[Any] = list()
+        res: Dict[bytes, Any] = dict()
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
             if len(stream_results) > 0:
-                res.append([item.key, stream_results])
+                res[item.key] = stream_results
 
         # On blocking read, when count is not None, and there are no results, return None (instead of an empty list)
         if blocking and count and len(res) == 0:
             return None
+        if self.protocol_version == 2:
+            return [[k, v] for k, v in res.items()]
         return res
 
     @staticmethod

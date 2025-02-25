@@ -11,7 +11,7 @@ from fakeredis._commands import Float
 REDIS_PY_VERSION = Version(redis.__version__)
 
 
-def _get_protocol_version(r: redis.Redis) -> int:
+def get_protocol_version(r: redis.Redis) -> int:
     return int(r.connection_pool.connection_kwargs.get("protocol"))
 
 
@@ -29,7 +29,7 @@ def _convert_to_resp2(val: Any) -> Any:
 
 
 def resp_conversion(r: redis.Redis, val_resp3: Any, val_resp2: Any = None) -> Any:
-    if _get_protocol_version(r) == 2:
+    if get_protocol_version(r) == 2:
         res = val_resp2 if val_resp2 is not None else _convert_to_resp2(val_resp3)
     else:
         res = val_resp3
