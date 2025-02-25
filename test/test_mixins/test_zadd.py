@@ -60,22 +60,23 @@ def test_zadd_multiple(r: redis.Redis):
 
 
 @pytest.mark.parametrize(
-    "param,return_value,state",
+    ["map_to_add", "expected_ret", "expected_zrange_state"],
     [
         ({"four": 2.0, "three": 1.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
         ({"four": 2.0, "three": 1.0, "zero": 0.0}, 1, [(b"zero", 0.0), (b"three", 3.0), (b"four", 4.0)]),
         ({"two": 2.0, "one": 1.0}, 2, [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0), (b"four", 4.0)]),
     ],
+    ids=["no_additions", "partial_additions", "new_additions"],
 )
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_nx(r, param, return_value, state, ch):
+def test_zadd_with_nx(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state, ch):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    assert r.zadd("foo", param, nx=True, ch=ch) == return_value
-    assert r.zrange("foo", 0, -1, withscores=True) == state
+    assert r.zadd("foo", map_to_add, nx=True, ch=ch) == expected_ret
+    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
 
 
 @pytest.mark.parametrize(
-    "param,return_value,state",
+    ["map_to_add", "expected_ret", "expected_zrange_state"],
     [
         ({"four": 2.0, "three": 1.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
         (
@@ -89,65 +90,69 @@ def test_zadd_with_nx(r, param, return_value, state, ch):
         ),
         ({"two": 2.0, "one": 1.0}, 2, [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0), (b"four", 4.0)]),
     ],
+    ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_gt_and_ch(r, param, return_value, state):
+def test_zadd_with_gt_and_ch(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    assert r.zadd("foo", param, gt=True, ch=True) == return_value
-    assert r.zrange("foo", 0, -1, withscores=True) == state
+    assert r.zadd("foo", map_to_add, gt=True, ch=True) == expected_ret
+    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
 
 
 @pytest.mark.parametrize(
-    "param,return_value,state",
+    ["map_to_add", "expected_ret", "expected_zrange_state"],
     [
         ({"four": 2.0, "three": 1.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
         ({"four": 5.0, "three": 1.0, "zero": 0.0}, 1, [(b"zero", 0.0), (b"three", 3.0), (b"four", 5.0)]),
         ({"two": 2.0, "one": 1.0}, 2, [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0), (b"four", 4.0)]),
     ],
+    ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_gt(r, param, return_value, state):
+def test_zadd_with_gt(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    assert r.zadd("foo", param, gt=True) == return_value
-    assert r.zrange("foo", 0, -1, withscores=True) == state
+    assert r.zadd("foo", map_to_add, gt=True) == expected_ret
+    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
 
 
 @pytest.mark.parametrize(
-    "param,return_value,state",
+    ["map_to_add", "expected_ret", "expected_zrange_state"],
     [
         ({"four": 4.0, "three": 1.0}, 1, [(b"three", 1.0), (b"four", 4.0)]),
         ({"four": 4.0, "three": 1.0, "zero": 0.0}, 2, [(b"zero", 0.0), (b"three", 1.0), (b"four", 4.0)]),
         ({"two": 2.0, "one": 1.0}, 2, [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0), (b"four", 4.0)]),
     ],
+    ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_ch(r, param, return_value, state):
+def test_zadd_with_ch(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    assert r.zadd("foo", param, ch=True) == return_value
-    assert r.zrange("foo", 0, -1, withscores=True) == state
+    assert r.zadd("foo", map_to_add, ch=True) == expected_ret
+    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
 
 
 @pytest.mark.parametrize(
-    "param,changed,state",
+    ["map_to_add", "expected_ret", "expected_zrange_state"],
     [
         ({"four": 2.0, "three": 1.0}, 2, [(b"three", 1.0), (b"four", 2.0)]),
         ({"four": 4.0, "three": 3.0, "zero": 0.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
         ({"two": 2.0, "one": 1.0}, 0, [(b"three", 3.0), (b"four", 4.0)]),
     ],
+    ids=["new_additions", "no_additions", "no_additions_2"],
 )
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_xx(r, param, changed, state, ch):
+def test_zadd_with_xx(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state, ch):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    assert r.zadd("foo", param, xx=True, ch=ch) == (changed if ch else 0)
-    assert r.zrange("foo", 0, -1, withscores=True) == state
+    assert r.zadd("foo", map_to_add, xx=True, ch=ch) == (expected_ret if ch else 0)
+    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
 
 
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_nx_and_xx(r, ch):
+def test_zadd_with_nx_and_xx(r: redis.Redis, ch):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     with pytest.raises(redis.DataError):
         r.zadd("foo", {"four": -4.0, "three": -3.0}, nx=True, xx=True, ch=ch)
 
 
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_incr(r, ch):
+def test_zadd_incr(r: redis.Redis, ch):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", {"four": 1.0}, incr=True, ch=ch) == 5.0
     assert r.zadd("foo", {"three": 1.0}, incr=True, nx=True, ch=ch) is None
