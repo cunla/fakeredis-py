@@ -1,48 +1,4 @@
-# Redis `server` commands (23/70 implemented)
-
-## [ACL CAT](https://redis.io/commands/acl-cat/)
-
-Lists the ACL categories, or the commands inside a category.
-
-## [ACL DELUSER](https://redis.io/commands/acl-deluser/)
-
-Deletes ACL users, and terminates their connections.
-
-## [ACL GENPASS](https://redis.io/commands/acl-genpass/)
-
-Generates a pseudorandom, secure password that can be used to identify ACL users.
-
-## [ACL GETUSER](https://redis.io/commands/acl-getuser/)
-
-Lists the ACL rules of a user.
-
-## [ACL LIST](https://redis.io/commands/acl-list/)
-
-Dumps the effective rules in ACL file format.
-
-## [ACL LOAD](https://redis.io/commands/acl-load/)
-
-Reloads the rules from the configured ACL file.
-
-## [ACL LOG](https://redis.io/commands/acl-log/)
-
-Lists recent security events generated due to ACL rules.
-
-## [ACL SAVE](https://redis.io/commands/acl-save/)
-
-Saves the effective ACL rules in the configured ACL file.
-
-## [ACL SETUSER](https://redis.io/commands/acl-setuser/)
-
-Creates and modifies an ACL user and its rules.
-
-## [ACL USERS](https://redis.io/commands/acl-users/)
-
-Lists all ACL users.
-
-## [ACL WHOAMI](https://redis.io/commands/acl-whoami/)
-
-Returns the authenticated username of the current connection.
+# Redis `server` commands (11/70 implemented)
 
 ## [BGSAVE](https://redis.io/commands/bgsave/)
 
@@ -59,10 +15,6 @@ Returns a count of commands.
 ## [COMMAND INFO](https://redis.io/commands/command-info/)
 
 Returns information about one, multiple or all commands.
-
-## [CONFIG SET](https://redis.io/commands/config-set/)
-
-Sets configuration parameters in-flight.
 
 ## [DBSIZE](https://redis.io/commands/dbsize/)
 
@@ -100,9 +52,53 @@ Returns the server time.
 
 A container for Access List Control commands.
 
+#### [ACL CAT](https://redis.io/commands/acl-cat/) <small>(not implemented)</small>
+
+Lists the ACL categories, or the commands inside a category.
+
+#### [ACL DELUSER](https://redis.io/commands/acl-deluser/) <small>(not implemented)</small>
+
+Deletes ACL users, and terminates their connections.
+
 #### [ACL DRYRUN](https://redis.io/commands/acl-dryrun/) <small>(not implemented)</small>
 
 Simulates the execution of a command by a user, without executing the command.
+
+#### [ACL GENPASS](https://redis.io/commands/acl-genpass/) <small>(not implemented)</small>
+
+Generates a pseudorandom, secure password that can be used to identify ACL users.
+
+#### [ACL GETUSER](https://redis.io/commands/acl-getuser/) <small>(not implemented)</small>
+
+Lists the ACL rules of a user.
+
+#### [ACL LIST](https://redis.io/commands/acl-list/) <small>(not implemented)</small>
+
+Dumps the effective rules in ACL file format.
+
+#### [ACL LOAD](https://redis.io/commands/acl-load/) <small>(not implemented)</small>
+
+Reloads the rules from the configured ACL file.
+
+#### [ACL LOG](https://redis.io/commands/acl-log/) <small>(not implemented)</small>
+
+Lists recent security events generated due to ACL rules.
+
+#### [ACL SAVE](https://redis.io/commands/acl-save/) <small>(not implemented)</small>
+
+Saves the effective ACL rules in the configured ACL file.
+
+#### [ACL SETUSER](https://redis.io/commands/acl-setuser/) <small>(not implemented)</small>
+
+Creates and modifies an ACL user and its rules.
+
+#### [ACL USERS](https://redis.io/commands/acl-users/) <small>(not implemented)</small>
+
+Lists all ACL users.
+
+#### [ACL WHOAMI](https://redis.io/commands/acl-whoami/) <small>(not implemented)</small>
+
+Returns the authenticated username of the current connection.
 
 #### [BGREWRITEAOF](https://redis.io/commands/bgrewriteaof/) <small>(not implemented)</small>
 
@@ -139,6 +135,10 @@ Resets the server's statistics.
 #### [CONFIG REWRITE](https://redis.io/commands/config-rewrite/) <small>(not implemented)</small>
 
 Persists the effective configuration to file.
+
+#### [CONFIG SET](https://redis.io/commands/config-set/) <small>(not implemented)</small>
+
+Sets configuration parameters in-flight.
 
 #### [FAILOVER](https://redis.io/commands/failover/) <small>(not implemented)</small>
 
