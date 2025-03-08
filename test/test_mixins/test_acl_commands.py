@@ -68,6 +68,13 @@ def test_auth(r: redis.Redis):
     with pytest.raises(redis.AuthenticationError):
         r.auth(username=username, password="wrong_password")
 
+    # test that user can log in even if the default user is disabled
+    r.acl_setuser(default_username, enabled=False)
+    assert r.auth(username=username, password="strong_password") is True
+
+    r.acl_setuser(default_username, enabled=True)
+    r.auth("", "default")
+
 
 def test_acl_list(r: redis.Redis):
     username = "fakeredis-user"
