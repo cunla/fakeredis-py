@@ -94,6 +94,7 @@ class AclCommandsMixin:
         if (username is None or username == b"default") and (password == self._server_config.get(b"requirepass", b"")):
             self._client_info["user"] = "default"
             return OK
+        username = username or b"default"
         if len(args) >= 1 and self._check_user_password(username, password):
             self._client_info["user"] = username.decode()
             return OK
