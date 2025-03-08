@@ -347,6 +347,9 @@ class AccessControlList:
     def validate_command(self, username: bytes, client_info: bytes, fields: List[bytes]):
         if username not in self._user_acl:
             return
+        if fields and fields[0].lower() == b"auth":
+            # auth command is always allowed
+            return
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
             raise SimpleError("User disabled")
