@@ -54,11 +54,8 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
     rconn = create_redis(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
-    acls = rconn.acl_list()
-    if not acls:
-        # Create a default user if none exists
-        rconn.acl_setuser("default", enabled=True, nopass=True, commands=["+@all"], keys=["*"], channels=["*"])
     if connected:
+        _add_default_user(rconn)
         rconn.flushall()
     yield rconn
     if connected:
@@ -66,6 +63,13 @@ def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
     if hasattr(r, "close"):
         rconn.close()  # Older versions of redis-py don't have this method
 
+def _add_default_user(rconn: redis.Redis):
+    try:
+        acls = rconn.acl_list()
+        if not acls:
+            rconn.acl_setuser("default", enabled=True, nopass=True, commands=["+@all"], keys=["*"], channels=["*"])
+    except redis.exceptions.ResponseError:
+        pass
 
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
