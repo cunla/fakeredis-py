@@ -63,6 +63,7 @@ def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
     if hasattr(r, "close"):
         rconn.close()  # Older versions of redis-py don't have this method
 
+
 def _add_default_user(rconn: redis.Redis):
     try:
         acls = rconn.acl_list()
@@ -70,6 +71,7 @@ def _add_default_user(rconn: redis.Redis):
             rconn.acl_setuser("default", enabled=True, nopass=True, commands=["+@all"], keys=["*"], channels=["*"])
     except redis.exceptions.ResponseError:
         pass
+
 
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
