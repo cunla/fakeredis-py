@@ -24,8 +24,8 @@ def test_acl_save_load():
     # assert acl file contains all data
     with open(acl_filename, "r") as f:
         lines = f.readlines()
-        assert len(lines) == 1
-        user_rule = lines[0]
+        assert len(lines) == 2
+        user_rule = lines[1]
         assert user_rule.startswith("user fakeredis-user")
         assert "nopass" not in user_rule
         assert "#e6c3da5b206634d7f3f3586d747ffdb36b5c675757b380c6a5fe5c570c714349" in user_rule
