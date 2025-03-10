@@ -14,6 +14,12 @@ toc_depth: 2
 - implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
 - implement support for Connection commands `HELLO`, `CLIENT SETNAME`, `CLIENT GETNAME`, `CLIENT ID`, `CLIENT INFO` #361
 
+### 🐛 Bug Fixes
+
+- Fix `test_tcp_server_started` to close the connection @mgorny (#363)
+- [ACL] Always allow `AUTH` command @wakonig (#362)
+- [ACL] Provide `default` account acl on startup @wakonig (#362)
+
 ## v2.27.0
 
 ### 🚀 Features
