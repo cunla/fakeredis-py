@@ -55,22 +55,12 @@ def r(request, create_redis: Callable[[int], redis.Redis]) -> redis.Redis:
     rconn = create_redis(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
     if connected:
-        _add_default_user(rconn)
         rconn.flushall()
     yield rconn
     if connected:
         rconn.flushall()
     if hasattr(r, "close"):
         rconn.close()  # Older versions of redis-py don't have this method
-
-
-def _add_default_user(rconn: redis.Redis):
-    try:
-        acls = rconn.acl_list()
-        if not acls:
-            rconn.acl_setuser("default", enabled=True, nopass=True, commands=["+@all"], keys=["*"], channels=["*"])
-    except redis.exceptions.ResponseError:
-        pass
 
 
 def _marker_version_value(request, marker_name: str):
