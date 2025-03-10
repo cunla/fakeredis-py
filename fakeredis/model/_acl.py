@@ -294,6 +294,7 @@ class AccessControlList:
     def __init__(self):
         default_user_acl = UserAccessControlList(nopass=True)
         default_user_acl.add_key_pattern(b"*")
+        default_user_acl.add_channel_pattern(b"*")
         default_user_acl.add_command_or_category(b"+@all")
         self._user_acl: Dict[bytes, UserAccessControlList] = {b"default": default_user_acl}
         self._log: List[AclLogRecord] = list()
