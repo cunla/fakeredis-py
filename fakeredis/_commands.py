@@ -393,7 +393,7 @@ class Signature:
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
                     return (type_.missing_return,)
-            elif type_ is bytes:
+            elif type_ is not bytes:
                 args_list[i] = type_.decode(
                     args_list[i],
                 )
