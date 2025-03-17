@@ -13,7 +13,7 @@ runs:
     - name: Test with coverage
       shell: bash
       run: |
-        poetry run flake8 fakeredis/
+        poetry run ruff check
         poetry run pytest -v --cov=fakeredis --cov-branch
         poetry run coverage json
         echo "COVERAGE=$(jq '.totals.percent_covered_display|tonumber' coverage.json)" >> $GITHUB_ENV
