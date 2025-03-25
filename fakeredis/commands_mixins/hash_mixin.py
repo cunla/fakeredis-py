@@ -1,7 +1,7 @@
 import math
 import random
 from collections.abc import Mapping
-from typing import Callable, List, Tuple, Any, Optional
+from typing import Callable, List, Tuple, Any, Optional, Sequence
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -157,10 +157,10 @@ class HashCommandsMixin:
                 continue
             current_expiration = hash_val.get_key_expireat(field)
             if (
-                (nx and current_expiration is not None)
-                or (xx and current_expiration is None)
-                or (gt and (current_expiration is None or when_ms <= current_expiration))
-                or (lt and current_expiration is not None and when_ms >= current_expiration)
+                    (nx and current_expiration is not None)
+                    or (xx and current_expiration is None)
+                    or (gt and (current_expiration is None or when_ms <= current_expiration))
+                    or (lt and current_expiration is not None and when_ms >= current_expiration)
             ):
                 res.append(0)
                 continue
