@@ -1,7 +1,7 @@
 import itertools
 import math
 import random
-from typing import Callable, List, Tuple, Any, Optional
+from typing import Callable, List, Tuple, Any, Optional, Sequence
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -145,15 +145,10 @@ class HashCommandsMixin:
         )
         if (nx, xx, gt, lt).count(True) > 1:
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
-        if len(left_args) < 3 or not casematch(left_args[0], b"fields"):
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("HEXPIRE"))
-        num_fields = Int.decode(left_args[1])
-        if num_fields != len(left_args) - 2:
-            raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+        fields = _get_fields(left_args)
         hash_val: Hash = key.value
         if hash_val is None:
-            return [-2] * num_fields
-        fields = left_args[2:]
+            return [-2] * len(fields)
         # process command
         res = []
         for field in fields:
@@ -162,10 +157,10 @@ class HashCommandsMixin:
                 continue
             current_expiration = hash_val.get_key_expireat(field)
             if (
-                (nx and current_expiration is not None)
-                or (xx and current_expiration is None)
-                or (gt and (current_expiration is None or when_ms <= current_expiration))
-                or (lt and current_expiration is not None and when_ms >= current_expiration)
+                    (nx and current_expiration is not None)
+                    or (xx and current_expiration is None)
+                    or (gt and (current_expiration is None or when_ms <= current_expiration))
+                    or (lt and current_expiration is not None and when_ms >= current_expiration)
             ):
                 res.append(0)
                 continue
@@ -173,15 +168,10 @@ class HashCommandsMixin:
         return res
 
     def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
-        if len(args) < 3 or not casematch(args[0], b"fields"):
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
-        num_fields = Int.decode(args[1])
-        if num_fields != len(args) - 2:
-            raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+        fields = _get_fields(args)
         hash_val: Hash = key.value
         if hash_val is None:
-            return [-2] * num_fields
-        fields = args[2:]
+            return [-2] * len(fields)
         res = list()
         for field in fields:
             if field not in hash_val:
@@ -215,12 +205,7 @@ class HashCommandsMixin:
 
     @command(name="HPERSIST", fixed=(Key(Hash),), repeat=(bytes,))
     def hpersist(self, key: CommandItem, *args: bytes) -> List[int]:
-        if len(args) < 3 or not casematch(args[0], b"fields"):
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("HEXPIRE"))
-        num_fields = Int.decode(args[1])
-        if num_fields != len(args) - 2:
-            raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
-        fields = args[2:]
+        fields = _get_fields(args)
         hash_val: Hash = key.value
         res = list()
         for field in fields:
@@ -242,17 +227,102 @@ class HashCommandsMixin:
 
     @command(name="HPEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hpexpiretime(self, key: CommandItem, *args: bytes) -> List[float]:
-        res = self._get_expireat(b"HEXPIRETIME", key, *args)
+        res = self._get_expireat(b"HPEXPIRETIME", key, *args)
         return res
 
     @command(name="HTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def httl(self, key: CommandItem, *args: bytes) -> List[int]:
-        curr_expireat_ms = self._get_expireat(b"HEXPIRETIME", key, *args)
+        curr_expireat_ms = self._get_expireat(b"HTTL", key, *args)
         curr_time_ms = current_time()
         return [((i - curr_time_ms) // 1000) if i > 0 else i for i in curr_expireat_ms]
 
     @command(name="HPTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hpttl(self, key: CommandItem, *args: bytes) -> List[int]:
-        curr_expireat_ms = self._get_expireat(b"HEXPIRETIME", key, *args)
+        curr_expireat_ms = self._get_expireat(b"HPTTL", key, *args)
         curr_time_ms = current_time()
         return [(i - curr_time_ms) if i > 0 else i for i in curr_expireat_ms]
+
+    @command(name="HGETDEL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    def hgetdel(self, key: CommandItem, *args: bytes) -> List[Any]:
+        fields = _get_fields(args)
+        hash_val: Hash = key.value
+        res = list()
+        for field in fields:
+            res.append(hash_val.pop(field))
+        return res
+
+    @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    def hgetex(self, key: CommandItem, *args: bytes) -> Any:
+        (ex, px, exat, pxat, persist), left_args = extract_args(
+            args, ("+ex", "+px", "+exat", "+pxat", "persist"), left_from_first_unexpected=True,
+            error_on_unexpected=False
+        )
+        if (ex is not None, px is not None, exat is not None, pxat is not None, persist).count(True) > 1:
+            raise SimpleError("Only one of EX, PX, EXAT, PXAT or PERSIST arguments can be specified")
+        fields = _get_fields(left_args)
+        hash_val: Hash = key.value
+
+        when_ms = _get_when_ms(ex, px, exat, pxat)
+        res = list()
+        for field in fields:
+            res.append(hash_val.get(field))
+            if persist:
+                hash_val.clear_key_expireat(field)
+            elif when_ms is not None:
+                hash_val.set_key_expireat(field, when_ms)
+        return res
+
+    @command(name="HSETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    def hsetex(self, key: CommandItem, *args: bytes) -> Any:
+        (ex, px, exat, pxat, keepttl, fnx, fxx), left_args = extract_args(
+            args, ("+ex", "+px", "+exat", "+pxat", "keepttl", "fnx", "fxx"), left_from_first_unexpected=True,
+            error_on_unexpected=False
+        )
+        if (ex is not None, px is not None, exat is not None, pxat is not None, keepttl).count(True) > 1:
+            raise SimpleError("Only one of EX, PX, EXAT, PXAT or KEEPTTL arguments can be specified")
+        if (fnx, fxx).count(True) > 1:
+            raise SimpleError("Only one of FNX or FXX arguments can be specified")
+        field_vals = _get_fields(left_args, with_values=True)
+        hash_val: Hash = key.value
+        when_ms = _get_when_ms(ex, px, exat, pxat)
+
+        field_keys = set(field_vals[::2])
+        if fxx and len(field_keys - hash_val.getall().keys()) > 0:
+            return 0
+        if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
+            return 0
+        res = 0
+        for i in range(0, len(field_vals), 2):
+            field, value = field_vals[i], field_vals[i + 1]
+            hash_val[field] = value
+            res = 1
+            if not keepttl and when_ms is not None:
+                hash_val.set_key_expireat(field, when_ms)
+        key.updated()
+        return res
+
+
+def _get_fields(args: Sequence[bytes], with_values: bool = False) -> Sequence[bytes]:
+    if len(args) < 3 or not casematch(args[0], b"fields"):
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+    num_fields = Int.decode(args[1])
+    if not with_values and num_fields != len(args) - 2:
+        raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+    if with_values and num_fields * 2 != len(args) - 2:
+        raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+    fields = args[2:]
+    return fields
+
+
+def _get_when_ms(ex: Optional[int], px: Optional[int], exat: Optional[int], pxat: Optional[int]) -> Optional[int]:
+    if ex is not None:
+        when_ms = current_time() + ex * 1000
+    elif px is not None:
+        when_ms = current_time() + px
+    elif exat is not None:
+        when_ms = exat * 1000
+    elif pxat is not None:
+        when_ms = pxat
+    else:
+        when_ms = None
+    return when_ms

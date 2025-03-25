@@ -13,6 +13,7 @@ toc_depth: 2
 
 - implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
 - implement support for Connection commands `HELLO`, `CLIENT SETNAME`, `CLIENT GETNAME`, `CLIENT ID`, `CLIENT INFO` #361
+- implement support for `HGETEX`, `HSETEX`, `HGETDEL` #365
 
 ### 🐛 Bug Fixes
 
