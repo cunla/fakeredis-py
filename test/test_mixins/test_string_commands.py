@@ -279,7 +279,7 @@ def test_set_px_using_timedelta(r: redis.Redis):
     assert r.get("foo") == b"bar"
 
 
-@testtools.run_test_if_redispy_ver('lt', '6')  # This will run for redis-py 4.2.0 or above.
+@testtools.run_test_if_redispy_ver('lt', '5.9')  # This will run for redis-py 4.2.0 or above.
 def test_set_conflicting_expire_options(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.set("foo", "bar", ex=1, px=1)
