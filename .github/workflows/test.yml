@@ -52,7 +52,7 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image: [ "redis:6.2.16", "redis:7.4.1" ]
+        redis-image: [ "redis:6.2.17", "redis:7.4.2" ]
         python-version: [ "3.9", "3.12", "3.13" ]
         redis-py: [ "4.3.6", "4.6.0", "5.0.8", "5.2.1", "5.3.0b3" ]
         include:
@@ -62,12 +62,12 @@ jobs:
             extra: "lua"
             hypothesis: true
           - python-version: "3.12"
-            redis-image: "redis/redis-stack-server:6.2.6-v17"
+            redis-image: "redis/redis-stack-server:6.2.6-v19"
             redis-py: "5.2.1"
             extra: "json, bf, lua, cf"
             hypothesis: true
           - python-version: "3.12"
-            redis-image: "redis/redis-stack-server:7.4.0-v1"
+            redis-image: "redis/redis-stack-server:7.4.0-v3"
             redis-py: "5.2.1"
             extra: "json, bf, lua, cf"
             coverage: true
