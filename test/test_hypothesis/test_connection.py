@@ -4,12 +4,7 @@ from .base import (
     values,
     st,
     dbnums,
-    keys,
     common_commands,
-    counts,
-    zero_or_more,
-    expires_seconds,
-    expires_ms,
 )
 
 
