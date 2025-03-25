@@ -221,6 +221,19 @@ def test_zrank(r: redis.Redis):
     assert r.zrank("foo", "three") == 2
 
 
+@pytest.mark.min_server("7.2")
+@testtools.run_test_if_redispy_ver("gt", "4.6")
+def test_zrank_redis7_2(r: redis.Redis):
+    r.zadd("foo", {"one": 1})
+    r.zadd("foo", {"two": 2})
+    r.zadd("foo", {"three": 3})
+    assert r.zrank("foo", "one") == 0
+    assert r.zrank("foo", "two") == 1
+    assert r.zrank("foo", "three") == 2
+    assert r.zrank("foo", "one", withscore=True) == [0, b"1"]
+    assert r.zrank("foo", "two", withscore=True) == [1, b"2"]
+
+
 def test_zrank_non_existent_member(r: redis.Redis):
     assert r.zrank("foo", "one") is None
 
@@ -342,6 +355,19 @@ def test_zrevrank(r: redis.Redis):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
+
+
+@pytest.mark.min_server("7.2")
+@testtools.run_test_if_redispy_ver("gt", "4.6")
+def test_zrevrank_redis7_2(r: redis.Redis):
+    r.zadd("foo", {"one": 1})
+    r.zadd("foo", {"two": 2})
+    r.zadd("foo", {"three": 3})
+    assert r.zrevrank("foo", "one") == 2
+    assert r.zrevrank("foo", "two") == 1
+    assert r.zrevrank("foo", "three") == 0
+    assert r.zrevrank("foo", "one", withscore=True) == [2, b"1"]
+    assert r.zrevrank("foo", "two", withscore=True) == [1, b"2"]
 
 
 def test_zrevrank_non_existent_member(r: redis.Redis):

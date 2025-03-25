@@ -114,7 +114,7 @@ class SortedSetCommandsMixin:
         return out
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
-    def zadd(self, key, *args):
+    def zadd(self, key, *args) -> Union[int, None]:
         zset = key.value
 
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
@@ -189,7 +189,7 @@ class SortedSetCommandsMixin:
         return key.value.zcount(_min.lower_bound, _max.upper_bound)
 
     @command((Key(ZSet), Float, bytes))
-    def zincrby(self, key, increment, member):
+    def zincrby(self, key, increment, member) -> float:
         # Can't just default the old score to 0.0, because in IEEE754, adding
         # 0.0 to something isn't a nop (e.g., 0.0 + -0.0 == 0.0).
         try:
@@ -332,17 +332,26 @@ class SortedSetCommandsMixin:
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
 
-    @command((Key(ZSet), bytes))
-    def zrank(self, key, member):
+    @command(name="ZRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, bytes]]]:
+        (withscore,), _ = extract_args(args, ("withscore",))
         try:
-            return key.value.rank(member)
+            rank, score = key.value.rank(member)
+            if withscore:
+                return [rank, self._encodefloat(score, False)]
+            return rank
         except KeyError:
             return None
 
-    @command((Key(ZSet), bytes))
-    def zrevrank(self, key, member):
+    @command(name="ZREVRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
+    def zrevrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, bytes]]]:
+        (withscore,), _ = extract_args(args, ("withscore",))
         try:
-            return len(key.value) - 1 - key.value.rank(member)
+            rank, score = key.value.rank(member)
+            rev_rank = len(key.value) - 1 - rank
+            if withscore:
+                return [rev_rank, self._encodefloat(score, False)]
+            return rev_rank
         except KeyError:
             return None
 
@@ -374,7 +383,7 @@ class SortedSetCommandsMixin:
         return self.zrem(key, *[item[1] for item in items])
 
     @command((Key(ZSet), Int), (bytes, bytes))
-    def zscan(self, key, cursor, *args):
+    def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Union[int, List[bytes]]]:
         new_cursor, ans = self._scan(key.value.items(), cursor, *args)
         flat = []
         for key, score in ans:
@@ -383,7 +392,7 @@ class SortedSetCommandsMixin:
         return [new_cursor, flat]
 
     @command((Key(ZSet), bytes))
-    def zscore(self, key, member):
+    def zscore(self, key: CommandItem, member: bytes) -> Optional[bytes]:
         try:
             return self._encodefloat(key.value[member], False)
         except KeyError:

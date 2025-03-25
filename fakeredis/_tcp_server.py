@@ -28,17 +28,15 @@ class Client:
 class Reader:
     reader: BinaryIO
 
-    def load_array(self, length: int):
-        array = [None] * length
-        for i in range(length):
-            array[i] = self.load()
-        return array
-
     def load(self):
         line = self.reader.readline().strip()
         match line[0:1], line[1:]:
             case b"*", length:
-                return self.load_array(int(length))
+                length = int(length)
+                array = [None] * length
+                for i in range(length):
+                    array[i] = self.load()
+                return array
             case b"$", length:
                 bulk_string = self.reader.read(int(length) + 2).strip()
                 if len(bulk_string) != int(length):

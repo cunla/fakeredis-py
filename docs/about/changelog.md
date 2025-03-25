@@ -7,14 +7,27 @@ tags:
 toc_depth: 2
 ---
 
+## v2.28.0
+
+### 🚀 Features
+
+- implement support for `WITHSCORE` in `ZRANK` and `ZREVRANK` #357
+- implement support for Connection commands `HELLO`, `CLIENT SETNAME`, `CLIENT GETNAME`, `CLIENT ID`, `CLIENT INFO` #361
+
+### 🐛 Bug Fixes
+
+- Fix `test_tcp_server_started` to close the connection @mgorny (#363)
+- [ACL] Always allow `AUTH` command @wakonig (#362)
+- [ACL] Provide `default` account acl on startup @wakonig (#362)
+
 ## v2.27.0
 
 ### 🚀 Features
 
 - ACL commands support #338
-  - `ACL LOAD`, `ACL SAVE`, `ACL LIST`, `ACL USERS`, `ACL GETUSER`, `ACL SETUSER`, `ACL DELUSER`, `ACL CAT`, `ACL LOG`,
-    `ACL HELP`, `ACL WHOAMI`, `ACL GENPASS`, `ACL AUTH`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`,
-    `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`
+    - `ACL LOAD`, `ACL SAVE`, `ACL LIST`, `ACL USERS`, `ACL GETUSER`, `ACL SETUSER`, `ACL DELUSER`, `ACL CAT`,
+      `ACL LOG`, `ACL HELP`, `ACL WHOAMI`, `ACL GENPASS`, `ACL AUTH`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`,
+      `ACL LOG_HELP`, `ACL LOG_RESET`, `ACL LOG_COUNT`, `ACL LOG_GET`, `ACL LOG_HELP`
 - Add support disable_decoding in async read_response #349
 - Implement support for `SADDEX`, using a new set implementation with support for expiring members #350
 

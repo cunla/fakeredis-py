@@ -92,9 +92,9 @@ class ZSet:
     def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool = False) -> Any:
         return self._byscore.irange(start, stop, reverse=reverse)
 
-    def rank(self, member: bytes) -> int:
+    def rank(self, member: bytes) -> Tuple[int, float]:
         ind: int = self._byscore.index((self._bylex[member], member))
-        return ind
+        return ind, self._byscore[ind][0]
 
     def items(self) -> ItemsView[bytes, Any]:
         return self._bylex.items()

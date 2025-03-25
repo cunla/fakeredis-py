@@ -363,7 +363,7 @@ class Signature:
         self.command_args = args
         self.server_types: Set[str] = set(server_types)
 
-    def check_arity(self, args: Sequence[Any], version: Tuple[int]) -> None:
+    def check_arity(self, args: Sequence[Any], version: Tuple[int, ...]) -> None:
         if len(args) == len(self.fixed):
             return
         delta = len(args) - len(self.fixed)
@@ -375,7 +375,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-        self, args: Sequence[Any], db: Database, version: Tuple[int]
+        self, args: Sequence[Any], db: Database, version: Tuple[int, ...]
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
@@ -393,7 +393,7 @@ class Signature:
             if isinstance(type_, Key):
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
                     return (type_.missing_return,)
-            elif type_ != bytes:
+            elif type_ is not bytes:
                 args_list[i] = type_.decode(
                     args_list[i],
                 )

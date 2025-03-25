@@ -45,10 +45,10 @@ class Selector:
 
 
 class UserAccessControlList:
-    def __init__(self):
+    def __init__(self, enabled: bool = True, nopass: bool = False):
         self._passwords: Set[bytes] = set()
-        self.enabled: bool = True
-        self._nopass: bool = False
+        self.enabled: bool = enabled
+        self._nopass: bool = nopass
         self._key_patterns: Set[bytes] = set()
         self._channel_patterns: Set[bytes] = set()
         self._commands: Dict[bytes, bool] = {b"@all": False}
@@ -114,9 +114,10 @@ class UserAccessControlList:
         self._passwords.clear()
 
     def check_password(self, password: Optional[bytes]) -> bool:
+        password_provided = password is not None and password != b""
         if self._nopass:
-            return True
-        if not password:
+            return not password_provided
+        elif not password_provided:
             return False
         password_hex = hashlib.sha256(password).hexdigest().encode()
         return password_hex in self._passwords and self.enabled
@@ -291,7 +292,11 @@ class AclLogRecord:
 class AccessControlList:
 
     def __init__(self):
-        self._user_acl: Dict[bytes, UserAccessControlList] = dict()
+        default_user_acl = UserAccessControlList(nopass=True)
+        default_user_acl.add_key_pattern(b"*")
+        default_user_acl.add_channel_pattern(b"*")
+        default_user_acl.add_command_or_category(b"+@all")
+        self._user_acl: Dict[bytes, UserAccessControlList] = {b"default": default_user_acl}
         self._log: List[AclLogRecord] = list()
 
     def get_users(self) -> List[bytes]:
@@ -346,6 +351,9 @@ class AccessControlList:
 
     def validate_command(self, username: bytes, client_info: bytes, fields: List[bytes]):
         if username not in self._user_acl:
+            return
+        if fields and fields[0].lower() == b"auth":
+            # auth command is always allowed
             return
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
