@@ -251,14 +251,14 @@ class HashCommandsMixin:
             res.append(hash_val.pop(field))
         return res
 
-    @command(name="hgetex", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hgetex(self, key: CommandItem, *args: bytes) -> Any:
         (ex, px, exat, pxat, persist), left_args = extract_args(
             args, ("+ex", "+px", "+exat", "+pxat", "persist"), left_from_first_unexpected=True,
             error_on_unexpected=False
         )
         if (ex is not None, px is not None, exat is not None, pxat is not None, persist).count(True) > 1:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(b"HGETEX"))
+            raise SimpleError("Only one of EX, PX, EXAT, PXAT or PERSIST arguments can be specified")
         fields = _get_fields(left_args)
         hash_val: Hash = key.value
 
@@ -272,12 +272,43 @@ class HashCommandsMixin:
                 hash_val.set_key_expireat(field, when_ms)
         return res
 
+    @command(name="HSETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    def hsetex(self, key: CommandItem, *args: bytes) -> Any:
+        (ex, px, exat, pxat, keepttl, fnx, fxx), left_args = extract_args(
+            args, ("+ex", "+px", "+exat", "+pxat", "keepttl", "fnx", "fxx"), left_from_first_unexpected=True,
+            error_on_unexpected=False
+        )
+        if (ex is not None, px is not None, exat is not None, pxat is not None, keepttl).count(True) > 1:
+            raise SimpleError("Only one of EX, PX, EXAT, PXAT or KEEPTTL arguments can be specified")
+        if (fnx, fxx).count(True) > 1:
+            raise SimpleError("Only one of FNX or FXX arguments can be specified")
+        field_vals = _get_fields(left_args, with_values=True)
+        hash_val: Hash = key.value
+        when_ms = _get_when_ms(ex, px, exat, pxat)
 
-def _get_fields(args: Sequence[bytes]) -> Sequence[bytes]:
+        field_keys = set(field_vals[::2])
+        if fxx and len(field_keys - hash_val.getall().keys()) > 0:
+            return 0
+        if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
+            return 0
+        res = 0
+        for i in range(0, len(field_vals), 2):
+            field, value = field_vals[i], field_vals[i + 1]
+            hash_val[field] = value
+            res = 1
+            if not keepttl and when_ms is not None:
+                hash_val.set_key_expireat(field, when_ms)
+        key.updated()
+        return res
+
+
+def _get_fields(args: Sequence[bytes], with_values: bool = False) -> Sequence[bytes]:
     if len(args) < 3 or not casematch(args[0], b"fields"):
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
     num_fields = Int.decode(args[1])
-    if num_fields != len(args) - 2:
+    if not with_values and num_fields != len(args) - 2:
+        raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+    if with_values and num_fields * 2 != len(args) - 2:
         raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
     fields = args[2:]
     return fields
