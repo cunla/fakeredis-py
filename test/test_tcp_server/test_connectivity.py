@@ -17,7 +17,7 @@ def test_tcp_server_started():
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
     time.sleep(0.1)
-    r = redis.Redis(host=server_address[0], port=server_address[1])
-    r.set("foo", "bar")
-    assert r.get("foo") == b"bar"
+    with redis.Redis(host=server_address[0], port=server_address[1]) as r:
+        r.set("foo", "bar")
+        assert r.get("foo") == b"bar"
     server.shutdown()

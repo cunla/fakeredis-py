@@ -110,7 +110,7 @@ class CMSCommandsMixin:
             raise SimpleError("CMS: key does not exist")
 
         if num_keys < 1:
-            raise SimpleError("CMS: wrong number of keys")
+            raise SimpleError("CMS: Number of keys must be positive")
         weights = [
             1,
         ]

@@ -1,6 +1,7 @@
 import importlib.util
 import itertools
 from typing import Any
+from datetime import datetime
 
 import pytest
 import redis
@@ -74,3 +75,8 @@ run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only 
 fake_only = pytest.mark.parametrize(
     "create_connection", [pytest.param("FakeStrictRedis2", marks=pytest.mark.fake)], indirect=True
 )
+
+def redis_server_time(r: redis.Redis)->datetime:
+    seconds, milliseconds = r.time()
+    timestamp = float(f"{seconds}.{milliseconds}")
+    return datetime.fromtimestamp(timestamp)

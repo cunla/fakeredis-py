@@ -21,7 +21,7 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "httl",
 }
 
-
+@pytest.mark.max_server("7.5")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     categories = get_categories()
     # categories = [cat.decode() for cat in categories]
@@ -70,6 +70,13 @@ def test_auth(r: redis.Redis):
 
     with pytest.raises(redis.AuthenticationError):
         r.auth(username=username, password="wrong_password")
+
+    # test that user can log in even if the default user is disabled
+    r.acl_setuser(default_username, enabled=False)
+    assert r.auth(username=username, password="strong_password") is True
+
+    r.acl_setuser(default_username, enabled=True)
+    r.auth("", "default")
 
 
 def test_acl_list(r: redis.Redis):

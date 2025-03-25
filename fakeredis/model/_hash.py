@@ -62,6 +62,7 @@ class Hash:
         return iter(self._values)
 
     def get(self, key: bytes, default: Any = None) -> Any:
+        self._expire_keys()
         return self._values.get(key, default)
 
     def keys(self) -> Iterable[bytes]:
@@ -83,3 +84,7 @@ class Hash:
         self._expire_keys()
         res = self._values.copy()
         return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
+
+    def pop(self, key: bytes, d: Any = None) -> Any:
+        self._expire_keys()
+        return self._values.pop(key, d)

@@ -70,7 +70,7 @@ def test_cms_merge(r: redis.Redis):
     with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
         r.cms().merge("noexist", 1, ["cms2"])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: wrong number of keys"):
+    with pytest.raises(redis.exceptions.ResponseError, match="CMS: Number of keys must be positive"):
         r.cms().merge("cms2", 0, ["cmsDim"])
 
     with pytest.raises(redis.exceptions.ResponseError, match="wrong number of arguments for '.*' command"):
