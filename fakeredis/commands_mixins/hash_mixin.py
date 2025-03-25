@@ -256,3 +256,17 @@ class HashCommandsMixin:
         curr_expireat_ms = self._get_expireat(b"HEXPIRETIME", key, *args)
         curr_time_ms = current_time()
         return [(i - curr_time_ms) if i > 0 else i for i in curr_expireat_ms]
+
+    @command(name="HGETDEL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
+    def hgetdel(self, key: CommandItem, *args: bytes) -> List[Any]:
+        if len(args) < 3 or not casematch(args[0], b"fields"):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+        num_fields = Int.decode(args[1])
+        if num_fields != len(args) - 2:
+            raise SimpleError(msgs.HEXPIRE_NUMFIELDS_DIFFERENT)
+        hash_val: Hash = key.value
+        fields = args[2:]
+        res = list()
+        for field in fields:
+            res.append(hash_val.pop(field))
+        return res

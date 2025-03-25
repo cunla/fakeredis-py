@@ -359,6 +359,8 @@ class AccessControlList:
         if not user_acl.enabled:
             raise SimpleError("User disabled")
         command_info = UserAccessControlList._get_command_info(fields)
+        if command_info is None:
+            return
         if not user_acl.command_allowed(command_info, fields):
             self.add_log_record(b"command", b"toplevel", fields[0], username, client_info)
             raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), fields[0].lower().decode()))

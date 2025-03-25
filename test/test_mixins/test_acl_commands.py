@@ -20,11 +20,11 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "httl",
 }
 
-
+@pytest.mark.max_server("7.5")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     categories = get_categories()
     categories = [cat.decode() for cat in categories]
-    assert set(r.acl_cat()) == set(categories)
+    assert set(categories) == set(r.acl_cat())
     for cat in categories:
         commands = get_commands_by_category(cat)
         commands = {cmd.decode() for cmd in commands}
