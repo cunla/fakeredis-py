@@ -62,6 +62,7 @@ class Hash:
         return iter(self._values)
 
     def get(self, key: bytes, default: Any = None) -> Any:
+        self._expire_keys()
         return self._values.get(key, default)
 
     def keys(self) -> Iterable[bytes]:
@@ -82,3 +83,7 @@ class Hash:
     def getall(self) -> Dict[bytes, Any]:
         self._expire_keys()
         return self._values.copy()
+
+    def pop(self, key: bytes, d: Any = None) -> Any:
+        self._expire_keys()
+        return self._values.pop(key, d)

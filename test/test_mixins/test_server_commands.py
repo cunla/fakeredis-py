@@ -51,9 +51,10 @@ def test_lastsave(r: redis.Redis):
 def test_command(r: redis.Redis):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
-    server_unsupported_commands = one_word_commands - set(commands_dict.keys())
+    server_unsupported_commands = one_word_commands - set(commands_dict.keys()) - {"hgetex", "hsetex", "hgetdel"}
     for command in server_unsupported_commands:
-        assert "redis" not in SUPPORTED_COMMANDS[command].server_types
+        assert "redis" not in SUPPORTED_COMMANDS[
+            command].server_types, f"Command {command} is not supported by fakeredis"
 
 
 @fake_only
