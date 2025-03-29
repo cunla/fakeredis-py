@@ -10,6 +10,7 @@ import redis.client
 from packaging.version import Version
 
 from test import testtools
+from test.testtools import resp_conversion
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -27,8 +28,9 @@ def test_zpopmin(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmin("foo", count=2) == [(b"one", 1.0), (b"two", 2.0)]
-    assert r.zpopmin("foo", count=2) == [(b"three", 3.0)]
+    assert (r.zpopmin("foo", count=2) ==
+            resp_conversion(r, [[b'one', 1.0], [b'two', 2.0]], [(b"one", 1.0), (b"two", 2.0)]))
+    assert r.zpopmin("foo", count=2) == resp_conversion(r, [[b"three", 3.0]], [(b"three", 3.0)])
 
 
 def test_zpopmin_too_many(r: redis.Redis):
@@ -186,7 +188,9 @@ def test_zrange_descending_with_scores(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zrange("foo", 0, -1, desc=True, withscores=True) == [(b"three", 3), (b"two", 2), (b"one", 1)]
+    assert (r.zrange("foo", 0, -1, desc=True, withscores=True) ==
+            resp_conversion(r, [[b'three', 3.0], [b'two', 2.0], [b'one', 1.0]],
+                            [(b"three", 3), (b"two", 2), (b"one", 1)]))
 
 
 def test_zrange_with_positive_indices(r: redis.Redis):
@@ -854,7 +858,10 @@ def test_zunionstore_min(r: redis.Redis):
     r.zadd("bar", {"two": 0})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="MIN")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 0), (b"two", 0), (b"three", 3)]
+    assert (r.zrange("baz", 0, -1, withscores=True) ==
+            resp_conversion(r, [[b'one', 0.0], [b'two', 0.0], [b'three', 3.0]],
+                            [(b"one", 0), (b"two", 0), (b"three", 3)])
+            )
 
 
 def test_zunionstore_weights(r: redis.Redis):
@@ -864,7 +871,10 @@ def test_zunionstore_weights(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"four": 4})
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 3), (b"two", 6), (b"four", 8)]
+    assert (r.zrange("baz", 0, -1, withscores=True) ==
+            resp_conversion(r, [[b'one', 3.0], [b'two', 6.0], [b'four', 8.0]],
+                            [(b"one", 3), (b"two", 6), (b"four", 8)])
+            )
 
 
 def test_zunionstore_nan_to_zero(r: redis.Redis):

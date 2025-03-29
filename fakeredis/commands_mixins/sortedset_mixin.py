@@ -107,8 +107,8 @@ class SortedSetCommandsMixin:
         if withscores:
             out = []
             for item in items:
-                out.append(item[1])
-                out.append(self._encodefloat(item[0], False))
+                out.append([item[1], item[0]])
+                # out.append(self._encodefloat(item[0], False))
         else:
             out = [item[1] for item in items]
         return out
@@ -163,10 +163,12 @@ class SortedSetCommandsMixin:
             update = update or (count == 1 and nx and item_name not in zset)
             update = update or (count == 1 and xx and item_name in zset)
             update = update or (
-                gt and ((item_name in zset and zset.get(item_name) < item_score) or (not xx and item_name not in zset))
+                    gt and (
+                    (item_name in zset and zset.get(item_name) < item_score) or (not xx and item_name not in zset))
             )
             update = update or (
-                lt and ((item_name in zset and zset.get(item_name) > item_score) or (not xx and item_name not in zset))
+                    lt and (
+                    (item_name in zset and zset.get(item_name) > item_score) or (not xx and item_name not in zset))
             )
 
             if update:
@@ -216,7 +218,7 @@ class SortedSetCommandsMixin:
         return items
 
     def _zrange(
-        self, key: CommandItem, start: ScoreTest, stop: ScoreTest, reverse: bool, withscores: bool, byscore: bool
+            self, key: CommandItem, start: ScoreTest, stop: ScoreTest, reverse: bool, withscores: bool, byscore: bool
     ) -> List[bytes]:
         zset = key.value
         if byscore:
@@ -421,7 +423,7 @@ class SortedSetCommandsMixin:
         while i < len(args):
             arg = args[i]
             if casematch(arg, b"weights") and i + numkeys < len(args):
-                weights = [Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG) for x in args[i + 1 : i + numkeys + 1]]
+                weights = [Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG) for x in args[i + 1: i + numkeys + 1]]
                 i += numkeys + 1
             elif casematch(arg, b"aggregate") and i + 1 < len(args):
                 aggregate = null_terminate(args[i + 1])
@@ -497,8 +499,8 @@ class SortedSetCommandsMixin:
 
     @command(
         (
-            Int,
-            bytes,
+                Int,
+                bytes,
         ),
         (bytes,),
     )
@@ -515,8 +517,8 @@ class SortedSetCommandsMixin:
 
     @command(
         (
-            Int,
-            bytes,
+                Int,
+                bytes,
         ),
         (bytes,),
     )
@@ -533,8 +535,8 @@ class SortedSetCommandsMixin:
 
     @command(
         (
-            Int,
-            bytes,
+                Int,
+                bytes,
         ),
         (bytes,),
     )
@@ -552,8 +554,8 @@ class SortedSetCommandsMixin:
     @command(
         name="ZINTERCARD",
         fixed=(
-            Int,
-            bytes,
+                Int,
+                bytes,
         ),
         repeat=(bytes,),
     )
@@ -631,8 +633,8 @@ class SortedSetCommandsMixin:
 
     @command(
         fixed=(
-            Timeout,
-            Int,
+                Timeout,
+                Int,
         ),
         repeat=(bytes,),
     )

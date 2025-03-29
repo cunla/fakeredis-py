@@ -22,7 +22,8 @@ def _convert_to_resp2(val: Any) -> Any:
     if isinstance(val, float):
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, (list, tuple, set)):
-        return [_convert_to_resp2(item) for item in val]
+        result = list(itertools.chain(*val))
+        return [_convert_to_resp2(item) for item in result]
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
         return [_convert_to_resp2(item) for item in result]
@@ -76,7 +77,8 @@ fake_only = pytest.mark.parametrize(
     "create_connection", [pytest.param("FakeStrictRedis2", marks=pytest.mark.fake)], indirect=True
 )
 
-def redis_server_time(r: redis.Redis)->datetime:
+
+def redis_server_time(r: redis.Redis) -> datetime:
     seconds, milliseconds = r.time()
     timestamp = float(f"{seconds}.{milliseconds}")
     return datetime.fromtimestamp(timestamp)

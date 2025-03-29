@@ -21,6 +21,10 @@ toc_depth: 2
 - [ACL] Always allow `AUTH` command @wakonig (#362)
 - [ACL] Provide `default` account acl on startup @wakonig (#362)
 
+### 🧰 Maintenance
+
+- Refactor hypothesis tests (#366)
+
 ## v2.27.0
 
 ### 🚀 Features
