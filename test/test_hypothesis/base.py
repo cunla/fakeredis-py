@@ -307,6 +307,7 @@ class BaseTest:
     command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
     command_strategy_redis7 = st.nothing()
+    command_strategy_dragonfly = st.nothing()
 
     @pytest.mark.slow
     def test(self):
