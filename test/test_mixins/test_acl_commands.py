@@ -1,10 +1,11 @@
+from typing import Tuple, Union
+
 import pytest
 import redis
 from redis import exceptions
 
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
-from test.conftest import ServerDetails
 
 pytestmark = []
 pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
@@ -20,8 +21,9 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "httl",
 }
 
+
 @pytest.mark.max_server("7.5")
-def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
+def test_acl_cat(r: redis.Redis, real_server_details: Tuple[str, Union[None, Tuple[int, ...]]]):
     categories = get_categories()
     categories = [cat.decode() for cat in categories]
     assert set(categories) == set(r.acl_cat())

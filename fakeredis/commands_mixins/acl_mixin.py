@@ -86,7 +86,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="AUTH", fixed=(), repeat=(bytes,))
-    def auth(self, *args: bytes) -> bytes:
+    def _auth(self, *args: bytes) -> bytes:
         if not 1 <= len(args) <= 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
         username = None if len(args) == 1 else args[0]

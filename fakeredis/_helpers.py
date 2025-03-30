@@ -16,6 +16,9 @@ class SimpleString:
     def decode(cls, value: bytes) -> bytes:
         return value
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value!r})"
+
 
 class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""

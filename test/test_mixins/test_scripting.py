@@ -442,9 +442,9 @@ def test_eval_flushdb(r: redis.Redis):
     assert val == 1
 
 
-def test_eval_flushall(r, create_redis):
-    r1 = create_redis(db=2)
-    r2 = create_redis(db=3)
+def test_eval_flushall(r, create_connection):
+    r1 = create_connection(db=2)
+    r2 = create_connection(db=3)
 
     r1["r1"] = "r1"
     r2["r2"] = "r2"

@@ -44,10 +44,11 @@ _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
 
 fake_only = pytest.mark.parametrize(
-    "create_redis", [pytest.param("FakeStrictRedis", marks=pytest.mark.fake)], indirect=True
+    "create_connection", [pytest.param("FakeStrictRedis", marks=pytest.mark.fake)], indirect=True
 )
 
-def redis_server_time(r: redis.Redis)->datetime:
+
+def redis_server_time(r: redis.Redis) -> datetime:
     seconds, milliseconds = r.time()
     timestamp = float(f"{seconds}.{milliseconds}")
     return datetime.fromtimestamp(timestamp)
