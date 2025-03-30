@@ -36,6 +36,7 @@ def test_time(r, mocker):
     assert r.time() == (1234567891, 0)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.min_server("7")
 def test_hello(r: redis.Redis):
     client_info = r.client_info()
@@ -50,6 +51,7 @@ def test_hello(r: redis.Redis):
     }
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.min_server("7")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: redis.Redis):
@@ -62,6 +64,7 @@ def test_client_info(r: redis.Redis):
     assert client_info["lib-ver"] == "1.0.0"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_client_id(r: redis.Redis):
     client_id = r.client_id()
     client_info = r.client_info()
@@ -453,7 +456,6 @@ class TestFakeStrictRedisConnectionErrors:
 
     def test_transaction(self, r):
         with pytest.raises(redis.ConnectionError):
-
             def func(a):
                 return a * a
 
