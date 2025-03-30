@@ -104,11 +104,11 @@ Returns all values in a hash.
 ## Unsupported hash commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
-#### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
+#### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
 
 For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
 
-#### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
+#### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
 
 For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
 
