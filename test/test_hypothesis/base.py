@@ -2,7 +2,7 @@ import functools
 import math
 import operator
 import sys
-from typing import Any, Tuple, Union
+from typing import Any
 
 import hypothesis
 import hypothesis.stateful
@@ -13,7 +13,7 @@ from hypothesis.stateful import rule, initialize, precondition
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from fakeredis._server import _create_version
+from ._server_info import redis_ver, server_type
 
 self_strategy = st.runner()
 
@@ -27,32 +27,17 @@ def sample_attr(draw, name):
     return values[position]
 
 
-def server_info() -> Tuple[str, Union[None, Tuple[int, ...]]]:
-    """Returns server's version or None if server is not running"""
-    client = None
-    try:
-        client = redis.Redis("localhost", port=6390, db=2)
-        client_info = client.info()
-        server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
-        server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
-        server_version = _create_version(server_version) or (7,)
-        return server_type, server_version
-    except redis.ConnectionError as e:
-        print(e)
-        pytest.exit("Redis is not running")
-        return "redis", (6,)
-    finally:
-        if hasattr(client, "close"):
-            client.close()  # Absent in older versions of redis-py
-
-
-server_type, redis_ver = server_info()
-
 keys = sample_attr("keys")
 fields = sample_attr("fields")
 values = sample_attr("values")
 scores = sample_attr("scores")
 
+if server_type == "dragonfly":
+    MIN_INT, MAX_INT = -2_147_483_648, 2_147_483_647
+else:
+    MIN_INT, MAX_INT = None, None
+
+ints = st.integers(min_value=MIN_INT, max_value=MAX_INT)
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), st.floats(width=32))
 counts = st.integers(min_value=-3, max_value=3) | st.integers()
@@ -194,18 +179,18 @@ def commands(*args, **kwargs):
 
 # # TODO: all expiry-related commands
 common_commands = (
-    commands(st.sampled_from(["del", "persist", "type", "unlink"]), keys)
-    | commands(st.just("exists"), st.lists(keys))
-    | commands(st.just("keys"), st.just("*"))
-    # Disabled for now due to redis giving wrong answers
-    # (https://github.com/antirez/redis/issues/5632)
-    # | commands(st.just('keys'), patterns)
-    | commands(st.just("move"), keys, dbnums)
-    | commands(st.sampled_from(["rename", "renamenx"]), keys, keys)
-    # TODO: find a better solution to sort instability than throwing
-    #  away the sort entirely with normalize. This also prevents us
-    #  using LIMIT.
-    | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
+        commands(st.sampled_from(["del", "persist", "type", "unlink"]), keys)
+        | commands(st.just("exists"), st.lists(keys))
+        | commands(st.just("keys"), st.just("*"))
+        # Disabled for now due to redis giving wrong answers
+        # (https://github.com/antirez/redis/issues/5632)
+        # | commands(st.just('keys'), patterns)
+        | commands(st.just("move"), keys, dbnums)
+        | commands(st.sampled_from(["rename", "renamenx"]), keys, keys)
+        # TODO: find a better solution to sort instability than throwing
+        #  away the sort entirely with normalize. This also prevents us
+        #  using LIMIT.
+        | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
 )
 
 attrs = st.fixed_dictionaries(
@@ -284,7 +269,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             self.transaction_normalize = []
         else:
             assert fake_result == real_result or (
-                type(fake_result) is float and fake_result == pytest.approx(real_result)
+                    type(fake_result) is float and fake_result == pytest.approx(real_result)
             ), "Discrepancy when running command {}, fake({}) != real({})".format(command, fake_result, real_result)
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
@@ -327,10 +312,14 @@ class BaseTest:
     def test(self):
         class Machine(CommonMachine):
             create_command_strategy = self.create_command_strategy
-            command_strategy = (
-                self.command_strategy | self.command_strategy_redis7 if redis_ver >= (7,) else self.command_strategy
-            )
+            command_strategy = self.command_strategy
+            if server_type == "dragonfly":
+                # Dragonfly has a different set of commands.
+                command_strategy = self.command_strategy | self.command_strategy_dragonfly
+            if server_type == "redis" and redis_ver >= (7,):
+                # Redis 7.0+ has a new command set that is not compatible with the old one.
+                self.command_strategy = self.command_strategy | self.command_strategy_redis7
 
-        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        hypothesis.settings.register_profile("debug", verbosity=hypothesis.Verbosity.debug)
         hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)
