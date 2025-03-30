@@ -74,7 +74,7 @@ class ZSet:
         return self._byscore.islice(start, stop, reverse)
 
     def irange_lex(
-        self, start: bytes, stop: bytes, inclusive: Tuple[bool, bool] = (True, True), reverse: bool = False
+            self, start: bytes, stop: bytes, inclusive: Tuple[bool, bool] = (True, True), reverse: bool = False
     ) -> Any:
         if not self._byscore:
             return iter([])

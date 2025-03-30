@@ -2,9 +2,57 @@
 ## Unsupported cluster commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
 
+#### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
+
+Signals that a cluster client is following an -ASK redirect.
+
+#### [CLUSTER](https://redis.io/commands/cluster/) <small>(not implemented)</small>
+
+A container for Redis Cluster commands.
+
 #### [CLUSTER ADDSLOTS](https://redis.io/commands/cluster-addslots/) <small>(not implemented)</small>
 
 Assigns new hash slots to a node.
+
+#### [CLUSTER ADDSLOTSRANGE](https://redis.io/commands/cluster-addslotsrange/) <small>(not implemented)</small>
+
+Assigns new hash slot ranges to a node.
+
+#### [CLUSTER BUMPEPOCH](https://redis.io/commands/cluster-bumpepoch/) <small>(not implemented)</small>
+
+Advances the cluster config epoch.
+
+#### [CLUSTER COUNT-FAILURE-REPORTS](https://redis.io/commands/cluster-count-failure-reports/) <small>(not implemented)</small>
+
+Returns the number of active failure reports active for a node.
+
+#### [CLUSTER COUNTKEYSINSLOT](https://redis.io/commands/cluster-countkeysinslot/) <small>(not implemented)</small>
+
+Returns the number of keys in a hash slot.
+
+#### [CLUSTER DELSLOTS](https://redis.io/commands/cluster-delslots/) <small>(not implemented)</small>
+
+Sets hash slots as unbound for a node.
+
+#### [CLUSTER DELSLOTSRANGE](https://redis.io/commands/cluster-delslotsrange/) <small>(not implemented)</small>
+
+Sets hash slot ranges as unbound for a node.
+
+#### [CLUSTER FAILOVER](https://redis.io/commands/cluster-failover/) <small>(not implemented)</small>
+
+Forces a replica to perform a manual failover of its master.
+
+#### [CLUSTER FLUSHSLOTS](https://redis.io/commands/cluster-flushslots/) <small>(not implemented)</small>
+
+Deletes all slots information from a node.
+
+#### [CLUSTER FORGET](https://redis.io/commands/cluster-forget/) <small>(not implemented)</small>
+
+Removes a node from the nodes table.
+
+#### [CLUSTER GETKEYSINSLOT](https://redis.io/commands/cluster-getkeysinslot/) <small>(not implemented)</small>
+
+Returns the key names in a hash slot.
 
 #### [CLUSTER HELP](https://redis.io/commands/cluster-help/) <small>(not implemented)</small>
 
@@ -18,17 +66,33 @@ Returns information about the state of a node.
 
 Returns the hash slot for a key.
 
-#### [CLUSTER BUMPEPOCH](https://redis.io/commands/cluster-bumpepoch/) <small>(not implemented)</small>
+#### [CLUSTER LINKS](https://redis.io/commands/cluster-links/) <small>(not implemented)</small>
 
-Advances the cluster config epoch.
+Returns a list of all TCP links to and from peer nodes.
 
-#### [CLUSTER GETKEYSINSLOT](https://redis.io/commands/cluster-getkeysinslot/) <small>(not implemented)</small>
+#### [CLUSTER MEET](https://redis.io/commands/cluster-meet/) <small>(not implemented)</small>
 
-Returns the key names in a hash slot.
+Forces a node to handshake with another node.
 
-#### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
+#### [CLUSTER MYID](https://redis.io/commands/cluster-myid/) <small>(not implemented)</small>
 
-Signals that a cluster client is following an -ASK redirect.
+Returns the ID of a node.
+
+#### [CLUSTER MYSHARDID](https://redis.io/commands/cluster-myshardid/) <small>(not implemented)</small>
+
+Returns the shard ID of a node.
+
+#### [CLUSTER NODES](https://redis.io/commands/cluster-nodes/) <small>(not implemented)</small>
+
+Returns the cluster configuration for a node.
+
+#### [CLUSTER REPLICAS](https://redis.io/commands/cluster-replicas/) <small>(not implemented)</small>
+
+Lists the replica nodes of a master node.
+
+#### [CLUSTER REPLICATE](https://redis.io/commands/cluster-replicate/) <small>(not implemented)</small>
+
+Configure a node as replica of a master node.
 
 #### [CLUSTER RESET](https://redis.io/commands/cluster-reset/) <small>(not implemented)</small>
 
@@ -38,96 +102,32 @@ Resets a node.
 
 Forces a node to save the cluster configuration to disk.
 
-#### [CLUSTER REPLICATE](https://redis.io/commands/cluster-replicate/) <small>(not implemented)</small>
+#### [CLUSTER SET-CONFIG-EPOCH](https://redis.io/commands/cluster-set-config-epoch/) <small>(not implemented)</small>
 
-Configure a node as replica of a master node.
-
-#### [CLUSTER COUNTKEYSINSLOT](https://redis.io/commands/cluster-countkeysinslot/) <small>(not implemented)</small>
-
-Returns the number of keys in a hash slot.
+Sets the configuration epoch for a new node.
 
 #### [CLUSTER SETSLOT](https://redis.io/commands/cluster-setslot/) <small>(not implemented)</small>
 
 Binds a hash slot to a node.
 
-#### [CLUSTER NODES](https://redis.io/commands/cluster-nodes/) <small>(not implemented)</small>
-
-Returns the cluster configuration for a node.
-
-#### [CLUSTER FAILOVER](https://redis.io/commands/cluster-failover/) <small>(not implemented)</small>
-
-Forces a replica to perform a manual failover of its master.
-
-#### [CLUSTER LINKS](https://redis.io/commands/cluster-links/) <small>(not implemented)</small>
-
-Returns a list of all TCP links to and from peer nodes.
-
-#### [CLUSTER SET-CONFIG-EPOCH](https://redis.io/commands/cluster-set-config-epoch/) <small>(not implemented)</small>
-
-Sets the configuration epoch for a new node.
-
-#### [CLUSTER DELSLOTSRANGE](https://redis.io/commands/cluster-delslotsrange/) <small>(not implemented)</small>
-
-Sets hash slot ranges as unbound for a node.
-
-#### [CLUSTER SLOTS](https://redis.io/commands/cluster-slots/) <small>(not implemented)</small>
-
-Returns the mapping of cluster slots to nodes.
-
-#### [CLUSTER COUNT-FAILURE-REPORTS](https://redis.io/commands/cluster-count-failure-reports/) <small>(not implemented)</small>
-
-Returns the number of active failure reports active for a node.
-
 #### [CLUSTER SHARDS](https://redis.io/commands/cluster-shards/) <small>(not implemented)</small>
 
 Returns the mapping of cluster slots to shards.
-
-#### [CLUSTER DELSLOTS](https://redis.io/commands/cluster-delslots/) <small>(not implemented)</small>
-
-Sets hash slots as unbound for a node.
-
-#### [CLUSTER FLUSHSLOTS](https://redis.io/commands/cluster-flushslots/) <small>(not implemented)</small>
-
-Deletes all slots information from a node.
-
-#### [CLUSTER MYSHARDID](https://redis.io/commands/cluster-myshardid/) <small>(not implemented)</small>
-
-Returns the shard ID of a node.
-
-#### [READONLY](https://redis.io/commands/readonly/) <small>(not implemented)</small>
-
-Enables read-only queries for a connection to a Redis Cluster replica node.
-
-#### [CLUSTER REPLICAS](https://redis.io/commands/cluster-replicas/) <small>(not implemented)</small>
-
-Lists the replica nodes of a master node.
-
-#### [READWRITE](https://redis.io/commands/readwrite/) <small>(not implemented)</small>
-
-Enables read-write queries for a connection to a Reids Cluster replica node.
-
-#### [CLUSTER ADDSLOTSRANGE](https://redis.io/commands/cluster-addslotsrange/) <small>(not implemented)</small>
-
-Assigns new hash slot ranges to a node.
 
 #### [CLUSTER SLAVES](https://redis.io/commands/cluster-slaves/) <small>(not implemented)</small>
 
 Lists the replica nodes of a master node.
 
-#### [CLUSTER FORGET](https://redis.io/commands/cluster-forget/) <small>(not implemented)</small>
+#### [CLUSTER SLOTS](https://redis.io/commands/cluster-slots/) <small>(not implemented)</small>
 
-Removes a node from the nodes table.
+Returns the mapping of cluster slots to nodes.
 
-#### [CLUSTER MEET](https://redis.io/commands/cluster-meet/) <small>(not implemented)</small>
+#### [READONLY](https://redis.io/commands/readonly/) <small>(not implemented)</small>
 
-Forces a node to handshake with another node.
+Enables read-only queries for a connection to a Redis Cluster replica node.
 
-#### [CLUSTER](https://redis.io/commands/cluster/) <small>(not implemented)</small>
+#### [READWRITE](https://redis.io/commands/readwrite/) <small>(not implemented)</small>
 
-A container for Redis Cluster commands.
-
-#### [CLUSTER MYID](https://redis.io/commands/cluster-myid/) <small>(not implemented)</small>
-
-Returns the ID of a node.
+Enables read-write queries for a connection to a Reids Cluster replica node.
 
 
