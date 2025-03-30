@@ -20,6 +20,10 @@ Returns the longitude and latitude of members from a geospatial index.
 
 Queries a geospatial index for members within a distance from a coordinate, optionally stores the result.
 
+## [GEORADIUS_RO](https://redis.io/commands/georadius_ro/)
+
+Returns members from a geospatial index that are within a distance from a coordinate.
+
 ## [GEORADIUSBYMEMBER](https://redis.io/commands/georadiusbymember/)
 
 Queries a geospatial index for members within a distance from a member, optionally stores the result.
@@ -27,10 +31,6 @@ Queries a geospatial index for members within a distance from a member, optional
 ## [GEORADIUSBYMEMBER_RO](https://redis.io/commands/georadiusbymember_ro/)
 
 Returns members from a geospatial index that are within a distance from a member.
-
-## [GEORADIUS_RO](https://redis.io/commands/georadius_ro/)
-
-Returns members from a geospatial index that are within a distance from a coordinate.
 
 ## [GEOSEARCH](https://redis.io/commands/geosearch/)
 
