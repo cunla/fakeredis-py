@@ -116,10 +116,10 @@ def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_comma
     for group in groups:
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
         with open(filename, "w") as f:
-            implemented_in_group = list(filter(lambda cmd: cmd in fakeredis_commands, groups[group]))
-            unimplemented_in_group = list(
-                filter(lambda cmd: cmd not in fakeredis_commands and cmd.upper() not in IGNORE_COMMANDS, groups[group])
-            )
+            implemented_in_group = set(groups[group]).intersection(fakeredis_commands)
+            implemented_in_group = sorted(implemented_in_group)
+            unimplemented_in_group = set(groups[group]) - fakeredis_commands
+            unimplemented_in_group = {cmd for cmd in unimplemented_in_group if cmd.upper() not in IGNORE_COMMANDS}
             if len(implemented_in_group) > 0:
                 f.write(
                     f"# {stack} `{group}` commands "
