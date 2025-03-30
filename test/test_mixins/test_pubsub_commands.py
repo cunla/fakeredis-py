@@ -11,6 +11,7 @@ from redis.client import PubSub
 
 import fakeredis
 from .. import testtools
+from ..testtools import resp_conversion
 
 
 def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> Optional[Dict[str, Any]]:
@@ -39,7 +40,7 @@ def test_ping_pubsub(r: redis.Redis):
     p.subscribe("channel")
     p.parse_response()  # Consume the subscribe command reply
     p.ping()
-    assert p.parse_response() == [b"pong", b""]
+    assert p.parse_response() == resp_conversion(r, b"PONG", [b"pong", b""])
     p.ping("test")
     assert p.parse_response() == [b"pong", b"test"]
 

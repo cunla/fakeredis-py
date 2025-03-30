@@ -6,12 +6,12 @@ import redis
 from redis.exceptions import ResponseError
 
 from fakeredis._commands import SUPPORTED_COMMANDS
-from test.testtools import fake_only
+from test import testtools
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_swapdb(r, create_connection):
-    r1 = create_connection(3)
+    r1 = create_connection(db=3)
     r.set("foo", "abc")
     r.set("bar", "xyz")
     r1.set("foo", "foo")
@@ -47,17 +47,18 @@ def test_lastsave(r: redis.Redis):
     assert isinstance(r.lastsave(), datetime)
 
 
-@fake_only
+@testtools.fake_only
 def test_command(r: redis.Redis):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
-    server_unsupported_commands = one_word_commands - set(commands_dict.keys()) - {"hgetex", "hsetex", "hgetdel"}
+    server_unsupported_commands = one_word_commands - set(commands_dict.keys())
     for command in server_unsupported_commands:
-        assert "redis" not in SUPPORTED_COMMANDS[
-            command].server_types, f"Command {command} is not supported by fakeredis"
+        assert (
+            "redis" not in SUPPORTED_COMMANDS[command].server_types
+        ), f"{command} should not be supported by fakeredis"
 
 
-@fake_only
+@testtools.fake_only
 def test_command_count(r: redis.Redis):
     assert r.command_count() >= len(
         [cmd for (cmd, cmd_info) in SUPPORTED_COMMANDS.items() if " " not in cmd and "redis" in cmd_info.server_types]
