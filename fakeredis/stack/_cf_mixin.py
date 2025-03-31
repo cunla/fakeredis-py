@@ -12,7 +12,6 @@ from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
 class ScalableCuckooFilter(CountingCuckooFilter):
-
     def __init__(self, capacity: int, bucket_size: int = 2, max_iterations: int = 20, expansion: int = 1):
         super().__init__(capacity, bucket_size, max_iterations, expansion)
         self.initial_capacity: int = capacity
@@ -38,7 +37,6 @@ class ScalableCuckooFilter(CountingCuckooFilter):
 
 
 class CFCommandsMixin:
-
     @staticmethod
     def _cf_add(key: CommandItem, item: bytes) -> int:
         if key.value is None:

@@ -157,10 +157,10 @@ class HashCommandsMixin:
                 continue
             current_expiration = hash_val.get_key_expireat(field)
             if (
-                    (nx and current_expiration is not None)
-                    or (xx and current_expiration is None)
-                    or (gt and (current_expiration is None or when_ms <= current_expiration))
-                    or (lt and current_expiration is not None and when_ms >= current_expiration)
+                (nx and current_expiration is not None)
+                or (xx and current_expiration is None)
+                or (gt and (current_expiration is None or when_ms <= current_expiration))
+                or (lt and current_expiration is not None and when_ms >= current_expiration)
             ):
                 res.append(0)
                 continue
@@ -254,8 +254,10 @@ class HashCommandsMixin:
     @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hgetex(self, key: CommandItem, *args: bytes) -> Any:
         (ex, px, exat, pxat, persist), left_args = extract_args(
-            args, ("+ex", "+px", "+exat", "+pxat", "persist"), left_from_first_unexpected=True,
-            error_on_unexpected=False
+            args,
+            ("+ex", "+px", "+exat", "+pxat", "persist"),
+            left_from_first_unexpected=True,
+            error_on_unexpected=False,
         )
         if (ex is not None, px is not None, exat is not None, pxat is not None, persist).count(True) > 1:
             raise SimpleError("Only one of EX, PX, EXAT, PXAT or PERSIST arguments can be specified")
@@ -275,8 +277,10 @@ class HashCommandsMixin:
     @command(name="HSETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hsetex(self, key: CommandItem, *args: bytes) -> Any:
         (ex, px, exat, pxat, keepttl, fnx, fxx), left_args = extract_args(
-            args, ("+ex", "+px", "+exat", "+pxat", "keepttl", "fnx", "fxx"), left_from_first_unexpected=True,
-            error_on_unexpected=False
+            args,
+            ("+ex", "+px", "+exat", "+pxat", "keepttl", "fnx", "fxx"),
+            left_from_first_unexpected=True,
+            error_on_unexpected=False,
         )
         if (ex is not None, px is not None, exat is not None, pxat is not None, keepttl).count(True) > 1:
             raise SimpleError("Only one of EX, PX, EXAT, PXAT or KEEPTTL arguments can be specified")

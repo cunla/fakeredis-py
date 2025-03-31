@@ -9,7 +9,6 @@ PONG = SimpleString(b"PONG")
 
 
 class ConnectionCommandsMixin:
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
