@@ -35,7 +35,6 @@ class ScalableBloomFilter(ExpandingBloomFilter):
 
 
 class BFCommandsMixin:
-
     @staticmethod
     def _bf_add(key: CommandItem, item: bytes) -> int:
         res = key.value.add_item(item)

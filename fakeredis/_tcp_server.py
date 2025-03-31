@@ -76,7 +76,6 @@ class Writer:
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-
     def setup(self) -> None:
         super().setup()
         if self.client_address in self.server.clients:

@@ -266,7 +266,7 @@ def test_set_ex_overflow(r: redis.Redis):
 
 def test_set_px_overflow(r: redis.Redis):
     with pytest.raises(ResponseError):
-        r.set("foo", "bar", px=2 ** 63 - 2)  # Overflows after adding current time
+        r.set("foo", "bar", px=2**63 - 2)  # Overflows after adding current time
 
 
 def test_set_px(r: redis.Redis):
@@ -279,7 +279,7 @@ def test_set_px_using_timedelta(r: redis.Redis):
     assert r.get("foo") == b"bar"
 
 
-@testtools.run_test_if_redispy_ver('lt', '5.9')  # This will run for redis-py 4.2.0 or above.
+@testtools.run_test_if_redispy_ver("lt", "5.9")  # This will run for redis-py 4.2.0 or above.
 def test_set_conflicting_expire_options(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.set("foo", "bar", ex=1, px=1)

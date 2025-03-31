@@ -71,9 +71,12 @@ class StreamsCommandsMixin:
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,))
     def xread(self, *args: bytes) -> Optional[List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
         (
-            count,
-            timeout,
-        ), left_args = extract_args(
+            (
+                count,
+                timeout,
+            ),
+            left_args,
+        ) = extract_args(
             args,
             (
                 "+count",

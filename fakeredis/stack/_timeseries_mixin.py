@@ -313,14 +313,17 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     ) -> List[List[Union[int, float]]]:
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
         (
-            latest,
-            (value_min, value_max),
-            count,
-            align,
-            (aggregator, bucket_duration),
-            bucket_timestamp,
-            empty,
-        ), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
+            (
+                latest,
+                (value_min, value_max),
+                count,
+                align,
+                (aggregator, bucket_duration),
+                bucket_timestamp,
+                empty,
+            ),
+            left_args,
+        ) = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
         latest = True
         filter_ts: Optional[List[int]] = None
         if len(left_args) > 0:
