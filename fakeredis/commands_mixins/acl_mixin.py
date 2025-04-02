@@ -150,7 +150,7 @@ class AclCommandsMixin:
         if b"aclfile" not in self._server_config:
             raise SimpleError(msgs.MISSING_ACLFILE_CONFIG)
         acl_filename = self._server_config[b"aclfile"]
-        with open(acl_filename, "wb", encoding="utf8") as f:
+        with open(acl_filename, "wb") as f:
             f.write(b"\n".join(self._acl.as_rules()))
         return OK
 
@@ -159,7 +159,7 @@ class AclCommandsMixin:
         if b"aclfile" not in self._server_config:
             raise SimpleError(msgs.MISSING_ACLFILE_CONFIG)
         acl_filename = self._server_config[b"aclfile"]
-        with open(acl_filename, "rb", encoding="utf8") as f:
+        with open(acl_filename, "rb") as f:
             rules_list = f.readlines()
             for rule in rules_list:
                 if not rule.startswith(b"user "):
