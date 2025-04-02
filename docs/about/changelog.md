@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.28.1
+
+### 🐛 Bug Fixes
+
+- open commands.json with encoding specified #367
+
 ## v2.28.0
 
 ### 🚀 Features

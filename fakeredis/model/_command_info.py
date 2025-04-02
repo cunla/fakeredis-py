@@ -18,7 +18,7 @@ def _encode_obj(obj: Any) -> Any:
 def _load_command_info() -> None:
     global _COMMAND_INFO
     if _COMMAND_INFO is None:
-        with open(os.path.join(os.path.dirname(__file__), "..", "commands.json")) as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "commands.json"), encoding="utf8") as f:
             _COMMAND_INFO = _encode_obj(json.load(f))
 
 
