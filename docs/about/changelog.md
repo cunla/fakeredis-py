@@ -11,7 +11,8 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- open commands.json with encoding specified #367
+- Open commands.json with encoding specified #367
+- Fix `xadd` to use last timestamp if the current system timestamp is lower than the last timestamp #368
 
 ## v2.28.0
 
