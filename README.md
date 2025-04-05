@@ -15,19 +15,35 @@ Documentation is hosted in https://fakeredis.readthedocs.io/
 
 # Intro
 
-FakeRedis is a pure-Python implementation of the Redis protocol API. It provides enhanced versions of the redis-py Python bindings for Redis.
+FakeRedis is a pure-Python implementation of the Redis protocol API. It provides enhanced versions of
+the [redis-py][redis-py] Python bindings for Redis.
 
-It enables running tests requiring [Redis](https://redis.io/)/[ValKey](https://github.com/valkey-io/valkey)/[DragonflyDB](https://www.dragonflydb.io/) server without an actual server.
+It enables running tests requiring [Redis][redis]/[ValKey][valkey]/[DragonflyDB][dragonflydb]/[KeyDB][keydb] server
+without an actual server.
 
 It also enables testing compatibility of different key-value datastores.
 
-That provides the following added functionality: A built-in Redis server that is automatically installed, configured and managed when the Redis bindings are used. A single server shared by multiple programs or multiple independent servers. All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson, RedisBloom, GeoCommands.
+That provides the following added functionality: A built-in Redis server that is automatically installed, configured and
+managed when the Redis bindings are used. A single server shared by multiple programs or multiple independent servers.
+All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson,
+RedisBloom, GeoCommands.
 
-
-See [official documentation](https://fakeredis.readthedocs.io/) for list of supported commands.
+See [official documentation][readthedocs] for list of supported commands.
 
 # Sponsor
 
 fakeredis-py is developed for free.
 
 You can support this project by becoming a sponsor using [this link](https://github.com/sponsors/cunla).
+
+[readthedocs]: https://fakeredis.readthedocs.io/
+
+[redis-py]: https://github.com/redis/redis-py
+
+[valkey]: https://github.com/valkey-io/valkey
+
+[redis]: https://redis.io/
+
+[dragonflydb]: https://dragonflydb.io/
+
+[keydb]: https://docs.keydb.dev/
