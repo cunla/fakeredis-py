@@ -140,24 +140,24 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
 
     # Test that flags prevent updates when conditions are unmet
     assert (
-            r.json().set(
-                "obj",
-                Path("foo"),
-                "baz",
-                nx=True,
-            )
-            is None
+        r.json().set(
+            "obj",
+            Path("foo"),
+            "baz",
+            nx=True,
+        )
+        is None
     )
     assert r.json().get("obj") == obj
 
     assert (
-            r.json().set(
-                "obj",
-                Path("qaz"),
-                "baz",
-                xx=True,
-            )
-            is None
+        r.json().set(
+            "obj",
+            Path("qaz"),
+            "baz",
+            xx=True,
+        )
+        is None
     )
     assert r.json().get("obj") == obj
 
