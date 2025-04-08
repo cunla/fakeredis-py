@@ -15,6 +15,13 @@ from test import testtools
 json_tests = pytest.importorskip("jsonpath_ng")
 
 
+def test_jsonsetnx(r: redis.Redis):
+    key = "test_key"
+    assert r.json().set("test_key", "$", {}, nx=True, decode_keys=True) is True
+    assert r.json().set(key, "$.group", {}, nx=True) is True
+    assert r.json().set("test_key", "$.group", {"data": "value"}, nx=True) is None
+
+
 def test_jsonget(r: redis.Redis):
     data = {"x": "bar", "y": {"x": 33}}
     r.json().set("foo", Path.root_path(), data)
@@ -133,24 +140,24 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
 
     # Test that flags prevent updates when conditions are unmet
     assert (
-        r.json().set(
-            "obj",
-            Path("foo"),
-            "baz",
-            nx=True,
-        )
-        is None
+            r.json().set(
+                "obj",
+                Path("foo"),
+                "baz",
+                nx=True,
+            )
+            is None
     )
     assert r.json().get("obj") == obj
 
     assert (
-        r.json().set(
-            "obj",
-            Path("qaz"),
-            "baz",
-            xx=True,
-        )
-        is None
+            r.json().set(
+                "obj",
+                Path("qaz"),
+                "baz",
+                xx=True,
+            )
+            is None
     )
     assert r.json().get("obj") == obj
 
