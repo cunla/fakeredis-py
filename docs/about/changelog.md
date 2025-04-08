@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.28.2
+
+### 🐛 Bug Fixes
+
+- Fix json.set nx arg behavior #372
+
 ## v2.28.1 - 2025-04-02
 
 ### 🐛 Bug Fixes
