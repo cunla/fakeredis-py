@@ -5,7 +5,7 @@ import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
 
-from ._server import FakeBaseConnectionMixin, FakeServer, VersionType
+from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -115,13 +115,13 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
 class FakeRedisMixin:
     def __init__(
-        self,
-        *args: Any,
-        server: Optional[FakeServer] = None,
-        version: VersionType = (7,),
-        server_type: str = "redis",
-        lua_modules: Optional[Set[str]] = None,
-        **kwargs: Any,
+            self,
+            *args: Any,
+            server: Optional[FakeServer] = None,
+            version: VersionType = (7,),
+            server_type: ServerType = "redis",
+            lua_modules: Optional[Set[str]] = None,
+            **kwargs: Any,
     ) -> None:
         # Interpret the positional and keyword arguments according to the
         # version of redis in use.
