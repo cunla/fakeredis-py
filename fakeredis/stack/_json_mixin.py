@@ -219,11 +219,12 @@ class JSONCommandsMixin:
         path = _parse_jsonpath(path_str)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
-        old_value = path.find(key.value)
+        old_value_list = path.find(key.value)
         (nx, xx), _ = extract_args(args, ("nx", "xx"))
         if xx and nx:
             raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if (nx and old_value) or (xx and not old_value):
+        old_value = old_value_list[0].value if len(old_value_list) > 0 else None
+        if (nx and old_value is not None) or (xx and old_value is None):
             return None
         new_value = path.update_or_create(key.value, value)
         key.update(new_value)
@@ -233,7 +234,7 @@ class JSONCommandsMixin:
         name="JSON.SET",
         fixed=(Key(), bytes, JSONObject),
         repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_DO_NOT_CREATE,
     )
     def json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: bytes) -> Optional[SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.

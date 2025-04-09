@@ -82,11 +82,11 @@ class StreamConsumerInfo(object):
 
 class StreamGroup(object):
     def __init__(
-            self,
-            stream: "XStream",
-            name: bytes,
-            start_key: StreamEntryKey,
-            entries_read: Optional[int] = None,
+        self,
+        stream: "XStream",
+        name: bytes,
+        start_key: StreamEntryKey,
+        entries_read: Optional[int] = None,
     ):
         self.stream = stream
         self.name = name
@@ -142,7 +142,7 @@ class StreamGroup(object):
         return list(itertools.chain(*res.items()))  # type: ignore
 
     def group_read(
-            self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
+        self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
     ) -> List[List[Union[bytes, List[bytes]]]]:
         _time = current_time()
         if consumer_name not in self.consumers:
@@ -188,12 +188,12 @@ class StreamGroup(object):
         return res
 
     def pending(
-            self,
-            idle: Optional[int],
-            start: Optional[StreamRangeTest],
-            end: Optional[StreamRangeTest],
-            count: Optional[int],
-            consumer: Optional[bytes],
+        self,
+        idle: Optional[int],
+        start: Optional[StreamRangeTest],
+        end: Optional[StreamRangeTest],
+        count: Optional[int],
+        consumer: Optional[bytes],
     ) -> List[List[bytes]]:
         _time = current_time()
         relevant_ids = list(self.pel.keys())
@@ -206,8 +206,8 @@ class StreamGroup(object):
                 k
                 for k in relevant_ids
                 if (
-                        ((start.value < k) or (start.value == k and not start.exclusive))
-                        and ((end.value > k) or (end.value == k and not end.exclusive))
+                    ((start.value < k) or (start.value == k and not start.exclusive))
+                    and ((end.value > k) or (end.value == k and not end.exclusive))
                 )
             ]
         if count is not None:
@@ -226,12 +226,12 @@ class StreamGroup(object):
         return data
 
     def claim(
-            self,
-            min_idle_ms: int,
-            msgs: Union[Sequence[bytes], Sequence[StreamEntryKey]],
-            consumer_name: bytes,
-            _time: Optional[int],
-            force: bool,
+        self,
+        min_idle_ms: int,
+        msgs: Union[Sequence[bytes], Sequence[StreamEntryKey]],
+        consumer_name: bytes,
+        _time: Optional[int],
+        force: bool,
     ) -> Tuple[List[StreamEntryKey], List[StreamEntryKey]]:
         curr_time = current_time()
         if _time is None:
@@ -459,10 +459,10 @@ class XStream:
         return StreamEntryKey.parse_str(ts_seq_str)
 
     def trim(
-            self,
-            max_length: Optional[int] = None,
-            start_entry_key: Optional[str] = None,
-            limit: Optional[int] = None,
+        self,
+        max_length: Optional[int] = None,
+        start_entry_key: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> int:
         """Trim a stream
 
