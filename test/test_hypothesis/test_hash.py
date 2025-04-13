@@ -32,19 +32,20 @@ class TestHash(BaseTest):
             st.just(2),
             st.lists(fields, min_size=2, max_size=2),
         )
-        | commands(
-            st.just("hexpire"),
-            keys,
-            expires_seconds,
-            st.just("fields"),
-            st.just(2),
-            st.lists(fields, min_size=2, max_size=2, unique=True),
-        )
     )
     command_strategy_redis7 = (
         commands(st.just("hpersist"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
         | commands(st.just("hexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
         | commands(st.just("hpexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+        | commands(
+            st.just("hexpire"),
+            keys,
+            expires_seconds,
+            *zero_or_more("nx", "xx", "gt", "lt"),
+            st.just("fields"),
+            st.just(2),
+            st.lists(fields, min_size=2, max_size=2, unique=True),
+        )
         | commands(
             st.just("hpexpire"),
             keys,

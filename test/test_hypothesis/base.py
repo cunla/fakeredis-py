@@ -14,7 +14,7 @@ from hypothesis.stateful import rule, initialize, precondition
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from ._server_info import redis_ver, ints_kwargs, floats_kwargs, expires_seconds_kwargs, server_type
+from ._server_info import redis_ver, floats_kwargs, server_type
 
 self_strategy = st.runner()
 
@@ -34,8 +34,8 @@ values = sample_attr("values")
 scores = sample_attr("scores")
 
 eng_text = st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1))
-ints = st.integers(**ints_kwargs)
-int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
+ints = st.integers(min_value=-2_147_483_648, max_value=2_147_483_647)
+int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), ints)
 floats = st.floats(width=32, **floats_kwargs)
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), floats)
 counts = st.integers(min_value=-3, max_value=3) | ints
@@ -46,12 +46,12 @@ dbnums = st.integers(min_value=0, max_value=3) | st.integers(min_value=-1000, ma
 patterns = st.text(alphabet=st.sampled_from("[]^$*.?-azAZ\\\r\n\t")) | st.binary().filter(lambda x: b"\0" not in x)
 string_tests = st.sampled_from([b"+", b"-"]) | st.builds(operator.add, st.sampled_from([b"(", b"["]), fields)
 # Redis has integer overflow bugs in time computations, which is why we set a maximum.
-expires_seconds = st.integers(**expires_seconds_kwargs)
+expires_seconds = st.integers(min_value=100_000, max_value=7_108_865)
 expires_ms = st.integers(min_value=100000000, max_value=10000000000000)
 
 
 class WrappedException:
-    """Wraps an exception for the purposes of comparison."""
+    """Wraps an exception for the purpose of comparison."""
 
     def __init__(self, exc):
         self.wrapped = exc
@@ -94,7 +94,7 @@ def sort_list(lst):
 
 def normalize_if_number(x):
     if isinstance(x, list):
-        return x
+        return [normalize_if_number(item) for item in x]
     try:
         res = float(x)
         return x if math.isnan(res) else res
@@ -270,9 +270,16 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 assert n(f) == n(r)
             self.transaction_normalize = []
         else:
-            assert fake_result == real_result or (
-                type(fake_result) is float and fake_result == pytest.approx(real_result)
-            ), "Discrepancy when running command {}, fake({}) != real({})".format(command, fake_result, real_result)
+            if isinstance(fake_result, list):
+                assert len(fake_result) == len(real_result)
+                for i in range(len(fake_result)):
+                    assert fake_result[i] == real_result[i] or (
+                        type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
+                    )
+            else:
+                assert fake_result == real_result or (
+                    type(fake_result) is float and fake_result == pytest.approx(real_result)
+                ), "Discrepancy when running command {}, fake({}) != real({})".format(command, fake_result, real_result)
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a

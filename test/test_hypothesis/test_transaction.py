@@ -9,6 +9,7 @@ from .base import (
     expires_seconds,
     expires_ms,
     counts,
+    ints,
 )
 from .test_string import TestString
 
@@ -24,7 +25,7 @@ class TestTransaction(BaseTest):
         | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
         | commands(st.just("get"), keys)
         | commands(st.just("getbit"), keys, counts)
-        | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | st.integers())
+        | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | ints)
         | commands(st.sampled_from(["substr", "getrange"]), keys, counts, counts)
         | commands(st.just("getset"), keys, values)
         | commands(st.just("mget"), st.lists(keys))

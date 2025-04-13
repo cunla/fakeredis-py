@@ -23,11 +23,7 @@ def server_info() -> Tuple[str, Union[None, Tuple[int, ...]]]:
 
 
 server_type, redis_ver = server_info()
-ints_kwargs = dict()
 floats_kwargs = dict()
-expires_seconds_kwargs = dict(min_value=100_000)
 
 if server_type == "dragonfly":
-    ints_kwargs = dict(min_value=-2_147_483_648, max_value=2_147_483_647)
     floats_kwargs = dict(allow_nan=False, allow_subnormal=False, allow_infinity=False)
-    expires_seconds_kwargs = dict(min_value=100_000, max_value=7_108_865)

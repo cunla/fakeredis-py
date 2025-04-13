@@ -11,9 +11,8 @@ from .base import (
     expires_seconds,
     expires_ms,
     ints,
+    int_as_bytes,
 )
-
-int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
 
 optional_bitcount_range = st.just(()) | st.tuples(int_as_bytes, int_as_bytes)
 str_len = st.integers(min_value=-3, max_value=3) | st.integers(min_value=-3000, max_value=3000)
