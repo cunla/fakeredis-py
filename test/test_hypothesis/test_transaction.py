@@ -1,4 +1,4 @@
-from test.test_hypothesis.base import (
+from .base import (
     BaseTest,
     commands,
     st,
@@ -10,7 +10,7 @@ from test.test_hypothesis.base import (
     expires_ms,
     counts,
 )
-from test.test_hypothesis.test_string import TestString
+from .test_string import TestString
 
 
 class TestTransaction(BaseTest):

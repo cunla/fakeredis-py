@@ -14,7 +14,7 @@ from hypothesis.stateful import rule, initialize, precondition
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from test.test_hypothesis._server_info import redis_ver, ints_kwargs, floats_kwargs, expires_seconds_kwargs, server_type
+from ._server_info import redis_ver, ints_kwargs, floats_kwargs, expires_seconds_kwargs, server_type
 
 self_strategy = st.runner()
 
@@ -93,6 +93,8 @@ def sort_list(lst):
 
 
 def normalize_if_number(x):
+    if isinstance(x, list):
+        return x
     try:
         res = float(x)
         return x if math.isnan(res) else res
@@ -328,6 +330,6 @@ class BaseTest:
             if server_type == "redis" and redis_ver >= (7,):
                 command_strategy = command_strategy | self.command_strategy_redis7
 
-        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        hypothesis.settings.load_profile("debug")
+        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        # hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)

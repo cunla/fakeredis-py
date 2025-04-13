@@ -10,11 +10,13 @@ from .base import (
     zero_or_more,
     expires_seconds,
     expires_ms,
+    ints,
 )
 
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
 
 optional_bitcount_range = st.just(()) | st.tuples(int_as_bytes, int_as_bytes)
+str_len = st.integers(min_value=-3, max_value=3) | st.integers(min_value=-3000, max_value=3000)
 
 string_commands = (
     commands(st.just("append"), keys, values)
@@ -23,21 +25,16 @@ string_commands = (
     | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
     | commands(st.just("get"), keys)
     | commands(st.just("getbit"), keys, counts)
-    | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | st.integers())
-    | commands(st.sampled_from(["substr", "getrange"]), keys, counts, counts)
+    | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | ints)
+    | commands(st.sampled_from(["substr", "getrange"]), keys, str_len, counts)
     | commands(st.just("getset"), keys, values)
     | commands(st.just("mget"), st.lists(keys))
     | commands(st.sampled_from(["mset", "msetnx"]), st.lists(st.tuples(keys, values)))
-    | commands(
-        st.just("set"),
-        keys,
-        values,
-        *zero_or_more("nx", "xx", "keepttl"),
-    )
+    | commands(st.just("set"), keys, values, *zero_or_more("nx", "xx", "keepttl"))
     | commands(st.just("setex"), keys, expires_seconds, values)
     | commands(st.just("psetex"), keys, expires_ms, values)
     | commands(st.just("setnx"), keys, values)
-    | commands(st.just("setrange"), keys, counts, values)
+    | commands(st.just("setrange"), keys, str_len, values)
     | commands(st.just("strlen"), keys)
 )
 
