@@ -11,7 +11,6 @@ from .base import (
     counts,
     ints,
 )
-from .test_string import TestString
 
 
 class TestTransaction(BaseTest):
@@ -42,5 +41,5 @@ class TestTransaction(BaseTest):
         | commands(st.just("setrange"), keys, counts, values)
         | commands(st.just("strlen"), keys)
     )
-    create_command_strategy = TestString.create_command_strategy
+    create_command_strategy = commands(st.just("set"), keys, values)
     command_strategy = transaction_commands | common_commands

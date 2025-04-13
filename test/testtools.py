@@ -1,4 +1,5 @@
 import importlib.util
+import time
 from datetime import datetime
 
 import pytest
@@ -52,3 +53,8 @@ def redis_server_time(r: redis.Redis) -> datetime:
     seconds, milliseconds = r.time()
     timestamp = float(f"{seconds}.{milliseconds}")
     return datetime.fromtimestamp(timestamp)
+
+
+def current_time() -> int:
+    """Return current_time in ms"""
+    return int(time.time() * 1000)

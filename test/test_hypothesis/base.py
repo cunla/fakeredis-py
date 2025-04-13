@@ -190,18 +190,18 @@ def commands(*args, **kwargs):
 
 # # TODO: all expiry-related commands
 common_commands = (
-    commands(st.sampled_from(["del", "persist", "type", "unlink"]), keys)
-    | commands(st.just("exists"), st.lists(keys))
-    | commands(st.just("keys"), st.just("*"))
-    # Disabled for now due to redis giving wrong answers
-    # (https://github.com/antirez/redis/issues/5632)
-    # | commands(st.just('keys'), patterns)
-    | commands(st.just("move"), keys, dbnums)
-    | commands(st.sampled_from(["rename", "renamenx"]), keys, keys)
-    # TODO: find a better solution to sort instability than throwing
-    #  away the sort entirely with normalize. This also prevents us
-    #  using LIMIT.
-    | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
+        commands(st.sampled_from(["del", "persist", "type", "unlink"]), keys)
+        | commands(st.just("exists"), st.lists(keys))
+        | commands(st.just("keys"), st.just("*"))
+        # Disabled for now due to redis giving wrong answers
+        # (https://github.com/antirez/redis/issues/5632)
+        # | commands(st.just('keys'), patterns)
+        | commands(st.just("move"), keys, dbnums)
+        | commands(st.sampled_from(["rename", "renamenx"]), keys, keys)
+        # TODO: find a better solution to sort instability than throwing
+        #  away the sort entirely with normalize. This also prevents us
+        #  using LIMIT.
+        | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
 )
 
 
@@ -259,7 +259,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             print(f"{fake_exc} raised on only on fake when running {command}", file=sys.stderr)
             raise fake_exc
         elif real_exc is not None and fake_exc is None:
-            assert real_exc == fake_exc, f"Expected exception {real_exc} not raised when running {command}"
+            assert real_exc == fake_exc, f"Expected exception `{real_exc}` not raised when running {command}"
         elif real_exc is None and isinstance(real_result, list) and command.args and command.args[0].lower() == "exec":
             assert fake_result is not None
             # Transactions need to use the normalize functions of the
@@ -276,12 +276,12 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             )
             for i in range(len(fake_result)):
                 assert fake_result[i] == real_result[i] or (
-                    type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
+                        type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
                 ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
 
         else:
             assert fake_result == real_result or (
-                type(fake_result) is float and fake_result == pytest.approx(real_result)
+                    type(fake_result) is float and fake_result == pytest.approx(real_result)
             ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
