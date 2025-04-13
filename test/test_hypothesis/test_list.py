@@ -1,4 +1,14 @@
-from .base import BaseTest, commands, values, st, keys, common_commands, counts
+import hypothesis.strategies as st
+
+from .base import (
+    BaseTest,
+    commands,
+    values,
+    keys,
+    common_commands,
+    counts,
+    ints,
+)
 
 
 class TestList(BaseTest):
@@ -13,7 +23,7 @@ class TestList(BaseTest):
             values,
         )
         | commands(st.just("llen"), keys)
-        | commands(st.sampled_from(["lpop", "rpop"]), keys, st.just(None) | st.just([]) | st.integers())
+        | commands(st.sampled_from(["lpop", "rpop"]), keys, st.just(None) | st.just([]) | ints)
         | commands(st.sampled_from(["lpush", "lpushx", "rpush", "rpushx"]), keys, st.lists(values))
         | commands(st.just("lrange"), keys, counts, counts)
         | commands(st.just("lrem"), keys, counts, values)
