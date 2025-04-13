@@ -32,6 +32,14 @@ class TestHash(BaseTest):
             st.just(2),
             st.lists(fields, min_size=2, max_size=2),
         )
+        | commands(
+            st.just("hexpire"),
+            keys,
+            expires_seconds,
+            st.just("fields"),
+            st.just(2),
+            st.lists(fields, min_size=2, max_size=2, unique=True),
+        )
     )
     command_strategy_redis7 = (
         commands(st.just("hpersist"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
@@ -53,7 +61,7 @@ class TestHash(BaseTest):
             *zero_or_more("nx", "xx", "gt", "lt"),
             st.just("fields"),
             st.just(2),
-            st.lists(fields, min_size=2, max_size=2),
+            st.lists(fields, min_size=2, max_size=2, unique=True),
         )
     )
     create_command_strategy = commands(st.just("hset"), keys, st.lists(st.tuples(fields, values), min_size=1))

@@ -85,6 +85,15 @@ def test_hexpire_nonexistent_key_or_field(r: redis.Redis):
     assert r.hexpire("redis-key", 1, "nonexistent_field") == [-2]
 
 
+def test_hexpire_after_hset(r: redis.Redis):
+    r.delete("redis-key")
+    assert r.hexpire("redis-key", 5, "field1") == [-2]
+    r.hset("redis-key", "field1", "value1")
+    assert r.hexpire("redis-key", 1, "field1") == [1]
+    assert r.hset("redis-key", "field1", "value1") == 0
+    assert r.hexpire("redis-key", 3, "field1", lt=True) == [1]
+
+
 @pytest.mark.slow
 def test_hexpire_multiple_fields(r: redis.Redis):
     r.delete("redis-key")

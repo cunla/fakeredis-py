@@ -11,7 +11,8 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- Fix json.set nx arg behavior #372
+- Fix `json.set` nx arg behavior #372
+- Fix issue with `hset` not resetting expiration over field
 
 ## v2.28.1 - 2025-04-02
 

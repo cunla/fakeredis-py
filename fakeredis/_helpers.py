@@ -40,6 +40,7 @@ BGSAVE_STARTED = SimpleString(b"Background saving started")
 
 
 def current_time() -> int:
+    """Return current_time in ms"""
     return int(time.time() * 1000)
 
 

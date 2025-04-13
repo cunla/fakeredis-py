@@ -46,12 +46,12 @@ dbnums = st.integers(min_value=0, max_value=3) | st.integers(min_value=-1000, ma
 patterns = st.text(alphabet=st.sampled_from("[]^$*.?-azAZ\\\r\n\t")) | st.binary().filter(lambda x: b"\0" not in x)
 string_tests = st.sampled_from([b"+", b"-"]) | st.builds(operator.add, st.sampled_from([b"(", b"["]), fields)
 # Redis has integer overflow bugs in time computations, which is why we set a maximum.
-expires_seconds = st.integers(min_value=100_000, max_value=7_108_865)
-expires_ms = st.integers(min_value=100000000, max_value=10000000000000)
+expires_seconds = st.integers(min_value=5, max_value=1_000)
+expires_ms = st.integers(min_value=5_000, max_value=50_000)
 
 
 class WrappedException:
-    """Wraps an exception for the purpose of comparison."""
+    """Wraps an exception for comparison."""
 
     def __init__(self, exc):
         self.wrapped = exc
@@ -117,11 +117,11 @@ def default_normalize(x: Any) -> Any:
     return x
 
 
-def optional(arg):
+def optional(arg: Any) -> st.SearchStrategy:
     return st.none() | st.just(arg)
 
 
-def zero_or_more(*args):
+def zero_or_more(*args: Any):
     return [optional(arg) for arg in args]
 
 
@@ -177,7 +177,7 @@ class Command:
         if command == b"keys" and N == 2 and self.args[1] != b"*":
             return False
         # Redis will ignore a NULL character in some commands but not others,
-        # e.g., it recognises EXEC\0 but not MULTI\00.
+        # e.g., it recognizes EXEC\0 but not MULTI\00.
         # Rather than try to reproduce this quirky behavior, just skip these tests.
         if b"\0" in command:
             return False
@@ -256,10 +256,10 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         real_result, real_exc = self._evaluate(self.real, command)
 
         if fake_exc is not None and real_exc is None:
-            print("{} raised on only on fake when running {}".format(fake_exc, command), file=sys.stderr)
+            print(f"{fake_exc} raised on only on fake when running {command}", file=sys.stderr)
             raise fake_exc
         elif real_exc is not None and fake_exc is None:
-            assert real_exc == fake_exc, "Expected exception {} not raised".format(real_exc)
+            assert real_exc == fake_exc, f"Expected exception {real_exc} not raised when running {command}"
         elif real_exc is None and isinstance(real_result, list) and command.args and command.args[0].lower() == "exec":
             assert fake_result is not None
             # Transactions need to use the normalize functions of the
@@ -269,17 +269,20 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             for n, r, f in zip(self.transaction_normalize, real_result, fake_result):
                 assert n(f) == n(r)
             self.transaction_normalize = []
+        elif isinstance(fake_result, list):
+            assert (
+                len(fake_result) == len(real_result),
+                f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})",
+            )
+            for i in range(len(fake_result)):
+                assert fake_result[i] == real_result[i] or (
+                    type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
+                ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+
         else:
-            if isinstance(fake_result, list):
-                assert len(fake_result) == len(real_result)
-                for i in range(len(fake_result)):
-                    assert fake_result[i] == real_result[i] or (
-                        type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
-                    )
-            else:
-                assert fake_result == real_result or (
-                    type(fake_result) is float and fake_result == pytest.approx(real_result)
-                ), "Discrepancy when running command {}, fake({}) != real({})".format(command, fake_result, real_result)
+            assert fake_result == real_result or (
+                type(fake_result) is float and fake_result == pytest.approx(real_result)
+            ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
