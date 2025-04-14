@@ -1182,7 +1182,7 @@ def test_bzmpop(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
-def test_zrangebyscore(r: redis.Redis):
+def test_zrangebyscore_negative_start(r: redis.Redis):
     r.zadd("A", {"A": 0.0})
     r.zadd("B", {"A": 0.0})
     with pytest.raises(redis.ResponseError):
