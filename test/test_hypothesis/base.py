@@ -270,8 +270,7 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 assert n(f) == n(r)
             self.transaction_normalize = []
         elif isinstance(fake_result, list):
-            assert (
-                len(fake_result) == len(real_result),
+            assert len(fake_result) == len(real_result), (
                 f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})",
             )
             for i in range(len(fake_result)):
