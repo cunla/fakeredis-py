@@ -1179,3 +1179,12 @@ def test_bzmpop(r: redis.Redis):
     res = [b"b", [[b"b1", b"10"]]]
     assert r.bzmpop(0, "2", ["b", "a"], max=True) == res
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
+
+
+@pytest.mark.min_server("7")
+def test_zrangebyscore(r: redis.Redis):
+    r.zadd("A", {"A": 0.0})
+    r.zadd("B", {"A": 0.0})
+    with pytest.raises(redis.ResponseError):
+        r.sort("B")
+    assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == [b"A"]

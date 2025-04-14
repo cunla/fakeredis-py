@@ -94,7 +94,7 @@ class SortedSetCommandsMixin:
     def _limit_items(items: List[bytes], offset: int, count: int) -> List[bytes]:
         out: List[bytes] = []
         for item in items:
-            if offset:  # Note: not offset > 0, to match redis
+            if offset > 0:  # Note: not offset > 0, to match redis
                 offset -= 1
                 continue
             if count == 0:

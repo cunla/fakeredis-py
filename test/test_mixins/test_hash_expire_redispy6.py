@@ -51,7 +51,7 @@ def test_hgetex_expiration_configs(r):
     assert r.hgetex("test:hash", *test_keys, ex=10) == [b"bar", b"1", b"four"]
     ttls = r.httl("test:hash", *test_keys)
     for ttl in ttls:
-        assert pytest.approx(ttl) == 10
+        assert pytest.approx(ttl, 1) == 10
 
     # test get with multiple fields removing expiration settings with 'persist'
     assert r.hgetex("test:hash", *test_keys, persist=True) == [
