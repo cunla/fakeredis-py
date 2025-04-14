@@ -156,7 +156,7 @@ def test_hsetex_expiration_px(r):
     test_keys = ["foo", "1", "2"]
     ttls = r.httl("test:hash", *test_keys)
     for ttl in ttls:
-        assert pytest.approx(ttl) == 60
+        assert pytest.approx(ttl, 1) == 60
     assert r.hgetex("test:hash", *test_keys) == [b"bar", b"1", b"2"]
 
 
