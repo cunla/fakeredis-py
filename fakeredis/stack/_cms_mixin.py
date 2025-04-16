@@ -67,12 +67,7 @@ class CMSCommandsMixin:
             key.value.elements_added,
         ]
 
-    @command(
-        name="CMS.INITBYDIM",
-        fixed=(Key(CountMinSketch), Int, Int),
-        repeat=(),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="CMS.INITBYDIM", fixed=(Key(CountMinSketch), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cms_initbydim(self, key: CommandItem, width: int, depth: int) -> SimpleString:
         if key.value is not None:
             raise SimpleError("CMS key already set")
@@ -83,12 +78,7 @@ class CMSCommandsMixin:
         key.update(CountMinSketch(width=width, depth=depth))
         return OK
 
-    @command(
-        name="CMS.INITBYPROB",
-        fixed=(Key(CountMinSketch), Float, Float),
-        repeat=(),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="CMS.INITBYPROB", fixed=(Key(CountMinSketch), Float, Float), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cms_initby_prob(self, key: CommandItem, error_rate: float, probability: float) -> SimpleString:
         if key.value is not None:
             raise SimpleError("CMS key already set")
@@ -99,12 +89,7 @@ class CMSCommandsMixin:
         key.update(CountMinSketch(probability=probability, error_rate=error_rate))
         return OK
 
-    @command(
-        name="CMS.MERGE",
-        fixed=(Key(CountMinSketch), Int, bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="CMS.MERGE", fixed=(Key(CountMinSketch), Int, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def cms_merge(self, dest_key: CommandItem, num_keys: int, *args: bytes) -> SimpleString:
         if dest_key.value is None:
             raise SimpleError("CMS: key does not exist")
@@ -130,12 +115,7 @@ class CMSCommandsMixin:
                 dest_key.value.join(item.value)
         return OK
 
-    @command(
-        name="CMS.QUERY",
-        fixed=(Key(CountMinSketch), bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="CMS.QUERY", fixed=(Key(CountMinSketch), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def cms_query(self, key: CommandItem, *items: bytes) -> List[int]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")

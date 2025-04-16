@@ -243,12 +243,7 @@ class JSONCommandsMixin:
         """
         return JSONCommandsMixin._json_set(key, path_str, value, *args)
 
-    @command(
-        name="JSON.GET",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
         if key.value is None:
             return None
@@ -267,12 +262,7 @@ class JSONCommandsMixin:
             return JSONObject.encode(path_values)
         return JSONObject.encode(dict(zip(formatted_paths, path_values)))
 
-    @command(
-        name="JSON.MGET",
-        fixed=(bytes,),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mget(self, *args: bytes) -> List[Optional[bytes]]:
         if len(args) < 2:
             raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mget"))
@@ -282,12 +272,7 @@ class JSONCommandsMixin:
         result = [JSONObject.encode(self._get_single(key, path_str, empty_list_as_none=True)) for key in keys]
         return result
 
-    @command(
-        name="JSON.TOGGLE",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.TOGGLE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_toggle(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bool]], Optional[bool]]:
         if key.value is None:
             raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
@@ -312,12 +297,7 @@ class JSONCommandsMixin:
 
         return res
 
-    @command(
-        name="JSON.CLEAR",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_clear(self, key: CommandItem, *args: bytes) -> int:
         if key.value is None:
             raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
@@ -335,12 +315,7 @@ class JSONCommandsMixin:
         key.update(curr_value)
         return res
 
-    @command(
-        name="JSON.STRAPPEND",
-        fixed=(Key(), bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.STRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_strappend(
         self, key: CommandItem, path_str: bytes, *args: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -357,12 +332,7 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(strappend, key, path_str)
 
-    @command(
-        name="JSON.ARRAPPEND",
-        fixed=(Key(), bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(
         self, key: CommandItem, path_str: bytes, *args: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -380,12 +350,7 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(arrappend, key, path_str)
 
-    @command(
-        name="JSON.ARRINSERT",
-        fixed=(Key(), bytes, Int),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(
         self, key: CommandItem, path_str: bytes, index: int, *args: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -418,12 +383,7 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
-    @command(
-        name="JSON.ARRTRIM",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrtrim(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
         path_str: bytes = args[0] if len(args) > 0 else b"$"
         start = Int.decode(args[1]) if len(args) > 1 else 0
@@ -442,12 +402,7 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(arrtrim, key, path_str)
 
-    @command(
-        name="JSON.NUMINCRBY",
-        fixed=(Key(), bytes, Float),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_numincrby(
         self, key: CommandItem, path_str: bytes, inc_by: float, *_: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -460,12 +415,7 @@ class JSONCommandsMixin:
 
         return _json_write_iterate(numincrby, key, path_str)
 
-    @command(
-        name="JSON.NUMMULTBY",
-        fixed=(Key(), bytes, Float),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.NUMMULTBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_nummultby(
         self, key: CommandItem, path_str: bytes, mult_by: float, *_: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -479,12 +429,7 @@ class JSONCommandsMixin:
         return _json_write_iterate(nummultby, key, path_str)
 
     # Read operations
-    @command(
-        name="JSON.ARRINDEX",
-        fixed=(Key(), bytes, bytes),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrindex(
         self, key: CommandItem, path_str: bytes, encoded_value: bytes, *args: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -521,12 +466,7 @@ class JSONCommandsMixin:
     def json_objlen(self, key: CommandItem, *args: bytes) -> Union[List[Optional[int]], Optional[int]]:
         return _json_read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
 
-    @command(
-        name="JSON.TYPE",
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bytes]], Optional[bytes]]:
         return _json_read_iterate(lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
 
@@ -536,12 +476,7 @@ class JSONCommandsMixin:
             lambda val: [i.encode() for i in val.keys()] if type(val) is dict else None, key, *args
         )
 
-    @command(
-        name="JSON.MSET",
-        fixed=(),
-        repeat=(Key(), bytes, JSONObject),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.MSET", fixed=(), repeat=(Key(), bytes, JSONObject), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mset(self, *args: Any) -> SimpleString:
         if len(args) < 3 or len(args) % 3 != 0:
             raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mset"))
@@ -550,12 +485,7 @@ class JSONCommandsMixin:
             JSONCommandsMixin._json_set(key, path_str, value)
         return helpers.OK
 
-    @command(
-        name="JSON.MERGE",
-        fixed=(Key(), bytes, JSONObject),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="JSON.MERGE", fixed=(Key(), bytes, JSONObject), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_merge(self, key: CommandItem, path_str: bytes, value: JsonType) -> SimpleString:
         path: JSONPath = _parse_jsonpath(path_str)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):

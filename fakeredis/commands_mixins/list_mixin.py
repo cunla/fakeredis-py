@@ -177,13 +177,7 @@ class ListCommandsMixin:
 
         return self._lmpop(args[:-1], count, casematch(args[-1], b"left"), False)
 
-    @command(
-        fixed=(
-            Timeout,
-            Int,
-        ),
-        repeat=(bytes,),
-    )
+    @command(fixed=(Timeout, Int), repeat=(bytes,))
     def blmpop(self, timeout, numkeys, *args):
         if numkeys <= 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
@@ -287,13 +281,7 @@ class ListCommandsMixin:
             return 0
         return self.rpush(key, *values)
 
-    @command(
-        fixed=(
-            Key(list),
-            bytes,
-        ),
-        repeat=(bytes,),
-    )
+    @command(fixed=(Key(list), bytes), repeat=(bytes,))
     def lpos(self, key, elem, *args):
         (rank, count, maxlen), _ = extract_args(
             args,

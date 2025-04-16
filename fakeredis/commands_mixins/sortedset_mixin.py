@@ -119,14 +119,7 @@ class SortedSetCommandsMixin:
 
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
             args,
-            (
-                "nx",
-                "xx",
-                "ch",
-                "incr",
-                "gt",
-                "lt",
-            ),
+            ("nx", "xx", "ch", "incr", "gt", "lt"),
             error_on_unexpected=False,
         )
 
@@ -163,12 +156,10 @@ class SortedSetCommandsMixin:
             update = update or (count == 1 and nx and item_name not in zset)
             update = update or (count == 1 and xx and item_name in zset)
             update = update or (
-                    gt and (
-                    (item_name in zset and zset.get(item_name) < item_score) or (not xx and item_name not in zset))
+                gt and ((item_name in zset and zset.get(item_name) < item_score) or (not xx and item_name not in zset))
             )
             update = update or (
-                    lt and (
-                    (item_name in zset and zset.get(item_name) > item_score) or (not xx and item_name not in zset))
+                lt and ((item_name in zset and zset.get(item_name) > item_score) or (not xx and item_name not in zset))
             )
 
             if update:
@@ -259,33 +250,13 @@ class SortedSetCommandsMixin:
         count = -1 if count is None else count
 
         if bylex:
-            res = self._zrangebylex(
-                key,
-                StringTest.decode(start),
-                StringTest.decode(stop),
-                rev,
-                offset,
-                count,
-            )
+            res = self._zrangebylex(key, StringTest.decode(start), StringTest.decode(stop), rev, offset, count)
         elif byscore:
             res = self._zrangebyscore(
-                key,
-                ScoreTest.decode(start),
-                ScoreTest.decode(stop),
-                rev,
-                withscores,
-                offset,
-                count,
+                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, offset, count
             )
         else:
-            res = self._zrange(
-                key,
-                ScoreTest.decode(start),
-                ScoreTest.decode(stop),
-                rev,
-                withscores,
-                byscore,
-            )
+            res = self._zrange(key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, byscore)
         return res
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
@@ -424,7 +395,7 @@ class SortedSetCommandsMixin:
         while i < len(args):
             arg = args[i]
             if casematch(arg, b"weights") and i + numkeys < len(args):
-                weights = [Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG) for x in args[i + 1: i + numkeys + 1]]
+                weights = [Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG) for x in args[i + 1 : i + numkeys + 1]]
                 i += numkeys + 1
             elif casematch(arg, b"aggregate") and i + 1 < len(args):
                 aggregate = null_terminate(args[i + 1])
@@ -498,13 +469,7 @@ class SortedSetCommandsMixin:
     def zdiffstore(self, dest, numkeys, *args):
         return self._zunioninterdiff("ZDIFFSTORE", dest, numkeys, *args)
 
-    @command(
-        (
-                Int,
-                bytes,
-        ),
-        (bytes,),
-    )
+    @command((Int, bytes), (bytes,))
     def zdiff(self, numkeys, *args):
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
@@ -516,13 +481,7 @@ class SortedSetCommandsMixin:
             res = [t for t in res]
         return res
 
-    @command(
-        (
-                Int,
-                bytes,
-        ),
-        (bytes,),
-    )
+    @command((Int, bytes), (bytes,))
     def zunion(self, numkeys, *args):
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
@@ -536,8 +495,8 @@ class SortedSetCommandsMixin:
 
     @command(
         (
-                Int,
-                bytes,
+            Int,
+            bytes,
         ),
         (bytes,),
     )
@@ -552,14 +511,7 @@ class SortedSetCommandsMixin:
             res = [t for t in res]
         return res
 
-    @command(
-        name="ZINTERCARD",
-        fixed=(
-                Int,
-                bytes,
-        ),
-        repeat=(bytes,),
-    )
+    @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
     def zintercard(self, numkeys, *args):
         (limit,), left_args = extract_args(
             args,
@@ -632,13 +584,7 @@ class SortedSetCommandsMixin:
 
         return self._zmpop(args[:-1], count, casematch(args[-1], b"max"), False)
 
-    @command(
-        fixed=(
-                Timeout,
-                Int,
-        ),
-        repeat=(bytes,),
-    )
+    @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout, numkeys: int, *args):
         if numkeys == 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)

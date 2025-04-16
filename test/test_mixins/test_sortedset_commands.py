@@ -433,7 +433,7 @@ def test_zrangebyscore(r: redis.Redis):
     assert r.zrangebyscore("foo", 2, "+inf") == [b"two", b"two_a_also", b"two_b_also", b"four"]
     assert r.zrangebyscore("foo", "-inf", "+inf") == [b"zero", b"two", b"two_a_also", b"two_b_also", b"four"]
     assert r.zrangebyscore("foo", "-inf", "+inf", start=-1, num=3) == []
-    assert r.zrangebyscore("foo", "-inf", "+inf", start=0, num=2) == [b'zero', b'two']
+    assert r.zrangebyscore("foo", "-inf", "+inf", start=0, num=2) == [b"zero", b"two"]
 
 
 def test_zrangebysore_exclusive(r: redis.Redis):
