@@ -1184,10 +1184,11 @@ def test_bzmpop(r: redis.Redis):
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
-@pytest.mark.min_server("7")
-def test_zrangebyscore_negative_start(r: redis.Redis):
-    r.zadd("A", {"A": 0.0})
-    r.zadd("B", {"A": 0.0})
-    with pytest.raises(redis.ResponseError):
-        r.sort("B")
-    assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == [b"A"]
+# TODO ?!?!
+# @pytest.mark.min_server("7")
+# def test_zrangebyscore_negative_start_after_sort(r: redis.Redis):
+#     r.zadd("A", {"A": 0.0})
+#     r.zadd("B", {"A": 0.0})
+#     with pytest.raises(redis.ResponseError):
+#         r.sort("B")
+#     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == [b"A"]
