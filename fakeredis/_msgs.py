@@ -132,3 +132,4 @@ FLAG_NO_SCRIPT = "s"  # Command not allowed in scripts
 FLAG_LEAVE_EMPTY_VAL = "v"
 FLAG_TRANSACTION = "t"
 FLAG_DO_NOT_CREATE = "i"
+FLAG_SKIP_CONVERT_TO_RESP2 = "2"

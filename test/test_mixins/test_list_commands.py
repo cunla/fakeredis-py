@@ -6,6 +6,7 @@ import redis
 import redis.client
 
 from .. import testtools
+from ..testtools import resp_conversion
 
 
 def _push_thread(r: redis.Redis) -> threading.Thread:
@@ -416,38 +417,38 @@ def test_blpop_single_list(r: redis.Redis):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     r.rpush("foo", "three")
-    assert r.blpop(["foo"], timeout=1) == (b"foo", b"one")
+    assert r.blpop(["foo"], timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
 
 
 def test_blpop_test_multiple_lists(r: redis.Redis):
     r.rpush("baz", "zero")
-    assert r.blpop(["foo", "baz"], timeout=1) == (b"baz", b"zero")
+    assert r.blpop(["foo", "baz"], timeout=1) == resp_conversion(r, [b"baz", b"zero"], (b"baz", b"zero"))
     assert not r.exists("baz")
 
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     # bar has nothing, so the returned value should come
     # from foo.
-    assert r.blpop(["bar", "foo"], timeout=1) == (b"foo", b"one")
+    assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
     r.rpush("bar", "three")
     # bar now has something, so the returned value should come
     # from bar.
-    assert r.blpop(["bar", "foo"], timeout=1) == (b"bar", b"three")
-    assert r.blpop(["bar", "foo"], timeout=1) == (b"foo", b"two")
+    assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"bar", b"three"], (b"bar", b"three"))
+    assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
 def test_blpop_allow_single_key(r: redis.Redis):
     # blpop converts single key arguments to a one element list.
     r.rpush("foo", "one")
-    assert r.blpop("foo", timeout=1) == (b"foo", b"one")
+    assert r.blpop("foo", timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
 
 
 @pytest.mark.slow
 def test_blpop_block(r: redis.Redis):
     thread = _push_thread(r)
     try:
-        assert r.blpop("foo") == (b"foo", b"value1")
-        assert r.blpop("foo", timeout=5) == (b"foo", b"value2")
+        assert r.blpop("foo") == resp_conversion(r, [b"foo", b"value1"], (b"foo", b"value1"))
+        assert r.blpop("foo", timeout=5) == resp_conversion(r, [b"foo", b"value2"], (b"foo", b"value2"))
     finally:
         thread.join()
 
@@ -466,8 +467,8 @@ def test_blpop_block_float(r: redis.Redis):
 def test_brpop_block(r: redis.Redis):
     thread = _push_thread(r)
     try:
-        assert r.brpop("foo") == (b"foo", b"value1")
-        assert r.brpop("foo", timeout=5) == (b"foo", b"value2")
+        assert r.brpop("foo") == resp_conversion(r, [b"foo", b"value1"], (b"foo", b"value1"))
+        assert r.brpop("foo", timeout=5) == resp_conversion(r, [b"foo", b"value2"], (b"foo", b"value2"))
     finally:
         thread.join()
 
@@ -489,18 +490,18 @@ def test_blpop_transaction(r: redis.Redis):
 
 def test_brpop_test_multiple_lists(r: redis.Redis):
     r.rpush("baz", "zero")
-    assert r.brpop(["foo", "baz"], timeout=1) == (b"baz", b"zero")
+    assert r.brpop(["foo", "baz"], timeout=1) == resp_conversion(r, [b"baz", b"zero"], (b"baz", b"zero"))
     assert not r.exists("baz")
 
     r.rpush("foo", "one")
     r.rpush("foo", "two")
-    assert r.brpop(["bar", "foo"], timeout=1) == (b"foo", b"two")
+    assert r.brpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
 def test_brpop_single_key(r: redis.Redis):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
-    assert r.brpop("foo", timeout=1) == (b"foo", b"two")
+    assert r.brpop("foo", timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
 def test_brpop_wrong_type(r: redis.Redis):

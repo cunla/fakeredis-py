@@ -82,9 +82,10 @@ class Hash:
             self.clear_key_expireat(k)
         self._values.update(values)
 
-    def getall(self) -> Dict[bytes, Any]:
+    def getall(self) -> Dict[str, str]:
         self._expire_keys()
-        return self._values.copy()
+        res = self._values.copy()
+        return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
 
     def pop(self, key: bytes, d: Any = None) -> Any:
         self._expire_keys()

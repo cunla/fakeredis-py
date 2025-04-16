@@ -1,7 +1,9 @@
 import itertools
+import operator
 import queue
 import time
 import weakref
+from functools import reduce
 from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Dict
 from xmlrpc.client import ResponseError
 
@@ -22,6 +24,20 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
+
+
+def _convert_to_resp2(val: Any) -> Any:
+    if isinstance(val, str):
+        return val.encode()
+    if isinstance(val, float):
+        return Float.encode(val, humanfriendly=False)
+    if isinstance(val, dict):
+        result = list(itertools.chain(*val.items()))
+        return [_convert_to_resp2(item) for item in result]
+    if isinstance(val, (list, tuple)):
+        res = [_convert_to_resp2(item) for item in val]
+        
+    return val
 
 
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
@@ -192,7 +208,7 @@ class BaseFakeSocket:
                 while len(buf) < length + 2:
                     buf += yield
                 fields.append(buf[:length])
-                buf = buf[length + 2 :]  # +2 to skip the CRLF
+                buf = buf[length + 2:]  # +2 to skip the CRLF
             self._process_command(fields)
 
     def _process_command(self, fields: List[bytes]) -> None:
@@ -239,7 +255,7 @@ class BaseFakeSocket:
             self.put_response(result)
 
     def _run_command(
-        self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
+            self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
     ) -> Any:
         command_items: List[CommandItem] = []
         try:
@@ -253,7 +269,10 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                assert valid_response_type(result)
+                if self.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                    result = _convert_to_resp2(result)
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                    assert valid_response_type(result, self.protocol_version)
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
@@ -374,7 +393,7 @@ class BaseFakeSocket:
                 if match_key(compare_val) and match_type(compare_val):
                     result_data.append(val)
         else:
-            result_data = data[cursor : cursor + count]
+            result_data = data[cursor: cursor + count]
 
         if result_cursor >= len(data):
             result_cursor = 0
