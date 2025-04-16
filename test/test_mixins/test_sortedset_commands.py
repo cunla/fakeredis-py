@@ -1184,8 +1184,7 @@ def test_bzmpop(r: redis.Redis):
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
-# TODO ?!?!
-# @pytest.mark.min_server("7")
+# TODO https://github.com/redis/redis/issues/13952
 # def test_zrangebyscore_negative_start_after_sort(r: redis.Redis):
 #     r.zadd("A", {"A": 0.0})
 #     r.zadd("B", {"A": 0.0})
