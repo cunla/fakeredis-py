@@ -5,9 +5,11 @@ import redis.client
 from test.testtools import raw_command
 
 pytestmark = []
-pytestmark.extend([
-    pytest.mark.unsupported_server_types("redis", "valkey"),
-])
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("redis", "valkey"),
+    ]
+)
 
 
 # TODO fix
@@ -254,7 +256,7 @@ def test_bitfield_empty(r: redis.Redis):
         r.bitfield(key).execute()
 
     for overflow in ("wrap", "sat", "fail"):
-        assert raw_command(r, "bitfield", key, "overflow", overflow) == None
+        assert raw_command(r, "bitfield", key, "overflow", overflow) is None
 
 
 def test_bitfield_wrong_arguments(r: redis.Redis):

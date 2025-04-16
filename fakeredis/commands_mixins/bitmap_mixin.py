@@ -189,13 +189,13 @@ class BitmapCommandsMixin:
         return ans
 
     def _bitfield_set(
-            self,
-            key: CommandItem,
-            encoding: BitfieldEncoding,
-            offset: int,
-            overflow: bytes,
-            value: Optional[int] = None,
-            incr: int = 0,
+        self,
+        key: CommandItem,
+        encoding: BitfieldEncoding,
+        offset: int,
+        overflow: bytes,
+        value: Optional[int] = None,
+        incr: int = 0,
     ) -> Optional[int]:
         if encoding.signed:
             min_value = -(1 << (encoding.size - 1))

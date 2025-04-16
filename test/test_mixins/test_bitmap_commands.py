@@ -5,9 +5,11 @@ import redis.client
 from test.testtools import raw_command
 
 pytestmark = []
-pytestmark.extend([
-    pytest.mark.unsupported_server_types("dragonfly"),
-])
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly"),
+    ]
+)
 
 
 def test_getbit(r: redis.Redis):
