@@ -13,10 +13,10 @@ class TestServer(BaseTest):
     # TODO: real redis raises an error if there is a save already in progress.
     #  Find a better way to test this. commands(st.just('bgsave'))
     server_commands = (
-            commands(st.just("dbsize"))
-            # TODO: result is non-deterministic
-            # | commands(st.just('lastsave'))
-            | commands(st.just("save"))
+        commands(st.just("dbsize"))
+        # TODO: result is non-deterministic
+        # | commands(st.just('lastsave'))
+        | commands(st.just("save"))
     )
     command_strategy_dragonfly = commands(st.sampled_from(["flushdb", "flushall"]))
     command_strategy_redis7 = commands(st.sampled_from(["flushdb", "flushall"]), st.sampled_from([[], "async"]))

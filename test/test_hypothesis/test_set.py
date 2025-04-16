@@ -1,4 +1,4 @@
-from test.test_hypothesis.base import BaseTest, st, commands, keys, fields, common_commands
+from .base import BaseTest, st, commands, keys, fields, common_commands
 
 
 class TestSet(BaseTest):

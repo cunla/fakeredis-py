@@ -142,11 +142,7 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
 
-    @command(
-        name="XDEL",
-        fixed=(Key(XStream),),
-        repeat=(bytes,),
-    )
+    @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xdel"))

@@ -432,6 +432,8 @@ def test_zrangebyscore(r: redis.Redis):
     assert r.zrangebyscore("foo", "-inf", 1) == [b"zero"]
     assert r.zrangebyscore("foo", 2, "+inf") == [b"two", b"two_a_also", b"two_b_also", b"four"]
     assert r.zrangebyscore("foo", "-inf", "+inf") == [b"zero", b"two", b"two_a_also", b"two_b_also", b"four"]
+    assert r.zrangebyscore("foo", "-inf", "+inf", start=-1, num=3) == []
+    assert r.zrangebyscore("foo", "-inf", "+inf", start=0, num=2) == [b"zero", b"two"]
 
 
 def test_zrangebysore_exclusive(r: redis.Redis):
@@ -442,6 +444,7 @@ def test_zrangebysore_exclusive(r: redis.Redis):
     assert r.zrangebyscore("foo", "(0", 6) == [b"two", b"four", b"five"]
     assert r.zrangebyscore("foo", "(2", "(5") == [b"four"]
     assert r.zrangebyscore("foo", 0, "(4") == [b"zero", b"two"]
+    assert r.zrangebyscore("foo", 0.0, 4, start=-1, num=2) == []
 
 
 def test_zrangebyscore_raises_error(r: redis.Redis):
@@ -1179,3 +1182,12 @@ def test_bzmpop(r: redis.Redis):
     res = [b"b", [[b"b1", b"10"]]]
     assert r.bzmpop(0, "2", ["b", "a"], max=True) == res
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
+
+
+# TODO https://github.com/redis/redis/issues/13952
+# def test_zrangebyscore_negative_start_after_sort(r: redis.Redis):
+#     r.zadd("A", {"A": 0.0})
+#     r.zadd("B", {"A": 0.0})
+#     with pytest.raises(redis.ResponseError):
+#         r.sort("B")
+#     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == [b"A"]

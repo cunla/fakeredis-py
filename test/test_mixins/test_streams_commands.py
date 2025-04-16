@@ -4,6 +4,7 @@ from typing import List
 
 import pytest
 import redis
+from redis import ResponseError
 
 from fakeredis import _msgs as msgs
 from test import testtools
@@ -823,3 +824,12 @@ def test_xreadgroup_length_less_than_count(r: redis.Redis):
         groupname="group1", consumername="consumer1", streams={"test-events": ">"}, count=10, block=2000
     )
     assert len(messages) == 1
+
+
+def test_xadd_change_time(r: redis.Redis):
+    res = r.xadd("foobar", {"a": "1"})
+    ts, seq = res.decode().split("-")
+    new_ts = int(ts) - 10
+    new_id = f"{new_ts}-*"
+    with pytest.raises(ResponseError):
+        r.xadd("foobar", {"a": "2"}, id=new_id)

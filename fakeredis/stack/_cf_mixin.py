@@ -150,15 +150,7 @@ class CFCommandsMixin:
             res.append(CFCommandsMixin._cf_exist(key, value))
         return res
 
-    @command(
-        name="CF.RESERVE",
-        fixed=(
-            Key(),
-            Int,
-        ),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="CF.RESERVE", fixed=(Key(), Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
@@ -172,15 +164,7 @@ class CFCommandsMixin:
         key.update(value)
         return OK
 
-    @command(
-        name="CF.SCANDUMP",
-        fixed=(
-            Key(),
-            Int,
-        ),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="CF.SCANDUMP", fixed=(Key(), Int), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def cf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)

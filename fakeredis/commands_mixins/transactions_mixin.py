@@ -35,12 +35,7 @@ class TransactionsCommandsMixin:
         self._clear_watches()
         return OK
 
-    @command(
-        name="exec",
-        fixed=(),
-        repeat=(),
-        flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION],
-    )
+    @command(name="exec", fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def exec_(self) -> Any:
         if self._transaction is None:
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("EXEC"))

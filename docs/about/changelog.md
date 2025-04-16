@@ -7,7 +7,21 @@ tags:
 toc_depth: 2
 ---
 
-## v2.28.0
+## v2.28.2
+
+### 🐛 Bug Fixes
+
+- Fix `json.set` nx arg behavior #372
+- Fix issue with `hset` not resetting expiration over field
+
+## v2.28.1 - 2025-04-02
+
+### 🐛 Bug Fixes
+
+- Open commands.json with encoding specified #367
+- Fix `xadd` to use last timestamp if the current system timestamp is lower than the last timestamp #368
+
+## v2.28.0 - 2025-03-29
 
 ### 🚀 Features
 
@@ -25,7 +39,7 @@ toc_depth: 2
 
 - Refactor hypothesis tests (#366)
 
-## v2.27.0
+## v2.27.0 - 2025-02-11
 
 ### 🚀 Features
 
@@ -42,7 +56,7 @@ toc_depth: 2
 - Add python 3.13 to test matrix
 - Improve documentation for Dragonfly/Valkey support
 
-## v2.26.2
+## v2.26.2 - 2024-12-15
 
 ### 🐛 Bug Fixes
 
@@ -53,13 +67,13 @@ toc_depth: 2
 - Implement test for `SADDEX` (Dragonfly specific command) #348
 - Update dependencies
 
-## v2.26.1
+## v2.26.1 - 2024-10-26
 
 ### 🐛 Bug Fixes
 
 - Minor fix: using typing_extensions instead of typing for python 3.7 support #341/#343
 
-## v2.26.0
+## v2.26.0 - 2024-10-24
 
 ### 🚀 Features
 
@@ -70,13 +84,13 @@ toc_depth: 2
 
 - Fix bug in bitpos function for the clear bit mode @Diskein #337
 
-## v2.25.1
+## v2.25.1 - 2024-09-30
 
 ### 🐛 Bug Fixes
 
 - Fix missing default values for version/server_type in `FakeBaseConnectionMixin` #334
 
-## v2.25.0
+## v2.25.0 - 2024-09-28
 
 ### 🚀 Features
 
@@ -91,13 +105,13 @@ toc_depth: 2
 
 - Replace `typing_extensions` dependency with `typing-extensions` #330
 
-## v2.24.1
+## v2.24.1 - 2024-08-26
 
 ### 🐛 Bug Fixes
 
 - Fix license file added to site-packages #320
 
-## v2.24.0
+## v2.24.0 - 2024-08-24
 
 ### 🚀 Features
 
@@ -114,13 +128,13 @@ toc_depth: 2
 - Implement decocator `unsupported_server_types` to enable excluding tests from running against certain server types
   #318
 
-## v2.23.5
+## v2.23.5 - 2024-08-03
 
 ### 🐛 Bug Fixes
 
 - fix:issue with async connection and blocking operations writing responses twice to socket #316
 
-## v2.23.4
+## v2.23.4- 2024-08-26
 
 ### 🐛 Bug Fixes
 
@@ -131,7 +145,7 @@ toc_depth: 2
 - Documented how to use fakeredis with FastAPI. @ sjjessop #292
 - Using black for linting python code.
 
-## v2.23.3
+## v2.23.3- 2024-06-29
 
 ### 🧰 Maintenance
 
@@ -141,19 +155,19 @@ toc_depth: 2
 
 - Fix ttl for empty stream #313
 
-## v2.23.2
+## v2.23.2- 2024-05-18
 
 ### 🐛 Bug Fixes
 
 - Fix reading multiple streams with blocking #309
 
-## v2.23.1
+## v2.23.1- 2024-05-12
 
 ### 🐛 Bug Fixes
 
 - Fix `XREAD` behavior when `COUNT` is not provided but `BLOCKING` is provided #308
 
-## v2.23.0
+## v2.23.0 - 2024-05-07
 
 ### 🚀 Features
 
@@ -172,7 +186,7 @@ toc_depth: 2
 - Add redis-py 5.0.4 to tests
 - Update lupa version constraint #306 @noamkush
 
-## v2.22.0
+## v2.22.0 - 2024-04-19
 
 ### 🚀 Features
 
@@ -185,14 +199,14 @@ toc_depth: 2
 - Using LUA 5.1 like real redis #287
 - fix: FakeRedisMixin.from_url() return type is really Self. @ben-xo #305
 
-## v2.21.3
+## v2.21.3 - 2024-03-12
 
 ### 🐛 Bug Fixes
 
 - Revert behavior of defaulting to share the same server data structure between connections @howamith #303
 - Fix type hint for version #302
 
-## v2.21.2
+## v2.21.2 - 2024-03-12
 
 > Note: Since connection params are defaulted to be the same between async and sync connections, different FakeRedis
 > connections with the same connection params (or without connection parameters) will share the same server data
@@ -203,7 +217,7 @@ toc_depth: 2
 - Connection params are defaulted to be the same between async and sync connections #297
 - `xinfo_stream` raises exception when stream does not exist #296
 
-## v2.21.1
+## v2.21.1 - 2024-02-15
 
 ### 🐛 Bug Fixes
 
@@ -213,7 +227,7 @@ toc_depth: 2
 
 - Fix django cache documentation #286
 
-## v2.21.0
+## v2.21.0 - 2024-01-30
 
 ### 🚀 Features
 
@@ -234,7 +248,7 @@ toc_depth: 2
 - Refactor bloom filter commands implementation to use [pyprobables](https://github.com/barrust/pyprobables) instead of
   pybloom_live
 
-## v2.20.1
+## v2.20.1 - 2023-12-13
 
 ### 🐛 Bug Fixes
 
@@ -245,7 +259,7 @@ toc_depth: 2
 - Testing for python 3.12
 - Dependencies update
 
-## v2.20.0
+## v2.20.0 - 2023-10-21
 
 ### 🚀 Features
 

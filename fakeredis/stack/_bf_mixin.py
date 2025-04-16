@@ -156,15 +156,7 @@ class BFCommandsMixin:
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-    @command(
-        name="BF.SCANDUMP",
-        fixed=(
-            Key(),
-            Int,
-        ),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="BF.SCANDUMP", fixed=(Key(), Int), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def bf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)

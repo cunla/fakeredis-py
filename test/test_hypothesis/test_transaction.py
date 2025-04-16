@@ -1,4 +1,4 @@
-from test.test_hypothesis.base import (
+from .base import (
     BaseTest,
     commands,
     st,
@@ -9,8 +9,8 @@ from test.test_hypothesis.base import (
     expires_seconds,
     expires_ms,
     counts,
+    ints,
 )
-from test.test_hypothesis.test_string import TestString
 
 
 class TestTransaction(BaseTest):
@@ -24,7 +24,7 @@ class TestTransaction(BaseTest):
         | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
         | commands(st.just("get"), keys)
         | commands(st.just("getbit"), keys, counts)
-        | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | st.integers())
+        | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | ints)
         | commands(st.sampled_from(["substr", "getrange"]), keys, counts, counts)
         | commands(st.just("getset"), keys, values)
         | commands(st.just("mget"), st.lists(keys))
@@ -41,5 +41,5 @@ class TestTransaction(BaseTest):
         | commands(st.just("setrange"), keys, counts, values)
         | commands(st.just("strlen"), keys)
     )
-    create_command_strategy = TestString.create_command_strategy
+    create_command_strategy = commands(st.just("set"), keys, values)
     command_strategy = transaction_commands | common_commands
