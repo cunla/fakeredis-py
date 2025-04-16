@@ -10,9 +10,6 @@ from .base import (
 
 class TestConnection(BaseTest):
     # TODO: tests for select
-    connection_commands = (
-        commands(st.just("echo"), values)
-        | commands(st.just("ping"), st.lists(values, max_size=2))
-        | commands(st.just("swapdb"), dbnums, dbnums)
-    )
+    connection_commands = commands(st.just("echo"), values) | commands(st.just("ping"), st.lists(values, max_size=2))
+    command_strategy_redis_only = commands(st.just("swapdb"), dbnums, dbnums)
     command_strategy = connection_commands | common_commands

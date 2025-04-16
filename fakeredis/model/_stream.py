@@ -376,7 +376,8 @@ class XStream:
 
         if entry_key is None or entry_key == "*":
             ts, seq = int(1000 * time.time()), 0
-            if len(self._ids) > 0 and self._ids[-1].ts == ts and self._ids[-1].seq >= seq:
+            if len(self._ids) > 0 and self._ids[-1].ts >= ts and self._ids[-1].seq >= seq:
+                ts = self._ids[-1].ts
                 seq = self._ids[-1].seq + 1
             ts_seq = StreamEntryKey(ts, seq)
         elif entry_key[-1] == "*":  # entry_key has `timestamp-*` structure

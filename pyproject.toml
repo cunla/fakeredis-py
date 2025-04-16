@@ -9,7 +9,7 @@ packages = [
     { include = "fakeredis" },
     { include = "LICENSE", to = "fakeredis" },
 ]
-version = "2.28.0"
+version = "2.28.2"
 description = "Python implementation of redis API, can be used for testing purposes."
 readme = "README.md"
 keywords = ["redis", "RedisJson", "RedisBloom", "tests", "redis-stack"]
@@ -60,8 +60,10 @@ cf = ["pyprobables"]
 probabilistic = ["pyprobables"]
 
 [tool.poetry.group.dev.dependencies]
+poetry = { version = "^2.1.2", python = "^3.9" }
 ruff = "^0.11"
 mypy = { version = "^1.10", python = "^3.9" }
+pre-commit = { version = "^4.2", python = "^3.9" }
 
 [tool.poetry.group.test.dependencies]
 coverage = { version = "^7.6", python = "^3.9" }

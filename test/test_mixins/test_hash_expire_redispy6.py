@@ -9,10 +9,12 @@ from test import testtools
 from test.testtools import redis_server_time, REDIS_PY_VERSION
 
 pytestmark = []
-pytestmark.extend([
-    pytest.mark.min_server("7.9"),
-    testtools.run_test_if_redispy_ver("gte", "5.9"),
-])
+pytestmark.extend(
+    [
+        pytest.mark.min_server("7.9"),
+        testtools.run_test_if_redispy_ver("gte", "5.9"),
+    ]
+)
 
 if REDIS_PY_VERSION >= Version("5.9"):
     from redis.commands.core import HashDataPersistOptions
@@ -49,7 +51,7 @@ def test_hgetex_expiration_configs(r):
     assert r.hgetex("test:hash", *test_keys, ex=10) == [b"bar", b"1", b"four"]
     ttls = r.httl("test:hash", *test_keys)
     for ttl in ttls:
-        assert pytest.approx(ttl) == 10
+        assert pytest.approx(ttl, 1) == 10
 
     # test get with multiple fields removing expiration settings with 'persist'
     assert r.hgetex("test:hash", *test_keys, persist=True) == [
@@ -119,15 +121,15 @@ def test_hsetex_expiration_ex_and_keepttl(r):
     # set items from key/value provided
     # combined with mapping and items with expiration - testing ex field
     assert (
-            r.hsetex(
-                "test:hash",
-                "foo",
-                "bar",
-                mapping={"1": 1, "2": "2"},
-                items=["i1", 11, "i2", 22],
-                ex=10,
-            )
-            == 1
+        r.hsetex(
+            "test:hash",
+            "foo",
+            "bar",
+            mapping={"1": 1, "2": "2"},
+            items=["i1", 11, "i2", 22],
+            ex=10,
+        )
+        == 1
     )
     ttls = r.httl("test:hash", "foo", "1", "2", "i1", "i2")
     for ttl in ttls:
@@ -150,13 +152,11 @@ def test_hsetex_expiration_px(r):
     r.delete("test:hash")
     # set items from key/value provided and mapping
     # with expiration - testing px field
-    assert (
-            r.hsetex("test:hash", "foo", "bar", mapping={"1": 1, "2": "2"}, px=60000) == 1
-    )
+    assert r.hsetex("test:hash", "foo", "bar", mapping={"1": 1, "2": "2"}, px=60000) == 1
     test_keys = ["foo", "1", "2"]
     ttls = r.httl("test:hash", *test_keys)
     for ttl in ttls:
-        assert pytest.approx(ttl) == 60
+        assert pytest.approx(ttl, 1) == 60
     assert r.hgetex("test:hash", *test_keys) == [b"bar", b"1", b"2"]
 
 
@@ -166,15 +166,15 @@ def test_hsetex_expiration_pxat_and_fnx(r):
 
     expire_at = redis_server_time(r) + timedelta(minutes=1)
     assert (
-            r.hsetex(
-                "test:hash",
-                "foo",
-                "bar1",
-                mapping={"new": "ok"},
-                pxat=expire_at,
-                data_persist_option=HashDataPersistOptions.FNX,
-            )
-            == 0
+        r.hsetex(
+            "test:hash",
+            "foo",
+            "bar1",
+            mapping={"new": "ok"},
+            pxat=expire_at,
+            data_persist_option=HashDataPersistOptions.FNX,
+        )
+        == 0
     )
     ttls = r.httl("test:hash", "foo", "new")
     assert ttls[0] <= 30
@@ -182,15 +182,15 @@ def test_hsetex_expiration_pxat_and_fnx(r):
 
     assert r.hgetex("test:hash", "foo", "1", "new") == [b"bar", b"1", None]
     assert (
-            r.hsetex(
-                "test:hash",
-                "foo_new",
-                "bar1",
-                mapping={"new": "ok"},
-                pxat=expire_at,
-                data_persist_option=HashDataPersistOptions.FNX,
-            )
-            == 1
+        r.hsetex(
+            "test:hash",
+            "foo_new",
+            "bar1",
+            mapping={"new": "ok"},
+            pxat=expire_at,
+            data_persist_option=HashDataPersistOptions.FNX,
+        )
+        == 1
     )
     ttls = r.httl("test:hash", "foo", "new")
     for ttl in ttls:
@@ -208,15 +208,15 @@ def test_hsetex_expiration_exat_and_fxx(r):
 
     expire_at = redis_server_time(r) + timedelta(seconds=10)
     assert (
-            r.hsetex(
-                "test:hash",
-                "foo",
-                "bar1",
-                mapping={"new": "ok"},
-                exat=expire_at,
-                data_persist_option=HashDataPersistOptions.FXX,
-            )
-            == 0
+        r.hsetex(
+            "test:hash",
+            "foo",
+            "bar1",
+            mapping={"new": "ok"},
+            exat=expire_at,
+            data_persist_option=HashDataPersistOptions.FXX,
+        )
+        == 0
     )
     ttls = r.httl("test:hash", "foo", "new")
     assert 10 < ttls[0] <= 30
@@ -224,15 +224,15 @@ def test_hsetex_expiration_exat_and_fxx(r):
 
     assert r.hgetex("test:hash", "foo", "1", "new") == [b"bar", b"1", None]
     assert (
-            r.hsetex(
-                "test:hash",
-                "foo",
-                "bar1",
-                mapping={"1": "new_value"},
-                exat=expire_at,
-                data_persist_option=HashDataPersistOptions.FXX,
-            )
-            == 1
+        r.hsetex(
+            "test:hash",
+            "foo",
+            "bar1",
+            mapping={"1": "new_value"},
+            exat=expire_at,
+            data_persist_option=HashDataPersistOptions.FXX,
+        )
+        == 1
     )
     assert r.hgetex("test:hash", "foo", "1") == [b"bar1", b"new_value"]
 

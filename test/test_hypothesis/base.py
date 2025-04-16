@@ -1,8 +1,9 @@
 import functools
 import math
 import operator
+import string
 import sys
-from typing import Any, Tuple, Union
+from typing import Any
 
 import hypothesis
 import hypothesis.stateful
@@ -13,7 +14,7 @@ from hypothesis.stateful import rule, initialize, precondition
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from fakeredis._server import _create_version
+from ._server_info import redis_ver, floats_kwargs, server_type
 
 self_strategy = st.runner()
 
@@ -27,35 +28,17 @@ def sample_attr(draw, name):
     return values[position]
 
 
-def server_info() -> Tuple[str, Union[None, Tuple[int, ...]]]:
-    """Returns server's version or None if server is not running"""
-    client = None
-    try:
-        client = redis.Redis("localhost", port=6390, db=2)
-        client_info = client.info()
-        server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
-        server_version = client_info["redis_version"] if server_type != "dragonfly" else (7, 0)
-        server_version = _create_version(server_version) or (7,)
-        return server_type, server_version
-    except redis.ConnectionError as e:
-        print(e)
-        pytest.exit("Redis is not running")
-        return "redis", (6,)
-    finally:
-        if hasattr(client, "close"):
-            client.close()  # Absent in older versions of redis-py
-
-
-server_type, redis_ver = server_info()
-
 keys = sample_attr("keys")
 fields = sample_attr("fields")
 values = sample_attr("values")
 scores = sample_attr("scores")
 
-int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), st.integers())
-float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), st.floats(width=32))
-counts = st.integers(min_value=-3, max_value=3) | st.integers()
+eng_text = st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1))
+ints = st.integers(min_value=-2_147_483_648, max_value=2_147_483_647)
+int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), ints)
+floats = st.floats(width=32, **floats_kwargs)
+float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), floats)
+counts = st.integers(min_value=-3, max_value=3) | ints
 # Redis has an integer overflow bug in swapdb, so we confine the numbers to
 # a limited range (https://github.com/antirez/redis/issues/5737).
 dbnums = st.integers(min_value=0, max_value=3) | st.integers(min_value=-1000, max_value=1000)
@@ -63,12 +46,12 @@ dbnums = st.integers(min_value=0, max_value=3) | st.integers(min_value=-1000, ma
 patterns = st.text(alphabet=st.sampled_from("[]^$*.?-azAZ\\\r\n\t")) | st.binary().filter(lambda x: b"\0" not in x)
 string_tests = st.sampled_from([b"+", b"-"]) | st.builds(operator.add, st.sampled_from([b"(", b"["]), fields)
 # Redis has integer overflow bugs in time computations, which is why we set a maximum.
-expires_seconds = st.integers(min_value=100000, max_value=10000000000)
-expires_ms = st.integers(min_value=100000000, max_value=10000000000000)
+expires_seconds = st.integers(min_value=5, max_value=1_000)
+expires_ms = st.integers(min_value=5_000, max_value=50_000)
 
 
 class WrappedException:
-    """Wraps an exception for the purposes of comparison."""
+    """Wraps an exception for comparison."""
 
     def __init__(self, exc):
         self.wrapped = exc
@@ -110,6 +93,8 @@ def sort_list(lst):
 
 
 def normalize_if_number(x):
+    if isinstance(x, list):
+        return [normalize_if_number(item) for item in x]
     try:
         res = float(x)
         return x if math.isnan(res) else res
@@ -132,11 +117,11 @@ def default_normalize(x: Any) -> Any:
     return x
 
 
-def optional(arg):
+def optional(arg: Any) -> st.SearchStrategy:
     return st.none() | st.just(arg)
 
 
-def zero_or_more(*args):
+def zero_or_more(*args: Any):
     return [optional(arg) for arg in args]
 
 
@@ -159,7 +144,18 @@ class Command:
     def normalize(self):
         command = self.encode(self.args[0]).lower() if self.args else None
         # Functions that return a list in arbitrary order
-        unordered = {b"keys", b"sort", b"hgetall", b"hkeys", b"hvals", b"sdiff", b"sinter", b"sunion", b"smembers"}
+        unordered = {
+            b"keys",
+            b"sort",
+            b"hgetall",
+            b"hkeys",
+            b"hvals",
+            b"sdiff",
+            b"sinter",
+            b"sunion",
+            b"smembers",
+            b"hexpire",
+        }
         if command in unordered:
             return sort_list
         else:
@@ -181,7 +177,7 @@ class Command:
         if command == b"keys" and N == 2 and self.args[1] != b"*":
             return False
         # Redis will ignore a NULL character in some commands but not others,
-        # e.g., it recognises EXEC\0 but not MULTI\00.
+        # e.g., it recognizes EXEC\0 but not MULTI\00.
         # Rather than try to reproduce this quirky behavior, just skip these tests.
         if b"\0" in command:
             return False
@@ -206,15 +202,6 @@ common_commands = (
     #  away the sort entirely with normalize. This also prevents us
     #  using LIMIT.
     | commands(st.just("sort"), keys, *zero_or_more("asc", "desc", "alpha"))
-)
-
-attrs = st.fixed_dictionaries(
-    {
-        "keys": st.lists(st.binary(), min_size=2, max_size=5, unique=True),
-        "fields": st.lists(st.binary(), min_size=2, max_size=5, unique=True),
-        "values": st.lists(st.binary() | int_as_bytes | float_as_bytes, min_size=2, max_size=5, unique=True),
-        "scores": st.lists(st.floats(width=32), min_size=2, max_size=5, unique=True),
-    }
 )
 
 
@@ -269,10 +256,10 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         real_result, real_exc = self._evaluate(self.real, command)
 
         if fake_exc is not None and real_exc is None:
-            print("{} raised on only on fake when running {}".format(fake_exc, command), file=sys.stderr)
+            print(f"{fake_exc} raised on only on fake when running {command}", file=sys.stderr)
             raise fake_exc
         elif real_exc is not None and fake_exc is None:
-            assert real_exc == fake_exc, "Expected exception {} not raised".format(real_exc)
+            assert real_exc == fake_exc, f"Expected exception `{real_exc}` not raised when running {command}"
         elif real_exc is None and isinstance(real_result, list) and command.args and command.args[0].lower() == "exec":
             assert fake_result is not None
             # Transactions need to use the normalize functions of the
@@ -282,10 +269,19 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             for n, r, f in zip(self.transaction_normalize, real_result, fake_result):
                 assert n(f) == n(r)
             self.transaction_normalize = []
+        elif isinstance(fake_result, list):
+            assert len(fake_result) == len(real_result), (
+                f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})",
+            )
+            for i in range(len(fake_result)):
+                assert fake_result[i] == real_result[i] or (
+                    type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
+                ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+
         else:
             assert fake_result == real_result or (
                 type(fake_result) is float and fake_result == pytest.approx(real_result)
-            ), "Discrepancy when running command {}, fake({}) != real({})".format(command, fake_result, real_result)
+            ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
@@ -295,7 +291,16 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         if len(command.args) == 1 and Command.encode(command.args[0]).lower() in (b"discard", b"exec"):
             self.transaction_normalize = []
 
-    @initialize(attrs=attrs)
+    @initialize(
+        attrs=st.fixed_dictionaries(
+            dict(
+                keys=st.lists(eng_text, min_size=2, max_size=5, unique=True),
+                fields=st.lists(eng_text, min_size=2, max_size=5, unique=True),
+                values=st.lists(eng_text | int_as_bytes | float_as_bytes, min_size=2, max_size=5, unique=True),
+                scores=st.lists(floats, min_size=2, max_size=5, unique=True),
+            )
+        )
+    )
     def init_attrs(self, attrs):
         for key, value in attrs.items():
             setattr(self, key, value)
@@ -322,15 +327,18 @@ class BaseTest:
     command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
     command_strategy_redis7 = st.nothing()
+    command_strategy_redis_only = st.nothing()
 
     @pytest.mark.slow
     def test(self):
         class Machine(CommonMachine):
             create_command_strategy = self.create_command_strategy
-            command_strategy = (
-                self.command_strategy | self.command_strategy_redis7 if redis_ver >= (7,) else self.command_strategy
-            )
+            command_strategy = self.command_strategy
+            if server_type == "redis":
+                command_strategy = command_strategy | self.command_strategy_redis_only
+            if server_type == "redis" and redis_ver >= (7,):
+                command_strategy = command_strategy | self.command_strategy_redis7
 
-        hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        hypothesis.settings.load_profile("debug")
+        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
+        # hypothesis.settings.load_profile("debug")
         hypothesis.stateful.run_state_machine_as_test(Machine)

@@ -61,11 +61,14 @@ class GenericCommandsMixin:
 
     def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
         (
-            nx,
-            xx,
-            gt,
-            lt,
-        ), _ = extract_args(
+            (
+                nx,
+                xx,
+                gt,
+                lt,
+            ),
+            _,
+        ) = extract_args(
             args,
             (
                 "nx",
@@ -226,13 +229,16 @@ class GenericCommandsMixin:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
-            asc,
-            desc,
-            alpha,
-            store,
-            sortby,
-            (limit_start, limit_count),
-        ), left_args = extract_args(
+            (
+                asc,
+                desc,
+                alpha,
+                store,
+                sortby,
+                (limit_start, limit_count),
+            ),
+            left_args,
+        ) = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
@@ -307,12 +313,15 @@ class GenericCommandsMixin:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
-            asc,
-            desc,
-            alpha,
-            sortby,
-            (limit_start, limit_count),
-        ), left_args = extract_args(
+            (
+                asc,
+                desc,
+                alpha,
+                sortby,
+                (limit_start, limit_count),
+            ),
+            left_args,
+        ) = extract_args(
             args,
             ("asc", "desc", "alpha", "*by", "++limit"),
             error_on_unexpected=False,

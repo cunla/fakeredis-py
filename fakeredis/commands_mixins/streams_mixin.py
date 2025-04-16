@@ -81,9 +81,12 @@ class StreamsCommandsMixin:
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
     def xread(self, *args: bytes) -> Optional[Dict[str, Any]]:
         (
-            count,
-            timeout,
-        ), left_args = extract_args(
+            (
+                count,
+                timeout,
+            ),
+            left_args,
+        ) = extract_args(
             args,
             (
                 "+count",
@@ -149,11 +152,7 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
 
-    @command(
-        name="XDEL",
-        fixed=(Key(XStream),),
-        repeat=(bytes,),
-    )
+    @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xdel"))

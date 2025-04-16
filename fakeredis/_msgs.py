@@ -86,7 +86,7 @@ NONSCALING_FILTERS_CANNOT_EXPAND_MSG = "Nonscaling filters cannot expand"
 ITEM_EXISTS_MSG = "item exists"
 NOT_FOUND_MSG = "not found"
 INVALID_BITFIELD_TYPE = (
-    "ERR Invalid bitfield type. Use something like i16 u8. " "Note that u64 is not supported but i64 is."
+    "ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is."
 )
 INVALID_OVERFLOW_TYPE = "ERR Invalid OVERFLOW type specified"
 

@@ -175,12 +175,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             results.append(key.value.add(timestamp, value))
         return results
 
-    @command(
-        name="TS.DEL",
-        fixed=(Key(TimeSeries), Int, Int),
-        repeat=(),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_del(self, key: CommandItem, from_ts: int, to_ts: int) -> bytes:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
@@ -261,21 +256,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             )
             raise SimpleError(msg)
 
-    @command(
-        name="TS.INCRBY",
-        fixed=(Key(TimeSeries), Float),
-        repeat=(bytes,),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="TS.INCRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_incrby(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
         return self._ts_inc_or_dec(key, addend, *args)
 
-    @command(
-        name="TS.DECRBY",
-        fixed=(Key(TimeSeries), Float),
-        repeat=(bytes,),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
+    @command(name="TS.DECRBY", fixed=(Key(TimeSeries), Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_decrby(self, key: CommandItem, subtrahend: float, *args: bytes) -> bytes:
         return self._ts_inc_or_dec(key, -subtrahend, *args)
 
@@ -313,14 +298,17 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     ) -> List[List[Union[int, float]]]:
         RANGE_ARGS = ("latest", "++filter_by_value", "+count", "*align", "*+aggregation", "*buckettimestamp", "empty")
         (
-            latest,
-            (value_min, value_max),
-            count,
-            align,
-            (aggregator, bucket_duration),
-            bucket_timestamp,
-            empty,
-        ), left_args = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
+            (
+                latest,
+                (value_min, value_max),
+                count,
+                align,
+                (aggregator, bucket_duration),
+                bucket_timestamp,
+                empty,
+            ),
+            left_args,
+        ) = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
         latest = True
         filter_ts: Optional[List[int]] = None
         if len(left_args) > 0:
@@ -457,7 +445,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             name = f"{label.decode()}={label_value.decode()}"
             sources = (", ".join([ts[0].decode() for ts in ts_list])).encode("utf-8")
             labels = {label: label_value, b"__reducer__": reducer, b"__source__": sources}
-            measurements: List[int, float] = [
+            measurements: List[List[Union[int, float]]] = [
                 [timestamp, float(AGGREGATORS[reducer](timestamp_values[timestamp]))] for timestamp in sorted_timestamps
             ]
             if reverse:

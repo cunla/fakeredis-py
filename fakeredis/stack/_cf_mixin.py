@@ -12,7 +12,6 @@ from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 
 
 class ScalableCuckooFilter(CountingCuckooFilter):
-
     def __init__(self, capacity: int, bucket_size: int = 2, max_iterations: int = 20, expansion: int = 1):
         super().__init__(capacity, bucket_size, max_iterations, expansion)
         self.initial_capacity: int = capacity
@@ -38,7 +37,6 @@ class ScalableCuckooFilter(CountingCuckooFilter):
 
 
 class CFCommandsMixin:
-
     @staticmethod
     def _cf_add(key: CommandItem, item: bytes) -> int:
         if key.value is None:
@@ -152,15 +150,7 @@ class CFCommandsMixin:
             res.append(CFCommandsMixin._cf_exist(key, value))
         return res
 
-    @command(
-        name="CF.RESERVE",
-        fixed=(
-            Key(),
-            Int,
-        ),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="CF.RESERVE", fixed=(Key(), Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def cf_reserve(self, key: CommandItem, capacity: int, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.ITEM_EXISTS_MSG)
@@ -174,15 +164,7 @@ class CFCommandsMixin:
         key.update(value)
         return OK
 
-    @command(
-        name="CF.SCANDUMP",
-        fixed=(
-            Key(),
-            Int,
-        ),
-        repeat=(),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name="CF.SCANDUMP", fixed=(Key(), Int), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def cf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)

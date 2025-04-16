@@ -227,7 +227,6 @@ def apply_aggregator(
 
 
 class TimeSeriesRule:
-
     def __init__(
         self,
         source_key: TimeSeries,
