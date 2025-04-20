@@ -131,11 +131,10 @@ class StreamGroup(object):
             lag = len(self.stream) - start_index - (self.entries_read or 0)
         else:
             lag = len(self.stream) - 1 - last_delivered_index
-        pending_summary = self.pending_summary()
         res = {
             b"name": self.name,
             b"consumers": len(self.consumers),
-            b"pending": pending_summary[0],
+            b"pending": len(self.pel),
             b"last-delivered-id": self.last_delivered_key.encode(),
             b"entries-read": self.entries_read,
             b"lag": lag,
