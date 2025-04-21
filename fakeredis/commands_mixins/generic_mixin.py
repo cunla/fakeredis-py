@@ -165,15 +165,15 @@ class GenericCommandsMixin:
             return -2
         if key.expireat is None:
             return -1
-        return key.expireat
+        return int(key.expireat)
 
     @command(name="PEXPIRETIME", fixed=(Key(),))
-    def pexpiretime(self, key: CommandItem) -> float:
+    def pexpiretime(self, key: CommandItem) -> int:
         if key.value is None:
             return -2
         if key.expireat is None:
             return -1
-        return key.expireat * 1000
+        return int(key.expireat * 1000)
 
     @command(name="RANDOMKEY", fixed=())
     def randomkey(self):
