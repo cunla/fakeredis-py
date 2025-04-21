@@ -852,3 +852,18 @@ def test_xadd_change_time(r: redis.Redis):
     new_id = f"{new_ts}-*"
     with pytest.raises(ResponseError):
         r.xadd("foobar", {"a": "2"}, id=new_id)
+
+
+def test_xinfo_groups_pending(r: redis.Redis):
+    stream_name = "testing_stream"
+    group_name = "testing_group"
+    consumer_name = "testing_consumer"
+
+    r.delete(stream_name)
+    r.xgroup_create(stream_name, group_name, id="0", mkstream=True)
+
+    r.xadd(stream_name, {"key": "value"})
+
+    r.xreadgroup(group_name, consumer_name, {stream_name: ">"}, count=1)
+    assert r.xpending(stream_name, group_name)["pending"] == 1
+    assert r.xinfo_groups(stream_name)[0]["pending"] == 1

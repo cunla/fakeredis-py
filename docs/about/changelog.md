@@ -13,6 +13,7 @@ toc_depth: 2
 
 - Fix `json.set` nx arg behavior #372
 - Fix issue with `hset` not resetting expiration over field
+- Fix inconsistent 'pending' field in return from XINFO GROUPS #374
 
 ## v2.28.1 - 2025-04-02
 

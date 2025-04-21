@@ -134,7 +134,7 @@ class StreamGroup(object):
         res = {
             b"name": self.name,
             b"consumers": len(self.consumers),
-            b"pending": last_delivered_index - last_ack_index,
+            b"pending": len(self.pel),
             b"last-delivered-id": self.last_delivered_key.encode(),
             b"entries-read": self.entries_read,
             b"lag": lag,
