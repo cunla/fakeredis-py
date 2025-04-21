@@ -20,6 +20,7 @@ class HashCommandsMixin:
     ]
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    protocol_version: int
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
@@ -117,7 +118,7 @@ class HashCommandsMixin:
         return list(key.value.values())
 
     @command(name="HRANDFIELD", fixed=(Key(Hash),), repeat=(bytes,))
-    def hrandfield(self, key: CommandItem, *args: bytes) -> Union[Mapping[str, str], List[str], None]:
+    def hrandfield(self, key: CommandItem, *args: bytes) -> Union[List[List[str]], List[str], None]:
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if key.value is None or len(key.value) == 0:

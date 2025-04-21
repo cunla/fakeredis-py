@@ -42,7 +42,7 @@ def test_ping_pubsub(r: redis.Redis):
     p.ping()
     assert p.parse_response() == resp_conversion(r, b"PONG", [b"pong", b""])
     p.ping("test")
-    assert p.parse_response() == [b"pong", b"test"]
+    assert p.parse_response() == resp_conversion(r, b"test", [b"pong", b"test"])
 
 
 @pytest.mark.slow
