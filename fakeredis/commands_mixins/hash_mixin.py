@@ -1,7 +1,7 @@
 import math
 import random
 from collections.abc import Mapping
-from typing import Callable, List, Tuple, Any, Optional, Sequence
+from typing import Callable, List, Tuple, Any, Optional, Sequence, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -117,7 +117,7 @@ class HashCommandsMixin:
         return list(key.value.values())
 
     @command(name="HRANDFIELD", fixed=(Key(Hash),), repeat=(bytes,))
-    def hrandfield(self, key: CommandItem, *args: bytes) -> Optional[List[bytes]]:
+    def hrandfield(self, key: CommandItem, *args: bytes) -> Union[Mapping[str, str], List[str], None]:
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if key.value is None or len(key.value) == 0:
@@ -125,7 +125,7 @@ class HashCommandsMixin:
         count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
         withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
         if count == 0:
-            return list()
+            return dict()
 
         if count < 0:  # Allow repetitions
             res = random.choices(sorted(key.value.items()), k=-count)
@@ -133,7 +133,10 @@ class HashCommandsMixin:
             res = random.sample(sorted(key.value.items()), count)
 
         if withvalues:
-            res = [item for t in res for item in t]
+            if self.protocol_version == 2:
+                res = [item for t in res for item in t]
+            else:
+                res = [list(t) for t in res]
         else:
             res = [t[0] for t in res]
         return res

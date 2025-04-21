@@ -3,7 +3,7 @@ import redis
 import redis.client
 
 from test import testtools
-from test.testtools import raw_command
+from test.testtools import raw_command, resp_conversion
 
 
 @pytest.mark.min_server("7.4")
@@ -306,11 +306,17 @@ def test_hrandfield(r: redis.Redis):
     assert res[1] in set(hash.keys())
     # with values
     res = r.hrandfield("key", 2, True)
-    assert len(res) == 4
-    assert res[0] in set(hash.keys())
-    assert res[1] in {str(x).encode() for x in hash.values()}
-    assert res[2] in set(hash.keys())
-    assert res[3] in {str(x).encode() for x in hash.values()}
+    assert len(res) == resp_conversion(r, 2, 4)
+    if testtools.get_protocol_version(r) == 2:
+        assert res[0] in set(hash.keys())
+        assert res[1] in {str(x).encode() for x in hash.values()}
+        assert res[2] in set(hash.keys())
+        assert res[3] in {str(x).encode() for x in hash.values()}
+    else:
+        assert res[0][1] in {str(x).encode() for x in hash.values()}
+        assert res[1][1] in {str(x).encode() for x in hash.values()}
+        assert res[0][0] in set(hash.keys())
+        assert res[1][0] in set(hash.keys())
     # without duplications
     assert len(r.hrandfield("key", 10)) == 5
     # with duplications
