@@ -196,6 +196,7 @@ def test_zrange_descending_with_scores(r: redis.Redis):
     assert r.zrange("foo", 0, -1, desc=True, withscores=True) == resp_conversion(
         r, [[b"three", 3.0], [b"two", 2.0], [b"one", 1.0]], [(b"three", 3), (b"two", 2), (b"one", 1)]
     )
+    # comment
 
 
 def test_zrange_with_positive_indices(r: redis.Redis):
