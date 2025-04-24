@@ -43,7 +43,9 @@ def test_hgetall(r: redis.Redis):
     assert r.hset("foo", "k1", "v1") == 1
     assert r.hset("foo", "k2", "v2") == 1
     assert r.hset("foo", "k3", "v3") == 1
-    assert r.hgetall("foo") == {b"k1": b"v1", b"k2": b"v2", b"k3": b"v3"}
+    assert r.hgetall("foo") == resp_conversion(
+        r, {"k1": "v1", "k2": "v2", "k3": "v3"}, {b"k1": b"v1", b"k2": b"v2", b"k3": b"v3"}
+    )
 
 
 def test_hgetall_empty_key(r: redis.Redis):
@@ -267,7 +269,7 @@ def test_hscan(r: redis.Redis):
     while cursor != 0:
         cursor, data = r.hscan(name, cursor, count=6)
         results.update(data)
-    assert expected == results
+    assert expected == resp_conversion(r, {k.decode(): v.decode() for k, v in results.items()}, results)
 
     # Test the iterator version
     results = {}

@@ -38,15 +38,19 @@ def test_zpopmin_too_many(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmin("foo", count=5) == [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0)]
+    assert r.zpopmin("foo", count=5) == resp_conversion(
+        r, [[b"one", 1.0], [b"two", 2.0], [b"three", 3.0]], [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0)]
+    )
 
 
 def test_zpopmax(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmax("foo", count=2) == [(b"three", 3.0), (b"two", 2.0)]
-    assert r.zpopmax("foo", count=2) == [(b"one", 1.0)]
+    assert r.zpopmax("foo", count=2) == resp_conversion(
+        r, [[b"three", 3.0], [b"two", 2.0]], [(b"three", 3.0), (b"two", 2.0)]
+    )
+    assert r.zpopmax("foo", count=2) == resp_conversion(r, [[b"one", 1.0]], [(b"one", 1.0)])
 
 
 def test_zrange_same_score(r: redis.Redis):
