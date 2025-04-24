@@ -8,7 +8,13 @@ from test.conftest import ServerDetails
 from test.testtools import resp_conversion
 
 pytestmark = []
-pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
+pytestmark.extend(
+    [
+        pytest.mark.min_server("7"),
+        testtools.run_test_if_redispy_ver("gte", "5"),
+        pytest.mark.resp2_only,
+    ]
+)
 
 _VALKEY_UNSUPPORTED_COMMANDS = {
     "hexpiretime",
@@ -25,7 +31,6 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 @pytest.mark.max_server("7.5")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     categories = get_categories()
-    # categories = [cat.decode() for cat in categories]
     assert set(r.acl_cat()) == set(categories)
     for cat in categories:
         commands = get_commands_by_category(cat)
@@ -36,7 +41,7 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
         commands = {cmd.replace(" ", "|") for cmd in commands}
         server_commands = r.acl_cat(cat)
-        server_commands = {cmd.decode() for cmd in server_commands}
+        server_commands = {cmd for cmd in server_commands}
         diff = set(commands) - set(server_commands)
         assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
 

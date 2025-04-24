@@ -56,6 +56,7 @@ class Hash:
         self._expirations.pop(key, None)
 
     def __len__(self) -> int:
+        self._expire_keys()
         return len(self._values)
 
     def __iter__(self) -> Iterable[bytes]:
@@ -85,8 +86,7 @@ class Hash:
     def getall(self) -> Dict[str, str]:
         self._expire_keys()
         res = self._values.copy()
-        return res
-        # return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
+        return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
 
     def pop(self, key: bytes, d: Any = None) -> Any:
         self._expire_keys()

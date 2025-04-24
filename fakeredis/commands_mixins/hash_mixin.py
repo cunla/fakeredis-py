@@ -295,9 +295,10 @@ class HashCommandsMixin:
         when_ms = _get_when_ms(ex, px, exat, pxat)
 
         field_keys = set(field_vals[::2])
-        if fxx and len(field_keys - hash_val.getall().keys()) > 0:
+        existing_keys = set(hash_val.keys())
+        if fxx and len(field_keys - existing_keys) > 0:
             return 0
-        if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
+        if fnx and len(field_keys - existing_keys) < len(field_keys):
             return 0
         res = 0
         for i in range(0, len(field_vals), 2):
