@@ -137,12 +137,7 @@ def test_tdigest_byrevrank(r: redis.Redis):
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_tdigest_quantile_nan(r: redis.Redis):
     r.tdigest().create("foo")
-    r.tdigest().add(
-        "foo",
-        [
-            123,
-        ],
-    )
+    r.tdigest().add("foo", [123])
     res = r.tdigest().quantile("foo", 0.9)
     assert isinstance(res, list)
     assert len(res) == 1
