@@ -1,3 +1,4 @@
+import math
 from math import inf
 
 import pytest
@@ -131,3 +132,18 @@ def test_tdigest_byrevrank(r: redis.Redis):
     assert r.tdigest().byrevrank("t-digest", 100)[0] == -inf
     with pytest.raises(redis.ResponseError):
         r.tdigest().byrevrank("t-digest", -1)[0]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_tdigest_quantile_nan(r: redis.Redis):
+    r.tdigest().create("foo")
+    r.tdigest().add(
+        "foo",
+        [
+            123,
+        ],
+    )
+    res = r.tdigest().quantile("foo", 0.9)
+    assert isinstance(res, list)
+    assert len(res) == 1
+    assert math.isnan(res[0]), f"Expected NaN, got {res[0]}"
