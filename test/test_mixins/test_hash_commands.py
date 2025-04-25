@@ -43,9 +43,7 @@ def test_hgetall(r: redis.Redis):
     assert r.hset("foo", "k1", "v1") == 1
     assert r.hset("foo", "k2", "v2") == 1
     assert r.hset("foo", "k3", "v3") == 1
-    assert r.hgetall("foo") == resp_conversion(
-        r, {"k1": "v1", "k2": "v2", "k3": "v3"}, {b"k1": b"v1", b"k2": b"v2", b"k3": b"v3"}
-    )
+    assert r.hgetall("foo") == {b"k1": b"v1", b"k2": b"v2", b"k3": b"v3"}
 
 
 def test_hgetall_empty_key(r: redis.Redis):
@@ -253,6 +251,25 @@ def test_hset_removing_last_field_delete_key(r: redis.Redis):
     assert r.keys("*") == []
 
 
+@pytest.mark.min_server("7.4")
+def test_hscan_no_values(r: redis.Redis):
+    name = "hscan-test"
+    for ix in range(20):
+        k = "key:%s" % ix
+        v = "result:%s" % ix
+        r.hset(name, k, v)
+    expected = r.hgetall(name)
+    assert len(expected) == 20  # Ensure we know what we're testing
+
+    # Test that we page through the results and get everything out
+    results = set()
+    cursor = "0"
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor, count=6, no_values=True)
+        results.update(data)
+    assert results == set(expected.keys())
+
+
 def test_hscan(r: redis.Redis):
     # Set up the data
     name = "hscan-test"
@@ -269,13 +286,13 @@ def test_hscan(r: redis.Redis):
     while cursor != 0:
         cursor, data = r.hscan(name, cursor, count=6)
         results.update(data)
-    assert expected == resp_conversion(r, {k.decode(): v.decode() for k, v in results.items()}, results)
+    assert results == expected
 
     # Test the iterator version
     results = {}
     for key, val in r.hscan_iter(name, count=6):
         results[key] = val
-    assert expected == results
+    assert results == expected
 
     # Now test that the MATCH functionality works
     results = {}

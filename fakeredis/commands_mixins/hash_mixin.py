@@ -90,13 +90,20 @@ class HashCommandsMixin:
         self.hset(key, *args)
         return OK
 
-    @command((Key(Hash), Int), (bytes, bytes))
+    @command((Key(Hash), Int), (bytes,))
     def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Any]:
+        no_values = any(casematch(arg, b"novalues") for arg in args)
+        if no_values:
+            args = [arg for arg in args if not casematch(arg, b"novalues")]
         cursor, keys = self._scan(key.value, cursor, *args)
+        if no_values:
+            return [cursor, keys]
         items = []
         for k in keys:
             items.append(k)
             items.append(key.value[k])
+        if self.protocol_version == 3:
+            items = [i.decode() for i in items]
         return [cursor, items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
