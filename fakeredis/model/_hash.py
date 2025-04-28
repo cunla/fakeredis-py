@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Optional, Any, Dict
+from typing import Iterable, Tuple, Optional, Any, Dict, AnyStr
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
@@ -11,7 +11,7 @@ class Hash:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._expirations: Dict[bytes, int] = dict()
-        self._values: Dict[bytes, Any] = dict()
+        self._values: Dict[bytes, bytes] = dict()
 
     def _expire_keys(self) -> None:
         removed = []
@@ -32,26 +32,38 @@ class Hash:
         self._expirations[key] = when_ms
         return 1
 
-    def clear_key_expireat(self, key: bytes) -> bool:
+    def clear_key_expireat(self, key: AnyStr) -> bool:
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         return self._expirations.pop(key, None) is not None
 
-    def get_key_expireat(self, key: bytes) -> Optional[int]:
+    def get_key_expireat(self, key: AnyStr) -> Optional[int]:
         self._expire_keys()
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         return self._expirations.get(key, None)
 
-    def __getitem__(self, key: bytes) -> Any:
+    def __getitem__(self, key: AnyStr) -> Any:
         self._expire_keys()
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         return self._values.get(key)
 
-    def __contains__(self, key: bytes) -> bool:
+    def __contains__(self, key: AnyStr) -> bool:
         self._expire_keys()
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         return self._values.__contains__(key)
 
-    def __setitem__(self, key: bytes, value: Any) -> None:
+    def __setitem__(self, key: AnyStr, value: Any) -> None:
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         self._expirations.pop(key, None)
         self._values[key] = value
 
-    def __delitem__(self, key: bytes) -> None:
+    def __delitem__(self, key: AnyStr) -> None:
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         self._values.pop(key, None)
         self._expirations.pop(key, None)
 
@@ -59,16 +71,23 @@ class Hash:
         self._expire_keys()
         return len(self._values)
 
-    def __iter__(self) -> Iterable[bytes]:
-        return iter(self._values)
-
-    def get(self, key: bytes, default: Any = None) -> Any:
+    def __iter__(self) -> Iterable[str]:
         self._expire_keys()
+        for k in self._values.keys():
+            if isinstance(k, bytes):
+                yield k.decode("utf-8")
+            else:
+                yield k
+
+    def get(self, key: AnyStr, default: Any = None) -> Any:
+        self._expire_keys()
+        if isinstance(key, str):
+            key = key.encode("utf-8")
         return self._values.get(key, default)
 
-    def keys(self) -> Iterable[bytes]:
+    def keys(self) -> Iterable[AnyStr]:
         self._expire_keys()
-        return self._values.keys()
+        return [k for k in self._values.keys()]
 
     def values(self) -> Iterable[Any]:
         return [v for k, v in self.items()]
@@ -80,13 +99,15 @@ class Hash:
     def update(self, values: Dict[bytes, Any]) -> None:
         self._expire_keys()
         for k in values.keys():
+            if isinstance(k, str):
+                k = k.encode("utf-8")
             self.clear_key_expireat(k)
-        self._values.update(values)
+            self._values[k] = values[k]
 
     def getall(self) -> Dict[str, str]:
         self._expire_keys()
         res = self._values.copy()
-        return {k.decode("utf-8"): v.decode("utf-8") for k, v in res.items()}
+        return {k: v for k, v in res.items()}
 
     def pop(self, key: bytes, d: Any = None) -> Any:
         self._expire_keys()

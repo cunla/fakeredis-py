@@ -24,9 +24,9 @@ class HashCommandsMixin:
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
-        keys_count = len(h.keys())
+        previous_keys_count = len(h.keys())
         h.update(dict(zip(*[iter(args)] * 2)))  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
-        created = len(h.keys()) - keys_count
+        created = len(h.keys()) - previous_keys_count
 
         key.updated()
         return created
@@ -96,14 +96,13 @@ class HashCommandsMixin:
         if no_values:
             args = [arg for arg in args if not casematch(arg, b"novalues")]
         cursor, keys = self._scan(key.value, cursor, *args)
+        keys = [key.encode("utf-8") for key in keys if isinstance(key, str)]
         if no_values:
             return [cursor, keys]
         items = []
         for k in keys:
             items.append(k)
             items.append(key.value[k])
-        if self.protocol_version == 3:
-            items = [i.decode() for i in items]
         return [cursor, items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))

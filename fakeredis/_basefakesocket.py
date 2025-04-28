@@ -380,6 +380,8 @@ class BaseFakeSocket:
         regex = compile_pattern(pattern) if pattern is not None else None
 
         def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
+            if isinstance(key, str):
+                key = key.encode("utf-8")
             return regex.match(key) if regex is not None else True
 
         def match_type(key) -> bool:
