@@ -588,12 +588,12 @@ def test_objkeys(r: redis.Redis):
     r.json().set("obj", Path.root_path(), obj)
     keys = r.json().objkeys("obj", Path.root_path())
     keys.sort()
-    exp = list(obj.keys())
+    exp = [k.encode() for k in obj.keys()]
     exp.sort()
-    assert exp == keys
+    assert set(keys) == resp_conversion(r, {k.encode() for k in obj.keys()}, set(obj.keys()))
 
     r.json().set("obj", Path.root_path(), obj)
-    assert r.json().objkeys("obj") == list(obj.keys())
+    assert set(r.json().objkeys("obj")) == resp_conversion(r, {k.encode() for k in obj.keys()}, set(obj.keys()))
 
     assert r.json().objkeys("fakekey") is None
 
@@ -611,9 +611,9 @@ def test_objkeys(r: redis.Redis):
     assert r.json().objkeys("doc1", "$.nested1.a") == [[b"foo", b"bar"]]
 
     # Test legacy
-    assert r.json().objkeys("doc1", ".*.a") == ["foo", "bar"]
+    assert set(r.json().objkeys("doc1", ".*.a")) == resp_conversion(r, {b"foo", b"bar"}, {"foo", "bar"})
     # Test single
-    assert r.json().objkeys("doc1", ".nested2.a") == ["baz"]
+    assert r.json().objkeys("doc1", ".nested2.a") == resp_conversion(r, [b"baz"], ["baz"])
 
     # Test missing key
     assert r.json().objkeys("non_existing_doc", "..a") is None
