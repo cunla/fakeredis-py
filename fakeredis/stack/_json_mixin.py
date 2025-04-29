@@ -168,22 +168,26 @@ class JSONCommandsMixin:
     ) -> Union[List[Optional[Any]], Optional[Any]]:
         path_str = args[0] if len(args) > 0 else "$"
         if key.value is None:
-            if path_str[0] == 36:
+            if path_str[0] == ord(b"$"):
                 raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
             else:
                 return None
 
         path = _parse_jsonpath(path_str)
         found_matches = path.find(key.value)
-        if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != 36:
+        if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
             raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
         res = list()
         for item in found_matches:
             res.append(method(item.value))
 
-        if path_str[0] == 46:
+        if path_str[0] == ord(b"."):
             return res[0] if len(res) > 0 else None
-        if self.protocol_version == 2 and len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == 46)):
+        if (
+            self.protocol_version == 2
+            and len(res) == 1
+            and (len(args) == 0 or (len(args) == 1 and args[0][0] == ord(b".")))
+        ):
             return res[0]
 
         return res
