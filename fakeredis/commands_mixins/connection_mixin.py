@@ -26,7 +26,7 @@ class ConnectionCommandsMixin:
         if len(args) > 1:
             msg = msgs.WRONG_ARGS_MSG6.format("ping")
             raise SimpleError(msg)
-        if self._pubsub:
+        if self._pubsub and self.protocol_version == 2:
             return [b"pong", args[0] if args else b""]
         else:
             return args[0] if args else PONG
