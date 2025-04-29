@@ -84,7 +84,8 @@ def _json_write_iterate(
     method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[Any], bool]],
     key: CommandItem,
     path_str: Union[str, bytes],
-    **kwargs: Any,
+    protocol_version: int,
+    allow_result_none: bool = False,
 ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
     """Implement json.* write commands.
     Iterate over values with path_str in key and running method to get new value for path item.
@@ -107,7 +108,7 @@ def _json_write_iterate(
     key.update(curr_value)
 
     if len(path_str) > 1 and path_str[0] == ord(b"."):
-        if kwargs.get("allow_result_none", False):
+        if allow_result_none:
             return res[-1]
         else:
             return next(x for x in reversed(res) if x is not None)
@@ -170,6 +171,7 @@ class JSONCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db: helpers.Database
+        self.protocol_version: int
 
     @staticmethod
     def _get_single(
@@ -330,7 +332,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(strappend, key, path_str)
+        return _json_write_iterate(strappend, key, path_str, self.protocol_version)
 
     @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(
@@ -348,7 +350,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrappend, key, path_str)
+        return _json_write_iterate(arrappend, key, path_str, self.protocol_version)
 
     @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(
@@ -366,7 +368,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrinsert, key, path_str)
+        return _json_write_iterate(arrinsert, key, path_str, self.protocol_version)
 
     @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrpop(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -381,7 +383,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
+        return _json_write_iterate(arrpop, key, path_str, self.protocol_version, allow_result_none=True)
 
     @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrtrim(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -400,7 +402,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrtrim, key, path_str)
+        return _json_write_iterate(arrtrim, key, path_str, self.protocol_version)
 
     @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_numincrby(
@@ -413,7 +415,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(numincrby, key, path_str)
+        return _json_write_iterate(numincrby, key, path_str, self.protocol_version)
 
     @command(name="JSON.NUMMULTBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_nummultby(
@@ -426,7 +428,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return _json_write_iterate(nummultby, key, path_str)
+        return _json_write_iterate(nummultby, key, path_str, self.protocol_version)
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
