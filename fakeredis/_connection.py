@@ -20,6 +20,9 @@ from . import _msgs as msgs
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
+    def __init__(*args, **kwargs):
+        FakeBaseConnectionMixin.__init__(*args, **kwargs)
+
     def connect(self) -> None:
         super().connect()
         # The selector is set in redis.Connection.connect() after _connect() is called
@@ -79,6 +82,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
             return [self._decode(item) for item in response]
+        elif isinstance(response, dict):
+            return {self._decode(k): self._decode(v) for k, v in response.items()}
         elif isinstance(response, bytes):
             return self.encoder.decode(response)
         else:
