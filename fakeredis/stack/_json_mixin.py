@@ -125,7 +125,7 @@ class JSONCommandsMixin:
 
     def _json_write_iterate(
         self,
-        method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[Any], bool]],
+        method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[JsonType], bool]],
         key: CommandItem,
         path_str: Union[str, bytes],
         allow_result_none: bool = False,
@@ -181,13 +181,9 @@ class JSONCommandsMixin:
         for item in found_matches:
             res.append(method(item.value))
 
-        if path_str[0] == ord(b"."):
+        if self.protocol_version == 2 and path_str[0] == ord(b"."):
             return res[0] if len(res) > 0 else None
-        if (
-            self.protocol_version == 2
-            and len(res) == 1
-            and (len(args) == 0 or (len(args) == 1 and args[0][0] == ord(b".")))
-        ):
+        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == ord(b"."))):
             return res[0]
 
         return res
@@ -407,7 +403,12 @@ class JSONCommandsMixin:
 
         return self._json_write_iterate(arrtrim, key, path_str)
 
-    @command(name="JSON.NUMINCRBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="JSON.NUMINCRBY",
+        fixed=(Key(), bytes, Float),
+        repeat=(bytes,),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_SKIP_CONVERT_TO_RESP2,
+    )
     def json_numincrby(
         self, key: CommandItem, path_str: bytes, inc_by: float, *_: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
