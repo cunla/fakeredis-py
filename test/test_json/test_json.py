@@ -648,9 +648,9 @@ def test_nummultby(r: redis.Redis):
     r.json().set("num", Path.root_path(), 1)
 
     with pytest.deprecated_call():
-        assert r.json().nummultby("num", Path.root_path(), 2) == 2
-        assert r.json().nummultby("num", Path.root_path(), 2.5) == 5
-        assert r.json().nummultby("num", Path.root_path(), 0.5) == 2.5
+        assert r.json().nummultby("num", Path.root_path(), 2) == resp_conversion(r, [2], 2)
+        assert r.json().nummultby("num", Path.root_path(), 2.5) == resp_conversion(r, [5], 5)
+        assert r.json().nummultby("num", Path.root_path(), 0.5) == resp_conversion(r, [2.5], 2.5)
 
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
@@ -672,13 +672,13 @@ def test_nummultby(r: redis.Redis):
 
     # Test legacy NUMINCRBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-    assert r.json().numincrby("doc1", ".b[0].a", 3) == 5
+    assert r.json().numincrby("doc1", ".b[0].a", 3) == resp_conversion(r, [5], 5)
 
     # Test legacy NUMMULTBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
     with pytest.deprecated_call():
-        assert r.json().nummultby("doc1", ".b[0].a", 3) == 6
+        assert r.json().nummultby("doc1", ".b[0].a", 3) == resp_conversion(r, [6], 6)
 
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")

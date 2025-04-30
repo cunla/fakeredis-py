@@ -155,7 +155,7 @@ class JSONCommandsMixin:
                 return res[-1]
             else:
                 return next(x for x in reversed(res) if x is not None)
-        if self.protocol_version == 2 and len(res) == 1 and path_str[0] != ord(b"$"):
+        if len(res) == 1 and ((self.protocol_version == 2 and path_str[0] != ord(b"$")) or path_str == b"."):
             return res[0]
         return res
 
@@ -181,7 +181,7 @@ class JSONCommandsMixin:
         for item in found_matches:
             res.append(method(item.value))
 
-        if self.protocol_version == 2 and path_str[0] == ord(b"."):
+        if len(path_str) > 1 and path_str[0] == ord(b"."):
             return res[0] if len(res) > 0 else None
         if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == ord(b"."))):
             return res[0]
@@ -421,7 +421,12 @@ class JSONCommandsMixin:
 
         return self._json_write_iterate(numincrby, key, path_str)
 
-    @command(name="JSON.NUMMULTBY", fixed=(Key(), bytes, Float), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="JSON.NUMMULTBY",
+        fixed=(Key(), bytes, Float),
+        repeat=(bytes,),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_SKIP_CONVERT_TO_RESP2,
+    )
     def json_nummultby(
         self, key: CommandItem, path_str: bytes, mult_by: float, *_: bytes
     ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
