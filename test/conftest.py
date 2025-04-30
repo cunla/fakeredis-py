@@ -74,8 +74,8 @@ def _marker_version_value(request, marker_name: str):
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        # pytest.param("StrictRedis2", marks=pytest.mark.real),
-        # pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
+        pytest.param("StrictRedis2", marks=pytest.mark.real),
+        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
         pytest.param("StrictRedis3", marks=pytest.mark.real),
         pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
     ],

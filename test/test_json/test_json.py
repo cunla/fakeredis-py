@@ -278,9 +278,7 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen("foo2", Path.root_path()) == 5
 
     r.json().set("foo3", Path.root_path(), {"x": "string"})
-    assert r.json().strlen("foo3", Path("$.x")) == [
-        6,
-    ]
+    assert r.json().strlen("foo3", Path("$.x")) == [6]
 
     assert r.json().strlen("non-existing") is None
 

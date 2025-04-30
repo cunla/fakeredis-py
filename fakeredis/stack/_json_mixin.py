@@ -80,6 +80,71 @@ class JSONObject:
         return json.dumps(value, default=str).encode() if value is not None else None
 
 
+def _json_write_iterate(
+    method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[JsonType], bool]],
+    key: CommandItem,
+    path_str: Union[str, bytes],
+    allow_result_none: bool = False,
+) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+    """Implement json.* write commands.
+    Iterate over values with path_str in key and running method to get new value for path item.
+    """
+    if key.value is None:
+        raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+    path = _parse_jsonpath(path_str)
+    found_matches = path.find(key.value)
+    if len(found_matches) == 0:
+        raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+
+    curr_value = copy.deepcopy(key.value)
+    res: List[Optional[JsonType]] = list()
+    for item in found_matches:
+        new_value, res_val, update = method(item.value)
+        if update:
+            curr_value = item.full_path.update(curr_value, new_value)
+        res.append(res_val)
+
+    key.update(curr_value)
+
+    if len(path_str) > 1 and path_str[0] == ord(b"."):
+        if allow_result_none:
+            return res[-1]
+        else:
+            return next(x for x in reversed(res) if x is not None)
+    if len(res) == 1 and (path_str[0] != ord(b"$") or path_str == b"."):
+        return res[0]
+    return res
+
+
+def _json_read_iterate(
+    method: Callable[[JsonType], Optional[Any]],
+    key: CommandItem,
+    *args: Any,
+    error_on_zero_matches: bool = False,
+) -> Union[List[Optional[Any]], Optional[Any]]:
+    path_str = args[0] if len(args) > 0 else "$"
+    if key.value is None:
+        if path_str[0] == ord(b"$"):
+            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+        else:
+            return None
+
+    path = _parse_jsonpath(path_str)
+    found_matches = path.find(key.value)
+    if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
+        raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+    res = list()
+    for item in found_matches:
+        res.append(method(item.value))
+
+    if len(path_str) > 1 and path_str[0] == ord(b"."):
+        return res[0] if len(res) > 0 else None
+    if len(res) == 1 and (len(args) == 0 or path_str[0] == ord(b".")):
+        return res[0]
+
+    return res
+
+
 class JSONCommandsMixin:
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
@@ -122,71 +187,6 @@ class JSONCommandsMixin:
         elif len(val) == 1 and not always_return_list:
             return val[0]
         return val
-
-    def _json_write_iterate(
-        self,
-        method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[JsonType], bool]],
-        key: CommandItem,
-        path_str: Union[str, bytes],
-        allow_result_none: bool = False,
-    ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
-        """Implement json.* write commands.
-        Iterate over values with path_str in key and running method to get new value for path item.
-        """
-        if key.value is None:
-            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        if len(found_matches) == 0:
-            raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
-
-        curr_value = copy.deepcopy(key.value)
-        res: List[Optional[JsonType]] = list()
-        for item in found_matches:
-            new_value, res_val, update = method(item.value)
-            if update:
-                curr_value = item.full_path.update(curr_value, new_value)
-            res.append(res_val)
-
-        key.update(curr_value)
-
-        if len(path_str) > 1 and path_str[0] == ord(b"."):
-            if allow_result_none:
-                return res[-1]
-            else:
-                return next(x for x in reversed(res) if x is not None)
-        if len(res) == 1 and ((self.protocol_version == 2 and path_str[0] != ord(b"$")) or path_str == b"."):
-            return res[0]
-        return res
-
-    def _json_read_iterate(
-        self,
-        method: Callable[[JsonType], Optional[Any]],
-        key: CommandItem,
-        *args: Any,
-        error_on_zero_matches: bool = False,
-    ) -> Union[List[Optional[Any]], Optional[Any]]:
-        path_str = args[0] if len(args) > 0 else "$"
-        if key.value is None:
-            if path_str[0] == ord(b"$"):
-                raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
-            else:
-                return None
-
-        path = _parse_jsonpath(path_str)
-        found_matches = path.find(key.value)
-        if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
-            raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
-        res = list()
-        for item in found_matches:
-            res.append(method(item.value))
-
-        if len(path_str) > 1 and path_str[0] == ord(b"."):
-            return res[0] if len(res) > 0 else None
-        if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0][0] == ord(b"."))):
-            return res[0]
-
-        return res
 
     @command(
         name=["JSON.DEL", "JSON.FORGET"],
@@ -331,7 +331,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(strappend, key, path_str)
+        return _json_write_iterate(strappend, key, path_str)
 
     @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(
@@ -349,7 +349,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrappend, key, path_str)
+        return _json_write_iterate(arrappend, key, path_str)
 
     @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(
@@ -367,7 +367,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrinsert, key, path_str)
+        return _json_write_iterate(arrinsert, key, path_str)
 
     @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrpop(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -382,7 +382,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrpop, key, path_str, allow_result_none=True)
+        return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
     @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrtrim(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
@@ -401,7 +401,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(arrtrim, key, path_str)
+        return _json_write_iterate(arrtrim, key, path_str)
 
     @command(
         name="JSON.NUMINCRBY",
@@ -419,7 +419,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(numincrby, key, path_str)
+        return self._resp3_wrapping_list(_json_write_iterate(numincrby, key, path_str))
 
     @command(
         name="JSON.NUMMULTBY",
@@ -437,7 +437,7 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._json_write_iterate(nummultby, key, path_str)
+        return self._resp3_wrapping_list(_json_write_iterate(nummultby, key, path_str))
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
@@ -463,27 +463,35 @@ class JSONCommandsMixin:
             except StopIteration:
                 return -1
 
-        return self._json_read_iterate(check_index, key, path_str, *args, error_on_zero_matches=True)
+        return _json_read_iterate(check_index, key, path_str, error_on_zero_matches=True)
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key: CommandItem, *args: bytes) -> Union[List[Optional[int]], Optional[int]]:
-        return self._json_read_iterate(lambda val: len(val) if type(val) is str else None, key, *args)
+        return _json_read_iterate(lambda val: len(val) if type(val) is str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key: CommandItem, *args: bytes) -> Union[List[Optional[int]], Optional[int]]:
-        return self._json_read_iterate(lambda val: len(val) if type(val) is list else None, key, *args)
+        return _json_read_iterate(lambda val: len(val) if type(val) is list else None, key, *args)
 
     @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
     def json_objlen(self, key: CommandItem, *args: bytes) -> Union[List[Optional[int]], Optional[int]]:
-        return self._json_read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
+        return _json_read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
+
+    def _resp3_wrapping_list(self, res: Any, wrap_list: bool = False) -> Any:
+        if self.protocol_version == 2:
+            return res
+        if isinstance(res, list) and not wrap_list:
+            return res
+        return [res]
 
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bytes]], Optional[bytes]]:
-        return self._json_read_iterate(lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
+        res = _json_read_iterate(lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
+        return self._resp3_wrapping_list(res, wrap_list=True)
 
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bytes]], Optional[bytes]]:
-        return self._json_read_iterate(
+        return _json_read_iterate(
             lambda val: [i.encode() for i in val.keys()] if type(val) is dict else None, key, *args
         )
 
