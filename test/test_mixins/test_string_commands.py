@@ -10,7 +10,7 @@ from redis.exceptions import ResponseError
 
 from fakeredis._helpers import current_time
 from .. import testtools
-from ..testtools import raw_command
+from ..testtools import raw_command, resp_conversion
 
 
 def test_append(r: redis.Redis):
@@ -537,13 +537,12 @@ def test_lcs(r: redis.Redis):
     assert r.lcs("key1", "key2") == b"mytext"
     assert r.lcs("key1", "key2", len=True) == 6
 
-    assert r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True) == [
-        b"matches",
-        [[[4, 7], [5, 8], 4]],
-        b"len",
-        6,
-    ]
-    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True) == resp_conversion(
+        r, {b"len": 6, b"matches": [[[4, 7], [5, 8], 4]]}, [b"matches", [[[4, 7], [5, 8], 4]], b"len", 6]
+    )
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == resp_conversion(
+        r, {b"len": 6, b"matches": [[[4, 7], [5, 8]]]}, [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
+    )
 
     with pytest.raises(redis.ResponseError):
         assert r.lcs("key1", "key2", len=True, idx=True)

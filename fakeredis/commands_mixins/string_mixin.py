@@ -1,5 +1,5 @@
 import math
-from typing import Tuple, Callable, List, Any, Optional
+from typing import Tuple, Callable, List, Any, Optional, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -286,7 +286,7 @@ class StringCommandsMixin:
         return key.get(None)
 
     @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,))
-    def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> Any:
+    def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> Dict[bytes, Any]:
         s1 = k1.value or b""
         s2 = k2.value or b""
 
@@ -304,4 +304,4 @@ class StringCommandsMixin:
         results = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
         if not arg_withmatchlen:
             results = list(map(lambda x: [x[0], x[1]], results))
-        return [b"matches", results, b"len", lcs_len]
+        return {b"matches": results, b"len": lcs_len}
