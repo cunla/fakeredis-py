@@ -251,6 +251,25 @@ def test_hset_removing_last_field_delete_key(r: redis.Redis):
     assert r.keys("*") == []
 
 
+@pytest.mark.min_server("7.4")
+def test_hscan_no_values(r: redis.Redis):
+    name = "hscan-test"
+    for ix in range(20):
+        k = "key:%s" % ix
+        v = "result:%s" % ix
+        r.hset(name, k, v)
+    expected = r.hgetall(name)
+    assert len(expected) == 20  # Ensure we know what we're testing
+
+    # Test that we page through the results and get everything out
+    results = set()
+    cursor = "0"
+    while cursor != 0:
+        cursor, data = r.hscan(name, cursor, count=6, no_values=True)
+        results.update(data)
+    assert results == set(expected.keys())
+
+
 def test_hscan(r: redis.Redis):
     # Set up the data
     name = "hscan-test"
