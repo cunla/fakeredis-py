@@ -458,21 +458,25 @@ def test_xreadgroup(r: redis.Redis):
         r.xreadgroup(group, consumer, streams={stream: ">"})
     r.xgroup_create(stream, group, 0)
 
-    expected = [
+    expected_resp2 = [
         [
             stream.encode(),
             [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
         ]
     ]
+    expected_resp3 = {stream.encode(): [[get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]}
+    actual = r.xreadgroup(group, consumer, streams={stream: ">"})
     # xread starting at 0 returns both messages
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
+    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
 
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, 0)
 
-    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
+    expected_resp2 = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
+    expected_resp3 = {stream.encode(): [[get_stream_message(r, stream, m1)]]}
+    actual = r.xreadgroup(group, consumer, streams={stream: ">"}, count=1)
     # xread with count=1 returns only the first message
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}, count=1) == expected
+    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
 
     r.xgroup_destroy(stream, group)
 
@@ -480,22 +484,34 @@ def test_xreadgroup(r: redis.Redis):
     # will only find messages added after this
     r.xgroup_create(stream, group, "$")
 
-    expected = []
+    expected = {}
     # xread starting after the last message returns an empty message list
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == expected
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, expected)
 
     # xreadgroup with noack does not have any items in the PEL
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, "0")
-    assert len(r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)[0][1]) == 2
+    tmp = r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)
+    if get_protocol_version(r) == 3:
+        res = tmp[stream.encode()][0]
+    else:
+        res = tmp[0][1]
+    assert len(res) == 2
     # now there should be nothing pending
-    res = r.xreadgroup(group, consumer, streams={stream: "0"})
-    assert len(res[0][1]) == 0
+    tmp = r.xreadgroup(group, consumer, streams={stream: "0"})
+    if get_protocol_version(r) == 3:
+        res = tmp[stream.encode()][0]
+    else:
+        res = tmp[0][1]
+    assert len(res) == 0
 
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, "0")
 
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == [[stream.encode(), [(m1, c1), (m2, c2)]]]
+    expected_resp2 = [[stream.encode(), [(m1, c1), (m2, c2)]]]
+    expected_resp3 = {stream.encode(): [[(m1, c1), (m2, c2)]]}
+    actual = r.xreadgroup(group, consumer, streams={stream: ">"})
+    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
     # delete all the messages in the stream
     assert r.xtrim(stream, 0) == 2
     # TODO groups keep ids of deleted messages
