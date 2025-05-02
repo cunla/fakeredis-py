@@ -3,7 +3,7 @@ from typing import Any, List, Union, Dict
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch, client_info_as_str
+from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch, client_info_as_bytes
 
 PONG = SimpleString(b"PONG")
 
@@ -62,12 +62,12 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
-        return client_info_as_str(self._client_info).encode()
+        return client_info_as_bytes(self._client_info)
 
     @command(name="CLIENT LIST", fixed=(), repeat=())
     def client_list_cmd(self) -> bytes:
-        res = [client_info_as_str(item._client_info) for item in self._server.sockets]
-        return ("\n".join(res)).encode()
+        res = [client_info_as_bytes(item._client_info) for item in self._server.sockets]
+        return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
     def hello(self, *args: bytes) -> List[bytes]:

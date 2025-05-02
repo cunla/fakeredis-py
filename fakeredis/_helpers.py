@@ -218,8 +218,8 @@ def valid_response_type(value: Any, nested: bool = False) -> bool:
     return True
 
 
-def client_info_as_str(info: Dict[str, Union[str, int]]) -> str:
-    return " ".join([f"{k}={v}" for k, v in info.items()])
+def client_info_as_bytes(info: Dict[str, Union[str, int]]) -> bytes:
+    return " ".join([f"{k}={v}" for k, v in info.items()]).encode()
 
 
 class FakeSelector(object):
