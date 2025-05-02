@@ -4,7 +4,7 @@ import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import Any, Set, Callable, Dict, Optional, Iterator
+from typing import Any, Set, Callable, Dict, Optional, Iterator, Union
 
 
 class SimpleString:
@@ -216,6 +216,10 @@ def valid_response_type(value: Any, nested: bool = False) -> bool:
         if any(not valid_response_type(item, True) for item in value):
             return False
     return True
+
+
+def client_info_as_str(info: Dict[str, Union[str, int]]) -> str:
+    return " ".join([f"{k}={v}" for k, v in info.items()])
 
 
 class FakeSelector(object):
