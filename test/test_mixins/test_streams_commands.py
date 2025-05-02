@@ -186,16 +186,12 @@ def test_xrevrange_exclusive(r: redis.Redis):
 
 def test_xrange(r: redis.Redis):
     m = r.xadd("stream1", {"foo": "bar"})
-    assert r.xrange("stream1") == [
-        (m, {b"foo": b"bar"}),
-    ]
+    assert r.xrange("stream1") == [(m, {b"foo": b"bar"})]
 
     stream = "stream2"
     m = testtools.raw_command(r, "xadd", stream, "*", b"field", b"value", b"foo", b"bar")
 
-    assert r.xrevrange(stream) == [
-        (m, {b"field": b"value", b"foo": b"bar"}),
-    ]
+    assert r.xrevrange(stream) == [(m, {b"field": b"value", b"foo": b"bar"})]
 
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)

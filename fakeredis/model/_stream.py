@@ -487,7 +487,7 @@ class XStream:
             del self._values_dict[k]
         return res
 
-    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> Tuple[Any]:
+    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> List[Any]:
         """Returns a range of the stream values from start to stop.
 
         :param start: Start key
@@ -508,10 +508,10 @@ class XStream:
 
         start_ind = _find_index(start)
         stop_ind = _find_index(stop, from_left=False)
-        matches = map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind))
+        matches = list(map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind)))
         if reverse:
-            return list(reversed(tuple(matches)))
-        return tuple(list(matches))
+            return list(reversed(matches))
+        return matches
 
     def last_item_key(self) -> bytes:
         return self._ids[-1].encode() if len(self._ids) > 0 else "0-0".encode()
@@ -525,6 +525,7 @@ class XStream:
         end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
         return self._ids[start_ind:end_ind]
 
-    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, List[bytes]]]:
+    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, Dict[bytes, bytes]]]:
+        # results: Dict[bytes, bytes] = dict(zip(*[iter(self._values_dict[key])] * 2))
         results = self._values_dict[key]
         return [key.encode(), results]

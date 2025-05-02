@@ -62,7 +62,6 @@ class StreamsCommandsMixin:
         name="XRANGE",
         fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
         repeat=(bytes,),
-        flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2,
     )
     def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
@@ -72,7 +71,6 @@ class StreamsCommandsMixin:
         name="XREVRANGE",
         fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
         repeat=(bytes,),
-        flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2,
     )
     def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
@@ -145,12 +143,17 @@ class StreamsCommandsMixin:
                 )
             )
         if timeout is None:
-            return self._xreadgroup(consumer_name, group_params, count, noack, False)
+            res = self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
-            return self._blocking(  # type: ignore
+            res = self._blocking(  # type: ignore
                 timeout / 1000.0,
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
+        if self.protocol_version == 2:
+            for k, v in res.items():
+                res[k] = v[0]
+            return [res]
+        return res
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
@@ -346,14 +349,14 @@ class StreamsCommandsMixin:
         count: int,
         noack: bool,
         first_pass: bool,
-    ) -> Optional[List[Any]]:
-        res: List[Any] = list()
+    ) -> Optional[Dict[bytes, Any]]:
+        res: Dict[bytes, Any] = dict()
         for group, stream_name, start_id in group_params:
             stream_results = group.group_read(consumer_name, start_id, count, noack)
             if first_pass and (count is None):
                 return None
             if len(stream_results) > 0 or start_id != b">":
-                res.append([stream_name, stream_results])
+                res[stream_name] = stream_results
         return res
 
     def _xread(
