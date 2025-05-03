@@ -3,7 +3,7 @@ from typing import Any, List, Union, Dict
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch, client_info_as_bytes
+from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
 
 PONG = SimpleString(b"PONG")
 
@@ -62,7 +62,7 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
-        return client_info_as_bytes(self.client_info)
+        return self.client_info_as_bytes
 
     @command(name="CLIENT LIST", fixed=(), repeat=(bytes,))
     def client_list_cmd(self, *args: bytes) -> bytes:
@@ -81,7 +81,7 @@ class ConnectionCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(filter_ids) > 0:
             sockets = [sock for sock in sockets if sock._client_info["id"] in filter_ids]
-        res = [client_info_as_bytes(item.client_info) for item in sockets]
+        res = [item.client_info_as_bytes for item in sockets]
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))

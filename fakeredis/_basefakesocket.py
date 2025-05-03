@@ -21,7 +21,6 @@ from ._helpers import (
     compile_pattern,
     QUEUED,
     decode_command_bytes,
-    client_info_as_bytes,
 )
 
 
@@ -93,9 +92,13 @@ class BaseFakeSocket:
 
     @property
     def client_info(self):
-        res = {k: v for k, v in self._client_info.items() if not k.startswith("_")}
-        res["age"] = int(time.time()) - self._client_info.get("_created", 0)
+        res = {k: v for k, v in self._client_info.items() if not k.startswith("-")}
+        res["age"] = int(time.time()) - self._client_info.get("-created", 0)
         return res
+
+    @property
+    def client_info_as_bytes(self) -> bytes:
+        return " ".join([f"{k}={v}" for k, v in self.client_info.items()]).encode()
 
     @property
     def current_user(self) -> bytes:
@@ -208,7 +211,7 @@ class BaseFakeSocket:
         try:
             func, sig = self._name_to_func(cmd)
             # ACL check
-            self._server.acl.validate_command(self.current_user, client_info_as_bytes(self._client_info), fields)
+            self._server.acl.validate_command(self.current_user, self.client_info_as_bytes, fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
