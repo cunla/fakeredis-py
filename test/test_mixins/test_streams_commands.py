@@ -789,22 +789,11 @@ def test_xclaim(r: redis.Redis):
     r.xreadgroup(group, consumer1, streams={stream: ">"})
 
     # claim the message as consumer2
-    assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == [
-        message,
-    ]
+    assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == [message]
 
     # reclaim the message as consumer1, but use the justid argument
     # which only returns message ids
-    assert r.xclaim(
-        stream,
-        group,
-        consumer1,
-        min_idle_time=0,
-        message_ids=(message_id,),
-        justid=True,
-    ) == [
-        message_id,
-    ]
+    assert r.xclaim(stream, group, consumer1, min_idle_time=0, message_ids=(message_id,), justid=True) == [message_id]
 
 
 def test_xread_blocking(create_connection):
@@ -835,12 +824,7 @@ def test_stream_ttl(r: redis.Redis):
     stream = "stream"
 
     m1 = r.xadd(stream, {"foo": "bar"})
-    expected = [
-        [
-            stream.encode(),
-            [get_stream_message(r, stream, m1)],
-        ]
-    ]
+    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
     assert r.xread(streams={stream: 0}) == expected
     assert r.xtrim(stream, 0) == 1
     assert r.ttl(stream) == -1

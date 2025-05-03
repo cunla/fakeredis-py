@@ -67,17 +67,13 @@ class StreamConsumerInfo(object):
         self.last_attempt = _time
         self.last_success = _time
 
-    def info(self, curr_time: int) -> List[Union[bytes, int]]:
-        return [
-            b"name",
-            self.name,
-            b"pending",
-            self.pending,
-            b"idle",
-            curr_time - self.last_attempt,
-            b"inactive",
-            curr_time - self.last_success,
-        ]
+    def info(self, curr_time: int) -> Dict[str, Union[bytes, int]]:
+        return dict(
+            name=self.name,
+            pending=self.pending,
+            idle=curr_time - self.last_attempt,
+            inactive=curr_time - self.last_success,
+        )
 
 
 class StreamGroup(object):
@@ -120,7 +116,7 @@ class StreamGroup(object):
         del self.consumers[consumer_name]
         return res
 
-    def consumers_info(self) -> List[List[Union[bytes, int]]]:
+    def consumers_info(self) -> List[Dict[str, Union[bytes, int]]]:
         return [self.consumers[k].info(current_time()) for k in self.consumers]
 
     def group_info(self) -> Dict[bytes, Any]:

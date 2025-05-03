@@ -150,8 +150,6 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
         if self.protocol_version == 2:
-            for k, v in res.items():
-                res[k] = v[0]
             return [res]
         return res
 
@@ -268,13 +266,13 @@ class StreamsCommandsMixin:
         return res
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
-    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> List[List[Union[bytes, int]]]:
+    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> List[Dict[str, Union[bytes, int]]]:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
-        res: List[List[Union[bytes, int]]] = group.consumers_info()
+        res: List[Dict[str, Union[bytes, int]]] = group.consumers_info()
         return res
 
     @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
