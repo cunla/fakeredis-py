@@ -248,12 +248,7 @@ def test_xread(r: redis.Redis):
     assert actual == resp_conversion(
         r,
         {stream.encode(): [[get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]},
-        [
-            [
-                stream.encode(),
-                [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)],
-            ]
-        ],
+        [[stream.encode(), [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]],
     )
 
     # xread starting at 0 and count=1 returns only the first message
@@ -816,8 +811,12 @@ def test_xread_blocking(create_connection):
     result = r1.xread({"stream": "$"}, block=0, count=1)
     event.clear()
     t.join()
-    assert result[0][0] == b"stream"
-    assert result[0][1][0][1] == {b"x": b"1"}
+    if get_protocol_version(r1) == 2:
+        assert result[0][0] == b"stream"
+        assert result[0][1][0][1] == {b"x": b"1"}
+    else:
+        assert b"stream" in result
+        assert result[b"stream"][0][0][1] == {b"x": b"1"}
 
 
 def test_stream_ttl(r: redis.Redis):
