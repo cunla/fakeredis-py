@@ -1,6 +1,7 @@
 import inspect
 import queue
 import sys
+import time
 import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
@@ -41,7 +42,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 laddr="127.0.0.1:6379",
                 fd=8,
                 name="",
-                age=16,
+                _created=int(time.time()),
                 idle=0,
                 flags="N",
                 db=0,

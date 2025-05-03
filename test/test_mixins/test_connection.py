@@ -51,6 +51,26 @@ def test_time(r, mocker):
 
 
 @pytest.mark.min_server("7")
+def test_client_list(r: redis.Redis):
+    client_info = r.client_info()
+    client_id = client_info["id"]
+    client_list = r.client_list()
+    assert isinstance(client_list, list)
+    assert len(client_list) >= 1
+    assert isinstance(client_list[0], dict)
+    client_ids = [int(client["id"]) for client in client_list]
+    assert client_id in client_ids
+
+    client_list = r.client_list()
+    assert isinstance(client_list, list)
+    client_ids = [int(client["id"]) for client in client_list]
+    non_existing_client_id = max(client_ids) + 1
+    client_list = r.client_list(client_id=[str(non_existing_client_id)])
+    assert isinstance(client_list, list)
+    assert len(client_list) == 0
+
+
+@pytest.mark.min_server("7")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: redis.Redis):
     client_info = r.client_info()

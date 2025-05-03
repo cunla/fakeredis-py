@@ -102,10 +102,17 @@ class BaseFakeSocket:
         self._transaction_failed: bool
         info = kwargs.pop("client_info", dict(user="default"))
         self._client_info: Dict[str, Union[str, int]] = {k.replace("_", "-"): v for k, v in info.items()}
+        self._server.sockets.append(self)
 
     @property
-    def client_info(self) -> bytes:
-        return " ".join([f"{k}={v}" for k, v in self._client_info.items()]).encode()
+    def client_info(self):
+        res = {k: v for k, v in self._client_info.items() if not k.startswith("-")}
+        res["age"] = int(time.time()) - self._client_info.get("-created", 0)
+        return res
+
+    @property
+    def client_info_as_bytes(self) -> bytes:
+        return " ".join([f"{k}={v}" for k, v in self.client_info.items()]).encode()
 
     @property
     def current_user(self) -> bytes:
@@ -169,6 +176,7 @@ class BaseFakeSocket:
         # redis.Connection.__del__, which the garbage collection could call
         # at any time, and hence we can't safely take the server lock.
         # We rely on list.append being atomic.
+        self._server.sockets.remove(self)
         self._server.closed_sockets.append(weakref.ref(self))
         self._server = None  # type: ignore
         self._db = None
@@ -216,7 +224,8 @@ class BaseFakeSocket:
         cmd, cmd_arguments = _extract_command(fields)
         try:
             func, sig = self._name_to_func(cmd)
-            self._server.acl.validate_command(self.current_user, self.client_info, fields)  # ACL check
+            # ACL check
+            self._server.acl.validate_command(self.current_user, self.client_info_as_bytes, fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
