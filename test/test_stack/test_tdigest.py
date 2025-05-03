@@ -142,3 +142,9 @@ def test_tdigest_quantile_nan(r: redis.Redis):
     assert isinstance(res, list)
     assert len(res) == 1
     assert math.isnan(res[0]), f"Expected NaN, got {res[0]}"
+
+    res = r.tdigest().quantile("foo", 0)[0]
+    assert math.isnan(res), f"Expected NaN, got {res}"
+
+    res = r.tdigest().quantile("foo", 1)[0]
+    assert math.isnan(res), f"Expected NaN, got {res}"
