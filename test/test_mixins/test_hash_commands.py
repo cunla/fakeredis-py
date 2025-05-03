@@ -252,6 +252,7 @@ def test_hset_removing_last_field_delete_key(r: redis.Redis):
 
 
 @pytest.mark.min_server("7.4")
+@testtools.run_test_if_redispy_ver("gte", "5")
 def test_hscan_no_values(r: redis.Redis):
     name = "hscan-test"
     for ix in range(20):
