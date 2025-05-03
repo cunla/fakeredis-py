@@ -150,7 +150,7 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
         if self.protocol_version == 2:
-            return [res]
+            return [res] if res else None
         return res
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))

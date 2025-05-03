@@ -823,8 +823,9 @@ def test_stream_ttl(r: redis.Redis):
     stream = "stream"
 
     m1 = r.xadd(stream, {"foo": "bar"})
-    expected = [[stream.encode(), [get_stream_message(r, stream, m1)]]]
-    assert r.xread(streams={stream: 0}) == expected
+    assert r.xread(streams={stream: 0}) == resp_conversion(
+        r, {b"stream": [[get_stream_message(r, stream, m1)]]}, [[stream.encode(), [get_stream_message(r, stream, m1)]]]
+    )
     assert r.xtrim(stream, 0) == 1
     assert r.ttl(stream) == -1
 
