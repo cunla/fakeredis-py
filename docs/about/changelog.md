@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - Implement support for `NOVALUES` for `HSCAN`
+- Implement support for `CLIENT LIST` #376
 
 ### 🐛 Bug Fixes
 
