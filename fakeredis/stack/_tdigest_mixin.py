@@ -165,7 +165,7 @@ class TDigestCommandsMixin:
     def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> List[bytes]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
-        if len(key.value) == 0:
+        if len(key.value) <= 1:
             return [
                 b"nan",
             ]

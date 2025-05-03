@@ -10,7 +10,6 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
 
@@ -65,6 +64,7 @@ class FakeServer:
         self.lastsave: int = int(time.time())
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
+        self.sockets: List[Any] = []
         self.closed_sockets: List[Any] = []
         self.version: Tuple[int, ...] = _create_version(version)
         if server_type not in ("redis", "dragonfly", "valkey"):

@@ -89,9 +89,15 @@ class HashCommandsMixin:
         self.hset(key, *args)
         return OK
 
-    @command((Key(Hash), Int), (bytes, bytes))
+    @command((Key(Hash), Int), (bytes,))
     def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Any]:
+        no_values = any(casematch(arg, b"novalues") for arg in args)
+        if no_values:
+            args = [arg for arg in args if not casematch(arg, b"novalues")]
         cursor, keys = self._scan(key.value, cursor, *args)
+        keys = [(key.encode("utf-8") if isinstance(key, str) else key) for key in keys]
+        if no_values:
+            return [cursor, keys]
         items = []
         for k in keys:
             items.append(k)

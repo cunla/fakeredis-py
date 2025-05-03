@@ -7,12 +7,19 @@ tags:
 toc_depth: 2
 ---
 
-## v2.28.2
+## v2.29.0 - 2025-05-01
+
+### 🚀 Features
+
+- Implement support for `NOVALUES` for `HSCAN`
+- Implement support for `CLIENT LIST` #376
 
 ### 🐛 Bug Fixes
 
 - Fix `json.set` nx arg behavior #372
 - Fix issue with `hset` not resetting expiration over field
+- Fix inconsistent 'pending' field in return from XINFO GROUPS #374
+- Fix `TDIGEST.QUANTILE` to match redis behavior on a TDigest with one value #377
 
 ## v2.28.1 - 2025-04-02
 
