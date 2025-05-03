@@ -92,6 +92,12 @@ class BaseFakeSocket:
         self._server.sockets.append(self)
 
     @property
+    def client_info(self):
+        res = {k: v for k, v in self._client_info.items() if not k.startswith("_")}
+        res["age"] = int(time.time()) - self._client_info.get("_created", 0)
+        return res
+
+    @property
     def current_user(self) -> bytes:
         return self._client_info.get("user", "").encode()
 

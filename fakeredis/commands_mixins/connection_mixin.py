@@ -62,11 +62,26 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
-        return client_info_as_bytes(self._client_info)
+        return client_info_as_bytes(self.client_info)
 
-    @command(name="CLIENT LIST", fixed=(), repeat=())
-    def client_list_cmd(self) -> bytes:
-        res = [client_info_as_bytes(item._client_info) for item in self._server.sockets]
+    @command(name="CLIENT LIST", fixed=(), repeat=(bytes,))
+    def client_list_cmd(self, *args: bytes) -> bytes:
+        sockets = self._server.sockets.copy()
+        i = 0
+        filter_ids = set()
+        while i < len(args):
+            if casematch(args[i], b"TYPE") and i + 1 < len(args):
+                i += 2
+            if casematch(args[i], b"ID") and i + 1 < len(args):
+                i += 1
+                while i < len(args):
+                    filter_ids.add(Int.decode(args[i]))
+                    i += 1
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(filter_ids) > 0:
+            sockets = [sock for sock in sockets if sock._client_info["id"] in filter_ids]
+        res = [client_info_as_bytes(item.client_info) for item in sockets]
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
