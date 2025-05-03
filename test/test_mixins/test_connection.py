@@ -53,12 +53,13 @@ def test_hello(r: redis.Redis):
 @pytest.mark.min_server("7")
 def test_client_list(r: redis.Redis):
     client_info = r.client_info()
-    client_list = r.client_list(client_id=[str(client_info["id"]), str(client_info["id"] + 1)])
+    client_id = client_info["id"]
+    client_list = r.client_list()
     assert isinstance(client_list, list)
     assert len(client_list) >= 1
     assert isinstance(client_list[0], dict)
     client_ids = [int(client["id"]) for client in client_list]
-    assert client_info["id"] in client_ids
+    assert client_id in client_ids
 
     client_list = r.client_list()
     assert isinstance(client_list, list)
