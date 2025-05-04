@@ -39,7 +39,7 @@ class InfoClass:
             self.first_timestamp = response.get(b"firstTimestamp")
             self.max_samples_per_chunk = response.get(b"maxSamplesPerChunk")
             self.chunk_size = response[b"chunkSize"]
-            self.duplicate_policy = response[b"duplicatePolicy"]
+            self.duplicate_policy = response[b"duplicatePolicy"].decode() if response.get(b"duplicatePolicy") else None
 
     def __getitem__(self, k: str):
         return getattr(self, k)
@@ -819,11 +819,13 @@ def test_info(r: redis.Redis):
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] is None
 
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
-    assert info.get("duplicate_policy") == "min"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "min"
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
