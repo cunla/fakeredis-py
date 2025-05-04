@@ -470,9 +470,9 @@ def test_revrange_latest(r: redis.Redis):
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
 
-    assert timeseries.revrange("t2", 0, 10) == [(0, 4.0)]
-    assert timeseries.revrange("t2", 0, 10, latest=True) == [(0, 4.0)]
-    assert timeseries.revrange("t2", 0, 9, latest=True) == [(0, 4.0)]
+    assert timeseries.revrange("t2", 0, 10) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.revrange("t2", 0, 10, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.revrange("t2", 0, 9, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
