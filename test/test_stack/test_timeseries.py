@@ -451,12 +451,15 @@ def test_rev_range(r: redis.Redis):
             1, 0, 500, filter_by_ts=[i for i in range(10, 20)], filter_by_min_value=1, filter_by_max_value=2
         )
     )
-    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == [(10, 1.0), (0, 10.0)]
+    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == resp_conversion(
+        r, [[10, 1.0], [0, 10.0]], [(10, 1.0), (0, 10.0)]
+    )
 
-    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [
-        (10, pytest.approx(3.0, 0.1)),
-        (0, pytest.approx(2.55, 0.1)),
-    ]
+    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == resp_conversion(
+        r,
+        [[10, pytest.approx(3.0, 0.1)], [0, pytest.approx(2.55, 0.1)]],
+        [(10, pytest.approx(3.0, 0.1)), (0, pytest.approx(2.55, 0.1))],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
