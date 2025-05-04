@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Any
+from typing import List, Dict, Any
 
 from sortedcontainers import SortedList
 
@@ -15,8 +15,6 @@ class TDigest(SortedList):
 
 
 class TDigestCommandsMixin:
-    _encodefloat: Callable[[float, bool], bytes]
-
     def __init__(self, *args, **kwargs):
         self._db: Database
 
@@ -144,9 +142,7 @@ class TDigestCommandsMixin:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return [
-                -2,
-            ]
+            return [-2]
         res = []
         length = len(key.value)
         for v in values:

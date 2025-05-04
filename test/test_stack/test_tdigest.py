@@ -64,7 +64,7 @@ def test_tdigest_quantile(r: redis.Redis):
     assert r.tdigest().create("tDigest", 500)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", list([x * 0.01 for x in range(1, 10000)]))
-    # assert min min/max have same result as quantile 0 and 1
+    # assert min/max have the same result as quantile 0 and 1
     res = r.tdigest().quantile("tDigest", 1.0)
     assert r.tdigest().max("tDigest") == res[0]
     res = r.tdigest().quantile("tDigest", 0.0)
