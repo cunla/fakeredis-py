@@ -857,8 +857,9 @@ def test_uncompressed(r: redis.Redis):
     r.ts().create("compressed")
     r.ts().create("uncompressed", uncompressed=True)
     compressed_info = r.ts().info("compressed")
+    compressed_info = InfoClass(r, compressed_info)
     uncompressed_info = r.ts().info("uncompressed")
-
+    uncompressed_info = InfoClass(r, uncompressed_info)
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
 
 
