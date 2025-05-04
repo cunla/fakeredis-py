@@ -384,12 +384,13 @@ def test_range_latest(r: redis.Redis):
     timeseries.add("t1", 2, 3)
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
-    assert timeseries.range("t1", 0, 20) == [(1, 1.0), (2, 3.0), (11, 7.0), (13, 1.0)]
-    assert timeseries.range("t2", 0, 10) == [(0, 4.0)]
+    assert timeseries.range("t1", 0, 20) == resp_conversion(
+        r, [[1, 1.0], [2, 3.0], [11, 7.0], [13, 1.0]], [(1, 1.0), (2, 3.0), (11, 7.0), (13, 1.0)]
+    )
+    assert timeseries.range("t2", 0, 10) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
-    res = timeseries.range("t2", 0, 10, latest=True)
-    assert res == [(0, 4.0)]
-    assert timeseries.range("t2", 0, 9) == [(0, 4.0)]
+    assert timeseries.range("t2", 0, 10, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.range("t2", 0, 9) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -407,14 +408,8 @@ def test_range_bucket_timestamp(r: redis.Redis):
     #     (70, 5.0),
     # ]
     assert timeseries.range(
-        "t1",
-        0,
-        100,
-        align=0,
-        aggregation_type="max",
-        bucket_size_msec=10,
-        bucket_timestamp="+",
-    ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, bucket_timestamp="+"
+    ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -426,26 +421,19 @@ def test_range_empty(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10) == [
-        (10, 4.0),
-        (50, 3.0),
-        (70, 5.0),
-    ]
+    assert timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[10, 4.0], [50, 3.0], [70, 5.0]], [(10, 4.0), (50, 3.0), (70, 5.0)]
+    )
 
     res = timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10, empty=True)
     for i in range(len(res)):
         if math.isnan(res[i][1]):
             res[i] = (res[i][0], None)
-    resp2_expected = [
-        (10, 4.0),
-        (20, None),
-        (30, None),
-        (40, None),
-        (50, 3.0),
-        (60, None),
-        (70, 5.0),
-    ]
-    assert res == resp2_expected
+    assert res == resp_conversion(
+        r,
+        [[10, 4.0], (20, None), (30, None), (40, None), [50, 3.0], (60, None), [70, 5.0]],
+        [(10, 4.0), (20, None), (30, None), (40, None), (50, 3.0), (60, None), (70, 5.0)],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -460,12 +448,7 @@ def test_rev_range(r: redis.Redis):
     assert 10 == len(r.ts().revrange(1, 0, 500, count=10))
     assert 2 == len(
         r.ts().revrange(
-            1,
-            0,
-            500,
-            filter_by_ts=[i for i in range(10, 20)],
-            filter_by_min_value=1,
-            filter_by_max_value=2,
+            1, 0, 500, filter_by_ts=[i for i in range(10, 20)], filter_by_min_value=1, filter_by_max_value=2
         )
     )
     assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == [(10, 1.0), (0, 10.0)]
@@ -526,24 +509,18 @@ def test_revrange_empty(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
-        (70, 5.0),
-        (50, 3.0),
-        (10, 4.0),
-    ]
+    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[70, 5.0], [50, 3.0], [10, 4.0]], [(70, 5.0), (50, 3.0), (10, 4.0)]
+    )
     res = timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True)
     for i in range(len(res)):
         if math.isnan(res[i][1]):
             res[i] = (res[i][0], None)
-    assert res == [
-        (70, 5.0),
-        (60, None),
-        (50, 3.0),
-        (40, None),
-        (30, None),
-        (20, None),
-        (10, 4.0),
-    ]
+    assert res == resp_conversion(
+        r,
+        [[70, 5.0], [60, None], [50, 3.0], [40, None], [30, None], [20, None], [10, 4.0]],
+        [(70, 5.0), (60, None), (50, 3.0), (40, None), (30, None), (20, None), (10, 4.0)],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
