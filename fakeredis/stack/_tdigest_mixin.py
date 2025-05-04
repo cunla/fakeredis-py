@@ -1,4 +1,4 @@
-from typing import List, Callable
+from typing import List, Callable, Dict, Any
 
 from sortedcontainers import SortedList
 
@@ -206,27 +206,18 @@ class TDigestCommandsMixin:
     @command(
         name="TDIGEST.INFO", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
     )
-    def tdigest_info(self, key: CommandItem) -> List[bytes]:
-        return [
-            b"Compression",
-            key.value.compression,
-            b"Capacity",
-            len(key.value),
-            b"Merged nodes",
-            len(key.value),
-            b"Unmerged nodes",
-            0,
-            b"Merged weight",
-            len(key.value),
-            b"Unmerged weight",
-            0,
-            b"Observations",
-            len(key.value),
-            b"Total compressions",
-            len(key.value),
-            b"Memory usage",
-            len(key.value),
-        ]
+    def tdigest_info(self, key: CommandItem) -> Dict[bytes, Any]:
+        return {
+            b"Compression": key.value.compression,
+            b"Capacity": len(key.value),
+            b"Merged nodes": len(key.value),
+            b"Unmerged nodes": 0,
+            b"Merged weight": len(key.value),
+            b"Unmerged weight": 0,
+            b"Observations": len(key.value),
+            b"Total compressions": len(key.value),
+            b"Memory usage": len(key.value),
+        }
 
     @command(
         name="TDIGEST.TRIMMED_MEAN",
