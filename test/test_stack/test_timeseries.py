@@ -7,7 +7,7 @@ import pytest
 import redis
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command, get_protocol_version
+from test.testtools import raw_command, get_protocol_version, resp_conversion
 
 timeseries_tests = pytest.importorskip("probables")
 
@@ -264,22 +264,24 @@ def test_incrby_decrby(r: redis.Redis):
     assert 0 == r.ts().get(1)[1]
 
     assert r.ts().incrby(2, 1.5, timestamp=5)
-    assert r.ts().get(2) == (5, 1.5)
+    assert r.ts().get(2) == resp_conversion(r, [5, 1.5], (5, 1.5))
     assert r.ts().incrby(2, 2.25, timestamp=7)
-    assert r.ts().get(2) == (7, 3.75)
+    assert r.ts().get(2) == resp_conversion(r, [7, 3.75], (7, 3.75))
 
     assert r.ts().decrby(2, 1.5, timestamp=15)
-    assert r.ts().get(2) == (15, 2.25)
+    assert r.ts().get(2) == resp_conversion(r, [15, 2.25], (15, 2.25))
 
     # Test for a chunk size of 128 Bytes on TS.INCRBY
     assert r.ts().incrby("time-serie-1", 10, chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
     # Test for a chunk size of 128 Bytes on TS.DECRBY
     assert r.ts().decrby("time-serie-2", 10, chunk_size=128)
     info = r.ts().info("time-serie-2")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -295,15 +297,23 @@ def test_create_and_delete_rule(r: redis.Redis):
     r.ts().add(1, time * 2, 1.5)
     assert round(r.ts().get(2)[1], 1) == 1.5
     info1 = r.ts().info(1)
-    assert info1.rules[0][1] == 100
+    info1 = InfoClass(r, info1)
+    if get_protocol_version(r) == 2:
+        assert info1.rules[0][1] == 100
+    else:
+        assert info1.rules[b"2"][0] == 100
+
     info2 = r.ts().info(2)
+    info2 = InfoClass(r, info2)
     assert info2["source_key"] == b"1"
 
     # test rule deletion
     r.ts().deleterule(1, 2)
     info = r.ts().info(1)
+    info = InfoClass(r, info)
     assert not info["rules"]
     info2 = r.ts().info(2)
+    info2 = InfoClass(r, info2)
     assert info2["source_key"] is None
 
 
@@ -317,7 +327,7 @@ def test_del_range(r: redis.Redis):
         r.ts().add(1, i, i % 7)
     assert 22 == r.ts().delete(1, 0, 21)
     assert [] == r.ts().range(1, 0, 21)
-    assert r.ts().range(1, 22, 22) == [(22, 1.0)]
+    assert r.ts().range(1, 22, 22) == resp_conversion(r, [[22, 1.0]], [(22, 1.0)])
 
     assert r.ts().delete(1, 60, 3) == 0
 
@@ -333,7 +343,7 @@ def test_range(r: redis.Redis):
 
     range_with_count_result = r.ts().range(1, 0, 500, count=10)
     assert 10 == len(range_with_count_result)
-    assert (0, 0) == range_with_count_result[0]
+    assert range_with_count_result[0] == resp_conversion(r, [0, 0], (0, 0))
 
     # last sample isn't returned
     # assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)) TODO
@@ -356,10 +366,12 @@ def test_range_advanced(r: redis.Redis):
         )
     )
     res = r.ts().range(1, 0, 10, aggregation_type="count", bucket_size_msec=10)
-    assert res == [(0, 10.0), (10, 1.0)]
+    assert res == resp_conversion(r, [[0, 10.0], [10, 1.0]], [(0, 10.0), (10, 1.0)])
 
     res = r.ts().range(1, 0, 10, aggregation_type="twa", bucket_size_msec=10)
-    assert res == [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
+    assert res == resp_conversion(
+        r, [[0, pytest.approx(2.55, 0.1)], [10, 3.0]], [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -783,8 +795,10 @@ def test_mget(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     act_res = r.ts().mget(["Test=This"])
-    exp_res = [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
-    assert act_res == exp_res
+
+    assert act_res == resp_conversion(
+        r, {b"1": [{}, []], b"2": [{}, []]}, [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
+    )
 
     r.ts().add(1, "*", 15)
     r.ts().add(2, "*", 25)

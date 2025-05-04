@@ -101,7 +101,18 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_info(self, key: CommandItem, *args: bytes) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        labels = [[k, v] for k, v in key.value.labels.items()] if self.protocol_version == 2 else key.value.labels
+        if self.protocol_version == 2:
+            labels = [[k, v] for k, v in key.value.labels.items()]
+            rules = [
+                [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
+                for rule in key.value.rules
+            ]
+        else:
+            labels = key.value.labels
+            rules = {
+                rule.dest_key.name: [rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
+                for rule in key.value.rules
+            }
         return {
             b"totalSamples": len(key.value.sorted_list),
             b"memoryUsage": len(key.value.sorted_list) * 8 + len(key.value.encoding),
@@ -114,10 +125,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             b"duplicatePolicy": key.value.duplicate_policy,
             b"labels": labels,
             b"sourceKey": key.value.source_key,
-            b"rules": [
-                [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
-                for rule in key.value.rules
-            ],
+            b"rules": rules,
             b"keySelfName": key.value.name,
             b"Chunks": [],
         }
