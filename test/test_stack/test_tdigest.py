@@ -34,15 +34,19 @@ def test_tdigest_merge(r: redis.Redis):
     assert r.tdigest().merge("to-tDigest", 1, "from-tDigest")
     # we should now have 110 weight on to-histogram
     info = r.tdigest().info("to-tDigest")
-    assert 20 == float(info["merged_weight"]) + float(info["unmerged_weight"])
+    if get_protocol_version(r) == 2:
+        assert 20 == float(info["merged_weight"]) + float(info["unmerged_weight"])
+    else:
+        assert 20 == float(info[b"Merged weight"]) + float(info[b"Unmerged weight"])
     # test override
     assert r.tdigest().create("from-override", 10)
     assert r.tdigest().create("from-override-2", 10)
     assert r.tdigest().add("from-override", [3.0] * 10)
     assert r.tdigest().add("from-override-2", [4.0] * 10)
     assert r.tdigest().merge("to-tDigest", 2, "from-override", "from-override-2", override=True)
-    assert 3.0 == r.tdigest().min("to-tDigest")
-    assert 4.0 == r.tdigest().max("to-tDigest")
+
+    assert r.tdigest().min("to-tDigest") == 3.0
+    assert r.tdigest().max("to-tDigest") == 4.0
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -143,10 +147,10 @@ def test_tdigest_quantile_nan(r: redis.Redis):
     res = r.tdigest().quantile("foo", 0.9)
     assert isinstance(res, list)
     assert len(res) == 1
-    assert math.isnan(res[0]), f"Expected NaN, got {res[0]}"
+    assert math.isnan(float(res[0])), f"Expected NaN, got {res[0]}"
 
     res = r.tdigest().quantile("foo", 0)[0]
-    assert math.isnan(res), f"Expected NaN, got {res}"
+    assert math.isnan(float(res)), f"Expected NaN, got {res}"
 
     res = r.tdigest().quantile("foo", 1)[0]
-    assert math.isnan(res), f"Expected NaN, got {res}"
+    assert math.isnan(float(res)), f"Expected NaN, got {res}"
