@@ -181,7 +181,8 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_bf_info(r: redis.Redis):
+@pytest.mark.resp2_only
+def test_bf_info_resp2(r: redis.Redis):
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
     info: BFInfo = r.bf().info("nonscaling")
@@ -193,3 +194,19 @@ def test_bf_info(r: redis.Redis):
     assert info.expansionRate == 4
     assert info.capacity == 1000
     assert info.insertedNum == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.resp3_only
+def test_bf_info_resp3(r: redis.Redis):
+    # Store a filter
+    r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
+    info = r.bf().info("nonscaling")
+    assert info[b"Expansion rate"] is None
+
+    expansion = 4
+    r.bf().create("expanding", "0.0001", "1000", expansion=expansion)
+    info = r.bf().info("expanding")
+    assert info[b"Expansion rate"] == 4
+    assert info[b"Capacity"] == 1000
+    assert info[b"Number of items inserted"] == 0
