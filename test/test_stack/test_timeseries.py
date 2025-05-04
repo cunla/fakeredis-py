@@ -1,14 +1,48 @@
 import math
 import time
 from time import sleep
+from typing import Dict, Any, AnyStr
 
 import pytest
 import redis
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command
+from test.testtools import raw_command, get_protocol_version
 
 timeseries_tests = pytest.importorskip("probables")
+
+
+class InfoClass:
+    def __init__(self, r: redis.Redis, response: Dict[AnyStr, Any]):
+        if get_protocol_version(r) == 2:
+            self.rules = response.get("rules")
+            self.source_key = response.get("source_key")
+            self.chunk_count = response.get("chunk_count")
+            self.memory_usage = response.get("memory_usage")
+            self.total_samples = response.get("total_samples")
+            self.labels = response.get("labels")
+            self.retention_msecs = response.get("retention_msecs")
+            self.last_timestamp = response.get("last_timestamp")
+            self.first_timestamp = response.get("first_timestamp")
+            self.max_samples_per_chunk = response.get("max_samples_per_chunk")
+            self.chunk_size = response["chunk_size"]
+            self.duplicate_policy = response["duplicate_policy"]
+        else:
+            self.rules = response.get(b"rules")
+            self.source_key = response.get(b"sourceKey")
+            self.chunk_count = response.get(b"chunkCount")
+            self.memory_usage = response.get(b"memoryUsage")
+            self.total_samples = response.get(b"totalSamples")
+            self.labels = {k.decode(): v.decode() for k, v in response.get(b"labels").items()}
+            self.retention_msecs = response.get(b"retentionTime")
+            self.last_timestamp = response.get(b"lastTimestamp")
+            self.first_timestamp = response.get(b"firstTimestamp")
+            self.max_samples_per_chunk = response.get(b"maxSamplesPerChunk")
+            self.chunk_size = response[b"chunkSize"]
+            self.duplicate_policy = response[b"duplicatePolicy"]
+
+    def __getitem__(self, k: str):
+        return getattr(self, k)
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -78,13 +112,15 @@ def test_create(r: redis.Redis):
     assert r.ts().create(3, labels={"Redis": "Labs"})
     assert r.ts().create(4, retention_msecs=20, labels={"Time": "Series"})
     info = r.ts().info(4)
-    assert 20 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 20 == info["retention_msecs"]
     assert "Series" == info["labels"]["Time"]
 
     # Test for a chunk size of 128 Bytes
     assert r.ts().create("time-serie-1", chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -94,23 +130,29 @@ def test_create_duplicate_policy(r: redis.Redis):
         ts_name = f"time-serie-ooo-{duplicate_policy}"
         assert r.ts().create(ts_name, duplicate_policy=duplicate_policy)
         info = r.ts().info(ts_name)
-        assert duplicate_policy == info.get("duplicate_policy")
+        if get_protocol_version(r) == 2:
+            assert duplicate_policy == info.get("duplicate_policy")
+        else:
+            assert duplicate_policy.encode() == info.get(b"duplicatePolicy")
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_alter(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert 0 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 0 == info["retention_msecs"]
     assert r.ts().alter(1, retention_msecs=10)
-    assert {} == r.ts().info(1)["labels"]
+    assert {} == InfoClass(r, r.ts().info(1))["labels"]
     info = r.ts().info(1)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
 
     assert r.ts().alter(1, labels={"Time": "Series"})
-    assert "Series" == r.ts().info(1)["labels"]["Time"]
+    assert "Series" == InfoClass(r, r.ts().info(1))["labels"]["Time"]
     info = r.ts().info(1)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
 
     # Test for a chunk size of 50 Bytes on TS.ALTER
     with pytest.raises(redis.ResponseError) as e:
@@ -120,13 +162,16 @@ def test_alter(r: redis.Redis):
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_alter_diplicate_policy(r: redis.Redis):
+    duplicate_policy_key = "duplicate_policy" if get_protocol_version(r) == 2 else b"duplicatePolicy"
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    assert info.get(duplicate_policy_key) is None
 
     assert r.ts().alter(1, duplicate_policy="min")
     info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
+    assert ("min" == info.get(duplicate_policy_key) and get_protocol_version(r) == 2) or (
+        b"min" == info.get(duplicate_policy_key) and get_protocol_version(r) == 3
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -137,13 +182,15 @@ def test_add(r: redis.Redis):
     assert 4 == r.ts().add(4, 4, 2, retention_msecs=10, labels={"Redis": "Labs", "Time": "Series"})
 
     info = r.ts().info(4)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
     assert "Labs" == info["labels"]["Redis"]
 
     # Test for a chunk size of 128 Bytes on TS.ADD
     assert r.ts().add("time-serie-1", 1, 10.0, chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")

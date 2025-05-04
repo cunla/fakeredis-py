@@ -98,42 +98,29 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         return res
 
     @command(name="TS.INFO", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def ts_info(self, key: CommandItem, *args: bytes) -> List[Any]:
+    def ts_info(self, key: CommandItem, *args: bytes) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        return [
-            b"totalSamples",
-            len(key.value.sorted_list),
-            b"memoryUsage",
-            len(key.value.sorted_list) * 8 + len(key.value.encoding),
-            b"firstTimestamp",
-            key.value.sorted_list[0][0] if len(key.value.sorted_list) > 0 else 0,
-            b"lastTimestamp",
-            key.value.sorted_list[-1][0] if len(key.value.sorted_list) > 0 else 0,
-            b"retentionTime",
-            key.value.retention,
-            b"chunkCount",
-            len(key.value.sorted_list) * 8 // key.value.chunk_size,
-            b"chunkSize",
-            key.value.chunk_size,
-            b"chunkType",
-            key.value.encoding,
-            b"duplicatePolicy",
-            key.value.duplicate_policy,
-            b"labels",
-            [[k, v] for k, v in key.value.labels.items()],
-            b"sourceKey",
-            key.value.source_key,
-            b"rules",
-            [
+        labels = [[k, v] for k, v in key.value.labels.items()] if self.protocol_version == 2 else key.value.labels
+        return {
+            b"totalSamples": len(key.value.sorted_list),
+            b"memoryUsage": len(key.value.sorted_list) * 8 + len(key.value.encoding),
+            b"firstTimestamp": key.value.sorted_list[0][0] if len(key.value.sorted_list) > 0 else 0,
+            b"lastTimestamp": key.value.sorted_list[-1][0] if len(key.value.sorted_list) > 0 else 0,
+            b"retentionTime": key.value.retention,
+            b"chunkCount": len(key.value.sorted_list) * 8 // key.value.chunk_size,
+            b"chunkSize": key.value.chunk_size,
+            b"chunkType": key.value.encoding,
+            b"duplicatePolicy": key.value.duplicate_policy,
+            b"labels": labels,
+            b"sourceKey": key.value.source_key,
+            b"rules": [
                 [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
                 for rule in key.value.rules
             ],
-            b"keySelfName",
-            key.value.name,
-            b"Chunks",
-            [],
-        ]
+            b"keySelfName": key.value.name,
+            b"Chunks": [],
+        }
 
     @command(name="TS.CREATE", fixed=(Key(TimeSeries),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_create(self, key: CommandItem, *args: bytes) -> SimpleString:
