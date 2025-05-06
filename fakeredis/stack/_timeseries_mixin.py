@@ -147,8 +147,11 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.ADD", fixed=(Key(TimeSeries), Timestamp, Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> int:
+        (on_duplicate,), left_args = extract_args(args, ("*on_duplicate",), error_on_unexpected=False)
         if key.value is None:
             key.update(self._create_timeseries(key.key, *args))
+        if not self._validate_duplicate_policy(on_duplicate):
+            raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
         res = key.value.add(timestamp, value)
         return res
 

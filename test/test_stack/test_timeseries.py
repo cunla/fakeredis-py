@@ -14,9 +14,9 @@ timeseries_tests = pytest.importorskip("probables")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
-    time.sleep(0.1)
+    time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
-    assert abs(ts2 - ts1) < 110
+    assert abs(ts2 - ts1) < 10
 
 
 @pytest.mark.min_server("7")
