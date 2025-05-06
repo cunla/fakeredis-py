@@ -842,8 +842,9 @@ def test_pipeline(r: redis.Redis):
     pipeline.execute()
 
     info = r.ts().info("with_pipeline")
-    assert 99 == info.get("last_timestamp")
-    assert 100 == info.get("total_samples")
+    info = InfoClass(r, info)
+    assert 99 == info["last_timestamp"]
+    assert 100 == info["total_samples"]
 
     assert r.ts().get("with_pipeline")[1] == 99 * 1.1
 
