@@ -164,9 +164,12 @@ def test_hincrby_with_no_starting_value(r: redis.Redis):
 
 def test_hincrby_with_hash_key_expiration(r: redis.Redis):
     r.hincrby("foo", "counter")
-    r.hexpire("foo", "counter", 10)
+    r.hexpire("foo", 10, "counter")
     assert r.hincrby("foo", "counter") == 2
-    assert r.httl("foo", "counter") >= 0
+    res = r.httl("foo", "counter")
+    assert isinstance(res, list)
+    assert len(res) == 1
+    assert res[0] >= 0
 
 
 def test_hincrby_with_range_param(r: redis.Redis):
