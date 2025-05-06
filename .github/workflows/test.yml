@@ -17,6 +17,8 @@ jobs:
   lint:
     name: "Code linting (ruff)"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -73,7 +75,6 @@ jobs:
             extra: "json, bf, lua, cf"
             coverage: true
             hypothesis: true
-
     permissions:
       pull-requests: write
     services:
