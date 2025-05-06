@@ -24,7 +24,7 @@ class HashCommandsMixin:
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
         keys_count = len(h.keys())
-        h.update(dict(zip(*[iter(args)] * 2)))  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
+        h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
         created = len(h.keys()) - keys_count
 
         key.updated()
@@ -58,7 +58,7 @@ class HashCommandsMixin:
         amount = Int.decode(amount_bytes)
         field_value = Int.decode(key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG)
         c = field_value + amount
-        key.value.update({field: self._encodeint(c)})
+        key.value.update({field: self._encodeint(c)}, clear_expiration=False)
         key.updated()
         return c
 
@@ -68,7 +68,7 @@ class HashCommandsMixin:
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
-        key.value.update({field: encoded})
+        key.value.update({field: encoded}, clear_expiration=False)
         key.updated()
         return encoded
 
