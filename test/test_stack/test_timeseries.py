@@ -830,7 +830,7 @@ def test_query_index(r: redis.Redis):
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     assert 2 == len(r.ts().queryindex(["Test=This"]))
     assert 1 == len(r.ts().queryindex(["Taste=That"]))
-    assert r.ts().queryindex(["Taste=That"]) == [2]
+    assert r.ts().queryindex(["Taste=That"]) == resp_conversion(r, [b"2"], [2])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
