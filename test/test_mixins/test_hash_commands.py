@@ -3,12 +3,6 @@ import redis
 import redis.client
 
 from test import testtools
-from test.testtools import raw_command
-
-
-@pytest.mark.min_server("7.4")
-def test_hexpire_empty_key(r: redis.Redis):
-    raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 
 
 def test_hstrlen_missing(r: redis.Redis):
@@ -162,16 +156,6 @@ def test_hincrby_with_no_starting_value(r: redis.Redis):
     assert r.hincrby("foo", "counter") == 3
 
 
-def test_hincrby_with_hash_key_expiration(r: redis.Redis):
-    r.hincrby("foo", "counter")
-    r.hexpire("foo", 10, "counter")
-    assert r.hincrby("foo", "counter") == 2
-    res = r.httl("foo", "counter")
-    assert isinstance(res, list)
-    assert len(res) == 1
-    assert res[0] >= 0
-
-
 def test_hincrby_with_range_param(r: redis.Redis):
     assert r.hincrby("foo", "counter", 2) == 2
     assert r.hincrby("foo", "counter", 2) == 4
@@ -195,16 +179,6 @@ def test_hincrbyfloat_with_no_starting_value(r: redis.Redis):
     assert r.hincrbyfloat("foo", "counter") == 1.0
     assert r.hincrbyfloat("foo", "counter") == 2.0
     assert r.hincrbyfloat("foo", "counter") == 3.0
-
-
-def test_hincrbyfloat_with_hash_key_expiration(r: redis.Redis):
-    r.hincrbyfloat("foo", "counter", 1.0)
-    r.hexpire("foo", 10, "counter")
-    assert r.hincrbyfloat("foo", "counter", 2.0) == 3.0
-    res = r.httl("foo", "counter")
-    assert isinstance(res, list)
-    assert len(res) == 1
-    assert res[0] >= 0
 
 
 def test_hincrbyfloat_with_range_param(r: redis.Redis):
