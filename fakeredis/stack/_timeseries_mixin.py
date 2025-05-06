@@ -510,26 +510,51 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mrange"))
 
         timeseries = self._get_timeseries(filter_expression)
-        if with_labels or (group_by is not None and reducer is not None):
-            res = [
-                [
-                    ts.name,
-                    [[k, v] for (k, v) in ts.labels.items()],
-                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+        if self.protocol_version == 2:
+            if with_labels or (group_by is not None and reducer is not None):
+                res = [
+                    [
+                        ts.name,
+                        [[k, v] for (k, v) in ts.labels.items()] if self.protocol_version == 2 else ts.labels,
+                        self._range(reverse, ts, from_ts, to_ts, *left_args),
+                    ]
+                    for ts in timeseries
                 ]
-                for ts in timeseries
-            ]
-        elif selected_labels is not None:
-            res = [
-                [
-                    ts.name,
-                    [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
-                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+            elif selected_labels is not None:
+                res = [
+                    [
+                        ts.name,
+                        [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
+                        self._range(reverse, ts, from_ts, to_ts, *left_args),
+                    ]
+                    for ts in timeseries
                 ]
-                for ts in timeseries
-            ]
+            else:
+                res = [[ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries]
         else:
-            res = [[ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries]
+            if with_labels or (group_by is not None and reducer is not None):
+                res = {
+                    ts.name: [ts.labels, {"aggregators": []}, self._range(reverse, ts, from_ts, to_ts, *left_args)]
+                    for ts in timeseries
+                }
+            elif selected_labels is not None:
+                res = {
+                    ts.name: [
+                        {label: ts.labels[label] for label in selected_labels if label in ts.labels},
+                        {"aggregators": []},
+                        self._range(reverse, ts, from_ts, to_ts, *left_args),
+                    ]
+                    for ts in timeseries
+                }
+            else:
+                res = {
+                    ts.name: [
+                        {},
+                        {"aggregators": []},
+                        self._range(reverse, ts, from_ts, to_ts, *left_args),
+                    ]
+                    for ts in timeseries
+                }
         if group_by is not None and reducer is not None:
             return self._group_by_label(reverse, res, group_by, reducer)
         return res

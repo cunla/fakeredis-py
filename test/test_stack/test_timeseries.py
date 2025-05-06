@@ -526,24 +526,34 @@ def test_mrange(r: redis.Redis):
         r.ts().add(1, i, i % 7)
         r.ts().add(2, i, i % 11)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"])
-    assert 2 == len(res)
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 100 == len(res)
 
-    assert 100 == len(res[0]["1"][1])
-
-    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-    assert 10 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 10 == len(res)
 
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
-    res = r.ts().mrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
-    assert 2 == len(res)
-    assert 20 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 20 == len(res)
 
     # test withlabels
-    assert {} == res[0]["1"][0]
-    res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
-    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+    if get_protocol_version(r) == 2:
+        assert {} == tmp_res[0]["1"][0]
+    else:
+        assert {} == tmp_res[b"1"][0]
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
+    res = (
+        tmp_res[0]["1"][0]
+        if get_protocol_version(r) == 2
+        else {k.decode(): v.decode() for k, v in tmp_res[b"1"][0].items()}
+    )
+    assert {"Test": "This", "team": "ny"} == res
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -776,15 +786,28 @@ def test_mget(r: redis.Redis):
     r.ts().add(1, "*", 15)
     r.ts().add(2, "*", 25)
     res = r.ts().mget(["Test=This"])
-    assert 15 == res[0]["1"][2]
-    assert 25 == res[1]["2"][2]
+    if get_protocol_version(r) == 2:
+        assert 15 == res[0]["1"][2]
+        assert 25 == res[1]["2"][2]
+    else:
+        assert 15 == res[b"1"][1][1]
+        assert 25 == res[b"2"][1][1]
     res = r.ts().mget(["Taste=That"])
-    assert 25 == res[0]["2"][2]
+    if get_protocol_version(r) == 2:
+        assert 25 == res[0]["2"][2]
+    else:
+        assert 25 == res[b"2"][1][1]
 
     # test with_labels
-    assert {} == res[0]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {} == res[0]["2"][0]
+    else:
+        assert {} == res[b"2"][0]
     res = r.ts().mget(["Taste=That"], with_labels=True)
-    assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
+    else:
+        assert {"Taste": "That", "Test": "This"} == {k.decode(): v.decode() for k, v in res[b"2"][0].items()}
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
