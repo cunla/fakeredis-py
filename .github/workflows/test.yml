@@ -59,12 +59,17 @@ jobs:
         include:
           - python-version: "3.12"
             redis-image: "redis/redis-stack-server:6.2.6-v19"
-            redis-py: "5.2.1"
+            redis-py: "6.0.0"
+            extra: "json, bf, lua, cf"
+            hypothesis: true
+          - python-version: "3.12"
+            redis-image: "redis/redis-stack-server:7.4.0-v3"
+            redis-py: "6.0.0"
             extra: "json, bf, lua, cf"
             hypothesis: true
           - python-version: "3.12"
             redis-image: "redis:8.0.0"
-            redis-py: "5.2.1"
+            redis-py: "6.0.0"
             extra: "json, bf, lua, cf"
             coverage: true
             hypothesis: true
