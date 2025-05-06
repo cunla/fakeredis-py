@@ -83,6 +83,9 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
 
+        if duplicate_policy is None and self.version >= (8,):
+            # In Redis 8.0, the default duplicate policy is BLOCK
+            duplicate_policy = b"block"
         res = TimeSeries(
             name=name,
             database=self._db,
@@ -144,12 +147,9 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
 
     @command(name="TS.ADD", fixed=(Key(TimeSeries), Timestamp, Float), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_add(self, key: CommandItem, timestamp: int, value: float, *args: bytes) -> int:
-        (on_duplicate,), left_args = extract_args(args, ("*on_duplicate",), error_on_unexpected=False)
         if key.value is None:
             key.update(self._create_timeseries(key.key, *args))
-        if not self._validate_duplicate_policy(on_duplicate):
-            raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
-        res = key.value.add(timestamp, value, on_duplicate)
+        res = key.value.add(timestamp, value)
         return res
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))

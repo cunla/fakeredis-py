@@ -34,23 +34,19 @@ class TimeSeries:
         self.ignore_max_val_diff = ignore_max_val_diff
         self.rules: List[TimeSeriesRule] = list()
 
-    def add(
-        self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None
-    ) -> Union[int, None, List[None]]:
+    def add(self, timestamp: int, value: float) -> Union[int, None, List[None]]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
             raise SimpleError(msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION)
-        if duplicate_policy is None:
-            duplicate_policy = self.duplicate_policy
         if timestamp in self.ts_ind_map:  # Duplicate policy
-            if duplicate_policy == b"block":
+            if self.duplicate_policy == b"block":
                 raise SimpleError(msgs.TIMESERIES_DUPLICATE_POLICY_BLOCK)
-            if duplicate_policy == b"first":
+            if self.duplicate_policy == b"first":
                 return timestamp
             ind = self.ts_ind_map[timestamp]
             curr_value = self.sorted_list[ind][1]
-            if duplicate_policy == b"max":
+            if self.duplicate_policy == b"max":
                 value = max(curr_value, value)
-            elif duplicate_policy == b"min":
+            elif self.duplicate_policy == b"min":
                 value = min(curr_value, value)
             self.sorted_list[ind] = (timestamp, value)
             return timestamp
