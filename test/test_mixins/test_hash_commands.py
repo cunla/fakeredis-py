@@ -287,13 +287,13 @@ def test_hscan(r: redis.Redis):
     while cursor != 0:
         cursor, data = r.hscan(name, cursor, count=6)
         results.update(data)
-    assert results == expected
+    assert expected == results
 
     # Test the iterator version
     results = {}
     for key, val in r.hscan_iter(name, count=6):
         results[key] = val
-    assert results == expected
+    assert expected == results
 
     # Now test that the MATCH functionality works
     results = {}

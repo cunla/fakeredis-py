@@ -25,7 +25,7 @@ class HashCommandsMixin:
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
         previous_keys_count = len(h.keys())
-        h.update(dict(zip(*[iter(args)] * 2)))  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
+        h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
         created = len(h.keys()) - previous_keys_count
 
         key.updated()
@@ -59,7 +59,7 @@ class HashCommandsMixin:
         amount = Int.decode(amount_bytes)
         field_value = Int.decode(key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG)
         c = field_value + amount
-        key.value[field] = self._encodeint(c)
+        key.value.update({field: self._encodeint(c)}, clear_expiration=False)
         key.updated()
         return c
 
@@ -69,7 +69,7 @@ class HashCommandsMixin:
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
-        key.value[field] = encoded
+        key.value.update({field: encoded}, clear_expiration=False)
         key.updated()
         return encoded
 
@@ -301,10 +301,9 @@ class HashCommandsMixin:
         when_ms = _get_when_ms(ex, px, exat, pxat)
 
         field_keys = set(field_vals[::2])
-        existing_keys = set(hash_val.keys())
-        if fxx and len(field_keys - existing_keys) > 0:
+        if fxx and len(field_keys - hash_val.getall().keys()) > 0:
             return 0
-        if fnx and len(field_keys - existing_keys) < len(field_keys):
+        if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
             return 0
         res = 0
         for i in range(0, len(field_vals), 2):
