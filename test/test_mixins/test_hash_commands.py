@@ -162,6 +162,13 @@ def test_hincrby_with_no_starting_value(r: redis.Redis):
     assert r.hincrby("foo", "counter") == 3
 
 
+def test_hincrby_with_hash_key_expiration(r: redis.Redis):
+    r.hincrby("foo", "counter")
+    r.hexpire("foo", "counter", 10)
+    assert r.hincrby("foo", "counter") == 2
+    assert r.httl("foo", "counter") >= 0
+
+
 def test_hincrby_with_range_param(r: redis.Redis):
     assert r.hincrby("foo", "counter", 2) == 2
     assert r.hincrby("foo", "counter", 2) == 4
@@ -186,6 +193,12 @@ def test_hincrbyfloat_with_no_starting_value(r: redis.Redis):
     assert r.hincrbyfloat("foo", "counter") == 2.0
     assert r.hincrbyfloat("foo", "counter") == 3.0
 
+
+def test_hincrbyfloat_with_hash_key_expiration(r: redis.Redis):
+    r.hincrbyfloat("foo", "counter", 1.0)
+    r.hexpire("foo", "counter", 10)
+    assert r.hincrbyfloat("foo", "counter", 2.0) == 3.0
+    assert r.httl("foo", "counter") >= 0
 
 def test_hincrbyfloat_with_range_param(r: redis.Redis):
     assert r.hincrbyfloat("foo", "counter", 0.1) == pytest.approx(0.1)

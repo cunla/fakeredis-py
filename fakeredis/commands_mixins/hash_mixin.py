@@ -58,7 +58,7 @@ class HashCommandsMixin:
         amount = Int.decode(amount_bytes)
         field_value = Int.decode(key.value.get(field, b"0"), decode_error=msgs.INVALID_HASH_MSG)
         c = field_value + amount
-        key.value[field] = self._encodeint(c)
+        key.value.update({field: self._encodeint(c)})
         key.updated()
         return c
 
@@ -68,7 +68,7 @@ class HashCommandsMixin:
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
-        key.value[field] = encoded
+        key.value.update({field: encoded})
         key.updated()
         return encoded
 
