@@ -797,9 +797,9 @@ def test_mget_latest(r: redis.Redis):
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
     res = timeseries.mget(filters=["is_compaction=true"])
-    assert res == resp_conversion(r, [{"t2": [{}, 0, 4.0]}], [{"t2": [{}, 0, 4.0]}])
+    assert res == resp_conversion(r, {b"t2": [{}, [0, 4.0]]}, [{"t2": [{}, 0, 4.0]}])
     res = timeseries.mget(filters=["is_compaction=true"], latest=True)
-    assert res == [{"t2": [{}, 0, 4.0]}]
+    assert res == resp_conversion(r, {b"t2": [{}, [0, 4.0]]}, [{"t2": [{}, 0, 4.0]}])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
