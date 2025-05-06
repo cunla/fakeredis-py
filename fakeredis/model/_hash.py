@@ -76,10 +76,11 @@ class Hash:
         self._expire_keys()
         return self._values.items()
 
-    def update(self, values: Dict[bytes, Any]) -> None:
+    def update(self, values: Dict[bytes, Any], clear_expiration: bool) -> None:
         self._expire_keys()
-        for k in values.keys():
-            self.clear_key_expireat(k)
+        if clear_expiration:
+            for k in values.keys():
+                self.clear_key_expireat(k)
         self._values.update(values)
 
     def getall(self) -> Dict[bytes, Any]:
