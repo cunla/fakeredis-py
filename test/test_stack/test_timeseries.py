@@ -718,10 +718,11 @@ def test_mrevrange_latest(r: redis.Redis):
     timeseries.add("t3", 11, 7)
     timeseries.add("t3", 13, 1)
 
-    assert r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True) == [
-        {"t2": [{}, [(0, 4.0)]]},
-        {"t4": [{}, [(0, 4.0)]]},
-    ]
+    assert r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True) == resp_conversion(
+        r,
+        {b"t2": [{}, {b"aggregators": []}, [[0, 4.0]]], b"t4": [{}, {b"aggregators": []}, [[0, 4.0]]]},
+        [{"t2": [{}, [(0, 4.0)]]}, {"t4": [{}, [(0, 4.0)]]}],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
