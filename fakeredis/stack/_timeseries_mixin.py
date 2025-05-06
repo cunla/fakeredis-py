@@ -152,7 +152,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             key.update(self._create_timeseries(key.key, *args))
         if not self._validate_duplicate_policy(on_duplicate):
             raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
-        res = key.value.add(timestamp, value)
+        res = key.value.add(timestamp, value, on_duplicate)
         return res
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
