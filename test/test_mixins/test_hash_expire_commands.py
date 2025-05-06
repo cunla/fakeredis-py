@@ -339,3 +339,28 @@ def test_hpttl_multiple_fields_mixed_conditions(r: redis.Redis):
 def test_hpttl_nonexistent_key(r: redis.Redis):
     r.delete("redis-key")
     assert r.hpttl("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
+
+
+def test_hincrby_with_hash_key_expiration(r: redis.Redis):
+    r.hincrby("foo", "counter")
+    r.hexpire("foo", 10, "counter")
+    assert r.hincrby("foo", "counter") == 2
+    res = r.httl("foo", "counter")
+    assert isinstance(res, list)
+    assert len(res) == 1
+    assert res[0] >= 0
+
+
+@pytest.mark.min_server("7.4")
+def test_hexpire_empty_key(r: redis.Redis):
+    testtools.raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
+
+
+def test_hincrbyfloat_with_hash_key_expiration(r: redis.Redis):
+    r.hincrbyfloat("foo", "counter", 1.0)
+    r.hexpire("foo", 10, "counter")
+    assert r.hincrbyfloat("foo", "counter", 2.0) == 3.0
+    res = r.httl("foo", "counter")
+    assert isinstance(res, list)
+    assert len(res) == 1
+    assert res[0] >= 0

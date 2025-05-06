@@ -83,6 +83,9 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("TS.ADD"))
         labels = dict(zip(left_args[1::2], left_args[2::2])) if len(left_args) > 0 else {}
 
+        if duplicate_policy is None and self.version >= (8,):
+            # In Redis 8.0, the default duplicate policy is BLOCK
+            duplicate_policy = b"block"
         res = TimeSeries(
             name=name,
             database=self._db,

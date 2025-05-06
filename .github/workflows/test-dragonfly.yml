@@ -12,7 +12,6 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
@@ -72,6 +71,8 @@ jobs:
     needs: test
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Collect Tests Result
         uses: actions/upload-artifact/merge@v4
