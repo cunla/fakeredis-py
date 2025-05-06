@@ -151,7 +151,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_get(self, key: CommandItem, *args: bytes) -> Optional[List[Union[int, float]]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        return key.value.get()
+        res = key.value.get()
+        if res is None and self.protocol_version == 3:
+            res = []
+        return res
 
     @command(
         name="TS.MADD",

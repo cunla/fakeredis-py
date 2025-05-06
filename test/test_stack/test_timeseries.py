@@ -487,20 +487,12 @@ def test_revrange_bucket_timestamp(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
-        (70, 5.0),
-        (50, 3.0),
-        (10, 4.0),
-    ]
+    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[70, 5.0], [50, 3.0], [10, 4.0]], [(70, 5.0), (50, 3.0), (10, 4.0)]
+    )
     assert timeseries.range(
-        "t1",
-        0,
-        100,
-        align=0,
-        aggregation_type="max",
-        bucket_size_msec=10,
-        bucket_timestamp="+",
-    ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, bucket_timestamp="+"
+    ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -521,7 +513,7 @@ def test_revrange_empty(r: redis.Redis):
             res[i] = (res[i][0], None)
     assert res == resp_conversion(
         r,
-        [[70, 5.0], [60, None], [50, 3.0], [40, None], [30, None], [20, None], [10, 4.0]],
+        [[70, 5.0], (60, None), [50, 3.0], (40, None), (30, None), (20, None), [10, 4.0]],
         [(70, 5.0), (60, None), (50, 3.0), (40, None), (30, None), (20, None), (10, 4.0)],
     )
 
@@ -736,7 +728,7 @@ def test_mrevrange_latest(r: redis.Redis):
 def test_get(r: redis.Redis):
     name = "test"
     r.ts().create(name)
-    assert r.ts().get(name) is None
+    assert r.ts().get(name) == resp_conversion(r, [], None)
     r.ts().add(name, 2, 3)
     assert 2 == r.ts().get(name)[0]
     r.ts().add(name, 3, 4)
@@ -753,8 +745,8 @@ def test_get_latest(r: redis.Redis):
     timeseries.add("t1", 2, 3)
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
-    assert timeseries.get("t2") == (0, 4.0)
-    assert timeseries.get("t2", latest=True) == (0, 4.0)
+    assert timeseries.get("t2") == resp_conversion(r, [0, 4.0], (0, 4.0))
+    assert timeseries.get("t2", latest=True) == resp_conversion(r, [0, 4.0], (0, 4.0))
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -805,7 +797,7 @@ def test_mget_latest(r: redis.Redis):
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
     res = timeseries.mget(filters=["is_compaction=true"])
-    assert res == [{"t2": [{}, 0, 4.0]}]
+    assert res == resp_conversion(r, [{"t2": [{}, 0, 4.0]}], [{"t2": [{}, 0, 4.0]}])
     res = timeseries.mget(filters=["is_compaction=true"], latest=True)
     assert res == [{"t2": [{}, 0, 4.0]}]
 
@@ -814,7 +806,8 @@ def test_mget_latest(r: redis.Redis):
 def test_info(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert 5 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 5 == info["retention_msecs"]
     assert info["labels"]["currentLabel"] == "currentData"
 
 
