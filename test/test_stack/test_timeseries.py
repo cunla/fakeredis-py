@@ -648,32 +648,45 @@ def test_multi_reverse_range(r: redis.Redis):
         r.ts().add(1, i, i % 7)
         r.ts().add(2, i, i % 11)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"])
-    assert 2 == len(res)
-    assert 100 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 100 == len(res)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-    assert 10 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 10 == len(res)
 
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
-    res = r.ts().mrevrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
-    assert 2 == len(res)
 
-    assert 20 == len(res[0]["1"][1])
-    assert {} == res[0]["1"][0]
+    tmp_res = r.ts().mrevrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
+    assert 2 == len(tmp_res)
+    measurements = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    labels = tmp_res[0]["1"][0] if get_protocol_version(r) == 2 else tmp_res[b"1"][0]
+    assert 20 == len(measurements)
+    assert {} == labels
 
     # test withlabels
-    res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
-    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+    tmp_res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
+    res = (
+        tmp_res[0]["1"][0]
+        if get_protocol_version(r) == 2
+        else {k.decode(): v.decode() for k, v in tmp_res[b"1"][0].items()}
+    )
+    assert {"Test": "This", "team": "ny"} == res
 
     # test with selected labels
     res = r.ts().mrevrange(0, 200, filters=["Test=This"], select_labels=["team"])
-    assert {"team": "ny"} == res[0]["1"][0]
-    assert {"team": "sf"} == res[1]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {"team": "ny"} == res[0]["1"][0]
+        assert {"team": "sf"} == res[1]["2"][0]
+    else:
+        assert {b"team": b"ny"} == res[b"1"][0]
+        assert {b"team": b"sf"} == res[b"2"][0]
 
     # test filterby
-    res = r.ts().mrevrange(
+    tmp_res = r.ts().mrevrange(
         0,
         200,
         filters=["Test=This"],
@@ -681,7 +694,10 @@ def test_multi_reverse_range(r: redis.Redis):
         filter_by_min_value=1,
         filter_by_max_value=2,
     )
-    assert [(16, 2.0), (15, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(16, 2.0), (15, 1.0)] == tmp_res[0]["1"][1]
+    else:
+        assert [[16, 2.0], [15, 1.0]] == tmp_res[b"1"][2]
 
     # test groupby
     res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
