@@ -633,10 +633,11 @@ def test_mrange_latest(r: redis.Redis):
     timeseries.add("t3", 11, 7)
     timeseries.add("t3", 13, 1)
 
-    assert r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True) == [
-        {"t2": [{}, [(0, 4.0)]]},
-        {"t4": [{}, [(0, 4.0)]]},
-    ]
+    assert r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True) == resp_conversion(
+        r,
+        {b"t2": [{}, {b"aggregators": []}, [[0, 4.0]]], b"t4": [{}, {b"aggregators": []}, [[0, 4.0]]]},
+        [{"t2": [{}, [(0, 4.0)]]}, {"t4": [{}, [(0, 4.0)]]}],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -867,11 +868,13 @@ def test_alter_diplicate_policy(r: redis.Redis):
 def testInfoDuplicatePolicy_redis8(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") == "block"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "block"
 
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
-    assert info.get("duplicate_policy") == "min"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "min"
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -879,11 +882,13 @@ def testInfoDuplicatePolicy_redis8(r: redis.Redis):
 def test_alter_diplicate_policy_redis8(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") == "block"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "block"
 
     assert r.ts().alter(1, duplicate_policy="min")
     info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
+    info = InfoClass(r, info)
+    assert "min" == info["duplicate_policy"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
