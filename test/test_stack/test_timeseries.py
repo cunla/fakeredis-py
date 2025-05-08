@@ -844,11 +844,13 @@ def test_info(r: redis.Redis):
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] is None
 
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
-    assert info.get("duplicate_policy") == "min"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "min"
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -856,11 +858,13 @@ def testInfoDuplicatePolicy(r: redis.Redis):
 def test_alter_diplicate_policy(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] is None
 
     assert r.ts().alter(1, duplicate_policy="min")
     info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
+    info = InfoClass(r, info)
+    assert "min" == info["duplicate_policy"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
