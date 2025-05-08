@@ -552,10 +552,12 @@ def test_multi_range_advanced(r: redis.Redis):
 
     # test with selected labels
     res = r.ts().mrange(0, 200, filters=["Test=This"], select_labels=["team"])
-
-    assert {"team": "ny"} == res[0]["1"][0]
-    assert {"team": "sf"} == res[1]["2"][0]
-
+    if get_protocol_version(r) == 2:
+        assert {"team": "ny"} == res[0]["1"][0]
+        assert {"team": "sf"} == res[1]["2"][0]
+    else:
+        assert {"team": "ny"} == {k.decode(): v.decode() for k, v in res[b"1"][0].items()}
+        assert {"team": "sf"} == {k.decode(): v.decode() for k, v in res[b"2"][0].items()}
     # test with filterby
     res = r.ts().mrange(
         0,
@@ -565,18 +567,30 @@ def test_multi_range_advanced(r: redis.Redis):
         filter_by_min_value=1,
         filter_by_max_value=2,
     )
-    assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
+    else:
+        assert [[15, 1.0], [16, 2.0]] == res[b"1"][2]
 
     # test groupby
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
-    assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
+    else:
+        assert [[0, 0.0], [1, 2.0], [2, 4.0], [3, 6.0]] == res[b"Test=This"][3]
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
+    else:
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"Test=This"][3]
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="team", reduce="min")
     assert 2 == len(res)
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
-
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
+    else:
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"team=ny"][3]
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"team=sf"][3]
     # test align
     res = r.ts().mrange(
         0,
@@ -586,7 +600,10 @@ def test_multi_range_advanced(r: redis.Redis):
         bucket_size_msec=10,
         align="-",
     )
-    assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
+    else:
+        assert [[0, 10.0], [10, 1.0]] == res[b"1"][2]
     # res = r.ts().mrange(
     #     0,
     #     10,

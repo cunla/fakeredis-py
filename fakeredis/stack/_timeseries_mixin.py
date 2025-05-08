@@ -432,40 +432,39 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         timeseries = self._get_timeseries(filter_expressions)
         return [ts.name for ts in timeseries]
 
-    def _group_by_label(self, reverse: bool, ts_list: List[Any], label: bytes, reducer: bytes) -> TimeSeries:
-        # ts_list: [[name, labels, measurements], ...]
+    def _group_by_label(
+        self, reverse: bool, ts_dict: Dict[bytes, List[Any]], label: bytes, reducer: bytes
+    ) -> Dict[bytes, List[Any]]:
+        # ts_dict: name -> [labels, ..., measurements]
         reducer = reducer.lower()
         if reducer not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         ts_map: Dict[bytes, Dict[int, List[float]]] = dict()  # label_value -> timestamp -> values
-        for ts in ts_list:
+        for ts_name, ts_data in ts_dict.items():
             # Find label value
-            labels, label_value = ts[1], None
-            for label_name, current_value in labels:
-                if label_name == label:
-                    label_value = current_value
-                    break
+            labels_dict = ts_data[0]
+            label_value = labels_dict.get(label, None)
             if not label_value:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             if label_value not in ts_map:
                 ts_map[label_value] = dict()
             # Collect measurements
-            for timestamp, value in ts[2]:
+            for timestamp, value in ts_data[-1]:
                 if timestamp not in ts_map[label_value]:
                     ts_map[label_value][timestamp] = list()
                 ts_map[label_value][timestamp].append(value)
-        res = []
+        res = {}
         for label_value, timestamp_values in ts_map.items():
             sorted_timestamps = sorted(timestamp_values.keys())
             name = f"{label.decode()}={label_value.decode()}"
-            sources = (", ".join([ts[0].decode() for ts in ts_list])).encode("utf-8")
+            sources = [ts_name.decode() for ts_name in ts_map.keys()]
             labels = {label: label_value, b"__reducer__": reducer, b"__source__": sources}
             measurements: List[List[Union[int, float]]] = [
                 [timestamp, float(AGGREGATORS[reducer](timestamp_values[timestamp]))] for timestamp in sorted_timestamps
             ]
             if reverse:
                 measurements.reverse()
-            res.append([name.encode("utf-8"), [[k, v] for (k, v) in labels.items()], measurements])
+            res[name.encode("utf-8")] = [labels, {b"reducers": [reducer]}, {b"sources": sources}, measurements]
         return res
 
     def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes):
@@ -527,53 +526,34 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mrange"))
 
         timeseries = self._get_timeseries(filter_expression)
-        if self.protocol_version == 2:
-            if with_labels or (group_by is not None and reducer is not None):
-                res = [
-                    [
-                        ts.name,
-                        [[k, v] for (k, v) in ts.labels.items()] if self.protocol_version == 2 else ts.labels,
-                        self._range(reverse, ts, from_ts, to_ts, *left_args),
-                    ]
-                    for ts in timeseries
+        res: Dict[bytes, List[Any]]
+        if with_labels or (group_by is not None and reducer is not None):
+            res = {
+                ts.name: [ts.labels, {b"aggregators": []}, self._range(reverse, ts, from_ts, to_ts, *left_args)]
+                for ts in timeseries
+            }
+        elif selected_labels is not None:
+            res = {
+                ts.name: [
+                    {label: ts.labels[label] for label in selected_labels if label in ts.labels},
+                    {b"aggregators": []},
+                    self._range(reverse, ts, from_ts, to_ts, *left_args),
                 ]
-            elif selected_labels is not None:
-                res = [
-                    [
-                        ts.name,
-                        [[label, ts.labels[label]] for label in selected_labels if label in ts.labels],
-                        self._range(reverse, ts, from_ts, to_ts, *left_args),
-                    ]
-                    for ts in timeseries
-                ]
-            else:
-                res = [[ts.name, [], self._range(reverse, ts, from_ts, to_ts, *left_args)] for ts in timeseries]
+                for ts in timeseries
+            }
         else:
-            if with_labels or (group_by is not None and reducer is not None):
-                res = {
-                    ts.name: [ts.labels, {"aggregators": []}, self._range(reverse, ts, from_ts, to_ts, *left_args)]
-                    for ts in timeseries
-                }
-            elif selected_labels is not None:
-                res = {
-                    ts.name: [
-                        {label: ts.labels[label] for label in selected_labels if label in ts.labels},
-                        {"aggregators": []},
-                        self._range(reverse, ts, from_ts, to_ts, *left_args),
-                    ]
-                    for ts in timeseries
-                }
-            else:
-                res = {
-                    ts.name: [
-                        {},
-                        {"aggregators": []},
-                        self._range(reverse, ts, from_ts, to_ts, *left_args),
-                    ]
-                    for ts in timeseries
-                }
+            res = {
+                ts.name: [
+                    {},
+                    {b"aggregators": []},
+                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+                ]
+                for ts in timeseries
+            }
         if group_by is not None and reducer is not None:
-            return self._group_by_label(reverse, res, group_by, reducer)
+            res = self._group_by_label(reverse, res, group_by, reducer)
+        if self.protocol_version == 2:
+            res = [[ts_name, [[k, v] for k, v in ts_data[0].items()], ts_data[-1]] for ts_name, ts_data in res.items()]
         return res
 
     @command(name="TS.MRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
