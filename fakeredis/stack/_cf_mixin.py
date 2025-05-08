@@ -1,7 +1,7 @@
 """Command mixin for emulating `redis-py`'s cuckoo filter functionality."""
 
 import io
-from typing import List, Any
+from typing import List, Any, Dict
 
 from probables import CountingCuckooFilter, CuckooFilterFullError
 
@@ -75,27 +75,19 @@ class CFCommandsMixin:
         return CFCommandsMixin._cf_exist(key, value)
 
     @command(name="CF.INFO", fixed=(Key(),), repeat=())
-    def cf_info(self, key: CommandItem) -> List[Any]:
+    def cf_info(self, key: CommandItem) -> Dict[bytes, Any]:
         if key.value is None or type(key.value) is not ScalableCuckooFilter:
             raise SimpleError("...")
-        return [
-            b"Size",
-            key.value.capacity,
-            b"Number of buckets",
-            len(key.value.buckets),
-            b"Number of filters",
-            (key.value.capacity / key.value.initial_capacity) / key.value.expansion_rate,
-            b"Number of items inserted",
-            key.value.inserted,
-            b"Number of items deleted",
-            key.value.deleted,
-            b"Bucket size",
-            key.value.bucket_size,
-            b"Max iterations",
-            key.value.max_swaps,
-            b"Expansion rate",
-            key.value.expansion_rate,
-        ]
+        return {
+            b"Size": key.value.capacity,
+            b"Number of buckets": len(key.value.buckets),
+            b"Number of filters": int((key.value.capacity / key.value.initial_capacity) / key.value.expansion_rate),
+            b"Number of items inserted": key.value.inserted,
+            b"Number of items deleted": key.value.deleted,
+            b"Bucket size": key.value.bucket_size,
+            b"Max iterations": key.value.max_swaps,
+            b"Expansion rate": key.value.expansion_rate,
+        }
 
     @command(name="CF.INSERT", fixed=(Key(),), repeat=(bytes,))
     def cf_insert(self, key: CommandItem, *args: bytes) -> List[int]:

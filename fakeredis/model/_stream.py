@@ -67,17 +67,13 @@ class StreamConsumerInfo(object):
         self.last_attempt = _time
         self.last_success = _time
 
-    def info(self, curr_time: int) -> List[Union[bytes, int]]:
-        return [
-            b"name",
-            self.name,
-            b"pending",
-            self.pending,
-            b"idle",
-            curr_time - self.last_attempt,
-            b"inactive",
-            curr_time - self.last_success,
-        ]
+    def info(self, curr_time: int) -> Dict[str, Union[bytes, int]]:
+        return dict(
+            name=self.name,
+            pending=self.pending,
+            idle=curr_time - self.last_attempt,
+            inactive=curr_time - self.last_success,
+        )
 
 
 class StreamGroup(object):
@@ -120,10 +116,10 @@ class StreamGroup(object):
         del self.consumers[consumer_name]
         return res
 
-    def consumers_info(self) -> List[List[Union[bytes, int]]]:
+    def consumers_info(self) -> List[Dict[str, Union[bytes, int]]]:
         return [self.consumers[k].info(current_time()) for k in self.consumers]
 
-    def group_info(self) -> List[bytes]:
+    def group_info(self) -> Dict[bytes, Any]:
         start_index, _ = self.stream.find_index(self.start_key)
         last_delivered_index, _ = self.stream.find_index(self.last_delivered_key)
         last_ack_index, _ = self.stream.find_index(self.last_ack_key)
@@ -139,7 +135,7 @@ class StreamGroup(object):
             b"entries-read": self.entries_read,
             b"lag": lag,
         }
-        return list(itertools.chain(*res.items()))  # type: ignore
+        return res
 
     def group_read(
         self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
@@ -508,10 +504,10 @@ class XStream:
 
         start_ind = _find_index(start)
         stop_ind = _find_index(stop, from_left=False)
-        matches = map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind))
+        matches = list(map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind)))
         if reverse:
-            return list(reversed(tuple(matches)))
-        return list(matches)
+            return list(reversed(matches))
+        return matches
 
     def last_item_key(self) -> bytes:
         return self._ids[-1].encode() if len(self._ids) > 0 else "0-0".encode()
@@ -525,6 +521,7 @@ class XStream:
         end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
         return self._ids[start_ind:end_ind]
 
-    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, List[bytes]]]:
+    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, Dict[bytes, bytes]]]:
+        # results: Dict[bytes, bytes] = dict(zip(*[iter(self._values_dict[key])] * 2))
         results = self._values_dict[key]
         return [key.encode(), results]

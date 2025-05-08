@@ -95,6 +95,8 @@ markers = [
     "max_server",
     "decode_responses",
     "unsupported_server_types",
+    "resp2_only: run tests only with RESP2",
+    "resp3_only: run tests only with RESP3",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true

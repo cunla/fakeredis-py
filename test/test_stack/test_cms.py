@@ -2,6 +2,7 @@ import pytest
 import redis
 
 from test import testtools
+from test.testtools import get_protocol_version
 
 json_tests = pytest.importorskip("probables")
 
@@ -102,10 +103,14 @@ def test_cms_info(r: redis.Redis):
     assert r.cms().merge("C", 2, ["A", "B"], ["2", "3"])
     assert r.cms().query("C", "foo", "bar", "baz") == [16, 15, 21]
     info = r.cms().info("A")
-    assert info.width == 1000
-    assert info.depth == 5
-    assert info.count == 17
-
+    if get_protocol_version(r) == 2:
+        assert info.width == 1000
+        assert info.depth == 5
+        assert info.count == 17
+    else:
+        assert info[b"width"] == 1000
+        assert info[b"depth"] == 5
+        assert info[b"count"] == 17
     with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
         r.cms().info("noexist")
 

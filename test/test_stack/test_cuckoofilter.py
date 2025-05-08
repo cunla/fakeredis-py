@@ -1,6 +1,8 @@
 import pytest
 import redis
 
+from test.testtools import get_protocol_version
+
 cuckoofilters_tests = pytest.importorskip("probables")
 
 
@@ -19,9 +21,14 @@ def test_cf_add_and_insert(r: redis.Redis):
     assert [1] == r.cf().insert("empty1", ["foo"], capacity=1000)
     assert [1] == r.cf().insertnx("empty2", ["bar"], capacity=1000)
     info = r.cf().info("captest")
-    assert info.get("insertedNum") == 5
-    assert info.get("deletedNum") == 0
-    assert info.get("filterNum") == 1
+    if get_protocol_version(r) == 2:
+        assert info.get("insertedNum") == 5
+        assert info.get("deletedNum") == 0
+        assert info.get("filterNum") == 1
+    else:
+        assert info.get(b"Number of items inserted") == 5
+        assert info.get(b"Number of items deleted") == 0
+        assert info.get(b"Number of filters") == 1
 
 
 @pytest.mark.unsupported_server_types("dragonfly")

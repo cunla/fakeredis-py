@@ -4,6 +4,8 @@ from math import inf
 import pytest
 import redis
 
+from test.testtools import get_protocol_version
+
 topk_tests = pytest.importorskip("probables")
 
 
@@ -18,7 +20,7 @@ def test_tdigest_reset(r: redis.Redis):
     assert r.tdigest().reset("tDigest")
     # assert we have 0 unmerged
     info = r.tdigest().info("tDigest")
-    assert 0 == info.get("unmerged_weight")
+    assert 0 == info.get("unmerged_weight" if get_protocol_version(r) == 2 else b"Unmerged weight")
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -32,15 +34,19 @@ def test_tdigest_merge(r: redis.Redis):
     assert r.tdigest().merge("to-tDigest", 1, "from-tDigest")
     # we should now have 110 weight on to-histogram
     info = r.tdigest().info("to-tDigest")
-    assert 20 == float(info["merged_weight"]) + float(info["unmerged_weight"])
+    if get_protocol_version(r) == 2:
+        assert 20 == float(info["merged_weight"]) + float(info["unmerged_weight"])
+    else:
+        assert 20 == float(info[b"Merged weight"]) + float(info[b"Unmerged weight"])
     # test override
     assert r.tdigest().create("from-override", 10)
     assert r.tdigest().create("from-override-2", 10)
     assert r.tdigest().add("from-override", [3.0] * 10)
     assert r.tdigest().add("from-override-2", [4.0] * 10)
     assert r.tdigest().merge("to-tDigest", 2, "from-override", "from-override-2", override=True)
-    assert 3.0 == r.tdigest().min("to-tDigest")
-    assert 4.0 == r.tdigest().max("to-tDigest")
+
+    assert r.tdigest().min("to-tDigest") == 3.0
+    assert r.tdigest().max("to-tDigest") == 4.0
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -58,7 +64,7 @@ def test_tdigest_quantile(r: redis.Redis):
     assert r.tdigest().create("tDigest", 500)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", list([x * 0.01 for x in range(1, 10000)]))
-    # assert min min/max have same result as quantile 0 and 1
+    # assert min/max have the same result as quantile 0 and 1
     res = r.tdigest().quantile("tDigest", 1.0)
     assert r.tdigest().max("tDigest") == res[0]
     res = r.tdigest().quantile("tDigest", 0.0)

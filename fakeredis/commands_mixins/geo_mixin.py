@@ -9,7 +9,6 @@ from fakeredis._helpers import SimpleError, Database
 from fakeredis.model import ZSet
 from fakeredis.geo import distance, geo_encode, geo_decode
 
-
 UNIT_TO_M = {"km": 0.001, "mi": 0.000621371, "ft": 3.28084, "m": 1}
 
 
@@ -135,22 +134,12 @@ class GeoCommandsMixin:
         return geohash_list
 
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def geopos(self, key: CommandItem, *members: bytes) -> List[Optional[List[bytes]]]:
+    def geopos(self, key: CommandItem, *members: bytes) -> List[Optional[List[float]]]:
         gospositions = map(
             lambda x: geo_decode(x) if x is not None else x,
             map(key.value.get, members),
         )
-        res = [
-            (
-                [
-                    self._encodefloat(x[1], False),
-                    self._encodefloat(x[0], False),
-                ]
-                if x is not None
-                else None
-            )
-            for x in gospositions
-        ]
+        res = [([x[1], x[0]] if x is not None else None) for x in gospositions]
         return res
 
     @command(name="GEODIST", fixed=(Key(ZSet), bytes, bytes), repeat=(bytes,))

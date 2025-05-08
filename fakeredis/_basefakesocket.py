@@ -24,6 +24,20 @@ from ._helpers import (
 )
 
 
+def _convert_to_resp2(val: Any) -> Any:
+    if isinstance(val, str):
+        return val.encode()
+    if isinstance(val, float):
+        return Float.encode(val, humanfriendly=False)
+    if isinstance(val, dict):
+        result = list(itertools.chain(*val.items()))
+        return [_convert_to_resp2(item) for item in result]
+    if isinstance(val, (list, tuple)):
+        res = [_convert_to_resp2(item) for item in val]
+        return res
+    return val
+
+
 def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
     """Extracts the command and command arguments from a list of `bytes` fields.
 
@@ -262,7 +276,10 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                assert valid_response_type(result)
+                if self.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                    result = _convert_to_resp2(result)
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                    assert valid_response_type(result, self.protocol_version), f"Invalid response type for {result}"
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
@@ -372,6 +389,8 @@ class BaseFakeSocket:
         regex = compile_pattern(pattern) if pattern is not None else None
 
         def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
+            if isinstance(key, str):
+                key = key.encode("utf-8")
             return regex.match(key) if regex is not None else True
 
         def match_type(key) -> bool:

@@ -6,7 +6,7 @@ from packaging.version import Version
 from redis import exceptions
 
 from test import testtools
-from test.testtools import redis_server_time, REDIS_VERSION
+from test.testtools import redis_server_time, REDIS_PY_VERSION
 
 pytestmark = []
 pytestmark.extend(
@@ -16,7 +16,7 @@ pytestmark.extend(
     ]
 )
 
-if REDIS_VERSION >= Version("5.9"):
+if REDIS_PY_VERSION >= Version("5.9"):
     from redis.commands.core import HashDataPersistOptions
 
 

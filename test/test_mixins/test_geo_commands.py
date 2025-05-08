@@ -4,6 +4,7 @@ import pytest
 import redis
 
 from test import testtools
+from test.testtools import resp_conversion
 
 
 def test_geoadd_ch(r: redis.Redis):
@@ -88,11 +89,9 @@ def test_geohash(r: redis.Redis):
         "place2",
     )
     r.geoadd("barcelona", values)
-    assert r.geohash("barcelona", "place1", "place2", "place3") == [
-        "sp3e9yg3kd0",
-        "sp3e9cbc3t0",
-        None,
-    ]
+    assert r.geohash("barcelona", "place1", "place2", "place3") == resp_conversion(
+        r, [b"sp3e9yg3kd0", b"sp3e9cbc3t0", None], ["sp3e9yg3kd0", "sp3e9cbc3t0", None]
+    )
 
 
 def test_geopos(r: redis.Redis):

@@ -1,6 +1,6 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
 
-from typing import Any, List, Union
+from typing import Any, List, Union, Dict
 
 from probables import ExpandingBloomFilter
 
@@ -125,24 +125,19 @@ class BFCommandsMixin:
         return res
 
     @command(name="BF.INFO", fixed=(Key(),), repeat=(bytes,))
-    def bf_info(self, key: CommandItem, *args: bytes) -> Union[Any, List[Any]]:
+    def bf_info(self, key: CommandItem, *args: bytes) -> Union[Any, Dict[bytes, Any]]:
         if key.value is None or type(key.value) is not ScalableBloomFilter:
             raise SimpleError("...")
         if len(args) > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(args) == 0:
-            return [
-                b"Capacity",
-                key.value.estimated_elements,
-                b"Size",
-                key.value.elements_added,
-                b"Number of filters",
-                key.value.expansions + 1,
-                b"Number of items inserted",
-                key.value.elements_added,
-                b"Expansion rate",
-                key.value.scale if key.value.scale > 0 else None,
-            ]
+            return {
+                b"Capacity": key.value.estimated_elements,
+                b"Size": key.value.elements_added,
+                b"Number of filters": key.value.expansions + 1,
+                b"Number of items inserted": key.value.elements_added,
+                b"Expansion rate": key.value.scale if key.value.scale > 0 else None,
+            }
         if casematch(args[0], b"CAPACITY"):
             return key.value.estimated_elements
         elif casematch(args[0], b"SIZE"):

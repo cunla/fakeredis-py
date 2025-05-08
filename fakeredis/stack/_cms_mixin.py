@@ -1,6 +1,6 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
 
-from typing import Optional, Tuple, List, Any
+from typing import Optional, Tuple, List, Any, Dict
 
 import probables
 
@@ -28,10 +28,7 @@ class CMSCommandsMixin:
     @command(
         name="CMS.INCRBY",
         fixed=(Key(CountMinSketch), bytes, bytes),
-        repeat=(
-            bytes,
-            bytes,
-        ),
+        repeat=(bytes, bytes),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def cms_incrby(self, key: CommandItem, *args: bytes) -> List[Tuple[bytes, int]]:
@@ -49,23 +46,15 @@ class CMSCommandsMixin:
         key.updated()
         return res
 
-    @command(
-        name="CMS.INFO",
-        fixed=(Key(CountMinSketch),),
-        repeat=(),
-        flags=msgs.FLAG_DO_NOT_CREATE,
-    )
-    def cms_info(self, key: CommandItem) -> List[bytes]:
+    @command(name="CMS.INFO", fixed=(Key(CountMinSketch),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
+    def cms_info(self, key: CommandItem) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
-        return [
-            b"width",
-            key.value.width,
-            b"depth",
-            key.value.depth,
-            b"count",
-            key.value.elements_added,
-        ]
+        return {
+            b"width": key.value.width,
+            b"depth": key.value.depth,
+            b"count": key.value.elements_added,
+        }
 
     @command(name="CMS.INITBYDIM", fixed=(Key(CountMinSketch), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cms_initbydim(self, key: CommandItem, width: int, depth: int) -> SimpleString:
