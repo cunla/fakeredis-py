@@ -401,15 +401,29 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mget"))
 
         timeseries = self._get_timeseries(filter_expression)
-        if with_labels:
-            return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
-        if selected_labels is not None:
-            res = [
-                [ts.name, [[label, ts.labels[label]] for label in selected_labels if label in ts.labels], ts.get()]
-                for ts in timeseries
-            ]
+        if self.protocol_version == 2:
+            if with_labels:
+                return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
+            if selected_labels is not None:
+                res = [
+                    [ts.name, [[label, ts.labels[label]] for label in selected_labels if label in ts.labels], ts.get()]
+                    for ts in timeseries
+                ]
+            else:
+                res = [[ts.name, [], ts.get()] for ts in timeseries]
         else:
-            res = [[ts.name, [], ts.get()] for ts in timeseries]
+            if with_labels:
+                res = {ts.name: [ts.labels, ts.get() or []] for ts in timeseries}
+            elif selected_labels is not None:
+                res = {
+                    ts.name: [
+                        {label: ts.labels[label] for label in selected_labels if label in ts.labels},
+                        ts.get() or [],
+                    ]
+                    for ts in timeseries
+                }
+            else:
+                res = {ts.name: [{}, ts.get() or []] for ts in timeseries}
         return res
 
     @command(name="TS.QUERYINDEX", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
