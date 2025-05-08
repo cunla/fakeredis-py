@@ -17,17 +17,20 @@ def get_protocol_version(r: redis.Redis) -> int:
     return int(r.connection_pool.connection_kwargs.get("protocol"))
 
 
-def _convert_to_resp2(val: Any) -> Any:
+def convert_to_resp2(val: Any) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, float):
         return Float.encode(val, humanfriendly=False)
-    if isinstance(val, (list, tuple, set)):
-        result = list(itertools.chain(*val))
-        return [_convert_to_resp2(item) for item in result]
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [_convert_to_resp2(item) for item in result]
+        return [convert_to_resp2(item) for item in result]
+    if isinstance(val, list):
+        res = [convert_to_resp2(item) for item in val]
+        return res
+    if isinstance(val, tuple):
+        res = tuple(convert_to_resp2(item) for item in val)
+        return res
     return val
 
 
