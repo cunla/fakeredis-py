@@ -1,4 +1,8 @@
-# Redis `generic` commands (23/26 implemented)
+# Redis `generic` commands (24/26 implemented)
+
+## [COPY](https://redis.io/commands/copy/)
+
+Copies the value of a key to a new key.
 
 ## [DEL](https://redis.io/commands/del/)
 
@@ -95,10 +99,6 @@ Asynchronously deletes one or more keys.
 
 ## Unsupported generic commands 
 > To implement support for a command, see [here](/guides/implement-command/) 
-
-#### [COPY](https://redis.io/commands/copy/) <small>(not implemented)</small>
-
-Copies the value of a key to a new key.
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
