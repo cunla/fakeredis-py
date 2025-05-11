@@ -751,3 +751,12 @@ def test_copy_db_replaces_with_expire(r: redis.Redis):
     assert r.get("bar") == b"0"
     assert r.expiretime("bar") == 33177117420
 
+
+def test_copy_invalid_db(r: redis.Redis):
+    r.set("foo", "0")
+    r.copy("foo", "bar", destination_db="1")
+    r.copy("foo", "bar", destination_db=3)
+
+    with pytest.raises(redis.ResponseError, match=msgs.INVALID_INT_MSG[4:]):
+        r.copy("foo", "bar", destination_db="not a database")
+
