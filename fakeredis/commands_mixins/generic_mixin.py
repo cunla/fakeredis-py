@@ -398,12 +398,7 @@ class GenericCommandsMixin:
     @command(name="COPY", fixed=(Key(), Key()), repeat=(bytes,))
     def copy(self, key: CommandItem, newkey: CommandItem, *args: bytes) -> int:
         
-        (db, replace), _ = extract_args(args, ("*db", "replace"))
-        if db is not None:
-            try:
-                db = int(db)
-            except ValueError:
-                raise SimpleError(msgs.INVALID_INT_MSG)
+        (db, replace), _ = extract_args(args, ("+db", "replace"))
 
         if db is None:
             db = self._db_num
@@ -422,9 +417,5 @@ class GenericCommandsMixin:
             newkey.db = self._server.dbs[db]
         else:
             self._server.dbs[self._db_num][newkey.key] = key
-        
-        # value setter has side effects
-        newkey._modified = False
-        newkey._expireat_modified = False
 
         return 1
