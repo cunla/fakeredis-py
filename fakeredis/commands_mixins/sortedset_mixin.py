@@ -65,9 +65,9 @@ class SortedSetCommandsMixin:
     def _bzpop(self, keys: List[bytes], reverse: bool, first_pass: bool) -> Optional[List[Union[bytes, List[bytes]]]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
-            temp_res = self._zpop(item, 1, reverse, True)
+            temp_res = self._zpop(item, 1, reverse, flatten_list=False)
             if temp_res:
-                return [key, temp_res[0], temp_res[1]]
+                return [key, temp_res[0][0], temp_res[0][1]]
         return None
 
     @command((Key(ZSet),), (Int,))
@@ -312,7 +312,7 @@ class SortedSetCommandsMixin:
         try:
             rank, score = key.value.rank(member)
             if withscore:
-                return [rank, self._encodefloat(score, False)]
+                return [rank, score]
             return rank
         except KeyError:
             return None
@@ -520,16 +520,11 @@ class SortedSetCommandsMixin:
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
-        """Get the scores associated with the specified members in the sorted set
-        stored at the key.
+        """Get the scores associated with the specified members in the sorted set stored at the key.
 
-        For every member that does not exist in the sorted set, a nil value
-        is returned.
+        For every member that does not exist in the sorted set, a nil value is returned.
         """
-        scores = map(
-            lambda score: score if score is None else self._encodefloat(score, humanfriendly=False),
-            map(key.value.get, members),
-        )
+        scores = map(key.value.get, members)
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))

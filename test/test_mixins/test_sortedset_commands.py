@@ -10,7 +10,7 @@ import redis.client
 from packaging.version import Version
 
 from test import testtools
-from test.testtools import resp_conversion
+from test.testtools import resp_conversion, tuple_to_list
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -173,7 +173,7 @@ def test_zcount_wrong_type(r: redis.Redis):
 def test_zincrby(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     assert zincrby(r, "foo", 10, "one") == 11
-    assert r.zrange("foo", 0, -1, withscores=True) == [(b"one", 11)]
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list([(b"one", 11)]), [(b"one", 11)])
 
 
 def test_zincrby_wrong_type(r: redis.Redis):
@@ -218,8 +218,12 @@ def test_zrange_score_cast(r: redis.Redis):
 
     expected_without_cast_round = [(b"one", 1.2), (b"two", 2.2)]
     expected_with_cast_round = [(b"one", 1.0), (b"two", 2.0)]
-    assert r.zrange("foo", 0, 2, withscores=True) == expected_without_cast_round
-    assert r.zrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == expected_with_cast_round
+    assert r.zrange("foo", 0, 2, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_without_cast_round), expected_without_cast_round
+    )
+    assert r.zrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == resp_conversion(
+        r, tuple_to_list(expected_with_cast_round), expected_with_cast_round
+    )
 
 
 def test_zrank(r: redis.Redis):
@@ -240,8 +244,8 @@ def test_zrank_redis7_2(r: redis.Redis):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    assert r.zrank("foo", "one", withscore=True) == [0, b"1"]
-    assert r.zrank("foo", "two", withscore=True) == [1, b"2"]
+    assert r.zrank("foo", "one", withscore=True) == resp_conversion(r, [0, 1.0], [0, b"1"])
+    assert r.zrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
 
 
 def test_zrank_non_existent_member(r: redis.Redis):
@@ -1028,10 +1032,10 @@ def test_bzpopmin(r: redis.Redis):
 def test_bzpopmax(r: redis.Redis):
     r.zadd("foo", {"one": 1, "two": 2, "three": 3})
     r.zadd("bar", {"a": 1.5, "b": 2.5, "c": 3.5})
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"three", 3.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"two", 2.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"one", 1.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"bar", b"c", 3.5)
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"three", 3.0], (b"foo", b"three", 3.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"two", 2.0], (b"foo", b"two", 2.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"one", 1.0], (b"foo", b"one", 1.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"bar", b"c", 3.5], (b"bar", b"c", 3.5))
 
 
 def test_zscan(r: redis.Redis):
