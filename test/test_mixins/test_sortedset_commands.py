@@ -379,8 +379,8 @@ def test_zrevrank_redis7_2(r: redis.Redis):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
-    assert r.zrevrank("foo", "one", withscore=True) == [2, b"1"]
-    assert r.zrevrank("foo", "two", withscore=True) == [1, b"2"]
+    assert r.zrevrank("foo", "one", withscore=True) == resp_conversion(r, [2, 1.0], [2, b"1"])
+    assert r.zrevrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
 
 
 def test_zrevrank_non_existent_member(r: redis.Redis):
@@ -493,7 +493,9 @@ def test_zrangebyscore_withscores(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zrangebyscore("foo", 1, 3, 0, 2, True) == [(b"one", 1), (b"two", 2)]
+    assert r.zrangebyscore("foo", 1, 3, 0, 2, True) == resp_conversion(
+        r, [[b"one", 1], [b"two", 2]], [(b"one", 1), (b"two", 2)]
+    )
 
 
 def test_zrangebyscore_cast_scores(r: redis.Redis):
@@ -554,12 +556,12 @@ def test_zrevrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
 
-    assert r.zrevrangebyscore("foo", 3, 2, withscores=True) == [(b"two_a_also", 2.2), (b"two", 2.0)]
-
-    assert r.zrevrangebyscore("foo", 3, 2, withscores=True, score_cast_func=round_str) == [
-        (b"two_a_also", 2.0),
-        (b"two", 2.0),
-    ]
+    expected = [(b"two_a_also", 2.2), (b"two", 2.0)]
+    assert r.zrevrangebyscore("foo", 3, 2, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
+    expected = [(b"two_a_also", 2.0), (b"two", 2.0)]
+    assert r.zrevrangebyscore("foo", 3, 2, withscores=True, score_cast_func=round_str) == resp_conversion(
+        r, tuple_to_list(expected), expected
+    )
 
 
 def test_zrangebylex(r: redis.Redis):
@@ -840,7 +842,8 @@ def test_zunionstore(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"])
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"three", 3), (b"two", 4)]
+    expected = [(b"one", 2), (b"three", 3), (b"two", 4)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zunionstore_sum(r: redis.Redis):
@@ -850,7 +853,8 @@ def test_zunionstore_sum(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"three", 3), (b"two", 4)]
+    expected = [(b"one", 2), (b"three", 3), (b"two", 4)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zunionstore_max(r: redis.Redis):
@@ -860,7 +864,8 @@ def test_zunionstore_max(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="MAX")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2), (b"three", 3)]
+    expected = [(b"one", 1), (b"two", 2), (b"three", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zunionstore_min(r: redis.Redis):
@@ -870,9 +875,8 @@ def test_zunionstore_min(r: redis.Redis):
     r.zadd("bar", {"two": 0})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="MIN")
-    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(
-        r, [[b"one", 0.0], [b"two", 0.0], [b"three", 3.0]], [(b"one", 0), (b"two", 0), (b"three", 3)]
-    )
+    expected = [(b"one", 0), (b"two", 0), (b"three", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zunionstore_weights(r: redis.Redis):
@@ -882,9 +886,8 @@ def test_zunionstore_weights(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"four": 4})
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(
-        r, [[b"one", 3.0], [b"two", 6.0], [b"four", 8.0]], [(b"one", 3), (b"two", 6), (b"four", 8)]
-    )
+    expected = [(b"one", 3), (b"two", 6), (b"four", 8)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zunionstore_nan_to_zero(r: redis.Redis):
@@ -1093,33 +1096,21 @@ def test_zunion(r: redis.Redis):
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
     # sum
     assert r.zunion(["a", "b", "c"]) == [b"a2", b"a4", b"a3", b"a1"]
-    assert r.zunion(["a", "b", "c"], withscores=True) == [
-        (b"a2", 3),
-        (b"a4", 4),
-        (b"a3", 8),
-        (b"a1", 9),
-    ]
+    expected = [(b"a2", 3), (b"a4", 4), (b"a3", 8), (b"a1", 9)]
+    assert r.zunion(["a", "b", "c"], withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
     # max
-    assert r.zunion(["a", "b", "c"], aggregate="MAX", withscores=True) == [
-        (b"a2", 2),
-        (b"a4", 4),
-        (b"a3", 5),
-        (b"a1", 6),
-    ]
+    expected = [(b"a2", 2), (b"a4", 4), (b"a3", 5), (b"a1", 6)]
+    assert r.zunion(["a", "b", "c"], aggregate="MAX", withscores=True) == resp_conversion(
+        r, tuple_to_list(expected), expected
+    )
     # min
-    assert r.zunion(["a", "b", "c"], aggregate="MIN", withscores=True) == [
-        (b"a1", 1),
-        (b"a2", 1),
-        (b"a3", 1),
-        (b"a4", 4),
-    ]
+    expected = [(b"a1", 1), (b"a2", 1), (b"a3", 1), (b"a4", 4)]
+    assert r.zunion(["a", "b", "c"], aggregate="MIN", withscores=True) == resp_conversion(
+        r, tuple_to_list(expected), expected
+    )
     # with weight
-    assert r.zunion({"a": 1, "b": 2, "c": 3}, withscores=True) == [
-        (b"a2", 5),
-        (b"a4", 12),
-        (b"a3", 20),
-        (b"a1", 23),
-    ]
+    expected = [(b"a2", 5), (b"a4", 12), (b"a3", 20), (b"a1", 23)]
+    assert r.zunion({"a": 1, "b": 2, "c": 3}, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 def test_zinter(r: redis.Redis):
@@ -1131,22 +1122,22 @@ def test_zinter(r: redis.Redis):
     with pytest.raises(redis.DataError):
         r.zinter(["a", "b", "c"], aggregate="foo", withscores=True)
     # aggregate with SUM
-    assert r.zinter(["a", "b", "c"], withscores=True) == [(b"a3", 8), (b"a1", 9)]
+    expected = [(b"a3", 8), (b"a1", 9)]
+    assert r.zinter(["a", "b", "c"], withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
     # aggregate with MAX
-    assert r.zinter(["a", "b", "c"], aggregate="MAX", withscores=True) == [
-        (b"a3", 5),
-        (b"a1", 6),
-    ]
+    expected = [(b"a3", 5), (b"a1", 6)]
+    assert r.zinter(["a", "b", "c"], aggregate="MAX", withscores=True) == resp_conversion(
+        r, tuple_to_list(expected), expected
+    )
+
     # aggregate with MIN
-    assert r.zinter(["a", "b", "c"], aggregate="MIN", withscores=True) == [
-        (b"a1", 1),
-        (b"a3", 1),
-    ]
+    expected = [(b"a1", 1), (b"a3", 1)]
+    assert r.zinter(["a", "b", "c"], aggregate="MIN", withscores=True) == resp_conversion(
+        r, tuple_to_list(expected), expected
+    )
     # with weights
-    assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == [
-        (b"a3", 20),
-        (b"a1", 23),
-    ]
+    expected = [(b"a3", 20), (b"a1", 23)]
+    assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == resp_conversion(r, tuple_to_list(expected), expected)
 
 
 @pytest.mark.min_server("7")

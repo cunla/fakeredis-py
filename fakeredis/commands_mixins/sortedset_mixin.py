@@ -324,7 +324,7 @@ class SortedSetCommandsMixin:
             rank, score = key.value.rank(member)
             rev_rank = len(key.value) - 1 - rank
             if withscore:
-                return [rev_rank, self._encodefloat(score, False)]
+                return [rev_rank, score]
             return rev_rank
         except KeyError:
             return None
