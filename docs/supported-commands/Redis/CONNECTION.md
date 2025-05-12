@@ -45,8 +45,8 @@ Returns the server's liveliness response.
 Changes the selected database.
 
 
-## Unsupported connection commands
-> To implement support for a command, see [here](/guides/implement-command/)
+## Unsupported connection commands 
+> To implement support for a command, see [here](/guides/implement-command/) 
 
 #### [CLIENT](https://redis.io/commands/client/) <small>(not implemented)</small>
 
@@ -99,3 +99,5 @@ Resumes processing commands from paused clients.
 #### [RESET](https://redis.io/commands/reset/) <small>(not implemented)</small>
 
 Resets the connection.
+
+
