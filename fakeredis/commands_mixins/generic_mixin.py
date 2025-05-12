@@ -394,3 +394,28 @@ class GenericCommandsMixin:
     @command(name="UNLINK", fixed=(Key(),), repeat=(Key(),))
     def unlink(self, *keys: CommandItem) -> int:
         return delete_keys(*keys)
+    
+    @command(name="COPY", fixed=(Key(), Key()), repeat=(bytes,))
+    def copy(self, key: CommandItem, newkey: CommandItem, *args: bytes) -> int:
+        
+        (db, replace), _ = extract_args(args, ("+db", "replace"))
+
+        if db is None:
+            db = self._db_num
+        
+        if newkey.key in self._server.dbs[db] and not replace:
+            return 0
+
+        if key.key not in self._server.dbs[self._db_num]:
+            return 0
+    
+        newkey.value = key.value
+        newkey.expireat = key.expireat
+
+        if db is not None and db != self._db_num:
+            self._server.dbs[db][newkey.key] = key
+            newkey.db = self._server.dbs[db]
+        else:
+            self._server.dbs[self._db_num][newkey.key] = key
+
+        return 1
