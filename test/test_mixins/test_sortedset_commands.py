@@ -301,11 +301,10 @@ def test_zscore_wrong_type(r: redis.Redis):
 
 
 def test_zmscore(r: redis.Redis):
-    """When all the requested sorted-set members are in the cache, a valid
-    float value should be returned for each requested member.
+    """When all the requested sorted-set members are in the cache, a valid float value should be returned for each
+    requested member.
 
-    The order of the returned scores should always match the order in
-    which the set members were supplied.
+    The order of the returned scores should always match the order in which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")

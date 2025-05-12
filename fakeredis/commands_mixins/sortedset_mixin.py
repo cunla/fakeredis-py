@@ -55,8 +55,8 @@ class SortedSetCommandsMixin:
         if reverse:
             members.reverse()
         members = members[:count]
-        res = [[bytes(member), self._encodefloat(zset.get(member), True)] for member in members]
-        if flatten_list:
+        res = [[bytes(member), zset.get(member)] for member in members]
+        if flatten_list and self.protocol_version == 2:
             res = list(itertools.chain.from_iterable(res))
         for item in members:
             zset.discard(item)
@@ -143,7 +143,7 @@ class SortedSetCommandsMixin:
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)
-        changed_items = 0
+        changed_items: int = 0
 
         if incr:
             item_score, item_name = items[0]
@@ -221,6 +221,8 @@ class SortedSetCommandsMixin:
                 start, stop = len(zset) - stop, len(zset) - start
             items = zset.islice_score(start, stop, reverse)
         items = self._apply_withscores(items, withscores)
+        if self.protocol_version == 2 and withscores:
+            items = list(itertools.chain.from_iterable(items))
         return items
 
     def _zrangebylex(self, key, _min, _max, reverse, offset, count) -> List[bytes]:

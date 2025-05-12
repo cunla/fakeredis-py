@@ -13,6 +13,12 @@ from fakeredis._commands import Float
 REDIS_PY_VERSION = Version(redis.__version__)
 
 
+def tuple_to_list(x: Any) -> Any:
+    if isinstance(x, (tuple, list)):
+        return [tuple_to_list(x) for x in x]
+    return x
+
+
 def get_protocol_version(r: redis.Redis) -> int:
     return int(r.connection_pool.connection_kwargs.get("protocol"))
 
