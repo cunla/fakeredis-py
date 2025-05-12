@@ -16,7 +16,7 @@ def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
-    assert abs(ts2 - ts1) < 5
+    assert abs(ts2 - ts1) < 10
 
 
 @pytest.mark.min_server("7")
@@ -116,17 +116,6 @@ def test_alter(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as e:
         r.ts().alter(1, chunk_size=50)
     assert str(e.value) == "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
-
-
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-def test_alter_diplicate_policy(r: redis.Redis):
-    assert r.ts().create(1)
-    info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
-
-    assert r.ts().alter(1, duplicate_policy="min")
-    info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -778,6 +767,7 @@ def test_info(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.max_server("7.5")
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
@@ -786,6 +776,42 @@ def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
     assert info.get("duplicate_policy") == "min"
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.max_server("7.5")
+def test_alter_diplicate_policy(r: redis.Redis):
+    assert r.ts().create(1)
+    info = r.ts().info(1)
+    assert info.get("duplicate_policy") is None
+
+    assert r.ts().alter(1, duplicate_policy="min")
+    info = r.ts().info(1)
+    assert "min" == info.get("duplicate_policy")
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.min_server("7.5")
+def testInfoDuplicatePolicy_redis8(r: redis.Redis):
+    r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
+    info = r.ts().info(1)
+    assert info.get("duplicate_policy") == "block"
+
+    r.ts().create("time-serie-2", duplicate_policy="min")
+    info = r.ts().info("time-serie-2")
+    assert info.get("duplicate_policy") == "min"
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.min_server("7.5")
+def test_alter_diplicate_policy_redis8(r: redis.Redis):
+    assert r.ts().create(1)
+    info = r.ts().info(1)
+    assert info.get("duplicate_policy") == "block"
+
+    assert r.ts().alter(1, duplicate_policy="min")
+    info = r.ts().info(1)
+    assert "min" == info.get("duplicate_policy")
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")

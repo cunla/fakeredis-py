@@ -36,27 +36,6 @@ def test_script_exists_redis7(r: redis.Redis):
     assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
 
 
-@pytest.mark.max_server("6.2.7")
-def test_script_exists_redis6(r: redis.Redis):
-    # test response for no arguments by bypassing the py-redis command
-    # as it requires at least one argument
-    assert raw_command(r, "SCRIPT EXISTS") == []
-
-    # use single character characters for non-existing scripts, as those
-    # will never be equal to an actual sha1 hash digest
-    assert r.script_exists("a") == [0]
-    assert r.script_exists("a", "b", "c", "d", "e", "f") == [0, 0, 0, 0, 0, 0]
-
-    sha1_one = r.script_load("return 'a'")
-    assert r.script_exists(sha1_one) == [1]
-    assert r.script_exists(sha1_one, "a") == [1, 0]
-    assert r.script_exists("a", "b", "c", sha1_one, "e") == [0, 0, 0, 1, 0]
-
-    sha1_two = r.script_load("return 'b'")
-    assert r.script_exists(sha1_one, sha1_two) == [1, 1]
-    assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
-
-
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
 def test_script_flush_errors_with_args(r, args):
     with pytest.raises(redis.ResponseError):

@@ -705,3 +705,83 @@ def test_from_hypothesis_redis7(r: redis.Redis):
     r.set(b"", b"")
     assert r.setbit(b"", 0, 0) == 0
     assert r.get(b"") == b"\x00"
+
+
+@pytest.mark.min_server("7")
+def test_copy_preserves_expiry(r: redis.Redis):
+    r.set("foo", "0")
+    r.expireat("foo", 33177117420)
+    assert r.copy("foo", "bar") == 1
+    assert r.expiretime("bar") == 33177117420
+    assert r.get("bar") == b"0"
+
+
+def test_copy_replaces(r: redis.Redis):
+    r.set("foo", "0")
+    r.set("bar", "1")
+    assert r.copy("foo", "bar") == 0
+    assert r.get("bar") == b"1"
+
+    assert r.copy("foo", "bar", replace=True) == 1
+    assert r.get("bar") == b"0"
+
+
+@pytest.mark.min_server("7")
+def test_copy_replaces_with_expiry(r: redis.Redis):
+    r.set("foo", "0")
+    r.expireat("foo", 33177117420)
+    r.set("bar", "1")
+    assert r.copy("foo", "bar") == 0
+    assert r.get("bar") == b"1"
+
+    assert r.copy("foo", "bar", replace=True) == 1
+    assert r.get("bar") == b"0"
+
+    assert r.expiretime("bar") == 33177117420
+
+
+@pytest.mark.min_server("7")
+def test_copy_db_replaces_with_expire(r: redis.Redis):
+    r.set("foo", "0")
+    r.expireat("foo", 33177117420)
+
+    r.select(1)
+    r.set("bar", "1")
+
+    r.select(2)
+    assert r.copy("foo", "bar", destination_db="1") == 0
+
+    r.select(1)
+    assert r.get("bar") == b"1"
+
+    r.select(2)
+    assert r.copy("foo", "bar", destination_db="1", replace=True) == 1
+
+    r.select(1)
+    assert r.get("bar") == b"0"
+    assert r.expiretime("bar") == 33177117420
+
+
+def test_copy_invalid_db(r: redis.Redis):
+    r.set("foo", "0")
+    assert r.copy("foo", "bar", destination_db="1") == 1
+    assert r.copy("foo", "bar", destination_db="3") == 1
+
+    with pytest.raises(redis.ResponseError, match=msgs.INVALID_INT_MSG[4:]):
+        r.copy("foo", "bar", destination_db="not a database")
+
+
+def test_copy_non_existing_key(r: redis.Redis):
+    r.set("foo", "0")
+    assert r.copy("bar", "baz", destination_db="1") == 0
+    assert r.copy("foo", "bar", destination_db="3") == 1
+
+    with pytest.raises(redis.ResponseError, match=msgs.INVALID_INT_MSG[4:]):
+        r.copy("foo", "bar", destination_db="not a database")
+
+
+def test_copy_same_db(r: redis.Redis):
+    r.select(1)
+    r.set("foo", "0")
+    with pytest.raises(redis.ResponseError, match=msgs.SRC_DST_SAME_MSG[4:]):
+        r.copy("foo", "foo", destination_db="1")

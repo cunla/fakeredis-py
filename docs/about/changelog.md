@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.30.0
+
+### 🚀 Features
+
+- Implement support for `COPY` @ajhetherington #383
+
 ## v2.29.0 - 2025-05-01
 
 ### 🚀 Features
@@ -20,6 +26,11 @@ toc_depth: 2
 - Fix issue with `hset` not resetting expiration over field
 - Fix inconsistent 'pending' field in return from XINFO GROUPS #374
 - Fix `TDIGEST.QUANTILE` to match redis behavior on a TDigest with one value #377
+- Fix `HINCRBY`/`hincrbyfloat` commands now don't remove ttl from hash key @M1ha-Shvn #381
+
+### 🧰 Maintenance
+
+- Running redis-stack tests on redis8 #382
 
 ## v2.28.1 - 2025-04-02
 

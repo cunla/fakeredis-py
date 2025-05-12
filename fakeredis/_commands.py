@@ -480,7 +480,7 @@ class Timestamp(Int):
     @classmethod
     def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
         if value == b"*":
-            return int(time.time())
+            return int(time.time() * 1000)
         if value == b"-":
             return -1
         if value == b"+":
