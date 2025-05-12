@@ -206,6 +206,8 @@ class SortedSetCommandsMixin:
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
         items = self._apply_withscores(items, withscores)
+        if self.protocol_version == 2 and withscores:
+            items = list(itertools.chain.from_iterable(items))
         return items
 
     def _zrange(
@@ -501,7 +503,7 @@ class SortedSetCommandsMixin:
         res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
 
         if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
+            res = [item for t in res for item in [t, res[t]]]
         else:
             res = [t for t in res]
         return res

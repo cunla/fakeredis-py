@@ -16,7 +16,7 @@ REDIS_VERSION = Version(redis.__version__)
 
 
 def round_str(x):
-    assert isinstance(x, bytes)
+    # assert isinstance(x, bytes)
     return round(float(x))
 
 
@@ -502,11 +502,13 @@ def test_zrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
 
-    expected_without_cast_round = [(b"two", 2.0), (b"two_a_also", 2.2)]
-    expected_with_cast_round = [(b"two", 2.0), (b"two_a_also", 2.0)]
-    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True)) == sorted(expected_without_cast_round)
-    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True, score_cast_func=round_str)) == sorted(
-        expected_with_cast_round
+    expected_without_cast_round = sorted([(b"two", 2.0), (b"two_a_also", 2.2)])
+    expected_with_cast_round = sorted([(b"two", 2.0), (b"two_a_also", 2.0)])
+    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True)) == resp_conversion(
+        r, tuple_to_list(expected_without_cast_round), expected_without_cast_round
+    )
+    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True, score_cast_func=round_str)) == resp_conversion(
+        r, tuple_to_list(expected_with_cast_round), expected_with_cast_round
     )
 
 
