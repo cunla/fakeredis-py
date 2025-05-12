@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.30.0
+
+### 🚀 Features
+
+- Implement support for `COPY` @ajhetherington #383
+
 ## v2.29.0 - 2025-05-01
 
 ### 🚀 Features
