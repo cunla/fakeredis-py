@@ -1,13 +1,13 @@
-import math
 import time
 from time import sleep
 from typing import Dict, Any, AnyStr
 
+import math
 import pytest
 import redis
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command, get_protocol_version, resp_conversion
+from test.testtools import raw_command, get_protocol_version, resp_conversion, resp_conversion_from_resp2
 
 timeseries_tests = pytest.importorskip("probables")
 
@@ -700,14 +700,26 @@ def test_multi_reverse_range(r: redis.Redis):
         assert [[16, 2.0], [15, 1.0]] == tmp_res[b"1"][2]
 
     # test groupby
-    res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
-    assert [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)] == res[0]["Test=This"][1]
-    res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["Test=This"][1]
+    tmp_res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
+    if get_protocol_version(r) == 2:
+        res = tmp_res[0]["Test=This"][1]
+    else:
+        res = tmp_res[b"Test=This"][3]
+    assert res == resp_conversion_from_resp2(r, [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)])
+    tmp_res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
+    if get_protocol_version(r) == 2:
+        res = tmp_res[0]["Test=This"][1]
+    else:
+        res = tmp_res[b"Test=This"][3]
+    assert res == resp_conversion_from_resp2(r, [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)])
     res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="team", reduce="min")
     assert 2 == len(res)
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
+    if get_protocol_version(r) == 2:
+        assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
+        assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
+    else:
+        assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res[b"team=ny"][3]
+        assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res[b"team=sf"][3]
 
     # test align
     res = r.ts().mrevrange(
@@ -718,16 +730,10 @@ def test_multi_reverse_range(r: redis.Redis):
         bucket_size_msec=10,
         align="-",
     )
-    assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
-    # res = r.ts().mrevrange(
-    #     0,
-    #     10,
-    #     filters=["team=ny"],
-    #     aggregation_type="count",
-    #     bucket_size_msec=10,
-    #     align=1,
-    # )
-    # assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
+    else:
+        assert [[10, 1.0], [0, 10.0]] == res[b"1"][2]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
