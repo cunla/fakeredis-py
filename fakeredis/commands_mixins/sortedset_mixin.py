@@ -477,10 +477,12 @@ class SortedSetCommandsMixin:
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
 
-        if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
-        else:
+        if not withscores:
             res = [t for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in [t, res[t]]]
+        else:
+            res = [[i, res[i]] for i in res]
         return res
 
     @command((Int, bytes), (bytes,))
@@ -489,10 +491,12 @@ class SortedSetCommandsMixin:
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
 
-        if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
-        else:
+        if not withscores:
             res = [t for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in [t, res[t]]]
+        else:
+            res = [[i, res[i]] for i in res]
         return res
 
     @command((Int, bytes), (bytes,))
@@ -501,10 +505,12 @@ class SortedSetCommandsMixin:
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
 
-        if withscores:
+        if not withscores:
+            res = [t for t in res]
+        elif self.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
-            res = [t for t in res]
+            res = [[i, res[i]] for i in res]
         return res
 
     @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
@@ -547,10 +553,12 @@ class SortedSetCommandsMixin:
             count = min(count, len(key.value))
             res = random.sample(sorted(key.value.items()), count)
 
-        if withscores:
-            res = [item for t in res for item in t]
-        else:
+        if not withscores:
             res = [t[0] for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in t]
+        else:  # self.protocol_version == 3 and withscores
+            res = [list(item) for item in res]
         return res
 
     def _zmpop(self, keys, count, reverse, first_pass):
