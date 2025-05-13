@@ -1029,10 +1029,10 @@ def test_zpopmax_too_many(r: redis.Redis):
 def test_bzpopmin(r: redis.Redis):
     r.zadd("foo", {"one": 1, "two": 2, "three": 3})
     r.zadd("bar", {"a": 1.5, "b": 2, "c": 3})
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"one", 1.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"two", 2.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"three", 3.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"bar", b"a", 1.5)
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"one", 1.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"two", 2.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"three", 3.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"bar", b"a", 1.5))
 
 
 def test_bzpopmax(r: redis.Redis):
@@ -1172,24 +1172,27 @@ def test_zrangestore(r: redis.Redis):
 @pytest.mark.min_server("7")
 def test_zmpop(r: redis.Redis):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
-    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
-    assert r.zmpop("2", ["b", "a"], min=True, count=2) == res
+    assert r.zmpop("2", ["b", "a"], min=True, count=2) == resp_conversion(
+        r, [b"a", [[b"a1", 1.0], [b"a2", 2.0]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    )
     with pytest.raises(redis.DataError):
         r.zmpop("2", ["b", "a"], count=2)
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
-    assert r.zmpop("2", ["b", "a"], max=True) == [b"b", [[b"b1", b"10"]]]
+    assert r.zmpop("2", ["b", "a"], max=True) == resp_conversion(r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]])
 
 
 @pytest.mark.min_server("7")
 def test_bzmpop(r: redis.Redis):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
-    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
-    assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == res
+    assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == resp_conversion(
+        r, [b"a", [[b"a1", 1], [b"a2", 2]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    )
     with pytest.raises(redis.DataError):
         r.bzmpop(1, "2", ["b", "a"], count=2)
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
-    res = [b"b", [[b"b1", b"10"]]]
-    assert r.bzmpop(0, "2", ["b", "a"], max=True) == res
+    assert r.bzmpop(0, "2", ["b", "a"], max=True) == resp_conversion(
+        r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]]
+    )
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
