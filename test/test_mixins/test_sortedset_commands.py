@@ -212,6 +212,7 @@ def test_zrange_wrong_type(r: redis.Redis):
         r.zrange("foo", 0, -1)
 
 
+@pytest.mark.resp2_only
 def test_zrange_score_cast(r: redis.Redis):
     r.zadd("foo", {"one": 1.2})
     r.zadd("foo", {"two": 2.2})
@@ -412,6 +413,7 @@ def test_zrevrange_wrong_type(r: redis.Redis):
         r.zrevrange("foo", 0, 2)
 
 
+@pytest.mark.resp2_only
 def test_zrevrange_score_cast(r: redis.Redis):
     r.zadd("foo", {"one": 1.2})
     r.zadd("foo", {"two": 2.2})
@@ -494,6 +496,7 @@ def test_zrangebyscore_withscores(r: redis.Redis):
     )
 
 
+@pytest.mark.resp2_only
 def test_zrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
@@ -550,6 +553,7 @@ def test_zrevrangebyscore_wrong_type(r: redis.Redis):
         r.zrevrangebyscore("foo", "(3", "(1")
 
 
+@pytest.mark.resp2_only
 def test_zrevrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
