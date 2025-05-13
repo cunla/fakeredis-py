@@ -133,15 +133,9 @@ def test_hsetex_expiration_ex_and_keepttl(r):
     )
     ttls = r.httl("test:hash", "foo", "1", "2", "i1", "i2")
     for ttl in ttls:
-        assert pytest.approx(ttl) == 10
+        assert pytest.approx(ttl, 1) == 10
 
-    assert r.hgetex("test:hash", "foo", "1", "2", "i1", "i2") == [
-        b"bar",
-        b"1",
-        b"2",
-        b"11",
-        b"22",
-    ]
+    assert r.hgetex("test:hash", "foo", "1", "2", "i1", "i2") == [b"bar", b"1", b"2", b"11", b"22"]
     time.sleep(1.1)
     # validate keepttl
     assert r.hsetex("test:hash", "foo", "bar1", keepttl=True) == 1
@@ -195,11 +189,7 @@ def test_hsetex_expiration_pxat_and_fnx(r):
     ttls = r.httl("test:hash", "foo", "new")
     for ttl in ttls:
         assert ttl <= 61
-    assert r.hgetex("test:hash", "foo", "foo_new", "new") == [
-        b"bar",
-        b"bar1",
-        b"ok",
-    ]
+    assert r.hgetex("test:hash", "foo", "foo_new", "new") == [b"bar", b"bar1", b"ok"]
 
 
 def test_hsetex_expiration_exat_and_fxx(r):

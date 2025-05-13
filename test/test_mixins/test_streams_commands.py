@@ -266,7 +266,7 @@ def test_xread(r: redis.Redis):
     )
 
     # xread starting at the last message returns an empty list
-    assert r.xread(streams={stream: m2}) == resp_conversion(r, {})
+    assert r.xread(streams={stream: m2}) == resp_conversion(r, {}, [])
 
 
 def test_xread_count(r: redis.Redis):
@@ -475,9 +475,8 @@ def test_xreadgroup(r: redis.Redis):
     # will only find messages added after this
     r.xgroup_create(stream, group, "$")
 
-    expected = {}
     # xread starting after the last message returns an empty message list
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, expected)
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, {}, [])
 
     # xreadgroup with noack does not have any items in the PEL
     r.xgroup_destroy(stream, group)
