@@ -45,6 +45,10 @@ def resp_conversion(r: redis.Redis, val_resp3: Any, val_resp2: Any) -> Any:
     return res
 
 
+def resp_conversion_from_resp2(r: redis.Redis, val: Any) -> Any:
+    return resp_conversion(r, tuple_to_list(val), val)
+
+
 def key_val_dict(size=100):
     return {f"key:{i}".encode(): f"val:{i}".encode() for i in range(size)}
 

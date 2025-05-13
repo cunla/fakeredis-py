@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import functools
 import itertools
-import math
 import random
 import sys
 from typing import Union, Optional, List, Tuple, Callable, Any, Dict
+
+import math
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -103,15 +104,17 @@ class SortedSetCommandsMixin:
             out.append(item)
         return out
 
-    def _apply_withscores(self, items, withscores: bool) -> List[bytes]:
+    def _apply_withscores(self, items: List[Tuple[bytes, bytes]], withscores: bool) -> List[Any]:
         if withscores:
-            out = []
-            for item in items:
-                out.append([item[1], item[0]])
-                # out.append(self._encodefloat(item[0], False))
+            if self.protocol_version == 2:
+                out = []
+                for item in items:
+                    out.append(item[1])
+                    out.append(item[0])
+                return out
+            return [[item[1], item[0]] for item in items]
         else:
-            out = [item[1] for item in items]
-        return out
+            return [item[1] for item in items]
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
     def zadd(self, key, *args) -> Union[int, None]:
@@ -206,8 +209,6 @@ class SortedSetCommandsMixin:
         items = list(zset.irange_score(_min.lower_bound, _max.upper_bound, reverse=reverse))
         items = self._limit_items(items, offset, count)
         items = self._apply_withscores(items, withscores)
-        if self.protocol_version == 2 and withscores:
-            items = list(itertools.chain.from_iterable(items))
         return items
 
     def _zrange(
@@ -223,8 +224,6 @@ class SortedSetCommandsMixin:
                 start, stop = len(zset) - stop, len(zset) - start
             items = zset.islice_score(start, stop, reverse)
         items = self._apply_withscores(items, withscores)
-        if self.protocol_version == 2 and withscores:
-            items = list(itertools.chain.from_iterable(items))
         return items
 
     def _zrangebylex(self, key, _min, _max, reverse, offset, count) -> List[bytes]:
