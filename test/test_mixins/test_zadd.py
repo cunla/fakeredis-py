@@ -1,10 +1,12 @@
+from typing import Tuple, List, Dict
+
 import pytest
 import redis
 import redis.client
 from packaging.version import Version
 
 from test import testtools
-from test.testtools import raw_command
+from test.testtools import raw_command, resp_conversion, tuple_to_list
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -36,7 +38,7 @@ def test_zadd_empty(r: redis.Redis):
 def test_zadd_minus_zero_redis7(r: redis.Redis):
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})
-    assert raw_command(r, "zscore", "foo", "a") == b"0"
+    assert raw_command(r, "zscore", "foo", "a") == resp_conversion(r, 0.0, b"0")
 
 
 def test_zadd_wrong_type(r: redis.Redis):
@@ -61,10 +63,18 @@ def test_zadd_multiple(r: redis.Redis):
     ids=["no_additions", "partial_additions", "new_additions"],
 )
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_nx(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state, ch):
+def test_zadd_with_nx(
+    r: redis.Redis,
+    map_to_add: Dict[str, float],
+    expected_ret: int,
+    expected_zrange_state: List[Tuple[bytes, float]],
+    ch: bool,
+):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, nx=True, ch=ch) == expected_ret
-    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_zrange_state), expected_zrange_state
+    )
 
 
 @pytest.mark.parametrize(
@@ -84,10 +94,14 @@ def test_zadd_with_nx(r: redis.Redis, map_to_add, expected_ret, expected_zrange_
     ],
     ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_gt_and_ch(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
+def test_zadd_with_gt_and_ch(
+    r: redis.Redis, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, gt=True, ch=True) == expected_ret
-    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_zrange_state), expected_zrange_state
+    )
 
 
 @pytest.mark.parametrize(
@@ -99,10 +113,14 @@ def test_zadd_with_gt_and_ch(r: redis.Redis, map_to_add, expected_ret, expected_
     ],
     ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_gt(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
+def test_zadd_with_gt(
+    r: redis.Redis, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, gt=True) == expected_ret
-    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_zrange_state), expected_zrange_state
+    )
 
 
 @pytest.mark.parametrize(
@@ -114,10 +132,14 @@ def test_zadd_with_gt(r: redis.Redis, map_to_add, expected_ret, expected_zrange_
     ],
     ids=["no_additions", "partial_additions", "new_additions"],
 )
-def test_zadd_with_ch(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state):
+def test_zadd_with_ch(
+    r: redis.Redis, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, ch=True) == expected_ret
-    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_zrange_state), expected_zrange_state
+    )
 
 
 @pytest.mark.parametrize(
@@ -130,21 +152,29 @@ def test_zadd_with_ch(r: redis.Redis, map_to_add, expected_ret, expected_zrange_
     ids=["new_additions", "no_additions", "no_additions_2"],
 )
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_xx(r: redis.Redis, map_to_add, expected_ret, expected_zrange_state, ch):
+def test_zadd_with_xx(
+    r: redis.Redis,
+    map_to_add: Dict[str, float],
+    expected_ret: int,
+    expected_zrange_state: List[Tuple[bytes, float]],
+    ch: bool,
+):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, xx=True, ch=ch) == (expected_ret if ch else 0)
-    assert r.zrange("foo", 0, -1, withscores=True) == expected_zrange_state
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion(
+        r, tuple_to_list(expected_zrange_state), expected_zrange_state
+    )
 
 
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_with_nx_and_xx(r: redis.Redis, ch):
+def test_zadd_with_nx_and_xx(r: redis.Redis, ch: bool):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     with pytest.raises(redis.DataError):
         r.zadd("foo", {"four": -4.0, "three": -3.0}, nx=True, xx=True, ch=ch)
 
 
 @pytest.mark.parametrize("ch", [False, True])
-def test_zadd_incr(r: redis.Redis, ch):
+def test_zadd_incr(r: redis.Redis, ch: bool):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", {"four": 1.0}, incr=True, ch=ch) == 5.0
     assert r.zadd("foo", {"three": 1.0}, incr=True, nx=True, ch=ch) is None

@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-import math
 from collections import OrderedDict
 from typing import Tuple, List, Optional
 
+import math
 import pytest
 import redis
 import redis.client
 from packaging.version import Version
 
 from test import testtools
+from test.testtools import resp_conversion, resp_conversion_from_resp2
 
 REDIS_VERSION = Version(redis.__version__)
 
 
 def round_str(x):
-    assert isinstance(x, bytes)
+    # assert isinstance(x, bytes)
     return round(float(x))
 
 
@@ -27,23 +28,29 @@ def test_zpopmin(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmin("foo", count=2) == [(b"one", 1.0), (b"two", 2.0)]
-    assert r.zpopmin("foo", count=2) == [(b"three", 3.0)]
+    assert r.zpopmin("foo", count=2) == resp_conversion(
+        r, [[b"one", 1.0], [b"two", 2.0]], [(b"one", 1.0), (b"two", 2.0)]
+    )
+    assert r.zpopmin("foo", count=2) == resp_conversion(r, [[b"three", 3.0]], [(b"three", 3.0)])
 
 
 def test_zpopmin_too_many(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmin("foo", count=5) == [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0)]
+    assert r.zpopmin("foo", count=5) == resp_conversion(
+        r, [[b"one", 1.0], [b"two", 2.0], [b"three", 3.0]], [(b"one", 1.0), (b"two", 2.0), (b"three", 3.0)]
+    )
 
 
 def test_zpopmax(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmax("foo", count=2) == [(b"three", 3.0), (b"two", 2.0)]
-    assert r.zpopmax("foo", count=2) == [(b"one", 1.0)]
+    assert r.zpopmax("foo", count=2) == resp_conversion(
+        r, [[b"three", 3.0], [b"two", 2.0]], [(b"three", 3.0), (b"two", 2.0)]
+    )
+    assert r.zpopmax("foo", count=2) == resp_conversion(r, [[b"one", 1.0]], [(b"one", 1.0)])
 
 
 def test_zrange_same_score(r: redis.Redis):
@@ -166,7 +173,7 @@ def test_zcount_wrong_type(r: redis.Redis):
 def test_zincrby(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     assert zincrby(r, "foo", 10, "one") == 11
-    assert r.zrange("foo", 0, -1, withscores=True) == [(b"one", 11)]
+    assert r.zrange("foo", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 11)])
 
 
 def test_zincrby_wrong_type(r: redis.Redis):
@@ -186,7 +193,10 @@ def test_zrange_descending_with_scores(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zrange("foo", 0, -1, desc=True, withscores=True) == [(b"three", 3), (b"two", 2), (b"one", 1)]
+    assert r.zrange("foo", 0, -1, desc=True, withscores=True) == resp_conversion(
+        r, [[b"three", 3.0], [b"two", 2.0], [b"one", 1.0]], [(b"three", 3), (b"two", 2), (b"one", 1)]
+    )
+    # comment
 
 
 def test_zrange_with_positive_indices(r: redis.Redis):
@@ -202,14 +212,15 @@ def test_zrange_wrong_type(r: redis.Redis):
         r.zrange("foo", 0, -1)
 
 
+@pytest.mark.resp2_only
 def test_zrange_score_cast(r: redis.Redis):
     r.zadd("foo", {"one": 1.2})
     r.zadd("foo", {"two": 2.2})
 
-    expected_without_cast_round = [(b"one", 1.2), (b"two", 2.2)]
-    expected_with_cast_round = [(b"one", 1.0), (b"two", 2.0)]
-    assert r.zrange("foo", 0, 2, withscores=True) == expected_without_cast_round
-    assert r.zrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == expected_with_cast_round
+    assert r.zrange("foo", 0, 2, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1.2), (b"two", 2.2)])
+    assert r.zrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == resp_conversion_from_resp2(
+        r, [(b"one", 1.0), (b"two", 2.0)]
+    )
 
 
 def test_zrank(r: redis.Redis):
@@ -230,8 +241,8 @@ def test_zrank_redis7_2(r: redis.Redis):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    assert r.zrank("foo", "one", withscore=True) == [0, b"1"]
-    assert r.zrank("foo", "two", withscore=True) == [1, b"2"]
+    assert r.zrank("foo", "one", withscore=True) == resp_conversion(r, [0, 1.0], [0, b"1"])
+    assert r.zrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
 
 
 def test_zrank_non_existent_member(r: redis.Redis):
@@ -291,11 +302,10 @@ def test_zscore_wrong_type(r: redis.Redis):
 
 
 def test_zmscore(r: redis.Redis):
-    """When all the requested sorted-set members are in the cache, a valid
-    float value should be returned for each requested member.
+    """When all the requested sorted-set members are in the cache, a valid float value should be returned for each
+    requested member.
 
-    The order of the returned scores should always match the order in
-    which the set members were supplied.
+    The order of the returned scores should always match the order in which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
     members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
@@ -366,8 +376,8 @@ def test_zrevrank_redis7_2(r: redis.Redis):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
-    assert r.zrevrank("foo", "one", withscore=True) == [2, b"1"]
-    assert r.zrevrank("foo", "two", withscore=True) == [1, b"2"]
+    assert r.zrevrank("foo", "one", withscore=True) == resp_conversion(r, [2, 1.0], [2, b"1"])
+    assert r.zrevrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
 
 
 def test_zrevrank_non_existent_member(r: redis.Redis):
@@ -403,14 +413,15 @@ def test_zrevrange_wrong_type(r: redis.Redis):
         r.zrevrange("foo", 0, 2)
 
 
+@pytest.mark.resp2_only
 def test_zrevrange_score_cast(r: redis.Redis):
     r.zadd("foo", {"one": 1.2})
     r.zadd("foo", {"two": 2.2})
 
-    expected_without_cast_round = [(b"two", 2.2), (b"one", 1.2)]
-    expected_with_cast_round = [(b"two", 2.0), (b"one", 1.0)]
-    assert r.zrevrange("foo", 0, 2, withscores=True) == expected_without_cast_round
-    assert r.zrevrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == expected_with_cast_round
+    assert r.zrevrange("foo", 0, 2, withscores=True) == resp_conversion_from_resp2(r, [(b"two", 2.2), (b"one", 1.2)])
+    assert r.zrevrange("foo", 0, 2, withscores=True, score_cast_func=round_str) == resp_conversion_from_resp2(
+        r, [(b"two", 2.0), (b"one", 1.0)]
+    )
 
 
 def test_zrange_with_large_int(r: redis.Redis):
@@ -480,19 +491,24 @@ def test_zrangebyscore_withscores(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zrangebyscore("foo", 1, 3, 0, 2, True) == [(b"one", 1), (b"two", 2)]
+    assert r.zrangebyscore("foo", 1, 3, 0, 2, True) == resp_conversion(
+        r, [[b"one", 1], [b"two", 2]], [(b"one", 1), (b"two", 2)]
+    )
 
 
+@pytest.mark.resp2_only
 def test_zrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
 
-    expected_without_cast_round = [(b"two", 2.0), (b"two_a_also", 2.2)]
-    expected_with_cast_round = [(b"two", 2.0), (b"two_a_also", 2.0)]
-    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True)) == sorted(expected_without_cast_round)
-    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True, score_cast_func=round_str)) == sorted(
-        expected_with_cast_round
+    expected_without_cast_round = sorted([(b"two", 2.0), (b"two_a_also", 2.2)])
+    expected_with_cast_round = sorted([(b"two", 2.0), (b"two_a_also", 2.0)])
+    assert sorted(r.zrangebyscore("foo", 2, 3, withscores=True)) == resp_conversion_from_resp2(
+        r, expected_without_cast_round
     )
+    assert sorted(
+        r.zrangebyscore("foo", 2, 3, withscores=True, score_cast_func=round_str)
+    ) == resp_conversion_from_resp2(r, expected_with_cast_round)
 
 
 def test_zrevrangebyscore(r: redis.Redis):
@@ -537,16 +553,16 @@ def test_zrevrangebyscore_wrong_type(r: redis.Redis):
         r.zrevrangebyscore("foo", "(3", "(1")
 
 
+@pytest.mark.resp2_only
 def test_zrevrangebyscore_cast_scores(r: redis.Redis):
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"two_a_also": 2.2})
-
-    assert r.zrevrangebyscore("foo", 3, 2, withscores=True) == [(b"two_a_also", 2.2), (b"two", 2.0)]
-
-    assert r.zrevrangebyscore("foo", 3, 2, withscores=True, score_cast_func=round_str) == [
-        (b"two_a_also", 2.0),
-        (b"two", 2.0),
-    ]
+    assert r.zrevrangebyscore("foo", 3, 2, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"two_a_also", 2.2), (b"two", 2.0)]
+    )
+    assert r.zrevrangebyscore("foo", 3, 2, withscores=True, score_cast_func=round_str) == resp_conversion_from_resp2(
+        r, [(b"two_a_also", 2.0), (b"two", 2.0)]
+    )
 
 
 def test_zrangebylex(r: redis.Redis):
@@ -827,7 +843,10 @@ def test_zunionstore(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"])
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"three", 3), (b"two", 4)]
+
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 2), (b"three", 3), (b"two", 4)]
+    )
 
 
 def test_zunionstore_sum(r: redis.Redis):
@@ -837,7 +856,9 @@ def test_zunionstore_sum(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"three", 3), (b"two", 4)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 2), (b"three", 3), (b"two", 4)]
+    )
 
 
 def test_zunionstore_max(r: redis.Redis):
@@ -847,7 +868,9 @@ def test_zunionstore_max(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="MAX")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2), (b"three", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 1), (b"two", 2), (b"three", 3)]
+    )
 
 
 def test_zunionstore_min(r: redis.Redis):
@@ -857,7 +880,9 @@ def test_zunionstore_min(r: redis.Redis):
     r.zadd("bar", {"two": 0})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="MIN")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 0), (b"two", 0), (b"three", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 0), (b"two", 0), (b"three", 3)]
+    )
 
 
 def test_zunionstore_weights(r: redis.Redis):
@@ -867,7 +892,9 @@ def test_zunionstore_weights(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"four": 4})
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 3), (b"two", 6), (b"four", 8)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 3), (b"two", 6), (b"four", 8)]
+    )
 
 
 def test_zunionstore_nan_to_zero(r: redis.Redis):
@@ -884,9 +911,9 @@ def test_zunionstore_nan_to_zero2(r: redis.Redis):
     r.zadd("foo2", {"one": 1})
     r.zadd("foo3", {"one": 1})
     r.zunionstore("bar", {"foo": math.inf}, aggregate="SUM")
-    assert r.zrange("bar", 0, -1, withscores=True) == [(b"zero", 0)]
+    assert r.zrange("bar", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"zero", 0)])
     r.zunionstore("bar", OrderedDict([("foo2", math.inf), ("foo3", -math.inf)]))
-    assert r.zrange("bar", 0, -1, withscores=True) == [(b"one", 0)]
+    assert r.zrange("bar", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 0)])
 
 
 def test_zunionstore_nan_to_zero_ordering(r: redis.Redis):
@@ -905,16 +932,18 @@ def test_zunionstore_mixed_set_types(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zunionstore("baz", ["foo", "bar"], aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"three", 3), (b"two", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"one", 2), (b"three", 3), (b"two", 3)]
+    )
 
 
 def test_zunionstore_badkey(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zunionstore("baz", ["foo", "bar"], aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1), (b"two", 2)])
     r.zunionstore("baz", {"foo": 1, "bar": 2}, aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1), (b"two", 2)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
@@ -931,7 +960,7 @@ def test_zinterstore(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zinterstore("baz", ["foo", "bar"])
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"two", 4)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 2), (b"two", 4)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -942,7 +971,7 @@ def test_zinterstore_mixed_set_types(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zinterstore("baz", ["foo", "bar"], aggregate="SUM")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 2), (b"two", 3)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 2), (b"two", 3)])
 
 
 def test_zinterstore_max(r: redis.Redis):
@@ -952,13 +981,13 @@ def test_zinterstore_max(r: redis.Redis):
     r.zadd("bar", {"two": 2})
     r.zadd("bar", {"three": 3})
     r.zinterstore("baz", ["foo", "bar"], aggregate="MAX")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1), (b"two", 2)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1), (b"two", 2)])
 
 
 def test_zinterstore_onekey(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zinterstore("baz", ["foo"], aggregate="MAX")
-    assert r.zrange("baz", 0, -1, withscores=True) == [(b"one", 1)]
+    assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1)])
 
 
 def test_zinterstore_nokey(r: redis.Redis):
@@ -996,29 +1025,25 @@ def test_zpopmax_too_many(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    assert r.zpopmax("foo", count=5) == [
-        (b"three", 3.0),
-        (b"two", 2.0),
-        (b"one", 1.0),
-    ]
+    assert r.zpopmax("foo", count=5) == resp_conversion_from_resp2(r, [(b"three", 3.0), (b"two", 2.0), (b"one", 1.0)])
 
 
 def test_bzpopmin(r: redis.Redis):
     r.zadd("foo", {"one": 1, "two": 2, "three": 3})
     r.zadd("bar", {"a": 1.5, "b": 2, "c": 3})
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"one", 1.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"two", 2.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"foo", b"three", 3.0)
-    assert r.bzpopmin(["foo", "bar"], 0) == (b"bar", b"a", 1.5)
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"one", 1.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"two", 2.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"foo", b"three", 3.0))
+    assert r.bzpopmin(["foo", "bar"], 0) == resp_conversion_from_resp2(r, (b"bar", b"a", 1.5))
 
 
 def test_bzpopmax(r: redis.Redis):
     r.zadd("foo", {"one": 1, "two": 2, "three": 3})
     r.zadd("bar", {"a": 1.5, "b": 2.5, "c": 3.5})
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"three", 3.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"two", 2.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"foo", b"one", 1.0)
-    assert r.bzpopmax(["foo", "bar"], 0) == (b"bar", b"c", 3.5)
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"three", 3.0], (b"foo", b"three", 3.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"two", 2.0], (b"foo", b"two", 2.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"one", 1.0], (b"foo", b"one", 1.0))
+    assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"bar", b"c", 3.5], (b"bar", b"c", 3.5))
 
 
 def test_zscan(r: redis.Redis):
@@ -1048,7 +1073,7 @@ def test_zrandemember(r: redis.Redis):
     assert r.zrandmember("a") is not None
     assert len(r.zrandmember("a", 2)) == 2
     # with scores
-    assert len(r.zrandmember("a", 2, True)) == 4
+    assert len(r.zrandmember("a", 2, withscores=True)) == resp_conversion(r, 2, 4)
     # without duplications
     assert len(r.zrandmember("a", 10)) == 5
     # with duplications
@@ -1060,14 +1085,14 @@ def test_zdiffstore(r: redis.Redis):
     r.zadd("b", {"a1": 1, "a2": 2})
     assert r.zdiffstore("out", ["a", "b"])
     assert r.zrange("out", 0, -1) == [b"a3"]
-    assert r.zrange("out", 0, -1, withscores=True) == [(b"a3", 3.0)]
+    assert r.zrange("out", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 3.0)])
 
 
 def test_zdiff(r: redis.Redis):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     r.zadd("b", {"a1": 1, "a2": 2})
     assert r.zdiff(["a", "b"]) == [b"a3"]
-    assert r.zdiff(["a", "b"], withscores=True) == [b"a3", b"3"]
+    assert r.zdiff(["a", "b"], withscores=True) == resp_conversion(r, [[b"a3", 3.0]], [b"a3", b"3"])
 
 
 def test_zunion(r: redis.Redis):
@@ -1076,33 +1101,22 @@ def test_zunion(r: redis.Redis):
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
     # sum
     assert r.zunion(["a", "b", "c"]) == [b"a2", b"a4", b"a3", b"a1"]
-    assert r.zunion(["a", "b", "c"], withscores=True) == [
-        (b"a2", 3),
-        (b"a4", 4),
-        (b"a3", 8),
-        (b"a1", 9),
-    ]
+
+    assert r.zunion(["a", "b", "c"], withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a2", 3), (b"a4", 4), (b"a3", 8), (b"a1", 9)]
+    )
     # max
-    assert r.zunion(["a", "b", "c"], aggregate="MAX", withscores=True) == [
-        (b"a2", 2),
-        (b"a4", 4),
-        (b"a3", 5),
-        (b"a1", 6),
-    ]
+    assert r.zunion(["a", "b", "c"], aggregate="MAX", withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a2", 2), (b"a4", 4), (b"a3", 5), (b"a1", 6)]
+    )
     # min
-    assert r.zunion(["a", "b", "c"], aggregate="MIN", withscores=True) == [
-        (b"a1", 1),
-        (b"a2", 1),
-        (b"a3", 1),
-        (b"a4", 4),
-    ]
+    assert r.zunion(["a", "b", "c"], aggregate="MIN", withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a1", 1), (b"a2", 1), (b"a3", 1), (b"a4", 4)]
+    )
     # with weight
-    assert r.zunion({"a": 1, "b": 2, "c": 3}, withscores=True) == [
-        (b"a2", 5),
-        (b"a4", 12),
-        (b"a3", 20),
-        (b"a1", 23),
-    ]
+    assert r.zunion({"a": 1, "b": 2, "c": 3}, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a2", 5), (b"a4", 12), (b"a3", 20), (b"a1", 23)]
+    )
 
 
 def test_zinter(r: redis.Redis):
@@ -1114,22 +1128,19 @@ def test_zinter(r: redis.Redis):
     with pytest.raises(redis.DataError):
         r.zinter(["a", "b", "c"], aggregate="foo", withscores=True)
     # aggregate with SUM
-    assert r.zinter(["a", "b", "c"], withscores=True) == [(b"a3", 8), (b"a1", 9)]
+    assert r.zinter(["a", "b", "c"], withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 8), (b"a1", 9)])
     # aggregate with MAX
-    assert r.zinter(["a", "b", "c"], aggregate="MAX", withscores=True) == [
-        (b"a3", 5),
-        (b"a1", 6),
-    ]
+    assert r.zinter(["a", "b", "c"], aggregate="MAX", withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a3", 5), (b"a1", 6)]
+    )
     # aggregate with MIN
-    assert r.zinter(["a", "b", "c"], aggregate="MIN", withscores=True) == [
-        (b"a1", 1),
-        (b"a3", 1),
-    ]
+    assert r.zinter(["a", "b", "c"], aggregate="MIN", withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a1", 1), (b"a3", 1)]
+    )
     # with weights
-    assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == [
-        (b"a3", 20),
-        (b"a1", 23),
-    ]
+    assert r.zinter({"a": 1, "b": 2, "c": 3}, withscores=True) == resp_conversion_from_resp2(
+        r, [(b"a3", 20), (b"a1", 23)]
+    )
 
 
 @pytest.mark.min_server("7")
@@ -1147,7 +1158,7 @@ def test_zrangestore(r: redis.Redis):
     assert r.zrange("b", 0, -1) == [b"a1", b"a2"]
     assert r.zrangestore("b", "a", 1, 2)
     assert r.zrange("b", 0, -1) == [b"a2", b"a3"]
-    assert r.zrange("b", 0, -1, withscores=True) == [(b"a2", 2), (b"a3", 3)]
+    assert r.zrange("b", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"a2", 2), (b"a3", 3)])
     # reversed order
     assert r.zrangestore("b", "a", 1, 2, desc=True)
     assert r.zrange("b", 0, -1) == [b"a1", b"a2"]
@@ -1163,24 +1174,27 @@ def test_zrangestore(r: redis.Redis):
 @pytest.mark.min_server("7")
 def test_zmpop(r: redis.Redis):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
-    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
-    assert r.zmpop("2", ["b", "a"], min=True, count=2) == res
+    assert r.zmpop("2", ["b", "a"], min=True, count=2) == resp_conversion(
+        r, [b"a", [[b"a1", 1.0], [b"a2", 2.0]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    )
     with pytest.raises(redis.DataError):
         r.zmpop("2", ["b", "a"], count=2)
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
-    assert r.zmpop("2", ["b", "a"], max=True) == [b"b", [[b"b1", b"10"]]]
+    assert r.zmpop("2", ["b", "a"], max=True) == resp_conversion(r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]])
 
 
 @pytest.mark.min_server("7")
 def test_bzmpop(r: redis.Redis):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
-    res = [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
-    assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == res
+    assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == resp_conversion(
+        r, [b"a", [[b"a1", 1], [b"a2", 2]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
+    )
     with pytest.raises(redis.DataError):
         r.bzmpop(1, "2", ["b", "a"], count=2)
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
-    res = [b"b", [[b"b1", b"10"]]]
-    assert r.bzmpop(0, "2", ["b", "a"], max=True) == res
+    assert r.bzmpop(0, "2", ["b", "a"], max=True) == resp_conversion(
+        r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]]
+    )
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 

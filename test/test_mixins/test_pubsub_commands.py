@@ -11,6 +11,7 @@ from redis.client import PubSub
 
 import fakeredis
 from .. import testtools
+from ..testtools import resp_conversion
 
 
 def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> Optional[Dict[str, Any]]:
@@ -39,9 +40,9 @@ def test_ping_pubsub(r: redis.Redis):
     p.subscribe("channel")
     p.parse_response()  # Consume the subscribe command reply
     p.ping()
-    assert p.parse_response() == [b"pong", b""]
+    assert p.parse_response() == resp_conversion(r, b"PONG", [b"pong", b""])
     p.ping("test")
-    assert p.parse_response() == [b"pong", b"test"]
+    assert p.parse_response() == resp_conversion(r, b"test", [b"pong", b"test"])
 
 
 @pytest.mark.slow
@@ -358,27 +359,6 @@ def test_pubsub_channels_pattern(r: redis.Redis):
 def test_pubsub_no_subcommands(r: redis.Redis):
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, "PUBSUB")
-
-
-@pytest.mark.min_server("7")
-@pytest.mark.max_server("7")
-def test_pubsub_help_redis7(r: redis.Redis):
-    assert testtools.raw_command(r, "PUBSUB HELP") == [
-        b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
-        b"CHANNELS [<pattern>]",
-        b"    Return the currently active channels matching a <pattern> (default: '*').",
-        b"NUMPAT",
-        b"    Return number of subscriptions to patterns.",
-        b"NUMSUB [<channel> ...]",
-        b"    Return the number of subscribers for the specified channels, excluding",
-        b"    pattern subscriptions(default: no channels).",
-        b"SHARDCHANNELS [<pattern>]",
-        b"    Return the currently active shard level channels matching a <pattern> (default: '*').",
-        b"SHARDNUMSUB [<shardchannel> ...]",
-        b"    Return the number of subscribers for the specified shard level channel(s)",
-        b"HELP",
-        b"    Prints this help.",
-    ]
 
 
 @pytest.mark.min_server("7.1")

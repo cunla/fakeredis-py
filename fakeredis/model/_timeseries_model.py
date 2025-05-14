@@ -28,7 +28,7 @@ class TimeSeries:
         self.ts_ind_map: Dict[int, int] = dict()  # Map from timestamp to index in sorted_list
         self.sorted_list: List[Tuple[int, float]] = list()
         self.max_timestamp: int = 0
-        self.labels = labels or {}
+        self.labels: Dict[bytes, bytes] = labels or {}
         self.source_key = source_key
         self.ignore_max_time_diff = ignore_max_time_diff
         self.ignore_max_val_diff = ignore_max_val_diff

@@ -34,14 +34,14 @@ def get_command_info(cmd: bytes) -> Optional[List[Any]]:
     return _COMMAND_INFO.get(cmd, None)
 
 
-def get_categories() -> List[bytes]:
+def get_categories() -> List[str]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []
     categories = set()
     for info in _COMMAND_INFO.values():
         categories.update(info[6])
-    categories = {x[1:] for x in categories}
+    categories = {x[1:].decode() for x in categories}
     return list(categories)
 
 

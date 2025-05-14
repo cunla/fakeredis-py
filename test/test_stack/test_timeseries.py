@@ -1,14 +1,48 @@
-import math
 import time
 from time import sleep
+from typing import Dict, Any, AnyStr
 
+import math
 import pytest
 import redis
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command
+from test.testtools import raw_command, get_protocol_version, resp_conversion, resp_conversion_from_resp2
 
 timeseries_tests = pytest.importorskip("probables")
+
+
+class InfoClass:
+    def __init__(self, r: redis.Redis, response: Dict[AnyStr, Any]):
+        if get_protocol_version(r) == 2:
+            self.rules = response.get("rules")
+            self.source_key = response.get("source_key")
+            self.chunk_count = response.get("chunk_count")
+            self.memory_usage = response.get("memory_usage")
+            self.total_samples = response.get("total_samples")
+            self.labels = response.get("labels")
+            self.retention_msecs = response.get("retention_msecs")
+            self.last_timestamp = response.get("last_timestamp")
+            self.first_timestamp = response.get("first_timestamp")
+            self.max_samples_per_chunk = response.get("max_samples_per_chunk")
+            self.chunk_size = response["chunk_size"]
+            self.duplicate_policy = response["duplicate_policy"]
+        else:
+            self.rules = response.get(b"rules")
+            self.source_key = response.get(b"sourceKey")
+            self.chunk_count = response.get(b"chunkCount")
+            self.memory_usage = response.get(b"memoryUsage")
+            self.total_samples = response.get(b"totalSamples")
+            self.labels = {k.decode(): v.decode() for k, v in response.get(b"labels").items()}
+            self.retention_msecs = response.get(b"retentionTime")
+            self.last_timestamp = response.get(b"lastTimestamp")
+            self.first_timestamp = response.get(b"firstTimestamp")
+            self.max_samples_per_chunk = response.get(b"maxSamplesPerChunk")
+            self.chunk_size = response[b"chunkSize"]
+            self.duplicate_policy = response[b"duplicatePolicy"].decode() if response.get(b"duplicatePolicy") else None
+
+    def __getitem__(self, k: str):
+        return getattr(self, k)
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -16,7 +50,7 @@ def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
-    assert abs(ts2 - ts1) < 10
+    assert abs(ts2 - ts1) < 5
 
 
 @pytest.mark.min_server("7")
@@ -78,13 +112,15 @@ def test_create(r: redis.Redis):
     assert r.ts().create(3, labels={"Redis": "Labs"})
     assert r.ts().create(4, retention_msecs=20, labels={"Time": "Series"})
     info = r.ts().info(4)
-    assert 20 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 20 == info["retention_msecs"]
     assert "Series" == info["labels"]["Time"]
 
     # Test for a chunk size of 128 Bytes
     assert r.ts().create("time-serie-1", chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -94,23 +130,29 @@ def test_create_duplicate_policy(r: redis.Redis):
         ts_name = f"time-serie-ooo-{duplicate_policy}"
         assert r.ts().create(ts_name, duplicate_policy=duplicate_policy)
         info = r.ts().info(ts_name)
-        assert duplicate_policy == info.get("duplicate_policy")
+        if get_protocol_version(r) == 2:
+            assert duplicate_policy == info.get("duplicate_policy")
+        else:
+            assert duplicate_policy.encode() == info.get(b"duplicatePolicy")
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_alter(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert 0 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 0 == info["retention_msecs"]
     assert r.ts().alter(1, retention_msecs=10)
-    assert {} == r.ts().info(1)["labels"]
+    assert {} == InfoClass(r, r.ts().info(1))["labels"]
     info = r.ts().info(1)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
 
     assert r.ts().alter(1, labels={"Time": "Series"})
-    assert "Series" == r.ts().info(1)["labels"]["Time"]
+    assert "Series" == InfoClass(r, r.ts().info(1))["labels"]["Time"]
     info = r.ts().info(1)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
 
     # Test for a chunk size of 50 Bytes on TS.ALTER
     with pytest.raises(redis.ResponseError) as e:
@@ -126,13 +168,15 @@ def test_add(r: redis.Redis):
     assert 4 == r.ts().add(4, 4, 2, retention_msecs=10, labels={"Redis": "Labs", "Time": "Series"})
 
     info = r.ts().info(4)
-    assert 10 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 10 == info["retention_msecs"]
     assert "Labs" == info["labels"]["Redis"]
 
     # Test for a chunk size of 128 Bytes on TS.ADD
     assert r.ts().add("time-serie-1", 1, 10.0, chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -206,22 +250,24 @@ def test_incrby_decrby(r: redis.Redis):
     assert 0 == r.ts().get(1)[1]
 
     assert r.ts().incrby(2, 1.5, timestamp=5)
-    assert r.ts().get(2) == (5, 1.5)
+    assert r.ts().get(2) == resp_conversion(r, [5, 1.5], (5, 1.5))
     assert r.ts().incrby(2, 2.25, timestamp=7)
-    assert r.ts().get(2) == (7, 3.75)
+    assert r.ts().get(2) == resp_conversion(r, [7, 3.75], (7, 3.75))
 
     assert r.ts().decrby(2, 1.5, timestamp=15)
-    assert r.ts().get(2) == (15, 2.25)
+    assert r.ts().get(2) == resp_conversion(r, [15, 2.25], (15, 2.25))
 
     # Test for a chunk size of 128 Bytes on TS.INCRBY
     assert r.ts().incrby("time-serie-1", 10, chunk_size=128)
     info = r.ts().info("time-serie-1")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
     # Test for a chunk size of 128 Bytes on TS.DECRBY
     assert r.ts().decrby("time-serie-2", 10, chunk_size=128)
     info = r.ts().info("time-serie-2")
-    assert 128 == info.get("chunk_size")
+    info = InfoClass(r, info)
+    assert 128 == info["chunk_size"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -237,15 +283,23 @@ def test_create_and_delete_rule(r: redis.Redis):
     r.ts().add(1, time * 2, 1.5)
     assert round(r.ts().get(2)[1], 1) == 1.5
     info1 = r.ts().info(1)
-    assert info1.rules[0][1] == 100
+    info1 = InfoClass(r, info1)
+    if get_protocol_version(r) == 2:
+        assert info1.rules[0][1] == 100
+    else:
+        assert info1.rules[b"2"][0] == 100
+
     info2 = r.ts().info(2)
+    info2 = InfoClass(r, info2)
     assert info2["source_key"] == b"1"
 
     # test rule deletion
     r.ts().deleterule(1, 2)
     info = r.ts().info(1)
+    info = InfoClass(r, info)
     assert not info["rules"]
     info2 = r.ts().info(2)
+    info2 = InfoClass(r, info2)
     assert info2["source_key"] is None
 
 
@@ -259,7 +313,7 @@ def test_del_range(r: redis.Redis):
         r.ts().add(1, i, i % 7)
     assert 22 == r.ts().delete(1, 0, 21)
     assert [] == r.ts().range(1, 0, 21)
-    assert r.ts().range(1, 22, 22) == [(22, 1.0)]
+    assert r.ts().range(1, 22, 22) == resp_conversion(r, [[22, 1.0]], [(22, 1.0)])
 
     assert r.ts().delete(1, 60, 3) == 0
 
@@ -275,7 +329,7 @@ def test_range(r: redis.Redis):
 
     range_with_count_result = r.ts().range(1, 0, 500, count=10)
     assert 10 == len(range_with_count_result)
-    assert (0, 0) == range_with_count_result[0]
+    assert range_with_count_result[0] == resp_conversion(r, [0, 0], (0, 0))
 
     # last sample isn't returned
     # assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)) TODO
@@ -298,10 +352,12 @@ def test_range_advanced(r: redis.Redis):
         )
     )
     res = r.ts().range(1, 0, 10, aggregation_type="count", bucket_size_msec=10)
-    assert res == [(0, 10.0), (10, 1.0)]
+    assert res == resp_conversion(r, [[0, 10.0], [10, 1.0]], [(0, 10.0), (10, 1.0)])
 
     res = r.ts().range(1, 0, 10, aggregation_type="twa", bucket_size_msec=10)
-    assert res == [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
+    assert res == resp_conversion(
+        r, [[0, pytest.approx(2.55, 0.1)], [10, 3.0]], [(0, pytest.approx(2.55, 0.1)), (10, 3.0)]
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -314,12 +370,13 @@ def test_range_latest(r: redis.Redis):
     timeseries.add("t1", 2, 3)
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
-    assert timeseries.range("t1", 0, 20) == [(1, 1.0), (2, 3.0), (11, 7.0), (13, 1.0)]
-    assert timeseries.range("t2", 0, 10) == [(0, 4.0)]
+    assert timeseries.range("t1", 0, 20) == resp_conversion(
+        r, [[1, 1.0], [2, 3.0], [11, 7.0], [13, 1.0]], [(1, 1.0), (2, 3.0), (11, 7.0), (13, 1.0)]
+    )
+    assert timeseries.range("t2", 0, 10) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
-    res = timeseries.range("t2", 0, 10, latest=True)
-    assert res == [(0, 4.0)]
-    assert timeseries.range("t2", 0, 9) == [(0, 4.0)]
+    assert timeseries.range("t2", 0, 10, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.range("t2", 0, 9) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -337,14 +394,8 @@ def test_range_bucket_timestamp(r: redis.Redis):
     #     (70, 5.0),
     # ]
     assert timeseries.range(
-        "t1",
-        0,
-        100,
-        align=0,
-        aggregation_type="max",
-        bucket_size_msec=10,
-        bucket_timestamp="+",
-    ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, bucket_timestamp="+"
+    ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -356,26 +407,19 @@ def test_range_empty(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10) == [
-        (10, 4.0),
-        (50, 3.0),
-        (70, 5.0),
-    ]
+    assert timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[10, 4.0], [50, 3.0], [70, 5.0]], [(10, 4.0), (50, 3.0), (70, 5.0)]
+    )
 
     res = timeseries.range("t1", 0, 100, aggregation_type="max", bucket_size_msec=10, empty=True)
     for i in range(len(res)):
         if math.isnan(res[i][1]):
             res[i] = (res[i][0], None)
-    resp2_expected = [
-        (10, 4.0),
-        (20, None),
-        (30, None),
-        (40, None),
-        (50, 3.0),
-        (60, None),
-        (70, 5.0),
-    ]
-    assert res == resp2_expected
+    assert res == resp_conversion(
+        r,
+        [[10, 4.0], (20, None), (30, None), (40, None), [50, 3.0], (60, None), [70, 5.0]],
+        [(10, 4.0), (20, None), (30, None), (40, None), (50, 3.0), (60, None), (70, 5.0)],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -390,20 +434,18 @@ def test_rev_range(r: redis.Redis):
     assert 10 == len(r.ts().revrange(1, 0, 500, count=10))
     assert 2 == len(
         r.ts().revrange(
-            1,
-            0,
-            500,
-            filter_by_ts=[i for i in range(10, 20)],
-            filter_by_min_value=1,
-            filter_by_max_value=2,
+            1, 0, 500, filter_by_ts=[i for i in range(10, 20)], filter_by_min_value=1, filter_by_max_value=2
         )
     )
-    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == [(10, 1.0), (0, 10.0)]
+    assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == resp_conversion(
+        r, [[10, 1.0], [0, 10.0]], [(10, 1.0), (0, 10.0)]
+    )
 
-    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == [
-        (10, pytest.approx(3.0, 0.1)),
-        (0, pytest.approx(2.55, 0.1)),
-    ]
+    assert r.ts().revrange(1, 0, 10, aggregation_type="twa", bucket_size_msec=10) == resp_conversion(
+        r,
+        [[10, pytest.approx(3.0, 0.1)], [0, pytest.approx(2.55, 0.1)]],
+        [(10, pytest.approx(3.0, 0.1)), (0, pytest.approx(2.55, 0.1))],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -417,9 +459,9 @@ def test_revrange_latest(r: redis.Redis):
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
 
-    assert timeseries.revrange("t2", 0, 10) == [(0, 4.0)]
-    assert timeseries.revrange("t2", 0, 10, latest=True) == [(0, 4.0)]
-    assert timeseries.revrange("t2", 0, 9, latest=True) == [(0, 4.0)]
+    assert timeseries.revrange("t2", 0, 10) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.revrange("t2", 0, 10, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
+    assert timeseries.revrange("t2", 0, 9, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -431,20 +473,12 @@ def test_revrange_bucket_timestamp(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
-        (70, 5.0),
-        (50, 3.0),
-        (10, 4.0),
-    ]
+    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[70, 5.0], [50, 3.0], [10, 4.0]], [(70, 5.0), (50, 3.0), (10, 4.0)]
+    )
     assert timeseries.range(
-        "t1",
-        0,
-        100,
-        align=0,
-        aggregation_type="max",
-        bucket_size_msec=10,
-        bucket_timestamp="+",
-    ) == [(20, 4.0), (60, 3.0), (80, 5.0)]
+        "t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, bucket_timestamp="+"
+    ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -456,24 +490,18 @@ def test_revrange_empty(r: redis.Redis):
     timeseries.add("t1", 51, 3)
     timeseries.add("t1", 73, 5)
     timeseries.add("t1", 75, 3)
-    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == [
-        (70, 5.0),
-        (50, 3.0),
-        (10, 4.0),
-    ]
+    assert timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10) == resp_conversion(
+        r, [[70, 5.0], [50, 3.0], [10, 4.0]], [(70, 5.0), (50, 3.0), (10, 4.0)]
+    )
     res = timeseries.revrange("t1", 0, 100, align=0, aggregation_type="max", bucket_size_msec=10, empty=True)
     for i in range(len(res)):
         if math.isnan(res[i][1]):
             res[i] = (res[i][0], None)
-    assert res == [
-        (70, 5.0),
-        (60, None),
-        (50, 3.0),
-        (40, None),
-        (30, None),
-        (20, None),
-        (10, 4.0),
-    ]
+    assert res == resp_conversion(
+        r,
+        [[70, 5.0], (60, None), [50, 3.0], (40, None), (30, None), (20, None), [10, 4.0]],
+        [(70, 5.0), (60, None), (50, 3.0), (40, None), (30, None), (20, None), (10, 4.0)],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -484,24 +512,34 @@ def test_mrange(r: redis.Redis):
         r.ts().add(1, i, i % 7)
         r.ts().add(2, i, i % 11)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"])
-    assert 2 == len(res)
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 100 == len(res)
 
-    assert 100 == len(res[0]["1"][1])
-
-    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-    assert 10 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 10 == len(res)
 
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
-    res = r.ts().mrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
-    assert 2 == len(res)
-    assert 20 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 20 == len(res)
 
     # test withlabels
-    assert {} == res[0]["1"][0]
-    res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
-    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+    if get_protocol_version(r) == 2:
+        assert {} == tmp_res[0]["1"][0]
+    else:
+        assert {} == tmp_res[b"1"][0]
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], with_labels=True)
+    res = (
+        tmp_res[0]["1"][0]
+        if get_protocol_version(r) == 2
+        else {k.decode(): v.decode() for k, v in tmp_res[b"1"][0].items()}
+    )
+    assert {"Test": "This", "team": "ny"} == res
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -514,10 +552,12 @@ def test_multi_range_advanced(r: redis.Redis):
 
     # test with selected labels
     res = r.ts().mrange(0, 200, filters=["Test=This"], select_labels=["team"])
-
-    assert {"team": "ny"} == res[0]["1"][0]
-    assert {"team": "sf"} == res[1]["2"][0]
-
+    if get_protocol_version(r) == 2:
+        assert {"team": "ny"} == res[0]["1"][0]
+        assert {"team": "sf"} == res[1]["2"][0]
+    else:
+        assert {"team": "ny"} == {k.decode(): v.decode() for k, v in res[b"1"][0].items()}
+        assert {"team": "sf"} == {k.decode(): v.decode() for k, v in res[b"2"][0].items()}
     # test with filterby
     res = r.ts().mrange(
         0,
@@ -527,18 +567,30 @@ def test_multi_range_advanced(r: redis.Redis):
         filter_by_min_value=1,
         filter_by_max_value=2,
     )
-    assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(15, 1.0), (16, 2.0)] == res[0]["1"][1]
+    else:
+        assert [[15, 1.0], [16, 2.0]] == res[b"1"][2]
 
     # test groupby
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
-    assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 2.0), (2, 4.0), (3, 6.0)] == res[0]["Test=This"][1]
+    else:
+        assert [[0, 0.0], [1, 2.0], [2, 4.0], [3, 6.0]] == res[b"Test=This"][3]
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["Test=This"][1]
+    else:
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"Test=This"][3]
     res = r.ts().mrange(0, 3, filters=["Test=This"], groupby="team", reduce="min")
     assert 2 == len(res)
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
-    assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
-
+    if get_protocol_version(r) == 2:
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[0]["team=ny"][1]
+        assert [(0, 0.0), (1, 1.0), (2, 2.0), (3, 3.0)] == res[1]["team=sf"][1]
+    else:
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"team=ny"][3]
+        assert [[0, 0.0], [1, 1.0], [2, 2.0], [3, 3.0]] == res[b"team=sf"][3]
     # test align
     res = r.ts().mrange(
         0,
@@ -548,7 +600,10 @@ def test_multi_range_advanced(r: redis.Redis):
         bucket_size_msec=10,
         align="-",
     )
-    assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(0, 10.0), (10, 1.0)] == res[0]["1"][1]
+    else:
+        assert [[0, 10.0], [10, 1.0]] == res[b"1"][2]
     # res = r.ts().mrange(
     #     0,
     #     10,
@@ -578,10 +633,11 @@ def test_mrange_latest(r: redis.Redis):
     timeseries.add("t3", 11, 7)
     timeseries.add("t3", 13, 1)
 
-    assert r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True) == [
-        {"t2": [{}, [(0, 4.0)]]},
-        {"t4": [{}, [(0, 4.0)]]},
-    ]
+    assert r.ts().mrange(0, 10, filters=["is_compaction=true"], latest=True) == resp_conversion(
+        r,
+        {b"t2": [{}, {b"aggregators": []}, [[0, 4.0]]], b"t4": [{}, {b"aggregators": []}, [[0, 4.0]]]},
+        [{"t2": [{}, [(0, 4.0)]]}, {"t4": [{}, [(0, 4.0)]]}],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -592,32 +648,45 @@ def test_multi_reverse_range(r: redis.Redis):
         r.ts().add(1, i, i % 7)
         r.ts().add(2, i, i % 11)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"])
-    assert 2 == len(res)
-    assert 100 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"])
+    assert 2 == len(tmp_res)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 100 == len(res)
 
-    res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
-    assert 10 == len(res[0]["1"][1])
+    tmp_res = r.ts().mrange(0, 200, filters=["Test=This"], count=10)
+    res = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    assert 10 == len(res)
 
     for i in range(100):
         r.ts().add(1, i + 200, i % 7)
-    res = r.ts().mrevrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
-    assert 2 == len(res)
 
-    assert 20 == len(res[0]["1"][1])
-    assert {} == res[0]["1"][0]
+    tmp_res = r.ts().mrevrange(0, 500, filters=["Test=This"], aggregation_type="avg", bucket_size_msec=10)
+    assert 2 == len(tmp_res)
+    measurements = tmp_res[0]["1"][1] if get_protocol_version(r) == 2 else tmp_res[b"1"][2]
+    labels = tmp_res[0]["1"][0] if get_protocol_version(r) == 2 else tmp_res[b"1"][0]
+    assert 20 == len(measurements)
+    assert {} == labels
 
     # test withlabels
-    res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
-    assert {"Test": "This", "team": "ny"} == res[0]["1"][0]
+    tmp_res = r.ts().mrevrange(0, 200, filters=["Test=This"], with_labels=True)
+    res = (
+        tmp_res[0]["1"][0]
+        if get_protocol_version(r) == 2
+        else {k.decode(): v.decode() for k, v in tmp_res[b"1"][0].items()}
+    )
+    assert {"Test": "This", "team": "ny"} == res
 
     # test with selected labels
     res = r.ts().mrevrange(0, 200, filters=["Test=This"], select_labels=["team"])
-    assert {"team": "ny"} == res[0]["1"][0]
-    assert {"team": "sf"} == res[1]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {"team": "ny"} == res[0]["1"][0]
+        assert {"team": "sf"} == res[1]["2"][0]
+    else:
+        assert {b"team": b"ny"} == res[b"1"][0]
+        assert {b"team": b"sf"} == res[b"2"][0]
 
     # test filterby
-    res = r.ts().mrevrange(
+    tmp_res = r.ts().mrevrange(
         0,
         200,
         filters=["Test=This"],
@@ -625,17 +694,32 @@ def test_multi_reverse_range(r: redis.Redis):
         filter_by_min_value=1,
         filter_by_max_value=2,
     )
-    assert [(16, 2.0), (15, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(16, 2.0), (15, 1.0)] == tmp_res[0]["1"][1]
+    else:
+        assert [[16, 2.0], [15, 1.0]] == tmp_res[b"1"][2]
 
     # test groupby
-    res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
-    assert [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)] == res[0]["Test=This"][1]
-    res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["Test=This"][1]
+    tmp_res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="sum")
+    if get_protocol_version(r) == 2:
+        res = tmp_res[0]["Test=This"][1]
+    else:
+        res = tmp_res[b"Test=This"][3]
+    assert res == resp_conversion_from_resp2(r, [(3, 6.0), (2, 4.0), (1, 2.0), (0, 0.0)])
+    tmp_res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="Test", reduce="max")
+    if get_protocol_version(r) == 2:
+        res = tmp_res[0]["Test=This"][1]
+    else:
+        res = tmp_res[b"Test=This"][3]
+    assert res == resp_conversion_from_resp2(r, [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)])
     res = r.ts().mrevrange(0, 3, filters=["Test=This"], groupby="team", reduce="min")
     assert 2 == len(res)
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
-    assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
+    if get_protocol_version(r) == 2:
+        assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[0]["team=ny"][1]
+        assert [(3, 3.0), (2, 2.0), (1, 1.0), (0, 0.0)] == res[1]["team=sf"][1]
+    else:
+        assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res[b"team=ny"][3]
+        assert [[3, 3.0], [2, 2.0], [1, 1.0], [0, 0.0]] == res[b"team=sf"][3]
 
     # test align
     res = r.ts().mrevrange(
@@ -646,16 +730,10 @@ def test_multi_reverse_range(r: redis.Redis):
         bucket_size_msec=10,
         align="-",
     )
-    assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
-    # res = r.ts().mrevrange(
-    #     0,
-    #     10,
-    #     filters=["team=ny"],
-    #     aggregation_type="count",
-    #     bucket_size_msec=10,
-    #     align=1,
-    # )
-    # assert [(1, 10.0), (0, 1.0)] == res[0]["1"][1]
+    if get_protocol_version(r) == 2:
+        assert [(10, 1.0), (0, 10.0)] == res[0]["1"][1]
+    else:
+        assert [[10, 1.0], [0, 10.0]] == res[b"1"][2]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -676,17 +754,18 @@ def test_mrevrange_latest(r: redis.Redis):
     timeseries.add("t3", 11, 7)
     timeseries.add("t3", 13, 1)
 
-    assert r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True) == [
-        {"t2": [{}, [(0, 4.0)]]},
-        {"t4": [{}, [(0, 4.0)]]},
-    ]
+    assert r.ts().mrevrange(0, 10, filters=["is_compaction=true"], latest=True) == resp_conversion(
+        r,
+        {b"t2": [{}, {b"aggregators": []}, [[0, 4.0]]], b"t4": [{}, {b"aggregators": []}, [[0, 4.0]]]},
+        [{"t2": [{}, [(0, 4.0)]]}, {"t4": [{}, [(0, 4.0)]]}],
+    )
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_get(r: redis.Redis):
     name = "test"
     r.ts().create(name)
-    assert r.ts().get(name) is None
+    assert r.ts().get(name) == resp_conversion(r, [], None)
     r.ts().add(name, 2, 3)
     assert 2 == r.ts().get(name)[0]
     r.ts().add(name, 3, 4)
@@ -703,8 +782,8 @@ def test_get_latest(r: redis.Redis):
     timeseries.add("t1", 2, 3)
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
-    assert timeseries.get("t2") == (0, 4.0)
-    assert timeseries.get("t2", latest=True) == (0, 4.0)
+    assert timeseries.get("t2") == resp_conversion(r, [0, 4.0], (0, 4.0))
+    assert timeseries.get("t2", latest=True) == resp_conversion(r, [0, 4.0], (0, 4.0))
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -725,21 +804,36 @@ def test_mget(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     act_res = r.ts().mget(["Test=This"])
-    exp_res = [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
-    assert act_res == exp_res
+
+    assert act_res == resp_conversion(
+        r, {b"1": [{}, []], b"2": [{}, []]}, [{"1": [{}, None, None]}, {"2": [{}, None, None]}]
+    )
 
     r.ts().add(1, "*", 15)
     r.ts().add(2, "*", 25)
     res = r.ts().mget(["Test=This"])
-    assert 15 == res[0]["1"][2]
-    assert 25 == res[1]["2"][2]
+    if get_protocol_version(r) == 2:
+        assert 15 == res[0]["1"][2]
+        assert 25 == res[1]["2"][2]
+    else:
+        assert 15 == res[b"1"][1][1]
+        assert 25 == res[b"2"][1][1]
     res = r.ts().mget(["Taste=That"])
-    assert 25 == res[0]["2"][2]
+    if get_protocol_version(r) == 2:
+        assert 25 == res[0]["2"][2]
+    else:
+        assert 25 == res[b"2"][1][1]
 
     # test with_labels
-    assert {} == res[0]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {} == res[0]["2"][0]
+    else:
+        assert {} == res[b"2"][0]
     res = r.ts().mget(["Taste=That"], with_labels=True)
-    assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
+    if get_protocol_version(r) == 2:
+        assert {"Taste": "That", "Test": "This"} == res[0]["2"][0]
+    else:
+        assert {"Taste": "That", "Test": "This"} == {k.decode(): v.decode() for k, v in res[b"2"][0].items()}
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -753,16 +847,17 @@ def test_mget_latest(r: redis.Redis):
     timeseries.add("t1", 11, 7)
     timeseries.add("t1", 13, 1)
     res = timeseries.mget(filters=["is_compaction=true"])
-    assert res == [{"t2": [{}, 0, 4.0]}]
+    assert res == resp_conversion(r, {b"t2": [{}, [0, 4.0]]}, [{"t2": [{}, 0, 4.0]}])
     res = timeseries.mget(filters=["is_compaction=true"], latest=True)
-    assert res == [{"t2": [{}, 0, 4.0]}]
+    assert res == resp_conversion(r, {b"t2": [{}, [0, 4.0]]}, [{"t2": [{}, 0, 4.0]}])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_info(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert 5 == info.get("retention_msecs")
+    info = InfoClass(r, info)
+    assert 5 == info["retention_msecs"]
     assert info["labels"]["currentLabel"] == "currentData"
 
 
@@ -771,11 +866,13 @@ def test_info(r: redis.Redis):
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] is None
 
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
-    assert info.get("duplicate_policy") == "min"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "min"
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -783,11 +880,13 @@ def testInfoDuplicatePolicy(r: redis.Redis):
 def test_alter_diplicate_policy(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") is None
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] is None
 
     assert r.ts().alter(1, duplicate_policy="min")
     info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
+    info = InfoClass(r, info)
+    assert "min" == info["duplicate_policy"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -795,11 +894,13 @@ def test_alter_diplicate_policy(r: redis.Redis):
 def testInfoDuplicatePolicy_redis8(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") == "block"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "block"
 
     r.ts().create("time-serie-2", duplicate_policy="min")
     info = r.ts().info("time-serie-2")
-    assert info.get("duplicate_policy") == "min"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "min"
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -807,11 +908,13 @@ def testInfoDuplicatePolicy_redis8(r: redis.Redis):
 def test_alter_diplicate_policy_redis8(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
-    assert info.get("duplicate_policy") == "block"
+    info = InfoClass(r, info)
+    assert info["duplicate_policy"] == "block"
 
     assert r.ts().alter(1, duplicate_policy="min")
     info = r.ts().info(1)
-    assert "min" == info.get("duplicate_policy")
+    info = InfoClass(r, info)
+    assert "min" == info["duplicate_policy"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -820,7 +923,7 @@ def test_query_index(r: redis.Redis):
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     assert 2 == len(r.ts().queryindex(["Test=This"]))
     assert 1 == len(r.ts().queryindex(["Taste=That"]))
-    assert r.ts().queryindex(["Taste=That"]) == [2]
+    assert r.ts().queryindex(["Taste=That"]) == resp_conversion(r, [b"2"], [2])
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
@@ -832,8 +935,9 @@ def test_pipeline(r: redis.Redis):
     pipeline.execute()
 
     info = r.ts().info("with_pipeline")
-    assert 99 == info.get("last_timestamp")
-    assert 100 == info.get("total_samples")
+    info = InfoClass(r, info)
+    assert 99 == info["last_timestamp"]
+    assert 100 == info["total_samples"]
 
     assert r.ts().get("with_pipeline")[1] == 99 * 1.1
 
@@ -843,8 +947,9 @@ def test_uncompressed(r: redis.Redis):
     r.ts().create("compressed")
     r.ts().create("uncompressed", uncompressed=True)
     compressed_info = r.ts().info("compressed")
+    compressed_info = InfoClass(r, compressed_info)
     uncompressed_info = r.ts().info("uncompressed")
-
+    uncompressed_info = InfoClass(r, uncompressed_info)
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
 
 
@@ -861,6 +966,7 @@ def test_create_rule_green(r: redis.Redis):
     assert last_sample[0] == 100
     assert round(last_sample[1], 5) == pytest.approx(1.5, 0.1)
     info = r.ts().info(2)
+    info = InfoClass(r, info)
     assert info["source_key"] == b"1"
 
 
