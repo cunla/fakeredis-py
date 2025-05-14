@@ -117,7 +117,8 @@ class ScriptingCommandsMixin:
             return lua_runtime.table_from(converted)
         if isinstance(result, dict):
             result = list(itertools.chain(*result.items()))
-            return [self._convert_redis_result(lua_runtime, item) for item in result]
+            converted = [self._convert_redis_result(lua_runtime, item) for item in result]
+            return lua_runtime.table_from(converted)
         elif isinstance(result, SimpleError):
             if result.value.startswith("ERR wrong number of arguments"):
                 raise SimpleError(msgs.WRONG_ARGS_MSG7)
@@ -162,7 +163,8 @@ class ScriptingCommandsMixin:
         func, sig = self._name_to_func(decode_command_bytes(op))
         new_args = [self._convert_redis_arg(lua_runtime, arg) for arg in args]
         result = self._run_command(func, sig, new_args, True)
-        return self._convert_redis_result(lua_runtime, result)
+        result = self._convert_redis_result(lua_runtime, result)
+        return result
 
     def _lua_redis_pcall(
         self, lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any

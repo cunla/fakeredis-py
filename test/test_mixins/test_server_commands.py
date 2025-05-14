@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from time import sleep
 
@@ -37,6 +38,7 @@ def test_save(r: redis.Redis):
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_bgsave(r: redis.Redis):
     assert r.bgsave()
+    time.sleep(0.1)
     with pytest.raises(ResponseError):
         r.execute_command("BGSAVE", "SCHEDULE", "FOO")
     with pytest.raises(ResponseError):
@@ -48,6 +50,7 @@ def test_lastsave(r: redis.Redis):
 
 
 @testtools.fake_only
+@pytest.mark.max_server("7.5")
 def test_command(r: redis.Redis):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
