@@ -13,6 +13,12 @@ toc_depth: 2
 
 - Implement support for `COPY` @ajhetherington #383
 
+## v2.29.1 - 2025-05-18
+
+### 🐛 Bug Fixes
+
+- aio.FakeRedis: Using `inspect` to get `__init__` paramaters #384
+
 ## v2.29.0 - 2025-05-01
 
 ### 🚀 Features
