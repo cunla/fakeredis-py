@@ -9,7 +9,7 @@ from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 import lupa
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Int, Signature
+from fakeredis._commands import command, Int, Signature, Float
 from fakeredis._helpers import (
     SimpleError,
     SimpleString,
@@ -106,6 +106,8 @@ class ScriptingCommandsMixin:
     def _convert_redis_result(self, lua_runtime: LUA_MODULE.LuaRuntime, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
             return result
+        if isinstance(result, float):
+            return Float.encode(result, humanfriendly=False)
         elif isinstance(result, SimpleString):
             return lua_runtime.table_from({b"ok": result.value})
         elif result is None:
@@ -113,6 +115,9 @@ class ScriptingCommandsMixin:
         elif isinstance(result, list):
             converted = [self._convert_redis_result(lua_runtime, item) for item in result]
             return lua_runtime.table_from(converted)
+        if isinstance(result, dict):
+            result = list(itertools.chain(*result.items()))
+            return [self._convert_redis_result(lua_runtime, item) for item in result]
         elif isinstance(result, SimpleError):
             if result.value.startswith("ERR wrong number of arguments"):
                 raise SimpleError(msgs.WRONG_ARGS_MSG7)
