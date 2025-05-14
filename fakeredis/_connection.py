@@ -124,8 +124,7 @@ class FakeRedisMixin:
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        # Interpret the positional and keyword arguments according to the
-        # version of redis in use.
+        # Interpret the positional and keyword arguments according to the version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})

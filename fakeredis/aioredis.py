@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import sys
 import uuid
+import warnings
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 
 from redis import ResponseError
 
 from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin, VersionType
+from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
 
 if sys.version_info >= (3, 11):
     from asyncio import timeout as async_timeout
@@ -21,7 +23,6 @@ from redis.asyncio.connection import DefaultParser
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
-from . import _server
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -190,70 +191,65 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 class FakeRedis(redis_async.Redis):
     def __init__(
         self,
-        *,
-        host: Optional[str] = None,
-        port: int = 6379,
-        db: Union[str, int] = 0,
-        password: Optional[str] = None,
-        socket_timeout: Optional[float] = None,
-        connection_pool: Optional[redis_async.ConnectionPool] = None,
-        encoding: str = "utf-8",
-        encoding_errors: str = "strict",
-        decode_responses: bool = False,
-        retry_on_timeout: bool = False,
-        max_connections: Optional[int] = None,
-        health_check_interval: int = 0,
-        client_name: Optional[str] = None,
-        username: Optional[str] = None,
-        server: Optional[_server.FakeServer] = None,
-        connected: bool = True,
+        *args: Any,
+        server: Optional[FakeServer] = None,
         version: VersionType = (7,),
-        server_type: str = "redis",
+        server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        if not connection_pool:
-            # Adapted from aioredis
-            connection_kwargs = dict(
-                host=host or uuid.uuid4().hex,
-                port=port,
-                db=db,
-                # Ignoring because AUTH is not implemented
-                # 'username',
-                # 'password',
-                socket_timeout=socket_timeout,
-                encoding=encoding,
-                encoding_errors=encoding_errors,
-                decode_responses=decode_responses,
-                retry_on_timeout=retry_on_timeout,
-                health_check_interval=health_check_interval,
-                client_name=client_name,
-                server=server,
-                connected=connected,
-                connection_class=FakeConnection,
-                max_connections=max_connections,
-                version=version,
-                server_type=server_type,
-                lua_modules=lua_modules,
-            )
-            connection_pool = redis_async.ConnectionPool(**connection_kwargs)  # type:ignore
-        kwargs.update(
-            dict(
-                db=db,
-                password=password,
-                socket_timeout=socket_timeout,
-                connection_pool=connection_pool,
-                encoding=encoding,
-                encoding_errors=encoding_errors,
-                decode_responses=decode_responses,
-                retry_on_timeout=retry_on_timeout,
-                max_connections=max_connections,
-                health_check_interval=health_check_interval,
-                client_name=client_name,
-                username=username,
-            )
-        )
-        super().__init__(**kwargs)
+        # Interpret the positional and keyword arguments according to the version of redis in use.
+        parameters = list(inspect.signature(redis_async.Redis.__init__).parameters.values())[1:]
+        # Convert args => kwargs
+        kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
+        kwargs.setdefault("host", uuid.uuid4().hex)
+        kwds = {
+            p.name: kwargs.get(p.name, p.default)
+            for ind, p in enumerate(parameters)
+            if p.default != inspect.Parameter.empty
+        }
+        kwds["server"] = server
+        if not kwds.get("connection_pool", None):
+            charset = kwds.get("charset", None)
+            errors = kwds.get("errors", None)
+            # Adapted from redis-py
+            if charset is not None:
+                warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
+                kwds["encoding"] = charset
+            if errors is not None:
+                warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
+                kwds["encoding_errors"] = errors
+            conn_pool_args = {
+                "host",
+                "port",
+                "db",
+                "username",
+                "password",
+                "socket_timeout",
+                "encoding",
+                "encoding_errors",
+                "decode_responses",
+                "retry_on_timeout",
+                "max_connections",
+                "health_check_interval",
+                "client_name",
+                "connected",
+                "server",
+            }
+            connection_kwargs = {
+                "connection_class": FakeConnection,
+                "version": version,
+                "server_type": server_type,
+                "lua_modules": lua_modules,
+            }
+            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
+            kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+        kwds.pop("server", None)
+        kwds.pop("connected", None)
+        kwds.pop("version", None)
+        kwds.pop("server_type", None)
+        kwds.pop("lua_modules", None)
+        super().__init__(**kwds)
 
     @classmethod
     def from_url(cls, url: str, **kwargs: Any) -> redis_async.Redis:
