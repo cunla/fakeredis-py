@@ -206,12 +206,21 @@ async def test_xdel(async_redis: redis.asyncio.Redis):
 
 async def test_connection_with_username_and_password():
     server = FakeServer()
-    r = aioredis.FakeRedis(server=server, username="username", password="password")
+    r = aioredis.FakeRedis(server=server)
+    username = "fakeredis-authuser"
+
+    assert (
+        await r.acl_setuser(username, enabled=True, passwords=["+strong_password"], commands=["+hset", "+hget"]) is True
+    )
+
+    assert await r.auth(username=username, password="strong_password") is True
+    r2 = aioredis.FakeRedis(server=server)
 
     test_value = "this_is_a_test"
     await r.hset("test:key", "test_hash", test_value)
     result = await r.hget("test:key", "test_hash")
     assert result.decode() == test_value
+    assert await r2.hget("test:key", "test_hash") == test_value.encode()
 
 
 @pytest.mark.asyncio
