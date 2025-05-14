@@ -1,4 +1,4 @@
-from typing import List, Callable
+from typing import List, Dict, Any
 
 from sortedcontainers import SortedList
 
@@ -15,8 +15,6 @@ class TDigest(SortedList):
 
 
 class TDigestCommandsMixin:
-    _encodefloat: Callable[[float, bool], bytes]
-
     def __init__(self, *args, **kwargs):
         self._db: Database
 
@@ -96,22 +94,22 @@ class TDigestCommandsMixin:
     @command(
         name="TDIGEST.MAX", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
     )
-    def tdigest_max(self, key: CommandItem) -> bytes:
+    def tdigest_max(self, key: CommandItem) -> float:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return b"nan"
-        return str(key.value[-1]).encode()
+            return float("nan")
+        return key.value[-1]
 
     @command(
         name="TDIGEST.MIN", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
     )
-    def tdigest_min(self, key: CommandItem) -> bytes:
+    def tdigest_min(self, key: CommandItem) -> float:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return b"nan"
-        return str(key.value[0]).encode()
+            return float("nan")
+        return key.value[0]
 
     @command(
         name="TDIGEST.RANK",
@@ -144,9 +142,7 @@ class TDigestCommandsMixin:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return [
-                -2,
-            ]
+            return [-2]
         res = []
         length = len(key.value)
         for v in values:
@@ -162,21 +158,19 @@ class TDigestCommandsMixin:
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> List[bytes]:
+    def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> List[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) <= 1:
-            return [
-                b"nan",
-            ]
-        res: List[bytes] = []
+            return [float("nan")]
+        res: List[float] = []
         for q in quantiles:
             if q < 0 or q > 1:
                 raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
             ind = int(q * len(key.value))
             if ind == len(key.value):
                 ind -= 1
-            res.append(self._encodefloat(key.value[ind], True))
+            res.append(key.value[ind])
         return res
 
     @command(
@@ -185,48 +179,39 @@ class TDigestCommandsMixin:
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_cdf(self, key: CommandItem, *values: float) -> List[bytes]:  # Cumulative Distribution Function
+    def tdigest_cdf(self, key: CommandItem, *values: float) -> List[float]:  # Cumulative Distribution Function
         """Returns, for each input value, an estimation of the fraction (floating-point) of
         (observations smaller than the given value + half the observations equal to the given value).
         """
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
-        res: List[bytes] = []
+        res: List[float] = []
         for v in values:
             left = key.value.bisect_left(v)
             right = key.value.bisect_right(v)
             if right == 0:
-                res.append(b"0")
+                res.append(0.0)
             elif left == len(key.value):
-                res.append(b"1")
+                res.append(1.0)
             else:
-                res.append(self._encodefloat(float((left + right) / 2) / len(key.value), True))
+                res.append(float((left + right) / 2) / len(key.value))
         return res
 
     @command(
         name="TDIGEST.INFO", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
     )
-    def tdigest_info(self, key: CommandItem) -> List[bytes]:
-        return [
-            b"Compression",
-            key.value.compression,
-            b"Capacity",
-            len(key.value),
-            b"Merged nodes",
-            len(key.value),
-            b"Unmerged nodes",
-            0,
-            b"Merged weight",
-            len(key.value),
-            b"Unmerged weight",
-            0,
-            b"Observations",
-            len(key.value),
-            b"Total compressions",
-            len(key.value),
-            b"Memory usage",
-            len(key.value),
-        ]
+    def tdigest_info(self, key: CommandItem) -> Dict[bytes, Any]:
+        return {
+            b"Compression": key.value.compression,
+            b"Capacity": len(key.value),
+            b"Merged nodes": len(key.value),
+            b"Unmerged nodes": 0,
+            b"Merged weight": len(key.value),
+            b"Unmerged weight": 0,
+            b"Observations": len(key.value),
+            b"Total compressions": len(key.value),
+            b"Memory usage": len(key.value),
+        }
 
     @command(
         name="TDIGEST.TRIMMED_MEAN",
@@ -234,19 +219,19 @@ class TDigestCommandsMixin:
         repeat=(),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_trimmed_mean(self, key: CommandItem, lower: float, upper: float) -> bytes:
+    def tdigest_trimmed_mean(self, key: CommandItem, lower: float, upper: float) -> float:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if lower < 0 or upper > 1 or lower > upper:
             raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
         if len(key.value) == 0:
-            return b"nan"
+            return float("nan")
         left = int(lower * len(key.value))
         right = int(upper * len(key.value))
         res = key.value[(left + right) // 2]
         if right == left + 1:
             res = (res + key.value[right]) / 2
-        return self._encodefloat(res, True)
+        return res
 
     @command(
         name="TDIGEST.BYRANK",
@@ -254,21 +239,19 @@ class TDigestCommandsMixin:
         repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
+    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return [
-                b"nan",
-            ]
-        res: List[bytes] = []
+            return [float("nan")]
+        res: List[float] = []
         for rank in ranks:
             if rank < 0:
                 raise SimpleError(msgs.TDIGEST_BAD_RANK)
             if rank >= len(key.value):
-                res.append(b"inf")
+                res.append(float("inf"))
             else:
-                res.append(self._encodefloat(key.value[rank], True))
+                res.append(key.value[rank])
         return res
 
     @command(
@@ -277,19 +260,17 @@ class TDigestCommandsMixin:
         repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[bytes]:
+    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
-            return [
-                b"nan",
-            ]
-        res: List[bytes] = []
+            return [float("nan")]
+        res: List[float] = []
         for rank in ranks:
             if rank < 0:
                 raise SimpleError(msgs.TDIGEST_BAD_RANK)
             if rank >= len(key.value):
-                res.append(b"-inf")
+                res.append(float("-inf"))
             else:
-                res.append(self._encodefloat(key.value[-rank - 1], True))
+                res.append(key.value[-rank - 1])
         return res

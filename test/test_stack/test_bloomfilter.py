@@ -3,6 +3,7 @@ import redis
 from redis.commands.bf import BFInfo
 
 from fakeredis import _msgs as msgs
+from test.testtools import get_protocol_version
 
 bloom_tests = pytest.importorskip("probables")
 
@@ -133,9 +134,14 @@ def test_bf_insert(r: redis.Redis):
     assert 0 == r.bf().exists("bloom", "noexist")
     assert [1, 0] == intlist(r.bf().mexists("bloom", "foo", "noexist"))
     info = r.bf().info("bloom")
-    assert 2 == info.get("insertedNum")
-    assert 1000 == info.get("capacity")
-    assert 1 == info.get("filterNum")
+    if get_protocol_version(r) == 2:
+        assert 2 == info.get("insertedNum")
+        assert 1000 == info.get("capacity")
+        assert 1 == info.get("filterNum")
+    else:
+        assert 2 == info.get(b"Number of items inserted")
+        assert 1000 == info.get(b"Capacity")
+        assert 1 == info.get(b"Number of filters")
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -175,7 +181,8 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_bf_info(r: redis.Redis):
+@pytest.mark.resp2_only
+def test_bf_info_resp2(r: redis.Redis):
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
     info: BFInfo = r.bf().info("nonscaling")
@@ -187,3 +194,19 @@ def test_bf_info(r: redis.Redis):
     assert info.expansionRate == 4
     assert info.capacity == 1000
     assert info.insertedNum == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.resp3_only
+def test_bf_info_resp3(r: redis.Redis):
+    # Store a filter
+    r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
+    info = r.bf().info("nonscaling")
+    assert info[b"Expansion rate"] is None
+
+    expansion = 4
+    r.bf().create("expanding", "0.0001", "1000", expansion=expansion)
+    info = r.bf().info("expanding")
+    assert info[b"Expansion rate"] == 4
+    assert info[b"Capacity"] == 1000
+    assert info[b"Number of items inserted"] == 0

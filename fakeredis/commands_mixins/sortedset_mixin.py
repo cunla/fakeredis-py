@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import functools
 import itertools
-import math
 import random
 import sys
 from typing import Union, Optional, List, Tuple, Callable, Any, Dict
+
+import math
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -55,8 +56,8 @@ class SortedSetCommandsMixin:
         if reverse:
             members.reverse()
         members = members[:count]
-        res = [[bytes(member), self._encodefloat(zset.get(member), True)] for member in members]
-        if flatten_list:
+        res = [[bytes(member), zset.get(member)] for member in members]
+        if flatten_list and self.protocol_version == 2:
             res = list(itertools.chain.from_iterable(res))
         for item in members:
             zset.discard(item)
@@ -65,9 +66,9 @@ class SortedSetCommandsMixin:
     def _bzpop(self, keys: List[bytes], reverse: bool, first_pass: bool) -> Optional[List[Union[bytes, List[bytes]]]]:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
-            temp_res = self._zpop(item, 1, reverse, True)
+            temp_res = self._zpop(item, 1, reverse, flatten_list=False)
             if temp_res:
-                return [key, temp_res[0], temp_res[1]]
+                return [key, temp_res[0][0], temp_res[0][1]]
         return None
 
     @command((Key(ZSet),), (Int,))
@@ -103,15 +104,17 @@ class SortedSetCommandsMixin:
             out.append(item)
         return out
 
-    def _apply_withscores(self, items, withscores: bool) -> List[bytes]:
+    def _apply_withscores(self, items: List[Tuple[bytes, bytes]], withscores: bool) -> List[Any]:
         if withscores:
-            out = []
-            for item in items:
-                out.append(item[1])
-                out.append(self._encodefloat(item[0], False))
+            if self.protocol_version == 2:
+                out = []
+                for item in items:
+                    out.append(item[1])
+                    out.append(item[0])
+                return out
+            return [[item[1], item[0]] for item in items]
         else:
-            out = [item[1] for item in items]
-        return out
+            return [item[1] for item in items]
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
     def zadd(self, key, *args) -> Union[int, None]:
@@ -143,7 +146,7 @@ class SortedSetCommandsMixin:
             for j in range(0, len(elements), 2)
         ]
         old_len = len(zset)
-        changed_items = 0
+        changed_items: int = 0
 
         if incr:
             item_score, item_name = items[0]
@@ -182,7 +185,7 @@ class SortedSetCommandsMixin:
         return key.value.zcount(_min.lower_bound, _max.upper_bound)
 
     @command((Key(ZSet), Float, bytes))
-    def zincrby(self, key, increment, member) -> float:
+    def zincrby(self, key: CommandItem, increment: float, member: bytes) -> float:
         # Can't just default the old score to 0.0, because in IEEE754, adding
         # 0.0 to something isn't a nop (e.g., 0.0 + -0.0 == 0.0).
         try:
@@ -193,10 +196,7 @@ class SortedSetCommandsMixin:
             raise SimpleError(msgs.SCORE_NAN_MSG)
         key.value[member] = score
         key.updated()
-        # For some reason, here it does not ignore the version
-        # https://github.com/cunla/fakeredis-py/actions/runs/3377186364/jobs/5605815202
-        return Float.encode(score, False)
-        # return self._encodefloat(score, False)
+        return score
 
     @command((Key(ZSet), StringTest, StringTest))
     def zlexcount(self, key, _min, _max):
@@ -211,7 +211,9 @@ class SortedSetCommandsMixin:
         items = self._apply_withscores(items, withscores)
         return items
 
-    def _zrange(self, key, start, stop, reverse, withscores, byscore) -> List[bytes]:
+    def _zrange(
+        self, key: CommandItem, start: ScoreTest, stop: ScoreTest, reverse: bool, withscores: bool, byscore: bool
+    ) -> List[bytes]:
         zset = key.value
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
@@ -237,7 +239,7 @@ class SortedSetCommandsMixin:
         items = self._limit_items(items, offset, count)
         return items
 
-    def _zrange_args(self, key, start, stop, *args):
+    def _zrange_args(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes):
         (bylex, byscore, rev, (offset, count), withscores), _ = extract_args(
             args, ("bylex", "byscore", "rev", "++limit", "withscores")
         )
@@ -273,7 +275,7 @@ class SortedSetCommandsMixin:
         return len(res)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrevrange(self, key, start, stop, *args):
+    def zrevrange(self, key: CommandItem, start: ScoreTest, stop: ScoreTest, *args):
         (withscores, byscore), _ = extract_args(args, ("withscores", "byscore"))
         return self._zrange(key, start, stop, True, withscores, byscore)
 
@@ -311,7 +313,7 @@ class SortedSetCommandsMixin:
         try:
             rank, score = key.value.rank(member)
             if withscore:
-                return [rank, self._encodefloat(score, False)]
+                return [rank, score]
             return rank
         except KeyError:
             return None
@@ -323,13 +325,13 @@ class SortedSetCommandsMixin:
             rank, score = key.value.rank(member)
             rev_rank = len(key.value) - 1 - rank
             if withscore:
-                return [rev_rank, self._encodefloat(score, False)]
+                return [rev_rank, score]
             return rev_rank
         except KeyError:
             return None
 
     @command((Key(ZSet), bytes), (bytes,))
-    def zrem(self, key, *members):
+    def zrem(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)
         for member in members:
             key.value.discard(member)
@@ -344,7 +346,7 @@ class SortedSetCommandsMixin:
         return self.zrem(key, *items)
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
-    def zremrangebyscore(self, key, _min, _max):
+    def zremrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest):
         items = key.value.irange_score(_min.lower_bound, _max.upper_bound, reverse=False)
         return self.zrem(key, *[item[1] for item in items])
 
@@ -352,7 +354,7 @@ class SortedSetCommandsMixin:
     def zremrangebyrank(self, key, start: int, stop: int):
         zset = key.value
         start, stop = fix_range(start, stop, len(zset))
-        items = zset.islice_score(start, stop)
+        items = zset.islice_score(start, stop, reverse=False)
         return self.zrem(key, *[item[1] for item in items])
 
     @command((Key(ZSet), Int), (bytes, bytes))
@@ -365,9 +367,9 @@ class SortedSetCommandsMixin:
         return [new_cursor, flat]
 
     @command((Key(ZSet), bytes))
-    def zscore(self, key: CommandItem, member: bytes) -> Optional[bytes]:
+    def zscore(self, key: CommandItem, member: bytes) -> Union[None, bytes]:
         try:
-            return self._encodefloat(key.value[member], False)
+            return key.value[member]
         except KeyError:
             return None
 
@@ -475,10 +477,12 @@ class SortedSetCommandsMixin:
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
 
-        if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
-        else:
+        if not withscores:
             res = [t for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in [t, res[t]]]
+        else:
+            res = [[i, res[i]] for i in res]
         return res
 
     @command((Int, bytes), (bytes,))
@@ -487,28 +491,26 @@ class SortedSetCommandsMixin:
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
 
-        if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
-        else:
+        if not withscores:
             res = [t for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in [t, res[t]]]
+        else:
+            res = [[i, res[i]] for i in res]
         return res
 
-    @command(
-        (
-            Int,
-            bytes,
-        ),
-        (bytes,),
-    )
+    @command((Int, bytes), (bytes,))
     def zinter(self, numkeys, *args):
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
         res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
 
-        if withscores:
-            res = [item for t in res for item in (t, Float.encode(res[t], False))]
-        else:
+        if not withscores:
             res = [t for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in [t, res[t]]]
+        else:
+            res = [[i, res[i]] for i in res]
         return res
 
     @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
@@ -525,16 +527,11 @@ class SortedSetCommandsMixin:
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
-        """Get the scores associated with the specified members in the sorted set
-        stored at the key.
+        """Get the scores associated with the specified members in the sorted set stored at the key.
 
-        For every member that does not exist in the sorted set, a nil value
-        is returned.
+        For every member that does not exist in the sorted set, a nil value is returned.
         """
-        scores = map(
-            lambda score: score if score is None else self._encodefloat(score, humanfriendly=False),
-            map(key.value.get, members),
-        )
+        scores = map(key.value.get, members)
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
@@ -556,10 +553,12 @@ class SortedSetCommandsMixin:
             count = min(count, len(key.value))
             res = random.sample(sorted(key.value.items()), count)
 
-        if withscores:
-            res = [item for t in res for item in t]
-        else:
+        if not withscores:
             res = [t[0] for t in res]
+        elif self.protocol_version == 2:
+            res = [item for t in res for item in t]
+        else:  # self.protocol_version == 3 and withscores
+            res = [list(item) for item in res]
         return res
 
     def _zmpop(self, keys, count, reverse, first_pass):

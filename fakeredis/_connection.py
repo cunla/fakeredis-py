@@ -21,6 +21,9 @@ from . import _msgs as msgs
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
+    def __init__(*args, **kwargs):
+        FakeBaseConnectionMixin.__init__(*args, **kwargs)
+
     def connect(self) -> None:
         super().connect()
         # The selector is set in redis.Connection.connect() after _connect() is called
@@ -80,6 +83,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
             return [self._decode(item) for item in response]
+        elif isinstance(response, dict):
+            return {self._decode(k): self._decode(v) for k, v in response.items()}
         elif isinstance(response, bytes):
             return self.encoder.decode(response)
         else:
@@ -124,8 +129,7 @@ class FakeRedisMixin:
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        # Interpret the positional and keyword arguments according to the
-        # version of redis in use.
+        # Interpret the positional and keyword arguments according to the version of redis in use.
         parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
         # Convert args => kwargs
         kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
@@ -162,6 +166,7 @@ class FakeRedisMixin:
                 "client_name",
                 "connected",
                 "server",
+                "protocol",
             }
             connection_kwargs = {
                 "connection_class": FakeConnection,
