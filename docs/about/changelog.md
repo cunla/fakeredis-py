@@ -7,13 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.30.0
+## v2.30.0 - 2025-05-20
 
 ### 🚀 Features
 
 - Implement support for `COPY` @ajhetherington #383
-
-## v2.29.1 - 2025-05-18
 
 ### 🐛 Bug Fixes
 
