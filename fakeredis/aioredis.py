@@ -209,6 +209,7 @@ class FakeRedis(redis_async.Redis):
             if p.default != inspect.Parameter.empty
         }
         kwds["server"] = server
+        kwds["connected"] = kwargs.get("connected", True)
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)
             errors = kwds.get("errors", None)
