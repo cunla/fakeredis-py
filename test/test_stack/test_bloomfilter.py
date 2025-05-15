@@ -113,6 +113,7 @@ def test_bf_mexists(r: redis.Redis):
         r.bf().add("key1", "v")
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_insert(r: redis.Redis):
     assert r.bf().create("key", 0.01, 1000)
@@ -196,6 +197,7 @@ def test_bf_info_resp2(r: redis.Redis):
     assert info.insertedNum == 0
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.resp3_only
 def test_bf_info_resp3(r: redis.Redis):
