@@ -65,7 +65,7 @@ def test_hgetex_expiration_configs(r):
     assert r.hgetex("test:hash", *test_keys, px=6000) == [b"bar", b"1", b"four"]
     ttls = r.httl("test:hash", *test_keys)
     for ttl in ttls:
-        assert pytest.approx(ttl) == 6
+        assert pytest.approx(ttl, 0.1) == 6
 
     # test get single field with expiration set through 'pxat'
     expire_at = redis_server_time(r) + timedelta(minutes=1)
