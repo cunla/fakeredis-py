@@ -7,10 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.30.0 - 2025-05-20
+## v2.30.0 - 2025-06-01
 
 ### 🚀 Features
 
+- Support for RESP3 #360
 - Implement support for `COPY` @ajhetherington #383
 
 ### 🐛 Bug Fixes
