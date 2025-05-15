@@ -82,7 +82,7 @@ class StringCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StringCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
 
     def _incrby(self, key: CommandItem, amount: int) -> int:
         c = Int.decode(key.get(b"0")) + amount

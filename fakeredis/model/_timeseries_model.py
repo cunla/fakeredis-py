@@ -15,7 +15,7 @@ class TimeSeries:
         duplicate_policy: bytes = b"block",
         ignore_max_time_diff: int = 0,
         ignore_max_val_diff: int = 0,
-        labels: Dict[str, str] = None,
+        labels: Dict[bytes, bytes] = None,
         source_key: Optional[bytes] = None,
     ):
         super().__init__()
@@ -34,9 +34,7 @@ class TimeSeries:
         self.ignore_max_val_diff = ignore_max_val_diff
         self.rules: List[TimeSeriesRule] = list()
 
-    def add(
-        self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None
-    ) -> Union[int, None, List[None]]:
+    def add(self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None) -> Union[int, None]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
             raise SimpleError(msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION)
         if duplicate_policy is None:

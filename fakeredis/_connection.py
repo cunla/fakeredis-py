@@ -21,7 +21,7 @@ from . import _msgs as msgs
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
-    def __init__(*args, **kwargs):
+    def __init__(*args: Any, **kwargs: Any) -> None:
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
     def connect(self) -> None:
@@ -38,8 +38,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             lua_modules=self._lua_modules,
             client_info=dict(
                 id=3,
-                addr="127.0.0.1:57275",
-                laddr="127.0.0.1:6379",
+                addr="127.0.0.1:57275",  # TODO get IP
+                laddr="127.0.0.1:6379",  # TODO get IP
                 fd=8,
                 name="",
                 _created=int(time.time()),
