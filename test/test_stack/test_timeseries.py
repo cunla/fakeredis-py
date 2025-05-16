@@ -10,6 +10,8 @@ from fakeredis import _msgs as msgs
 from test.testtools import raw_command, get_protocol_version, resp_conversion, resp_conversion_from_resp2
 
 timeseries_tests = pytest.importorskip("probables")
+pytestmark = []
+pytestmark.extend([pytest.mark.min_server("7")])
 
 
 class InfoClass:
@@ -130,10 +132,8 @@ def test_create_duplicate_policy(r: redis.Redis):
         ts_name = f"time-serie-ooo-{duplicate_policy}"
         assert r.ts().create(ts_name, duplicate_policy=duplicate_policy)
         info = r.ts().info(ts_name)
-        if get_protocol_version(r) == 2:
-            assert duplicate_policy == info.get("duplicate_policy")
-        else:
-            assert duplicate_policy.encode() == info.get(b"duplicatePolicy")
+        info = InfoClass(r, info)
+        assert duplicate_policy == info["duplicate_policy"]
 
 
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")

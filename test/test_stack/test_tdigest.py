@@ -1,14 +1,14 @@
 import math
-from math import inf
-
 import pytest
 import redis
+from math import inf
 
 from test.testtools import get_protocol_version
 
 topk_tests = pytest.importorskip("probables")
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_tdigest_reset(r: redis.Redis):
     assert r.tdigest().create("tDigest", 10)
@@ -23,6 +23,7 @@ def test_tdigest_reset(r: redis.Redis):
     assert 0 == info.get("unmerged_weight" if get_protocol_version(r) == 2 else b"Unmerged weight")
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_tdigest_merge(r: redis.Redis):
     assert r.tdigest().create("to-tDigest", 10)

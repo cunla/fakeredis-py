@@ -15,6 +15,7 @@ def test_topk_incrby(r: redis.Redis):
         assert [3, 6, 12, 4, 0] == r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_topk(r: redis.Redis):
     # test list with empty buckets

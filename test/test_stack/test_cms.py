@@ -84,6 +84,7 @@ def test_cms_merge(r: redis.Redis):
         r.cms().merge("cmsDim", 2, ["cms2", "noexist"], [4, 3])
 
 
+@pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_cms_info(r: redis.Redis):
     assert r.cms().initbydim("A", 1000, 5)
