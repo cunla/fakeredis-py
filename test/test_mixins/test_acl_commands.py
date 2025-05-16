@@ -13,6 +13,7 @@ pytestmark.extend(
         pytest.mark.min_server("7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.resp2_only,
+        pytest.mark.unsupported_server_types("dragonfly"),
     ]
 )
 
