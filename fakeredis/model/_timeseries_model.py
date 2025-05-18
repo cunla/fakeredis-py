@@ -1,4 +1,5 @@
-from typing import List, Dict, Tuple, Union, Optional
+from collections.abc import Callable
+from typing import List, Dict, Tuple, Union, Optional, Iterable
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import Database, SimpleError
@@ -15,7 +16,7 @@ class TimeSeries:
         duplicate_policy: bytes = b"block",
         ignore_max_time_diff: int = 0,
         ignore_max_val_diff: int = 0,
-        labels: Dict[bytes, bytes] = None,
+        labels: Optional[Dict[bytes, bytes]] = None,
         source_key: Optional[bytes] = None,
     ):
         super().__init__()
@@ -180,14 +181,14 @@ class Aggregators:
 
     @staticmethod
     def std_p(values: List[float]) -> float:
-        return Aggregators.var_p(values) ** 0.5
+        return float(Aggregators.var_p(values) ** 0.5)
 
     @staticmethod
     def std_s(values: List[float]) -> float:
-        return Aggregators.var_s(values) ** 0.5
+        return float(Aggregators.var_s(values) ** 0.5)
 
 
-AGGREGATORS = {
+AGGREGATORS: Dict[bytes, Callable[[Iterable[float]], float]] = {
     b"avg": lambda x: sum(x) / len(x),
     b"sum": sum,
     b"min": min,
@@ -220,7 +221,7 @@ def apply_aggregator(
 
         return total / bucket_duration
 
-    relevant_values = [x[1] for x in bucket]
+    relevant_values: List[float] = [x[1] for x in bucket]
     return AGGREGATORS[aggregator](relevant_values)
 
 

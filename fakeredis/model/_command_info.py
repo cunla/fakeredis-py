@@ -24,7 +24,7 @@ def _load_command_info() -> None:
 
 def get_all_commands_info() -> Dict[bytes, List[Any]]:
     _load_command_info()
-    return _COMMAND_INFO
+    return _COMMAND_INFO  # type: ignore[return-value]
 
 
 def get_command_info(cmd: bytes) -> Optional[List[Any]]:
@@ -51,7 +51,7 @@ def get_commands_by_category(category: Union[str, bytes]) -> List[bytes]:
         return []
     if isinstance(category, str):
         category = category.encode()
-    if category[0] != b"@":
+    if category[0] != ord(b"@"):
         category = b"@" + category
     commands = []
     for cmd, info in _COMMAND_INFO.items():
