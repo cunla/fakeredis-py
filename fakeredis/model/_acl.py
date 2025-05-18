@@ -290,7 +290,7 @@ class AclLogRecord:
 
 
 class AccessControlList:
-    def __init__(self):
+    def __init__(self) -> None:
         default_user_acl = UserAccessControlList(nopass=True)
         default_user_acl.add_key_pattern(b"*")
         default_user_acl.add_channel_pattern(b"*")

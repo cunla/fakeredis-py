@@ -25,7 +25,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
     def connect(self) -> None:
-        super().connect()
+        super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called
         self._selector: Optional[FakeSelector] = FakeSelector(self._sock)
 
@@ -86,7 +86,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         elif isinstance(response, dict):
             return {self._decode(k): self._decode(v) for k, v in response.items()}
         elif isinstance(response, bytes):
-            return self.encoder.decode(response)
+            return self.encoder.decode(response)  # type: ignore
         else:
             return response
 
@@ -193,9 +193,9 @@ class FakeRedisMixin:
         return cls(connection_pool=pool, *args, **kwargs)
 
 
-class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):  # type: ignore
+class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
     pass
 
 
-class FakeRedis(FakeRedisMixin, redis.Redis):  # type: ignore
+class FakeRedis(FakeRedisMixin, redis.Redis):
     pass

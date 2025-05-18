@@ -31,7 +31,7 @@ class FakeValkey(FakeRedis):
 class FakeStrictValkey(FakeStrictRedis):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
-        super().__init__(*args, **kwargs)
+        super(FakeStrictValkey, self).__init__(*args, **kwargs)
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
@@ -42,7 +42,7 @@ class FakeStrictValkey(FakeStrictRedis):
 class FakeAsyncValkey(FakeAsyncRedis):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
-        super().__init__(*args, **kwargs)
+        super(FakeAsyncValkey, self).__init__(*args, **kwargs)
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
