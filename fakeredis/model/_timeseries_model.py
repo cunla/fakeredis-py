@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import List, Dict, Tuple, Union, Optional, Iterable
+from typing import List, Dict, Tuple, Union, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import Database, SimpleError
@@ -188,7 +188,7 @@ class Aggregators:
         return float(Aggregators.var_s(values) ** 0.5)
 
 
-AGGREGATORS: Dict[bytes, Callable[[Iterable[float]], float]] = {
+AGGREGATORS: Dict[bytes, Callable[[List[float]], float]] = {
     b"avg": lambda x: sum(x) / len(x),
     b"sum": sum,
     b"min": min,
