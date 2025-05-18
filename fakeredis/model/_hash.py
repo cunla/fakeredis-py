@@ -37,12 +37,12 @@ class Hash:
 
     def set_key_expireat(self, key: AnyStr, when_ms: int) -> int:
         now = current_time()
-        key = asbytes(key)
+        key_bytes = asbytes(key)
         if when_ms <= now:
-            self._values.pop(key, None)
-            self._expirations.pop(key, None)
+            self._values.pop(key_bytes, None)
+            self._expirations.pop(key_bytes, None)
             return 2
-        self._expirations[key] = when_ms
+        self._expirations[key_bytes] = when_ms
         return 1
 
     def clear_key_expireat(self, key: AnyStr) -> bool:
@@ -61,14 +61,14 @@ class Hash:
         return self._values.__contains__(asbytes(key))
 
     def __setitem__(self, key: AnyStr, value: Any) -> None:
-        key = asbytes(key)
-        self._expirations.pop(key, None)
-        self._values[key] = value
+        key_bytes = asbytes(key)
+        self._expirations.pop(key_bytes, None)
+        self._values[key_bytes] = value
 
     def __delitem__(self, key: AnyStr) -> None:
-        key = asbytes(key)
-        self._values.pop(key, None)
-        self._expirations.pop(key, None)
+        key_bytes = asbytes(key)
+        self._values.pop(key_bytes, None)
+        self._expirations.pop(key_bytes, None)
 
     def __len__(self) -> int:
         self._expire_keys()
@@ -86,7 +86,7 @@ class Hash:
         self._expire_keys()
         return self._values.get(asbytes(key), default)
 
-    def keys(self) -> Iterable[AnyStr]:
+    def keys(self) -> Iterable[bytes]:
         self._expire_keys()
         return [asbytes(k) for k in self._values.keys()]
 
