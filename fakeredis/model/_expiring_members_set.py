@@ -17,7 +17,7 @@ class ExpiringMembersSet:
         removed = []
         now = current_time()
         for k in self._values:
-            if (self._values[k] or 0) < now:
+            if (self._values[k] or (now + 1)) < now:
                 removed.append(k)
         for k in removed:
             self._values.pop(k)
@@ -50,7 +50,8 @@ class ExpiringMembersSet:
 
     def __iter__(self) -> Iterable[bytes]:
         self._expire_members()
-        return iter({k for k in self._values if (self._values[k] or 0) >= current_time()})
+        now = current_time()
+        return iter({k for k in self._values if (self._values[k] or (now + 1)) >= now})
 
     def __get__(self, instance: object, owner: None = None) -> Set[bytes]:
         self._expire_members()
