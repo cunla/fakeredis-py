@@ -2,27 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import sys
 import uuid
 import warnings
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Self
 
-from redis import ResponseError
-
-from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-
-if sys.version_info >= (3, 11):
-    from asyncio import timeout as async_timeout
-else:
-    from async_timeout import timeout as async_timeout
-
 import redis.asyncio as redis_async
+from redis import ResponseError
 from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
+from ._helpers import SimpleError
+from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
+from .typing import async_timeout
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):

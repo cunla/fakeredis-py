@@ -1,13 +1,8 @@
-import sys
 from typing import Iterable, Optional, Any, Dict, Union, Set
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from fakeredis.typing import Self
 
 
 class ExpiringMembersSet:

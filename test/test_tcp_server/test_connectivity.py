@@ -7,8 +7,7 @@ import redis
 
 from fakeredis import TcpFakeServer
 
-if sys.version_info < (3, 11):
-    pytest.skip("TcpFakeServer is only available in Python 3.11+", allow_module_level=True)
+pytest.mark.skipif(sys.version_info < (3, 11), reason="TcpFakeServer is only available in Python 3.11+")
 
 
 def test_tcp_server_started():

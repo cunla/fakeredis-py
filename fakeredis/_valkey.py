@@ -1,14 +1,9 @@
-import sys
 from typing import Any, Dict
 
 from . import FakeStrictRedis
 from ._connection import FakeRedis
 from .aioredis import FakeRedis as FakeAsyncRedis
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from .typing import Self
 
 
 def _validate_server_type(args_dict: Dict[str, Any]) -> None:

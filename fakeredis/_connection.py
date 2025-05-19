@@ -1,23 +1,17 @@
 import inspect
 import queue
-import sys
 import time
 import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
-
-from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector
 from . import _msgs as msgs
+from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
+from .typing import Self
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
