@@ -18,8 +18,9 @@ class ExpiringMembersSet:
         now = current_time()
         for k in self._values:
             if (self._values[k] or 0) < now:
-                self._values.pop(k, None)
                 removed.append(k)
+        for k in removed:
+            self._values.pop(k)
 
     def set_member_expireat(self, key: bytes, when_ms: int) -> int:
         now = current_time()
