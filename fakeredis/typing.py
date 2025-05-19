@@ -1,6 +1,13 @@
 import sys
 
 if sys.version_info >= (3, 11):
-    pass
+    from typing import Self
+    from asyncio import timeout as async_timeout
 else:
-    pass
+    from async_timeout import timeout as async_timeout
+    from typing_extensions import Self
+
+__all__ = [
+    "Self",
+    "async_timeout",
+]
