@@ -22,7 +22,8 @@ class HashCommandsMixin:
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
 
-    def __init__(self):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(HashCommandsMixin, self).__init__(*args, **kwargs)
         self.protocol_version: int
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
