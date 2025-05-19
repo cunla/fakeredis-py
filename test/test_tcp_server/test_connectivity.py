@@ -7,9 +7,8 @@ import redis
 
 from fakeredis import TcpFakeServer
 
-pytest.mark.skipif(sys.version_info < (3, 11), reason="TcpFakeServer is only available in Python 3.11+")
 
-
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="TcpFakeServer is only available in Python 3.11+")
 def test_tcp_server_started():
     server_address = ("127.0.0.1", 19000)
     server = TcpFakeServer(server_address)
