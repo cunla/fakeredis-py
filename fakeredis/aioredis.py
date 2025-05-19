@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import uuid
 import warnings
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Self
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 
 import redis.asyncio as redis_async
 from redis import ResponseError
@@ -15,7 +15,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from .typing import async_timeout
+from .typing import async_timeout, Self
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
