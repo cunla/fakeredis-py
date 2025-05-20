@@ -1,6 +1,6 @@
 import random
 from collections.abc import Mapping
-from typing import Callable, List, Tuple, Any, Optional, Sequence, Union
+from typing import Callable, List, Any, Optional, Sequence, Union
 
 import math
 
@@ -20,7 +20,7 @@ class HashCommandsMixin:
         bytes,
     ]
     _encodefloat: Callable[[float, bool], bytes]
-    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HashCommandsMixin, self).__init__(*args, **kwargs)

@@ -1,6 +1,4 @@
-from typing import Any, List, Optional, Tuple
-
-from typing_extensions import Dict
+from typing import Any, List, Optional, Tuple, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
