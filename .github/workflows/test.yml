@@ -36,6 +36,22 @@ jobs:
           uv build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
+  test-import-py37:
+    name: Test basic import using python 3.7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          cache-dependency-path: uv.lock
+          python-version: "3.7"
+      - name: Test import
+        run: |
+          uv build
+          pip install dist/fakeredis-*.tar.gz
+          python -c "import fakeredis"
   test:
     name: >
       tests
