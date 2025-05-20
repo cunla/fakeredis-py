@@ -2,7 +2,7 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Dict
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Dict, Sequence
 from xmlrpc.client import ResponseError
 
 import redis
@@ -105,7 +105,7 @@ class BaseFakeSocket:
         self._server.sockets.append(self)
 
     @property
-    def client_info(self):
+    def client_info(self) -> Dict[str, Union[str, int]]:
         res = {k: v for k, v in self._client_info.items() if not k.startswith("-")}
         res["age"] = int(time.time()) - int(self._client_info.get("-created", 0))
         return res
@@ -116,11 +116,11 @@ class BaseFakeSocket:
 
     @property
     def current_user(self) -> bytes:
-        return self._client_info.get("user", "").encode()
+        return str(self._client_info.get("user", "")).encode()
 
     @property
     def protocol_version(self) -> int:
-        return self._client_info.get("resp", 2)
+        return int(self._client_info.get("resp", 2))
 
     @property
     def version(self) -> Tuple[int, ...]:
@@ -346,7 +346,7 @@ class BaseFakeSocket:
             data = data.encode("ascii")  # type: ignore
         self._parser.send(data)
 
-    def _scan(self, keys, cursor, *args):
+    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> Tuple[int, List[bytes]]:
         """This is the basis of most of the ``scan`` methods.
 
         This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
@@ -382,7 +382,7 @@ class BaseFakeSocket:
         bits_len = (len(keys) - 1).bit_length()
         cursor = bin_reverse(cursor, bits_len)
         if cursor >= len(keys):
-            return [0, []]
+            return 0, []
         result_cursor = cursor + count
         result_data = []
 
@@ -393,7 +393,7 @@ class BaseFakeSocket:
                 key = key.encode("utf-8")
             return regex.match(key) if regex is not None else True
 
-        def match_type(key) -> bool:
+        def match_type(key: bytes) -> bool:
             return _type is None or casematch(BaseFakeSocket._key_value_type(self._db[key]).value, _type)
 
         if pattern is not None or _type is not None:
@@ -406,7 +406,7 @@ class BaseFakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
+        return bin_reverse(result_cursor, bits_len), result_data
 
     def _ttl(self, key: CommandItem, scale: float) -> int:
         if not key:

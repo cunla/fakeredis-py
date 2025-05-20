@@ -1,88 +1,105 @@
 [build-system]
-requires = ["poetry_core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-
-[tool.poetry]
+[project]
 name = "fakeredis"
-packages = [
-    { include = "fakeredis" },
-    { include = "LICENSE", to = "fakeredis" },
-]
 version = "2.30.0"
 description = "Python implementation of redis API, can be used for testing purposes."
-readme = "README.md"
-keywords = ["redis", "RedisJson", "RedisBloom", "tests", "redis-stack"]
 authors = [
-    "Daniel Moran <daniel@moransoftware.ca>",
-    "Bruce Merry <bmerry@ska.ac.za>",
-    "James Saryerwinnie <js@jamesls.com>",
+    { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
+    { name = "Bruce Merry", email = "bmerry@ska.ac.za" },
+    { name = "James Saryerwinnie", email = "js@jamesls.com" },
 ]
-maintainers = [
-    "Daniel Moran <daniel@moransoftware.ca>",
-]
+requires-python = "~=3.7"
+readme = "README.md"
 license = "BSD-3-Clause"
+maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
+keywords = [
+    "redis",
+    "RedisJson",
+    "RedisBloom",
+    "tests",
+    "redis-stack",
+]
 classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Development Status :: 6 - Mature',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: BSD License',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python',
-    'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
-    'Topic :: Software Development :: Libraries :: Python Modules',
+    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 6 - Mature",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-homepage = "https://github.com/cunla/fakeredis-py"
-repository = "https://github.com/cunla/fakeredis-py"
-documentation = "https://fakeredis.readthedocs.io/"
-include = [
-    { path = "test", format = "sdist" },
+dependencies = [
+    "redis>=4 ; python_version < '3.8'",
+    "redis>=4.3 ; python_version > '3.8'",
+    "sortedcontainers>=2,<3",
+    "typing-extensions~=4.7 ; python_version < '3.11'",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.7"
-redis = [{ version = ">=4", python = "<3.8" }, { version = ">=4.3", python = ">3.8" }]
-sortedcontainers = "^2"
-typing-extensions = { version = "^4.7", python = "<3.11" }
-lupa = { version = ">=2.1,<3.0", optional = true }
-jsonpath-ng = { version = "^1.6", optional = true }
-pyprobables = { version = "^0.6", optional = true }
+[project.optional-dependencies]
+lua = ["lupa>=2.1,<3.0"]
+json = ["jsonpath-ng~=1.6"]
+bf = ["pyprobables>=0.6,<0.7"]
+cf = ["pyprobables>=0.6,<0.7"]
+probabilistic = ["pyprobables>=0.6,<0.7"]
 
-[tool.poetry.extras]
-lua = ["lupa"]
-json = ["jsonpath-ng"]
-bf = ["pyprobables"]
-cf = ["pyprobables"]
-probabilistic = ["pyprobables"]
-
-[tool.poetry.group.dev.dependencies]
-poetry = { version = "^2.1.2", python = "^3.9" }
-ruff = "^0.11"
-mypy = { version = "^1.10", python = "^3.9" }
-pre-commit = { version = "^4.2", python = "^3.9" }
-
-[tool.poetry.group.test.dependencies]
-coverage = { version = "^7.6", python = "^3.9" }
-pytest = { version = "^8.3", python = "^3.9" }
-hypothesis = { version = "^6.111", python = "^3.9" }
-pytest-timeout = { version = "^2.3.1", python = "^3.9" }
-pytest-asyncio = { version = "^0.24", python = "^3.9" }
-pytest-cov = { version = "^6.0", python = "^3.9" }
-pytest-mock = { version = "^3.14", python = "^3.9" }
-pytest-html = { version = "^4.1", python = "^3.9" }
-
-[tool.poetry.group.docs.dependencies]
-python-dotenv = { version = "^1", python = "^3.9" }
-pygithub = { version = "^2.3", python = "^3.9" }
-
-[tool.poetry.urls]
+[project.urls]
+Homepage = "https://github.com/cunla/fakeredis-py"
+Repository = "https://github.com/cunla/fakeredis-py"
+Documentation = "https://fakeredis.moransoftware.ca/"
 "Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
-"Funding" = "https://github.com/sponsors/cunla"
-"Documentation" = "https://fakeredis.moransoftware.ca/"
+Funding = "https://github.com/sponsors/cunla"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11",
+    "mypy~=1.10 ; python_version >= '3.9'",
+    "pre-commit~=4.2 ; python_version >= '3.9'",
+]
+test = [
+    "coverage~=7.6 ; python_version >= '3.9'",
+    "pytest~=8.3 ; python_version >= '3.9'",
+    "hypothesis~=6.111 ; python_version >= '3.9'",
+    "pytest-timeout>=2.3.1,<3 ; python_version >= '3.9'",
+    "pytest-asyncio>=0.24,<0.25 ; python_version >= '3.9'",
+    "pytest-cov~=6.0 ; python_version >= '3.9'",
+    "pytest-mock~=3.14 ; python_version >= '3.9'",
+    "pytest-html~=4.1 ; python_version >= '3.9'",
+]
+docs = [
+    "python-dotenv>=1,<2 ; python_version >= '3.9'",
+    "pygithub~=2.3 ; python_version >= '3.9'",
+]
+
+[tool.uv]
+default-groups = [
+    "dev",
+    "test",
+    "docs",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "fakeredis",
+    "LICENSE",
+    "test",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "fakeredis",
+    "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+LICENSE = "fakeredis/LICENSE"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

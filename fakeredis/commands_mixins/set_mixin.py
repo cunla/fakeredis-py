@@ -42,7 +42,7 @@ def _setop(
 
 
 class SetCommandsMixin:
-    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _scan: Callable[[CommandItem, int, bytes, ...], Tuple[int, List[bytes]]]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SetCommandsMixin, self).__init__(*args, **kwargs)
