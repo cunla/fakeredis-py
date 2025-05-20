@@ -107,7 +107,7 @@ class BaseFakeSocket:
     @property
     def client_info(self):
         res = {k: v for k, v in self._client_info.items() if not k.startswith("-")}
-        res["age"] = int(time.time()) - self._client_info.get("-created", 0)
+        res["age"] = int(time.time()) - int(self._client_info.get("-created", 0))
         return res
 
     @property
