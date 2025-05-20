@@ -21,20 +21,19 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
         with:
           cache-dependency-path: uv.lock
-          python-version-file: "pyproject.toml"
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
+          python-version: "3.13"
       - name: Run ruff
         shell: bash
         run: |
-          poetry run ruff check
+          uv run ruff check
       - name: Test import
         run: |
-          poetry build
+          uv build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
   test:
@@ -58,17 +57,17 @@ jobs:
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
             redis-py: "6.1.0"
-            extra: "json, bf, lua, cf"
+            extra: ["json", "bf", "lua", "cf"]
             hypothesis: true
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:7.4.0-v3"
             redis-py: "6.1.0"
-            extra: "json, bf, lua, cf"
+            extra: ["json", "bf", "lua", "cf"]
             hypothesis: true
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
             redis-py: "6.1.0"
-            extra: "json, bf, lua, cf"
+            extra: ["json", "bf", "lua", "cf"]
             coverage: true
             hypothesis: true
     permissions:
@@ -87,36 +86,38 @@ jobs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
         with:
-          cache-dependency-path: poetry.lock
+          cache-dependency-path: uv.lock
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          python -m pip --quiet install poetry
-          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-          poetry install
+          EXTRA_ARGS=""
+          for extra in "${{ matrix.extra[@] }}"; do
+            EXTRA_ARGS+="--extra $extra"
+          done
+
+          echo "Command: uv sync $EXTRA_ARGS"
+          uv sync $EXTRA_ARGS
           # if python version is below 3.10 and redis-py is 5.0.9 - change it to 5.0.8
           if [[ ${{ matrix.python-version }} != "3.10" && ${{ matrix.redis-py }} == "5.0.9" ]]; then
-              poetry run pip install redis==5.0.8
+              uv pip install redis==5.0.8
           fi
-          poetry run pip install redis==${{ matrix.redis-py }}
-      - name: Install json
-        if: ${{ matrix.extra }}
-        run: |
-          poetry run pip install "fakeredis[${{ matrix.extra }}]"
+          uv pip install redis==${{ matrix.redis-py }}
       - name: Get version
         id: getVersion
         shell: bash
         run: |
-          VERSION=$(poetry version -s --no-ansi -n)
+          VERSION=$(uv version --short)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
         run: |
-          poetry run pytest -v -m "not slow"
+          uv run pytest -v -m "not slow"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
