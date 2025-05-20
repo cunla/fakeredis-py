@@ -8,7 +8,7 @@ from .._helpers import SimpleError, current_time
 
 
 class Selector:
-    def __init__(self, command: bytes, allowed: bool, keys: bytes, channels: bytes):
+    def __init__(self, command: bytes, allowed: bool, keys: bytes, channels: bytes) -> None:
         self.command: bytes = command
         self.allowed: bool = allowed
         self.keys: bytes = keys
@@ -114,7 +114,7 @@ class UserAccessControlList:
         self._passwords.clear()
 
     def check_password(self, password: Optional[bytes]) -> bool:
-        password_provided = password is not None and password != b""
+        password_provided: bool = password is not None and password != b""
         if self._nopass:
             return not password_provided
         elif not password_provided:
@@ -290,7 +290,7 @@ class AclLogRecord:
 
 
 class AccessControlList:
-    def __init__(self):
+    def __init__(self) -> None:
         default_user_acl = UserAccessControlList(nopass=True)
         default_user_acl.add_key_pattern(b"*")
         default_user_acl.add_channel_pattern(b"*")

@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
-from typing import BinaryIO, Dict, Tuple
+from typing import BinaryIO, Dict, Tuple, Any
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
@@ -28,7 +28,7 @@ class Client:
 class Reader:
     reader: BinaryIO
 
-    def load(self):
+    def load(self) -> Any:
         line = self.reader.readline().strip()
         match line[0:1], line[1:]:
             case b"*", length:
@@ -56,7 +56,7 @@ class Reader:
 class Writer:
     writer: BinaryIO
 
-    def dump(self, value, dump_bulk=False):
+    def dump(self, value: Any, dump_bulk=False) -> None:
         if isinstance(value, int):
             self.writer.write(f":{value}\r\n".encode())
         elif isinstance(value, (str, bytes)):

@@ -1,5 +1,5 @@
 import secrets
-from typing import Any, Tuple, List, Callable, Dict, Optional, Union
+from typing import Any, Tuple, List, Dict, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Int
@@ -9,11 +9,9 @@ from fakeredis.model import get_categories, get_commands_by_category
 
 
 class AclCommandsMixin:
-    _get_command_info: Callable[[bytes], List[Any]]
-
     def __init(self, *args: Any, **kwargs: Any) -> None:
         super(AclCommandsMixin).__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self._server: Any
         self._client_info: Dict[str, Union[str, int]]
 

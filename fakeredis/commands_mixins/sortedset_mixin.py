@@ -46,7 +46,7 @@ class SortedSetCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self._db: Database
         # Sorted set commands
 

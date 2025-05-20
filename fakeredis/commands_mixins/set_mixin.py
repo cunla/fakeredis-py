@@ -46,7 +46,7 @@ class SetCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SetCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self._db: Database
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))

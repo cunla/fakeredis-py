@@ -1,5 +1,5 @@
 import time
-from typing import List, Union, Optional, Any, Set, Dict
+from typing import List, Union, Optional, Any, Set, Dict, Tuple
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -15,6 +15,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._db: Database
+        self.version: Tuple[int, ...]
 
     @staticmethod
     def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:
@@ -222,7 +223,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         repeat=(),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> bytes:
+    def ts_deleterule(self, source_key: CommandItem, dest_key: CommandItem) -> SimpleString:
         if source_key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         res: Optional[TimeSeriesRule] = source_key.value.get_rule(dest_key.key)
@@ -231,7 +232,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         source_key.value.delete_rule(res)
         return OK
 
-    def _ts_inc_or_dec(self, key: CommandItem, addend: float, *args: bytes) -> bytes:
+    def _ts_inc_or_dec(self, key: CommandItem, addend: float, *args: bytes) -> SimpleString:
         (ts,), left_args = extract_args(
             args,
             ("+timestamp",),

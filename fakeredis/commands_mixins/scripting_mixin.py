@@ -80,7 +80,7 @@ class ScriptingCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any):
         self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
         self.server_type: str
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self.load_lua_modules = set()
         lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
         if len(lua_modules_set) > 0:

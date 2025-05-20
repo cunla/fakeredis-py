@@ -44,7 +44,7 @@ class FakeServer:
         self,
         version: VersionType = (7,),
         server_type: ServerType = "redis",
-        config: Dict[bytes, bytes] = None,
+        config: Optional[Dict[bytes, bytes]] = None,
     ) -> None:
         """Initialize a new FakeServer instance.
         :param version: The version of the server (e.g. 6, 7.4, "7.4.1", can also be a tuple)

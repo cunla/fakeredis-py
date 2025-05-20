@@ -26,7 +26,7 @@ class GenericCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self._server: Any
         self._db: Database
         self._db_num: int
