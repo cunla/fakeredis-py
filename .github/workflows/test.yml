@@ -41,7 +41,7 @@ jobs:
       tests
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
-      extra:${{matrix.extra}}
+      extra:${{matrix.install-extras}}
     needs:
       - "lint"
     runs-on: ubuntu-latest
@@ -52,24 +52,21 @@ jobs:
         redis-image: [ "redis:6.2.17", "redis:7.4.2", "redis:8.0.0", "valkey/valkey:8.1" ]
         python-version: [ "3.9", "3.12", "3.13" ]
         redis-py: [ "4.6.0", "5.2.1", "5.3.0", "6.1.0" ]
-        extra: [ "lua" ]
+        install-extras: false
         include:
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
             redis-py: "6.1.0"
-            extra: ["json", "bf", "lua", "cf"]
-            hypothesis: true
+            install-extras: true
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:7.4.0-v3"
             redis-py: "6.1.0"
-            extra: ["json", "bf", "lua", "cf"]
-            hypothesis: true
+            install-extras: true
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
             redis-py: "6.1.0"
-            extra: ["json", "bf", "lua", "cf"]
+            install-extras: true
             coverage: true
-            hypothesis: true
     permissions:
       pull-requests: write
     services:
@@ -96,13 +93,10 @@ jobs:
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          EXTRA_ARGS=""
-          for extra in "${{ toJson(matrix.extra) }}"; do
-            EXTRA_ARGS+="--extra $extra"
-          done
-
-          echo "Command: uv sync $EXTRA_ARGS"
-          uv sync $EXTRA_ARGS
+          uv sync --extra lua
+          if [ ${{ matrix.install-extras }} == true ]; then
+              uv sync --all-extras
+          fi
           # if python version is below 3.10 and redis-py is 5.0.9 - change it to 5.0.8
           if [[ ${{ matrix.python-version }} != "3.10" && ${{ matrix.redis-py }} == "5.0.9" ]]; then
               uv pip install redis==5.0.8
