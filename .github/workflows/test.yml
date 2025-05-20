@@ -97,7 +97,7 @@ jobs:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
           EXTRA_ARGS=""
-          for extra in "${{ matrix.extra[@] }}"; do
+          for extra in "${{ toJson(matrix.extra) }}"; do
             EXTRA_ARGS+="--extra $extra"
           done
 
