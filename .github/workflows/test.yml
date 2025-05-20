@@ -97,10 +97,6 @@ jobs:
           if [ ${{ matrix.install-extras }} == true ]; then
               uv sync --all-extras
           fi
-          # if python version is below 3.10 and redis-py is 5.0.9 - change it to 5.0.8
-          if [[ ${{ matrix.python-version }} != "3.10" && ${{ matrix.redis-py }} == "5.0.9" ]]; then
-              uv pip install redis==5.0.8
-          fi
           uv pip install redis==${{ matrix.redis-py }}
       - name: Get version
         id: getVersion
