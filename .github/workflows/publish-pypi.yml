@@ -30,6 +30,6 @@ jobs:
         run: python -m build
 
       - name: Publish package to pypi
-        uses: pypa/gh-action-pypi-publish@v1.9.0
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           print-hash: true
