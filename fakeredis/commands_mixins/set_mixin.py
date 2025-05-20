@@ -1,5 +1,5 @@
 import random
-from typing import Callable, Tuple, Any, Optional, List, Union
+from typing import Callable, Tuple, Any, Optional, List, Union, Sequence
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
@@ -42,7 +42,7 @@ def _setop(
 
 
 class SetCommandsMixin:
-    _scan: Callable[[CommandItem, int, bytes, ...], Tuple[int, List[bytes]]]
+    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SetCommandsMixin, self).__init__(*args, **kwargs)

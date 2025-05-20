@@ -4,7 +4,7 @@ import functools
 import itertools
 import random
 import sys
-from typing import Union, Optional, List, Tuple, Callable, Any, Dict
+from typing import Union, Optional, List, Tuple, Callable, Any, Dict, Sequence
 
 import math
 
@@ -41,7 +41,7 @@ SORTED_SET_METHODS = {
 
 class SortedSetCommandsMixin:
     _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
-    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
     _encodefloat: Callable[[float, bool], bytes]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

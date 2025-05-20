@@ -346,7 +346,7 @@ class BaseFakeSocket:
             data = data.encode("ascii")  # type: ignore
         self._parser.send(data)
 
-    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> List[Union[int, List[bytes]]]:
+    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> List[Union[bytes, List[bytes]]]:
         """This is the basis of most of the ``scan`` methods.
 
         This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
@@ -382,7 +382,7 @@ class BaseFakeSocket:
         bits_len = (len(keys) - 1).bit_length()
         cursor = bin_reverse(cursor, bits_len)
         if cursor >= len(keys):
-            return [0, []]
+            return [b"0", []]
         result_cursor = cursor + count
         result_data = []
 
@@ -406,7 +406,7 @@ class BaseFakeSocket:
 
         if result_cursor >= len(data):
             result_cursor = 0
-        return [bin_reverse(result_cursor, bits_len), result_data]
+        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
 
     def _ttl(self, key: CommandItem, scale: float) -> int:
         if not key:
