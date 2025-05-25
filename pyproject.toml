@@ -19,8 +19,11 @@ keywords = [
     "redis",
     "RedisJson",
     "RedisBloom",
-    "tests",
+    "RedisTimeSeries",
+    "testing",
     "redis-stack",
+    "valkey",
+    "dragonfly",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
