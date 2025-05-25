@@ -14,7 +14,7 @@ class StreamsCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:

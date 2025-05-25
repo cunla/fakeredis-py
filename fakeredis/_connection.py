@@ -1,31 +1,25 @@
 import inspect
 import queue
-import sys
 import time
 import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
-
-from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector
 from . import _msgs as msgs
+from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
+from .typing import Self
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
-    def __init__(*args, **kwargs):
+    def __init__(*args: Any, **kwargs: Any) -> None:
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
     def connect(self) -> None:
-        super().connect()
+        super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called
         self._selector: Optional[FakeSelector] = FakeSelector(self._sock)
 
@@ -38,8 +32,8 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             lua_modules=self._lua_modules,
             client_info=dict(
                 id=3,
-                addr="127.0.0.1:57275",
-                laddr="127.0.0.1:6379",
+                addr="127.0.0.1:57275",  # TODO get IP
+                laddr="127.0.0.1:6379",  # TODO get IP
                 fd=8,
                 name="",
                 _created=int(time.time()),
@@ -86,7 +80,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         elif isinstance(response, dict):
             return {self._decode(k): self._decode(v) for k, v in response.items()}
         elif isinstance(response, bytes):
-            return self.encoder.decode(response)
+            return self.encoder.decode(response)  # type: ignore
         else:
             return response
 
@@ -193,9 +187,9 @@ class FakeRedisMixin:
         return cls(connection_pool=pool, *args, **kwargs)
 
 
-class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):  # type: ignore
+class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):
     pass
 
 
-class FakeRedis(FakeRedisMixin, redis.Redis):  # type: ignore
+class FakeRedis(FakeRedisMixin, redis.Redis):
     pass

@@ -13,9 +13,9 @@ runs:
     - name: Test with coverage
       shell: bash
       run: |
-        poetry run ruff check
-        poetry run pytest -v --cov=fakeredis --cov-branch
-        poetry run coverage json
+        uv run ruff check
+        uv run pytest -v --cov=fakeredis --cov-branch
+        uv run coverage json
         echo "COVERAGE=$(jq '.totals.percent_covered_display|tonumber' coverage.json)" >> $GITHUB_ENV
     - name: Create coverage badge
       if: ${{ github.event_name == 'push' }}
@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         echo 'REPORT<<EOF' >> $GITHUB_ENV
-        poetry run coverage report >> $GITHUB_ENV
+        uv run coverage report >> $GITHUB_ENV
         echo 'EOF' >> $GITHUB_ENV
     - uses: mshick/add-pr-comment@v2
       if: ${{ github.event_name == 'pull_request' }}

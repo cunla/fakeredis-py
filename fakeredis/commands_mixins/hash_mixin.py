@@ -1,7 +1,8 @@
-import math
 import random
 from collections.abc import Mapping
-from typing import Callable, List, Tuple, Any, Optional, Sequence, Union
+from typing import Callable, List, Any, Optional, Sequence, Union
+
+import math
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -19,8 +20,11 @@ class HashCommandsMixin:
         bytes,
     ]
     _encodefloat: Callable[[float, bool], bytes]
-    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
-    protocol_version: int
+    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(HashCommandsMixin, self).__init__(*args, **kwargs)
+        self.protocol_version: int
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value

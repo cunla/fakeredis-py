@@ -63,6 +63,6 @@ class FakeSocket(
         db: int,
         lua_modules: Optional[Set[str]] = None,  # noqa: F821
         *args: Any,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super(FakeSocket, self).__init__(server, db, *args, lua_modules=lua_modules, **kwargs)

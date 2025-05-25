@@ -34,7 +34,7 @@ class BitfieldEncoding:
 class BitmapCommandsMixin:
     def __init(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
 
     @staticmethod
     def _bytes_as_bin_string(value: bytes) -> str:

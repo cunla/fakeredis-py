@@ -27,7 +27,7 @@ autolabeler:
       - '/fix/i'
   - label: 'dependencies'
     files:
-      - 'poetry.lock'
+      - 'uv.lock'
 version-resolver:
   major:
     labels:

@@ -16,7 +16,7 @@ class SimpleString:
     def decode(cls, value: bytes) -> bytes:
         return value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.value!r})"
 
 

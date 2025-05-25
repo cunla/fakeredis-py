@@ -1,7 +1,7 @@
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any, Callable, List, Optional
+from typing import Tuple, Any, Callable, List, Optional, Union, Sequence
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -21,12 +21,12 @@ from fakeredis.model import ZSet, Hash, ExpiringMembersSet
 
 class GenericCommandsMixin:
     _ttl: Callable[[CommandItem, float], int]
-    _scan: Callable[[CommandItem, int, bytes, bytes], Tuple[int, List[bytes]]]
+    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
     _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
         self._server: Any
         self._db: Database
         self._db_num: int

@@ -2,27 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import sys
 import uuid
 import warnings
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 
+import redis.asyncio as redis_async
 from redis import ResponseError
-
-from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-
-if sys.version_info >= (3, 11):
-    from asyncio import timeout as async_timeout
-else:
-    from async_timeout import timeout as async_timeout
-
-import redis.asyncio as redis_async  # aioredis was integrated into redis in version 4.2.0 as redis.asyncio
 from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
+from ._helpers import SimpleError
+from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
+from .typing import async_timeout, Self
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -253,8 +246,8 @@ class FakeRedis(redis_async.Redis):
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> redis_async.Redis:
-        self = super().from_url(url, **kwargs)
+    def from_url(cls, url: str, **kwargs: Any) -> Self:
+        self: redis_async.Redis = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = FakeConnection
         pool.connection_kwargs.setdefault("version", "7.4")

@@ -1,5 +1,5 @@
 import time
-from typing import Any, List, Optional
+from typing import Any, List
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex
@@ -14,10 +14,6 @@ class ServerCommandsMixin:
 
         self._server: "FakeServer"
         self._db: Database
-
-    @staticmethod
-    def _get_command_info(cmd: bytes) -> Optional[List[Any]]:
-        return get_command_info(cmd)
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args: bytes) -> SimpleString:
@@ -72,7 +68,7 @@ class ServerCommandsMixin:
 
     @command(name="COMMAND INFO", fixed=(), repeat=(bytes,))
     def command_info(self, *commands: bytes) -> List[Any]:
-        res = [self._get_command_info(cmd) for cmd in commands]
+        res = [get_command_info(cmd) for cmd in commands]
         return res
 
     @command(name="COMMAND COUNT", fixed=(), repeat=())
@@ -81,5 +77,5 @@ class ServerCommandsMixin:
 
     @command(name="COMMAND", fixed=(), repeat=())
     def command_(self) -> List[Any]:
-        res = [self._get_command_info(cmd) for cmd in get_all_commands_info()]
+        res = [get_command_info(cmd) for cmd in get_all_commands_info()]
         return res

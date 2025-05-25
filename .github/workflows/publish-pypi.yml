@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install dependencies
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
@@ -30,6 +30,6 @@ jobs:
         run: python -m build
 
       - name: Publish package to pypi
-        uses: pypa/gh-action-pypi-publish@v1.9.0
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           print-hash: true

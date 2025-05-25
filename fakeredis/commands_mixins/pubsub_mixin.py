@@ -12,7 +12,7 @@ class PubSubCommandsMixin:
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
         self._server: Any
-        self.version: Tuple[int]
+        self.version: Tuple[int, ...]
 
     def _subscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
         for channel in channels:
