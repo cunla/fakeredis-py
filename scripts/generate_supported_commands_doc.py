@@ -64,22 +64,22 @@ METADATA = [
     CommandsMeta(
         ".json.commands.json",
         "RedisJson",
-        "https://raw.githubusercontent.com/RedisJSON/RedisJSON/master/commands.json",
+        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisjson.json",
     ),
     CommandsMeta(
         ".ts.commands.json",
         "RedisTimeSeries",
-        "https://raw.githubusercontent.com/RedisTimeSeries/RedisTimeSeries/master/commands.json",
+        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redistimeseries.json",
     ),
     CommandsMeta(
         ".ft.commands.json",
         "RedisSearch",
-        "https://raw.githubusercontent.com/RediSearch/RediSearch/master/commands.json",
+        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisearch.json",
     ),
     CommandsMeta(
         ".bloom.commands.json",
         "RedisBloom",
-        "https://raw.githubusercontent.com/RedisBloom/RedisBloom/master/commands.json",
+        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisbloom.json",
     ),
 ]
 
