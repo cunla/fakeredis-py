@@ -9,12 +9,7 @@ from test.conftest import ServerDetails
 from test.testtools import resp_conversion
 
 pytestmark = []
-pytestmark.extend(
-    [
-        pytest.mark.min_server("7"),
-        testtools.run_test_if_redispy_ver("gte", "5"),
-    ]
-)
+pytestmark.extend([pytest.mark.min_server("7"), testtools.run_test_if_redispy_ver("gte", "5")])
 
 _VALKEY_UNSUPPORTED_COMMANDS = {
     "hexpiretime",
