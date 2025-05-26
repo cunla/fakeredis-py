@@ -2,6 +2,7 @@ import pytest
 import redis
 from redis import exceptions
 
+from fakeredis._helpers import asbytes
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
 from test.conftest import ServerDetails
@@ -12,7 +13,6 @@ pytestmark.extend(
     [
         pytest.mark.min_server("7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
-        pytest.mark.resp2_only,
     ]
 )
 
@@ -28,20 +28,24 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 }
 
 
-@pytest.mark.max_server("7.5")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
-    categories = get_categories()
-    assert set(r.acl_cat()) == set(categories)
-    for cat in categories:
+    fakeredis_categories = get_categories()
+    fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
+    fakeredis_categories.add(b"search")
+    response_categories = r.acl_cat()
+    response_categories = {asbytes(cat) for cat in response_categories}
+    assert len(set(response_categories) - set(fakeredis_categories)) == 0
+    fakeredis_categories.remove(b"search")  # `search` is not supported by fakeredis
+    for cat in fakeredis_categories:
         commands = get_commands_by_category(cat)
         commands = {cmd.decode() for cmd in commands}
         assert len(commands) > 0
         commands.discard("hpersist")
         if real_server_details[0] == "valkey":
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
-        commands = {cmd.replace(" ", "|") for cmd in commands}
+        commands = {asbytes(cmd.replace(" ", "|")) for cmd in commands}
         server_commands = r.acl_cat(cat)
-        server_commands = {cmd for cmd in server_commands}
+        server_commands = {asbytes(cmd) for cmd in server_commands}
         diff = set(commands) - set(server_commands)
         assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
 
