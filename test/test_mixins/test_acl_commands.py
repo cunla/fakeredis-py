@@ -278,7 +278,7 @@ def test_acl_users(r: redis.Redis):
     assert r.acl_setuser(username, enabled=False, reset=True)
     users = r.acl_users()
     assert len(users) == len(start) + 1
-    assert username in users
+    assert (username.encode() in users) or (username in users)
 
 
 def test_acl_whoami(r: redis.Redis):
@@ -289,13 +289,13 @@ def test_acl_whoami(r: redis.Redis):
 
     assert r.auth(temp_pass, default_username) is True
     assert r.auth(temp_pass) is True
-    assert r.acl_whoami() == default_username
+    assert asbytes(r.acl_whoami()) == asbytes(default_username)
 
     username = "fakeredis-authuser"
     r.acl_deluser(username)
     r.acl_setuser(username, enabled=True, passwords=["+strong_password"], commands=["+acl"])
     r.auth(username=username, password="strong_password")
-    assert r.acl_whoami() == username
+    assert asbytes(r.acl_whoami()) == asbytes(username)
     assert r.auth(temp_pass, default_username) is True
     r.config_set("requirepass", "")
 

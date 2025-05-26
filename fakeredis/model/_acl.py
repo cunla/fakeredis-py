@@ -165,11 +165,15 @@ class UserAccessControlList:
         selector = Selector.from_bytes(selector)
         self._selectors[selector.command] = selector
 
-    def _get_selectors(self) -> List[List[bytes]]:
-        results = []
+    def _get_selectors(self) -> List[Dict[str, str]]:
+        results: List[Dict[str, str]] = []
         for command, selector in self._selectors.items():
-            s = b"-@all " + (b"+" if selector.allowed else b"-") + command
-            results.append([b"commands", s, b"keys", selector.keys, b"channels", selector.channels])
+            s: Dict[str, str] = {
+                "commands": "-@all " + ("+" if selector.allowed else "-") + command.decode(),
+                "keys": selector.keys,
+                "channels": selector.channels,
+            }
+            results.append(s)
         return results
 
     def _get_commands(self) -> List[bytes]:
