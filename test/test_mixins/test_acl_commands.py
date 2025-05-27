@@ -30,7 +30,8 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     response_categories = r.acl_cat()
     response_categories = {asbytes(cat) for cat in response_categories}
     assert len(set(response_categories) - set(fakeredis_categories)) == 0
-    response_categories.pop(b"search")  # `search` is not supported by fakeredis
+    if b"search" in response_categories:
+        response_categories.remove(b"search")  # `search` is not supported by fakeredis
     for cat in response_categories:
         commands = get_commands_by_category(cat)
         commands = {cmd.decode() for cmd in commands}
