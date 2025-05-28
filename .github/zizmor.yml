@@ -1,0 +1,15 @@
+rules:
+  unpinned-images:
+    ignore:
+      - 'test.yml'
+      - 'test-dragonfly.yml'
+  unpinned-uses:
+    config:
+      policies:
+        actions/*: any
+        astral-sh/*: any
+        pypa/gh-action-pypi-publish: any
+  github-env:
+    ignore:
+      - 'action.yml:34:7'
+      - 'action.yml:15:7'

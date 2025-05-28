@@ -21,6 +21,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
@@ -90,6 +92,8 @@ jobs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
@@ -135,6 +139,6 @@ jobs:
       - "test"
     runs-on: ubuntu-latest
     steps:
-      - uses: release-drafter/release-drafter@v6
+      - uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
