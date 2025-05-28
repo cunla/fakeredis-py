@@ -26,6 +26,17 @@ from scripts.generate_supported_commands_doc import METADATA, download_single_st
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
+CATEGORIES = {
+    "BF.": "@bloom",
+    "CF.": "@cuckoo",
+    "CMS.": "@cms",
+    "TOPK.": "@topk",
+    "TS.": "@timeseries",
+    "JSON.": "@json",
+    "FT.": "@search",
+    "TDIGEST.": "@tdigest",
+}
+
 
 def implemented_commands() -> set:
     res = set(SUPPORTED_COMMANDS.keys())
@@ -74,6 +85,10 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
     subcommands = [
         get_command_info(cmd, all_commands) for cmd in all_commands if cmd_name != cmd and cmd.startswith(cmd_name)
     ]  # todo
+    categories = set(cmd_info.get("acl_categories", []))
+    for prefix, category in CATEGORIES.items():
+        if cmd_name.startswith(prefix.lower()):
+            categories.add(category)
     res = [
         cmd_name.lower().replace(" ", "|"),
         cmd_info.get("arity", -1),
@@ -81,7 +96,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
         first_key,
         last_key,
         step,
-        cmd_info.get("acl_categories", []),
+        list(categories),
         tips,
         key_specs_array(cmd_info),
         subcommands,
