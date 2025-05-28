@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Optional, Dict, List, Any, Union
+from typing import Optional, Dict, List, Any, AnyStr
+from fakeredis._helpers import asbytes
 
 _COMMAND_INFO: Optional[Dict[bytes, List[Any]]] = None
 
@@ -34,23 +35,22 @@ def get_command_info(cmd: bytes) -> Optional[List[Any]]:
     return _COMMAND_INFO.get(cmd, None)
 
 
-def get_categories() -> List[str]:
+def get_categories() -> List[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []
     categories = set()
     for info in _COMMAND_INFO.values():
         categories.update(info[6])
-    categories = {x[1:].decode() for x in categories}
+    categories = {asbytes(x[1:]) for x in categories}
     return list(categories)
 
 
-def get_commands_by_category(category: Union[str, bytes]) -> List[bytes]:
+def get_commands_by_category(category: AnyStr) -> List[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []
-    if isinstance(category, str):
-        category = category.encode()
+    category = asbytes(category)
     if category[0] != ord(b"@"):
         category = b"@" + category
     commands = []
