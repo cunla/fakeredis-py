@@ -21,6 +21,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
@@ -51,27 +53,27 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.17", "redis:7.4.2", "redis:8.0.0", "valkey/valkey:8.1" ]
         python-version: [ "3.9", "3.12", "3.13" ]
-        redis-py: [ "4.6.0", "5.2.1", "5.3.0", "6.1.0" ]
+        redis-py: [ "4.6.0", "5.2.1", "5.3.0", "6.2.0" ]
         install-extras: [ false ]
         coverage: [ false ]
         exclude:
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
-            redis-py: "6.1.0"
+            redis-py: "6.2.0"
             install-extras: false
             coverage: false
         include:
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
-            redis-py: "6.1.0"
+            redis-py: "6.2.0"
             install-extras: true
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:7.4.0-v3"
-            redis-py: "6.1.0"
+            redis-py: "6.2.0"
             install-extras: true
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
-            redis-py: "6.1.0"
+            redis-py: "6.2.0"
             install-extras: true
             coverage: true
     permissions:
@@ -90,6 +92,8 @@ jobs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v5
@@ -135,6 +139,6 @@ jobs:
       - "test"
     runs-on: ubuntu-latest
     steps:
-      - uses: release-drafter/release-drafter@v6
+      - uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

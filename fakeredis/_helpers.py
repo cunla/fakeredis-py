@@ -4,7 +4,7 @@ import time
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import Any, Set, Callable, Dict, Optional, Iterator
+from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr
 
 
 class SimpleString:
@@ -59,6 +59,12 @@ def casematch(a: bytes, b: bytes) -> bool:
 
 def decode_command_bytes(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
+
+
+def asbytes(value: AnyStr) -> bytes:
+    if isinstance(value, str):
+        return value.encode("utf-8")
+    return value
 
 
 def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore

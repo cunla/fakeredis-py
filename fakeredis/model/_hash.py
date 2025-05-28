@@ -1,19 +1,7 @@
 from typing import Iterable, Tuple, Optional, Any, Dict, AnyStr
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import current_time
-
-
-def asbytes(value: AnyStr) -> bytes:
-    if isinstance(value, str):
-        return value.encode("utf-8")
-    return value
-
-
-def asstr(value: AnyStr) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8")
-    return value
+from fakeredis._helpers import current_time, asbytes
 
 
 class Hash:

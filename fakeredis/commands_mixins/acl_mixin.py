@@ -100,7 +100,7 @@ class AclCommandsMixin:
         raise SimpleError(msgs.AUTH_FAILURE)
 
     @command(name="ACL CAT", fixed=(), repeat=(bytes,))
-    def acl_cat(self, *category: bytes) -> List[str]:
+    def acl_cat(self, *category: bytes) -> List[bytes]:
         if len(category) == 0:
             res = get_categories()
         else:
@@ -178,7 +178,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL LOG", fixed=(), repeat=(bytes,))
-    def acl_log(self, *args: bytes) -> Union[SimpleString, List[List[bytes]]]:
+    def acl_log(self, *args: bytes) -> Union[SimpleString, List[Dict[str, str]]]:
         if len(args) == 1 and casematch(args[0], b"RESET"):
             self._acl.reset_log()
             return OK
