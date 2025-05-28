@@ -5,7 +5,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator
+from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator, AnyStr
 
 from fakeredis._commands import BeforeAny, AfterAny
 from fakeredis._helpers import current_time
@@ -19,11 +19,11 @@ class StreamEntryKey(NamedTuple):
         return f"{self.ts}-{self.seq}".encode()
 
     @staticmethod
-    def parse_str(entry_key_str: Union[bytes, str]) -> "StreamEntryKey":
+    def parse_str(entry_key_str: AnyStr) -> "StreamEntryKey":
         if isinstance(entry_key_str, bytes):
             entry_key_str = entry_key_str.decode()
-        s = entry_key_str.split("-")
-        (timestamp, sequence) = (int(s[0]), 0) if len(s) == 1 else (int(s[0]), int(s[1]))
+        parts = entry_key_str.split("-")
+        (timestamp, sequence) = (int(parts[0]), 0) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
         return StreamEntryKey(timestamp, sequence)
 
 
