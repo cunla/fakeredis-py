@@ -33,7 +33,7 @@ pip install fakeredis[lua]   ## Support for LUA scripts
 pip install fakeredis[json]  ## Support for RedisJSON commands
 
 # Note on mac you need quotes:
-pip install "fakeredis[json]" 
+pip install "fakeredis[json]"
 
 pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
 ```
@@ -138,7 +138,7 @@ redis client for python, and models the responses of redis 6.x or 7.x.
 
 ### async Redis
 
-Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
+Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.FakeAsyncRedis`.
 
 ```pycon
 >>> from fakeredis import FakeAsyncRedis
