@@ -60,36 +60,36 @@ nav:
   - Dragonfly support: dragonfly-support.md
   - Valkey support: valkey-support.md
   - Supported commands:
-    - 'supported-commands/index.md'
-    - Redis commands:
-        - Bitmap: supported-commands/Redis/BITMAP.md
-        - Cluster: supported-commands/Redis/CLUSTER.md
-        - Connection: supported-commands/Redis/CONNECTION.md
-        - Generic: supported-commands/Redis/GENERIC.md
-        - Geospatial indices: supported-commands/Redis/GEO.md
-        - Bitmap: supported-commands/Redis/BITMAP.md
-        - Hash: supported-commands/Redis/HASH.md
-        - HyperLogLog: supported-commands/Redis/HYPERLOGLOG.md
-        - List: supported-commands/Redis/LIST.md
-        - Pub/Sub: supported-commands/Redis/PUBSUB.md
-        - Scripting: supported-commands/Redis/SCRIPTING.md
-        - Server: supported-commands/Redis/SERVER.md
-        - Set: supported-commands/Redis/SET.md
-        - Sorted Set: supported-commands/Redis/SORTEDSET.md
-        - Stream: supported-commands/Redis/STREAM.md
-        - String: supported-commands/Redis/STRING.md
-        - Transactions: supported-commands/Redis/TRANSACTIONS.md
-    - RedisJSON commands: supported-commands/RedisJson/JSON.md
-    - Time Series commands: supported-commands/RedisTimeSeries/TIMESERIES.md
-    - Probabilistic commands:
-        - Bloom Filter: supported-commands/RedisBloom/BF.md
-        - Cuckoo Filter: supported-commands/RedisBloom/CF.md
-        - Count-Min Sketch: supported-commands/RedisBloom/CMS.md
-        - t-digest: supported-commands/RedisBloom/TDIGEST.md
-        - top-k: supported-commands/RedisBloom/TOPK.md
-    - Search commands: supported-commands/RedisSearch/SEARCH.md
-    - Suggestion commands: supported-commands/RedisSearch/SUGGESTION.md
-    - Dragonfly commands: supported-commands/DRAGONFLY.md
+      - 'supported-commands/index.md'
+      - Redis commands:
+          - Bitmap: supported-commands/Redis/BITMAP.md
+          - Cluster: supported-commands/Redis/CLUSTER.md
+          - Connection: supported-commands/Redis/CONNECTION.md
+          - Generic: supported-commands/Redis/GENERIC.md
+          - Geospatial indices: supported-commands/Redis/GEO.md
+          - Bitmap: supported-commands/Redis/BITMAP.md
+          - Hash: supported-commands/Redis/HASH.md
+          - HyperLogLog: supported-commands/Redis/HYPERLOGLOG.md
+          - List: supported-commands/Redis/LIST.md
+          - Pub/Sub: supported-commands/Redis/PUBSUB.md
+          - Scripting: supported-commands/Redis/SCRIPTING.md
+          - Server: supported-commands/Redis/SERVER.md
+          - Set: supported-commands/Redis/SET.md
+          - Sorted Set: supported-commands/Redis/SORTEDSET.md
+          - Stream: supported-commands/Redis/STREAM.md
+          - String: supported-commands/Redis/STRING.md
+          - Transactions: supported-commands/Redis/TRANSACTIONS.md
+      - RedisJSON commands: supported-commands/RedisJson/JSON.md
+      - Time Series commands: supported-commands/RedisTimeSeries/TIMESERIES.md
+      - Probabilistic commands:
+          - Bloom Filter: supported-commands/RedisBloom/BF.md
+          - Cuckoo Filter: supported-commands/RedisBloom/CF.md
+          - Count-Min Sketch: supported-commands/RedisBloom/CMS.md
+          - t-digest: supported-commands/RedisBloom/TDIGEST.md
+          - top-k: supported-commands/RedisBloom/TOPK.md
+      - Search commands: supported-commands/RedisSearch/SEARCH.md
+      - Suggestion commands: supported-commands/RedisSearch/SUGGESTION.md
+      - Dragonfly commands: supported-commands/DRAGONFLY.md
   - Guides:
       - Implementing support for a command: guides/implement-command.md
       - Write a new test case: guides/test-case.md
@@ -123,7 +123,7 @@ theme:
     # - content.tabs.link
     - content.tooltips
     # - header.autohide
-#    - navigation.expand
+    #    - navigation.expand
     - navigation.footer
     - navigation.indexes
     # - navigation.instant
