@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Move `LICENSE` file to fakeredis/ on build #395
+- Show warning for deprecated parameter only if parameter is included in instanciation #384
 
 ## v2.30.0 - 2025-06-11
 
