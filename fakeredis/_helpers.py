@@ -6,7 +6,7 @@ import uuid
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr
+from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type
 
 import redis
 
@@ -270,9 +270,9 @@ def _get_args_to_warn() -> Set[str]:
     return set()
 
 
-def convert_args_to_redis_init_kwargs(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+def convert_args_to_redis_init_kwargs(redis_class: Type[redis.Redis], *args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Interpret the positional and keyword arguments according to the version of redis in use"""
-    parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
+    parameters = list(inspect.signature(redis_class.__init__).parameters.values())[1:]
     args_to_warn = _get_args_to_warn()
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})

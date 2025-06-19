@@ -189,7 +189,7 @@ class FakeRedis(redis_async.Redis):
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        kwds = convert_args_to_redis_init_kwargs(*args, **kwargs)
+        kwds = convert_args_to_redis_init_kwargs(redis_async.Redis, *args, **kwargs)
         kwds["server"] = server
         kwds["connected"] = kwargs.get("connected", True)
         if not kwds.get("connection_pool", None):
