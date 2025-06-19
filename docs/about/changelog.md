@@ -16,7 +16,7 @@ toc_depth: 2
 
 ### 🧰 Maintenance
 
-- Replace deprecated event_loop fixture #396
+- Replace deprecated event_loop fixture @mgorny #396
 
 ## v2.30.0 - 2025-06-11
 
