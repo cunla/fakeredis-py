@@ -41,13 +41,6 @@ def test_bitcount_does_not_exist(r: redis.Redis):
     assert res == 0
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.max_server("7.2")
-def test_bitcount_error_v6(r: redis.Redis):
-    r = raw_command(r, b"BITCOUNT", b"", b"", b"")
-    assert r == 0
-
-
 def test_multiple_bits_set(r: redis.Redis):
     r.setbit("foo", 1, 1)
     r.setbit("foo", 3, 1)

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
-import uuid
 import warnings
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
 
@@ -13,7 +11,7 @@ from redis.asyncio.connection import DefaultParser
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
-from ._helpers import SimpleError
+from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
 from .typing import async_timeout, Self
 
@@ -191,16 +189,7 @@ class FakeRedis(redis_async.Redis):
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        # Interpret the positional and keyword arguments according to the version of redis in use.
-        parameters = list(inspect.signature(redis_async.Redis.__init__).parameters.values())[1:]
-        # Convert args => kwargs
-        kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-        kwargs.setdefault("host", uuid.uuid4().hex)
-        kwds = {
-            p.name: kwargs.get(p.name, p.default)
-            for ind, p in enumerate(parameters)
-            if p.default != inspect.Parameter.empty
-        }
+        kwds = convert_args_to_redis_init_kwargs(redis_async.Redis, *args, **kwargs)
         kwds["server"] = server
         kwds["connected"] = kwargs.get("connected", True)
         if not kwds.get("connection_pool", None):

@@ -1,14 +1,12 @@
-import inspect
 import queue
 import time
-import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector
+from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
 from .typing import Self
@@ -123,16 +121,7 @@ class FakeRedisMixin:
         lua_modules: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
-        # Interpret the positional and keyword arguments according to the version of redis in use.
-        parameters = list(inspect.signature(redis.Redis.__init__).parameters.values())[1:]
-        # Convert args => kwargs
-        kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-        kwargs.setdefault("host", uuid.uuid4().hex)
-        kwds = {
-            p.name: kwargs.get(p.name, p.default)
-            for ind, p in enumerate(parameters)
-            if p.default != inspect.Parameter.empty
-        }
+        kwds = convert_args_to_redis_init_kwargs(redis.Redis, *args, **kwargs)
         kwds["server"] = server
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)

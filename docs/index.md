@@ -76,7 +76,7 @@ def redis_client(request):
 
 ### General usage
 
-FakeRedis can imitate Redis server version 6.x or 7.x, [Valkey server](./valkey-support),
+FakeRedis can imitate Redis server version 6.x or 7.x or 8.x, [Valkey server](./valkey-support),
 and [dragonfly server](./dragonfly-support). Redis version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real redis server.
