@@ -8,18 +8,8 @@ json_tests = pytest.importorskip("jsonpath_ng")
 
 
 def test_arrlen(r: redis.Redis):
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
-    assert (
-        r.json().arrlen(
-            "arr",
-            Path.root_path(),
-        )
-        == 5
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
+    assert r.json().arrlen("arr", Path.root_path()) == 5
     assert r.json().arrlen("arr") == 5
     assert r.json().arrlen("fake-key") is None
 
@@ -59,11 +49,7 @@ def test_arrlen(r: redis.Redis):
 
     # Test multi
     assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
-    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [
-        4,
-        6,
-        None,
-    ]
+    assert r.json().arrappend("doc1", "$..a", "non", "abba", "stanza") == [4, 6, None]
 
     r.json().clear("doc1", "$.a")
     assert r.json().arrlen("doc1", "$..a") == [0, 6, None]
@@ -362,11 +348,7 @@ def test_arrpop(r: redis.Redis):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert raw_command(r, "json.arrpop", "arr") == b"4"
 
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrpop("arr", Path.root_path(), 4) == 4
     assert r.json().arrpop("arr", Path.root_path(), -1) == 3
     assert r.json().arrpop("arr", Path.root_path()) == 2
@@ -374,19 +356,11 @@ def test_arrpop(r: redis.Redis):
     assert r.json().get("arr") == [1]
 
     # test out of bounds
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrpop("arr", Path.root_path(), 99) == 4
 
     # none test
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [],
-    )
+    r.json().set("arr", Path.root_path(), [])
     assert r.json().arrpop("arr") is None
 
     r.json().set(
