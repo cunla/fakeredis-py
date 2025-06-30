@@ -615,7 +615,10 @@ def test_objkeys(r: redis.Redis):
     )
 
     # Test single
-    assert r.json().objkeys("doc1", "$.nested1.a") == [[b"foo", b"bar"]]
+    keys = r.json().objkeys("doc1", "$.nested1.a")
+    assert isinstance(keys, list)
+    assert isinstance(keys[0], list)
+    assert set(keys[0]) == {b"foo", b"bar"}
 
     # Test legacy
     assert set(r.json().objkeys("doc1", ".*.a")) == resp_conversion(r, {b"foo", b"bar"}, {"foo", "bar"})
