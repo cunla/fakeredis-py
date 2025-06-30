@@ -179,7 +179,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         return self.server_key
 
 
-class FakeRedis(redis_async.Redis):
+class FakeRedisMixin:
     def __init__(
         self,
         *args: Any,
@@ -244,3 +244,7 @@ class FakeRedis(redis_async.Redis):
         pool.connection_kwargs.pop("username", None)
         pool.connection_kwargs.pop("password", None)
         return self
+
+
+class FakeRedis(FakeRedisMixin, redis_async.Redis):
+    pass
