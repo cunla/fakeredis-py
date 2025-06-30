@@ -297,8 +297,10 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen("doc1", "$.nested2.a") == [None]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(redis.ResponseError) as ctx:
         r.json().strlen("non_existing_doc", "$..a")
+
+    assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
 
 
 def test_toggle(r: redis.Redis):
@@ -526,7 +528,13 @@ def test_type(r: redis.Redis):
     data = {k: {"a": meta_data[k]} for k in meta_data}
     r.json().set("doc1", "$", data)
     # Test multi
-    expected = [k.encode() for k in meta_data.keys()]
+    values = r.json().get("doc1", "$..a")
+    expected = []
+    for v in values:
+        for k, val in meta_data.items():
+            if v == val:
+                expected.append(k.encode())
+                break
     assert r.json().type("doc1", "$..a") == resp_conversion(r, [expected], expected)  # noqa: E721
 
     # Test single

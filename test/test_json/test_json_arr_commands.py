@@ -159,11 +159,7 @@ def test_arrappend(r: redis.Redis):
 
 
 def test_arrindex(r: redis.Redis):
-    r.json().set(
-        "foo",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("foo", Path.root_path(), [0, 1, 2, 3, 4])
 
     assert r.json().arrindex("foo", Path.root_path(), 1) == 1
     assert r.json().arrindex("foo", Path.root_path(), 1, 2) == -1
@@ -210,10 +206,7 @@ def test_arrindex(r: redis.Redis):
         },
     )
 
-    assert r.json().get("store", "$.store.book[?(@.price<10)].size") == [
-        [10, 20, 30, 40],
-        [5, 10, 20, 30],
-    ]
+    assert r.json().get("store", "$.store.book[?(@.price<10)].size") == [[10, 20, 30, 40], [5, 10, 20, 30]]
     assert r.json().arrindex("store", "$.store.book[?(@.price<10)].size", "20") == [-1, -1]
 
     # Test index of int scalar in multi values
@@ -269,70 +262,16 @@ def test_arrindex(r: redis.Redis):
         [],
     ]
 
-    assert r.json().arrindex("test_string", "$..arr", "baz") == [
-        3,
-        8,
-        -1,
-        None,
-        -1,
-    ]
+    assert r.json().arrindex("test_string", "$..arr", "baz") == [3, 8, -1, None, -1]
 
-    assert r.json().arrindex("test_string", "$..arr", "baz", 2) == [
-        3,
-        8,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "baz", 4) == [
-        6,
-        8,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "baz", -5) == [
-        3,
-        8,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "baz", 4, 7) == [
-        6,
-        -1,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "baz", 4, -1) == [
-        6,
-        8,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "baz", 4, 0) == [
-        6,
-        8,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "5", 7, -1) == [
-        -1,
-        -1,
-        -1,
-        None,
-        -1,
-    ]
-    assert r.json().arrindex("test_string", "$..arr", "5", 7, 0) == [
-        -1,
-        -1,
-        -1,
-        None,
-        -1,
-    ]
+    assert r.json().arrindex("test_string", "$..arr", "baz", 2) == [3, 8, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "baz", 4) == [6, 8, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "baz", -5) == [3, 8, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "baz", 4, 7) == [6, -1, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "baz", 4, -1) == [6, 8, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "baz", 4, 0) == [6, 8, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "5", 7, -1) == [-1, -1, -1, None, -1]
+    assert r.json().arrindex("test_string", "$..arr", "5", 7, 0) == [-1, -1, -1, None, -1]
 
     # Test index of None scalar in multi values
     r.json().set(
@@ -376,11 +315,7 @@ def test_arrindex(r: redis.Redis):
 
 
 def test_arrinsert(r: redis.Redis):
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 4])
 
     assert r.json().arrinsert("arr", Path.root_path(), 1, *[1, 2, 3]) == 5
     assert r.json().get("arr") == [0, 1, 2, 3, 4]
@@ -424,11 +359,7 @@ def test_arrinsert(r: redis.Redis):
 
 
 def test_arrpop(r: redis.Redis):
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert raw_command(r, "json.arrpop", "arr") == b"4"
 
     r.json().set(
@@ -488,45 +419,25 @@ def test_arrpop(r: redis.Redis):
 
 
 def test_arrtrim(r: redis.Redis):
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
 
     assert r.json().arrtrim("arr", Path.root_path(), 1, 3) == 3
     assert r.json().get("arr") == [1, 2, 3]
 
     # <0 test, should be 0 equivalent
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrtrim("arr", Path.root_path(), -1, 3) == 0
 
     # testing stop > end
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrtrim("arr", Path.root_path(), 3, 99) == 2
 
     # start > array size and stop
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrtrim("arr", Path.root_path(), 9, 1) == 0
 
     # all larger
-    r.json().set(
-        "arr",
-        Path.root_path(),
-        [0, 1, 2, 3, 4],
-    )
+    r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrtrim("arr", Path.root_path(), 9, 11) == 0
 
     r.json().set(
