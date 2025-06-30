@@ -1,8 +1,9 @@
 from typing import Any, Dict
 
-from . import FakeStrictRedis
-from ._connection import FakeRedis
-from .aioredis import FakeRedis as FakeAsyncRedis
+import valkey
+
+from ._connection import FakeRedisMixin
+from .aioredis import FakeRedisMixin as FakeAsyncRedisMixin
 from .typing import Self
 
 
@@ -12,7 +13,7 @@ def _validate_server_type(args_dict: Dict[str, Any]) -> None:
     args_dict.setdefault("server_type", "valkey")
 
 
-class FakeValkey(FakeRedis):
+class FakeValkey(FakeRedisMixin, valkey.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
         super().__init__(*args, **kwargs)
@@ -23,7 +24,7 @@ class FakeValkey(FakeRedis):
         return super().from_url(*args, **kwargs)
 
 
-class FakeStrictValkey(FakeStrictRedis):
+class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
         super(FakeStrictValkey, self).__init__(*args, **kwargs)
@@ -34,7 +35,7 @@ class FakeStrictValkey(FakeStrictRedis):
         return super().from_url(*args, **kwargs)
 
 
-class FakeAsyncValkey(FakeAsyncRedis):
+class FakeAsyncValkey(FakeAsyncRedisMixin, valkey.asyncio.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
         super(FakeAsyncValkey, self).__init__(*args, **kwargs)

@@ -52,6 +52,7 @@ json = ["jsonpath-ng~=1.6"]
 bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
+valkey = ["valkey>=6 ; python_version >= '3.8'"]
 
 [project.urls]
 Homepage = "https://github.com/cunla/fakeredis-py"
