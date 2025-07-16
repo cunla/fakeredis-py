@@ -3,7 +3,9 @@ name: Test Dragonfly
 
 on:
   workflow_dispatch:
-
+  pull_request:
+    branches:
+      - master
 
 concurrency:
   group: dragon-fly-${{ github.workflow }}-${{ github.ref }}
