@@ -7,7 +7,18 @@ tags:
 toc_depth: 2
 ---
 
-## v2.30.0 - 2025-06-01
+## v2.30.1 - 2025-06-20
+
+### 🐛 Bug Fixes
+
+- Move `LICENSE` file to fakeredis/ on build #395
+- Show warning for deprecated parameter only if parameter is included in instantiation #384
+
+### 🧰 Maintenance
+
+- Replace deprecated event_loop fixture @mgorny #396
+
+## v2.30.0 - 2025-06-11
 
 ### 🚀 Features
 
@@ -17,6 +28,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - aio.FakeRedis: Using `inspect` to get `__init__` paramaters #384
+- Discrepancy when using xread with resp3 #393
 
 ## v2.29.0 - 2025-05-01
 

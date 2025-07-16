@@ -37,6 +37,7 @@ def test_time(r, mocker):
 
 
 # @pytest.mark.min_server("7")
+# @pytest.mark.unsupported_server_types("dragonfly")
 # def test_hello(r: redis.Redis):
 #     client_info = r.client_info()
 #     protocol = int(client_info.get("resp"))
@@ -50,6 +51,7 @@ def test_time(r, mocker):
 #     }
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.min_server("7")
 def test_client_list(r: redis.Redis):
     client_info = r.client_info()
@@ -71,6 +73,7 @@ def test_client_list(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
+@pytest.mark.unsupported_server_types("dragonfly")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: redis.Redis):
     client_info = r.client_info()
@@ -82,6 +85,7 @@ def test_client_info(r: redis.Redis):
     assert client_info["lib-ver"] == "1.0.0"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_client_id(r: redis.Redis):
     client_id = r.client_id()
     client_info = r.client_info()

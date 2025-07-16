@@ -7,6 +7,12 @@ licenses.
 
 FakeRedis can be used as a valkey replacement for testing and development purposes as well.
 
+To install FakeRedis with Valkey support, you can use the following command:
+
+```bash
+pip install fakeredis[valkey]
+```
+
 To make the process more straightforward, the `FakeValkey` class sets all relevant arguments in `FakeRedis` to the
 valkey values.
 

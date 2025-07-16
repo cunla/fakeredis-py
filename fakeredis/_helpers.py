@@ -1,10 +1,14 @@
+import inspect
 import re
 import threading
 import time
+import uuid
 import weakref
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import Any, Set, Callable, Dict, Optional, Iterator
+from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type
+
+import redis
 
 
 class SimpleString:
@@ -59,6 +63,12 @@ def casematch(a: bytes, b: bytes) -> bool:
 
 def decode_command_bytes(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
+
+
+def asbytes(value: AnyStr) -> bytes:
+    if isinstance(value, str):
+        return value.encode("utf-8")
+    return value
 
 
 def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
@@ -247,3 +257,29 @@ class FakeSelector(object):
     @staticmethod
     def check_is_ready_for_command(_: Any) -> bool:
         return True
+
+
+def _get_args_to_warn() -> Set[str]:
+    closure = redis.Redis.__init__.__closure__
+    if closure is None:
+        return set()
+    for cell in closure:
+        value = cell.cell_contents
+        if isinstance(value, list) and len(value) > 0:
+            return set(value)
+    return set()
+
+
+def convert_args_to_redis_init_kwargs(redis_class: Type[redis.Redis], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Interpret the positional and keyword arguments according to the version of redis in use"""
+    parameters = list(inspect.signature(redis_class.__init__).parameters.values())[1:]
+    args_to_warn = _get_args_to_warn()
+    # Convert args => kwargs
+    kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
+    kwargs.setdefault("host", uuid.uuid4().hex)
+    kwds = {
+        p.name: kwargs.get(p.name, p.default)
+        for ind, p in enumerate(parameters)
+        if p.default != inspect.Parameter.empty and (p.name not in args_to_warn or p.name in kwargs)
+    }
+    return kwds

@@ -22,6 +22,18 @@ def add_items(r: redis.Redis, stream: str, n: int):
     return id_list
 
 
+@pytest.mark.resp3_only
+@pytest.mark.decode_responses
+def test_xadd_xread_resp3(r: redis.Redis):
+    stream = "stream"
+    fields = {"some": "other"}
+    m1 = r.xadd(stream, fields=fields)
+    res = r.xread({stream: "0-0"}, block=0)
+    assert isinstance(res, dict)
+    assert stream in res
+    assert res[stream] == [[(m1, fields)]]
+
+
 def test_xadd_redis__green(r: redis.Redis):
     stream = "stream"
     before = int(1000 * time.time())

@@ -6,7 +6,6 @@ from ._connection import (
     FakeConnection,
 )
 from ._server import FakeServer
-from ._valkey import FakeValkey, FakeAsyncValkey, FakeStrictValkey
 from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,
@@ -25,6 +24,7 @@ try:
     from importlib import metadata
 except ImportError:  # for Python < 3.8
     import importlib_metadata as metadata  # type: ignore
+
 __version__ = metadata.version("fakeredis")
 __author__ = "Daniel Moran"
 __maintainer__ = "Daniel Moran"
@@ -41,7 +41,18 @@ __all__ = [
     "FakeAsyncRedis",
     "FakeAsyncConnection",
     "TcpFakeServer",
-    "FakeValkey",
-    "FakeAsyncValkey",
-    "FakeStrictValkey",
 ]
+
+try:
+    import valkey  # noqa: F401
+    from ._valkey import FakeValkey, FakeAsyncValkey, FakeStrictValkey  # noqa: F401
+
+    __all__.extend(
+        [
+            "FakeValkey",
+            "FakeAsyncValkey",
+            "FakeStrictValkey",
+        ]
+    )
+except ImportError:
+    pass

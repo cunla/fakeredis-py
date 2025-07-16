@@ -33,7 +33,7 @@ pip install fakeredis[lua]   ## Support for LUA scripts
 pip install fakeredis[json]  ## Support for RedisJSON commands
 
 # Note on mac you need quotes:
-pip install "fakeredis[json]" 
+pip install "fakeredis[json]"
 
 pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
 ```
@@ -76,7 +76,7 @@ def redis_client(request):
 
 ### General usage
 
-FakeRedis can imitate Redis server version 6.x or 7.x, [Valkey server](./valkey-support),
+FakeRedis can imitate Redis server version 6.x or 7.x or 8.x, [Valkey server](./valkey-support),
 and [dragonfly server](./dragonfly-support). Redis version 7 is used by default.
 
 The intent is for fakeredis to act as though you're talking to a real redis server.
@@ -138,7 +138,7 @@ redis client for python, and models the responses of redis 6.x or 7.x.
 
 ### async Redis
 
-Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.aioredis.FakeRedis`.
+Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fakeredis.FakeAsyncRedis`.
 
 ```pycon
 >>> from fakeredis import FakeAsyncRedis

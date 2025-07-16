@@ -1,6 +1,29 @@
+from unittest import mock
+
 import pytest
 
 import fakeredis
+from test.testtools import run_test_if_redispy_ver
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "6")
+@mock.patch("warnings.warn")
+def test_deprecated_args_show_warnings_for_retry_on_timeout(warn_mock: mock.MagicMock):
+    fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0, retry_on_timeout=True)
+    warn_mock.assert_called_once_with(
+        "Call to '__init__' function with deprecated usage of input argument/s 'retry_on_timeout'. (TimeoutError is included by default.) -- Deprecated since version 6.0.0.",
+        category=DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "6")
+@mock.patch("warnings.warn")
+def test_deprecated_args_no_warnings(warn_mock: mock.MagicMock):
+    fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0)
+    warn_mock.assert_not_called()
 
 
 @pytest.mark.fake
