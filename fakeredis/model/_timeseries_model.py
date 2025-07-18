@@ -1,5 +1,4 @@
-from collections.abc import Callable
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List, Dict, Tuple, Union, Optional, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import Database, SimpleError
