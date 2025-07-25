@@ -2,9 +2,10 @@ import functools
 import hashlib
 import importlib
 import itertools
+import json
 import logging
 import os
-from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
+from typing import TYPE_CHECKING, Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 
 import lupa
 
@@ -26,8 +27,12 @@ __LUA_RUNTIMES_MAP = {
 }
 LUA_VERSION = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
 
-with lupa.allow_lua_module_loading():
-    LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
+if TYPE_CHECKING:
+    from lupa import lua51 as LUA_MODULE
+else:
+    with lupa.allow_lua_module_loading():
+        LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
+
 LOGGER = logging.getLogger("fakeredis")
 REDIS_LOG_LEVELS = {
     b"LOG_DEBUG": 0,
@@ -66,6 +71,51 @@ def _lua_redis_log(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any
         raise SimpleError(msgs.LOG_INVALID_DEBUG_LEVEL_MSG)
     msg = " ".join([x.decode("utf-8") if isinstance(x, bytes) else str(x) for x in args if not isinstance(x, bool)])
     LOGGER.log(REDIS_LOG_LEVELS_TO_LOGGING[lvl], msg)
+
+
+_lua_cjson_null = object()  # sentinel value
+
+
+def _cjson_python_to_lua(obj: Any) -> Any:
+    """Convert a pure python object obtained after JSON deserialization into a usable object in the lua runtime."""
+    if obj is None:
+        return _lua_cjson_null
+    if isinstance(obj, str):
+        return obj.encode()
+    if isinstance(obj, list):
+        return [_cjson_python_to_lua(item) for item in obj]
+    if isinstance(obj, dict):
+        return {_cjson_python_to_lua(key): _cjson_python_to_lua(value) for key, value in obj.items()}
+    return obj
+
+
+def _cjson_lua_to_python(obj: Any) -> Any:
+    """Convert a passed lua runtime object obtained before JSON serialization into a pure python object."""
+    if obj is _lua_cjson_null:
+        return None
+    if isinstance(obj, bytes):
+        return obj.decode()
+
+    lua_type = LUA_MODULE.lua_type(obj)
+    if lua_type == "table":
+        d = dict(obj)  # TODO: This is very naive, lua tables aren't just dicts
+        return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in obj.items()}
+    return obj
+
+
+def _lua_cjson_encode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], value: Any) -> bytes:
+    _check_for_lua_globals(lua_runtime, expected_globals)
+    value = _cjson_lua_to_python(value)
+    return json.dumps(value).encode()
+
+
+def _lua_cjson_decode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], json_str: str) -> Any:
+    _check_for_lua_globals(lua_runtime, expected_globals)
+    json_obj = json.loads(json_str)
+    json_obj = _cjson_python_to_lua(json_obj)
+    if isinstance(json_obj, (dict, list)):
+        json_obj = lua_runtime.table_from(json_obj, recursive=True)
+    return json_obj
 
 
 class ScriptingCommandsMixin:
@@ -186,7 +236,7 @@ class ScriptingCommandsMixin:
         modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
         set_globals = lua_runtime.eval(
             f"""
-            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels)
+            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels, cjson_encode, cjson_decode, cjson_null)
                 redis = {{}}
                 redis.call = redis_call
                 redis.pcall = redis_pcall
@@ -196,6 +246,12 @@ class ScriptingCommandsMixin:
                 end
                 redis.error_reply = function(msg) return {{err=msg}} end
                 redis.status_reply = function(msg) return {{ok=msg}} end
+
+                cjson = {{}}
+                cjson.encode = cjson_encode
+                cjson.decode = cjson_decode
+                cjson.null = cjson_null
+
                 KEYS = keys
                 ARGV = argv
                 {modules_import_str}
@@ -210,6 +266,9 @@ class ScriptingCommandsMixin:
             functools.partial(self._lua_redis_pcall, lua_runtime, expected_globals),
             functools.partial(_lua_redis_log, lua_runtime, expected_globals),
             LUA_MODULE.as_attrgetter(REDIS_LOG_LEVELS),
+            functools.partial(_lua_cjson_encode, lua_runtime, expected_globals),
+            functools.partial(_lua_cjson_decode, lua_runtime, expected_globals),
+            _lua_cjson_null,
         )
         expected_globals.update(lua_runtime.globals().keys())
 
