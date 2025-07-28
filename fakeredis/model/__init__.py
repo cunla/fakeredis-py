@@ -3,6 +3,7 @@ from ._hash import Hash
 from ._stream import XStream, StreamEntryKey, StreamGroup, StreamRangeTest
 from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
+from ._vectorset import VectorSet
 from ._zset import ZSet
 
 from ._acl import AccessControlList
@@ -30,4 +31,5 @@ __all__ = [
     "get_categories",
     "get_commands_by_category",
     "AccessControlList",
+    "VectorSet",
 ]

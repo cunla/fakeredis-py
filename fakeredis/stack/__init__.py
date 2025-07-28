@@ -1,6 +1,7 @@
 from ._tdigest_mixin import TDigestCommandsMixin
 from ._timeseries_mixin import TimeSeriesCommandsMixin
 from ._topk_mixin import TopkCommandsMixin  # noqa: F401
+from ._vectorset_mixin import VectorSetCommandsMixin
 
 try:
     from jsonpath_ng.ext import parse  # noqa: F401
@@ -43,4 +44,5 @@ __all__ = [
     "CMSCommandsMixin",
     "TDigestCommandsMixin",
     "TimeSeriesCommandsMixin",
+    "VectorSetCommandsMixin",
 ]
