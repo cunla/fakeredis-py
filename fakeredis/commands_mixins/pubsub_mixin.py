@@ -1,8 +1,9 @@
-from typing import Tuple, Any, Dict, Callable, List, Iterable
+from typing import Any, Dict, Callable, List, Iterable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
 from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
+from fakeredis.typing import VersionType
 
 
 class PubSubCommandsMixin:
@@ -12,7 +13,7 @@ class PubSubCommandsMixin:
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
         self._server: Any
-        self.version: Tuple[int, ...]
+        self.version: VersionType
 
     def _subscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
         for channel in channels:

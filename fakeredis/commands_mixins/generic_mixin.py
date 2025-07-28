@@ -17,16 +17,17 @@ from fakeredis._commands import (
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
 from fakeredis.model import ZSet, Hash, ExpiringMembersSet
+from fakeredis.typing import VersionType
 
 
 class GenericCommandsMixin:
     _ttl: Callable[[CommandItem, float], int]
-    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
     _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int, ...]
+        self.version: VersionType
         self._server: Any
         self._db: Database
         self._db_num: int
