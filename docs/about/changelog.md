@@ -7,6 +7,17 @@ tags:
 toc_depth: 2
 ---
 
+## v2.30.2 - 2025-08-01
+
+### 🐛 Bug Fixes
+
+- Import `Callable` from `typing` to support python 3.8 #398
+
+### 🧰 Maintenance
+
+- Refactor tests
+- `FakeValkey` uses valkey-py instead of redis-py
+
 ## v2.30.1 - 2025-06-20
 
 ### 🐛 Bug Fixes
@@ -27,7 +38,7 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- aio.FakeRedis: Using `inspect` to get `__init__` paramaters #384
+- aio.FakeRedis: Using `inspect` to get `__init__` parameters #384
 - Discrepancy when using xread with resp3 #393
 
 ## v2.29.0 - 2025-05-01
