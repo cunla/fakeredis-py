@@ -5,7 +5,7 @@ import itertools
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
+from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
 
 import lupa
 
@@ -27,11 +27,8 @@ __LUA_RUNTIMES_MAP = {
 }
 LUA_VERSION = os.getenv("FAKEREDIS_LUA_VERSION", "5.1")
 
-if TYPE_CHECKING:
-    from lupa import lua51 as LUA_MODULE
-else:
-    with lupa.allow_lua_module_loading():
-        LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
+with lupa.allow_lua_module_loading():
+    LUA_MODULE = importlib.import_module(__LUA_RUNTIMES_MAP[LUA_VERSION])
 
 LOGGER = logging.getLogger("fakeredis")
 REDIS_LOG_LEVELS = {
@@ -99,7 +96,7 @@ def _cjson_lua_to_python(obj: Any) -> Any:
     lua_type = LUA_MODULE.lua_type(obj)
     if lua_type == "table":
         d = dict(obj)  # TODO: This is very naive, lua tables aren't just dicts
-        return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in obj.items()}
+        return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in d.items()}
     return obj
 
 
@@ -119,12 +116,7 @@ def _lua_cjson_decode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[
 
 
 class ScriptingCommandsMixin:
-    _name_to_func: Callable[
-        [
-            str,
-        ],
-        Tuple[Optional[Callable[..., Any]], Signature],
-    ]
+    _name_to_func: Callable[[str], Tuple[Optional[Callable[..., Any]], Signature]]
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):
