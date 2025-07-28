@@ -38,7 +38,7 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- aio.FakeRedis: Using `inspect` to get `__init__` paramaters #384
+- aio.FakeRedis: Using `inspect` to get `__init__` parameters #384
 - Discrepancy when using xread with resp3 #393
 
 ## v2.29.0 - 2025-05-01
