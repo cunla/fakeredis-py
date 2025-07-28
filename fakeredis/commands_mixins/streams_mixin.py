@@ -6,6 +6,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
 from fakeredis._helpers import SimpleError, casematch, OK, current_time, Database, SimpleString
 from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
+from fakeredis.typing import VersionType
 
 
 class StreamsCommandsMixin:
@@ -14,7 +15,7 @@ class StreamsCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self.version: Tuple[int, ...]
+        self.version: VersionType
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:

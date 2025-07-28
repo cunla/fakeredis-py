@@ -5,22 +5,14 @@ import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
+from fakeredis.typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 
-VersionType = Union[Tuple[int, ...], int, str]
 
-ServerType = Literal["redis", "dragonfly", "valkey"]
-
-
-def _create_version(v: VersionType) -> Tuple[int, ...]:
+def _create_version(v: Union[Tuple[int, ...], int, str]) -> VersionType:
     if isinstance(v, tuple):
         return v
     if isinstance(v, int):
@@ -66,7 +58,7 @@ class FakeServer:
         # List of weakrefs to sockets that are being closed lazily
         self.sockets: List[Any] = []
         self.closed_sockets: List[Any] = []
-        self.version: Tuple[int, ...] = _create_version(version)
+        self.version: VersionType = _create_version(version)
         if server_type not in ("redis", "dragonfly", "valkey"):
             raise ValueError(f"Unsupported server type: {server_type}")
         self.server_type: str = server_type

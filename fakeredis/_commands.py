@@ -12,6 +12,7 @@ from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, 
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database
+from .typing import VersionType, ServerType
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature
@@ -349,7 +350,7 @@ class Signature:
         repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
         args: Tuple[str] = (),  # type:ignore
         flags: str = "",
-        server_types: Collection[str] = (
+        server_types: Collection[ServerType] = (
             "redis",
             "valkey",
             "dragonfly",
@@ -361,9 +362,9 @@ class Signature:
         self.repeat = repeat
         self.flags = set(flags)
         self.command_args = args
-        self.server_types: Set[str] = set(server_types)
+        self.server_types: Set[ServerType] = set(server_types)
 
-    def check_arity(self, args: Sequence[Any], version: Tuple[int, ...]) -> None:
+    def check_arity(self, args: Sequence[Any], version: VersionType) -> None:
         if len(args) == len(self.fixed):
             return
         delta = len(args) - len(self.fixed)
@@ -375,7 +376,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-        self, args: Sequence[Any], db: Database, version: Tuple[int, ...]
+        self, args: Sequence[Any], db: Database, version: VersionType
     ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or

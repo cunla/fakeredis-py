@@ -1,11 +1,12 @@
 import time
-from typing import List, Union, Optional, Any, Set, Dict, Tuple
+from typing import List, Union, Optional, Any, Set, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
 from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
 from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
+from fakeredis.typing import VersionType
 
 
 class TimeSeriesCommandsMixin:  # TimeSeries commands
@@ -15,7 +16,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._db: Database
-        self.version: Tuple[int, ...]
+        self.version: VersionType
 
     @staticmethod
     def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:

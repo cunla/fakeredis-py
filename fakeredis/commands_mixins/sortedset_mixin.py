@@ -28,6 +28,7 @@ from fakeredis._helpers import (
     Database,
 )
 from fakeredis.model import ZSet, ExpiringMembersSet
+from fakeredis.typing import VersionType
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -46,9 +47,8 @@ class SortedSetCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int, ...]
+        self.version: VersionType
         self._db: Database
-        # Sorted set commands
 
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[List[Any]]:
         zset = key.value
