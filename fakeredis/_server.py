@@ -3,7 +3,7 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union
+from typing import Dict, Tuple, Any, List, Optional, Union, Sequence
 
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
@@ -94,3 +94,9 @@ class FakeBaseConnectionMixin(object):
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         super().__init__(*args, **kwargs)
+
+    def _get_from_local_cache(self, command: Sequence[str]) -> None:
+        return None
+
+    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
+        return None

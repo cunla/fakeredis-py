@@ -119,9 +119,17 @@ class FakeRedisMixin:
         version: VersionType = (7,),
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
+        client_class=redis.Redis,
         **kwargs: Any,
     ) -> None:
-        kwds = convert_args_to_redis_init_kwargs(redis.Redis, *args, **kwargs)
+        """
+        :param server: The FakeServer instance to use for this connection.
+        :param version: The Redis version to use, as a tuple (major, minor).
+        :param server_type: The type of server, e.g., "redis", "valkey".
+        :param lua_modules: A set of Lua modules to load.
+        :param client_class: The Redis client class to use, e.g., redis.Redis or valkey.Valkey.
+        """
+        kwds = convert_args_to_redis_init_kwargs(client_class, *args, **kwargs)
         kwds["server"] = server
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)

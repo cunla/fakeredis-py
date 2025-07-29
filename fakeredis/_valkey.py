@@ -15,17 +15,20 @@ def _validate_server_type(args_dict: Dict[str, Any]) -> None:
 
 class FakeValkey(FakeRedisMixin, valkey.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("client_class", valkey.Valkey)
         _validate_server_type(kwargs)
         super().__init__(*args, **kwargs)
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        kwargs.setdefault("client_class", valkey.Valkey)
         _validate_server_type(kwargs)
         return super().from_url(*args, **kwargs)
 
 
 class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("client_class", valkey.StrictValkey)
         _validate_server_type(kwargs)
         super(FakeStrictValkey, self).__init__(*args, **kwargs)
 
@@ -37,6 +40,7 @@ class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
 
 class FakeAsyncValkey(FakeAsyncRedisMixin, valkey.asyncio.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("client_class", valkey.asyncio.Valkey)
         _validate_server_type(kwargs)
         super(FakeAsyncValkey, self).__init__(*args, **kwargs)
 
