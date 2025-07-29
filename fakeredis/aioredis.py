@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence
 
 import redis.asyncio as redis_async
 from redis import ResponseError
@@ -140,6 +140,12 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             now = loop.time()
             if timeout is not None and now > start + timeout:
                 return False
+
+    async def _get_from_local_cache(self, command: Sequence[str]) -> None:
+        return None
+
+    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
+        return None
 
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):

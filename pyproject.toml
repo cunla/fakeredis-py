@@ -116,6 +116,7 @@ markers = [
     "unsupported_server_types",
     "resp2_only: run tests only with RESP2",
     "resp3_only: run tests only with RESP3",
+    "load_lua_modules: run tests that load Lua modules",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true

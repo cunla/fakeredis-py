@@ -1,7 +1,7 @@
 import queue
 import time
 import warnings
-from typing import Tuple, Any, List, Optional, Set
+from typing import Tuple, Any, List, Optional, Set, Sequence
 
 import redis
 
@@ -106,6 +106,12 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         if self.client_name:
             pieces.append(("client_name", self.client_name))
         return pieces
+
+    def _get_from_local_cache(self, command: Sequence[str]) -> None:
+        return None
+
+    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
+        return None
 
     def __str__(self) -> str:
         return self.server_key
