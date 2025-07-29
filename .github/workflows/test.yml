@@ -104,7 +104,7 @@ jobs:
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          uv sync --extra lua
+          uv sync --extra lua --extra valkey
           if [ ${{ matrix.install-extras }} == true ]; then
               uv sync --all-extras
           fi
