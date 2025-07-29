@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Import `Callable` from `typing` to support python 3.8 #398
+- FakeValkey init arguments #400
 
 ## v2.30.2 - 2025-08-01
 
