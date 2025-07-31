@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.30.4 -
+
+### 🐛 Bug Fixes
+
+- version init argument typing #401
+
 ## v2.30.3 - 2025-08-01
 
 ### 🐛 Bug Fixes

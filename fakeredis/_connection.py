@@ -1,7 +1,7 @@
 import queue
 import time
 import warnings
-from typing import Tuple, Any, List, Optional, Set, Sequence
+from typing import Tuple, Any, List, Optional, Set, Sequence, Union
 
 import redis
 
@@ -122,7 +122,7 @@ class FakeRedisMixin:
         self,
         *args: Any,
         server: Optional[FakeServer] = None,
-        version: VersionType = (7,),
+        version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
         client_class=redis.Redis,
