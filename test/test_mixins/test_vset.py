@@ -7,8 +7,31 @@ import pytest
 import redis
 from redis.commands.vectorset.commands import QuantizationOptions
 
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.min_server("8"),
+    ]
+)
 
-@pytest.mark.min_server("8")
+
+def test_vgetattr_non_existing_element(r: redis.Redis):
+    # Test vgetattr on a non-existing element
+
+    assert r.vset().vgetattr("myset", "non_existing_element") is None
+
+    # Test vgetattr on an existing element with no attributes
+    r.vset().vadd("myset", [1, 2, 3], "elem1")
+    attrs = r.vset().vgetattr("myset", "elem1")
+    assert attrs is None
+
+    # Test vgetattr on an existing element with attributes
+    attrs_dict = {"key1": "value1", "key2": "value2"}
+    r.vset().vadd("myset", [4, 5, 6], "elem2", attributes=attrs_dict)
+    attrs = r.vset().vgetattr("myset", "elem2")
+    assert attrs == attrs_dict
+
+
 def test_add_elem_with_values(r: redis.Redis):
     float_array = [1, 4.32, 0.11]
     resp = r.vset().vadd("myset", float_array, "elem1")
@@ -24,7 +47,6 @@ def test_add_elem_with_values(r: redis.Redis):
         r.vset().vadd("myset_invalid_data", [12, 45], None, reduce_dim=3)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_with_vector(r: redis.Redis):
     float_array = [1, 4.32, 0.11]
     # Convert the list of floats to a byte array in fp32 format
@@ -36,7 +58,6 @@ def test_add_elem_with_vector(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_reduced_dim(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd("myset", float_array, "elem1", reduce_dim=3)
@@ -46,7 +67,6 @@ def test_add_elem_reduced_dim(r: redis.Redis):
     assert dim == 3
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_cas(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
@@ -56,7 +76,6 @@ def test_add_elem_cas(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_no_quant(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd(
@@ -71,7 +90,6 @@ def test_add_elem_no_quant(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.0)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_bin_quant(r: redis.Redis):
     float_array = [1, 4.32, 0.0, 0.05, -2.9]
     resp = r.vset().vadd(
@@ -87,7 +105,6 @@ def test_add_elem_bin_quant(r: redis.Redis):
     assert _validate_quantization(expected_array, emb, tolerance=0.0)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_q8_quant(r: redis.Redis):
     float_array = [1, 4.32, 10.0, -21, -2.9]
     resp = r.vset().vadd(
@@ -103,7 +120,6 @@ def test_add_elem_q8_quant(r: redis.Redis):
     assert _validate_quantization(expected_array, emb, tolerance=0.0)
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_ef(r: redis.Redis):
     r.vset().vadd("myset", vector=[5, 55, 65, -20, 30], element="elem1")
     r.vset().vadd("myset", vector=[-40, -40.32, 10.0, -4, 2.9], element="elem2")
@@ -119,7 +135,6 @@ def test_add_elem_ef(r: redis.Redis):
     assert len(sim) == 3
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_with_attr(r: redis.Redis):
     float_array = [1, 4.32, 10.0, -21, -2.9]
     attrs_dict = {"key1": "value1", "key2": "value2"}
@@ -166,7 +181,6 @@ def test_add_elem_with_attr(r: redis.Redis):
     assert attr_saved == attrs_dict
 
 
-@pytest.mark.min_server("8")
 def test_add_elem_with_numlinks(r: redis.Redis):
     elements_count = 100
     vector_dim = 10
@@ -191,7 +205,6 @@ def test_add_elem_with_numlinks(r: redis.Redis):
         assert len(neighbours_list_for_layer) <= 8
 
 
-@pytest.mark.min_server("8")
 def test_vsim_count(r: redis.Redis):
     elements_count = 30
     vector_dim = 800
@@ -225,7 +238,6 @@ def test_vsim_count(r: redis.Redis):
     assert isinstance(vsim[0], bytes)
 
 
-@pytest.mark.min_server("8")
 def test_vsim_with_scores(r: redis.Redis):
     elements_count = 20
     vector_dim = 50
@@ -245,7 +257,6 @@ def test_vsim_with_scores(r: redis.Redis):
     assert 0 <= vsim[b"elem1"] <= 1
 
 
-@pytest.mark.min_server("8")
 def test_vsim_with_different_vector_input_types(r: redis.Redis):
     elements_count = 10
     vector_dim = 5
@@ -278,7 +289,6 @@ def test_vsim_with_different_vector_input_types(r: redis.Redis):
         r.vset().vsim("myset", input=None)
 
 
-@pytest.mark.min_server("8")
 def test_vsim_unexisting(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
@@ -290,7 +300,6 @@ def test_vsim_unexisting(r: redis.Redis):
     assert sim == []
 
 
-@pytest.mark.min_server("8")
 def test_vsim_with_filter(r: redis.Redis):
     elements_count = 50
     vector_dim = 800
@@ -356,7 +365,6 @@ def test_vsim_with_filter(r: redis.Redis):
     assert isinstance(sim, list)
 
 
-@pytest.mark.min_server("8")
 def test_vsim_truth_no_thread_enabled(r: redis.Redis):
     elements_count = 5000
     vector_dim = 50
@@ -392,7 +400,6 @@ def test_vsim_truth_no_thread_enabled(r: redis.Redis):
     assert isinstance(sim_no_thread, dict)
 
 
-@pytest.mark.min_server("8")
 def test_vdim(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
     r.vset().vadd("myset", float_array, "elem1")
@@ -408,7 +415,6 @@ def test_vdim(r: redis.Redis):
         r.vset().vdim("myset_unexisting")
 
 
-@pytest.mark.min_server("8")
 def test_vcard(r: redis.Redis):
     n = 20
     for i in range(n):
@@ -422,7 +428,6 @@ def test_vcard(r: redis.Redis):
         r.vset().vdim("myset_unexisting")
 
 
-@pytest.mark.min_server("8")
 def test_vrem(r: redis.Redis):
     n = 3
     for i in range(n):
@@ -445,7 +450,6 @@ def test_vrem(r: redis.Redis):
     assert resp == 0
 
 
-@pytest.mark.min_server("8")
 def test_vemb_bin_quantization(r: redis.Redis):
     e = [1, 4.32, 0.0, 0.05, -2.9]
     r.vset().vadd(
@@ -464,7 +468,6 @@ def test_vemb_bin_quantization(r: redis.Redis):
     assert "range" not in emb_no_quant_raw
 
 
-@pytest.mark.min_server("8")
 def test_vemb_q8_quantization(r: redis.Redis):
     e = [1, 10.32, 0.0, 2.05, -12.5]
     r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.Q8)
@@ -479,7 +482,6 @@ def test_vemb_q8_quantization(r: redis.Redis):
     assert isinstance(emb_q8_quant_raw["range"], float)
 
 
-@pytest.mark.min_server("8")
 def test_vemb_no_quantization(r: redis.Redis):
     e = [1, 10.32, 0.0, 2.05, -12.5]
     r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.NOQUANT)
@@ -494,7 +496,6 @@ def test_vemb_no_quantization(r: redis.Redis):
     assert "range" not in emb_no_quant_raw
 
 
-@pytest.mark.min_server("8")
 def test_vemb_default_quantization(r: redis.Redis):
     e = [1, 5.32, 0.0, 0.25, -5]
     r.vset().vadd("myset", vector=e, element="elem")
@@ -509,7 +510,6 @@ def test_vemb_default_quantization(r: redis.Redis):
     assert isinstance(emb_default_quant_raw["range"], float)
 
 
-@pytest.mark.min_server("8")
 def test_vemb_fp32_quantization(r: redis.Redis):
     float_array_fp32 = [1, 4.32, 0.11]
     # Convert the list of floats to a byte array in fp32 format
@@ -526,7 +526,6 @@ def test_vemb_fp32_quantization(r: redis.Redis):
     assert isinstance(emb_fp32_quant_raw["range"], float)
 
 
-@pytest.mark.min_server("8")
 def test_vemb_unexisting(r: redis.Redis):
     emb_not_existing = r.vset().vemb("not_existing", "elem")
     assert emb_not_existing is None
@@ -537,7 +536,6 @@ def test_vemb_unexisting(r: redis.Redis):
     assert emb_elem_not_existing is None
 
 
-@pytest.mark.min_server("8")
 def test_vlinks(r: redis.Redis):
     elements_count = 100
     vector_dim = 800
@@ -592,7 +590,6 @@ def test_vlinks(r: redis.Redis):
     assert unexisting_vset_links is None
 
 
-@pytest.mark.min_server("8")
 def test_vinfo(r: redis.Redis):
     elements_count = 100
     vector_dim = 800
@@ -617,7 +614,6 @@ def test_vinfo(r: redis.Redis):
     assert unexisting_vset_info is None
 
 
-@pytest.mark.min_server("8")
 def test_vset_vget_attributes(r: redis.Redis):
     float_array = [1, 4.32, 0.11]
     attributes = {"key1": "value1", "key2": "value2"}
@@ -673,7 +669,6 @@ def test_vset_vget_attributes(r: redis.Redis):
     assert attr_saved is None
 
 
-@pytest.mark.min_server("8")
 def test_vrandmember(r: redis.Redis):
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
@@ -725,7 +720,6 @@ def test_vrandmember(r: redis.Redis):
     assert members_list == []
 
 
-@pytest.mark.min_server("8")
 def test_vset_commands_without_decoding_responces(r: redis.Redis):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
