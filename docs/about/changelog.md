@@ -7,11 +7,18 @@ tags:
 toc_depth: 2
 ---
 
+## v2.30.4 -
+
+### 🐛 Bug Fixes
+
+- version init argument typing #401
+
 ## v2.30.3 - 2025-08-01
 
 ### 🐛 Bug Fixes
 
 - Import `Callable` from `typing` to support python 3.8 #398
+- FakeValkey init arguments #400
 
 ## v2.30.2 - 2025-08-01
 
