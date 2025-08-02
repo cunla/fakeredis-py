@@ -94,10 +94,21 @@ def _cjson_lua_to_python(obj: Any) -> Any:
         return obj.decode()
 
     lua_type = LUA_MODULE.lua_type(obj)
-    if lua_type == "table":
-        d = dict(obj)  # TODO: This is very naive, lua tables aren't just dicts
-        return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in d.items()}
-    return obj
+    if lua_type != "table":
+        return obj
+
+    # Check for array-like structure: integer keys from 1 to len(items)
+    # (this check matches what cjson does, e.g. tables like {"a", "b", c=3} are treated as dicts
+    # with int keys for the array-like parts)
+    keys = list(obj.keys())
+    is_array = all(isinstance(k, int) for k in keys) and sorted(keys) == list(range(1, len(keys) + 1))
+
+    if is_array:
+        return [_cjson_lua_to_python(item) for item in obj.values()]
+
+    # We're working with a dict
+    d = dict(obj)
+    return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in d.items()}
 
 
 def _lua_cjson_encode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], value: Any) -> bytes:

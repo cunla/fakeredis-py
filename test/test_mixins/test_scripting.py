@@ -677,3 +677,14 @@ def test_eval_cjson_nested_structure(r: redis.Redis) -> None:
     """
     val = r.eval(lua, 0)
     assert val == 1
+
+
+def test_eval_cjson_array(r: redis.Redis) -> None:
+    lua = """
+    local t = {"a", "b", "c"}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded[1] == "a" and decoded[2] == "b" and decoded[3] == "c"
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
