@@ -688,3 +688,26 @@ def test_eval_cjson_array(r: redis.Redis) -> None:
     """
     val = r.eval(lua, 0)
     assert val == 1
+
+
+def test_eval_cjson_dict_array(r: redis.Redis) -> None:
+    # lua tables allow a combination of array and dict, cjson should treat this as dict with int keys
+    lua = """
+    local t = {"a", "b", c=3}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["1"] == "a" and decoded["2"] == "b" and decoded["c"] == 3
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_mixed(r: redis.Redis) -> None:
+    lua = """
+    local t = {"a", "b", c={"d", "e", f=3}}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["1"] == "a" and decoded["2"] == "b" and decoded["c"]["1"] == "d" and decoded["c"]["2"] == "e" and decoded["c"]["f"] == 3
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
