@@ -103,7 +103,7 @@ def _cjson_lua_to_python(obj: Any) -> Any:
 def _lua_cjson_encode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], value: Any) -> bytes:
     _check_for_lua_globals(lua_runtime, expected_globals)
     value = _cjson_lua_to_python(value)
-    return json.dumps(value).encode()
+    return json.dumps(value, separators=(",", ":")).encode()
 
 
 def _lua_cjson_decode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], json_str: str) -> Any:

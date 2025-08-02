@@ -635,6 +635,17 @@ def test_eval_cjson_encode_decode(r: redis.Redis) -> None:
     assert val == 1
 
 
+def test_eval_cjson_no_whitespace(r: redis.Redis) -> None:
+    """Cjson library doesn't produce any whitespace on encoding."""
+    lua = """
+    local t = {foo = "bar", num = 42}
+    return cjson.encode(t)
+    """
+    val = cast(bytes, r.eval(lua, 0))
+    # We can't guarantee the order here, so allow both
+    assert b'{"foo":"bar","num":42}' == val or b'{"num":42,"foo":"bar"}' == val
+
+
 def test_eval_cjson_null_decode(r: redis.Redis) -> None:
     # null in JSON becomes cjson.null in Lua
     lua = """
