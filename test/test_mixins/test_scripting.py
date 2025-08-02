@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 import pytest
 import redis
@@ -620,3 +621,93 @@ def test_deleting_while_scan(r: redis.Redis):
 
     assert len(r.register_script(script)()) == 100
     assert len(r.keys()) == 0
+
+
+def test_eval_cjson_encode_decode(r: redis.Redis) -> None:
+    # Simple encode and decode roundtrip
+    lua = """
+    local t = {foo = "bar", num = 42}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["foo"] == "bar" and decoded["num"] == 42
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_no_whitespace(r: redis.Redis) -> None:
+    """Cjson library doesn't produce any whitespace on encoding."""
+    lua = """
+    local t = {foo = "bar", num = 42}
+    return cjson.encode(t)
+    """
+    val = cast(bytes, r.eval(lua, 0))
+    # We can't guarantee the order here, so allow both
+    assert b'{"foo":"bar","num":42}' == val or b'{"num":42,"foo":"bar"}' == val
+
+
+def test_eval_cjson_null_decode(r: redis.Redis) -> None:
+    # null in JSON becomes cjson.null in Lua
+    lua = """
+    local json_str = '{"a":null, "b":"val"}'
+    local t = cjson.decode(json_str)
+    return t["a"] == cjson.null and t["b"] == "val"
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_null_encode(r: redis.Redis) -> None:
+    # Explicitly construct a table with cjson.null and check encoding
+    lua = """
+    local t = {a = cjson.null, b = "val"}
+    return cjson.encode(t)
+    """
+    val = cast(bytes, r.eval(lua, 0))
+    # Order of keys isn't guaranteed, but we can check JSON content
+    assert b'"a":null' in val and b'"b":"val"' in val
+
+
+def test_eval_cjson_nested_structure(r: redis.Redis) -> None:
+    lua = """
+    local t = {a = {b = {c = 1}}}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["a"]["b"]["c"] == 1
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_array(r: redis.Redis) -> None:
+    lua = """
+    local t = {"a", "b", "c"}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded[1] == "a" and decoded[2] == "b" and decoded[3] == "c"
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_dict_array(r: redis.Redis) -> None:
+    # lua tables allow a combination of array and dict, cjson should treat this as dict with int keys
+    lua = """
+    local t = {"a", "b", c=3}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["1"] == "a" and decoded["2"] == "b" and decoded["c"] == 3
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_mixed(r: redis.Redis) -> None:
+    lua = """
+    local t = {"a", "b", c={"d", "e", f=3}}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["1"] == "a" and decoded["2"] == "b" and decoded["c"]["1"] == "d" and decoded["c"]["2"] == "e" and decoded["c"]["f"] == 3
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
