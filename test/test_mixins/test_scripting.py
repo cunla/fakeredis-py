@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 import pytest
 import redis
@@ -620,3 +621,48 @@ def test_deleting_while_scan(r: redis.Redis):
 
     assert len(r.register_script(script)()) == 100
     assert len(r.keys()) == 0
+
+
+def test_eval_cjson_encode_decode(r: redis.Redis) -> None:
+    # Simple encode and decode roundtrip
+    lua = """
+    local t = {foo = "bar", num = 42}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["foo"] == "bar" and decoded["num"] == 42
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_null_decode(r: redis.Redis) -> None:
+    # null in JSON becomes cjson.null in Lua
+    lua = """
+    local json_str = '{"a":null, "b":"val"}'
+    local t = cjson.decode(json_str)
+    return t["a"] == cjson.null and t["b"] == "val"
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
+
+
+def test_eval_cjson_null_encode(r: redis.Redis) -> None:
+    # Explicitly construct a table with cjson.null and check encoding
+    lua = """
+    local t = {a = cjson.null, b = "val"}
+    return cjson.encode(t)
+    """
+    val = cast(bytes, r.eval(lua, 0))
+    # Order of keys isn't guaranteed, but we can check JSON content
+    assert b'"a":null' in val and b'"b":"val"' in val
+
+
+def test_eval_cjson_nested_structure(r: redis.Redis) -> None:
+    lua = """
+    local t = {a = {b = {c = 1}}}
+    local encoded = cjson.encode(t)
+    local decoded = cjson.decode(encoded)
+    return decoded["a"]["b"]["c"] == 1
+    """
+    val = r.eval(lua, 0)
+    assert val == 1
