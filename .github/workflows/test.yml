@@ -53,27 +53,27 @@ jobs:
       matrix:
         redis-image: [ "redis:6.2.17", "redis:7.4.2", "redis:8.0.0", "valkey/valkey:8.1" ]
         python-version: [ "3.9", "3.12", "3.13" ]
-        redis-py: [ "4.6.0", "5.2.1", "5.3.1", "6.2.0" ]
+        redis-py: [ "4.6.0", "5.2.1", "5.3.1", "6.3.0" ]
         install-extras: [ false ]
         coverage: [ false ]
         exclude:
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
-            redis-py: "6.2.0"
+            redis-py: "6.3.0"
             install-extras: false
             coverage: false
         include:
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
-            redis-py: "6.2.0"
+            redis-py: "6.3.0"
             install-extras: true
           - python-version: "3.13"
             redis-image: "redis/redis-stack-server:7.4.0-v3"
-            redis-py: "6.2.0"
+            redis-py: "6.3.0"
             install-extras: true
           - python-version: "3.13"
             redis-image: "redis:8.0.0"
-            redis-py: "6.2.0"
+            redis-py: "6.3.0"
             install-extras: true
             coverage: true
     permissions:
