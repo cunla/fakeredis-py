@@ -7,7 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.30.4 -
+## v2.31.0 - 2025-08-10
+
+### 🚀 Features
+
+- Add native cjson support for lua redis scripts #399 @ItsDrike
 
 ### 🐛 Bug Fixes
 
