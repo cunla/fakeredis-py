@@ -5,6 +5,8 @@ import weakref
 from collections import defaultdict
 from typing import Dict, Tuple, Any, List, Optional, Union
 
+import redis
+
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
 from fakeredis.typing import VersionType, ServerType
@@ -81,6 +83,7 @@ class FakeBaseConnectionMixin(object):
         self._sock = None
         self._selector: Optional[FakeSelector] = None
         self._server = kwargs.pop("server", None)
+        self._client_class = kwargs.pop("client_class", redis.Redis)
         self._lua_modules = kwargs.pop("lua_modules", set())
         path = kwargs.pop("path", None)
         connected = kwargs.pop("connected", True)

@@ -26,6 +26,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         return FakeSocket(
             self._server,
+            client_class=self._client_class,
             db=self.db,
             lua_modules=self._lua_modules,
             client_info=dict(
@@ -170,6 +171,7 @@ class FakeRedisMixin:
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
+                "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
