@@ -3,6 +3,7 @@ from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 import pytest
 import pytest_asyncio
 import redis
+import valkey
 
 import fakeredis
 from fakeredis._server import _create_version
@@ -80,6 +81,9 @@ def _marker_version_value(request, marker_name: str):
 )
 def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], redis.Redis]:
     cls_name, protocol = request.param[:-1], int(request.param[-1])
+    valkey_client_test = request.node.get_closest_marker("valkey_client_test") is not None
+    if valkey_client_test:
+        cls_name = cls_name.replace("Redis", "Valkey")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     server_type, server_version = real_server_details
@@ -114,7 +118,10 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
             cls = getattr(fakeredis, cls_name)
             return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         # Real
-        cls = getattr(redis, cls_name)
+        if valkey_client_test:
+            cls = getattr(valkey, cls_name)
+        else:
+            cls = getattr(redis, cls_name)
         return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory

@@ -14,6 +14,7 @@ from fakeredis._commands import (
     CommandItem,
 )
 from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
+from fakeredis.typing import VersionType
 
 
 def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
@@ -82,7 +83,7 @@ class StringCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StringCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self.version: Tuple[int, ...]
+        self.version: VersionType
 
     def _incrby(self, key: CommandItem, amount: int) -> int:
         c = Int.decode(key.get(b"0")) + amount

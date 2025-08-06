@@ -1,10 +1,11 @@
 import random
-from typing import Callable, Tuple, Any, Optional, List, Union, Sequence
+from typing import Callable, Any, Optional, List, Union, Sequence
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
 from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 from fakeredis.model import ExpiringMembersSet
+from fakeredis.typing import VersionType
 
 
 def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
@@ -42,11 +43,11 @@ def _setop(
 
 
 class SetCommandsMixin:
-    _scan: Callable[[Sequence[bytes], int, bytes, ...], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(SetCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: Tuple[int, ...]
+        self.version: VersionType
         self._db: Database
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))

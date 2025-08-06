@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.30.2"
+version = "2.30.4"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -116,6 +116,8 @@ markers = [
     "unsupported_server_types",
     "resp2_only: run tests only with RESP2",
     "resp3_only: run tests only with RESP3",
+    "load_lua_modules: run tests that load Lua modules",
+    "valkey_client_test: test using valkey-py client instead of redis-py",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true
