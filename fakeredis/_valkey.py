@@ -26,6 +26,7 @@ class FakeValkey(FakeRedisMixin, valkey.Valkey):
 
 class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        _validate_server_type(kwargs)
         super(FakeStrictValkey, self).__init__(*args, **kwargs)
 
     @classmethod

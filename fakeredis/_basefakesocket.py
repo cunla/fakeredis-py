@@ -6,7 +6,6 @@ from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, G
 from xmlrpc.client import ResponseError
 
 import redis
-from redis.connection import DefaultParser
 
 from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet
 from . import _msgs as msgs
@@ -287,7 +286,14 @@ class BaseFakeSocket:
         return result
 
     def _decode_error(self, error: SimpleError) -> ResponseError:
-        return DefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
+        if isinstance(self, redis.Redis):
+            from redis.connection import DefaultParser
+
+            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+        else:
+            from valkey.connection import DefaultParser
+
+            return DefaultParser(socket_read_size=65536).parse_error(error.value)
 
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""

@@ -3,6 +3,7 @@ from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 import pytest
 import pytest_asyncio
 import redis
+import valkey
 
 import fakeredis
 from fakeredis._server import _create_version
@@ -107,14 +108,21 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
         pytest.skip("LUA modules not supported by fakeredis")
 
     def factory(**kwargs: Any) -> redis.Redis:
+        valkey_client_test = request.node.get_closest_marker("valkey_client_test") is not None
         if REDIS_PY_VERSION.major >= 5:
             kwargs["protocol"] = protocol
         if cls_name.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
-            cls = getattr(fakeredis, cls_name)
+            if valkey_client_test:
+                cls = getattr(fakeredis, cls_name.replace("Redis", "Valkey"))
+            else:
+                cls = getattr(fakeredis, cls_name)
             return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         # Real
-        cls = getattr(redis, cls_name)
+        if valkey_client_test:
+            cls = getattr(valkey, "Valkey")
+        else:
+            cls = getattr(redis, cls_name)
         return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory

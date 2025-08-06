@@ -59,7 +59,7 @@ class FakeSocket(
 ):
     def __init__(
         self,
-        server: "FakeServer",
+        server: FakeServer,
         db: int,
         lua_modules: Optional[Set[str]] = None,  # noqa: F821
         *args: Any,
