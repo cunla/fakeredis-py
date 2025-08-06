@@ -9,7 +9,7 @@ from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-from .typing import Self
+from .typing import Self, lib_version, RaiseErrorTypes
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
@@ -94,7 +94,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
-        if isinstance(response, (redis.ResponseError, redis.AuthenticationError)):
+        if isinstance(response, RaiseErrorTypes):
             raise response
         if kwargs.get("disable_decoding", False):
             return response
@@ -178,6 +178,8 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
+        kwds.setdefault("lib_name", "fakeredis")
+        kwds.setdefault("lib_version", lib_version)
         super().__init__(**kwds)
 
     @classmethod

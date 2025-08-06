@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - version init argument typing #401
+- include `lib_name` and `lib_version` in `FakeBaseConnectionMixin`
 
 ## v2.30.3 - 2025-08-01
 
@@ -36,7 +37,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Move `LICENSE` file to fakeredis/ on build #395
-- Show warning for deprecated parameter only if parameter is included in instantiation #384
+- Show warning for deprecated parameter only if the parameter is included in instantiation #384
 
 ### 🧰 Maintenance
 
