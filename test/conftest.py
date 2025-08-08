@@ -21,7 +21,7 @@ def _check_lua_module_supported() -> bool:
         return False
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def real_server_details() -> ServerDetails:
     """Returns server's version or exit if server is not running"""
     client = None
