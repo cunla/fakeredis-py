@@ -7,7 +7,7 @@ cuckoofilters_tests = pytest.importorskip("probables")
 
 
 @pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_cf_add_and_insert(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
@@ -43,3 +43,12 @@ def test_cf_exists_and_del(r: redis.Redis):
     assert 0 == r.cf().count("cuckoo", "notexist")
     assert r.cf().delete("cuckoo", "filter")
     assert 0 == r.cf().count("cuckoo", "filter")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_cf_count_non_existing(r: redis.Redis):
+    assert r.cf().count("cuckoo", "non_existing") == 0
+    assert r.cf().create("cuckoo", 1000)
+    assert r.cf().add("cuckoo", "item1")
+    assert r.cf().insert("cuckoo", ["item1", "item1", "item2"]) == [1, 1, 1]
+    assert r.cf().count("cuckoo", "item1") == 3

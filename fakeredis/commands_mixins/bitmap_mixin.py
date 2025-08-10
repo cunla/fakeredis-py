@@ -1,5 +1,5 @@
 import re
-from typing import Tuple, Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import (
@@ -13,6 +13,7 @@ from fakeredis._commands import (
     CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
+from fakeredis.typing import VersionType
 
 
 class BitfieldEncoding:
@@ -34,7 +35,7 @@ class BitfieldEncoding:
 class BitmapCommandsMixin:
     def __init(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.version: Tuple[int, ...]
+        self.version: VersionType
 
     @staticmethod
     def _bytes_as_bin_string(value: bytes) -> str:

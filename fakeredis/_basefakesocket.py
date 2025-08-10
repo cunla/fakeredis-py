@@ -6,7 +6,6 @@ from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, G
 from xmlrpc.client import ResponseError
 
 import redis
-from redis.connection import DefaultParser
 
 from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet
 from . import _msgs as msgs
@@ -81,13 +80,14 @@ class BaseFakeSocket:
     }
     _connection_error_class = redis.ConnectionError
 
-    def __init__(self, server: "FakeServer", db: int, *args: Any, **kwargs: Any) -> None:  # type: ignore # noqa: F821
+    def __init__(self, server: "FakeServer", db: int, client_class, *args: Any, **kwargs: Any) -> None:  # type: ignore # noqa: F821
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
         self._server: FakeServer = server
         self._db_num = db
         self._db = server.dbs[self._db_num]
+        self._client_class = client_class
         self.responses: Optional[queue.Queue[bytes]] = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed
@@ -287,7 +287,14 @@ class BaseFakeSocket:
         return result
 
     def _decode_error(self, error: SimpleError) -> ResponseError:
-        return DefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
+        if self._client_class.__module__.startswith("redis"):
+            from redis.connection import DefaultParser
+
+            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+        else:
+            from valkey.connection import DefaultParser
+
+            return DefaultParser(socket_read_size=65536).parse_error(error.value)
 
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""

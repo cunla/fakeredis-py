@@ -5,8 +5,7 @@ import time
 import uuid
 import weakref
 from collections import defaultdict
-from collections.abc import MutableMapping
-from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type
+from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type, MutableMapping
 
 import redis
 

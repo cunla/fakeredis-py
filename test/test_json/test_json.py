@@ -174,7 +174,9 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
 
 
 def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
-    with pytest.raises(Exception):
+    with pytest.raises(
+        Exception, match="nx and xx are mutually exclusive: use one, the other or neither - but not both"
+    ):
         r.json().set("obj", Path("foo"), "baz", nx=True, xx=True)
     with pytest.raises(redis.ResponseError):
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "NX", "XX")
