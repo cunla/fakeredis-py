@@ -55,7 +55,7 @@ jobs:
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          uv sync --all-extra
+          uv sync --all-extras
 
       - name: Test without coverage
         run: |
