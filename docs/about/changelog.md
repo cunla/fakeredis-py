@@ -18,6 +18,7 @@ toc_depth: 2
 - version init argument typing #401
 - include `lib_name` and `lib_version` in `FakeBaseConnectionMixin`
 - when using `FakeValkey`, raise `valkey.ResponseError` instead of `redis.ResponseError` #402
+- fix issue with pytest-asyncio #404 @seifertm
 
 ## v2.30.3 - 2025-08-01
 
