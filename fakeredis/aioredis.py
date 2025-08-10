@@ -115,7 +115,9 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
     async def _connect(self) -> None:
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
-        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(self._server, self.db, lua_modules=self._lua_modules)
+        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(
+            self._server, self.db, client_class=self._client_class, lua_modules=self._lua_modules
+        )
         self._reader: Optional[FakeReader] = FakeReader(self._sock)
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 

@@ -7,11 +7,17 @@ tags:
 toc_depth: 2
 ---
 
-## v2.30.4 -
+## v2.31.0 - 2025-08-10
+
+### 🚀 Features
+
+- Add native cjson support for lua redis scripts #399 @ItsDrike
 
 ### 🐛 Bug Fixes
 
 - version init argument typing #401
+- include `lib_name` and `lib_version` in `FakeBaseConnectionMixin`
+- when using `FakeValkey`, raise `valkey.ResponseError` instead of `redis.ResponseError` #402
 
 ## v2.30.3 - 2025-08-01
 
@@ -36,7 +42,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Move `LICENSE` file to fakeredis/ on build #395
-- Show warning for deprecated parameter only if parameter is included in instantiation #384
+- Show warning for deprecated parameter only if the parameter is included in instantiation #384
 
 ### 🧰 Maintenance
 
