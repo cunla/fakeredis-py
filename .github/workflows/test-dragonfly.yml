@@ -21,13 +21,9 @@ jobs:
           - "test_json"
           - "test_mixins"
           - "test_stack"
-          - "test_connection.py"
+          - "test_hypothesis"
           - "test_asyncredis.py"
-          - "test_general.py"
-          - "test_scan.py"
-          - "test_zadd.py"
           - "test_translations.py"
-          - "test_sortedset_commands.py"
     permissions:
       pull-requests: write
     services:
@@ -42,7 +38,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
