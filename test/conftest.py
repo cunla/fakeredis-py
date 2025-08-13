@@ -3,7 +3,6 @@ from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 import pytest
 import pytest_asyncio
 import redis
-import valkey
 
 import fakeredis
 from fakeredis._server import _create_version
@@ -119,6 +118,8 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
             return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         # Real
         if valkey_client_test:
+            import valkey
+
             cls = getattr(valkey, cls_name)
         else:
             cls = getattr(redis, cls_name)
