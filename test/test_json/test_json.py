@@ -368,65 +368,25 @@ def test_strappend(r: redis.Redis):
     assert "foobar" == r.json().get("json-key", Path.root_path())
 
     # Test multi
-    r.json().set(
-        "doc1",
-        Path.root_path(),
-        {
-            "a": "foo",
-            "nested1": {"a": "hello"},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
     assert r.json().strappend("doc1", "bar", "$..a") == [6, 8, None]
-    assert r.json().get("doc1") == {
-        "a": "foobar",
-        "nested1": {"a": "hellobar"},
-        "nested2": {"a": 31},
-    }
+    assert r.json().get("doc1") == {"a": "foobar", "nested1": {"a": "hellobar"}, "nested2": {"a": 31}}
 
     # Test single
-    assert r.json().strappend(
-        "doc1",
-        "baz",
-        "$.nested1.a",
-    ) == [11]
-    assert r.json().get("doc1") == {
-        "a": "foobar",
-        "nested1": {"a": "hellobarbaz"},
-        "nested2": {"a": 31},
-    }
+    assert r.json().strappend("doc1", "baz", "$.nested1.a") == [11]
+    assert r.json().get("doc1") == {"a": "foobar", "nested1": {"a": "hellobarbaz"}, "nested2": {"a": 31}}
 
     # Test missing key
     with pytest.raises(redis.exceptions.ResponseError):
         r.json().strappend("non_existing_doc", "$..a", "err")
 
     # Test multi
-    r.json().set(
-        "doc2",
-        Path.root_path(),
-        {
-            "a": "foo",
-            "nested1": {"a": "hello"},
-            "nested2": {"a": "hi"},
-        },
-    )
+    r.json().set("doc2", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": "hi"}})
     assert r.json().strappend("doc2", "bar", "$.*.a") == [8, 5]
-    assert r.json().get("doc2") == {
-        "a": "foo",
-        "nested1": {"a": "hellobar"},
-        "nested2": {"a": "hibar"},
-    }
+    assert r.json().get("doc2") == {"a": "foo", "nested1": {"a": "hellobar"}, "nested2": {"a": "hibar"}}
 
     # Test missing path
-    r.json().set(
-        "doc1",
-        Path.root_path(),
-        {
-            "a": "foo",
-            "nested1": {"a": "hello"},
-            "nested2": {"a": 31},
-        },
-    )
+    r.json().set("doc1", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
     with pytest.raises(redis.exceptions.ResponseError):
         r.json().strappend("doc1", "add", "piu")
 
@@ -606,15 +566,7 @@ def test_objkeys(r: redis.Redis):
 
     assert r.json().objkeys("fakekey") is None
 
-    r.json().set(
-        "doc1",
-        "$",
-        {
-            "nested1": {"a": {"foo": 10, "bar": 20}},
-            "a": ["foo"],
-            "nested2": {"a": {"baz": 50}},
-        },
-    )
+    r.json().set("doc1", "$", {"nested1": {"a": {"foo": 10, "bar": 20}}, "a": ["foo"], "nested2": {"a": {"baz": 50}}})
 
     # Test single
     keys = r.json().objkeys("doc1", "$.nested1.a")

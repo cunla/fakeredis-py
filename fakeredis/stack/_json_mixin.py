@@ -15,6 +15,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
 from fakeredis.model import ZSet
+from fakeredis.typing import ServerType
 
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
@@ -171,6 +172,7 @@ class JSONCommandsMixin:
         super().__init__(*args, **kwargs)
         self._db: helpers.Database
         self.protocol_version: int
+        self.server_type: ServerType
 
     @staticmethod
     def _get_single(
@@ -467,6 +469,9 @@ class JSONCommandsMixin:
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key: CommandItem, *args: bytes) -> Union[List[Optional[int]], Optional[int]]:
+        if key.value is None:
+            msg = msgs.JSON_KEY_NOT_FOUND if self.server_type != "dragonfly" else msgs.NO_KEY_MSG
+            raise helpers.SimpleError(msg)
         return _json_read_iterate(lambda val: len(val) if type(val) is str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
