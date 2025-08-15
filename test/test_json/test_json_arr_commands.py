@@ -185,10 +185,7 @@ def test_arrindex(r: redis.Redis):
             {"nested1_found": {"arr": [None, "baz2", "buzz", 2, 1, 0, 1, "2", "baz", 2, 4, 5]}},
             {"nested2_not_found": {"arr": ["baz2", 4, 6]}},
             {"nested3_scalar": {"arr": "3"}},
-            [
-                {"nested41_arr": {"arr_renamed": [1, "baz", 3]}},
-                {"nested42_empty_arr": {"arr": []}},
-            ],
+            [{"nested41_arr": {"arr_renamed": [1, "baz", 3]}}, {"nested42_empty_arr": {"arr": []}}],
         ],
     )
     assert r.json().get("test_string", "$..arr") == [
@@ -219,10 +216,7 @@ def test_arrindex(r: redis.Redis):
             {"nested1_found": {"arr": ["zaz", "baz2", "buzz", 2, 1, 0, 1, "2", None, 2, 4, 5]}},
             {"nested2_not_found": {"arr": ["None", 4, 6]}},
             {"nested3_scalar": {"arr": None}},
-            [
-                {"nested41_arr": {"arr_renamed": [1, None, 3]}},
-                {"nested42_empty_arr": {"arr": []}},
-            ],
+            [{"nested41_arr": {"arr_renamed": [1, None, 3]}}, {"nested42_empty_arr": {"arr": []}}],
         ],
     )
     assert r.json().get("test_None", "$..arr") == [
