@@ -9,7 +9,7 @@ import redis
 
 from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
-from fakeredis.typing import VersionType, ServerType
+from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 

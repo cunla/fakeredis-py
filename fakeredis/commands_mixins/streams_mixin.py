@@ -6,7 +6,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
 from fakeredis._helpers import SimpleError, casematch, OK, current_time, Database, SimpleString
 from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class StreamsCommandsMixin:

@@ -18,7 +18,7 @@ from fakeredis._helpers import (
     OK,
     decode_command_bytes,
 )
-from fakeredis.typing import VersionType, ServerType
+from fakeredis._typing import VersionType, ServerType
 
 __LUA_RUNTIMES_MAP = {
     "5.1": "lupa.lua51",

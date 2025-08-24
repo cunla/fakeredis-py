@@ -28,7 +28,7 @@ from fakeredis._helpers import (
     Database,
 )
 from fakeredis.model import ZSet, ExpiringMembersSet
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,

@@ -1,14 +1,15 @@
 import sys
+from typing import Tuple, Literal
 
 import redis
 
 if sys.version_info >= (3, 11):
-    from typing import Self, Tuple, Literal
+    from typing import Self
     from asyncio import timeout as async_timeout
 else:
     from async_timeout import timeout as async_timeout
     from typing_extensions import Self
-    from typing import Tuple, Literal
+
 try:
     from importlib import metadata
 except ImportError:  # for Python < 3.8

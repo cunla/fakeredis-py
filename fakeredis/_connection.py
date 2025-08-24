@@ -9,7 +9,7 @@ from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-from .typing import Self, lib_version, RaiseErrorTypes
+from ._typing import Self, lib_version, RaiseErrorTypes
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):

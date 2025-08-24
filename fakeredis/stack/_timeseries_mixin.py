@@ -6,7 +6,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
 from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
 from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class TimeSeriesCommandsMixin:  # TimeSeries commands

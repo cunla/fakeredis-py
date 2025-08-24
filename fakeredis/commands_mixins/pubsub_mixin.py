@@ -3,7 +3,7 @@ from typing import Any, Dict, Callable, List, Iterable
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
 from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class PubSubCommandsMixin:

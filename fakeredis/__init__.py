@@ -1,6 +1,6 @@
 import sys
 
-from . import typing
+from . import _typing
 from ._connection import (
     FakeRedis,
     FakeStrictRedis,
@@ -21,7 +21,7 @@ else:
             raise NotImplementedError("TcpFakeServer is only available in Python 3.11+")
 
 
-__version__ = typing.lib_version
+__version__ = _typing.lib_version
 __author__ = "Daniel Moran"
 __maintainer__ = "Daniel Moran"
 __email__ = "daniel@moransoftware.ca"

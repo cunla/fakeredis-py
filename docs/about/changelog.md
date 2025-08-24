@@ -7,6 +7,13 @@ tags:
 toc_depth: 2
 ---
 
+## v2.31.1 - 2025-09-01
+
+### 🐛 Bug Fixes
+
+- Sending lib_name and lib_version only when relevant #408
+- Improve documentation of using `TcpFakeServer` #409
+
 ## v2.31.0 - 2025-08-10
 
 ### 🚀 Features

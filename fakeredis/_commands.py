@@ -12,7 +12,7 @@ from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, 
 
 from . import _msgs as msgs
 from ._helpers import null_terminate, SimpleError, Database
-from .typing import VersionType, ServerType
+from ._typing import VersionType, ServerType
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature

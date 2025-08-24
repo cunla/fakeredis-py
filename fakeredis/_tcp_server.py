@@ -6,10 +6,11 @@ from typing import BinaryIO, Dict, Tuple, Any
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
-from fakeredis.typing import VersionType, ServerType
+from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def to_bytes(value) -> bytes:
@@ -90,10 +91,14 @@ class TCPFakeRequestHandler(StreamRequestHandler):
             self.server.clients[self.client_address] = self.current_client
 
     def handle(self):
+        LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
             try:
                 self.data = self.reader.load()
                 LOGGER.debug(f">>> {self.client_address[0]}: {self.data}")
+                if len(self.data) == 1 and self.data[0].upper() == b"SHUTDOWN":
+                    LOGGER.debug(f"*** {self.client_address[0]} requested shutdown")
+                    break
                 res = self.current_client.connection.execute_command(*self.data)
                 LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
                 self.writer.dump(res)
@@ -101,6 +106,8 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
                 self.writer.dump(e)
                 break
+        self.server.socket.close()
+        self.server.shutdown()
 
     def finish(self) -> None:
         del self.server.clients[self.current_client.client_address]
@@ -116,6 +123,7 @@ class TcpFakeServer(ThreadingTCPServer):
         server_version: VersionType = (8, 0),
     ):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
+        self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
         self.clients: Dict[int, FakeRedis] = dict()

@@ -2,7 +2,7 @@ from typing import Iterable, Optional, Any, Dict, Union, Set
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
-from fakeredis.typing import Self
+from fakeredis._typing import Self
 
 
 class ExpiringMembersSet:

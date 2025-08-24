@@ -5,7 +5,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, Int, CommandItem
 from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
 from fakeredis.model import ExpiringMembersSet
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
