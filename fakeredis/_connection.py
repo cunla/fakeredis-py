@@ -180,8 +180,9 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
-        kwds.setdefault("lib_name", "fakeredis")
-        kwds.setdefault("lib_version", lib_version)
+        if "lib_name" in kwds and "lib_version" in kwds:
+            kwds["lib_name"] = "fakeredis"
+            kwds["lib_version"] = lib_version
         super().__init__(**kwds)
 
     @classmethod
