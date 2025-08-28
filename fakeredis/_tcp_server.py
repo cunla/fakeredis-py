@@ -132,3 +132,5 @@ class TcpFakeServer(ThreadingTCPServer):
 if __name__ == "__main__":
     server = TcpFakeServer(("localhost", 19000))
     server.serve_forever()
+    server.server_close()
+    server.shutdown()

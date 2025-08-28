@@ -96,7 +96,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
         first_key,
         last_key,
         step,
-        list(categories),
+        sorted(list(categories)),
         tips,
         key_specs_array(cmd_info),
         subcommands,
@@ -115,12 +115,10 @@ if __name__ == "__main__":
             command_info_dict[cmd] = get_command_info(cmd, cmds)
             subcommand = cmd.split(" ")
             if len(subcommand) > 1:
-                (
-                    command_info_dict.setdefault(subcommand[0], [subcommand[0], -1, [], 0, 0, 0, [], [], [], []])[
-                        9
-                    ].append(command_info_dict[cmd])
-                )
-
+                command_info_dict.setdefault(
+                    subcommand[0],
+                    [subcommand[0], -1, [], 0, 0, 0, [], [], [], []],
+                )[9].append(command_info_dict[cmd])
             print(command_info_dict[cmd])
     with open(os.path.join(os.path.dirname(__file__), "..", "fakeredis", "commands.json"), "w") as f:
         json.dump(command_info_dict, f)
