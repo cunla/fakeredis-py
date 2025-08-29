@@ -5,7 +5,7 @@ import itertools
 import json
 import logging
 import os
-from typing import Callable, AnyStr, Set, Any, Tuple, List, Dict, Optional
+from typing import Callable, AnyStr, Set, Any, Tuple, List, Optional
 
 import lupa
 
@@ -132,7 +132,6 @@ class ScriptingCommandsMixin:
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
         self.server_type: ServerType
         self.version: VersionType
         self.load_lua_modules = set()
@@ -235,7 +234,7 @@ class ScriptingCommandsMixin:
         if numkeys < 0:
             raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
         sha1 = hashlib.sha1(script).hexdigest().encode()
-        self.script_cache[sha1] = script
+        self._server.script_cache[sha1] = script
         lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
         modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
         set_globals = lua_runtime.eval(
@@ -299,7 +298,7 @@ class ScriptingCommandsMixin:
     @command(name="EVALSHA", fixed=(bytes, Int), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def evalsha(self, sha1: bytes, numkeys: Int, *keys_and_args: bytes) -> Any:
         try:
-            script = self.script_cache[sha1]
+            script = self._server.script_cache[sha1]
         except KeyError:
             raise SimpleError(msgs.NO_MATCHING_SCRIPT_MSG)
         return self.eval(script, numkeys, *keys_and_args)
@@ -310,20 +309,20 @@ class ScriptingCommandsMixin:
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
         script = args[0]
         sha1 = hashlib.sha1(script).hexdigest().encode()
-        self.script_cache[sha1] = script
+        self._server.script_cache[sha1] = script
         return sha1
 
     @command(name="SCRIPT EXISTS", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_exists(self, *args: bytes) -> List[int]:
         if self.version >= (7,) and len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
-        return [int(sha1 in self.script_cache) for sha1 in args]
+        return [int(sha1 in self._server.script_cache) for sha1 in args]
 
     @command(name="SCRIPT FLUSH", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def script_flush(self, *args: bytes) -> SimpleString:
         if len(args) > 1 or (len(args) == 1 and null_terminate(args[0]) not in {b"sync", b"async"}):
             raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
-        self.script_cache = {}
+        self._server.script_cache = {}
         return OK
 
     @command((), flags=msgs.FLAG_NO_SCRIPT)
