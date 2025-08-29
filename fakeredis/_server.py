@@ -52,6 +52,7 @@ class FakeServer:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
+        self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
         self.subscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.psubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.ssubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
