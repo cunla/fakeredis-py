@@ -4,13 +4,15 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import BinaryIO, Dict, Tuple, Any
 
+from redis.exceptions import NoScriptError, AuthenticationError
+
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
 from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def to_bytes(value) -> bytes:
@@ -56,6 +58,10 @@ class Reader:
 @dataclass
 class Writer:
     writer: BinaryIO
+    EXCEPTION_MAP = {
+        NoScriptError: "NOSCRIPT",
+        AuthenticationError: "WRONGPASS",
+    }
 
     def dump(self, value: Any, dump_bulk=False) -> None:
         if isinstance(value, int):
@@ -73,7 +79,8 @@ class Writer:
         elif value is None:
             self.writer.write("$-1\r\n".encode())
         elif isinstance(value, Exception):
-            self.writer.write(f"-{value.args[0]}\r\n".encode())
+            prefix = self.EXCEPTION_MAP.get(type(value), "ERR")
+            self.writer.write(f"-{prefix} {value.args[0]}\r\n".encode())
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
@@ -86,7 +93,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 connection=FakeRedis(server=self.server.fake_server),
                 client_address=self.client_address,
             )
-            self.reader = Reader(self.rfile)
+            self.reader = self.current_client.connection.connection._reader
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
 
