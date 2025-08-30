@@ -68,7 +68,9 @@ class Writer:
             self.writer.write(f":{value}\r\n".encode())
         elif isinstance(value, (str, bytes)):
             value = to_bytes(value)
-            if dump_bulk or b"\r" in value or b"\n" in value:
+            if value.startswith(b"-"):
+                self.writer.write(value + b"\r\n")
+            elif dump_bulk or b"\r" in value or b"\n" in value:
                 self.writer.write(b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n")
             else:
                 self.writer.write(b"+" + value + b"\r\n")
@@ -78,9 +80,8 @@ class Writer:
                 self.dump(item, dump_bulk=True)
         elif value is None:
             self.writer.write("$-1\r\n".encode())
-        elif isinstance(value, Exception):
-            prefix = self.EXCEPTION_MAP.get(type(value), "ERR")
-            self.writer.write(f"-{prefix} {value.args[0]}\r\n".encode())
+        else:
+            raise TypeError(value)
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
@@ -93,7 +94,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 connection=FakeRedis(server=self.server.fake_server),
                 client_address=self.client_address,
             )
-            self.reader = self.current_client.connection.connection._reader
+            self.reader = Reader(self.rfile)
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
 
@@ -111,10 +112,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 self.writer.dump(res)
             except Exception as e:
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
-                self.writer.dump(e)
                 break
-        self.server.socket.close()
-        self.server.shutdown()
 
     def finish(self) -> None:
         del self.server.clients[self.current_client.client_address]
@@ -131,7 +129,7 @@ class TcpFakeServer(ThreadingTCPServer):
     ):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.allow_reuse_address = True
-        self.fake_server = FakeServer(server_type=server_type, version=server_version)
+        self.fake_server = FakeServer(server_type=server_type, version=server_version, is_tcp_server=True)
         self.client_ids = count(0)
         self.clients: Dict[int, FakeRedis] = dict()
 

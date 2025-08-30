@@ -7,9 +7,9 @@ from typing import Dict, Tuple, Any, List, Optional, Union
 
 import redis
 
-from fakeredis.model import AccessControlList
 from fakeredis._helpers import Database, FakeSelector
 from fakeredis._typing import VersionType, ServerType
+from fakeredis.model import AccessControlList
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -38,6 +38,7 @@ class FakeServer:
         self,
         version: VersionType = (7,),
         server_type: ServerType = "redis",
+        is_tcp_server: bool = False,
         config: Optional[Dict[bytes, bytes]] = None,
     ) -> None:
         """Initialize a new FakeServer instance.
@@ -67,6 +68,15 @@ class FakeServer:
         self.server_type: str = server_type
         self.config: Dict[bytes, bytes] = config or dict()
         self.acl: AccessControlList = AccessControlList()
+        self.clients: Dict[str, Dict[str, Any]] = dict()
+        self._next_client_id = 1
+        self.is_tcp_server = is_tcp_server
+
+    def get_next_client_id(self) -> int:
+        with self.lock:
+            client_id = self._next_client_id
+            self._next_client_id += 1
+        return client_id
 
     @staticmethod
     def get_server(key: str, version: VersionType, server_type: ServerType) -> "FakeServer":

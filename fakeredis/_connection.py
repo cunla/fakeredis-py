@@ -30,7 +30,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             db=self.db,
             lua_modules=self._lua_modules,
             client_info=dict(
-                id=3,
+                id=self._server.get_next_client_id(),
                 addr="127.0.0.1:57275",  # TODO get IP
                 laddr="127.0.0.1:6379",  # TODO get IP
                 fd=8,
@@ -57,7 +57,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 cmd="auth",
                 user="default",
                 redir=-1,
-                resp=2,
+                resp=self.protocol,
             ),
         )
 
