@@ -1,13 +1,13 @@
 import sys
 from collections import namedtuple
-from typing import List, Any, Callable, Optional, Union
+from typing import List, Any, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Float, CommandItem
 from fakeredis._helpers import SimpleError, Database
-from fakeredis.model import ZSet
 from fakeredis.geo import distance, geo_encode, geo_decode
+from fakeredis.model import ZSet
 
 UNIT_TO_M = {"km": 0.001, "mi": 0.000621371, "ft": 3.28084, "m": 1}
 
@@ -83,8 +83,6 @@ def _find_near(
 
 
 class GeoCommandsMixin:
-    _encodefloat: Callable[[float, bool], bytes]
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GeoCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
