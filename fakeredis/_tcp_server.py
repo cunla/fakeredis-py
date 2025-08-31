@@ -7,7 +7,7 @@ from typing import Dict, Tuple, Any, Union
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
-from fakeredis._typing import VersionType, ServerType
+from fakeredis._typing import VersionType, ServerType, override
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
