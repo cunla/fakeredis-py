@@ -128,6 +128,7 @@ class TcpFakeServer(ThreadingTCPServer):
         server_type: ServerType = "redis",
         server_version: VersionType = (8, 0),
     ):
+        self.daemon_threads = True
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)

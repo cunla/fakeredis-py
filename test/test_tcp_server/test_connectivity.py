@@ -37,3 +37,25 @@ def test_tcp_server_lock():
     r.shutdown()
     server.server_close()
     server.shutdown()
+    t.join()
+
+
+def test_timeseries_does_not_keep_thread():
+    server_address = ("127.0.0.1", 19000)
+    server = TcpFakeServer(server_address)
+    t = Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    time.sleep(0.1)
+    r = Redis.from_url(f"redis://{server_address[0]}:{server_address[1]}", decode_responses=True)
+    timeseries = r.ts()
+    timestamp = round(time.time() * 1000)
+
+    timeseries.add(
+        "ticker:test:thing",
+        timestamp,
+        0.5,
+        duplicate_policy="LAST",
+        labels={"symbol": "test", "type": "thing"},
+    )
+
+    print("complete")
