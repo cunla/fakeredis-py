@@ -13,6 +13,7 @@ toc_depth: 2
 
 - Sending lib_name and lib_version only when relevant #408
 - Improve documentation of using `TcpFakeServer` #409
+- TcpFakeServer: Closing threads on server close #409
 
 ### 🧰 Maintenance
 
