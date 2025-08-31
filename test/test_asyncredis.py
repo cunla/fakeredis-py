@@ -7,7 +7,7 @@ import redis
 import redis.asyncio
 
 from fakeredis import FakeServer, aioredis
-from fakeredis.typing import async_timeout
+from fakeredis._typing import async_timeout
 from test import testtools
 
 pytestmark = []

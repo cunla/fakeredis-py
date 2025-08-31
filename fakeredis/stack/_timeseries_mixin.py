@@ -5,8 +5,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
 from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
-from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
+from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS, ClientInfo
 
 
 class TimeSeriesCommandsMixin:  # TimeSeries commands
@@ -17,6 +17,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         super().__init__(*args, **kwargs)
         self._db: Database
         self.version: VersionType
+        self._client_info: ClientInfo
 
     @staticmethod
     def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:
@@ -106,7 +107,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_info(self, key: CommandItem, *args: bytes) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             labels = [[k, v] for k, v in key.value.labels.items()]
             rules = [
                 [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
@@ -157,7 +158,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         res = key.value.get()
-        if res is None and self.protocol_version == 3:
+        if res is None and self._client_info.protocol_version == 3:
             res = []
         return res
 
@@ -403,7 +404,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mget"))
 
         timeseries = self._get_timeseries(filter_expression)
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             if with_labels:
                 return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
             if selected_labels is not None:
@@ -554,7 +555,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             }
         if group_by is not None and reducer is not None:
             res = self._group_by_label(reverse, res, group_by, reducer)
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             res = [[ts_name, [[k, v] for k, v in ts_data[0].items()], ts_data[-1]] for ts_name, ts_data in res.items()]
         return res
 

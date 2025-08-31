@@ -8,7 +8,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Int, Float, CommandItem
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis._helpers import current_time
-from fakeredis.model import Hash
+from fakeredis.model import Hash, ClientInfo
 
 
 class HashCommandsMixin:
@@ -23,7 +23,7 @@ class HashCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HashCommandsMixin, self).__init__(*args, **kwargs)
-        self.protocol_version: int
+        self._client_info: ClientInfo
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
@@ -143,7 +143,7 @@ class HashCommandsMixin:
             res = random.sample(sorted(key.value.items()), count)
 
         if withvalues:
-            if self.protocol_version == 2:
+            if self._client_info.protocol_version == 2:
                 res = [item for t in res for item in t]
             else:
                 res = [list(t) for t in res]

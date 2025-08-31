@@ -14,7 +14,7 @@ from fakeredis._commands import (
     CommandItem,
 )
 from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:

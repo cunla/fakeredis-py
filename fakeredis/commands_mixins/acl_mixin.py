@@ -2,11 +2,12 @@ import secrets
 from typing import Any, List, Dict, Optional, Union
 
 from fakeredis import _msgs as msgs
+from fakeredis._basefakesocket import ClientInfo
 from fakeredis._commands import command, Int
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis.model import AccessControlList
 from fakeredis.model import get_categories, get_commands_by_category
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class AclCommandsMixin:
@@ -14,7 +15,7 @@ class AclCommandsMixin:
         super(AclCommandsMixin).__init__(*args, **kwargs)
         self.version: VersionType
         self._server: Any
-        self._client_info: Dict[str, Union[str, int]]
+        self._client_info: ClientInfo
 
     @property
     def _server_config(self) -> Dict[bytes, bytes]:
@@ -97,7 +98,7 @@ class AclCommandsMixin:
         if len(args) >= 1 and self._check_user_password(username, password):
             self._client_info["user"] = username.decode()
             return OK
-        self._acl.add_log_record(b"auth", b"auth", b"AUTH", username, self.client_info_as_bytes)
+        self._acl.add_log_record(b"auth", b"auth", b"AUTH", username, self._client_info.as_bytes())
         raise SimpleError(msgs.AUTH_FAILURE)
 
     @command(name="ACL CAT", fixed=(), repeat=(bytes,))

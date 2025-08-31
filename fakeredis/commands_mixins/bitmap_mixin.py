@@ -13,7 +13,7 @@ from fakeredis._commands import (
     CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class BitfieldEncoding:
