@@ -4,7 +4,6 @@ from io import BufferedIOBase
 from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
-from typing_extensions import override
 
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
@@ -80,7 +79,6 @@ class Writer:
 class TCPFakeRequestHandler(StreamRequestHandler):
     server: "TcpFakeServer"  # type: ignore
 
-    @override
     def setup(self) -> None:
         super().setup()
         if self.client_address in self.server.clients:
@@ -94,7 +92,6 @@ class TCPFakeRequestHandler(StreamRequestHandler):
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
 
-    @override
     def handle(self) -> None:
         LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
@@ -114,7 +111,6 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         self.server.socket.close()
         self.server.shutdown()
 
-    @override
     def finish(self) -> None:
         del self.server.clients[self.current_client.client_address]
         super().finish()
