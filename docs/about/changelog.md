@@ -17,7 +17,7 @@ toc_depth: 2
 
 ### 🧰 Maintenance
 
--Support TcpFakeServer for Python 3.9 (#411)
+- Support TcpFakeServer for Python 3.9 (#411)
 
 ## v2.31.0 - 2025-08-10
 
