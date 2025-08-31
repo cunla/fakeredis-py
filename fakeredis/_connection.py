@@ -1,5 +1,4 @@
 import queue
-import time
 import warnings
 from typing import Tuple, Any, List, Optional, Set, Sequence, Union
 
@@ -10,6 +9,7 @@ from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
 from ._typing import Self, lib_version, RaiseErrorTypes
+from .model import ClientInfo
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
@@ -29,13 +29,12 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             client_class=self._client_class,
             db=self.db,
             lua_modules=self._lua_modules,
-            client_info=dict(
-                id=3,
+            client_info=ClientInfo(
+                id=self._server.get_next_client_id(),
                 addr="127.0.0.1:57275",  # TODO get IP
                 laddr="127.0.0.1:6379",  # TODO get IP
                 fd=8,
                 name="",
-                _created=int(time.time()),
                 idle=0,
                 flags="N",
                 db=0,
@@ -57,7 +56,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 cmd="auth",
                 user="default",
                 redir=-1,
-                resp=2,
+                resp=self.protocol,
             ),
         )
 

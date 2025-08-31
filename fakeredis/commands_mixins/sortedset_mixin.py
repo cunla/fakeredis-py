@@ -27,7 +27,7 @@ from fakeredis._helpers import (
     null_terminate,
     Database,
 )
-from fakeredis.model import ZSet, ExpiringMembersSet
+from fakeredis.model import ZSet, ExpiringMembersSet, ClientInfo
 from fakeredis._typing import VersionType
 
 SORTED_SET_METHODS = {
@@ -49,6 +49,7 @@ class SortedSetCommandsMixin:
         super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
         self.version: VersionType
         self._db: Database
+        self._client_info: ClientInfo
 
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[List[Any]]:
         zset = key.value
@@ -57,7 +58,7 @@ class SortedSetCommandsMixin:
             members.reverse()
         members = members[:count]
         res = [[bytes(member), zset.get(member)] for member in members]
-        if flatten_list and self.protocol_version == 2:
+        if flatten_list and self._client_info.protocol_version == 2:
             res = list(itertools.chain.from_iterable(res))
         for item in members:
             zset.discard(item)
@@ -106,7 +107,7 @@ class SortedSetCommandsMixin:
 
     def _apply_withscores(self, items: List[Tuple[bytes, bytes]], withscores: bool) -> List[Any]:
         if withscores:
-            if self.protocol_version == 2:
+            if self._client_info.protocol_version == 2:
                 out = []
                 for item in items:
                     out.append(item[1])
@@ -479,7 +480,7 @@ class SortedSetCommandsMixin:
 
         if not withscores:
             res = [t for t in res]
-        elif self.protocol_version == 2:
+        elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
             res = [[i, res[i]] for i in res]
@@ -493,7 +494,7 @@ class SortedSetCommandsMixin:
 
         if not withscores:
             res = [t for t in res]
-        elif self.protocol_version == 2:
+        elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
             res = [[i, res[i]] for i in res]
@@ -507,7 +508,7 @@ class SortedSetCommandsMixin:
 
         if not withscores:
             res = [t for t in res]
-        elif self.protocol_version == 2:
+        elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
             res = [[i, res[i]] for i in res]
@@ -555,9 +556,9 @@ class SortedSetCommandsMixin:
 
         if not withscores:
             res = [t[0] for t in res]
-        elif self.protocol_version == 2:
+        elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in t]
-        else:  # self.protocol_version == 3 and withscores
+        else:  # self._client_info.protocol_version == 3 and withscores
             res = [list(item) for item in res]
         return res
 

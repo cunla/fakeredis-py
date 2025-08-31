@@ -14,7 +14,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
-from fakeredis.model import ZSet
+from fakeredis.model import ZSet, ClientInfo
 
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
@@ -170,7 +170,7 @@ class JSONCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db: helpers.Database
-        self.protocol_version: int
+        self._client_info: ClientInfo
 
     @staticmethod
     def _get_single(
@@ -478,7 +478,7 @@ class JSONCommandsMixin:
         return _json_read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
 
     def _resp3_wrapping_list(self, res: Any, wrap_list: bool = False) -> Any:
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             return res
         if isinstance(res, list) and not wrap_list:
             return res

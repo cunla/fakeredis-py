@@ -1,9 +1,10 @@
-from typing import Any, List, Union, Dict
+from typing import Any, List, Union
 
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
 from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
+from fakeredis.model import ClientInfo
 
 PONG = SimpleString(b"PONG")
 
@@ -14,7 +15,7 @@ class ConnectionCommandsMixin:
         self._db: Database
         self._db_num: int
         self._pubsub: int
-        self._client_info: Dict[str, Union[str, int]]
+        self._client_info: ClientInfo
         self._server: Any
 
     @command((bytes,))
@@ -26,7 +27,7 @@ class ConnectionCommandsMixin:
         if len(args) > 1:
             msg = msgs.WRONG_ARGS_MSG6.format("ping")
             raise SimpleError(msg)
-        if self._pubsub and self.protocol_version == 2:
+        if self._pubsub and self._client_info.protocol_version == 2:
             return [b"pong", args[0] if args else b""]
         else:
             return args[0] if args else PONG
@@ -62,7 +63,7 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
-        return self.client_info_as_bytes
+        return self._client_info.as_bytes()
 
     @command(name="CLIENT LIST", fixed=(), repeat=(bytes,))
     def client_list_cmd(self, *args: bytes) -> bytes:
@@ -81,7 +82,7 @@ class ConnectionCommandsMixin:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(filter_ids) > 0:
             sockets = [sock for sock in sockets if sock._client_info["id"] in filter_ids]
-        res = [item.client_info_as_bytes for item in sockets]
+        res = [item._client_info.as_bytes() for item in sockets]
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
