@@ -12,11 +12,12 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Sending lib_name and lib_version only when relevant #408
-- Improve documentation of using `TcpFakeServer` #409
+- TcpFakeServer: Closing threads on server close #409
 
 ### 🧰 Maintenance
 
--Support TcpFakeServer for Python 3.9 (#411)
+- Improve documentation of using `TcpFakeServer` #409
+- Support TcpFakeServer for Python 3.9 (#411)
 
 ## v2.31.0 - 2025-08-10
 
