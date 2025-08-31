@@ -11,6 +11,8 @@ from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
+
+
 # logging.basicConfig(level=logging.DEBUG)
 
 
@@ -125,6 +127,7 @@ class TcpFakeServer(ThreadingTCPServer):
         server_version: VersionType = (8, 0),
     ):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
+        self.daemon_threads = True
         self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
