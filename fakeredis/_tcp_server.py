@@ -5,13 +5,15 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
 
+from redis.lock import Lock
+
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
 from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def to_bytes(value: Any) -> bytes:
@@ -88,6 +90,9 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 connection=FakeRedis(server=self.server.fake_server),
                 client_address=self.client_address,
             )
+            self.current_client.connection.script_load(Lock.LUA_RELEASE_SCRIPT)
+            self.current_client.connection.script_load(Lock.LUA_EXTEND_SCRIPT)
+            self.current_client.connection.script_load(Lock.LUA_REACQUIRE_SCRIPT)
             self.reader = Reader(self.rfile)
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
@@ -96,23 +101,22 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
             try:
-                self.data = self.reader.load()
-                LOGGER.debug(f">>> {self.client_address[0]}: {self.data}")
-                if len(self.data) == 1 and self.data[0].upper() == b"SHUTDOWN":
+                data = self.reader.load()
+                LOGGER.debug(f">>> {self.client_address[0]}: {data}")
+                if len(data) == 1 and data[0].upper() == b"SHUTDOWN":
                     LOGGER.debug(f"*** {self.client_address[0]} requested shutdown")
                     break
-                res = self.current_client.connection.execute_command(*self.data)
+                res = self.current_client.connection.execute_command(*data)
                 LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
                 self.writer.dump(res)
             except Exception as e:
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
                 self.writer.dump(e)
                 break
-        self.server.socket.close()
-        self.server.shutdown()
 
     def finish(self) -> None:
         del self.server.clients[self.current_client.client_address]
+        self.server.socket.close()
         super().finish()
 
 

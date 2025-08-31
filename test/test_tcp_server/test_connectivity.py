@@ -34,5 +34,6 @@ def test_tcp_server_lock():
     lock.acquire()
     print(f"Acquired lock {lock.locked()}")
     lock.release()
+    r.shutdown()
     server.server_close()
     server.shutdown()

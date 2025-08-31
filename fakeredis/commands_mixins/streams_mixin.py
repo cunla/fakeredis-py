@@ -5,7 +5,7 @@ import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
 from fakeredis._helpers import SimpleError, casematch, OK, current_time, Database, SimpleString
-from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
+from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey, ClientInfo
 from fakeredis._typing import VersionType
 
 
@@ -16,6 +16,7 @@ class StreamsCommandsMixin:
         super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
         self.version: VersionType
+        self._client_info: ClientInfo
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
@@ -150,7 +151,7 @@ class StreamsCommandsMixin:
                 timeout / 1000.0,
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             return [res] if res else None
         return res
 
@@ -372,7 +373,7 @@ class StreamsCommandsMixin:
         # On blocking read, when count is not None, and there are no results, return None (instead of an empty list)
         if blocking and count and len(res) == 0:
             return None
-        if self.protocol_version == 2:
+        if self._client_info.protocol_version == 2:
             return [[k, v] for k, v in res.items()]
         return res
 

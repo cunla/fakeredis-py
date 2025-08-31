@@ -2,12 +2,12 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Dict, Sequence
-from xmlrpc.client import ResponseError
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence
 
 import redis
+from redis import ResponseError
 
-from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet
+from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
@@ -101,26 +101,12 @@ class BaseFakeSocket:
         self._pubsub: int
         self._transaction_failed: bool
         info = kwargs.pop("client_info", dict(user="default"))
-        self._client_info: Dict[str, Union[str, int]] = {k.replace("_", "-"): v for k, v in info.items()}
+        self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
     @property
-    def client_info(self) -> Dict[str, Union[str, int]]:
-        res = {k: v for k, v in self._client_info.items() if not k.startswith("-")}
-        res["age"] = int(time.time()) - int(self._client_info.get("-created", 0))
-        return res
-
-    @property
-    def client_info_as_bytes(self) -> bytes:
-        return " ".join([f"{k}={v}" for k, v in self.client_info.items()]).encode()
-
-    @property
     def current_user(self) -> bytes:
-        return str(self._client_info.get("user", "")).encode()
-
-    @property
-    def protocol_version(self) -> int:
-        return int(self._client_info.get("resp", 2))
+        return self._client_info.user
 
     @property
     def version(self) -> Tuple[int, ...]:
@@ -225,7 +211,7 @@ class BaseFakeSocket:
         try:
             func, sig = self._name_to_func(cmd)
             # ACL check
-            self._server.acl.validate_command(self.current_user, self.client_info_as_bytes, fields)
+            self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
@@ -276,10 +262,12 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                if self.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(result)
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    assert valid_response_type(result, self.protocol_version), f"Invalid response type for {result}"
+                    assert valid_response_type(result, self._client_info.protocol_version), (
+                        f"Invalid response type for {result}"
+                    )
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
