@@ -4,11 +4,11 @@ from typing import Tuple, Literal
 import redis
 
 if sys.version_info >= (3, 11):
-    from typing import Self, override
+    from typing import Self
     from asyncio import timeout as async_timeout
 else:
     from async_timeout import timeout as async_timeout
-    from typing_extensions import Self, override
+    from typing_extensions import Self
 
 try:
     from importlib import metadata
@@ -34,5 +34,4 @@ __all__ = [
     "ServerType",
     "lib_version",
     "RaiseErrorTypes",
-    "override",
 ]
