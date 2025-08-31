@@ -1,5 +1,3 @@
-import sys
-
 from . import _typing
 from ._connection import (
     FakeRedis,
@@ -11,14 +9,7 @@ from .aioredis import (
     FakeRedis as FakeAsyncRedis,
     FakeConnection as FakeAsyncConnection,
 )
-
-if sys.version_info >= (3, 11):
-    from ._tcp_server import TcpFakeServer
-else:
-
-    class TcpFakeServer:
-        def __init__(self, *args, **kwargs):
-            raise NotImplementedError("TcpFakeServer is only available in Python 3.11+")
+from ._tcp_server import TcpFakeServer
 
 
 __version__ = _typing.lib_version
