@@ -13,6 +13,7 @@ toc_depth: 2
 
 - Sending lib_name and lib_version only when relevant #408
 - TcpFakeServer: Closing threads on server close #409
+- TcpFakeServer: Register Lock scripts #406
 
 ### 🧰 Maintenance
 
