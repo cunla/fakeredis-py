@@ -13,7 +13,7 @@ from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def to_bytes(value: Any) -> bytes:
