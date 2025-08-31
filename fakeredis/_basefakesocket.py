@@ -303,8 +303,6 @@ class BaseFakeSocket:
         elif isinstance(result, SimpleString):
             return result.value
         elif isinstance(result, SimpleError):
-            if self._server.is_tcp_server:
-                return "-" + result.value
             return self._decode_error(result)
         else:
             return result

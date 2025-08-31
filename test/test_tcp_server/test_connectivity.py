@@ -1,18 +1,11 @@
-import sys
 import time
 from threading import Thread
 
-import pytest
 import redis
 from redis import Redis
 from redis.lock import Lock
 
 from fakeredis import TcpFakeServer
-
-pytestmark = []
-pytestmark.extend(
-    [pytest.mark.skipif(sys.version_info < (3, 11), reason="TcpFakeServer is only available in Python 3.11+")]
-)
 
 
 def test_tcp_server_started():

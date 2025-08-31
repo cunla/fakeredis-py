@@ -38,7 +38,6 @@ class FakeServer:
         self,
         version: VersionType = (7,),
         server_type: ServerType = "redis",
-        is_tcp_server: bool = False,
         config: Optional[Dict[bytes, bytes]] = None,
     ) -> None:
         """Initialize a new FakeServer instance.
@@ -70,7 +69,6 @@ class FakeServer:
         self.acl: AccessControlList = AccessControlList()
         self.clients: Dict[str, Dict[str, Any]] = dict()
         self._next_client_id = 1
-        self.is_tcp_server = is_tcp_server
 
     def get_next_client_id(self) -> int:
         with self.lock:
