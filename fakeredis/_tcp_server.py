@@ -5,6 +5,8 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
 
+from redis.lock import Lock
+
 from fakeredis import FakeRedis
 from fakeredis import FakeServer
 from fakeredis._typing import VersionType, ServerType
@@ -90,6 +92,9 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 connection=FakeRedis(server=self.server.fake_server),
                 client_address=self.client_address,
             )
+            self.current_client.connection.script_load(Lock.LUA_RELEASE_SCRIPT)
+            self.current_client.connection.script_load(Lock.LUA_EXTEND_SCRIPT)
+            self.current_client.connection.script_load(Lock.LUA_REACQUIRE_SCRIPT)
             self.reader = Reader(self.rfile)
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
@@ -110,11 +115,10 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
                 self.writer.dump(e)
                 break
-        self.server.socket.close()
-        self.server.shutdown()
 
     def finish(self) -> None:
         del self.server.clients[self.current_client.client_address]
+        self.server.socket.close()
         super().finish()
 
 
@@ -126,6 +130,7 @@ class TcpFakeServer(ThreadingTCPServer):
         server_type: ServerType = "redis",
         server_version: VersionType = (8, 0),
     ):
+        self.daemon_threads = True
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.daemon_threads = True
         self.allow_reuse_address = True
