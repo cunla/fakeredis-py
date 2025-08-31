@@ -103,12 +103,12 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
             try:
-                data = self.reader.load()
-                LOGGER.debug(f">>> {self.client_address[0]}: {data}")
-                if len(data) == 1 and data[0].upper() == b"SHUTDOWN":
+                self.data = self.reader.load()
+                LOGGER.debug(f">>> {self.client_address[0]}: {self.data}")
+                if len(self.data) == 1 and self.data[0].upper() == b"SHUTDOWN":
                     LOGGER.debug(f"*** {self.client_address[0]} requested shutdown")
                     break
-                res = self.current_client.connection.execute_command(*data)
+                res = self.current_client.connection.execute_command(*self.data)
                 LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
                 self.writer.dump(res)
             except Exception as e:
