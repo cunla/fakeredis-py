@@ -9,6 +9,7 @@ if sys.version_info >= (3, 11):
 else:
     from async_timeout import timeout as async_timeout
     from typing_extensions import Self
+
 try:
     from importlib import metadata
 except ImportError:  # for Python < 3.8
