@@ -7,6 +7,19 @@ tags:
 toc_depth: 2
 ---
 
+## v2.31.1 - 2025-09-01
+
+### 🐛 Bug Fixes
+
+- Sending lib_name and lib_version only when relevant #408
+- TcpFakeServer: Closing threads on server close #409
+- TcpFakeServer: Register Lock scripts #406
+
+### 🧰 Maintenance
+
+- Improve documentation of using `TcpFakeServer` #409
+- Support TcpFakeServer for Python 3.9 (#411)
+
 ## v2.31.0 - 2025-08-10
 
 ### 🚀 Features
@@ -18,6 +31,7 @@ toc_depth: 2
 - version init argument typing #401
 - include `lib_name` and `lib_version` in `FakeBaseConnectionMixin`
 - when using `FakeValkey`, raise `valkey.ResponseError` instead of `redis.ResponseError` #402
+- fix issue with pytest-asyncio #404 @seifertm
 
 ## v2.30.3 - 2025-08-01
 

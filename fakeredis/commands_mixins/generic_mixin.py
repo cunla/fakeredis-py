@@ -17,7 +17,7 @@ from fakeredis._commands import (
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
 from fakeredis.model import ZSet, Hash, ExpiringMembersSet
-from fakeredis.typing import VersionType
+from fakeredis._typing import VersionType
 
 
 class GenericCommandsMixin:

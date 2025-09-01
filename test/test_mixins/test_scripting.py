@@ -711,3 +711,12 @@ def test_eval_cjson_mixed(r: redis.Redis) -> None:
     """
     val = r.eval(lua, 0)
     assert val == 1
+
+
+def test_lock(r: redis.Redis) -> None:
+    from redis.lock import Lock
+
+    lock = Lock(r, "my-lock")
+    lock.acquire()
+    assert lock.locked() is True
+    lock.release()

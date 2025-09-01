@@ -47,7 +47,7 @@ class CFCommandsMixin:
 
     @staticmethod
     def _cf_exist(key: CommandItem, item: bytes) -> int:
-        return 1 if (item in key.value) else 0
+        return 1 if (key.value is not None and item in key.value) else 0
 
     @command(name="CF.ADD", fixed=(Key(ScalableCuckooFilter), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cf_add(self, key: CommandItem, value: bytes) -> int:
@@ -61,7 +61,11 @@ class CFCommandsMixin:
 
     @command(name="CF.COUNT", fixed=(Key(ScalableCuckooFilter), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cf_count(self, key: CommandItem, item: bytes) -> int:
-        return 1 if self._cf_exist(key, item) else 0  # todo
+        if key.value is None:
+            return 0
+        if type(key.value) is not ScalableCuckooFilter:
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        return key.value.count(item)
 
     @command(name="CF.DEL", fixed=(Key(ScalableCuckooFilter), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def cf_del(self, key: CommandItem, value: bytes) -> int:

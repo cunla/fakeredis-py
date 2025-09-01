@@ -59,6 +59,11 @@ r = redis.Redis(host=server_address[0], port=server_address[1])
 r.set("foo", "bar")
 assert r.get("foo") == b"bar"
 
+
+# When you are done with the server, you can stop it with:
+server.shutdown()
+server.server_close()
+t.join()
 ```
 
 ### Use as a pytest fixture

@@ -3,16 +3,10 @@ import json
 import pytest
 import redis
 
-pytestmark = []
-pytestmark.extend(
-    [
-        pytest.mark.asyncio,
-    ]
-)
-
 lua_modules_test = pytest.importorskip("lupa")
 
 
+@pytest.mark.asyncio
 @pytest.mark.load_lua_modules("cjson")
 async def test_async_asgi_ratelimit_script(async_redis: redis.Redis):
     script = """

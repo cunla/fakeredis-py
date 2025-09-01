@@ -13,7 +13,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from .typing import async_timeout, Self
+from ._typing import async_timeout, Self
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
