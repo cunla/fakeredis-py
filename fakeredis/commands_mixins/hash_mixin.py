@@ -99,7 +99,7 @@ class HashCommandsMixin:
         if no_values:
             args = [arg for arg in args if not casematch(arg, b"novalues")]
         cursor, keys = self._scan(key.value, cursor, *args)
-        keys = [key.encode("utf-8") for key in keys if isinstance(key, str)]
+        keys = [k.encode("utf-8") for k in keys if isinstance(k, str)]
         if no_values:
             return [cursor, keys]
         items = []
