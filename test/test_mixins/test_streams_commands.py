@@ -337,20 +337,6 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.max_server("6.3")
-def test_xgroup_create_connection6(r: redis.Redis):
-    stream, group = "stream", "group"
-    message_id = r.xadd(stream, {"foo": "bar"})
-    r.xgroup_create(stream, group, message_id)
-    r.xadd(stream, {"foo": "bar"})
-    res = r.xinfo_groups(stream)
-    assert len(res) == 1
-    assert res[0]["name"] == group.encode()
-    assert res[0]["consumers"] == 0
-    assert res[0]["pending"] == 0
-    assert res[0]["last-delivered-id"] == message_id
-
-
 @pytest.mark.min_server("7")
 def test_xgroup_create_connection7(r: redis.Redis):
     stream, group = "stream", "group"

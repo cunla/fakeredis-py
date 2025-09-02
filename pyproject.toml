@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.31.1"
+version = "2.31.2"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -129,6 +129,8 @@ follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
 check_untyped_defs = true
+exclude = [".venv", "test", "__pycache__"]
+
 
 [tool.ruff]
 line-length = 120

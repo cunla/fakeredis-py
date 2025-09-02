@@ -54,7 +54,7 @@ class UserAccessControlList:
         self._commands: Dict[bytes, bool] = {b"@all": False}
         self._selectors: Dict[bytes, Selector] = dict()
 
-    def reset(self):
+    def reset(self) -> None:
         self.enabled = False
         self._nopass = False
         self._commands = {b"@all": False}
@@ -155,7 +155,7 @@ class UserAccessControlList:
     def reset_key_patterns(self) -> None:
         self._key_patterns.clear()
 
-    def reset_channels_patterns(self):
+    def reset_channels_patterns(self) -> None:
         self._channel_patterns.clear()
 
     def add_channel_pattern(self, channel_pattern: bytes) -> None:

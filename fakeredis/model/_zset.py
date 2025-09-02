@@ -1,6 +1,8 @@
-from typing import Any, Tuple, Optional, Generator, Dict, ItemsView
+from typing import Any, Tuple, Optional, Generator, Dict, ItemsView, Union
 
 import sortedcontainers
+
+from fakeredis._commands import AfterAny, BeforeAny
 
 
 class ZSet:
@@ -74,19 +76,18 @@ class ZSet:
         return self._byscore.islice(start, stop, reverse)
 
     def irange_lex(
-        self, start: bytes, stop: bytes, inclusive: Tuple[bool, bool] = (True, True), reverse: bool = False
+        self,
+        start: Union[bytes, BeforeAny, AfterAny],
+        stop: Union[bytes, BeforeAny, AfterAny],
+        inclusive: Tuple[bool, bool] = (True, True),
+        reverse: bool = False,
     ) -> Any:
-        if not self._byscore:
+        if len(self._byscore) == 0:
             return iter([])
         default_score = self._byscore[0][0]
-        start_score = self._bylex.get(start, default_score)
-        stop_score = self._bylex.get(stop, default_score)
-        it = self._byscore.irange(
-            (start_score, start),
-            (stop_score, stop),
-            inclusive=inclusive,
-            reverse=reverse,
-        )
+        start_elem = (self._bylex.get(start, default_score), start) if start != BeforeAny else None
+        stop_elem = (self._bylex.get(stop, default_score), stop) if stop != AfterAny else None
+        it = self._byscore.irange(start_elem, stop_elem, inclusive=inclusive, reverse=reverse)
         return (item[1] for item in it)
 
     def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool) -> Any:

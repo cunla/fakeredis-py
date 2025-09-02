@@ -14,8 +14,15 @@ from fakeredis._typing import VersionType, ServerType
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
 
-
 # logging.basicConfig(level=logging.DEBUG)
+
+
+try:
+    import lupa  # noqa: F401
+
+    lua_scripts_supported = True
+except ImportError:
+    lua_scripts_supported = False
 
 
 def to_bytes(value: Any) -> bytes:
@@ -92,9 +99,10 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 connection=FakeRedis(server=self.server.fake_server),
                 client_address=self.client_address,
             )
-            self.current_client.connection.script_load(Lock.LUA_RELEASE_SCRIPT)
-            self.current_client.connection.script_load(Lock.LUA_EXTEND_SCRIPT)
-            self.current_client.connection.script_load(Lock.LUA_REACQUIRE_SCRIPT)
+            if lua_scripts_supported:
+                self.current_client.connection.script_load(Lock.LUA_RELEASE_SCRIPT)
+                self.current_client.connection.script_load(Lock.LUA_EXTEND_SCRIPT)
+                self.current_client.connection.script_load(Lock.LUA_REACQUIRE_SCRIPT)
             self.reader = Reader(self.rfile)
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client

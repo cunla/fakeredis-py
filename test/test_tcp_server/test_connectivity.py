@@ -6,6 +6,7 @@ from redis import Redis
 from redis.lock import Lock
 
 from fakeredis import TcpFakeServer
+from test import testtools
 
 
 def test_tcp_server_started():
@@ -23,6 +24,7 @@ def test_tcp_server_started():
     t.join()
 
 
+@testtools.run_test_if_lupa_installed()
 def test_tcp_server_lock():
     server_address = ("127.0.0.1", 19000)
     server = TcpFakeServer(server_address)
