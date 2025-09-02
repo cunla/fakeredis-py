@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.31.2 - 2025-10-01
+
+### 🐛 Bug Fixes
+
+- `TcpFakeServer` does not require lupa to be installed (only if Lock is used) #413
+
 ## v2.31.1 - 2025-09-01
 
 ### 🐛 Bug Fixes

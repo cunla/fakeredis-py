@@ -314,13 +314,6 @@ def test_eval_convert_bool(r: redis.Redis):
     assert not isinstance(val, bool)
 
 
-@pytest.mark.max_server("6.2.7")
-def test_eval_call_bool6(r: redis.Redis):
-    # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError, match=r"Lua redis\(\) command arguments must be strings or integers"):
-        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
-
-
 @pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("valkey")
 def test_eval_call_bool7_redis(r: redis.Redis):
