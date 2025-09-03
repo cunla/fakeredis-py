@@ -19,9 +19,8 @@ class StreamEntryKey(NamedTuple):
         return f"{self.ts}-{self.seq}".encode()
 
     @staticmethod
-    def parse_str(entry_key_str: AnyStr) -> "StreamEntryKey":
-        if isinstance(entry_key_str, bytes):
-            entry_key_str = entry_key_str.decode()
+    def parse_str(entry_key: AnyStr) -> "StreamEntryKey":
+        entry_key_str: str = entry_key.decode() if isinstance(entry_key, bytes) else entry_key
         parts = entry_key_str.split("-")
         (timestamp, sequence) = (int(parts[0]), 0) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
         return StreamEntryKey(timestamp, sequence)
@@ -35,7 +34,7 @@ class StreamRangeTest:
         self.exclusive = exclusive
 
     @staticmethod
-    def valid_key(entry_key: Union[bytes, str]) -> bool:
+    def valid_key(entry_key: AnyStr) -> bool:
         try:
             StreamEntryKey.parse_str(entry_key)
             return True
@@ -139,7 +138,7 @@ class StreamGroup(object):
 
     def group_read(
         self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
-    ) -> List[List[Union[bytes, List[bytes]]]]:
+    ) -> List[List[Union[bytes, Dict[bytes, bytes]]]]:
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
@@ -310,8 +309,8 @@ class XStream:
             return 1
         return 0
 
-    def groups_info(self) -> List[List[bytes]]:
-        res = []
+    def groups_info(self) -> List[Dict[bytes, Any]]:
+        res: List[Dict[bytes, Any]] = []
         for group in self._groups.values():
             group_res = group.group_info()
             res.append(group_res)
@@ -332,7 +331,7 @@ class XStream:
             res[b"groups"] = [g.group_info() for g in self._groups.values()]
         return list(itertools.chain(*res.items()))
 
-    def delete(self, lst: List[Union[str, bytes]]) -> int:
+    def delete(self, lst: List[AnyStr]) -> int:
         """Delete items from stream
 
         :param lst: List of IDs to delete, in the form of `timestamp-sequence`.
@@ -436,7 +435,7 @@ class XStream:
             check_idx = ind - 1
         return ind, (check_idx < len(self._ids) and self._ids[check_idx] == entry_key)
 
-    def find_index_key_as_str(self, entry_key_str: Union[str, bytes]) -> Tuple[int, bool]:
+    def find_index_key_as_str(self, entry_key_str: AnyStr) -> Tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
         :param entry_key_str: key for the entry, formatted as 'timestamp-sequence.'
         :returns: A tuple
@@ -449,7 +448,7 @@ class XStream:
         return self.find_index(ts_seq)
 
     @staticmethod
-    def parse_ts_seq(ts_seq_str: Union[str, bytes]) -> StreamEntryKey:
+    def parse_ts_seq(ts_seq_str: AnyStr) -> StreamEntryKey:
         if ts_seq_str == b"$":
             return StreamEntryKey(0, 0)
         return StreamEntryKey.parse_str(ts_seq_str)
