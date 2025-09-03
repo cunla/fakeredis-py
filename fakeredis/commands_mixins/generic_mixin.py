@@ -96,7 +96,7 @@ class GenericCommandsMixin:
         return 1
 
     @command(name="DEL", fixed=(Key(),), repeat=(Key(),))
-    def del_(self, *keys: CommandItem):
+    def del_(self, *keys: CommandItem) -> int:
         return delete_keys(*keys)
 
     @command(name="DUMP", fixed=(Key(missing_return=None),))
@@ -106,7 +106,7 @@ class GenericCommandsMixin:
         return checksum + value
 
     @command(name="EXISTS", fixed=(Key(),), repeat=(Key(),))
-    def exists(self, *keys):
+    def exists(self, *keys) -> int:
         ret = 0
         for key in keys:
             if key:
@@ -177,7 +177,7 @@ class GenericCommandsMixin:
         return int(key.expireat * 1000)
 
     @command(name="RANDOMKEY", fixed=())
-    def randomkey(self):
+    def randomkey(self) -> Optional[bytes]:
         keys = list(self._db.keys())
         if not keys:
             return None
@@ -222,11 +222,11 @@ class GenericCommandsMixin:
         return OK
 
     @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
-    def scan(self, cursor, *args):
+    def scan(self, cursor, *args) -> List[Union[bytes, List[bytes]]]:
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key, *args):
+    def sort(self, key: CommandItem, *args: bytes) -> List[bytes]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
