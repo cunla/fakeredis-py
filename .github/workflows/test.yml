@@ -20,12 +20,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
           python-version: "3.13"
@@ -91,12 +91,12 @@ jobs:
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
           python-version: ${{ matrix.python-version }}
