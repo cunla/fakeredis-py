@@ -63,7 +63,7 @@ Funding = "https://github.com/sponsors/cunla"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12 ; python_version >= '3.10'",
+    "ruff>=0.12 ; python_version >= '3.11'",
     "mypy>=1.15 ; python_version >= '3.10'",
     "pre-commit~=4.2 ; python_version >= '3.10'",
 ]

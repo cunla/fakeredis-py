@@ -26,6 +26,7 @@ jobs:
       - name: Run Ruff Linting 🧹
         uses: astral-sh/ruff-action@v3
         with:
+          version: "latest"
           args: check
           src: "."
   test-import-only:
