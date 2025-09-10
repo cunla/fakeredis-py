@@ -27,21 +27,21 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             if len(filter_expression.split(b"!=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"!=")
-            if value == "-":
+            if value == b"-":
                 return label in ts.labels
 
-            if value[0] == b"(" and value[-1] == b")":
-                values = set(value[1:-1].split(b","))
+            if value.startswith(b"(") and value.endswith(b")"):
+                values = {v.strip() for v in value[1:-1].split(b",") if v}
                 return label in ts.labels and ts.labels[label] not in values
             return label not in ts.labels or ts.labels[label] != value
         if filter_expression.find(b"=") != -1:
             if len(filter_expression.split(b"=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"=")
-            if value == "-":
+            if value == b"-":
                 return label not in ts.labels
-            if value[0] == b"(" and value[-1] == b")":
-                values = set(value[1:-1].split(b","))
+            if value.startswith(b"(") and value.endswith(b")"):
+                values = {v.strip() for v in value[1:-1].split(b",") if v}
                 return label in ts.labels and ts.labels[label] in values
             return label in ts.labels and ts.labels[label] == value
         raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
