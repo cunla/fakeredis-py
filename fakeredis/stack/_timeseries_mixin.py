@@ -31,7 +31,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
                 return label in ts.labels
 
             if value.startswith(b"(") and value.endswith(b")"):
-                values = {v.strip() for v in value[1:-1].split(b",") if v}
+                values = set(value[1:-1].split(b","))
                 return label in ts.labels and ts.labels[label] not in values
             return label not in ts.labels or ts.labels[label] != value
         if filter_expression.find(b"=") != -1:
@@ -41,7 +41,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             if value == b"-":
                 return label not in ts.labels
             if value.startswith(b"(") and value.endswith(b")"):
-                values = {v.strip() for v in value[1:-1].split(b",") if v}
+                values = set(value[1:-1].split(b","))
                 return label in ts.labels and ts.labels[label] in values
             return label in ts.labels and ts.labels[label] == value
         raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
