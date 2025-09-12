@@ -994,3 +994,32 @@ def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
     with pytest.raises(redis.ResponseError) as e:
         r.ts().createrule(1, 2, "avg", 100)
     assert str(e.value) == msgs.TIMESERIES_RULE_EXISTS
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+def test_mrange_with_in_condition(r: redis.Redis):
+    r.ts().create("ts:1", labels={"sensor": "A"})
+    r.ts().create("ts:2", labels={"sensor": "B"})
+    r.ts().create("ts:3", labels={"sensor": "C"})
+
+    t = 1_700_000_000_000
+    r.ts().add("ts:1", t, 1.0)
+    r.ts().add("ts:2", t, 2.0)
+    r.ts().add("ts:3", t, 3.0)
+
+    # Works
+    info = InfoClass(r, r.ts().info("ts:1"))
+    assert info["labels"]["sensor"] == "A"
+    sensor_a = r.ts().mrange("-", "+", filters=["sensor=A"])
+    assert len(sensor_a) == 1
+    assert sensor_a == resp_conversion(
+        r, {b"ts:1": [{}, {b"aggregators": []}, [[t, 1.0]]]}, [{"ts:1": [{}, [(t, 1.0)]]}]
+    )
+    sensor_c = r.ts().mrange("-", "+", filters=["sensor=C"])
+    assert len(sensor_c) == 1
+    assert sensor_c == resp_conversion(
+        r, {b"ts:3": [{}, {b"aggregators": []}, [[t, 3.0]]]}, [{"ts:3": [{}, [(t, 3.0)]]}]
+    )
+
+    res = r.ts().mrange("-", "+", filters=["sensor=(A,C)"])
+    assert len(res) == 2
