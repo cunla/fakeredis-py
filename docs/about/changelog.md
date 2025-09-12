@@ -7,7 +7,13 @@ tags:
 toc_depth: 2
 ---
 
-## v2.31.2 - 2025-10-01
+## v2.31.3 -
+
+### 🐛 Bug Fixes
+
+- Fix issue with `TS.MRANGE` filters with IN condition not working @ben-swid #414 #415
+
+## v2.31.2 - 2025-09-08
 
 ### 🐛 Bug Fixes
 
