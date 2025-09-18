@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Fix issue with `TS.MRANGE` filters with IN condition not working @ben-swid #414 #415
+- Fix issue trying to import `valkey` when connection class is `FakeRedis` #417
 
 ## v2.31.2 - 2025-09-08
 
