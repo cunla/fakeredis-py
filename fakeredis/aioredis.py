@@ -250,8 +250,6 @@ class FakeRedisMixin:
         pool.connection_class = FakeConnection
         pool.connection_kwargs.setdefault("version", "7.4")
         pool.connection_kwargs.setdefault("server_type", "redis")
-        pool.connection_kwargs.pop("username", None)
-        pool.connection_kwargs.pop("password", None)
         return self
 
 
