@@ -11,6 +11,7 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
+- Fix checking valkey exceptions in async client #416
 - Fix issue with `TS.MRANGE` filters with IN condition not working @ben-swid #414 #415
 - Fix issue trying to import `valkey` when connection class is `FakeRedis` #417
 
