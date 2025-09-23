@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.31.4 -
+
+### 🐛 Bug Fixes
+
+- fix:removing use of self.protocol to support redis-py < 5 #419
+
 ## v2.31.3 -
 
 ### 🐛 Bug Fixes
