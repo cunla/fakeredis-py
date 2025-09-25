@@ -1,17 +1,17 @@
 import time
+from typing import Any
 
 
-class ClientInfo(dict):
-    def __init__(self, **kwargs) -> None:
+class ClientInfo(dict[str, Any]):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__()
         kwargs.setdefault("-created", int(time.time()))
         kwargs.setdefault("resp", 2)
         for k, v in kwargs.items():
             self[k.replace("-", "_")] = v
 
-    def items(self):
-        res = super().items()
-        res = {k: v for k, v in res if not k.startswith("-")}
+    def items(self) -> Any:
+        res = {k: v for k, v in super().items() if not k.startswith("-")}
         res["age"] = int(time.time()) - int(self.get("-created", 0))
         return res.items()
 

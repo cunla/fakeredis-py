@@ -13,7 +13,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, Self
+from ._typing import async_timeout, Self, RaiseErrorTypes
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -171,7 +171,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
             response = await self._reader.read(0) if can_read and self._reader else None
-        if isinstance(response, redis_async.ResponseError):
+        if isinstance(response, RaiseErrorTypes):
             raise response
         if kwargs.get("disable_decoding", False):
             return response
@@ -250,8 +250,6 @@ class FakeRedisMixin:
         pool.connection_class = FakeConnection
         pool.connection_kwargs.setdefault("version", "7.4")
         pool.connection_kwargs.setdefault("server_type", "redis")
-        pool.connection_kwargs.pop("username", None)
-        pool.connection_kwargs.pop("password", None)
         return self
 
 

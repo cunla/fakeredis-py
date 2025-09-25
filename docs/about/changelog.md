@@ -7,7 +7,21 @@ tags:
 toc_depth: 2
 ---
 
-## v2.31.2 - 2025-10-01
+## v2.31.4 -
+
+### 🐛 Bug Fixes
+
+- fix:removing use of self.protocol to support redis-py < 5 #419
+
+## v2.31.3 -
+
+### 🐛 Bug Fixes
+
+- Fix checking valkey exceptions in async client #416
+- Fix issue with `TS.MRANGE` filters with IN condition not working @ben-swid #414 #415
+- Fix issue trying to import `valkey` when connection class is `FakeRedis` #417
+
+## v2.31.2 - 2025-09-08
 
 ### 🐛 Bug Fixes
 

@@ -275,12 +275,12 @@ class BaseFakeSocket:
         return result
 
     def _decode_error(self, error: SimpleError) -> ResponseError:
-        if self._client_class.__module__.startswith("redis"):
-            from redis.connection import DefaultParser
+        if self._client_class.__module__.startswith("valkey"):
+            from valkey.connection import DefaultParser
 
             return DefaultParser(socket_read_size=65536).parse_error(error.value)
         else:
-            from valkey.connection import DefaultParser
+            from redis.connection import DefaultParser
 
             return DefaultParser(socket_read_size=65536).parse_error(error.value)
 

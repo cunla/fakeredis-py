@@ -1,6 +1,6 @@
 import fnmatch
 import hashlib
-from typing import Dict, Set, List, Union, Optional, Any
+from typing import Dict, Set, List, Union, Optional, Any, AnyStr
 
 from fakeredis import _msgs as msgs
 from ._command_info import get_commands_by_category, get_command_info
@@ -186,7 +186,7 @@ class UserAccessControlList:
     def _get_key_patterns(self) -> List[bytes]:
         return [b"~" + key_pattern for key_pattern in self._key_patterns]
 
-    def _get_channel_patterns(self):
+    def _get_channel_patterns(self) -> List[bytes]:
         return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
 
     def _get_flags(self) -> List[bytes]:
@@ -267,9 +267,9 @@ class AclLogRecord:
         self.client_info: bytes = client_info
         self.entry_id: int = entry_id
 
-    def as_dict(self) -> Dict[str, str]:
+    def as_dict(self) -> Dict[str, AnyStr]:
         age_seconds = (current_time() - self.created_ts) / 1000
-        return {
+        res: Dict[str, AnyStr] = {
             "count": str(self.count).encode(),
             "reason": self.reason,
             "context": self.context,
@@ -281,6 +281,7 @@ class AclLogRecord:
             "timestamp-created": str(self.created_ts),
             "timestamp-last-updated": str(self.updated_ts),
         }
+        return res
 
 
 class AccessControlList:
@@ -311,7 +312,7 @@ class AccessControlList:
     def reset_log(self) -> None:
         self._log.clear()
 
-    def log(self, count: int) -> List[Dict[str, str]]:
+    def log(self, count: int) -> List[Dict[str, AnyStr]]:
         if count > len(self._log) or count < 0:
             count = 0
         res = [x.as_dict() for x in self._log[-count:]]

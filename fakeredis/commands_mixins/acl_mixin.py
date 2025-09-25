@@ -2,19 +2,18 @@ import secrets
 from typing import Any, List, Dict, Optional, Union
 
 from fakeredis import _msgs as msgs
-from fakeredis._basefakesocket import ClientInfo
 from fakeredis._commands import command, Int
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
-from fakeredis.model import AccessControlList
-from fakeredis.model import get_categories, get_commands_by_category
 from fakeredis._typing import VersionType
+from fakeredis._server import FakeServer
+from fakeredis.model import AccessControlList, ClientInfo, get_categories, get_commands_by_category
 
 
 class AclCommandsMixin:
     def __init(self, *args: Any, **kwargs: Any) -> None:
-        super(AclCommandsMixin).__init__(*args, **kwargs)
+        super(AclCommandsMixin, self).__init__(*args, **kwargs)
         self.version: VersionType
-        self._server: Any
+        self._server: FakeServer
         self._client_info: ClientInfo
 
     @property
@@ -78,7 +77,7 @@ class AclCommandsMixin:
                 user_acl.add_channel_pattern(arg[1:])
 
     @command(name="CONFIG SET", fixed=(bytes, bytes), repeat=(bytes, bytes))
-    def config_set(self, *args: bytes):
+    def config_set(self, *args: bytes) -> SimpleString:
         if len(args) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("CONFIG SET"))
         for i in range(0, len(args), 2):
@@ -86,7 +85,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="AUTH", fixed=(), repeat=(bytes,))
-    def _auth(self, *args: bytes) -> bytes:
+    def _auth(self, *args: bytes) -> SimpleString:
         if not 1 <= len(args) <= 2:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("AUTH"))
         username = None if len(args) == 1 else args[0]
@@ -118,7 +117,7 @@ class AclCommandsMixin:
         return secrets.token_hex(nbytes).encode()
 
     @command(name="ACL SETUSER", fixed=(bytes,), repeat=(bytes,))
-    def acl_setuser(self, username: bytes, *args: bytes) -> bytes:
+    def acl_setuser(self, username: bytes, *args: bytes) -> SimpleString:
         self._set_user_acl(username, *args)
         return OK
 
@@ -127,12 +126,12 @@ class AclCommandsMixin:
         return self._acl.as_rules()
 
     @command(name="ACL DELUSER", fixed=(bytes,), repeat=())
-    def acl_deluser(self, username: bytes) -> bytes:
+    def acl_deluser(self, username: bytes) -> SimpleString:
         self._acl.del_user(username)
         return OK
 
     @command(name="ACL GETUSER", fixed=(bytes,), repeat=())
-    def acl_getuser(self, username: bytes) -> List[bytes]:
+    def acl_getuser(self, username: bytes) -> List[Union[bytes, List[bytes]]]:
         res = self._acl.get_user_acl(username).as_array()
         return res
 
@@ -143,7 +142,7 @@ class AclCommandsMixin:
 
     @command(name="ACL WHOAMI", fixed=(), repeat=())
     def acl_whoami(self) -> bytes:
-        return self._client_info.get("user", "").encode()
+        return self._client_info.user
 
     @command(name="ACL SAVE", fixed=(), repeat=())
     def acl_save(self) -> SimpleString:

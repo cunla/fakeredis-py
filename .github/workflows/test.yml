@@ -20,19 +20,30 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Run Ruff Linting 🧹
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "latest"
+          args: check
+          src: "."
+  test-import-only:
+    name: "Basic import test"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
           python-version: "3.13"
-      - name: Run ruff
-        shell: bash
-        run: |
-          uv run ruff check
       - name: Test import
         run: |
           uv build
@@ -51,14 +62,14 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image: [ "redis:6.2.17", "redis:7.4.2", "redis:8.0.0", "valkey/valkey:8.1" ]
+        redis-image: ["redis:6.2.17", "redis:7.4.2", "redis:8.0.0", "redis:8.2.1", "valkey/valkey:8.1.3"]
         python-version: [ "3.9", "3.12", "3.13" ]
-        redis-py: [ "4.6.0", "5.2.1", "5.3.1", "6.4.0" ]
-        install-extras: [ false ]
-        coverage: [ false ]
+        redis-py: ["4.6.0", "5.3.1", "6.4.0", "7.0.0b1"]
+        install-extras: [false]
+        coverage: [false]
         exclude:
           - python-version: "3.13"
-            redis-image: "redis:8.0.0"
+            redis-image: "redis:8.2.1"
             redis-py: "6.4.0"
             install-extras: false
             coverage: false
@@ -72,7 +83,7 @@ jobs:
             redis-py: "6.4.0"
             install-extras: true
           - python-version: "3.13"
-            redis-image: "redis:8.0.0"
+            redis-image: "redis:8.2.1"
             redis-py: "6.4.0"
             install-extras: true
             coverage: true
@@ -91,12 +102,12 @@ jobs:
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
           python-version: ${{ matrix.python-version }}

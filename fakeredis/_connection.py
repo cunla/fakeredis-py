@@ -24,6 +24,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+        protocol = getattr(self, "protocol", 2)
         return FakeSocket(
             self._server,
             client_class=self._client_class,
@@ -56,7 +57,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 cmd="auth",
                 user="default",
                 redir=-1,
-                resp=self.protocol,
+                resp=protocol,
             ),
         )
 
