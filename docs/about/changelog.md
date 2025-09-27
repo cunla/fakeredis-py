@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - fix:removing use of self.protocol to support redis-py < 5 #419
+- fix:race condition due to closing socket in TCPFakeRequestHandler:finish #420
 
 ## v2.31.3 -
 
