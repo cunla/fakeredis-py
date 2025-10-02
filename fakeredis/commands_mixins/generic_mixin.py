@@ -118,9 +118,9 @@ class GenericCommandsMixin:
         res = self._expireat(key, self._db.time + seconds, *args)
         return res
 
-    @command(name="EXPIREAT", fixed=(Key(), Int))
-    def expireat(self, key: CommandItem, timestamp: int) -> int:
-        return self._expireat(key, float(timestamp))
+    @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
+    def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
+        return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
     def keys(self, pattern: bytes) -> List[bytes]:
@@ -148,13 +148,13 @@ class GenericCommandsMixin:
         key.expireat = None
         return 1
 
-    @command(name="PEXPIRE", fixed=(Key(), Int))
-    def pexpire(self, key: CommandItem, ms: int) -> int:
-        return self._expireat(key, self._db.time + ms / 1000.0)
+    @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
+    def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
+        return self._expireat(key, self._db.time + ms / 1000.0, *args)
 
-    @command(name="PEXPIREAT", fixed=(Key(), Int))
-    def pexpireat(self, key: CommandItem, ms_timestamp: int) -> int:
-        return self._expireat(key, ms_timestamp / 1000.0)
+    @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
+    def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
+        return self._expireat(key, ms_timestamp / 1000.0, *args)
 
     @command(name="PTTL", fixed=(Key(),))
     def pttl(self, key: CommandItem) -> int:
