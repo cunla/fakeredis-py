@@ -125,8 +125,8 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 break
 
     def finish(self) -> None:
+        self.server.clients[self.current_client.client_address].connection.close()
         del self.server.clients[self.current_client.client_address]
-        self.server.socket.close()
         super().finish()
 
 

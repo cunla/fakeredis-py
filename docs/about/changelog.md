@@ -7,11 +7,16 @@ tags:
 toc_depth: 2
 ---
 
-## v2.31.4 -
+## v2.32.0 -
+
+### 🚀 Features
+
+- add support for nx/xx/gt/lt options for expireat/pexpire/pexpireat @praboud-ant #421
 
 ### 🐛 Bug Fixes
 
 - fix:removing use of self.protocol to support redis-py < 5 #419
+- fix:race condition due to closing socket in TCPFakeRequestHandler:finish #420
 
 ## v2.31.3 -
 

@@ -39,6 +39,14 @@ def test_expireat_should_return_false_for_missing_key(r: redis.Redis):
     assert r.expireat("missing", int(time() + 1)) is False
 
 
+@pytest.mark.min_server("7")
+def test_expireat_should_not_expire_when_expire_is_set(r: redis.Redis):
+    r.set("foo", "bar")
+    assert r.get("foo") == b"bar"
+    assert r.expireat("foo", int(time() + 100), nx=True) == 1
+    assert r.expireat("foo", int(time() + 200), nx=True) == 0
+
+
 def test_del_operator(r: redis.Redis):
     r["foo"] = "bar"
     del r["foo"]
