@@ -7,7 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.31.4 -
+## v2.32.0 -
+
+### 🚀 Features
+
+- add support for nx/xx/gt/lt options for expireat/pexpire/pexpireat @praboud-ant #421
 
 ### 🐛 Bug Fixes
 
