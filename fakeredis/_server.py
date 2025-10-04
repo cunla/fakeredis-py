@@ -64,7 +64,7 @@ class FakeServer:
         self.version: VersionType = _create_version(version)
         if server_type not in ("redis", "dragonfly", "valkey"):
             raise ValueError(f"Unsupported server type: {server_type}")
-        self.server_type: str = server_type
+        self.server_type: ServerType = server_type
         self.config: Dict[bytes, bytes] = config or dict()
         self.acl: AccessControlList = AccessControlList()
         self.clients: Dict[str, Dict[str, Any]] = dict()
