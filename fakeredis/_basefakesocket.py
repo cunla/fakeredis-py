@@ -4,7 +4,6 @@ import time
 import weakref
 from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence
 
-import redis
 from redis import ResponseError
 
 from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
@@ -79,7 +78,6 @@ class BaseFakeSocket:
         "ssubscribe",
         "sunsubscribe",
     }
-    _connection_error_class = redis.ConnectionError
 
     def __init__(self, server: "FakeServer", db: int, client_class, *args: Any, **kwargs: Any) -> None:  # type: ignore # noqa: F821
         super(BaseFakeSocket, self).__init__(*args, **kwargs)

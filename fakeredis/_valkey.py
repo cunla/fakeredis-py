@@ -13,6 +13,7 @@ def _validate_server_type(args_dict: Dict[str, Any]) -> None:
     args_dict.setdefault("server_type", "valkey")
     args_dict.setdefault("client_class", valkey.Valkey)
     args_dict.setdefault("connection_pool_class", valkey.connection.ConnectionPool)
+    args_dict.setdefault("connection_error_class", valkey.ConnectionError)
 
 
 class FakeValkey(FakeRedisMixin, valkey.Valkey):
@@ -39,6 +40,7 @@ class FakeAsyncValkey(FakeAsyncRedisMixin, valkey.asyncio.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault("client_class", valkey.asyncio.Valkey)
         kwargs.setdefault("connection_pool_class", valkey.asyncio.ConnectionPool)
+        kwargs.setdefault("connection_error_class", valkey.asyncio.ConnectionError)
         _validate_server_type(kwargs)
         super(FakeAsyncValkey, self).__init__(*args, **kwargs)
 

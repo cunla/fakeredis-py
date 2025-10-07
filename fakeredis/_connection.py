@@ -14,8 +14,8 @@ from .model import ClientInfo
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
-    def __init__(*args: Any, **kwargs: Any) -> None:
-        FakeBaseConnectionMixin.__init__(*args, **kwargs)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(FakeConnection, self).__init__(*args, **kwargs)
 
     def connect(self) -> None:
         super().connect()  # type: ignore
@@ -24,7 +24,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
-            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         protocol = getattr(self, "protocol", 2)
         return FakeSocket(
             self._server,
@@ -86,14 +86,14 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
 
     def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
-            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except queue.Empty:
                 if kwargs.get("disconnect_on_error", True):
                     self.disconnect()
-                raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
         if isinstance(response, RaiseErrorTypes):
@@ -129,6 +129,7 @@ class FakeRedisMixin:
         lua_modules: Optional[Set[str]] = None,
         client_class=redis.Redis,
         connection_pool_class=redis.connection.ConnectionPool,
+        connection_error_class=redis.ConnectionError,
         **kwargs: Any,
     ) -> None:
         """
@@ -154,6 +155,7 @@ class FakeRedisMixin:
             conn_pool_args = get_default_init_kwargs(connection_pool_class).keys()
             connection_kwargs = dict(
                 connection_class=FakeConnection,
+                connection_error_class=connection_error_class,
                 version=version,
                 server_type=server_type,
                 lua_modules=lua_modules,
