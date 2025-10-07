@@ -471,7 +471,7 @@ wheels = [
 
 [[package]]
 name = "fakeredis"
-version = "2.32.0"
+version = "2.32.1"
 source = { editable = "." }
 dependencies = [
     { name = "redis", version = "5.0.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
@@ -529,14 +529,14 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jsonpath-ng", marker = "extra == 'json'", specifier = "~=1.6" },
-    { name = "lupa", marker = "extra == 'lua'", specifier = ">=2.1,<3.0" },
+    { name = "jsonpath-ng", marker = "extra == 'json'", specifier = ">=1.6" },
+    { name = "lupa", marker = "extra == 'lua'", specifier = ">=2.1" },
     { name = "pyprobables", marker = "extra == 'bf'", specifier = ">=0.6" },
     { name = "pyprobables", marker = "extra == 'cf'", specifier = ">=0.6" },
     { name = "pyprobables", marker = "extra == 'probabilistic'", specifier = ">=0.6" },
     { name = "redis", marker = "python_full_version < '3.8'", specifier = ">=4" },
     { name = "redis", marker = "python_full_version >= '3.9'", specifier = ">=4.3" },
-    { name = "sortedcontainers", specifier = ">=2,<3" },
+    { name = "sortedcontainers", specifier = ">=2" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = "~=4.7" },
     { name = "valkey", marker = "python_full_version >= '3.8' and extra == 'valkey'", specifier = ">=6" },
 ]
