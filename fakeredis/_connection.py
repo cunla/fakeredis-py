@@ -1,11 +1,12 @@
 import queue
+import uuid
 import warnings
 from typing import Tuple, Any, List, Optional, Set, Sequence, Union
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
+from fakeredis._helpers import FakeSelector, get_default_init_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
 from ._typing import Self, lib_version, RaiseErrorTypes
@@ -127,6 +128,7 @@ class FakeRedisMixin:
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
         client_class=redis.Redis,
+        connection_pool_class=redis.connection.ConnectionPool,
         **kwargs: Any,
     ) -> None:
         """
@@ -136,7 +138,8 @@ class FakeRedisMixin:
         :param lua_modules: A set of Lua modules to load.
         :param client_class: The Redis client class to use, e.g., redis.Redis or valkey.Valkey.
         """
-        kwds = convert_args_to_redis_init_kwargs(client_class, *args, **kwargs)
+        kwargs.setdefault("host", uuid.uuid4().hex)
+        kwds = get_default_init_kwargs(client_class, *args, **kwargs)
         kwds["server"] = server
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)
@@ -148,33 +151,16 @@ class FakeRedisMixin:
             if errors is not None:
                 warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds["encoding_errors"] = errors
-            conn_pool_args = {
-                "host",
-                "port",
-                "db",
-                "username",
-                "password",
-                "socket_timeout",
-                "encoding",
-                "encoding_errors",
-                "decode_responses",
-                "retry_on_timeout",
-                "max_connections",
-                "health_check_interval",
-                "client_name",
-                "connected",
-                "server",
-                "protocol",
-            }
-            connection_kwargs = {
-                "connection_class": FakeConnection,
-                "version": version,
-                "server_type": server_type,
-                "lua_modules": lua_modules,
-                "client_class": client_class,
-            }
+            conn_pool_args = get_default_init_kwargs(connection_pool_class).keys()
+            connection_kwargs = dict(
+                connection_class=FakeConnection,
+                version=version,
+                server_type=server_type,
+                lua_modules=lua_modules,
+                client_class=client_class,
+            )
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)  # type: ignore
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

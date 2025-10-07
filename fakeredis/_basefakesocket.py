@@ -21,6 +21,7 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
+from ._typing import ServerType
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -113,7 +114,7 @@ class BaseFakeSocket:
         return self._server.version
 
     @property
-    def server_type(self) -> str:
+    def server_type(self) -> ServerType:
         return self._server.server_type
 
     def put_response(self, msg: Any) -> None:

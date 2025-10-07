@@ -2,12 +2,13 @@ import inspect
 import re
 import threading
 import time
-import uuid
 import weakref
 from collections import defaultdict
 from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type, MutableMapping
 
 import redis
+
+from fakeredis._typing import ServerType
 
 
 class SimpleString:
@@ -258,8 +259,8 @@ class FakeSelector(object):
         return True
 
 
-def _get_args_to_warn() -> Set[str]:
-    closure = redis.Redis.__init__.__closure__
+def _get_args_to_warn(clazz: Type) -> Set[str]:
+    closure = clazz.__init__.__closure__
     if closure is None:
         return set()
     for cell in closure:
@@ -269,16 +270,20 @@ def _get_args_to_warn() -> Set[str]:
     return set()
 
 
-def convert_args_to_redis_init_kwargs(redis_class: Type[redis.Redis], *args: Any, **kwargs: Any) -> Dict[str, Any]:
-    """Interpret the positional and keyword arguments according to the version of redis in use"""
-    parameters = list(inspect.signature(redis_class.__init__).parameters.values())[1:]
-    args_to_warn = _get_args_to_warn()
-    # Convert args => kwargs
+def get_default_init_kwargs(clazz: Type, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    parameters = list(inspect.signature(clazz.__init__).parameters.values())[1:]
+    args_to_warn = _get_args_to_warn(clazz)
+
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-    kwargs.setdefault("host", uuid.uuid4().hex)
-    kwds = {
+    res = {
         p.name: kwargs.get(p.name, p.default)
-        for ind, p in enumerate(parameters)
-        if p.default != inspect.Parameter.empty and (p.name not in args_to_warn or p.name in kwargs)
+        for p in parameters
+        if (p.default != inspect.Parameter.empty and p.name not in args_to_warn) or p.name in kwargs
     }
-    return kwds
+    return res
+
+
+def get_connection_pool_class(server_type: ServerType) -> Optional[Type]:
+    if server_type == "redis":
+        return redis.ConnectionPool
+    return None
