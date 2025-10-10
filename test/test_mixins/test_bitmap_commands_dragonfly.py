@@ -7,11 +7,12 @@ from test.testtools import raw_command
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.unsupported_server_types("dragonfly"),
+        pytest.mark.unsupported_server_types("redis", "valkey"),
     ]
 )
 
 
+# TODO fix
 def test_getbit(r: redis.Redis):
     r.setbit("foo", 3, 1)
     assert r.getbit("foo", 0) == 0
@@ -39,6 +40,13 @@ def test_bitcount_error(r: redis.Redis):
 def test_bitcount_does_not_exist(r: redis.Redis):
     res = raw_command(r, b"BITCOUNT", b"", 0, 0)
     assert res == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.max_server("7.2")
+def test_bitcount_error_v6(r: redis.Redis):
+    r = raw_command(r, b"BITCOUNT", b"", b"", b"")
+    assert r == 0
 
 
 def test_multiple_bits_set(r: redis.Redis):
@@ -128,6 +136,17 @@ def test_bitcount(r: redis.Redis):
     assert r.bitcount("key", start=1, end=1) == 6
 
 
+@pytest.mark.max_server("6.2.7")
+def test_bitcount_mode_redis6(r: redis.Redis):
+    r.set("key", "foobar")
+    with pytest.raises(redis.ResponseError):
+        r.bitcount("key", start=1, end=1, mode="byte")
+    with pytest.raises(redis.ResponseError):
+        r.bitcount("key", start=1, end=1, mode="bit")
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, "bitcount", "key", "1", "2", "dsd", "cd")
+
+
 @pytest.mark.min_server("7")
 def test_bitcount_mode_redis7(r: redis.Redis):
     r.set("key", "foobar")
@@ -212,6 +231,14 @@ def test_bitops_mode_redis7(r: redis.Redis):
         assert r.bitpos(key, 0, 8, -1, "bad_mode") == 12
 
 
+@pytest.mark.max_server("6.2.7")
+def test_bitops_mode_redis6(r: redis.Redis):
+    key = "key:bitpos"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(redis.ResponseError):
+        assert r.bitpos(key, 0, 8, -1, "bit") == 12
+
+
 def test_bitpos_wrong_arguments(r: redis.Redis):
     key = "key:bitpos:wrong:args"
     r.set(key, b"\xff\xf0\x00")
@@ -225,9 +252,11 @@ def test_bitpos_wrong_arguments(r: redis.Redis):
 
 def test_bitfield_empty(r: redis.Redis):
     key = "key:bitfield"
-    assert r.bitfield(key).execute() == []
+    with pytest.raises(redis.ResponseError):
+        r.bitfield(key).execute()
+
     for overflow in ("wrap", "sat", "fail"):
-        assert raw_command(r, "bitfield", key, "overflow", overflow) == []
+        assert raw_command(r, "bitfield", key, "overflow", overflow) is None
 
 
 def test_bitfield_wrong_arguments(r: redis.Redis):
@@ -249,7 +278,7 @@ def test_bitfield_get(r: redis.Redis):
         assert r.bitfield(key).get("u1", i).get("i1", i).execute() == [1, -1]
     for i in range(12, 25):
         for j in range(1, 63):
-            assert r.bitfield(key).get(f"u{j}", i).get(f"i{j}", i).execute() == [0, 0]
+            assert r.bitfield(key).get(f"u{j}", i).get(f"i{j}", i).execute() == [0, 0], f"i: {i}, j: {j}"
 
     for i in range(0, 11):
         assert r.bitfield(key).get("u2", i).get("i2", i).execute() == [3, -1]
