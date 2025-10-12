@@ -100,7 +100,7 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        info = kwargs.pop("client_info", dict(user="default"))
+        info = kwargs.pop("client_info", {"user": "default"})
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 

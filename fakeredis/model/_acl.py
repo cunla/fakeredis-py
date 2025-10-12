@@ -52,7 +52,7 @@ class UserAccessControlList:
         self._key_patterns: Set[bytes] = set()
         self._channel_patterns: Set[bytes] = set()
         self._commands: Dict[bytes, bool] = {b"@all": False}
-        self._selectors: Dict[bytes, Selector] = dict()
+        self._selectors: Dict[bytes, Selector] = {}
 
     def reset(self) -> None:
         self.enabled = False
@@ -177,7 +177,7 @@ class UserAccessControlList:
         return results
 
     def _get_commands(self) -> List[bytes]:
-        res = list()
+        res = []
         for command, enabled in self._commands.items():
             inc = b"+" if enabled else b"-"
             res.append(inc + command)
@@ -190,7 +190,7 @@ class UserAccessControlList:
         return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
 
     def _get_flags(self) -> List[bytes]:
-        flags = list()
+        flags = []
         flags.append(b"on" if self.enabled else b"off")
         if self._nopass:
             flags.append(b"nopass")
@@ -201,7 +201,7 @@ class UserAccessControlList:
         return flags
 
     def as_array(self) -> List[Union[bytes, List[bytes]]]:
-        results: List[Union[bytes, List[bytes]]] = list()
+        results: List[Union[bytes, List[bytes]]] = []
         results.extend(
             [
                 b"flags",
@@ -221,7 +221,7 @@ class UserAccessControlList:
         return results
 
     def _get_selectors_for_rule(self) -> List[bytes]:
-        results: List[bytes] = list()
+        results: List[bytes] = []
         for command, selector in self._selectors.items():
             s = b"-@all " + (b"+" if selector.allowed else b"-") + command
             channels = b"resetchannels" + ((b" " + selector.channels) if selector.channels != b"" else b"")
@@ -291,7 +291,7 @@ class AccessControlList:
         default_user_acl.add_channel_pattern(b"*")
         default_user_acl.add_command_or_category(b"+@all")
         self._user_acl: Dict[bytes, UserAccessControlList] = {b"default": default_user_acl}
-        self._log: List[AclLogRecord] = list()
+        self._log: List[AclLogRecord] = []
 
     def get_users(self) -> List[bytes]:
         return list(self._user_acl.keys())
@@ -300,7 +300,7 @@ class AccessControlList:
         return self._user_acl.setdefault(username, UserAccessControlList())
 
     def as_rules(self) -> List[bytes]:
-        res: List[bytes] = list()
+        res: List[bytes] = []
         for username, user_acl in self._user_acl.items():
             rule_str = b"user " + username + b" " + user_acl.as_rule()
             res.append(rule_str)

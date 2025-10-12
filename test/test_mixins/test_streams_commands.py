@@ -16,7 +16,7 @@ def get_ids(results):
 
 
 def add_items(r: redis.Redis, stream: str, n: int):
-    id_list = list()
+    id_list = []
     for i in range(n):
         id_list.append(r.xadd(stream, {"k": i}))
     return id_list

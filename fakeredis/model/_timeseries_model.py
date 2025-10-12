@@ -25,14 +25,14 @@ class TimeSeries:
         self.encoding = encoding
         self.chunk_size = chunk_size
         self.duplicate_policy = duplicate_policy
-        self.ts_ind_map: Dict[int, int] = dict()  # Map from timestamp to index in sorted_list
-        self.sorted_list: List[Tuple[int, float]] = list()
+        self.ts_ind_map: Dict[int, int] = {}  # Map from timestamp to index in sorted_list
+        self.sorted_list: List[Tuple[int, float]] = []
         self.max_timestamp: int = 0
         self.labels: Dict[bytes, bytes] = labels or {}
         self.source_key = source_key
         self.ignore_max_time_diff = ignore_max_time_diff
         self.ignore_max_val_diff = ignore_max_val_diff
-        self.rules: List[TimeSeriesRule] = list()
+        self.rules: List[TimeSeriesRule] = []
 
     def add(self, timestamp: int, value: float, duplicate_policy: Optional[bytes] = None) -> Union[int, None]:
         if self.retention != 0 and self.max_timestamp - timestamp > self.retention:
@@ -239,7 +239,7 @@ class TimeSeriesRule:
         self.bucket_duration = bucket_duration
         self.align_timestamp = align_timestamp
         self.current_bucket_start_ts: int = 0
-        self.current_bucket: List[Tuple[int, float]] = list()
+        self.current_bucket: List[Tuple[int, float]] = []
         self.dest_key.source_key = source_key.name
 
     def add_record(self, record: Tuple[int, float], bucket_timestamp: Optional[bytes] = None) -> bool:
@@ -269,7 +269,7 @@ class TimeSeriesRule:
         value = apply_aggregator(
             self.current_bucket, self.current_bucket_start_ts, self.bucket_duration, self.aggregator
         )
-        self.current_bucket = list()
+        self.current_bucket = []
         timestamp = self.current_bucket_start_ts
         if bucket_timestamp == b"+":
             timestamp = int(self.current_bucket_start_ts + self.bucket_duration)

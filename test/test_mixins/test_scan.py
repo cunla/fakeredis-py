@@ -10,7 +10,7 @@ def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.
     size = 600
     name = "sscan-test"
     all_keys_set = {f"{i}".encode() for i in range(size)}
-    r.sadd(name, *[k for k in all_keys_set])
+    r.sadd(name, *list(all_keys_set))
     assert r.scard(name) == size
 
     cursor, keys = r.sscan(name, 0)
@@ -134,7 +134,7 @@ def test_scan(r: redis.Redis):
     assert len(set(results)) == 2
 
     # Test the match on iterator
-    results = [r for r in r.scan_iter(match="*7")]
+    results = list(r.scan_iter(match="*7"))
     assert b"scan-test:7" in results
     assert b"scan-test:17" in results
     assert len(set(results)) == 2

@@ -293,12 +293,12 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
 
     @initialize(
         attrs=st.fixed_dictionaries(
-            dict(
-                keys=st.lists(eng_text, min_size=2, max_size=5, unique=True),
-                fields=st.lists(eng_text, min_size=2, max_size=5, unique=True),
-                values=st.lists(eng_text | int_as_bytes | float_as_bytes, min_size=2, max_size=5, unique=True),
-                scores=st.lists(floats, min_size=2, max_size=5, unique=True),
-            )
+            {
+                "keys": st.lists(eng_text, min_size=2, max_size=5, unique=True),
+                "fields": st.lists(eng_text, min_size=2, max_size=5, unique=True),
+                "values": st.lists(eng_text | int_as_bytes | float_as_bytes, min_size=2, max_size=5, unique=True),
+                "scores": st.lists(floats, min_size=2, max_size=5, unique=True),
+            }
         )
     )
     def init_attrs(self, attrs):

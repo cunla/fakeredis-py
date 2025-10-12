@@ -32,7 +32,7 @@ def _version_to_str(v: VersionType) -> str:
 
 
 class FakeServer:
-    _servers_map: Dict[str, "FakeServer"] = dict()
+    _servers_map: Dict[str, "FakeServer"] = {}
 
     def __init__(
         self,
@@ -52,7 +52,7 @@ class FakeServer:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
-        self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
+        self.script_cache: Dict[bytes, bytes] = {}  # Maps SHA1 to the script source
         self.subscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.psubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.ssubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
@@ -64,10 +64,10 @@ class FakeServer:
         self.version: VersionType = _create_version(version)
         if server_type not in ("redis", "dragonfly", "valkey"):
             raise ValueError(f"Unsupported server type: {server_type}")
-        self.server_type: str = server_type
-        self.config: Dict[bytes, bytes] = config or dict()
+        self.server_type: ServerType = server_type
+        self.config: Dict[bytes, bytes] = config or {}
         self.acl: AccessControlList = AccessControlList()
-        self.clients: Dict[str, Dict[str, Any]] = dict()
+        self.clients: Dict[str, Dict[str, Any]] = {}
         self._next_client_id = 1
 
     def get_next_client_id(self) -> int:

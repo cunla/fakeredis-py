@@ -99,7 +99,7 @@ class StreamsCommandsMixin:
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
-        stream_start_id_list: List[Tuple[bytes, StreamRangeTest]] = list()  # (name, start_id)
+        stream_start_id_list: List[Tuple[bytes, StreamRangeTest]] = []  # (name, start_id)
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             start_id = self._parse_start_id(item, left_args[i + num_streams])
@@ -127,7 +127,7 @@ class StreamsCommandsMixin:
         num_streams = int(len(left_args) / 2)
 
         # List of (group, stream_name, stream start-id)
-        group_params: List[Tuple[StreamGroup, bytes, bytes]] = list()
+        group_params: List[Tuple[StreamGroup, bytes, bytes]] = []
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             if item.value is None:
@@ -350,7 +350,7 @@ class StreamsCommandsMixin:
         noack: bool,
         first_pass: bool,
     ) -> Optional[Dict[bytes, Any]]:
-        res: Dict[bytes, Any] = dict()
+        res: Dict[bytes, Any] = {}
         for group, stream_name, start_id in group_params:
             stream_results = group.group_read(consumer_name, start_id, count, noack)
             if first_pass and (count is None):
@@ -363,7 +363,7 @@ class StreamsCommandsMixin:
         self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
     ) -> Union[None, Dict[bytes, Any], List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
-        res: Dict[bytes, Any] = dict()
+        res: Dict[bytes, Any] = {}
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)

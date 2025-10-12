@@ -45,7 +45,7 @@ def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
     # Also calculate the list of matches
     r, c = l1, l2
     result = ""
-    matches = list()
+    matches = []
     s1ind, s2ind, curr_length = None, None, 0
 
     while r > 0 and c > 0:
@@ -304,5 +304,5 @@ class StringCommandsMixin:
         arg_minmatchlen = arg_minmatchlen if arg_minmatchlen else 0
         results = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
         if not arg_withmatchlen:
-            results = list(map(lambda x: [x[0], x[1]], results))
+            results = [[x[0], x[1]] for x in results]
         return {b"matches": results, b"len": lcs_len}

@@ -164,7 +164,7 @@ class AclCommandsMixin:
                 if not rule.startswith(b"user "):
                     continue
                 splitted = rule.split(b" ")
-                components = list()
+                components = []
                 i = 1
                 while i < len(splitted):
                     current_component = splitted[i]
