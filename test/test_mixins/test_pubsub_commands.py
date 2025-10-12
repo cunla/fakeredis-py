@@ -487,4 +487,4 @@ def test_pubsub_shardchannels(r: redis.Redis):
     for i in range(4):
         assert wait_for_message(p)["type"] == "ssubscribe"
     expected = [b"bar", b"baz", b"foo", b"quux"]
-    assert all([channel in r.pubsub_shardchannels() for channel in expected])
+    assert all(channel in r.pubsub_shardchannels() for channel in expected)

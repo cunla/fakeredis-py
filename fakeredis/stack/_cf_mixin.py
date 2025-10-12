@@ -109,9 +109,7 @@ class CFCommandsMixin:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         if key.value is None:
             key.value = ScalableCuckooFilter(capacity)
-        res = list()
-        for item in items:
-            res.append(self._cf_add(key, item))
+        res = [self._cf_add(key, item) for item in items]
         key.updated()
         return res
 
@@ -130,7 +128,7 @@ class CFCommandsMixin:
             raise SimpleError(msgs.NOT_FOUND_MSG)
         if key.value is None:
             key.value = ScalableCuckooFilter(capacity)
-        res = list()
+        res = []
         for item in items:
             if item in key.value:
                 res.append(0)
@@ -141,9 +139,7 @@ class CFCommandsMixin:
 
     @command(name="CF.MEXISTS", fixed=(Key(ScalableCuckooFilter), bytes), repeat=(bytes,))
     def cf_mexists(self, key: CommandItem, *values: bytes) -> List[int]:
-        res = list()
-        for value in values:
-            res.append(CFCommandsMixin._cf_exist(key, value))
+        res = [CFCommandsMixin._cf_exist(key, value) for value in values]
         return res
 
     @command(name="CF.RESERVE", fixed=(Key(), Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)

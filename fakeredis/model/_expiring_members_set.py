@@ -11,14 +11,11 @@ class ExpiringMembersSet:
 
     def __init__(self, values: Optional[Dict[bytes, Optional[int]]] = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._values: Dict[bytes, Optional[int]] = values or dict()
+        self._values: Dict[bytes, Optional[int]] = values or {}
 
     def _expire_members(self) -> None:
-        removed = []
         now = current_time()
-        for k in self._values:
-            if (self._values[k] or (now + 1)) < now:
-                removed.append(k)
+        removed = [k for k in self._values if (self._values[k] or (now + 1)) < now]
         for k in removed:
             self._values.pop(k)
 
@@ -70,7 +67,7 @@ class ExpiringMembersSet:
     def __or__(self, other: Self) -> "ExpiringMembersSet":
         self._expire_members()
         other._expire_members()
-        return ExpiringMembersSet({k: v for k, v in self._values.items()}).update(other)
+        return ExpiringMembersSet(dict(self._values.items())).update(other)
 
     def update(self, other: Union[Self, Iterable[bytes]]) -> Self:
         self._expire_members()

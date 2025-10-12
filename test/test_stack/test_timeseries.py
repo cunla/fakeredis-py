@@ -331,7 +331,7 @@ def test_range_advanced(r: redis.Redis):
             1,
             0,
             500,
-            filter_by_ts=[i for i in range(10, 20)],
+            filter_by_ts=list(range(10, 20)),
             filter_by_min_value=1,
             filter_by_max_value=2,
         )
@@ -412,9 +412,7 @@ def test_rev_range(r: redis.Redis):
     assert 20 == len(r.ts().revrange(1, 0, 500, aggregation_type="avg", bucket_size_msec=10))
     assert 10 == len(r.ts().revrange(1, 0, 500, count=10))
     assert 2 == len(
-        r.ts().revrange(
-            1, 0, 500, filter_by_ts=[i for i in range(10, 20)], filter_by_min_value=1, filter_by_max_value=2
-        )
+        r.ts().revrange(1, 0, 500, filter_by_ts=list(range(10, 20)), filter_by_min_value=1, filter_by_max_value=2)
     )
     assert r.ts().revrange(1, 0, 10, aggregation_type="count", bucket_size_msec=10) == resp_conversion(
         r, [[10, 1.0], [0, 10.0]], [(10, 1.0), (0, 10.0)]
@@ -537,7 +535,7 @@ def test_multi_range_advanced(r: redis.Redis):
         0,
         200,
         filters=["Test=This"],
-        filter_by_ts=[i for i in range(10, 20)],
+        filter_by_ts=list(range(10, 20)),
         filter_by_min_value=1,
         filter_by_max_value=2,
     )
@@ -662,7 +660,7 @@ def test_multi_reverse_range(r: redis.Redis):
         0,
         200,
         filters=["Test=This"],
-        filter_by_ts=[i for i in range(10, 20)],
+        filter_by_ts=list(range(10, 20)),
         filter_by_min_value=1,
         filter_by_max_value=2,
     )

@@ -37,7 +37,7 @@ IGNORE_GROUPS = {
 
 
 def commands_groups(all_commands: dict, implemented_set: set) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
-    implemented, unimplemented = dict(), dict()
+    implemented, unimplemented = {}, {}
     for cmd in all_commands:
         if cmd.upper() in IGNORE_COMMANDS:
             continue

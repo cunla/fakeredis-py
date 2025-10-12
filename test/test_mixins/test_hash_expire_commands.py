@@ -14,24 +14,24 @@ pytestmark.extend([pytest.mark.min_server("7.4"), testtools.run_test_if_redispy_
     "expiration_seconds,preset_expiration,flags,expected_result",
     [
         # No flags
-        (100, None, dict(), 1),
-        (100, 50, dict(), 1),
+        (100, None, {}, 1),
+        (100, 50, {}, 1),
         # NX
-        (100, None, dict(nx=True), 1),
-        (100, 50, dict(nx=True), 0),
+        (100, None, {"nx": True}, 1),
+        (100, 50, {"nx": True}, 0),
         # XX
-        (100, None, dict(xx=True), 0),
-        (100, 50, dict(xx=True), 1),
+        (100, None, {"xx": True}, 0),
+        (100, 50, {"xx": True}, 1),
         # GT
-        (100, None, dict(gt=True), 0),
-        (100, 50, dict(gt=True), 1),
-        (100, 101, dict(gt=True), 0),
-        (100, 200, dict(gt=True), 0),
+        (100, None, {"gt": True}, 0),
+        (100, 50, {"gt": True}, 1),
+        (100, 101, {"gt": True}, 0),
+        (100, 200, {"gt": True}, 0),
         # LT
-        (100, None, dict(lt=True), 1),
-        (100, 50, dict(lt=True), 0),
-        (100, 100, dict(lt=True), 0),
-        (100, 200, dict(lt=True), 1),
+        (100, None, {"lt": True}, 1),
+        (100, 50, {"lt": True}, 0),
+        (100, 100, {"lt": True}, 0),
+        (100, 200, {"lt": True}, 1),
     ],
 )
 def test_hexpire(

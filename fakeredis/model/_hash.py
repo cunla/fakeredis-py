@@ -10,8 +10,8 @@ class Hash:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._expirations: Dict[bytes, int] = dict()
-        self._values: Dict[bytes, bytes] = dict()
+        self._expirations: Dict[bytes, int] = {}
+        self._values: Dict[bytes, bytes] = {}
 
     def _expire_keys(self) -> None:
         removed = []

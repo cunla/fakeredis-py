@@ -55,9 +55,7 @@ class BFCommandsMixin:
 
     @command(name="BF.MADD", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
     def bf_madd(self, key: CommandItem, *values: bytes) -> List[int]:
-        res = list()
-        for value in values:
-            res.append(BFCommandsMixin._bf_add(key, value))
+        res = [BFCommandsMixin._bf_add(key, value) for value in values]
         return res
 
     @command(name="BF.EXISTS", fixed=(Key(ScalableBloomFilter), bytes), repeat=())
@@ -66,9 +64,7 @@ class BFCommandsMixin:
 
     @command(name="BF.MEXISTS", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
     def bf_mexists(self, key: CommandItem, *values: bytes) -> List[int]:
-        res = list()
-        for value in values:
-            res.append(BFCommandsMixin._bf_exist(key, value))
+        res = [BFCommandsMixin._bf_exist(key, value) for value in values]
         return res
 
     @command(
@@ -118,9 +114,7 @@ class BFCommandsMixin:
         scale = ScalableBloomFilter.NO_GROWTH if non_scaling else expansion
         if key.value is None:
             key.value = ScalableBloomFilter(capacity, error_rate, scale)
-        res = list()
-        for item in items:
-            res.append(self._bf_add(key, item))
+        res = [self._bf_add(key, item) for item in items]
         key.updated()
         return res
 

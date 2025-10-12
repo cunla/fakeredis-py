@@ -15,7 +15,7 @@ from ._helpers import null_terminate, SimpleError, Database
 from ._typing import VersionType, ServerType
 
 MAX_STRING_SIZE = 512 * 1024 * 1024
-SUPPORTED_COMMANDS: Dict[str, "Signature"] = dict()  # Dictionary of supported commands name => Signature
+SUPPORTED_COMMANDS: Dict[str, "Signature"] = {}  # Dictionary of supported commands name => Signature
 COMMANDS_WITH_SUB: Set[str] = set()  # Commands with sub-commands
 
 
@@ -385,8 +385,7 @@ class Signature:
         self.check_arity(args, version)
 
         types = list(self.fixed)
-        for i in range(len(args) - len(types)):
-            types.append(self.repeat[i % len(self.repeat)])
+        types.extend([self.repeat[i % len(self.repeat)] for i in range(len(args) - len(types))])
 
         args_list = list(args)
         # First pass: convert/validate non-keys, and short-circuit on missing keys
