@@ -50,7 +50,7 @@ class TopkCommandsMixin:
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         if len(args) % 2 != 0:
             raise SimpleError("TOPK: number of arguments must be even")
-        res = list()
+        res = []
         for i in range(0, len(args), 2):
             val, count = args[i], int(args[i + 1])
             res.append(key.value.add(val, count))

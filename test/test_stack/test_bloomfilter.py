@@ -160,7 +160,7 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
         res += rv == x
     assert res < 5
 
-    cmds = list()
+    cmds = []
     first = 0
     while first is not None:
         cur = r.bf().scandump("myBloom", first)

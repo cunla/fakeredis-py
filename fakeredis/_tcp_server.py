@@ -144,7 +144,7 @@ class TcpFakeServer(ThreadingTCPServer):
         self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
-        self.clients: Dict[int, Client] = dict()
+        self.clients: Dict[int, Client] = {}
 
 
 if __name__ == "__main__":

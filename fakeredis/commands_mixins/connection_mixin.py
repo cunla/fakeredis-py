@@ -100,13 +100,13 @@ class ConnectionCommandsMixin:
                 i += 3
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        data = dict(
-            server="fakeredis",
-            version=fakeredis.__version__,
-            proto=self._client_info["resp"],
-            id=self._client_info.get("id", 1),
-            mode="standalone",
-            role="master",
-            modules=[],
-        )
+        data = {
+            "server": "fakeredis",
+            "version": fakeredis.__version__,
+            "proto": self._client_info["resp"],
+            "id": self._client_info.get("id", 1),
+            "mode": "standalone",
+            "role": "master",
+            "modules": [],
+        }
         return data

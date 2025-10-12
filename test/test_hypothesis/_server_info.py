@@ -26,7 +26,7 @@ def server_info() -> Tuple[str, Union[None, Tuple[int, ...]]]:
 
 
 server_type, redis_ver = server_info()
-floats_kwargs = dict()
+floats_kwargs = {}
 
 if server_type == "dragonfly":
-    floats_kwargs = dict(allow_nan=False, allow_subnormal=False, allow_infinity=False)
+    floats_kwargs = {"allow_nan": False, "allow_subnormal": False, "allow_infinity": False}

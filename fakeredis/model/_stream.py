@@ -67,12 +67,12 @@ class StreamConsumerInfo(object):
         self.last_success = _time
 
     def info(self, curr_time: int) -> Dict[str, Union[bytes, int]]:
-        return dict(
-            name=self.name,
-            pending=self.pending,
-            idle=curr_time - self.last_attempt,
-            inactive=curr_time - self.last_success,
-        )
+        return {
+            "name": self.name,
+            "pending": self.pending,
+            "idle": curr_time - self.last_attempt,
+            "inactive": curr_time - self.last_success,
+        }
 
 
 class StreamGroup(object):
@@ -88,12 +88,12 @@ class StreamGroup(object):
         self.start_key = start_key
         self.entries_read = entries_read
         # consumer_name -> #pending_messages
-        self.consumers: Dict[bytes, StreamConsumerInfo] = dict()
+        self.consumers: Dict[bytes, StreamConsumerInfo] = {}
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
         # Pending entry List, see https://redis.io/commands/xreadgroup/
         # msg_id -> consumer_name, time read
-        self.pel: Dict[StreamEntryKey, Any] = dict()
+        self.pel: Dict[StreamEntryKey, Any] = {}
 
     def set_id(self, last_delivered_str: bytes, entries_read: Optional[int]) -> None:
         """Set last_delivered_id for the group"""
@@ -281,9 +281,9 @@ class XStream:
     """
 
     def __init__(self) -> None:
-        self._ids: List[StreamEntryKey] = list()
-        self._values_dict: Dict[StreamEntryKey, List[bytes]] = dict()
-        self._groups: Dict[bytes, StreamGroup] = dict()
+        self._ids: List[StreamEntryKey] = []
+        self._values_dict: Dict[StreamEntryKey, List[bytes]] = {}
+        self._groups: Dict[bytes, StreamGroup] = {}
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
 
@@ -503,7 +503,7 @@ class XStream:
 
         start_ind = _find_index(start)
         stop_ind = _find_index(stop, from_left=False)
-        matches = list(map(lambda x: self.format_record(self._ids[x]), range(start_ind, stop_ind)))
+        matches = [self.format_record(self._ids[x]) for x in range(start_ind, stop_ind)]
         if reverse:
             return list(reversed(matches))
         return matches

@@ -349,7 +349,7 @@ def test_zmscore_mixed_membership(r: redis.Redis):
 
     r.zadd(
         cache_key,
-        dict((member, scores[idx]) for (idx, member) in enumerate(members) if idx % 2 != 0),
+        {member: scores[idx] for (idx, member) in enumerate(members) if idx % 2 != 0},
     )
 
     cached_scores: List[Optional[float]] = r.zmscore(cache_key, list(members))

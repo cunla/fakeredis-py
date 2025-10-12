@@ -357,7 +357,7 @@ def test_sscan(r: redis.Redis):
     assert set(expected) == set(results)
 
     # Test the iterator version
-    results = [r for r in r.sscan_iter(name, count=6)]
+    results = list(r.sscan_iter(name, count=6))
     assert set(expected) == set(results)
 
     # Now test that the MATCH functionality works
@@ -371,7 +371,7 @@ def test_sscan(r: redis.Redis):
     assert len(results) == 2
 
     # Test the match on iterator
-    results = [r for r in r.sscan_iter(name, match="*7")]
+    results = list(r.sscan_iter(name, match="*7"))
     assert b"sscan-test:7" in results
     assert b"sscan-test:17" in results
     assert len(results) == 2

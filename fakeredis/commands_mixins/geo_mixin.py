@@ -32,7 +32,7 @@ def _parse_results(items: List[GeoResult], withcoord: bool, withdist: bool) -> L
     :param withdist: include distance in response
     :returns: Parsed list
     """
-    res = list()
+    res = []
     for item in items:
         new_item = [item.name]
         if withdist:
@@ -66,7 +66,7 @@ def _find_near(
     :param desc: should results be sorted descending order?
     :returns: List of GeoResults
     """
-    results = list()
+    results = []
     for name, _hash in zset.items():
         p_lat, p_long, _, _ = geo_decode(_hash)
         dist = distance((p_lat, p_long), (lat, long)) * conv
@@ -152,10 +152,7 @@ class GeoCommandsMixin:
 
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def geopos(self, key: CommandItem, *members: bytes) -> List[Optional[List[float]]]:
-        gospositions = map(
-            lambda x: geo_decode(x) if x is not None else x,
-            map(key.value.get, members),
-        )
+        gospositions = (geo_decode(x) if x is not None else x for x in map(key.value.get, members))
         res = [([x[1], x[0]] if x is not None else None) for x in gospositions]
         return res
 
