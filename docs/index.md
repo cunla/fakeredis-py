@@ -327,23 +327,22 @@ that is written, the same test is run against a real redis instance using a real
 tests, you must have a redis server running on localhost, port 6379 (the default settings). **WARNING**: the tests will
 completely wipe your database!
 
-First install poetry if you don't have it, and then install all the dependencies:
+First install uv if you don't have it, and then install all the dependencies:
 
 ```bash
-pip install poetry
-poetry install
+uv sync
 ```
 
 To run all the tests:
 
 ```bash
-poetry run pytest -v
+uv run pytest -v
 ```
 
 If you only want to run tests against fake redis, without a real redis::
 
 ```bash
-poetry run pytest -m fake
+uv run pytest -m fake
 ```
 
 Because this module is attempting to provide the same interface as `redis-py`, the python bindings to redis, a
@@ -352,7 +351,7 @@ Fakeredis and the real redis server should give the same result.
 To run tests against a real redis instance instead:
 
 ```bash
-poetry run pytest -m real
+uv run pytest -m real
 ```
 
 If redis is not running, and you try to run tests against a real redis server, these tests will have a result of 's' for
@@ -363,7 +362,7 @@ If you want to skip these tests during day-to-day development, they have all bee
 by running:
 
 ```bash
-poetry run pytest -m "not slow"
+uv run pytest -m "not slow"
 ```
 
 ## Contributing
@@ -375,6 +374,11 @@ Contributions are welcome. You can contribute in many ways:
 - Implement commands which are not yet implemented. Follow
   the [guide how to implement a new command][guide-implement-command].
 - Write additional test cases. Follow the [guide how to write a test-case][guide-test-case].
+
+Additionally, you can install [`pre-commit` hook](https://pre-commit.com/) in the repo to add it as a git hook by
+running: `pre-commit install`. It is configured to check all change files based on configuration in
+`.pre-commit-config.yaml`.
+
 
 Please follow coding standards listed in the [contributing guide][contributing].
 

@@ -42,10 +42,10 @@ If you then still feel the need to ask a question and need clarification, we rec
 We will then take care of the issue as soon as possible.
 
 <!--
-You might want to create a separate issue tag for questions and include it in this description. 
+You might want to create a separate issue tag for questions and include it in this description.
 People should then tag their issues accordingly.
 
-Depending on how large the project is, you may want to outsource the questioning, e.g., to Stack Overflow or Gitter. 
+Depending on how large the project is, you may want to outsource the questioning, e.g., to Stack Overflow or Gitter.
 You may add additional contact and information possibilities:
 - IRC
 - Slack
@@ -168,13 +168,13 @@ tutorials:
 
 - Create your own fork of the repository
 - Do the changes in your fork
-- Setup poetry `pip install poetry`
-- Let poetry install everything required for a local environment `poetry install`
-- To run all tests, use: `poetry run pytest -v`
+- Setup uv `pip install uv`
+- Let uv install everything required for a local environment `uv sync`
+- To run all tests, use: `uv run pytest -v`
 - Note: In order to run the tests, a real redis server should be running.
   The tests are comparing the results of each command between fakeredis and a real redis.
     - You can use `docker-compose up redis6` or `docker-compose up redis7` to run redis.
-- Run test with coverage using `poetry run pytest -v --cov=fakeredis --cov-branch`
+- Run test with coverage using `uv run pytest -v --cov=fakeredis --cov-branch`
   and then you can run `coverage report`.
 
 ## Improving The Documentation
