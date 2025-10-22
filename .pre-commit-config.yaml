@@ -3,6 +3,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-yaml
+        args: [--unsafe]  # allow !!python/name:... tags in mkdocs.yml
       - id: check-json
       - id: check-xml
       - id: end-of-file-fixer
