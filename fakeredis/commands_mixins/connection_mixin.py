@@ -110,3 +110,7 @@ class ConnectionCommandsMixin:
             "modules": [],
         }
         return data
+
+    @command(name="CLIENT MAINT_NOTIFICATIONS", fixed=(), repeat=(bytes,))
+    def client_maint_notifications(self, *args: bytes) -> SimpleString:
+        pass
