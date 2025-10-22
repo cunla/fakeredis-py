@@ -92,8 +92,8 @@ class StreamGroup(object):
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
         # Pending entry List, see https://redis.io/commands/xreadgroup/
-        # msg_id -> consumer_name, time read
-        self.pel: Dict[StreamEntryKey, Any] = {}
+        # msg_id -> (consumer_name, time_read, times_delivered)
+        self.pel: Dict[StreamEntryKey, Tuple[bytes, int, int]] = {}
 
     def set_id(self, last_delivered_str: bytes, entries_read: Optional[int]) -> None:
         """Set last_delivered_id for the group"""
@@ -151,7 +151,8 @@ class StreamGroup(object):
         ids_read = self.stream.stream_read(start_key, count)
         if not noack:
             for k in ids_read:
-                self.pel[k] = (consumer_name, _time)
+                # Initialize with times_delivered=1 for new messages
+                self.pel[k] = (consumer_name, _time, 1)
         if len(ids_read) > 0:
             self.last_delivered_key = max(self.last_delivered_key, ids_read[-1])
             self.entries_read = (self.entries_read or 0) + len(ids_read)
@@ -160,7 +161,9 @@ class StreamGroup(object):
         return [self.stream.format_record(x) for x in ids_read]
 
     def _calc_consumer_last_time(self) -> None:
-        new_last_success_map = {k: min(v)[1] for k, v in itertools.groupby(self.pel.values(), key=itemgetter(0))}
+        # pel values are now (consumer_name, time_read, times_delivered)
+        # Extract just consumer_name and time_read for grouping
+        new_last_success_map = {k: min(v, key=lambda x: x[1])[1] for k, v in itertools.groupby(self.pel.values(), key=itemgetter(0))}
         for consumer in new_last_success_map:
             if consumer not in self.consumers:
                 self.consumers[consumer] = StreamConsumerInfo(consumer)
@@ -208,7 +211,8 @@ class StreamGroup(object):
         if count is not None:
             relevant_ids = sorted(relevant_ids)[:count]
 
-        return [[k.encode(), self.pel[k][0]] for k in relevant_ids]
+        # Return all 4 fields: message_id, consumer, time_since_delivered, times_delivered
+        return [[k.encode(), self.pel[k][0], _time - self.pel[k][1], self.pel[k][2]] for k in relevant_ids]
 
     def pending_summary(self) -> List[Any]:
         counter = Counter([self.pel[k][0] for k in self.pel])
@@ -240,7 +244,8 @@ class StreamGroup(object):
                 continue
             if key not in self.pel:
                 if force:
-                    self.pel[key] = (consumer_name, _time)  # Force claim msg
+                    # Force claim msg - initialize with times_delivered=1
+                    self.pel[key] = (consumer_name, _time, 1)
                     if key in self.stream:
                         claimed_msgs.append(key)
                     else:
@@ -249,7 +254,9 @@ class StreamGroup(object):
                 continue
             if curr_time - self.pel[key][1] < min_idle_ms:
                 continue  # Not idle enough time to be claimed
-            self.pel[key] = (consumer_name, _time)
+            # Increment times_delivered when claiming
+            old_times_delivered = self.pel[key][2]
+            self.pel[key] = (consumer_name, _time, old_times_delivered + 1)
             if key in self.stream:
                 claimed_msgs.append(key)
             else:
