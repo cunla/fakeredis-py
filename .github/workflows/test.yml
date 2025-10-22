@@ -25,10 +25,19 @@ jobs:
           persist-credentials: false
       - name: Run Ruff Linting 🧹
         uses: astral-sh/ruff-action@v3
+  format:
+    name: "Code formatting (ruff)"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
         with:
-          version: "latest"
-          args: check
-          src: "."
+          persist-credentials: false
+      - name: Run Ruff Formatting 🧽
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check"
   test-import-only:
     name: "Basic import test"
     runs-on: ubuntu-latest
@@ -55,8 +64,7 @@ jobs:
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
       extra:${{matrix.install-extras}}
-    needs:
-      - "lint"
+    needs: ["lint", "format"]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 8
