@@ -122,10 +122,11 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
     async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
-        await super().disconnect(**kwargs)
+        # Clear these BEFORE calling super().disconnect() to prevent ResourceWarning
         self._sock = None
         self._reader = None
         self._writer = None
+        await super().disconnect(**kwargs)
 
     async def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self.is_connected:
