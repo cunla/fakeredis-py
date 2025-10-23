@@ -27,6 +27,7 @@ class StreamEntryKey(NamedTuple):
 
 class PelEntry(NamedTuple):
     """Pending Entry List entry: tracks consumer ownership and delivery count"""
+
     consumer_name: bytes
     time_read: int
     times_delivered: int
@@ -169,7 +170,10 @@ class StreamGroup(object):
     def _calc_consumer_last_time(self) -> None:
         # pel values are PelEntry namedtuples
         # Extract just consumer_name and time_read for grouping
-        new_last_success_map = {k: min(v, key=lambda x: x.time_read).time_read for k, v in itertools.groupby(self.pel.values(), key=lambda x: x.consumer_name)}
+        new_last_success_map = {
+            k: min(v, key=lambda x: x.time_read).time_read
+            for k, v in itertools.groupby(self.pel.values(), key=lambda x: x.consumer_name)
+        }
         for consumer in new_last_success_map:
             if consumer not in self.consumers:
                 self.consumers[consumer] = StreamConsumerInfo(consumer)
@@ -218,7 +222,10 @@ class StreamGroup(object):
             relevant_ids = sorted(relevant_ids)[:count]
 
         # Return all 4 fields: message_id, consumer, time_since_delivered, times_delivered
-        return [[k.encode(), self.pel[k].consumer_name, _time - self.pel[k].time_read, self.pel[k].times_delivered] for k in relevant_ids]
+        return [
+            [k.encode(), self.pel[k].consumer_name, _time - self.pel[k].time_read, self.pel[k].times_delivered]
+            for k in relevant_ids
+        ]
 
     def pending_summary(self) -> List[Any]:
         counter = Counter([self.pel[k].consumer_name for k in self.pel])
