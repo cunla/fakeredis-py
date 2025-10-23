@@ -241,8 +241,8 @@ def test_zrank_redis7_2(r: redis.Redis):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    assert r.zrank("foo", "one", withscore=True) == resp_conversion(r, [0, 1.0], [0, b"1"])
-    assert r.zrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
+    assert r.zrank("foo", "one", withscore=True) == [0, 1.0]
+    assert r.zrank("foo", "two", withscore=True) == [1, 2.0]
 
 
 def test_zrank_non_existent_member(r: redis.Redis):
@@ -376,8 +376,8 @@ def test_zrevrank_redis7_2(r: redis.Redis):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
-    assert r.zrevrank("foo", "one", withscore=True) == resp_conversion(r, [2, 1.0], [2, b"1"])
-    assert r.zrevrank("foo", "two", withscore=True) == resp_conversion(r, [1, 2.0], [1, b"2"])
+    assert r.zrevrank("foo", "one", withscore=True) == [2, 1.0]
+    assert r.zrevrank("foo", "two", withscore=True) == [1, 2.0]
 
 
 def test_zrevrank_non_existent_member(r: redis.Redis):
