@@ -637,8 +637,14 @@ def test_xpending_range(r: redis.Redis):
     assert len(response) == 2
     assert response[0]["message_id"] == m1
     assert response[0]["consumer"] == consumer1.encode()
+    assert isinstance(response[0]["time_since_delivered"], int)
+    assert response[0]["time_since_delivered"] >= 0
+    assert response[0]["times_delivered"] == 1
     assert response[1]["message_id"] == m2
     assert response[1]["consumer"] == consumer2.encode()
+    assert isinstance(response[1]["time_since_delivered"], int)
+    assert response[1]["time_since_delivered"] >= 0
+    assert response[1]["times_delivered"] == 1
 
     # test with consumer name
     response = r.xpending_range(stream, group, min="-", max="+", count=5, consumername=consumer1)
