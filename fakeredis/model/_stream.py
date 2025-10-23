@@ -4,7 +4,6 @@ import sys
 import time
 from collections import Counter
 from dataclasses import dataclass
-from operator import itemgetter
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator, AnyStr
 
 from fakeredis._commands import BeforeAny, AfterAny
