@@ -1,147 +1,146 @@
 [build-system]
-requires = ["hatchling"]
 build-backend = "hatchling.build"
+requires = [ "hatchling" ]
 
 [project]
 name = "fakeredis"
 version = "2.32.1"
 description = "Python implementation of redis API, can be used for testing purposes."
+readme = "README.md"
+keywords = [
+  "dragonfly",
+  "redis",
+  "redis-stack",
+  "RedisBloom",
+  "RedisJson",
+  "RedisTimeSeries",
+  "testing",
+  "valkey",
+]
+license = "BSD-3-Clause"
+maintainers = [ { name = "Daniel Moran", email = "daniel@moransoftware.ca" } ]
 authors = [
-    { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
-    { name = "Bruce Merry", email = "bmerry@ska.ac.za" },
-    { name = "James Saryerwinnie", email = "js@jamesls.com" },
+  { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
+  { name = "Bruce Merry", email = "bmerry@ska.ac.za" },
+  { name = "James Saryerwinnie", email = "js@jamesls.com" },
 ]
 requires-python = ">=3.7"
-readme = "README.md"
-license = "BSD-3-Clause"
-maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
-keywords = [
-    "redis",
-    "RedisJson",
-    "RedisBloom",
-    "RedisTimeSeries",
-    "testing",
-    "redis-stack",
-    "valkey",
-    "dragonfly",
-]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Development Status :: 6 - Mature",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Libraries :: Python Modules",
+  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 6 - Mature",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "redis>=4 ; python_version < '3.8'",
-    "redis>=4.3 ; python_version > '3.8'",
-    "sortedcontainers>=2",
-    "typing-extensions~=4.7 ; python_version < '3.11'",
+  "redis>=4.3; python_version>'3.8'",
+  "redis>=4; python_version<'3.8'",
+  "sortedcontainers>=2",
+  "typing-extensions~=4.7; python_version<'3.11'",
 ]
 
-[project.optional-dependencies]
-lua = ["lupa>=2.1"]
-json = ["jsonpath-ng>=1.6"]
-bf = ["pyprobables>=0.6"]
-cf = ["pyprobables>=0.6"]
-probabilistic = ["pyprobables>=0.6"]
-valkey = ["valkey>=6 ; python_version >= '3.8'"]
-
-[project.urls]
-Homepage = "https://github.com/cunla/fakeredis-py"
-Repository = "https://github.com/cunla/fakeredis-py"
-Documentation = "https://fakeredis.moransoftware.ca/"
-"Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
-Funding = "https://github.com/sponsors/cunla"
+optional-dependencies.bf = [ "pyprobables>=0.6" ]
+optional-dependencies.cf = [ "pyprobables>=0.6" ]
+optional-dependencies.json = [ "jsonpath-ng>=1.6" ]
+optional-dependencies.lua = [ "lupa>=2.1" ]
+optional-dependencies.probabilistic = [ "pyprobables>=0.6" ]
+optional-dependencies.valkey = [ "valkey>=6; python_version>='3.8'" ]
+urls."Bug Tracker" = "https://github.com/cunla/fakeredis-py/issues"
+urls.Documentation = "https://fakeredis.moransoftware.ca/"
+urls.Funding = "https://github.com/sponsors/cunla"
+urls.Homepage = "https://github.com/cunla/fakeredis-py"
+urls.Repository = "https://github.com/cunla/fakeredis-py"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14",
-    "mypy>=1.15 ; python_version >= '3.10'",
-    "pre-commit>=4.2 ; python_version >= '3.10'",
+  "mypy>=1.15; python_version>='3.10'",
+  "pre-commit>=4.2; python_version>='3.10'",
+  "ruff>=0.14",
 ]
 test = [
-    "coverage~=7.10 ; python_version >= '3.9'",
-    "pytest~=8.4 ; python_version >= '3.9'",
-    "hypothesis~=6.138 ; python_version >= '3.9'",
-    "pytest-timeout>=2.4 ; python_version >= '3.9'",
-    "pytest-asyncio>=1.1 ; python_version >= '3.9'",
-    "pytest-cov~=6.3 ; python_version >= '3.9'",
-    "pytest-mock~=3.15 ; python_version >= '3.9'",
-    "pytest-html~=4.1 ; python_version >= '3.9'",
+  "coverage~=7.10; python_version>='3.9'",
+  "hypothesis~=6.138; python_version>='3.9'",
+  "pytest~=8.4; python_version>='3.9'",
+  "pytest-asyncio>=1.1; python_version>='3.9'",
+  "pytest-cov~=6.3; python_version>='3.9'",
+  "pytest-html~=4.1; python_version>='3.9'",
+  "pytest-mock~=3.15; python_version>='3.9'",
+  "pytest-timeout>=2.4; python_version>='3.9'",
 ]
 docs = [
-    "python-dotenv>=1.1 ; python_version >= '3.10'",
-    "pygithub~=2.8 ; python_version >= '3.10'",
-]
-
-[tool.uv]
-default-groups = [
-    "dev",
-    "test",
-    "docs",
+  "pygithub~=2.8; python_version>='3.10'",
+  "python-dotenv>=1.1; python_version>='3.10'",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "fakeredis",
-    "test",
+  "fakeredis",
+  "test",
 ]
 
 [tool.hatch.build.targets.wheel]
 include = [
-    "fakeredis",
+  "fakeredis",
 ]
 
 [tool.hatch.build.targets.wheel.force-include]
 LICENSE = "fakeredis/LICENSE"
 
+[tool.uv]
+default-groups = [
+  "dev",
+  "test",
+  "docs",
+]
+
+[tool.ruff]
+target-version = "py311"
+
+line-length = 120
+exclude = [
+  ".venv",
+  "__pycache__",
+]
+format.indent-style = "space"
+format.quote-style = "double"
+format.line-ending = "auto"
+format.skip-magic-trailing-comma = false
+
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "fake: run tests only with fake redis",
-    "real: run tests with a locally running real Redis server",
-    "disconnected",
-    "min_server",
-    "max_server",
-    "decode_responses",
-    "unsupported_server_types",
-    "resp2_only: run tests only with RESP2",
-    "resp3_only: run tests only with RESP3",
-    "load_lua_modules: run tests that load Lua modules",
-    "valkey_client_test: test using valkey-py client instead of redis-py",
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "fake: run tests only with fake redis",
+  "real: run tests with a locally running real Redis server",
+  "disconnected",
+  "min_server",
+  "max_server",
+  "decode_responses",
+  "unsupported_server_types",
+  "resp2_only: run tests only with RESP2",
+  "resp3_only: run tests only with RESP3",
+  "load_lua_modules: run tests that load Lua modules",
+  "valkey_client_test: test using valkey-py client instead of redis-py",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true
 
 [tool.mypy]
-packages = ['fakeredis', ]
+packages = [ 'fakeredis' ]
 strict = true
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
 check_untyped_defs = true
-exclude = [".venv", "test", "__pycache__"]
-
-
-[tool.ruff]
-line-length = 120
-exclude = [
-    '.venv',
-    '__pycache__',
-]
-target-version = "py311"
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
+exclude = [ ".venv", "test", "__pycache__" ]
