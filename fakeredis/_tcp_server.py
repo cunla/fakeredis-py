@@ -5,6 +5,7 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
 
+import redis.exceptions
 from redis.lock import Lock
 
 from fakeredis import FakeRedis
@@ -84,7 +85,11 @@ class Writer:
         elif value is None:
             self.writer.write("$-1\r\n".encode())
         elif isinstance(value, Exception):
-            self.writer.write(f"-{value.args[0]}\r\n".encode())
+            if isinstance(value, redis.exceptions.NoScriptError):
+                error_msg = f"NOSCRIPT {value.args[0]}"
+            else:
+                error_msg = value.args[0]
+            self.writer.write(f"-{error_msg}\r\n".encode())
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
