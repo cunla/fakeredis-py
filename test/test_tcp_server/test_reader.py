@@ -1,7 +1,6 @@
 import time
 from threading import Thread
 
-import pytest
 import redis
 
 from fakeredis import TcpFakeServer
