@@ -51,8 +51,10 @@ class Reader:
                 array[i] = self.load()
             return array
         if prefix == b"$":
-            bulk_string = self.reader.read(int(rest) + 2).strip()
-            if len(bulk_string) != int(rest):
+            length = int(rest)
+            bulk_string = self.reader.read(length)
+            terminator = self.reader.read(2)
+            if len(bulk_string) != length or terminator != b"\r\n":
                 raise ValueError()
             return bulk_string
         if prefix == b":":
