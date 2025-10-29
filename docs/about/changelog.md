@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - fix:support for py3.7 #423
+- fix:`xpending_range` to return all 4 required fields per Redis spec @zzstoatzz #427
 
 ### 🧰 Maintenance
 
