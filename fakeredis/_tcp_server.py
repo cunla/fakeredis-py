@@ -5,6 +5,7 @@ from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
 
+from redis.connection import DefaultParser
 from redis.lock import Lock
 
 from fakeredis import FakeRedis
@@ -64,6 +65,18 @@ class Reader:
         return None
 
 
+_EXCEPTION_PREFIX_MAP: Dict[Exception, str] = {
+    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if v is not dict
+}
+
+
+def _get_exception_prefix(e: Exception) -> str:
+    for k, v in _EXCEPTION_PREFIX_MAP.items():
+        if isinstance(e, k):
+            return v
+    return "ERR"
+
+
 @dataclass
 class Writer:
     writer: BufferedIOBase
@@ -84,7 +97,8 @@ class Writer:
         elif value is None:
             self.writer.write("$-1\r\n".encode())
         elif isinstance(value, Exception):
-            self.writer.write(f"-{value.args[0]}\r\n".encode())
+            prefix = _get_exception_prefix(value)
+            self.writer.write(f"-{prefix} {value.args[0]}\r\n".encode())
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
