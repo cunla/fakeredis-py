@@ -16,7 +16,7 @@ toc_depth: 2
 
 ### 🧰 Maintenance
 
-- Update tests to support redis-py 7.0.0
+- Update tests to support redis-py 7.0.1
 - Update tests to support valkey 9.0.0
 
 ## v2.32.0 -
