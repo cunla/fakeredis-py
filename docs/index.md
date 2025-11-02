@@ -3,8 +3,8 @@ toc:
 toc_depth: 3
 ---
 
-fakeredis: A python implementation of redis server
-=================================================
+fakeredis: A python implementation of Redis Protocol API
+========================================================
 
 
 FakeRedis is a pure-Python implementation of the Redis key-value store.
@@ -16,7 +16,7 @@ It provides enhanced versions of the redis-py Python bindings for Redis.
 That provides the following added functionality: A built-in Redis server that is automatically installed, configured and
 managed when the Redis bindings are used.
 A single server shared by multiple programs or multiple independent servers.
-All the servers provided by FakeRedis support all Redis functionality including advanced features such as RedisJson,
+All the servers provided by FakeRedis support all Redis functionality, including advanced features such as RedisJson,
 GeoCommands.
 
 For a list of supported/unsupported redis commands, see [Supported commands][supported-commands].
