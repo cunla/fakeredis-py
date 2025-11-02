@@ -66,7 +66,7 @@ class Reader:
 
 
 _EXCEPTION_PREFIX_MAP: Dict[Exception, str] = {
-    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if v is not dict
+    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if type(v) is not dict
 }
 
 
