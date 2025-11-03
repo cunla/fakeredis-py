@@ -1,8 +1,12 @@
 import sys
-from typing import Tuple, Literal
+from typing import Tuple
 
 import redis
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 if sys.version_info >= (3, 11):
     from typing import Self
     from asyncio import timeout as async_timeout

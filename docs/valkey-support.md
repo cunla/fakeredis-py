@@ -1,6 +1,6 @@
 # Support for valkey
 
-[Valkey][1] is an open source (BSD) high-performance key/value datastore that supports a variety of workloads such as
+[Valkey][valkey] is an open source (BSD) high-performance key/value datastore that supports a variety of workloads such as
 caching, message queues, and can act as a primary database.
 The project was forked from the open source Redis project right before the transition to their new source available
 licenses.
@@ -43,4 +43,4 @@ assert r.get("foo") == b"bar"
 
 ```
 
-[1]: https://github.com/valkey-io/valkey
+[valkey]: https://github.com/valkey-io/valkey
