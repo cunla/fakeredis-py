@@ -122,9 +122,19 @@ class FakeAsyncConnection(FakeBaseConnectionMixin, redis_async.Connection):
         self._reader: Optional[FakeReader] = FakeReader(self._sock)
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
-    async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
-        await super().disconnect(**kwargs)
+    def __del__(self):
+        # Ensure _writer is cleared even if disconnect() was never called
+        # This prevents ResourceWarning on Python 3.13+ during garbage collection
+        self._writer = None
+        self._reader = None
         self._sock = None
+
+    async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
+        # Clear these BEFORE calling super().disconnect() to prevent ResourceWarning
+        self._sock = None
+        self._reader = None
+        self._writer = None
+        await super().disconnect(**kwargs)
 
     async def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self.is_connected:

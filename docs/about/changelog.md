@@ -12,10 +12,12 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - fix:support for py3.7 #423
+- fix:`xpending_range` to return all 4 required fields per Redis spec @zzstoatzz #427
+- fix[TcpFakeServer]: add exception prefix #432
 
 ### 🧰 Maintenance
 
-- Update tests to support redis-py 7.0.0
+- Update tests to support redis-py 7.0.1
 - Update tests to support valkey 9.0.0
 
 ## v2.32.0 -
