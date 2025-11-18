@@ -70,7 +70,7 @@ dev = [
 test = [
     "coverage>=7.10 ; python_version >= '3.9' and python_version < '3.14'",
     "pytest~=8.4 ; python_version >= '3.9'",
-    "hypothesis~=6.138 ; python_version >= '3.9'",
+    "hypothesis>=6.138 ; python_version >= '3.9'",
     "pytest-timeout>=2.4 ; python_version >= '3.9'",
     "pytest-asyncio>=1.1 ; python_version >= '3.9'",
     "pytest-cov~=6.3 ; python_version >= '3.9'",
@@ -79,7 +79,7 @@ test = [
 ]
 docs = [
     "python-dotenv>=1.1 ; python_version >= '3.10'",
-    "pygithub~=2.8 ; python_version >= '3.10'",
+    "pygithub>=2.8 ; python_version >= '3.10'",
 ]
 
 [tool.uv]
