@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from io import BufferedIOBase
 from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
+from threading import Thread, Event
 from typing import Dict, Tuple, Any, Union
 
 from redis.connection import DefaultParser
@@ -45,12 +46,9 @@ class Reader:
     def load(self) -> Any:
         line = self.reader.readline().strip()
         prefix, rest = line[0:1], line[1:]
+        LOGGER.debug(f"READ: {prefix} {rest}")
         if prefix == b"*":
-            length = int(rest)
-            array = [None] * length
-            for i in range(length):
-                array[i] = self.load()
-            return array
+            return [self.load() for i in range(int(rest))]
         if prefix == b"$":
             length = int(rest)
             bulk_string = self.reader.read(length)
@@ -84,6 +82,7 @@ class Writer:
     writer: BufferedIOBase
 
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
+        LOGGER.debug(f"WRITE: {value}")
         if isinstance(value, int):
             self.writer.write(f":{value}\r\n".encode())
         elif isinstance(value, (str, bytes)):
@@ -123,6 +122,36 @@ class TCPFakeRequestHandler(StreamRequestHandler):
             self.writer = Writer(self.wfile)
             self.server.clients[self.client_address] = self.current_client
 
+        self.pubsub = None
+
+    def handle_subscribe(self, channels):
+        if self.pubsub is None:
+            self.finished = Event()
+
+            self.pubsub = self.current_client.connection.pubsub()
+
+            def listen_for_messages():
+                # pubsub.subscribe("channel")
+                while not self.finished.is_set():
+                    message = self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
+                    if not message:
+                        continue
+
+                    if data := message.get("data"):
+                        try:
+                            self.writer.dump(data)
+                        except Exception as e:
+                            LOGGER.debug(f"!!! {self.client_address[0]}: {e}", exc_info=True)
+
+            self.listener = Thread(target=listen_for_messages)
+            self.listener.start()
+
+        self.pubsub.subscribe(*channels)
+
+    def handle_unsubscribe(self, channels):
+        if self.pubsub:
+            self.pubsub.unsubscribe(*channels)
+
     def handle(self) -> None:
         LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
@@ -132,17 +161,25 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 if len(self.data) == 1 and self.data[0].upper() == b"SHUTDOWN":
                     LOGGER.debug(f"*** {self.client_address[0]} requested shutdown")
                     break
+                if len(self.data) >= 2:
+                    if self.data[0].upper() == b"SUBSCRIBE":
+                        self.handle_subscribe(channels=[self.data[i].decode() for i in range(1, len(self.data))])
+                    elif self.data[0].upper() == b"UNSUBSCRIBE":
+                        self.handle_unsubscribe(channels=[self.data[i].decode() for i in range(1, len(self.data))])
                 res = self.current_client.connection.execute_command(*self.data)
                 LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
                 self.writer.dump(res)
             except Exception as e:
-                LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
+                LOGGER.debug(f"!!! {self.client_address[0]}: {e}", exc_info=True)
                 self.writer.dump(e)
                 break
 
     def finish(self) -> None:
         self.server.clients[self.current_client.client_address].connection.close()
         del self.server.clients[self.current_client.client_address]
+        if self.pubsub is not None:
+            self.finished.set()
+            self.listener.join()
         super().finish()
 
 
