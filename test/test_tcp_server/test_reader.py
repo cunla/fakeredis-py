@@ -4,13 +4,14 @@ from threading import Thread
 import redis
 
 from fakeredis import TcpFakeServer
+from fakeredis._tcp_server import TCP_SERVER_TEST_PORT
 from test import testtools
 
 
 @testtools.run_test_if_lupa_installed()
 def test_eval_multiline_script():
     """Test that EVAL works with multi-line Lua scripts."""
-    server_address = ("127.0.0.1", 19000)
+    server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
     server = TcpFakeServer(server_address)
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
@@ -35,7 +36,7 @@ return redis.call('GET', key)
 @testtools.run_test_if_lupa_installed()
 def test_script_load_multiline():
     """Test that SCRIPT LOAD works with multi-line Lua scripts."""
-    server_address = ("127.0.0.1", 19001)
+    server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
     server = TcpFakeServer(server_address)
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
@@ -58,7 +59,7 @@ return x + y"""
 @testtools.run_test_if_lupa_installed()
 def test_eval_script_with_trailing_newline():
     """Test that scripts with trailing newlines are preserved."""
-    server_address = ("127.0.0.1", 19002)
+    server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
     server = TcpFakeServer(server_address)
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()

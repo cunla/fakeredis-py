@@ -5,13 +5,14 @@ import pytest
 import redis
 
 from fakeredis import TcpFakeServer
+from fakeredis._tcp_server import TCP_SERVER_TEST_PORT
 from test import testtools
 
 
 @testtools.run_test_if_lupa_installed()
 def test_evalsha_missing_script():
     """Test that EVALSHA with a non-existent script returns NOSCRIPT error."""
-    server_address = ("127.0.0.1", 19000)
+    server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
     server = TcpFakeServer(server_address)
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
