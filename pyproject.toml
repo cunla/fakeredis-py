@@ -42,6 +42,7 @@ classifiers = [
 dependencies = [
     "redis>=4 ; python_version < '3.8'",
     "redis>=4.3 ; python_version > '3.8'",
+    "redis<7.1.0 ; python_version < '3.10'",
     "sortedcontainers>=2",
     "typing-extensions~=4.7 ; python_version < '3.11'",
 ]
@@ -52,7 +53,9 @@ json = ["jsonpath-ng>=1.6"]
 bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
-valkey = ["valkey>=6 ; python_version >= '3.8'"]
+valkey = [
+    "valkey>=6 ; python_version >= '3.8'",
+]
 
 [project.urls]
 Homepage = "https://github.com/cunla/fakeredis-py"

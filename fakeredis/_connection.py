@@ -1,14 +1,14 @@
 import queue
 import warnings
-from typing import Tuple, Any, List, Optional, Set, Sequence, Union
+from typing import Tuple, Any, List, Optional, Set, Sequence, Union, Type
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
-from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-from ._typing import Self, lib_version, RaiseErrorTypes
+from ._server import FakeBaseConnectionMixin, FakeServer
+from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 from .model import ClientInfo
 
 
@@ -126,7 +126,7 @@ class FakeRedisMixin:
         version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
-        client_class=redis.Redis,
+        client_class: Type[redis.Redis] = redis.Redis,
         **kwargs: Any,
     ) -> None:
         """
@@ -174,7 +174,7 @@ class FakeRedisMixin:
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

@@ -200,8 +200,9 @@ class TcpFakeServer(ThreadingTCPServer):
         self.clients: Dict[int, Client] = {}
 
 
+TCP_SERVER_TEST_PORT = 19000
 if __name__ == "__main__":
-    server = TcpFakeServer(("localhost", 19000))
+    server = TcpFakeServer(("localhost", TCP_SERVER_TEST_PORT))
     server.serve_forever()
     server.server_close()
     server.shutdown()

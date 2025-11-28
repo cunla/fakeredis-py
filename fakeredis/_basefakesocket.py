@@ -2,10 +2,9 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
 
 import redis
-from redis import ResponseError
 
 from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
 from . import _msgs as msgs
@@ -21,6 +20,7 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
+from ._typing import ResponseErrorType
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -67,6 +67,16 @@ def bin_reverse(x: int, bits_count: int) -> int:
     return result
 
 
+_next_file_no = 8
+
+
+def _get_next_file_no() -> int:
+    global _next_file_no
+    result = _next_file_no
+    _next_file_no += 1
+    return result
+
+
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
     ACCEPTED_COMMANDS_WHILE_PUBSUB = {
@@ -80,11 +90,19 @@ class BaseFakeSocket:
     }
     _connection_error_class = redis.ConnectionError
 
-    def __init__(self, server: "FakeServer", db: int, client_class, *args: Any, **kwargs: Any) -> None:  # type: ignore # noqa: F821
+    def __init__(
+        self,
+        server: "FakeServer",  # type: ignore # noqa: F821
+        db: int,
+        client_class: Type,  # type: ignore
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
         self._server: FakeServer = server
+        self._fileno = _get_next_file_no()
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
@@ -138,12 +156,8 @@ class BaseFakeSocket:
     def shutdown(self, _: Any) -> None:
         self._parser.close()
 
-    @staticmethod
-    def fileno() -> int:
-        # Our fake socket must return an integer from `FakeSocket.fileno()` since a real selector
-        # will be created. The value does not matter since we replace the selector with our own
-        # `FakeSelector` before it is ever used.
-        return 0
+    def fileno(self) -> int:
+        return self._fileno
 
     def _cleanup(self, server: Any) -> None:  # noqa: F821
         """Remove all the references to `self` from `server`.
@@ -274,15 +288,15 @@ class BaseFakeSocket:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
         return result
 
-    def _decode_error(self, error: SimpleError) -> ResponseError:
+    def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):
-            from valkey.connection import DefaultParser
+            from valkey.connection import DefaultParser as ValkeyDefaultParser
 
-            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+            return ValkeyDefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
         else:
-            from redis.connection import DefaultParser
+            from redis.connection import DefaultParser as RedisDefaultParser
 
-            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+            return RedisDefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
 
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""
