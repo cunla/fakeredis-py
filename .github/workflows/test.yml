@@ -81,6 +81,9 @@ jobs:
         install-extras: [false]
         coverage: [false]
         exclude:
+          - python-version: "3.9"
+            redis-py: "7.1.0"
+
           - python-version: "3.13"
             redis-image: "redis:8.2.1"
             redis-py: "7.1.0"

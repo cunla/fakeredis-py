@@ -643,9 +643,6 @@ probabilistic = [
     { name = "pyprobables", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.8'" },
 ]
 valkey = [
-    { name = "redis", version = "5.0.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
-    { name = "redis", version = "6.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
-    { name = "redis", version = "7.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "valkey", version = "6.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "valkey", version = "6.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
@@ -684,7 +681,6 @@ requires-dist = [
     { name = "redis", marker = "python_full_version < '3.8'", specifier = ">=4" },
     { name = "redis", marker = "python_full_version >= '3.9'", specifier = ">=4.3" },
     { name = "redis", marker = "python_full_version < '3.10'", specifier = "<7.1.0" },
-    { name = "redis", marker = "python_full_version < '3.10' and extra == 'valkey'", specifier = "<7.1.0" },
     { name = "sortedcontainers", specifier = ">=2" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = "~=4.7" },
     { name = "valkey", marker = "python_full_version >= '3.8' and extra == 'valkey'", specifier = ">=6" },
