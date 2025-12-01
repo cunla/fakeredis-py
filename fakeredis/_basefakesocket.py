@@ -2,6 +2,7 @@ import itertools
 import queue
 import time
 import weakref
+import logging
 from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
 
 import redis
@@ -21,6 +22,8 @@ from ._helpers import (
     decode_command_bytes,
 )
 from ._typing import ResponseErrorType
+
+LOGGER = logging.getLogger("fakeredis")
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -118,7 +121,7 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        info = kwargs.pop("client_info", {"user": "default"})
+        info = kwargs.pop("client_info", {})
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
@@ -220,6 +223,7 @@ class BaseFakeSocket:
     def _process_command(self, fields: List[bytes]) -> None:
         if not fields:
             return
+        LOGGER.debug(f">>> {self._client_info.get('raddr')}: {fields}")
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         try:

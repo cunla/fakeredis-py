@@ -6,17 +6,14 @@ from socketserver import ThreadingTCPServer, StreamRequestHandler
 from typing import Dict, Tuple, Any, Union
 
 from redis.connection import DefaultParser
-from redis.lock import Lock
 
-from fakeredis import FakeRedis
-from fakeredis import FakeServer
+from fakeredis import FakeServer, FakeConnection
 from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 LOGGER.setLevel(logging.DEBUG)
 
-# logging.basicConfig(level=logging.DEBUG)
-
+logging.basicConfig(level=logging.DEBUG)
 
 try:
     import lupa  # noqa: F401
@@ -30,41 +27,6 @@ def to_bytes(value: Any) -> bytes:
     if isinstance(value, bytes):
         return value
     return str(value).encode()
-
-
-@dataclass
-class Client:
-    connection: FakeRedis
-    client_address: int
-
-
-@dataclass
-class Reader:
-    reader: BufferedIOBase
-
-    def load(self) -> Any:
-        line = self.reader.readline().strip()
-        prefix, rest = line[0:1], line[1:]
-        if prefix == b"*":
-            length = int(rest)
-            array = [None] * length
-            for i in range(length):
-                array[i] = self.load()
-            return array
-        if prefix == b"$":
-            length = int(rest)
-            bulk_string = self.reader.read(length)
-            terminator = self.reader.read(2)
-            if len(bulk_string) != length or terminator != b"\r\n":
-                raise ValueError()
-            return bulk_string
-        if prefix == b":":
-            return int(rest)
-        if prefix == b"+":
-            return rest
-        if prefix == b"-":
-            return Exception(rest)
-        return None
 
 
 _EXCEPTION_PREFIX_MAP: Dict[Exception, str] = {
@@ -81,68 +43,78 @@ def _get_exception_prefix(e: Exception) -> str:
 
 @dataclass
 class Writer:
+    client_address: Tuple[str, int]
     writer: BufferedIOBase
+    request_handler: StreamRequestHandler
+
+    def write(self, value: bytes) -> None:
+        LOGGER.debug(f"<<< {self.client_address}: {value}")
+        self.writer.write(value)
+        self.writer.flush()
 
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
         if isinstance(value, int):
-            self.writer.write(f":{value}\r\n".encode())
+            self.write(f":{value}\r\n".encode())
         elif isinstance(value, (str, bytes)):
             value = to_bytes(value)
+            if value.upper() == b"SHUTDOWN":
+                self.request_handler.shutdown_request = True
             if dump_bulk or b"\r" in value or b"\n" in value:
-                self.writer.write(b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n")
+                self.write(b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n")
             else:
-                self.writer.write(b"+" + value + b"\r\n")
+                self.write(b"+" + value + b"\r\n")
         elif isinstance(value, (list, set)):
-            self.writer.write(f"*{len(value)}\r\n".encode())
+            self.write(f"*{len(value)}\r\n".encode())
             for item in value:
                 self.dump(item, dump_bulk=True)
         elif value is None:
-            self.writer.write("$-1\r\n".encode())
+            self.write("$-1\r\n".encode())
         elif isinstance(value, Exception):
             prefix = _get_exception_prefix(value)
-            self.writer.write(f"-{prefix} {value.args[0]}\r\n".encode())
+            self.write(f"-{prefix} {value.args[0]}\r\n".encode())
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
     server: "TcpFakeServer"  # type: ignore
+    shutdown_request: bool = False
 
     def setup(self) -> None:
         super().setup()
         if self.client_address in self.server.clients:
             self.current_client = self.server.clients[self.client_address]
         else:
-            self.current_client = Client(
-                connection=FakeRedis(server=self.server.fake_server),
-                client_address=self.client_address,
+            self.writer = Writer(self.client_address, self.wfile, self)
+            self.current_client = FakeConnection(
+                server=self.server.fake_server,
+                writer=self.writer,
+                client_info={"raddr": self.client_address},
             )
-            if lua_scripts_supported:
-                self.current_client.connection.script_load(Lock.LUA_RELEASE_SCRIPT)
-                self.current_client.connection.script_load(Lock.LUA_EXTEND_SCRIPT)
-                self.current_client.connection.script_load(Lock.LUA_REACQUIRE_SCRIPT)
-            self.reader = Reader(self.rfile)
-            self.writer = Writer(self.wfile)
+
             self.server.clients[self.client_address] = self.current_client
 
     def handle(self) -> None:
         LOGGER.debug(f"+++ {self.client_address[0]} connected")
         while True:
             try:
-                self.data = self.reader.load()
-                LOGGER.debug(f">>> {self.client_address[0]}: {self.data}")
-                if len(self.data) == 1 and self.data[0].upper() == b"SHUTDOWN":
-                    LOGGER.debug(f"*** {self.client_address[0]} requested shutdown")
+                if self.shutdown_request:
                     break
-                res = self.current_client.connection.execute_command(*self.data)
-                LOGGER.debug(f"<<< {self.client_address[0]}: {res}")
-                self.writer.dump(res)
+                if self.current_client.can_read():
+                    response = self.current_client.read_response()
+                    self.writer.dump(response)
+                    continue
+                if self.rfile.readable():
+                    data = self.rfile.readline()
+                    self.current_client.get_socket().sendall(data)
+                else:
+                    break
+
             except Exception as e:
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
                 self.writer.dump(e)
                 break
 
     def finish(self) -> None:
-        self.server.clients[self.current_client.client_address].connection.close()
-        del self.server.clients[self.current_client.client_address]
+        del self.server.clients[self.client_address]
         super().finish()
 
 
@@ -160,7 +132,7 @@ class TcpFakeServer(ThreadingTCPServer):
         self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
-        self.clients: Dict[int, Client] = {}
+        self.clients: Dict[int, FakeConnection] = {}
 
 
 TCP_SERVER_TEST_PORT = 19000
