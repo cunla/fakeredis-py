@@ -14,9 +14,9 @@ from fakeredis import FakeServer, FakeConnection
 from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
-LOGGER.setLevel(logging.DEBUG)
+# LOGGER.setLevel(logging.DEBUG)
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 try:
     import lupa  # noqa: F401
