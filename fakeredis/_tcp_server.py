@@ -1,4 +1,7 @@
+import fcntl
 import logging
+import os
+import time
 from dataclasses import dataclass
 from io import BufferedIOBase
 from itertools import count
@@ -80,6 +83,9 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 
     def setup(self) -> None:
         super().setup()
+        fd = self.rfile.fileno()
+        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
         if self.client_address in self.server.clients:
             self.current_client = self.server.clients[self.client_address]
         else:
@@ -102,11 +108,12 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                     response = self.current_client.read_response()
                     self.writer.dump(response)
                     continue
-                if self.rfile.readable():
-                    data = self.rfile.readline()
-                    self.current_client.get_socket().sendall(data)
+
+                data = self.rfile.readline()
+                if data == b"":
+                    time.sleep(0)
                 else:
-                    break
+                    self.current_client.get_socket().sendall(data)
 
             except Exception as e:
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
