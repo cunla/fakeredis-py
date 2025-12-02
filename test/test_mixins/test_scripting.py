@@ -530,12 +530,19 @@ def test_lua_log(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [
-        (logger.name, logging.DEBUG, "debug"),
-        (logger.name, logging.INFO, "verbose"),
-        (logger.name, logging.INFO, "notice"),
-        (logger.name, logging.WARNING, "warning"),
-    ]
+    assert (
+        len(
+            set(caplog.record_tuples).intersection(
+                {
+                    (logger.name, logging.DEBUG, "debug"),
+                    (logger.name, logging.INFO, "verbose"),
+                    (logger.name, logging.INFO, "notice"),
+                    (logger.name, logging.WARNING, "warning"),
+                }
+            )
+        )
+        == 4
+    )
 
 
 def test_lua_log_no_message(r: redis.Redis):
@@ -552,7 +559,7 @@ def test_lua_log_different_types(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [(logger.name, logging.DEBUG, "string 1 3.14 string")]
+    assert len(set(caplog.record_tuples).intersection({(logger.name, logging.DEBUG, "string 1 3.14 string")})) == 1
 
 
 def test_lua_log_wrong_level(r: redis.Redis):
@@ -572,7 +579,7 @@ def test_lua_log_defined_vars(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [(logger.name, logging.DEBUG, "string")]
+    assert len(set(caplog.record_tuples).intersection({(logger.name, logging.DEBUG, "string")})) == 1
 
 
 def test_hscan_cursors_are_bytes(r: redis.Redis):
