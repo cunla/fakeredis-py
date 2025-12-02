@@ -121,6 +121,10 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 break
 
     def finish(self) -> None:
+        self.current_client.disconnect()
+        LOGGER.debug(f"--- {self.client_address[0]} disconnected")
+        self.rfile.close()
+        self.wfile.close()
         del self.server.clients[self.client_address]
         super().finish()
 
@@ -133,6 +137,7 @@ class TcpFakeServer(ThreadingTCPServer):
         server_type: ServerType = "redis",
         server_version: VersionType = (8, 0),
     ):
+        self.allow_reuse_address = True
         self.daemon_threads = True
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.daemon_threads = True
