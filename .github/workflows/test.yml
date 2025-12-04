@@ -171,7 +171,7 @@ jobs:
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
         run: |
-          uv run pytest -v -m "not slow" -m "not tcp_server"
+          uv run pytest -v -m "not slow and not tcp_server"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
