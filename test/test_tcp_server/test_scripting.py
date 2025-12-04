@@ -24,11 +24,11 @@ def test_evalsha_missing_script(tcp_server_address: Tuple[str, int]):
 
 
 def test_tcp_server_lock(tcp_server_address: Tuple[str, int]):
-    r = Redis.from_url(f"redis://{tcp_server_address[0]}:{tcp_server_address[1]}", decode_responses=True)
-    lock = Lock(r, "my-lock")
-    lock.acquire()
-    assert lock.locked() is True
-    lock.release()
+    with Redis.from_url(f"redis://{tcp_server_address[0]}:{tcp_server_address[1]}", decode_responses=True) as r:
+        lock = Lock(r, "my-lock")
+        lock.acquire()
+        assert lock.locked() is True
+        lock.release()
 
 
 def test_eval_multiline_script(tcp_server_address: Tuple[str, int]):
