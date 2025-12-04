@@ -140,8 +140,6 @@ class TcpFakeServer(ThreadingTCPServer):
         self.allow_reuse_address = True
         self.daemon_threads = True
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
-        self.daemon_threads = True
-        self.allow_reuse_address = True
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
         self.clients: Dict[int, FakeConnection] = {}
