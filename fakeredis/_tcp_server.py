@@ -1,4 +1,9 @@
-import fcntl
+try:
+    import fcntl
+
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
 import logging
 import os
 import time
@@ -84,8 +89,9 @@ class TCPFakeRequestHandler(StreamRequestHandler):
     def setup(self) -> None:
         super().setup()
         fd = self.rfile.fileno()
-        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        if HAS_FCNTL:
+            fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
         if self.client_address in self.server.clients:
             self.current_client = self.server.clients[self.client_address]
         else:
