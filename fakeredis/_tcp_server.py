@@ -55,8 +55,10 @@ class Reader:
             length = int(rest)
             bulk_string = self.reader.read(length)
             terminator = self.reader.read(2)
-            if len(bulk_string) != length or terminator != b"\r\n":
-                raise ValueError()
+            if len(bulk_string) != length:
+                raise ValueError(f"Invalid bulk string length. Expected {length} bytes, got: {len(bulk_string)}")
+            if terminator != b"\r\n":
+                raise ValueError(f"Invalid terminator. Expected \\r\\n, got: {terminator}")
             return bulk_string
         if prefix == b":":
             return int(rest)
