@@ -12,7 +12,7 @@ import fakeredis
 from test import testtools
 from test.testtools import raw_command
 
-scripting_tests = pytest.importorskip("lupa")
+_ = pytest.importorskip("lupa")
 
 
 @pytest.mark.min_server("7")
