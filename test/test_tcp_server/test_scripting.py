@@ -5,7 +5,7 @@ import redis
 from redis import Redis
 from redis.lock import Lock
 
-lupa_tests = pytest.importorskip("lupa")
+pytest.importorskip("lupa")
 
 pytestmark = []
 pytestmark.extend(
