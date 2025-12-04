@@ -76,10 +76,7 @@ jobs:
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          uv sync --extra lua --extra valkey
-          if [ ${{ matrix.install-extras }} == true ]; then
-              uv sync --all-extras
-          fi
+          uv sync --all-extras
       - name: Test FakeTCPServer tests
         run: |
           uv run pytest -v -m "tcp_server" test/test_tcp_server
