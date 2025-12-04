@@ -82,7 +82,7 @@ jobs:
           fi
       - name: Test FakeTCPServer tests
         run: |
-          uv run pytest -v -m "tcp_server"
+          uv run pytest -v -m "tcp_server" test/test_tcp_server
 
   test:
     name: >
