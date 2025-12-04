@@ -7,6 +7,7 @@ class ClientInfo(Dict[str, Any]):
         super().__init__()
         kwargs.setdefault("-created", int(time.time()))
         kwargs.setdefault("resp", 2)
+        kwargs.setdefault("user", "default")
         for k, v in kwargs.items():
             self[k.replace("-", "_")] = v
 
