@@ -664,7 +664,7 @@ test = [
     { name = "coverage", version = "7.10.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "coverage", version = "7.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' and python_full_version < '3.14'" },
     { name = "hypothesis", version = "6.141.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "hypothesis", version = "6.148.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "hypothesis", version = "6.148.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pytest", marker = "python_full_version >= '3.9'" },
     { name = "pytest-asyncio", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "pytest-asyncio", version = "1.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -739,7 +739,7 @@ wheels = [
 
 [[package]]
 name = "hypothesis"
-version = "6.148.3"
+version = "6.148.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.10'",
@@ -748,9 +748,9 @@ dependencies = [
     { name = "exceptiongroup", marker = "python_full_version == '3.10.*'" },
     { name = "sortedcontainers", marker = "python_full_version >= '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/3d/41da3727e5f3e6b0c79b9657946c742e2f61d24edcde3e1660e337509586/hypothesis-6.148.3.tar.gz", hash = "sha256:bd81221740d8658473060ad900dc831f889f156fdb41210ba2f47cfad10a66ed", size = 469896, upload-time = "2025-11-27T06:34:09.419Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/2f/828a50d0a87acf28e3788b1987250ed1cd08d7f0c91a138e3b4f9ffe5198/hypothesis-6.148.6.tar.gz", hash = "sha256:0ef1381f893650590f2c5918318d4c8240c79e481bbb621a49acc3dba868d80f", size = 470734, upload-time = "2025-12-04T05:51:39.588Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/61/8c9fd9397eb46ac54d974be8b9e619c386d6b47a462d8df962ebb79980f9/hypothesis-6.148.3-py3-none-any.whl", hash = "sha256:e7dd193da9800234ec5e1541c1eddde4bddff49b53faf690ba68a0af55a7abb3", size = 536925, upload-time = "2025-11-27T06:34:06.978Z" },
+    { url = "https://files.pythonhosted.org/packages/26/23/59af28c84413a7b92036a04d600b3f1132783096503e0259a5463fa20f96/hypothesis-6.148.6-py3-none-any.whl", hash = "sha256:126325f3e84f297d7cce5071ebe1f38744fbc54493ca0adf294d6fa1034e5efc", size = 537645, upload-time = "2025-12-04T05:51:36.989Z" },
 ]
 
 [[package]]

@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Run Ruff Linting 🧹
@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Run Ruff Formatting 🧽
@@ -44,11 +44,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
@@ -58,6 +58,32 @@ jobs:
           uv build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
+  test-tcp-server:
+    name: "TCP server test"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.13" ]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v6
+        with:
+          cache-dependency-path: uv.lock
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          uv sync --extra lua --extra valkey
+          if [ ${{ matrix.install-extras }} == true ]; then
+              uv sync --all-extras
+          fi
+      - name: Test FakeTCPServer tests
+        run: |
+          uv run pytest -v -m "tcp_server"
+
   test:
     name: >
       tests
@@ -118,11 +144,11 @@ jobs:
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
@@ -145,7 +171,7 @@ jobs:
       - name: Test without coverage
         if: ${{ !matrix.coverage }}
         run: |
-          uv run pytest -v -m "not slow"
+          uv run pytest -v -m "not slow" -m "not tcp_server"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
