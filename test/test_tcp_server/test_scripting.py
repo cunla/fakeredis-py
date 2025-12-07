@@ -2,7 +2,6 @@ from typing import Tuple
 
 import pytest
 import redis
-from redis import Redis
 from redis.lock import Lock
 
 pytest.importorskip("lupa")
@@ -24,7 +23,7 @@ def test_evalsha_missing_script(tcp_server_address: Tuple[str, int]):
 
 
 def test_tcp_server_lock(tcp_server_address: Tuple[str, int]):
-    with Redis.from_url(f"redis://{tcp_server_address[0]}:{tcp_server_address[1]}", decode_responses=True) as r:
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         lock = Lock(r, "my-lock")
         lock.acquire()
         assert lock.locked() is True
