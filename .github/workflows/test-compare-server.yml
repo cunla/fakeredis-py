@@ -16,6 +16,7 @@ jobs:
       matrix:
         python-version: ["3.9", "3.12", "3.13", "3.14"]
         redis-py: ["4.6.0", "5.3.1", "6.4.0", "7.1.0"]
+        redis-image: ["${{ inputs.redis-image }}"]
         install-extras: [false]
         coverage: [false]
         exclude:
