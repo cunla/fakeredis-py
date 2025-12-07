@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  ruff:
     uses: ./.github/workflows/lint.yml
   basic_tests:
     uses: ./.github/workflows/text-no-matrix.yml
