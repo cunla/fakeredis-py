@@ -24,3 +24,36 @@ jobs:
           uv build
           pip install dist/fakeredis-*.tar.gz
           python -c "import fakeredis"
+
+  test-tcp-server:
+    name: "TCP server test"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.13" ]
+    services:
+      keydb:
+        image: "redis:8.2.1"
+        ports:
+          - 6390:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v6
+        with:
+          cache-dependency-path: uv.lock
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          uv sync --all-extras
+      - name: Test FakeTCPServer tests
+        run: |
+          uv run pytest -v -m "tcp_server" test/test_tcp_server
