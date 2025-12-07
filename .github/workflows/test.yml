@@ -35,3 +35,4 @@ jobs:
     secrets: inherit
     with:
       redis-image: ${{ matrix.redis-image }}
+      coverage-redis-image: "redis:8.2.1"

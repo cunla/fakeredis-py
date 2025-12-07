@@ -6,6 +6,10 @@ on:
       redis-image:
         required: true
         type: string
+      coverage-redis-image:
+        required: true
+        type: string
+        default: false
 
 jobs:
   test-compare:
@@ -29,15 +33,11 @@ jobs:
             coverage: false
         include:
           - python-version: "3.13"
-            redis-image: "redis/redis-stack-server:6.2.6-v20"
+            redis-image: "${{ inputs.redis-image }}"
             redis-py: "7.1.0"
             install-extras: true
           - python-version: "3.13"
-            redis-image: "redis/redis-stack-server:7.4.0-v3"
-            redis-py: "7.1.0"
-            install-extras: true
-          - python-version: "3.13"
-            redis-image: "redis:8.2.1"
+            redis-image: "${{ inputs.coverage-redis-image }}"
             redis-py: "7.1.0"
             install-extras: true
             coverage: true
