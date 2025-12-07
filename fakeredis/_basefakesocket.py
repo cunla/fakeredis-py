@@ -188,10 +188,14 @@ class BaseFakeSocket:
     @staticmethod
     def _extract_line(buf: bytes) -> Tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
-        assert pos > 0
+        if pos <= 0:
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
         line = buf[:pos]
         buf = buf[pos:]
-        assert line.endswith(b"\r\n")
+        if not line.endswith(b"\r\n"):
+            command = line.decode().strip().split(" ")[0]
+            args = " ".join(line.decode().strip().split(" ")[1:])
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
         return line, buf
 
     def _parse_commands(self) -> Generator[None, Any, None]:
@@ -205,7 +209,8 @@ class BaseFakeSocket:
             while self._paused or b"\n" not in buf:
                 buf += yield
             line, buf = self._extract_line(buf)
-            assert line[:1] == b"*"  # array
+            if not line[:1] == b"*":  # array
+                raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):

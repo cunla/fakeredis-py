@@ -24,11 +24,17 @@ def _check_lua_module_supported() -> bool:
 
 
 @pytest.fixture(scope="session")
-def real_server_details() -> ServerDetails:
+def real_server_address() -> Tuple[str, int]:
+    """Returns real server address"""
+    return "localhost", 6390
+
+
+@pytest.fixture(scope="session")
+def real_server_details(real_server_address: Tuple[str, int]) -> ServerDetails:
     """Returns server's version or exit if server is not running"""
     client = None
     try:
-        client = redis.Redis("localhost", port=6390, db=2)
+        client = redis.Redis(real_server_address[0], port=real_server_address[1], db=2)
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
         if "server_name" in client_info:

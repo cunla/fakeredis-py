@@ -1,3 +1,5 @@
+from fakeredis._helpers import SimpleError
+
 try:
     import fcntl
 
@@ -78,8 +80,11 @@ class Writer:
         elif value is None:
             self.write("$-1\r\n".encode())
         elif isinstance(value, Exception):
-            prefix = _get_exception_prefix(value)
-            self.write(f"-{prefix} {value.args[0]}\r\n".encode())
+            if isinstance(value, SimpleError):
+                self.write(f"-{value.args[0]}\r\n".encode())
+            else:
+                prefix = _get_exception_prefix(value)
+                self.write(f"-{prefix} {value.args[0]}\r\n".encode())
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):

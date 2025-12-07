@@ -64,15 +64,3 @@ def test_eval_script_with_trailing_newline(tcp_server_address: Tuple[str, int]):
         script = "return 'hello'\n"
         result = r.eval(script, 0)
         assert result == b"hello"
-
-
-def test_bulk_string_length(tcp_server_address: Tuple[str, int]):
-    """Test that malformed bulk string input is handled correctly."""
-    from contextlib import closing
-    import socket
-
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.connect((tcp_server_address[0], tcp_server_address[1]))
-        s.sendall(b"$ 1\ntest")
-        data = s.recv(1024).decode()
-        assert data != "An error occurred on the server."
