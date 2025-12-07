@@ -34,6 +34,7 @@ jobs:
           - python-version: "3.13"
             redis-image: "${{ inputs.redis-image }}"
             redis-py: "7.1.0"
+            coverage: [false]
             install-extras: true
           - python-version: "3.13"
             redis-image: "${{ inputs.coverage-redis-image }}"
