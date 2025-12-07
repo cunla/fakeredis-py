@@ -30,7 +30,6 @@ jobs:
             redis-image: "redis:8.2.1"
             redis-py: "7.1.0"
             install-extras: false
-            coverage: false
         include:
           - python-version: "3.13"
             redis-image: "${{ inputs.redis-image }}"
@@ -85,11 +84,11 @@ jobs:
           VERSION=$(uv version --short)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
-        if: ${{ !matrix.coverage }}
+        if: ${{ !matrix.coverage || inputs.coverage-redis-image != inputs.redis-image}}
         run: |
           uv run pytest -v -m "not slow and not tcp_server"
       - name: Test with coverage
-        if: ${{ matrix.coverage }}
+        if: ${{ matrix.coverage && inputs.coverage-redis-image == inputs.redis-image}}
         uses: ./.github/actions/test-coverage
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
