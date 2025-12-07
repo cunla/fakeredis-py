@@ -17,6 +17,8 @@ jobs:
   ruff:
     uses: ./.github/workflows/lint.yml
   basic_tests:
+    needs: ["ruff"]
+    name: Tests without server
     uses: ./.github/workflows/test-no-matrix.yml
   test:
     needs: ["ruff"]
