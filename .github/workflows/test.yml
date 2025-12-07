@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   lint:
-    uses: .github/workflows/lint.yml@master
+    uses: ./.github/workflows/lint.yml@master
   basic_tests:
-    uses: .github/workflows/text-no-matrix.yml@master
+    uses: ./.github/workflows/text-no-matrix.yml@master
   test:
     name: >
       tests
