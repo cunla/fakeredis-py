@@ -15,12 +15,12 @@ concurrency:
 
 jobs:
   ruff:
-    uses: ./.github/workflows/subflows/lint.yml
+    uses: ./.github/workflows/lint.yml
   basic_tests:
-    uses: ./.github/workflows/subflows/text-no-matrix.yml
+    uses: ./.github/workflows/test-no-matrix.yml
   test:
     needs: ["ruff"]
-    uses: ./.github/workflows/subflows/test-compare-server.yml
+    uses: ./.github/workflows/test-compare-server.yml
     name: test ${{matrix.redis-image}}
     strategy:
       max-parallel: 2
