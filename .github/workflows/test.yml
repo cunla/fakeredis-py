@@ -64,6 +64,16 @@ jobs:
     strategy:
       matrix:
         python-version: [ "3.13" ]
+    services:
+      keydb:
+        image: "redis:8.2.1"
+        ports:
+          - 6390:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
