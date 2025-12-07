@@ -14,90 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: "Code linting (ruff)"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Run Ruff Linting 🧹
-        uses: astral-sh/ruff-action@v3
-  format:
-    name: "Code formatting (ruff)"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Run Ruff Formatting 🧽
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: "format --check"
-  test-import-only:
-    name: "Basic import test"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
-        with:
-          cache-dependency-path: uv.lock
-          python-version: "3.13"
-      - name: Test import
-        run: |
-          uv build
-          pip install dist/fakeredis-*.tar.gz
-          python -c "import fakeredis"
-  test-tcp-server:
-    name: "TCP server test"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
-    services:
-      keydb:
-        image: "redis:8.2.1"
-        ports:
-          - 6390:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
-        with:
-          cache-dependency-path: uv.lock
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        env:
-          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
-        run: |
-          uv sync --all-extras
-      - name: Test FakeTCPServer tests
-        run: |
-          uv run pytest -v -m "tcp_server" test/test_tcp_server
-
+  ruff:
+    uses: ./.github/workflows/lint.yml
+  basic_tests:
+    uses: ./.github/workflows/text-no-matrix.yml
   test:
     name: >
       tests
       py:${{ matrix.python-version }},${{ matrix.redis-image }},
       redis-py:${{ matrix.redis-py }},cov:${{ matrix.coverage }},
       extra:${{matrix.install-extras}}
-    needs: ["lint", "format"]
+    needs: ["ruff"]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 8
@@ -116,7 +43,6 @@ jobs:
         exclude:
           - python-version: "3.9"
             redis-py: "7.1.0"
-
           - python-version: "3.13"
             redis-image: "redis:8.2.1"
             redis-py: "7.1.0"
