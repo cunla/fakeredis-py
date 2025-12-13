@@ -73,8 +73,8 @@ jobs:
           --health-retries 5
     name: >
       tests
-      redis-image:${{ matrix.redis-image }},
-      py:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
+      ${{ matrix.redis-image }},
+      py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
       cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
