@@ -1,6 +1,6 @@
 import time
 from threading import Thread
-from typing import Callable, Tuple, Optional, Any, Generator, Dict, AsyncGenerator
+from typing import Callable, Tuple, Optional, Any, Generator, Dict
 
 import pytest
 import pytest_asyncio
@@ -160,7 +160,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     ],
     ids=lambda x: f"{x[0]}_resp{x[1]}",
 )
-async def _req_aioredis2(request, real_server_details: ServerDetails) -> AsyncGenerator[redis.Redis]:
+async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.asyncio.Redis:
     server_type, server_version = real_server_details
     param_type, protocol = request.param[0], int(request.param[1])
     if param_type != "fake" and not server_version:
