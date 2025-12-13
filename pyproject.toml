@@ -121,6 +121,7 @@ markers = [
     "resp3_only: run tests only with RESP3",
     "load_lua_modules: run tests that load Lua modules",
     "valkey_client_test: test using valkey-py client instead of redis-py",
+    "tcp_server: run tests against a TCP server",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true

@@ -1,3 +1,5 @@
+import time
+from threading import Thread
 from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
 
 import pytest
@@ -6,6 +8,7 @@ import redis
 
 import fakeredis
 from fakeredis._server import _create_version
+from fakeredis._tcp_server import TCP_SERVER_TEST_PORT, TcpFakeServer
 from test.testtools import REDIS_PY_VERSION
 
 ServerDetails = Type[Tuple[str, Tuple[int, ...]]]
@@ -21,11 +24,17 @@ def _check_lua_module_supported() -> bool:
 
 
 @pytest.fixture(scope="session")
-def real_server_details() -> ServerDetails:
+def real_server_address() -> Tuple[str, int]:
+    """Returns real server address"""
+    return "localhost", 6390
+
+
+@pytest.fixture(scope="session")
+def real_server_details(real_server_address: Tuple[str, int]) -> ServerDetails:
     """Returns server's version or exit if server is not running"""
     client = None
     try:
-        client = redis.Redis("localhost", port=6390, db=2)
+        client = redis.Redis(real_server_address[0], port=real_server_address[1], db=2)
         client_info = client.info()
         server_type = "dragonfly" if "dragonfly_version" in client_info else "redis"
         if "server_name" in client_info:
@@ -47,6 +56,19 @@ def _fake_server(request, real_server_details: Tuple[str, Tuple[int, ...]]) -> f
     server = fakeredis.FakeServer(server_type=server_type, version=server_version)
     server.connected = request.node.get_closest_marker("disconnected") is None
     return server
+
+
+@pytest_asyncio.fixture(name="tcp_server_address")
+def _tcp_fake_server() -> Generator[tuple[str, int], Any, None]:
+    server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
+    server = TcpFakeServer(server_address)
+    t = Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    time.sleep(0.1)
+    yield server_address
+    server.server_close()
+    server.shutdown()
+    t.join()
 
 
 @pytest_asyncio.fixture

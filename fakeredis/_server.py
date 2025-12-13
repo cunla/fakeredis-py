@@ -9,7 +9,7 @@ import redis
 
 from fakeredis._helpers import Database, FakeSelector
 from fakeredis._typing import VersionType, ServerType
-from fakeredis.model import AccessControlList
+from fakeredis.model import AccessControlList, ClientInfo
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -94,6 +94,7 @@ class FakeBaseConnectionMixin(object):
         self._server = kwargs.pop("server", None)
         self._client_class = kwargs.pop("client_class", redis.Redis)
         self._lua_modules = kwargs.pop("lua_modules", set())
+        self._writer = kwargs.pop("writer", None)
         path = kwargs.pop("path", None)
         connected = kwargs.pop("connected", True)
         if self._server is None:
@@ -105,4 +106,38 @@ class FakeBaseConnectionMixin(object):
             self.server_key += f":{server_type}:v{_version_to_str(version)[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
+        client_info = kwargs.pop("client_info", {})
         super().__init__(*args, **kwargs)
+        protocol = getattr(self, "protocol", 2)
+
+        client_info.update(
+            dict(
+                id=self._server.get_next_client_id(),
+                addr="127.0.0.1:57275",  # TODO get IP
+                laddr="127.0.0.1:6379",  # TODO get IP
+                fd=8,
+                name="",
+                idle=0,
+                flags="N",
+                db=0,
+                sub=0,
+                psub=0,
+                ssub=0,
+                multi=-1,
+                qbuf=48,
+                qbuf_free=16842,
+                argv_mem=25,
+                multi_mem=0,
+                rbs=1024,
+                rbp=0,
+                obl=0,
+                oll=0,
+                omem=0,
+                tot_mem=18737,
+                events="r",
+                cmd="auth",
+                redir=-1,
+                resp=protocol,
+            )
+        )
+        self._client_info = ClientInfo(**client_info)
