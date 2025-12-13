@@ -1,6 +1,6 @@
 import time
 from threading import Thread
-from typing import Callable, Tuple, Optional, Type, Any, Generator, Dict
+from typing import Callable, Tuple, Optional, Any, Generator, Dict
 
 import pytest
 import pytest_asyncio
@@ -11,7 +11,7 @@ from fakeredis._server import _create_version
 from fakeredis._tcp_server import TCP_SERVER_TEST_PORT, TcpFakeServer
 from test.testtools import REDIS_PY_VERSION
 
-ServerDetails = Type[Tuple[str, Tuple[int, ...]]]
+ServerDetails = Tuple[str, Tuple[int, ...]]
 
 
 def _check_lua_module_supported() -> bool:
@@ -152,12 +152,21 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
 
 @pytest_asyncio.fixture(
     name="async_redis",
-    params=[pytest.param("fake", marks=pytest.mark.fake), pytest.param("real", marks=pytest.mark.real)],
+    params=[
+        pytest.param(("fake", 2), marks=pytest.mark.fake),
+        pytest.param(("fake", 3), marks=pytest.mark.fake),
+        pytest.param(("real", 2), marks=pytest.mark.real),
+        pytest.param(("real", 3), marks=pytest.mark.real),
+    ],
+    ids=lambda x: f"{x[0]}_resp{x[1]}",
 )
 async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.asyncio.Redis:
     server_type, server_version = real_server_details
-    if request.param != "fake" and not server_version:
+    param_type, protocol = request.param[0], int(request.param[1])
+    if param_type != "fake" and not server_version:
         pytest.skip("Redis is not running")
+    if REDIS_PY_VERSION.major < 5 and protocol == 3:
+        pytest.skip("redis-py 4.x does not support RESP3")
 
     decode_responses = bool(request.node.get_closest_marker("decode_responses"))
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
@@ -174,11 +183,15 @@ async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.a
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
     fake_server: Optional[fakeredis.FakeServer]
-    if request.param == "fake":
+    if param_type == "fake":
         fake_server = request.getfixturevalue("fake_server")
-        ret = fakeredis.FakeAsyncRedis(server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses)
+        ret = fakeredis.FakeAsyncRedis(
+            server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses, protocol=protocol
+        )
     else:
-        ret = redis.asyncio.Redis(host="localhost", port=6390, db=2, decode_responses=decode_responses)
+        ret = redis.asyncio.Redis(
+            host="localhost", port=6390, db=2, decode_responses=decode_responses, protocol=protocol
+        )
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()

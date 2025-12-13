@@ -13,7 +13,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, Self, RaiseErrorTypes
+from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -237,12 +237,14 @@ class FakeRedisMixin:
                 "client_name",
                 "connected",
                 "server",
+                "protocol",
             }
             connection_kwargs = {
                 "connection_class": FakeConnection,
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
+                "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
@@ -251,6 +253,9 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
+        if "lib_name" in kwds and "lib_version" in kwds:
+            kwds["lib_name"] = "fakeredis"
+            kwds["lib_version"] = lib_version
         super().__init__(**kwds)
 
     @classmethod

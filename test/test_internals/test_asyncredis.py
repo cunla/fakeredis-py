@@ -6,7 +6,14 @@ from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
 from test import testtools
 
 pytestmark = []
-fake_only = pytest.mark.parametrize("async_redis", [pytest.param("fake", marks=pytest.mark.fake)], indirect=True)
+fake_only = pytest.mark.parametrize(
+    "async_redis",
+    [
+        pytest.param(("fake", 2), marks=pytest.mark.fake),
+        pytest.param(("fake", 3), marks=pytest.mark.fake),
+    ],
+    indirect=True,
+)
 pytestmark.extend(
     [
         pytest.mark.asyncio,

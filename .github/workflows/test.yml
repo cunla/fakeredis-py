@@ -21,10 +21,10 @@ jobs:
     name: Tests without server
     uses: ./.github/workflows/test-no-matrix.yml
   test:
-    needs: ["ruff"]
+    needs: ["ruff", "basic_tests"]
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 8
       fail-fast: false
       matrix:
         redis-image:
@@ -73,8 +73,8 @@ jobs:
           --health-retries 5
     name: >
       tests
-      redis-image:${{ matrix.redis-image }},
-      py:${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
+      ${{ matrix.redis-image }},
+      py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
       cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
