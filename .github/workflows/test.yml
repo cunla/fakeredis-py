@@ -21,7 +21,7 @@ jobs:
     name: Tests without server
     uses: ./.github/workflows/test-no-matrix.yml
   test:
-    needs: ["ruff"]
+    needs: ["ruff", "basic_tests"]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 8
