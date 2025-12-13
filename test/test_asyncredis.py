@@ -107,7 +107,7 @@ async def test_blocking_ready(async_redis, conn):
     """Blocking command which does not need to block."""
     await async_redis.rpush("list", "x")
     result = await conn.blpop("list", timeout=1)
-    assert result == (b"list", b"x")
+    assert result == resp_conversion(async_redis, [b"list", b"x"], (b"list", b"x"))
 
 
 @pytest.mark.slow
