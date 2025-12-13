@@ -9,6 +9,7 @@ import redis.asyncio
 from fakeredis import FakeServer, aioredis
 from fakeredis._typing import async_timeout
 from test import testtools
+from test.testtools import resp_conversion
 
 pytestmark = []
 pytestmark.extend(
@@ -237,3 +238,34 @@ async def test_cause_fakeredis_bug(async_redis):
 
     # await async_redis.get("foo")  # uncomment to make test pass
     assert await async_redis.get("foo") == b"bar"
+
+
+@pytest.mark.asyncio
+async def test_hrandfield(async_redis: redis.Redis):
+    protocol_version = testtools.get_protocol_version(async_redis)
+    assert await async_redis.hrandfield("key") is None
+    hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
+    await async_redis.hset("key", mapping=hash)
+    assert await async_redis.hrandfield("key") is not None
+    assert len(await async_redis.hrandfield("key", 0)) == 0
+    res = await async_redis.hrandfield("key", 2)
+    assert len(res) == 2
+    assert res[0] in set(hash.keys())
+    assert res[1] in set(hash.keys())
+    # with values
+    res = await async_redis.hrandfield("key", 2, True)
+    assert len(res) == resp_conversion(async_redis, 2, 4)
+    if protocol_version == 2:
+        assert res[0] in set(hash.keys())
+        assert res[1] in {str(x).encode() for x in hash.values()}
+        assert res[2] in set(hash.keys())
+        assert res[3] in {str(x).encode() for x in hash.values()}
+    else:
+        assert res[0][1] in {str(x).encode() for x in hash.values()}
+        assert res[1][1] in {str(x).encode() for x in hash.values()}
+        assert res[0][0] in set(hash.keys())
+        assert res[1][0] in set(hash.keys())
+    # without duplications
+    assert len(await async_redis.hrandfield("key", 10)) == 5
+    # with duplications
+    assert len(await async_redis.hrandfield("key", -10)) == 10
