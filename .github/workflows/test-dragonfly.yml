@@ -40,7 +40,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -61,7 +61,7 @@ jobs:
           -v
       - name: Upload Tests Result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tests-result-${{ matrix.tests }}
           path: report-${{ matrix.tests }}.html
@@ -74,6 +74,6 @@ jobs:
       contents: read
     steps:
       - name: Collect Tests Result
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@v5
         with:
           delete-merged: true

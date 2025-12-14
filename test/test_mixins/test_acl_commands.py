@@ -58,7 +58,7 @@ def test_auth(r: redis.Redis):
     with pytest.raises(redis.AuthenticationError):
         r.auth("some_password", "some_user")
 
-    # first, test for default user (`username` is supposed to be optional)
+    # first, test for the default user (`username` is supposed to be optional)
     default_username = "default"
     temp_pass = "temp_pass"
     r.config_set("requirepass", temp_pass)
@@ -77,7 +77,7 @@ def test_auth(r: redis.Redis):
     with pytest.raises(redis.AuthenticationError):
         r.auth(username=username, password="wrong_password")
 
-    # test that user can log in even if the default user is disabled
+    # test that a user can log in even if the default user is disabled
     r.acl_setuser(default_username, enabled=False)
     assert r.auth(username=username, password="strong_password") is True
 
@@ -278,7 +278,7 @@ def test_acl_users(r: redis.Redis):
 
 
 def test_acl_whoami(r: redis.Redis):
-    # first, test for default user (`username` is supposed to be optional)
+    # first, test for the default user (`username` is supposed to be optional)
     default_username = "default"
     temp_pass = "temp_pass"
     r.config_set("requirepass", temp_pass)

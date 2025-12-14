@@ -9,6 +9,7 @@ import redis.asyncio
 from fakeredis import FakeServer, aioredis
 from fakeredis._typing import async_timeout
 from test import testtools
+from test.testtools import resp_conversion
 
 pytestmark = []
 pytestmark.extend(
@@ -106,7 +107,7 @@ async def test_blocking_ready(async_redis, conn):
     """Blocking command which does not need to block."""
     await async_redis.rpush("list", "x")
     result = await conn.blpop("list", timeout=1)
-    assert result == (b"list", b"x")
+    assert result == resp_conversion(async_redis, [b"list", b"x"], (b"list", b"x"))
 
 
 @pytest.mark.slow
@@ -126,7 +127,7 @@ async def test_blocking_unblock(async_redis, conn):
 
     task = asyncio.get_running_loop().create_task(unblock())
     result = await conn.blpop("list", timeout=1)
-    assert result == (b"list", b"y")
+    assert result == resp_conversion(async_redis, [b"list", b"y"], (b"list", b"y"))
     await task
 
 
@@ -227,13 +228,48 @@ async def test_cause_fakeredis_bug(async_redis):
 
     async def worker_task():
         assert await async_redis.rpush("list1", "list1_val") == 1  # 1
-        assert await async_redis.blpop("list2") == (b"list2", b"list2_val")  # 4
+        assert await async_redis.blpop("list2") == resp_conversion(
+            async_redis, [b"list2", b"list2_val"], (b"list2", b"list2_val")
+        )  # 4
         assert await async_redis.set("foo", "bar") is True  # 5
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(worker_task())
-        assert await async_redis.blpop("list1") == (b"list1", b"list1_val")  # 2
+        assert await async_redis.blpop("list1") == resp_conversion(
+            async_redis, [b"list1", b"list1_val"], (b"list1", b"list1_val")
+        )  # 2
         assert await async_redis.rpush("list2", "list2_val") == 1  # 3
 
     # await async_redis.get("foo")  # uncomment to make test pass
     assert await async_redis.get("foo") == b"bar"
+
+
+@pytest.mark.asyncio
+async def test_hrandfield(async_redis: redis.Redis):
+    protocol_version = testtools.get_protocol_version(async_redis)
+    assert await async_redis.hrandfield("key") is None
+    hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
+    await async_redis.hset("key", mapping=hash)
+    assert await async_redis.hrandfield("key") is not None
+    assert len(await async_redis.hrandfield("key", 0)) == 0
+    res = await async_redis.hrandfield("key", 2)
+    assert len(res) == 2
+    assert res[0] in set(hash.keys())
+    assert res[1] in set(hash.keys())
+    # with values
+    res = await async_redis.hrandfield("key", 2, True)
+    assert len(res) == resp_conversion(async_redis, 2, 4)
+    if protocol_version == 2:
+        assert res[0] in set(hash.keys())
+        assert res[1] in {str(x).encode() for x in hash.values()}
+        assert res[2] in set(hash.keys())
+        assert res[3] in {str(x).encode() for x in hash.values()}
+    else:
+        assert res[0][1] in {str(x).encode() for x in hash.values()}
+        assert res[1][1] in {str(x).encode() for x in hash.values()}
+        assert res[0][0] in set(hash.keys())
+        assert res[1][0] in set(hash.keys())
+    # without duplications
+    assert len(await async_redis.hrandfield("key", 10)) == 5
+    # with duplications
+    assert len(await async_redis.hrandfield("key", -10)) == 10

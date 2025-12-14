@@ -2,9 +2,10 @@ import itertools
 import queue
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence
+import logging
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
 
-from redis import ResponseError
+import redis
 
 from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
 from . import _msgs as msgs
@@ -20,7 +21,9 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
-from ._typing import ServerType
+from ._typing import ResponseErrorType
+
+LOGGER = logging.getLogger("fakeredis")
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -67,6 +70,16 @@ def bin_reverse(x: int, bits_count: int) -> int:
     return result
 
 
+_next_file_no = 8
+
+
+def _get_next_file_no() -> int:
+    global _next_file_no
+    result = _next_file_no
+    _next_file_no += 1
+    return result
+
+
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
     ACCEPTED_COMMANDS_WHILE_PUBSUB = {
@@ -78,12 +91,21 @@ class BaseFakeSocket:
         "ssubscribe",
         "sunsubscribe",
     }
+    _connection_error_class = redis.ConnectionError
 
-    def __init__(self, server: "FakeServer", db: int, client_class, *args: Any, **kwargs: Any) -> None:  # type: ignore # noqa: F821
+    def __init__(
+        self,
+        server: "FakeServer",  # type: ignore # noqa: F821
+        db: int,
+        client_class: Type,  # type: ignore
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
         self._server: FakeServer = server
+        self._fileno = _get_next_file_no()
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
@@ -99,7 +121,7 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        info = kwargs.pop("client_info", {"user": "default"})
+        info = kwargs.pop("client_info", {})
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
@@ -112,7 +134,7 @@ class BaseFakeSocket:
         return self._server.version
 
     @property
-    def server_type(self) -> ServerType:
+    def server_type(self) -> str:
         return self._server.server_type
 
     def put_response(self, msg: Any) -> None:
@@ -137,12 +159,8 @@ class BaseFakeSocket:
     def shutdown(self, _: Any) -> None:
         self._parser.close()
 
-    @staticmethod
-    def fileno() -> int:
-        # Our fake socket must return an integer from `FakeSocket.fileno()` since a real selector
-        # will be created. The value does not matter since we replace the selector with our own
-        # `FakeSelector` before it is ever used.
-        return 0
+    def fileno(self) -> int:
+        return self._fileno
 
     def _cleanup(self, server: Any) -> None:  # noqa: F821
         """Remove all the references to `self` from `server`.
@@ -170,10 +188,14 @@ class BaseFakeSocket:
     @staticmethod
     def _extract_line(buf: bytes) -> Tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
-        assert pos > 0
+        if pos <= 0:
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
         line = buf[:pos]
         buf = buf[pos:]
-        assert line.endswith(b"\r\n")
+        if not line.endswith(b"\r\n"):
+            command = line.decode().strip().split(" ")[0]
+            args = " ".join(line.decode().strip().split(" ")[1:])
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
         return line, buf
 
     def _parse_commands(self) -> Generator[None, Any, None]:
@@ -187,7 +209,8 @@ class BaseFakeSocket:
             while self._paused or b"\n" not in buf:
                 buf += yield
             line, buf = self._extract_line(buf)
-            assert line[:1] == b"*"  # array
+            if not line[:1] == b"*":  # array
+                raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):
@@ -205,6 +228,7 @@ class BaseFakeSocket:
     def _process_command(self, fields: List[bytes]) -> None:
         if not fields:
             return
+        LOGGER.debug(f">>> {self._client_info.get('raddr')}: {fields}")
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         try:
@@ -273,15 +297,15 @@ class BaseFakeSocket:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
         return result
 
-    def _decode_error(self, error: SimpleError) -> ResponseError:
+    def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):
-            from valkey.connection import DefaultParser
+            from valkey.connection import DefaultParser as ValkeyDefaultParser
 
-            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+            return ValkeyDefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
         else:
-            from redis.connection import DefaultParser
+            from redis.connection import DefaultParser as RedisDefaultParser
 
-            return DefaultParser(socket_read_size=65536).parse_error(error.value)
+            return RedisDefaultParser(socket_read_size=65536).parse_error(error.value)  # type: ignore
 
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""

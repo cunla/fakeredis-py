@@ -14,7 +14,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, get_default_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, Self, RaiseErrorTypes
+from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -239,6 +239,9 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
+        if "lib_name" in kwds and "lib_version" in kwds:
+            kwds["lib_name"] = "fakeredis"
+            kwds["lib_version"] = lib_version
         super().__init__(**kwds)
 
     @classmethod

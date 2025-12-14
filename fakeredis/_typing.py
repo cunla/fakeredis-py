@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple
+from typing import Tuple, Union
 
 import redis
 
@@ -24,10 +24,12 @@ VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
 
 RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
+ResponseErrorType = redis.ResponseError
 try:
     import valkey
 
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
+    ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]
 except ImportError:
     pass
 
@@ -38,4 +40,5 @@ __all__ = [
     "ServerType",
     "lib_version",
     "RaiseErrorTypes",
+    "ResponseErrorType",
 ]
