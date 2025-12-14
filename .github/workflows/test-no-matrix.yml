@@ -1,7 +1,7 @@
 name: "Tests without matrix"
 
 on:
-    workflow_call:
+  workflow_call:
 
 jobs:
   import_test:
