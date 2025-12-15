@@ -7,7 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.32.2 -
+## v2.33.0 -
+
+### 🚀 Features
+
+- Implement `MSETEX` (From Redis 8.4)
 
 ### 🐛 Bug Fixes
 
