@@ -325,7 +325,7 @@ class StringCommandsMixin:
         if exat is not None and (exat <= 0 or exat * 1000 >= 2**63):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
         if pxat is not None and (pxat <= 0 or pxat >= 2**63):
-            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("set"))
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
 
         if (xx and nx) or (sum(x is not None for x in [ex, px, exat, pxat]) + keepttl > 1):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
