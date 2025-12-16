@@ -355,7 +355,8 @@ class StringCommandsMixin:
         for k, v in mapping.items():
             item = CommandItem(k, self._db, item=self._db.get(k))
             item.update(v)
-            item.expireat = expireat
+            if not keepttl:
+                item.expireat = expireat
             item.writeback()
 
         return 1
