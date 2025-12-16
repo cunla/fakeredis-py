@@ -9,6 +9,7 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        pytest.mark.min_server("7"),
     ]
 )
 
@@ -21,7 +22,6 @@ def test_topk_incrby(r: redis.Redis):
         assert [3, 6, 12, 4, 0] == r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)
 
 
-@pytest.mark.min_server("7")
 def test_topk(r: redis.Redis):
     # test list with empty buckets
     assert r.topk().reserve("topk", 3, 50, 4, 0.9)

@@ -24,7 +24,7 @@ jobs:
     needs: ["ruff", "basic_tests"]
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 6
+      max-parallel: 8
       fail-fast: false
       matrix:
         redis-image:
