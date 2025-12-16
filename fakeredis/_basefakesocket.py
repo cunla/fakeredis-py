@@ -1,8 +1,8 @@
 import itertools
+import logging
 import queue
 import time
 import weakref
-import logging
 from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
 
 import redis
@@ -13,7 +13,7 @@ from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
 from ._helpers import (
     SimpleError,
-    valid_response_type,
+    validate_response_type,
     SimpleString,
     NoResponse,
     casematch,
@@ -217,7 +217,8 @@ class BaseFakeSocket:
                 while b"\n" not in buf:
                     buf += yield
                 line, buf = self._extract_line(buf)
-                assert line[:1] == b"$"  # string
+                if line[:1] != b"$":
+                    raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -287,10 +288,10 @@ class BaseFakeSocket:
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(result)
-                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    assert valid_response_type(result, self._client_info.protocol_version), (
-                        f"Invalid response type for {result}"
-                    )
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not validate_response_type(
+                    result, self._client_info.protocol_version
+                ):
+                    raise AssertionError(f"Invalid response type for {result}")
         except SimpleError as exc:
             result = exc
         for command_item in command_items:

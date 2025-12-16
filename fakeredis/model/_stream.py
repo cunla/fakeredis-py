@@ -385,7 +385,8 @@ class XStream:
             None if nothing was added.
         :raises AssertionError: If len(fields) is not even.
         """
-        assert len(fields) % 2 == 0
+        if len(fields) % 2 != 0:
+            raise AssertionError("The number of fields is not even")
         if isinstance(entry_key, bytes):
             entry_key = entry_key.decode()
 
