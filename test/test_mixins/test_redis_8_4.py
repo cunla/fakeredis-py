@@ -4,7 +4,12 @@ from datetime import datetime, timedelta
 import pytest
 import redis
 from redis import exceptions
-from redis.commands.core import DataPersistOptions
+
+pytest.importorskip("jsonpath_ng")
+try:
+    from redis.commands.core import DataPersistOptions
+except ImportError:
+    pytest.skip()
 
 from test.testtools import raw_command
 
