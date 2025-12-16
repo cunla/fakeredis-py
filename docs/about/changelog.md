@@ -15,8 +15,14 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- fix: FakeAsyncRedis supports protocol=3 #442
-- fix: TcpFakeServer supports pub/sub #431
+- fix[FakeAsyncRedis]: FakeAsyncRedis supports protocol=3 #442
+- fix[TcpFakeServer]: TcpFakeServer supports pub/sub #431
+- fix[TcpFakeServer]: preserve whitespace in bulk strings @oliverhaas #435
+
+### 🧰 Maintenance
+
+- Update tests to support redis-py 7.1.0 and Redis 8.4
+- Async tests run on resp3 and resp2
 
 ## v2.32.1 - 2025-11-05
 
