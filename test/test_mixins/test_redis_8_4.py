@@ -285,7 +285,7 @@ def test_msetex_expiration_exat_and_xx(r: redis.Redis):
     assert r.msetex(mapping, ex=30) == 1
 
     expire_at = redis_server_time(r) + timedelta(seconds=10)
-    ## XX is set with unexisting key - nothing should be saved or updated
+    ## XX is set with nonexistent key - nothing should be saved or updated
     assert (
         r.msetex(
             mapping={"1": "new_value", "new": "ok"},
