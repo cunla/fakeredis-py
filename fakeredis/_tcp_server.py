@@ -60,8 +60,12 @@ class Writer:
     def write(self, value: bytes) -> None:
         LOGGER.debug(f"<<< {self.client_address}: {value}")
         self.writer.write(value)
-        self.writer.flush()
 
+    def dump(self, value: Any, dump_bulk: bool = False) -> None:
+        raise NotImplementedError
+
+
+class Resp2Writer(Writer):
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
         if isinstance(value, int):
             self.write(f":{value}\r\n".encode())
@@ -85,6 +89,35 @@ class Writer:
             else:
                 prefix = _get_exception_prefix(value)
                 self.write(f"-{prefix} {value.args[0]}\r\n".encode())
+        self.writer.flush()
+
+
+class Resp3Writer(Writer):
+    def dump(self, value: Any, dump_bulk: bool = False) -> None:
+        if isinstance(value, (str, bytes)):
+            value = to_bytes(value)
+            if value.upper() == b"SHUTDOWN":
+                self.request_handler.shutdown_request = True
+            if dump_bulk or b"\r" in value or b"\n" in value:
+                self.write(b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n")
+            else:
+                self.write(b"+" + value + b"\r\n")
+        elif isinstance(value, int):
+            self.write(f":{value}\r\n".encode())
+
+        elif isinstance(value, (list, set)):
+            self.write(f"*{len(value)}\r\n".encode())
+            for item in value:
+                self.dump(item, dump_bulk=True)
+        elif value is None:
+            self.write("$-1\r\n".encode())
+        elif isinstance(value, Exception):
+            if isinstance(value, SimpleError):
+                self.write(f"-{value.args[0]}\r\n".encode())
+            else:
+                prefix = _get_exception_prefix(value)
+                self.write(f"-{prefix} {value.args[0]}\r\n".encode())
+        self.writer.flush()
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
@@ -100,7 +133,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         if self.client_address in self.server.clients:
             self.current_client = self.server.clients[self.client_address]
         else:
-            self.writer = Writer(self.client_address, self.wfile, self)
+            self.writer = Resp2Writer(self.client_address, self.wfile, self)
             self.current_client = FakeConnection(
                 server=self.server.fake_server,
                 writer=self.writer,
