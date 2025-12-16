@@ -1,4 +1,5 @@
 INVALID_EXPIRE_MSG = "ERR invalid expire time in {}"
+INVALID_EXPIRE_MSG_REDIS_8 = "ERR invalid expire time in '{}' command"
 WRONGTYPE_MSG = "WRONGTYPE Operation against a key holding the wrong kind of value"
 SYNTAX_ERROR_MSG = "ERR syntax error"
 SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
