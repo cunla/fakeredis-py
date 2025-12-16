@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.32.1"
+version = "2.33.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -42,6 +42,7 @@ classifiers = [
 dependencies = [
     "redis>=4 ; python_version < '3.8'",
     "redis>=4.3 ; python_version > '3.8'",
+    "redis<7.1.0 ; python_version < '3.10'",
     "sortedcontainers>=2",
     "typing-extensions~=4.7 ; python_version < '3.11'",
 ]
@@ -52,7 +53,9 @@ json = ["jsonpath-ng>=1.6"]
 bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
-valkey = ["valkey>=6 ; python_version >= '3.8'"]
+valkey = [
+    "valkey>=6 ; python_version >= '3.8'",
+]
 
 [project.urls]
 Homepage = "https://github.com/cunla/fakeredis-py"
@@ -68,9 +71,9 @@ dev = [
     "pre-commit>=4.2 ; python_version >= '3.10'",
 ]
 test = [
-    "coverage~=7.10 ; python_version >= '3.9'",
+    "coverage>=7.10 ; python_version >= '3.9' and python_version < '3.14'",
     "pytest~=8.4 ; python_version >= '3.9'",
-    "hypothesis~=6.138 ; python_version >= '3.9'",
+    "hypothesis>=6.138 ; python_version >= '3.9'",
     "pytest-timeout>=2.4 ; python_version >= '3.9'",
     "pytest-asyncio>=1.1 ; python_version >= '3.9'",
     "pytest-cov~=6.3 ; python_version >= '3.9'",
@@ -79,7 +82,7 @@ test = [
 ]
 docs = [
     "python-dotenv>=1.1 ; python_version >= '3.10'",
-    "pygithub~=2.8 ; python_version >= '3.10'",
+    "pygithub>=2.8 ; python_version >= '3.10'",
 ]
 
 [tool.uv]
@@ -118,6 +121,7 @@ markers = [
     "resp3_only: run tests only with RESP3",
     "load_lua_modules: run tests that load Lua modules",
     "valkey_client_test: test using valkey-py client instead of redis-py",
+    "tcp_server: run tests against a TCP server",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true

@@ -7,7 +7,18 @@ tags:
 toc_depth: 2
 ---
 
-## v2.32.1 -
+## v2.33.0 -
+
+### 🚀 Features
+
+- Implement `MSETEX` (From Redis 8.4)
+
+### 🐛 Bug Fixes
+
+- fix: FakeAsyncRedis supports protocol=3 #442
+- fix: TcpFakeServer supports pub/sub #431
+
+## v2.32.1 - 2025-11-05
 
 ### 🐛 Bug Fixes
 

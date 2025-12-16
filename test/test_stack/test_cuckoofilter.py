@@ -5,9 +5,15 @@ from test.testtools import get_protocol_version
 
 cuckoofilters_tests = pytest.importorskip("probables")
 
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly"),
+    ]
+)
+
 
 @pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_cf_add_and_insert(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
@@ -32,7 +38,6 @@ def test_cf_add_and_insert(r: redis.Redis):
         assert info.get(b"Number of filters") == 1
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_cf_exists_and_del(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
@@ -45,7 +50,6 @@ def test_cf_exists_and_del(r: redis.Redis):
     assert 0 == r.cf().count("cuckoo", "filter")
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_cf_count_non_existing(r: redis.Redis):
     assert r.cf().count("cuckoo", "non_existing") == 0
     assert r.cf().create("cuckoo", 1000)

@@ -360,7 +360,7 @@ class GenericCommandsMixin:
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> bytes:
+            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:

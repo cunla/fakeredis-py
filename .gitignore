@@ -2,7 +2,6 @@ scripts/*.json
 fakeredis.egg-info
 dump.rdb
 extras/*
-.tox
 *.pyc
 .idea
 .hypothesis

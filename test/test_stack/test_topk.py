@@ -5,8 +5,14 @@ from test.testtools import resp_conversion, get_protocol_version
 
 topk_tests = pytest.importorskip("probables")
 
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+    ]
+)
 
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+
 def test_topk_incrby(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert [None, None, None] == r.topk().incrby("topk", ["bar", "baz", "42"], [3, 6, 4])
@@ -16,7 +22,6 @@ def test_topk_incrby(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_topk(r: redis.Redis):
     # test list with empty buckets
     assert r.topk().reserve("topk", 3, 50, 4, 0.9)
