@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.33.1
+
+### 🐛 Bug Fixes
+
+- Add missing keys to `XINFO STREAM` #445
+
 ## v2.33.0 - 2025-12-16
 
 ### 🚀 Features
