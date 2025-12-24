@@ -125,8 +125,8 @@ class Resp3Writer(Writer):
         elif value_type is dict:
             self.write(f"%{len(value)}\r\n".encode())
             for k, v in value.items():
-                self.dump(k, dump_bulk=False)
-                self.dump(v, dump_bulk=False)
+                self.dump(k, dump_bulk=True)
+                self.dump(v, dump_bulk=True)
         elif isinstance(value, Exception):
             if isinstance(value, SimpleError):
                 self.write(f"-{value.args[0]}\r\n".encode())
