@@ -7,7 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.33.1
+## v2.34.0
+
+### 🚀 Features
+
+- TcpFakeServer supports RESP3 #434
 
 ### 🐛 Bug Fixes
 
