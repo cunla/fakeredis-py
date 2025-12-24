@@ -43,8 +43,7 @@ def test_bulk_string_length(real_server_address: Tuple[str, int], tcp_server_add
             )
 
 
-# todo: re-enable when fake-tcp-server supports protocol 3
-# def test_tcp_server_started_protocol_3(tcp_server_address: Tuple[str, int]):
-#     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1], protocol=3) as r:
-#         r.set("foo", "bar")
-#         assert r.get("foo") == b"bar"
+def test_tcp_server_started_protocol_3(tcp_server_address: Tuple[str, int]):
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1], protocol=3) as r:
+        r.set("foo", "bar")
+        assert r.get("foo") == b"bar"

@@ -94,7 +94,10 @@ class Resp2Writer(Writer):
 
 class Resp3Writer(Writer):
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
-        if isinstance(value, (str, bytes)):
+        value_type = type(value)
+        if value is None:
+            self.write("_\r\n".encode())
+        elif value_type is str or value_type is bytes:
             value = to_bytes(value)
             if value.upper() == b"SHUTDOWN":
                 self.request_handler.shutdown_request = True
@@ -102,15 +105,28 @@ class Resp3Writer(Writer):
                 self.write(b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n")
             else:
                 self.write(b"+" + value + b"\r\n")
-        elif isinstance(value, int):
-            self.write(f":{value}\r\n".encode())
-
-        elif isinstance(value, (list, set)):
+        elif value_type is int:
+            if -(2**63) <= value <= 2**63 - 1:  # regular integer
+                self.write(f":{value}\r\n".encode())
+            else:  # big integer
+                self.write(f"({value}\r\n".encode())
+        elif value_type is float:
+            self.write(f",{value:.17g}\r\n".encode())
+        elif value_type is list:
             self.write(f"*{len(value)}\r\n".encode())
             for item in value:
                 self.dump(item, dump_bulk=True)
-        elif value is None:
-            self.write("$-1\r\n".encode())
+        elif value_type is set:
+            self.write(f"~{len(value)}\r\n".encode())
+            for item in value:
+                self.dump(item, dump_bulk=True)
+        elif value_type is bool:
+            self.write(f"*{'t' if value else 'f'}\r\n".encode())
+        elif value_type is dict:
+            self.write(f"%{len(value)}\r\n".encode())
+            for k, v in value.items():
+                self.dump(k, dump_bulk=False)
+                self.dump(v, dump_bulk=False)
         elif isinstance(value, Exception):
             if isinstance(value, SimpleError):
                 self.write(f"-{value.args[0]}\r\n".encode())
@@ -133,7 +149,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         if self.client_address in self.server.clients:
             self.current_client = self.server.clients[self.client_address]
         else:
-            self.writer = Resp2Writer(self.client_address, self.wfile, self)
+            self.writer = Resp3Writer(self.client_address, self.wfile, self)
             self.current_client = FakeConnection(
                 server=self.server.fake_server,
                 writer=self.writer,
