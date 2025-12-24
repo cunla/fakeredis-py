@@ -515,6 +515,16 @@ def test_xinfo_stream(r: redis.Redis):
     m2 = r.xadd(stream, {"foo": "bar"})
     info = r.xinfo_stream(stream)
 
+    expected_keys = {
+        "length",
+        "radix-tree-keys",
+        "radix-tree-nodes",
+        "last-generated-id",
+        "groups",
+        "first-entry",
+        "last-entry",
+    }
+    assert len(expected_keys.difference(info.keys())) == 0, f"Missing keys: {expected_keys.difference(info.keys())}"
     assert info["length"] == 2
     assert info["first-entry"] == get_stream_message(r, stream, m1)
     assert info["last-entry"] == get_stream_message(r, stream, m2)
@@ -568,6 +578,7 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     assert info["max-deleted-entry-id"] == b"0-0"
     assert info["entries-added"] == 2
     assert info["recorded-first-entry-id"] == m1
+    assert "last-generated-id" in info
 
     r.xtrim(stream, 0)
     # Info about empty stream
