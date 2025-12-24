@@ -121,7 +121,7 @@ class Resp3Writer(Writer):
             for item in value:
                 self.dump(item, dump_bulk=True)
         elif value_type is bool:
-            self.write(f"*{'t' if value else 'f'}\r\n".encode())
+            self.write(f"#{'t' if value else 'f'}\r\n".encode())
         elif value_type is dict:
             self.write(f"%{len(value)}\r\n".encode())
             for k, v in value.items():
