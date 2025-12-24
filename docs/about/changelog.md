@@ -11,7 +11,7 @@ toc_depth: 2
 
 ### 🚀 Features
 
-- TcpFakeServer supports RESP3 #434
+- TcpFakeServer supports RESP3 #437
 
 ### 🐛 Bug Fixes
 
