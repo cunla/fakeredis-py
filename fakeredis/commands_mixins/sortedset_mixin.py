@@ -479,7 +479,7 @@ class SortedSetCommandsMixin:
         res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
 
         if not withscores:
-            res = [t for t in res]
+            res = list(res)
         elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
@@ -493,7 +493,7 @@ class SortedSetCommandsMixin:
         res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
 
         if not withscores:
-            res = [t for t in res]
+            res = list(res)
         elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:
@@ -507,7 +507,7 @@ class SortedSetCommandsMixin:
         res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
 
         if not withscores:
-            res = [t for t in res]
+            res = list(res)
         elif self._client_info.protocol_version == 2:
             res = [item for t in res for item in [t, res[t]]]
         else:

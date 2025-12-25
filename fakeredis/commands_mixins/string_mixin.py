@@ -45,7 +45,7 @@ def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
     # Also calculate the list of matches
     r, c = l1, l2
     result = ""
-    matches = list()
+    matches = []
     s1ind, s2ind, curr_length = None, None, 0
 
     while r > 0 and c > 0:
@@ -304,5 +304,59 @@ class StringCommandsMixin:
         arg_minmatchlen = arg_minmatchlen if arg_minmatchlen else 0
         results = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
         if not arg_withmatchlen:
-            results = list(map(lambda x: [x[0], x[1]], results))
+            results = [[x[0], x[1]] for x in results]
         return {b"matches": results, b"len": lcs_len}
+
+    @command(name="MSETEX", fixed=(Int,), repeat=(bytes,))
+    def msetex(self, num_keys: int, *args: Any) -> int:
+        if num_keys <= 0:
+            raise SimpleError("ERR invalid numkeys value")
+        if len(args) < num_keys * 2:
+            raise SimpleError("ERR wrong number of key-value pairs")
+        mapping = {args[i]: args[i + 1] for i in range(0, num_keys * 2, 2)}
+        args = args[num_keys * 2 :]
+        (ex, px, exat, pxat, xx, nx, keepttl), _ = extract_args(
+            args, ("+ex", "+px", "+exat", "+pxat", "xx", "nx", "keepttl")
+        )
+        if ex is not None and (ex <= 0 or (self._db.time + ex) * 1000 >= 2**63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
+        if px is not None and (px <= 0 or self._db.time * 1000 + px >= 2**63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
+        if exat is not None and (exat <= 0 or exat * 1000 >= 2**63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
+        if pxat is not None and (pxat <= 0 or pxat >= 2**63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("msetex"))
+
+        if (xx and nx) or (sum(x is not None for x in [ex, px, exat, pxat]) + keepttl > 1):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+        should_set = True
+        for k in mapping:
+            item = CommandItem(k, self._db, item=self._db.get(k))
+            if nx and item.value is not None:
+                should_set = False
+                break
+            if xx and item.value is None:
+                should_set = False
+                break
+        if not should_set:
+            return 0
+
+        expireat = None
+        if exat is not None:
+            expireat = exat
+        if pxat is not None:
+            expireat = pxat / 1000.0
+        if ex is not None:
+            expireat = self._db.time + ex
+        if px is not None:
+            expireat = self._db.time + px / 1000.0
+
+        for k, v in mapping.items():
+            item = CommandItem(k, self._db, item=self._db.get(k))
+            item.update(v)
+            if not keepttl:
+                item.expireat = expireat
+            item.writeback()
+
+        return 1

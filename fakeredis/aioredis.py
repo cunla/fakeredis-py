@@ -13,7 +13,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, Self
+from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -121,9 +121,19 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         self._reader: Optional[FakeReader] = FakeReader(self._sock)
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
-    async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
-        await super().disconnect(**kwargs)
+    def __del__(self):
+        # Ensure _writer is cleared even if disconnect() was never called
+        # This prevents ResourceWarning on Python 3.13+ during garbage collection
+        self._writer = None
+        self._reader = None
         self._sock = None
+
+    async def disconnect(self, nowait: bool = False, **kwargs: Any) -> None:
+        # Clear these BEFORE calling super().disconnect() to prevent ResourceWarning
+        self._sock = None
+        self._reader = None
+        self._writer = None
+        await super().disconnect(**kwargs)
 
     async def can_read(self, timeout: Optional[float] = 0) -> bool:
         if not self.is_connected:
@@ -171,7 +181,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
             timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
             response = await self._reader.read(0) if can_read and self._reader else None
-        if isinstance(response, redis_async.ResponseError):
+        if isinstance(response, RaiseErrorTypes):
             raise response
         if kwargs.get("disable_decoding", False):
             return response
@@ -227,12 +237,14 @@ class FakeRedisMixin:
                 "client_name",
                 "connected",
                 "server",
+                "protocol",
             }
             connection_kwargs = {
                 "connection_class": FakeConnection,
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
+                "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
             kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
@@ -241,6 +253,9 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
+        if "lib_name" in kwds and "lib_version" in kwds:
+            kwds["lib_name"] = "fakeredis"
+            kwds["lib_version"] = lib_version
         super().__init__(**kwds)
 
     @classmethod
@@ -250,8 +265,6 @@ class FakeRedisMixin:
         pool.connection_class = FakeConnection
         pool.connection_kwargs.setdefault("version", "7.4")
         pool.connection_kwargs.setdefault("server_type", "redis")
-        pool.connection_kwargs.pop("username", None)
-        pool.connection_kwargs.pop("password", None)
         return self
 
 

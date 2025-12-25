@@ -64,7 +64,7 @@ class HeavyKeeper(object):
         self.depth = depth
         self.decay = decay
         self.hash_arrays = [HashArray(width, decay) for _ in range(depth)]
-        self.min_heap: List[Tuple[int, bytes]] = list()
+        self.min_heap: List[Tuple[int, bytes]] = []
 
     def _index(self, val: bytes) -> int:
         for ind, item in enumerate(self.min_heap):

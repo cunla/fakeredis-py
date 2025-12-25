@@ -67,6 +67,10 @@ class TestInitArgs:
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
+    def test_from_url_ping(self):
+        client = fakeredis.FakeRedis.from_url("redis://localhost:6390/0")
+        client.ping()
+
     def test_from_url_user(self):
         username = "fakeredis-user"
         db = fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0)

@@ -113,3 +113,25 @@ def test_zadd_minus_zero_redis6(r: redis.Redis):
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})
     assert raw_command(r, "zscore", "foo", "a") == b"-0"
+
+
+@pytest.mark.max_server("6.3")
+def test_xgroup_create_connection6(r: redis.Redis):
+    stream, group = "stream", "group"
+    message_id = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, message_id)
+    r.xadd(stream, {"foo": "bar"})
+    res = r.xinfo_groups(stream)
+    assert len(res) == 1
+    assert res[0]["name"] == group.encode()
+    assert res[0]["consumers"] == 0
+    assert res[0]["pending"] == 0
+    assert res[0]["last-delivered-id"] == message_id
+
+
+@testtools.run_test_if_lupa_installed()
+@pytest.mark.max_server("6.2.7")
+def test_eval_call_bool6(r: redis.Redis):
+    # Redis doesn't allow Lua bools to be passed to [p]call
+    with pytest.raises(redis.ResponseError, match=r"Lua redis\(\) command arguments must be strings or integers"):
+        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")

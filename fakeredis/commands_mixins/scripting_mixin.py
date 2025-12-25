@@ -18,7 +18,7 @@ from fakeredis._helpers import (
     OK,
     decode_command_bytes,
 )
-from fakeredis._typing import VersionType, ServerType
+from fakeredis._typing import VersionType
 
 __LUA_RUNTIMES_MAP = {
     "5.1": "lupa.lua51",
@@ -132,7 +132,6 @@ class ScriptingCommandsMixin:
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.server_type: ServerType
         self.version: VersionType
         self.load_lua_modules = set()
         lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
@@ -281,7 +280,7 @@ class ScriptingCommandsMixin:
             if ex.value == msgs.LUA_COMMAND_ARG_MSG:
                 if self.version < (7,):
                     raise SimpleError(msgs.LUA_COMMAND_ARG_MSG6)
-                elif self.server_type == "valkey":
+                elif self._server.server_type == "valkey":
                     raise SimpleError(msgs.VALKEY_LUA_COMMAND_ARG_MSG.format(sha1.decode()))
                 else:
                     raise SimpleError(msgs.LUA_COMMAND_ARG_MSG)

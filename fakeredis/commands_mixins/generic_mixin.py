@@ -16,8 +16,8 @@ from fakeredis._commands import (
     delete_keys,
 )
 from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
-from fakeredis.model import ZSet, Hash, ExpiringMembersSet
 from fakeredis._typing import VersionType
+from fakeredis.model import ZSet, Hash, ExpiringMembersSet
 
 
 class GenericCommandsMixin:
@@ -96,7 +96,7 @@ class GenericCommandsMixin:
         return 1
 
     @command(name="DEL", fixed=(Key(),), repeat=(Key(),))
-    def del_(self, *keys: CommandItem):
+    def del_(self, *keys: CommandItem) -> int:
         return delete_keys(*keys)
 
     @command(name="DUMP", fixed=(Key(missing_return=None),))
@@ -106,7 +106,7 @@ class GenericCommandsMixin:
         return checksum + value
 
     @command(name="EXISTS", fixed=(Key(),), repeat=(Key(),))
-    def exists(self, *keys):
+    def exists(self, *keys) -> int:
         ret = 0
         for key in keys:
             if key:
@@ -118,9 +118,9 @@ class GenericCommandsMixin:
         res = self._expireat(key, self._db.time + seconds, *args)
         return res
 
-    @command(name="EXPIREAT", fixed=(Key(), Int))
-    def expireat(self, key: CommandItem, timestamp: int) -> int:
-        return self._expireat(key, float(timestamp))
+    @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
+    def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
+        return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
     def keys(self, pattern: bytes) -> List[bytes]:
@@ -148,13 +148,13 @@ class GenericCommandsMixin:
         key.expireat = None
         return 1
 
-    @command(name="PEXPIRE", fixed=(Key(), Int))
-    def pexpire(self, key: CommandItem, ms: int) -> int:
-        return self._expireat(key, self._db.time + ms / 1000.0)
+    @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
+    def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
+        return self._expireat(key, self._db.time + ms / 1000.0, *args)
 
-    @command(name="PEXPIREAT", fixed=(Key(), Int))
-    def pexpireat(self, key: CommandItem, ms_timestamp: int) -> int:
-        return self._expireat(key, ms_timestamp / 1000.0)
+    @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
+    def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
+        return self._expireat(key, ms_timestamp / 1000.0, *args)
 
     @command(name="PTTL", fixed=(Key(),))
     def pttl(self, key: CommandItem) -> int:
@@ -177,7 +177,7 @@ class GenericCommandsMixin:
         return int(key.expireat * 1000)
 
     @command(name="RANDOMKEY", fixed=())
-    def randomkey(self):
+    def randomkey(self) -> Optional[bytes]:
         keys = list(self._db.keys())
         if not keys:
             return None
@@ -222,11 +222,11 @@ class GenericCommandsMixin:
         return OK
 
     @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
-    def scan(self, cursor, *args):
+    def scan(self, cursor, *args) -> List[Union[bytes, List[bytes]]]:
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key, *args):
+    def sort(self, key: CommandItem, *args: bytes) -> List[bytes]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
@@ -360,7 +360,7 @@ class GenericCommandsMixin:
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> bytes:
+            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:

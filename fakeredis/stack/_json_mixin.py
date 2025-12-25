@@ -95,7 +95,7 @@ def _json_write_iterate(
         raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
 
     curr_value = copy.deepcopy(key.value)
-    res: List[Optional[JsonType]] = list()
+    res: List[Optional[JsonType]] = []
     for item in found_matches:
         new_value, res_val, update = method(item.value)
         if update:
@@ -131,9 +131,7 @@ def _json_read_iterate(
     found_matches = path.find(key.value)
     if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
         raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
-    res = list()
-    for item in found_matches:
-        res.append(method(item.value))
+    res = [method(item.value) for item in found_matches]
 
     if len(path_str) > 1 and path_str[0] == ord(b"."):
         return res[0] if len(res) > 0 else None
@@ -280,14 +278,14 @@ class JSONCommandsMixin:
         found_matches = path.find(key.value)
 
         curr_value = copy.deepcopy(key.value)
-        res: List[Optional[bool]] = list()
+        res: List[Optional[bool]] = []
         for item in found_matches:
             if type(item.value) is bool:
                 curr_value = item.full_path.update(curr_value, not item.value)
                 res.append(not item.value)
             else:
                 res.append(None)
-        if all([x is None for x in res]):
+        if all(x is None for x in res):
             raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
         key.update(curr_value)
 
@@ -509,7 +507,7 @@ class JSONCommandsMixin:
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         matching = path.find(key.value)
         for item in matching:
-            prev_value = item.value if item is not None else dict()
+            prev_value = item.value if item is not None else {}
             _dict_deep_merge(value, prev_value)
         if len(matching) > 0:
             key.updated()

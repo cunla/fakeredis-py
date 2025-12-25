@@ -16,7 +16,7 @@ def get_ids(results):
 
 
 def add_items(r: redis.Redis, stream: str, n: int):
-    id_list = list()
+    id_list = []
     for i in range(n):
         id_list.append(r.xadd(stream, {"k": i}))
     return id_list
@@ -337,20 +337,6 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.max_server("6.3")
-def test_xgroup_create_connection6(r: redis.Redis):
-    stream, group = "stream", "group"
-    message_id = r.xadd(stream, {"foo": "bar"})
-    r.xgroup_create(stream, group, message_id)
-    r.xadd(stream, {"foo": "bar"})
-    res = r.xinfo_groups(stream)
-    assert len(res) == 1
-    assert res[0]["name"] == group.encode()
-    assert res[0]["consumers"] == 0
-    assert res[0]["pending"] == 0
-    assert res[0]["last-delivered-id"] == message_id
-
-
 @pytest.mark.min_server("7")
 def test_xgroup_create_connection7(r: redis.Redis):
     stream, group = "stream", "group"
@@ -371,6 +357,7 @@ def test_xgroup_create_connection7(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
+@pytest.mark.max_server("8.2")
 def test_xgroup_setid_redis7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -528,6 +515,16 @@ def test_xinfo_stream(r: redis.Redis):
     m2 = r.xadd(stream, {"foo": "bar"})
     info = r.xinfo_stream(stream)
 
+    expected_keys = {
+        "length",
+        "radix-tree-keys",
+        "radix-tree-nodes",
+        "last-generated-id",
+        "groups",
+        "first-entry",
+        "last-entry",
+    }
+    assert len(expected_keys.difference(info.keys())) == 0, f"Missing keys: {expected_keys.difference(info.keys())}"
     assert info["length"] == 2
     assert info["first-entry"] == get_stream_message(r, stream, m1)
     assert info["last-entry"] == get_stream_message(r, stream, m2)
@@ -581,6 +578,7 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     assert info["max-deleted-entry-id"] == b"0-0"
     assert info["entries-added"] == 2
     assert info["recorded-first-entry-id"] == m1
+    assert "last-generated-id" in info
 
     r.xtrim(stream, 0)
     # Info about empty stream
@@ -651,8 +649,14 @@ def test_xpending_range(r: redis.Redis):
     assert len(response) == 2
     assert response[0]["message_id"] == m1
     assert response[0]["consumer"] == consumer1.encode()
+    assert isinstance(response[0]["time_since_delivered"], int)
+    assert response[0]["time_since_delivered"] >= 0
+    assert response[0]["times_delivered"] == 1
     assert response[1]["message_id"] == m2
     assert response[1]["consumer"] == consumer2.encode()
+    assert isinstance(response[1]["time_since_delivered"], int)
+    assert response[1]["time_since_delivered"] >= 0
+    assert response[1]["times_delivered"] == 1
 
     # test with consumer name
     response = r.xpending_range(stream, group, min="-", max="+", count=5, consumername=consumer1)

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.31.2"
+version = "2.34.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -42,18 +42,20 @@ classifiers = [
 dependencies = [
     "redis>=4 ; python_version < '3.8'",
     "redis>=4.3 ; python_version > '3.8'",
-    "sortedcontainers>=2,<3",
+    "redis<7.1.0 ; python_version < '3.10'",
+    "sortedcontainers>=2",
     "typing-extensions~=4.7 ; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
-lua = ["lupa>=2.1,<3.0"]
+lua = ["lupa>=2.1"]
 json = ["jsonpath-ng>=1.6"]
 bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
-valkey = ["valkey>=6 ; python_version >= '3.8'"]
-vectorset = ["numpy>=2.2,<3 ; python_version >= '3.10'", ]
+valkey = [
+    "valkey>=6 ; python_version >= '3.8'",
+]
 
 [project.urls]
 Homepage = "https://github.com/cunla/fakeredis-py"
@@ -64,23 +66,23 @@ Funding = "https://github.com/sponsors/cunla"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12 ; python_version >= '3.11'",
-    "mypy>=1.15 ; python_version >= '3.11'",
-    "pre-commit~=4.2 ; python_version >= '3.11'",
+    "ruff>=0.14",
+    "mypy>=1.15 ; python_version >= '3.10'",
+    "pre-commit>=4.2 ; python_version >= '3.10'",
 ]
 test = [
-    "coverage~=7.6 ; python_version >= '3.9'",
-    "pytest~=8.3 ; python_version >= '3.9'",
-    "hypothesis~=6.111 ; python_version >= '3.9'",
-    "pytest-timeout>=2.3.1,<3 ; python_version >= '3.9'",
-    "pytest-asyncio>=1,<2 ; python_version >= '3.9'",
-    "pytest-cov~=6.0 ; python_version >= '3.9'",
-    "pytest-mock~=3.14 ; python_version >= '3.9'",
+    "coverage>=7.10 ; python_version >= '3.9' and python_version < '3.14'",
+    "pytest~=8.4 ; python_version >= '3.9'",
+    "hypothesis>=6.138 ; python_version >= '3.9'",
+    "pytest-timeout>=2.4 ; python_version >= '3.9'",
+    "pytest-asyncio>=1.1 ; python_version >= '3.9'",
+    "pytest-cov~=6.3 ; python_version >= '3.9'",
+    "pytest-mock~=3.15 ; python_version >= '3.9'",
     "pytest-html~=4.1 ; python_version >= '3.9'",
 ]
 docs = [
-    "python-dotenv>=1,<2 ; python_version >= '3.10'",
-    "pygithub~=2.3 ; python_version >= '3.10'",
+    "python-dotenv>=1.1 ; python_version >= '3.10'",
+    "pygithub>=2.8 ; python_version >= '3.10'",
 ]
 
 [tool.uv]
@@ -119,6 +121,7 @@ markers = [
     "resp3_only: run tests only with RESP3",
     "load_lua_modules: run tests that load Lua modules",
     "valkey_client_test: test using valkey-py client instead of redis-py",
+    "tcp_server: run tests against a TCP server",
 ]
 asyncio_mode = "strict"
 generate_report_on_test = true
@@ -130,6 +133,8 @@ follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
 check_untyped_defs = true
+exclude = [".venv", "test", "__pycache__"]
+
 
 [tool.ruff]
 line-length = 120

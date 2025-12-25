@@ -1,8 +1,12 @@
 import sys
-from typing import Tuple, Literal, Union, Dict, Any, List
+from typing import Tuple, Union, Dict, Any, List
 
 import redis
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 if sys.version_info >= (3, 11):
     from typing import Self
     from asyncio import timeout as async_timeout
@@ -20,11 +24,13 @@ VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
+ResponseErrorType = redis.ResponseError
 
 try:
     import valkey
 
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
+    ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]
 except ImportError:
     pass
 
@@ -35,5 +41,5 @@ __all__ = [
     "ServerType",
     "lib_version",
     "RaiseErrorTypes",
-    "JsonType",
+    "ResponseErrorType",
 ]

@@ -12,7 +12,8 @@ import redis
 
 class SimpleString:
     def __init__(self, value: bytes) -> None:
-        assert isinstance(value, bytes)
+        if not isinstance(value, bytes):
+            raise TypeError("SimpleString value must be bytes")
         self.value = value
 
     @classmethod
@@ -27,7 +28,8 @@ class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""
 
     def __init__(self, value: str) -> None:
-        assert isinstance(value, str)
+        if not isinstance(value, str):
+            raise TypeError("SimpleError value must be str")
         self.value = value
 
 
@@ -127,7 +129,8 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
                     parts[-1] = "(?:$.)"
                 else:
                     # Negated empty group - matches any character
-                    assert parts[-1] == "^"
+                    if parts[-1] != "^":
+                        raise AssertionError("Invalid pattern")
                     parts.pop()
                     parts[-1] = "."
             else:

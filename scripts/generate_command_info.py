@@ -96,7 +96,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
         first_key,
         last_key,
         step,
-        sorted(list(categories)),
+        sorted(categories),
         tips,
         key_specs_array(cmd_info),
         subcommands,
@@ -106,7 +106,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
 
 if __name__ == "__main__":
     implemented = implemented_commands()
-    command_info_dict: Dict[str, List[Any]] = dict()
+    command_info_dict: Dict[str, List[Any]] = {}
     for cmd_meta in METADATA:
         cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url)
         for cmd in cmds:

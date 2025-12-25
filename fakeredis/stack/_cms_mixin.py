@@ -40,9 +40,7 @@ class CMSCommandsMixin:
                 pairs.append((args[i], int(args[i + 1])))
             except ValueError:
                 raise SimpleError("CMS: Cannot parse number")
-        res = []
-        for pair in pairs:
-            res.append(key.value.add(pair[0], pair[1]))
+        res = [key.value.add(pair[0], pair[1]) for pair in pairs]
         key.updated()
         return res
 

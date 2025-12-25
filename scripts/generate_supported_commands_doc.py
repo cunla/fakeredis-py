@@ -104,7 +104,7 @@ def implemented_commands() -> set:
 
 
 def _commands_groups(commands: dict) -> dict[str, list[str]]:
-    groups = dict()
+    groups = {}
     for cmd in commands:
         group = commands[cmd]["group"]
         groups.setdefault(group, []).append(cmd)

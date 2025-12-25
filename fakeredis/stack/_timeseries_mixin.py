@@ -27,10 +27,10 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             if len(filter_expression.split(b"!=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"!=")
-            if value == "-":
+            if value == b"-":
                 return label in ts.labels
 
-            if value[0] == b"(" and value[-1] == b")":
+            if value.startswith(b"(") and value.endswith(b")"):
                 values = set(value[1:-1].split(b","))
                 return label in ts.labels and ts.labels[label] not in values
             return label not in ts.labels or ts.labels[label] != value
@@ -38,29 +38,29 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             if len(filter_expression.split(b"=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"=")
-            if value == "-":
+            if value == b"-":
                 return label not in ts.labels
-            if value[0] == b"(" and value[-1] == b")":
+            if value.startswith(b"(") and value.endswith(b")"):
                 values = set(value[1:-1].split(b","))
                 return label in ts.labels and ts.labels[label] in values
             return label in ts.labels and ts.labels[label] == value
         raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
 
     def _get_timeseries(self, filter_expressions: List[bytes]) -> List["TimeSeries"]:
-        res: List["TimeSeries"] = list()
+        res: List["TimeSeries"] = []
         TimeSeriesCommandsMixin._timeseries_keys = {
             k for k in TimeSeriesCommandsMixin._timeseries_keys if k in self._db
         }
         for ts_key in TimeSeriesCommandsMixin._timeseries_keys:
             ts = self._db.get(ts_key).value
-            if all([self._filter_expression_check(ts, expr) for expr in filter_expressions]):
+            if all(self._filter_expression_check(ts, expr) for expr in filter_expressions):
                 res.append(ts)
         return res
 
     @staticmethod
     def _validate_duplicate_policy(duplicate_policy: bytes) -> bool:
         return duplicate_policy is None or any(
-            [casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES]
+            casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES
         )
 
     def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
@@ -171,7 +171,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
     def ts_madd(self, *args: Any) -> List[int]:
         if len(args) % 3 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
-        results: List[int] = list()
+        results: List[int] = []
         for i in range(0, len(args), 3):
             key, timestamp, value = args[i : i + 3]
             if key.value is None:
@@ -387,12 +387,12 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
                 with_labels = True
                 i += 1
             elif casematch(args[i], b"SELECTED_LABELS"):
-                selected_labels = list()
+                selected_labels = []
                 i += 1
                 while i < len(args) and casematch(args[i], b"FILTER"):
                     selected_labels.append(args[i])
             elif casematch(args[i], b"FILTER"):
-                filter_expression = list()
+                filter_expression = []
                 i += 1
                 while i < len(args):
                     filter_expression.append(args[i])
@@ -442,19 +442,19 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         reducer = reducer.lower()
         if reducer not in AGGREGATORS:
             raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
-        ts_map: Dict[bytes, Dict[int, List[float]]] = dict()  # label_value -> timestamp -> values
-        for ts_name, ts_data in ts_dict.items():
+        ts_map: Dict[bytes, Dict[int, List[float]]] = {}  # label_value -> timestamp -> values
+        for ts_data in ts_dict.values():
             # Find label value
             labels_dict = ts_data[0]
             label_value = labels_dict.get(label, None)
             if not label_value:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             if label_value not in ts_map:
-                ts_map[label_value] = dict()
+                ts_map[label_value] = {}
             # Collect measurements
             for timestamp, value in ts_data[-1]:
                 if timestamp not in ts_map[label_value]:
-                    ts_map[label_value][timestamp] = list()
+                    ts_map[label_value][timestamp] = []
                 ts_map[label_value][timestamp].append(value)
         res = {}
         for label_value, timestamp_values in ts_map.items():
@@ -504,13 +504,13 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
                 with_labels = True
                 i += 1
             elif args_lower[i] == b"selected_labels":
-                selected_labels = list()
+                selected_labels = []
                 i += 1
                 while i < len(args_lower) and args_lower[i] not in arg_words:
                     selected_labels.append(args_lower[i])
                     i += 1
             elif args_lower[i] == b"filter":
-                filter_expression = list()
+                filter_expression = []
                 i += 1
                 while i < len(args_lower) and args_lower[i] not in arg_words:
                     filter_expression.append(args[i])

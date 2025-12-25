@@ -9,7 +9,7 @@ import redis
 
 from fakeredis._helpers import Database, FakeSelector
 from fakeredis._typing import VersionType, ServerType
-from fakeredis.model import AccessControlList
+from fakeredis.model import AccessControlList, ClientInfo
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -32,7 +32,7 @@ def _version_to_str(v: VersionType) -> str:
 
 
 class FakeServer:
-    _servers_map: Dict[str, "FakeServer"] = dict()
+    _servers_map: Dict[str, "FakeServer"] = {}
 
     def __init__(
         self,
@@ -52,7 +52,7 @@ class FakeServer:
         self.lock = threading.Lock()
         self.dbs: Dict[int, Database] = defaultdict(lambda: Database(self.lock))
         # Maps channel/pattern to a weak set of sockets
-        self.script_cache: Dict[bytes, bytes] = dict()  # Maps SHA1 to the script source
+        self.script_cache: Dict[bytes, bytes] = {}  # Maps SHA1 to the script source
         self.subscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.psubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.ssubscribers: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
@@ -64,10 +64,10 @@ class FakeServer:
         self.version: VersionType = _create_version(version)
         if server_type not in ("redis", "dragonfly", "valkey"):
             raise ValueError(f"Unsupported server type: {server_type}")
-        self.server_type: str = server_type
-        self.config: Dict[bytes, bytes] = config or dict()
+        self.server_type: ServerType = server_type
+        self.config: Dict[bytes, bytes] = config or {}
         self.acl: AccessControlList = AccessControlList()
-        self.clients: Dict[str, Dict[str, Any]] = dict()
+        self.clients: Dict[str, Dict[str, Any]] = {}
         self._next_client_id = 1
 
     def get_next_client_id(self) -> int:
@@ -94,6 +94,7 @@ class FakeBaseConnectionMixin(object):
         self._server = kwargs.pop("server", None)
         self._client_class = kwargs.pop("client_class", redis.Redis)
         self._lua_modules = kwargs.pop("lua_modules", set())
+        self._writer = kwargs.pop("writer", None)
         path = kwargs.pop("path", None)
         connected = kwargs.pop("connected", True)
         if self._server is None:
@@ -105,4 +106,38 @@ class FakeBaseConnectionMixin(object):
             self.server_key += f":{server_type}:v{_version_to_str(version)[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
+        client_info = kwargs.pop("client_info", {})
         super().__init__(*args, **kwargs)
+        protocol = getattr(self, "protocol", 2)
+
+        client_info.update(
+            dict(
+                id=self._server.get_next_client_id(),
+                addr="127.0.0.1:57275",  # TODO get IP
+                laddr="127.0.0.1:6379",  # TODO get IP
+                fd=8,
+                name="",
+                idle=0,
+                flags="N",
+                db=0,
+                sub=0,
+                psub=0,
+                ssub=0,
+                multi=-1,
+                qbuf=48,
+                qbuf_free=16842,
+                argv_mem=25,
+                multi_mem=0,
+                rbs=1024,
+                rbp=0,
+                obl=0,
+                oll=0,
+                omem=0,
+                tot_mem=18737,
+                events="r",
+                cmd="auth",
+                redir=-1,
+                resp=protocol,
+            )
+        )
+        self._client_info = ClientInfo(**client_info)

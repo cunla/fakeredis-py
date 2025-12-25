@@ -1,5 +1,5 @@
-fakeredis: A fake version of a redis-py
-=======================================
+fakeredis: A python implementation of Redis Protocol API
+========================================================
 
 [![badge](https://img.shields.io/pypi/v/fakeredis)](https://pypi.org/project/fakeredis/)
 [![CI](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml/badge.svg)](https://github.com/cunla/fakeredis-py/actions/workflows/test.yml)
@@ -7,16 +7,16 @@ fakeredis: A fake version of a redis-py
 [![badge](https://img.shields.io/pypi/dm/fakeredis)](https://pypi.org/project/fakeredis/)
 [![badge](https://img.shields.io/pypi/l/fakeredis)](./LICENSE)
 [![Open Source Helpers](https://www.codetriage.com/cunla/fakeredis-py/badges/users.svg)](https://www.codetriage.com/cunla/fakeredis-py)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 --------------------
+
 
 
 Documentation is hosted in https://fakeredis.readthedocs.io/
 
 # Intro
 
-FakeRedis is a pure-Python implementation of the Redis protocol API. It provides enhanced versions of
-the [redis-py][redis-py] Python bindings for Redis.
+FakeRedis is a pure-Python implementation of the Redis Protocol API. It provides enhanced versions of
+the [redis-py][redis-py]/[valkey-py][valkey-py] Python bindings for Redis.
 
 It enables running tests requiring [Redis][redis]/[ValKey][valkey]/[DragonflyDB][dragonflydb]/[KeyDB][keydb] server
 without an actual server.
@@ -47,3 +47,5 @@ You can support this project by becoming a sponsor using [this link](https://git
 [dragonflydb]: https://dragonflydb.io/
 
 [keydb]: https://docs.keydb.dev/
+
+[valkey-py]: https://github.com/valkey-io/valkey-py

@@ -46,11 +46,11 @@ def get_categories() -> List[bytes]:
     return list(categories)
 
 
-def get_commands_by_category(category: AnyStr) -> List[bytes]:
+def get_commands_by_category(_category: AnyStr) -> List[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []
-    category = asbytes(category)
+    category = asbytes(_category)
     if category[0] != ord(b"@"):
         category = b"@" + category
     commands = []

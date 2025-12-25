@@ -99,7 +99,7 @@ class HashCommandsMixin:
         if no_values:
             args = [arg for arg in args if not casematch(arg, b"novalues")]
         cursor, keys = self._scan(key.value, cursor, *args)
-        keys = [key.encode("utf-8") for key in keys if isinstance(key, str)]
+        keys = [k.encode("utf-8") for k in keys if isinstance(k, str)]
         if no_values:
             return [cursor, keys]
         items = []
@@ -135,7 +135,7 @@ class HashCommandsMixin:
         count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
         withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
         if count == 0:
-            return dict()
+            return {}
 
         if count < 0:  # Allow repetitions
             res = random.choices(sorted(key.value.items()), k=-count)
@@ -185,7 +185,7 @@ class HashCommandsMixin:
         hash_val: Hash = key.value
         if hash_val is None:
             return [-2] * len(fields)
-        res = list()
+        res = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
@@ -220,7 +220,7 @@ class HashCommandsMixin:
     def hpersist(self, key: CommandItem, *args: bytes) -> List[int]:
         fields = _get_fields(args)
         hash_val: Hash = key.value
-        res = list()
+        res = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
@@ -259,9 +259,7 @@ class HashCommandsMixin:
     def hgetdel(self, key: CommandItem, *args: bytes) -> List[Any]:
         fields = _get_fields(args)
         hash_val: Hash = key.value
-        res = list()
-        for field in fields:
-            res.append(hash_val.pop(field))
+        res = [hash_val.pop(field) for field in fields]
         return res
 
     @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
@@ -278,7 +276,7 @@ class HashCommandsMixin:
         hash_val: Hash = key.value
 
         when_ms = _get_when_ms(ex, px, exat, pxat)
-        res = list()
+        res = []
         for field in fields:
             res.append(hash_val.get(field))
             if persist:

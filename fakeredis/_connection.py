@@ -1,15 +1,14 @@
 import queue
 import warnings
-from typing import Tuple, Any, List, Optional, Set, Sequence, Union
+from typing import Tuple, Any, List, Optional, Set, Sequence, Union, Type
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
 from . import _msgs as msgs
-from ._server import FakeBaseConnectionMixin, FakeServer, VersionType, ServerType
-from ._typing import Self, lib_version, RaiseErrorTypes
-from .model import ClientInfo
+from ._server import FakeBaseConnectionMixin, FakeServer
+from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 
 
 class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
@@ -29,35 +28,7 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
             client_class=self._client_class,
             db=self.db,
             lua_modules=self._lua_modules,
-            client_info=ClientInfo(
-                id=self._server.get_next_client_id(),
-                addr="127.0.0.1:57275",  # TODO get IP
-                laddr="127.0.0.1:6379",  # TODO get IP
-                fd=8,
-                name="",
-                idle=0,
-                flags="N",
-                db=0,
-                sub=0,
-                psub=0,
-                ssub=0,
-                multi=-1,
-                qbuf=48,
-                qbuf_free=16842,
-                argv_mem=25,
-                multi_mem=0,
-                rbs=1024,
-                rbp=0,
-                obl=0,
-                oll=0,
-                omem=0,
-                tot_mem=18737,
-                events="r",
-                cmd="auth",
-                user="default",
-                redir=-1,
-                resp=self.protocol,
-            ),
+            client_info=self._client_info,
         )
 
     def can_read(self, timeout: Optional[float] = 0) -> bool:
@@ -94,12 +65,11 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
                 raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
+
         if isinstance(response, RaiseErrorTypes):
             raise response
-        if kwargs.get("disable_decoding", False):
-            return response
-        else:
-            return self._decode(response)
+        res = response if kwargs.get("disable_decoding", False) else self._decode(response)
+        return res
 
     def repr_pieces(self) -> List[Tuple[str, Any]]:
         pieces = [("server", self._server), ("db", self.db)]
@@ -113,6 +83,11 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
     def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
         return None
 
+    def get_socket(self) -> FakeSocket:
+        if not self._sock:
+            self.connect()
+        return self._sock  # type: ignore
+
     def __str__(self) -> str:
         return self.server_key
 
@@ -125,7 +100,7 @@ class FakeRedisMixin:
         version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
-        client_class=redis.Redis,
+        client_class: Type[redis.Redis] = redis.Redis,
         **kwargs: Any,
     ) -> None:
         """
@@ -173,7 +148,7 @@ class FakeRedisMixin:
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

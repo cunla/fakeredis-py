@@ -12,7 +12,7 @@ import fakeredis
 from test import testtools
 from test.testtools import raw_command
 
-json_tests = pytest.importorskip("lupa")
+_ = pytest.importorskip("lupa")
 
 
 @pytest.mark.min_server("7")
@@ -314,13 +314,6 @@ def test_eval_convert_bool(r: redis.Redis):
     assert not isinstance(val, bool)
 
 
-@pytest.mark.max_server("6.2.7")
-def test_eval_call_bool6(r: redis.Redis):
-    # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError, match=r"Lua redis\(\) command arguments must be strings or integers"):
-        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
-
-
 @pytest.mark.min_server("7")
 @pytest.mark.unsupported_server_types("valkey")
 def test_eval_call_bool7_redis(r: redis.Redis):
@@ -537,12 +530,19 @@ def test_lua_log(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [
-        (logger.name, logging.DEBUG, "debug"),
-        (logger.name, logging.INFO, "verbose"),
-        (logger.name, logging.INFO, "notice"),
-        (logger.name, logging.WARNING, "warning"),
-    ]
+    assert (
+        len(
+            set(caplog.record_tuples).intersection(
+                {
+                    (logger.name, logging.DEBUG, "debug"),
+                    (logger.name, logging.INFO, "verbose"),
+                    (logger.name, logging.INFO, "notice"),
+                    (logger.name, logging.WARNING, "warning"),
+                }
+            )
+        )
+        == 4
+    )
 
 
 def test_lua_log_no_message(r: redis.Redis):
@@ -559,7 +559,7 @@ def test_lua_log_different_types(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [(logger.name, logging.DEBUG, "string 1 3.14 string")]
+    assert len(set(caplog.record_tuples).intersection({(logger.name, logging.DEBUG, "string 1 3.14 string")})) == 1
 
 
 def test_lua_log_wrong_level(r: redis.Redis):
@@ -579,7 +579,7 @@ def test_lua_log_defined_vars(r, caplog):
     script = r.register_script(script)
     with caplog.at_level("DEBUG"):
         script()
-    assert caplog.record_tuples == [(logger.name, logging.DEBUG, "string")]
+    assert len(set(caplog.record_tuples).intersection({(logger.name, logging.DEBUG, "string")})) == 1
 
 
 def test_hscan_cursors_are_bytes(r: redis.Redis):

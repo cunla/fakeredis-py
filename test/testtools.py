@@ -66,16 +66,25 @@ def raw_command(r: redis.Redis, *args):
 ALLOWED_CONDITIONS = {"eq", "gte", "lte", "lt", "gt", "ne"}
 
 
+def run_test_if_lupa_installed():
+    try:
+        import lupa  # noqa: F401
+
+        return pytest.mark.skipif(False, reason="lupa is installed")
+    except ImportError:
+        return pytest.mark.skipif(True, reason="lupa is not installed")
+
+
 def run_test_if_redispy_ver(condition: str, ver: str):
     if condition not in ALLOWED_CONDITIONS:
         raise ValueError(f"condition {condition} is not in allowed conditions ({ALLOWED_CONDITIONS})")
     cond = False
-    cond = cond or condition == "eq" and REDIS_PY_VERSION == Version(ver)
-    cond = cond or condition == "gte" and REDIS_PY_VERSION >= Version(ver)
-    cond = cond or condition == "lte" and REDIS_PY_VERSION <= Version(ver)
-    cond = cond or condition == "lt" and REDIS_PY_VERSION < Version(ver)
-    cond = cond or condition == "gt" and REDIS_PY_VERSION > Version(ver)
-    cond = cond or condition == "ne" and REDIS_PY_VERSION != Version(ver)
+    cond = cond or (condition == "eq" and REDIS_PY_VERSION == Version(ver))
+    cond = cond or (condition == "gte" and REDIS_PY_VERSION >= Version(ver))
+    cond = cond or (condition == "lte" and REDIS_PY_VERSION <= Version(ver))
+    cond = cond or (condition == "lt" and REDIS_PY_VERSION < Version(ver))
+    cond = cond or (condition == "gt" and REDIS_PY_VERSION > Version(ver))
+    cond = cond or (condition == "ne" and REDIS_PY_VERSION != Version(ver))
     return pytest.mark.skipif(
         not cond, reason=f"Test is not applicable to redis-py {REDIS_PY_VERSION} ({condition}, {ver})"
     )

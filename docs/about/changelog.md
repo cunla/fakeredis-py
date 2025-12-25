@@ -7,6 +7,71 @@ tags:
 toc_depth: 2
 ---
 
+## v2.34.0
+
+### 🚀 Features
+
+- TcpFakeServer supports RESP3 #437
+
+### 🐛 Bug Fixes
+
+- Add missing keys to `XINFO STREAM` #445
+
+## v2.33.0 - 2025-12-16
+
+### 🚀 Features
+
+- Implement `MSETEX` (From Redis 8.4)
+
+### 🐛 Bug Fixes
+
+- fix[FakeAsyncRedis]: FakeAsyncRedis supports protocol=3 #442
+- fix[TcpFakeServer]: TcpFakeServer supports pub/sub #431
+- fix[TcpFakeServer]: preserve whitespace in bulk strings @oliverhaas #435
+
+### 🧰 Maintenance
+
+- Update tests to support redis-py 7.1.0 and Redis 8.4
+- Async tests run on resp3 and resp2
+
+## v2.32.1 - 2025-11-05
+
+### 🐛 Bug Fixes
+
+- fix:support for py3.7 #423
+- fix:`xpending_range` to return all 4 required fields per Redis spec @zzstoatzz #427
+- fix[TcpFakeServer]: add exception prefix #432
+
+### 🧰 Maintenance
+
+- Update tests to support redis-py 7.0.1
+- Update tests to support valkey 9.0.0
+
+## v2.32.0 -
+
+### 🚀 Features
+
+- add support for nx/xx/gt/lt options for expireat/pexpire/pexpireat @praboud-ant #421
+
+### 🐛 Bug Fixes
+
+- fix:removing use of self.protocol to support redis-py < 5 #419
+- fix:race condition due to closing socket in TCPFakeRequestHandler:finish #420
+
+## v2.31.3 -
+
+### 🐛 Bug Fixes
+
+- Fix checking valkey exceptions in async client #416
+- Fix issue with `TS.MRANGE` filters with IN condition not working @ben-swid #414 #415
+- Fix issue trying to import `valkey` when connection class is `FakeRedis` #417
+
+## v2.31.2 - 2025-09-08
+
+### 🐛 Bug Fixes
+
+- `TcpFakeServer` does not require lupa to be installed (only if Lock is used) #413
+
 ## v2.31.1 - 2025-09-01
 
 ### 🐛 Bug Fixes

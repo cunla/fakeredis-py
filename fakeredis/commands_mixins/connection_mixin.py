@@ -1,4 +1,4 @@
-from typing import Any, List, Union
+from typing import Any, List, Union, Dict
 
 import fakeredis
 from fakeredis import _msgs as msgs
@@ -86,7 +86,7 @@ class ConnectionCommandsMixin:
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
-    def hello(self, *args: bytes) -> List[bytes]:
+    def hello(self, *args: bytes) -> Dict[str, str]:
         self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
         i = 1
         while i < len(args):
@@ -100,13 +100,17 @@ class ConnectionCommandsMixin:
                 i += 3
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        data = dict(
-            server="fakeredis",
-            version=fakeredis.__version__,
-            proto=self._client_info["resp"],
-            id=self._client_info.get("id", 1),
-            mode="standalone",
-            role="master",
-            modules=[],
-        )
+        data = {
+            "server": "fakeredis",
+            "version": fakeredis.__version__,
+            "proto": self._client_info["resp"],
+            "id": self._client_info.get("id", 1),
+            "mode": "standalone",
+            "role": "master",
+            "modules": [],
+        }
         return data
+
+    @command(name="CLIENT MAINT_NOTIFICATIONS", fixed=(), repeat=(bytes,))
+    def client_maint_notifications(self, *args: bytes) -> SimpleString:
+        pass

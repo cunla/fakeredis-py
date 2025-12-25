@@ -7,6 +7,13 @@ from test.testtools import get_protocol_version
 
 bloom_tests = pytest.importorskip("probables")
 
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly"),
+    ]
+)
+
 
 def intlist(obj):
     return [int(v) for v in obj]
@@ -18,7 +25,6 @@ def test_create_bf(r: redis.Redis):
     assert r.bf().create("bloom_ns", 0.01, 1000, noScale=True)
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_create_cf(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().create("cuckoo_e", 1000, expansion=1)
@@ -65,7 +71,6 @@ def test_bf_madd(r: redis.Redis):
         r.bf().add("key1", "v")
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_card(r: redis.Redis):
     assert r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
     assert r.bf().card("key") == 3
@@ -114,7 +119,6 @@ def test_bf_mexists(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_insert(r: redis.Redis):
     assert r.bf().create("key", 0.01, 1000)
     assert r.bf().insert("key", ["foo"]) == [1]
@@ -145,7 +149,6 @@ def test_bf_insert(r: redis.Redis):
         assert 1 == info.get(b"Number of filters")
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 def test_bf_scandump_and_loadchunk(r: redis.Redis):
     r.bf().create("myBloom", "0.0001", "1000")
 
@@ -160,7 +163,7 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
         res += rv == x
     assert res < 5
 
-    cmds = list()
+    cmds = []
     first = 0
     while first is not None:
         cur = r.bf().scandump("myBloom", first)
@@ -181,7 +184,6 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
         assert r.bf().exists("myBloom1", x), f"{x} not in filter"
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.resp2_only
 def test_bf_info_resp2(r: redis.Redis):
     # Store a filter
@@ -198,7 +200,6 @@ def test_bf_info_resp2(r: redis.Redis):
 
 
 @pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.resp3_only
 def test_bf_info_resp3(r: redis.Redis):
     # Store a filter
