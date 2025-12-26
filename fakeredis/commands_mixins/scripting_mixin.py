@@ -133,17 +133,7 @@ class ScriptingCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any):
         self.version: VersionType
-        self.load_lua_modules = set()
-        lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
-        if len(lua_modules_set) > 0:
-            lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
-            for module in lua_modules_set:
-                try:
-                    lua_runtime.require(module.encode())
-                    self.load_lua_modules.add(module)
-                except LUA_MODULE.LuaError as ex:
-                    LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
-
+        self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
     def _convert_redis_arg(self, lua_runtime: LUA_MODULE.LuaRuntime, value: Any) -> bytes:
@@ -237,6 +227,16 @@ class ScriptingCommandsMixin:
 
         if not hasattr(self._server, "_lua_runtime"):
             self._server._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+
+            valid_modules: Set[str] = set()
+            for module in self.load_lua_modules:
+                try:
+                    self._server._lua_runtime.require(module.encode())
+                    valid_modules.add(module)
+                except LUA_MODULE.LuaError as ex:
+                    LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
+            self.load_lua_modules = valid_modules
+
             modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
             log_levels_str = "\n".join(
                 [f"redis.{level.decode()} = {value}" for level, value in REDIS_LOG_LEVELS.items()]
