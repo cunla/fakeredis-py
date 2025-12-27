@@ -133,17 +133,7 @@ class ScriptingCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any):
         self.version: VersionType
-        self.load_lua_modules = set()
-        lua_modules_set: Set[str] = kwargs.pop("lua_modules", None) or set()
-        if len(lua_modules_set) > 0:
-            lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
-            for module in lua_modules_set:
-                try:
-                    lua_runtime.require(module.encode())
-                    self.load_lua_modules.add(module)
-                except LUA_MODULE.LuaError as ex:
-                    LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
-
+        self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
     def _convert_redis_arg(self, lua_runtime: LUA_MODULE.LuaRuntime, value: Any) -> bytes:
@@ -234,45 +224,71 @@ class ScriptingCommandsMixin:
             raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
         sha1 = hashlib.sha1(script).hexdigest().encode()
         self._server.script_cache[sha1] = script
-        lua_runtime: LUA_MODULE.LuaRuntime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
-        modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
-        set_globals = lua_runtime.eval(
-            f"""
-            function(keys, argv, redis_call, redis_pcall, redis_log, redis_log_levels, cjson_encode, cjson_decode, cjson_null)
-                redis = {{}}
-                redis.call = redis_call
-                redis.pcall = redis_pcall
-                redis.log = redis_log
-                for level, pylevel in python.iterex(redis_log_levels.items()) do
-                    redis[level] = pylevel
+
+        if not hasattr(self._server, "_lua_runtime"):
+            self._server._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+
+            valid_modules: Set[str] = set()
+            for module in self.load_lua_modules:
+                try:
+                    self._server._lua_runtime.require(module.encode())
+                    valid_modules.add(module)
+                except LUA_MODULE.LuaError as ex:
+                    LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
+            self.load_lua_modules = valid_modules
+
+            modules_import_str = "\n".join([f"{module} = require('{module}')" for module in self.load_lua_modules])
+            log_levels_str = "\n".join(
+                [f"redis.{level.decode()} = {value}" for level, value in REDIS_LOG_LEVELS.items()]
+            )
+            self._server._lua_set_globals = self._server._lua_runtime.eval(
+                f"""
+                function(keys, argv, redis_call, redis_pcall, redis_log, cjson_encode, cjson_decode, cjson_null)
+                    redis = {{}}
+                    redis.call = redis_call
+                    redis.pcall = redis_pcall
+                    redis.log = redis_log
+                    {log_levels_str}
+                    redis.error_reply = function(msg) return {{err=msg}} end
+                    redis.status_reply = function(msg) return {{ok=msg}} end
+
+                    cjson = {{}}
+                    cjson.encode = cjson_encode
+                    cjson.decode = cjson_decode
+                    cjson.null = cjson_null
+
+                    KEYS = keys
+                    ARGV = argv
+                    {modules_import_str}
                 end
-                redis.error_reply = function(msg) return {{err=msg}} end
-                redis.status_reply = function(msg) return {{ok=msg}} end
+                """
+            )
+            self._server._lua_set_globals(
+                self._server._lua_runtime.table_from([]),
+                self._server._lua_runtime.table_from([]),
+                lambda *args: None,
+                lambda *args: None,
+                lambda *args: None,
+                lambda *args: None,
+                lambda *args: None,
+                _lua_cjson_null,
+            )
+            self._server._lua_expected_globals = set(self._server._lua_runtime.globals().keys())
 
-                cjson = {{}}
-                cjson.encode = cjson_encode
-                cjson.decode = cjson_decode
-                cjson.null = cjson_null
+        lua_runtime = self._server._lua_runtime
+        set_globals = self._server._lua_set_globals
+        expected_globals = self._server._lua_expected_globals
 
-                KEYS = keys
-                ARGV = argv
-                {modules_import_str}
-            end
-            """
-        )
-        expected_globals: Set[Any] = set()
         set_globals(
             lua_runtime.table_from(keys_and_args[:numkeys]),
             lua_runtime.table_from(keys_and_args[numkeys:]),
             functools.partial(self._lua_redis_call, lua_runtime, expected_globals),
             functools.partial(self._lua_redis_pcall, lua_runtime, expected_globals),
             functools.partial(_lua_redis_log, lua_runtime, expected_globals),
-            LUA_MODULE.as_attrgetter(REDIS_LOG_LEVELS),
             functools.partial(_lua_cjson_encode, lua_runtime, expected_globals),
             functools.partial(_lua_cjson_decode, lua_runtime, expected_globals),
             _lua_cjson_null,
         )
-        expected_globals.update(lua_runtime.globals().keys())
 
         try:
             result = lua_runtime.execute(script)
