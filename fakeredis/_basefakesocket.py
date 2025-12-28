@@ -7,7 +7,7 @@ from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, G
 
 import redis
 
-from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
+from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo, VectorSet
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
@@ -461,5 +461,7 @@ class BaseFakeSocket:
             return SimpleString(b"hash")
         elif isinstance(key.value, XStream):
             return SimpleString(b"stream")
+        elif isinstance(key.value, VectorSet):
+            return SimpleString(b"vectorset")
         else:
             assert False  # pragma: nocover

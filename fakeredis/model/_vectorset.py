@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
 
 class Vector:
@@ -23,6 +23,16 @@ class VectorSet:
     @property
     def card(self) -> int:
         return len(self._vectors)
+
+    def info(self) -> Dict[str, Any]:
+        return {
+            "quant-type": "fp32",
+            "vector-dim": self._dimensions,
+            "size": len(self._vectors),
+            "max-level": 0,  # TODO
+            "vset-uid": 1,  # TODO
+            "hnsw-max-node-uid": 0,  # TODO
+        }
 
     def __contains__(self, k: bytes) -> bool:
         return k in self._vectors
