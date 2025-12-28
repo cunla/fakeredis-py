@@ -21,7 +21,7 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
-from ._typing import ResponseErrorType
+from ._typing import ResponseErrorType, VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -130,11 +130,11 @@ class BaseFakeSocket:
         return self._client_info.user
 
     @property
-    def version(self) -> Tuple[int, ...]:
+    def version(self) -> VersionType:
         return self._server.version
 
     @property
-    def server_type(self) -> str:
+    def server_type(self) -> ServerType:
         return self._server.server_type
 
     def put_response(self, msg: Any) -> None:

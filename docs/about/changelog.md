@@ -16,6 +16,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Add missing keys to `XINFO STREAM` #445
+- Caching LuaRuntime to prevent memory leak in eval() @chrisguidry #449
 
 ## v2.33.0 - 2025-12-16
 
