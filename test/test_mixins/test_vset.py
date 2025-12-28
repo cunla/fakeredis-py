@@ -32,6 +32,15 @@ def test_vgetattr_non_existing_element(r: redis.Redis):
     assert attrs == attrs_dict
 
 
+def test_vadd_same_vector_twice(r: redis.Redis):
+    float_array = [1, 4.32, 0.11]
+    resp = r.vset().vadd("myset", float_array, "elem1")
+    assert resp == 1
+    float_array = [1, 4.32, 0.11]
+    resp = r.vset().vadd("myset", float_array, "elem1")
+    assert resp == 0
+
+
 def test_add_elem_with_values(r: redis.Redis):
     float_array = [1, 4.32, 0.11]
     resp = r.vset().vadd("myset", float_array, "elem1")
@@ -432,7 +441,8 @@ def test_vrem(r: redis.Redis):
     n = 3
     for i in range(n):
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
-        r.vset().vadd("myset", float_array, f"elem{i}")
+        vadd_res = r.vset().vadd("myset", float_array, f"elem{i}")
+        assert vadd_res == 1
 
     resp = r.vset().vrem("myset", "elem2")
     assert resp == 1

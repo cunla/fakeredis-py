@@ -24,6 +24,18 @@ class VectorSet:
     def card(self) -> int:
         return len(self._vectors)
 
+    def exists(self, name: bytes) -> bool:
+        return name in self._vectors
+
+    def add(self, vector: Vector) -> None:
+        self._vectors[vector.name.encode()] = vector
+
+    def remove(self, name: bytes) -> int:
+        if name not in self._vectors:
+            return 0
+        del self._vectors[name]
+        return 1
+
     def info(self) -> Dict[str, Any]:
         return {
             "quant-type": "fp32",
