@@ -1,5 +1,4 @@
 import itertools
-import logging
 import queue
 import time
 import weakref
@@ -22,8 +21,6 @@ from ._helpers import (
     decode_command_bytes,
 )
 from ._typing import ResponseErrorType, VersionType, ServerType
-
-LOGGER = logging.getLogger("fakeredis")
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -229,7 +226,6 @@ class BaseFakeSocket:
     def _process_command(self, fields: List[bytes]) -> None:
         if not fields:
             return
-        LOGGER.debug(f">>> {self._client_info.get('raddr')}: {fields}")
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         try:
