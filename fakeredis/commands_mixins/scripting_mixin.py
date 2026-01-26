@@ -133,11 +133,12 @@ class ScriptingCommandsMixin:
     def _get_server_runtime(self, server: FakeServer) -> LUA_MODULE.LuaRuntime:
         if not hasattr(server, "_lua_runtime"):
             server._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+            lua_runtime = server._lua_runtime
 
             valid_modules: Set[str] = set()
             for module in self.load_lua_modules:
                 try:
-                    server._lua_runtime.require(module.encode())
+                    lua_runtime.require(module.encode())
                     valid_modules.add(module)
                 except LUA_MODULE.LuaError as ex:
                     LOGGER.error(f'Failed to load LUA module "{module}", make sure it is installed: {ex}')
@@ -147,9 +148,11 @@ class ScriptingCommandsMixin:
             log_levels_str = "\n".join(
                 [f"redis.{level.decode()} = {value}" for level, value in REDIS_LOG_LEVELS.items()]
             )
-            server._lua_set_globals = server._lua_runtime.eval(
+
+            # Create initialization function that sets up callbacks once
+            set_globals_init = lua_runtime.eval(
                 f"""
-                function(keys, argv, redis_call, redis_pcall, redis_log, cjson_encode, cjson_decode, cjson_null)
+                function(redis_call, redis_pcall, redis_log, cjson_encode, cjson_decode, cjson_null)
                     redis = {{}}
                     redis.call = redis_call
                     redis.pcall = redis_pcall
@@ -163,15 +166,25 @@ class ScriptingCommandsMixin:
                     cjson.decode = cjson_decode
                     cjson.null = cjson_null
 
-                    KEYS = keys
-                    ARGV = argv
+                    KEYS = {{}}
+                    ARGV = {{}}
                     {modules_import_str}
                 end
                 """
             )
-            server._lua_set_globals(
-                server._lua_runtime.table_from([]),
-                server._lua_runtime.table_from([]),
+
+            # Create function to update just KEYS/ARGV per call
+            server._lua_set_keys_argv = lua_runtime.eval(
+                """
+                function(keys, argv)
+                    KEYS = keys
+                    ARGV = argv
+                end
+                """
+            )
+
+            # Capture expected globals before setting up callbacks
+            set_globals_init(
                 lambda *args: None,
                 lambda *args: None,
                 lambda *args: None,
@@ -179,7 +192,44 @@ class ScriptingCommandsMixin:
                 lambda *args: None,
                 _lua_cjson_null,
             )
-            server._lua_expected_globals = set(server._lua_runtime.globals().keys())
+            server._lua_expected_globals = set(lua_runtime.globals().keys())
+            expected_globals = server._lua_expected_globals
+
+            # Container to hold current socket - callbacks will look this up
+            server._lua_current_socket: List[Any] = [None]
+
+            # Create wrapper callbacks that look up the current socket dynamically
+            def make_redis_call_wrapper() -> Callable[..., Any]:
+                def wrapper(op: bytes, *args: Any) -> Any:
+                    socket = server._lua_current_socket[0]
+                    return socket._lua_redis_call(lua_runtime, expected_globals, op, *args)
+
+                return wrapper
+
+            def make_redis_pcall_wrapper() -> Callable[..., Any]:
+                def wrapper(op: bytes, *args: Any) -> Any:
+                    socket = server._lua_current_socket[0]
+                    return socket._lua_redis_pcall(lua_runtime, expected_globals, op, *args)
+
+                return wrapper
+
+            # Cache the callback wrappers and static partials
+            server._lua_redis_call_wrapper = make_redis_call_wrapper()
+            server._lua_redis_pcall_wrapper = make_redis_pcall_wrapper()
+            server._lua_log_partial = functools.partial(_lua_redis_log, lua_runtime, expected_globals)
+            server._lua_cjson_encode_partial = functools.partial(_lua_cjson_encode, lua_runtime, expected_globals)
+            server._lua_cjson_decode_partial = functools.partial(_lua_cjson_decode, lua_runtime, expected_globals)
+
+            # Set up all callbacks once
+            set_globals_init(
+                server._lua_redis_call_wrapper,
+                server._lua_redis_pcall_wrapper,
+                server._lua_log_partial,
+                server._lua_cjson_encode_partial,
+                server._lua_cjson_decode_partial,
+                _lua_cjson_null,
+            )
+
         return server._lua_runtime
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
@@ -192,18 +242,15 @@ class ScriptingCommandsMixin:
         self._server.script_cache[sha1] = script
 
         lua_runtime = self._get_server_runtime(self._server)
-        set_globals = self._server._lua_set_globals
         expected_globals = self._server._lua_expected_globals
 
-        set_globals(
+        # Update the current socket so cached callbacks can find it
+        self._server._lua_current_socket[0] = self
+
+        # Only update KEYS and ARGV per call (callbacks are already set up)
+        self._server._lua_set_keys_argv(
             lua_runtime.table_from(keys_and_args[:numkeys]),
             lua_runtime.table_from(keys_and_args[numkeys:]),
-            functools.partial(self._lua_redis_call, lua_runtime, expected_globals),
-            functools.partial(self._lua_redis_pcall, lua_runtime, expected_globals),
-            functools.partial(_lua_redis_log, lua_runtime, expected_globals),
-            functools.partial(_lua_cjson_encode, lua_runtime, expected_globals),
-            functools.partial(_lua_cjson_decode, lua_runtime, expected_globals),
-            _lua_cjson_null,
         )
 
         try:
@@ -216,6 +263,9 @@ class ScriptingCommandsMixin:
             raise SimpleError(ex.value)
         except LUA_MODULE.LuaError as ex:
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
+        finally:
+            # Clean up Lua tables (KEYS/ARGV) created for this script execution
+            lua_runtime.execute("collectgarbage()")
 
         _check_for_lua_globals(lua_runtime, expected_globals)
 
