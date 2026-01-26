@@ -12,6 +12,7 @@ from ._stream import XStream, StreamEntryKey, StreamGroup, StreamRangeTest
 from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
 from ._zset import ZSet
+from ._vectorset import VectorSet, Vector
 
 __all__ = [
     "XStream",
@@ -31,4 +32,6 @@ __all__ = [
     "get_commands_by_category",
     "AccessControlList",
     "ClientInfo",
+    "VectorSet",
+    "Vector",
 ]

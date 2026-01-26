@@ -1,11 +1,12 @@
 from ._tdigest_mixin import TDigestCommandsMixin
 from ._timeseries_mixin import TimeSeriesCommandsMixin
 from ._topk_mixin import TopkCommandsMixin  # noqa: F401
+from ._vectorset_mixin import VectorSetCommandsMixin  # noqa: F401
 
 try:
     from jsonpath_ng.ext import parse  # noqa: F401
     from redis.commands.json.path import Path  # noqa: F401
-    from ._json_mixin import JSONCommandsMixin, JSONObject  # noqa: F401
+    from ._json_mixin import JSONCommandsMixin  # noqa: F401
 except ImportError as e:
     if e.name == "fakeredis.stack._json_mixin":
         raise e
@@ -37,10 +38,10 @@ except ImportError as e:
 __all__ = [
     "TopkCommandsMixin",
     "JSONCommandsMixin",
-    "JSONObject",
     "BFCommandsMixin",
     "CFCommandsMixin",
     "CMSCommandsMixin",
     "TDigestCommandsMixin",
     "TimeSeriesCommandsMixin",
+    "VectorSetCommandsMixin",
 ]
