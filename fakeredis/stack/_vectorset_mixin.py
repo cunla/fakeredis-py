@@ -67,11 +67,15 @@ class VectorSetCommandsMixin:
             elif casematch(args[i], b"values") and i + 1 < len(args):
                 num_values = int(args[i + 1])
                 i += 2
-                if i + num_values + 1 > len(args):  # VALUES num_values values element
+                if i + num_values > len(args):  # VALUES num_values values element
                     raise SimpleError("ERR wrong number of arguments for 'VADD' command")
                 vector_values = [float(v) for v in args[i : i + num_values]]
                 name = args[i + num_values]
-                i += num_values + 1
+                i += num_values
+            elif casematch(args[i], b"setattr") and i + 1 < len(args):
+                attributes = args[i + 1]
+                i += 2
+            i += 1
         cas = cas or False
         vector_set = key.value or VectorSet(reduce or len(vector_values))
         if vector_set.exists(name):
