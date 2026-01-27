@@ -1,11 +1,10 @@
 import struct
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem
 from fakeredis._helpers import OK, SimpleError, casematch
 from fakeredis.model import VectorSet, Vector
-from fakeredis.model._vectorset import QUANTIZATION_TYPE
 
 
 class VectorSetCommandsMixin:
@@ -64,7 +63,7 @@ class VectorSetCommandsMixin:
                 cas = True  # unused for now
                 i += 1
             elif casematch(args[i], b"reduce") and i + 1 < len(args):
-                reduce = args[i + 1]
+                reduce = int(args[i + 1])
                 i += 2
             elif casematch(args[i], b"fp32") and i + 2 < len(args):
                 byte_array = args[i + 1]
@@ -72,14 +71,10 @@ class VectorSetCommandsMixin:
                 vector_values = list(struct.unpack(f"{len(byte_array) // 4}f", byte_array))
                 name = args[i + 2]
                 i += 3
-            elif casematch(args[i], b"bin") and i + 1 < len(args):
-                quantization = "bin"
-                i += 1
-            elif casematch(args[i], b"q8") and i + 1 < len(args):
-                quantization = "q8"
-                i += 1
-            elif casematch(args[i], b"noquant") and i + 1 < len(args):
-                quantization = "noquant"
+            elif casematch(args[i], b"bin") or casematch(args[i], b"q8") or casematch(args[i], b"noquant"):
+                if quantization is not None:
+                    raise SimpleError("ERR multiple quantization types specified")
+                quantization = args[i].lower().decode()
                 i += 1
             elif casematch(args[i], b"values") and i + 1 < len(args):
                 num_values = int(args[i + 1])
@@ -88,13 +83,19 @@ class VectorSetCommandsMixin:
                     raise SimpleError("ERR wrong number of arguments for 'VADD' command")
                 vector_values = [float(v) for v in args[i : i + num_values]]
                 name = args[i + num_values]
-                i += num_values
+                i += num_values + 1
             elif casematch(args[i], b"setattr") and i + 1 < len(args):
                 attributes = args[i + 1]
                 i += 2
-            i += 1
+            else:
+                raise SimpleError("ERR syntax error in 'VADD' command")
         cas = cas or False
         vector_set = key.value or VectorSet(reduce or len(vector_values))
+        dimensions = vector_set.dimensions
+        if len(vector_values) != dimensions:
+            # implements random projection to reduce the dimensionality of the vector
+            pass
+
         if vector_set.exists(name):
             return 0
 
@@ -102,7 +103,7 @@ class VectorSetCommandsMixin:
             name.decode(),
             vector_values,
             attributes or b"",
-            cast(QUANTIZATION_TYPE, quantization or "noquant"),
+            quantization or "noquant",
         )
         vector_set.add(vector)
         key.update(vector_set)
@@ -130,7 +131,6 @@ class VectorSetCommandsMixin:
             raw_bytes = struct.pack(f"{len(vector.values)}f", *vector.values)
 
             l2_norm = sum(v * v for v in vector.values) ** 0.5
-
             # Return dict with quantization info
             return {
                 b"quantization": vector.quantization,
