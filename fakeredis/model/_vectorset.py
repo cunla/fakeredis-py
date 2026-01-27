@@ -1,14 +1,17 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
+
+QUANTIZATION_TYPE = Literal["noquant", "bin", "q8"]
 
 
 class Vector:
-    def __init__(self, name: str, values: List[float], attributes: bytes) -> None:
+    def __init__(self, name: str, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE) -> None:
         self.name = name
         self.values = values
         self.attributes = attributes
+        self.quantization = quantization
 
     def __repr__(self):
-        return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes})"
+        return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes}, quantization={self.quantization})"
 
 
 class VectorSet:
