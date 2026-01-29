@@ -85,7 +85,11 @@ class FakeServer:
 
 class FakeBaseConnectionMixin(object):
     def __init__(
-        self, *args: Any, version: VersionType = (7, 0), server_type: ServerType = "redis", **kwargs: Any
+        self,
+        *args: Any,
+        version: VersionType = (7, 0),
+        server_type: ServerType = "redis",
+        **kwargs: Any,
     ) -> None:
         self.client_name: Optional[str] = None
         self.server_key: str
@@ -93,6 +97,7 @@ class FakeBaseConnectionMixin(object):
         self._selector: Optional[FakeSelector] = None
         self._server = kwargs.pop("server", None)
         self._client_class = kwargs.pop("client_class", redis.Redis)
+        self._connection_error_class = kwargs.pop("connection_error_class", redis.ConnectionError)
         self._lua_modules = kwargs.pop("lua_modules", set())
         self._writer = kwargs.pop("writer", None)
         path = kwargs.pop("path", None)
