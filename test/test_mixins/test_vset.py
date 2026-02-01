@@ -730,6 +730,25 @@ def test_vrandmember(r: redis.Redis):
     assert members_list == []
 
 
+def test_vrandmember_wrong_type(r: redis.Redis):
+    # Test with non vset value
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(redis.ResponseError) as excinfo:
+        r.vset().vrandmember("not_a_vset")
+    assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
+
+
+def test_randmember_bad_count_type(r: redis.Redis):
+    # Test with bad count type
+    elements = ["elem1", "elem2", "elem3"]
+    for elem in elements:
+        float_array = [random.uniform(0, 10) for x in range(1, 8)]
+        r.vset().vadd("myset", float_array, element=elem)
+    with pytest.raises(redis.ResponseError) as excinfo:
+        r.vset().vrandmember("myset", count="not_an_integer")
+    assert excinfo.value.args[0] == "COUNT value is not an integer"
+
+
 def test_vset_commands_without_decoding_responces(r: redis.Redis):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]

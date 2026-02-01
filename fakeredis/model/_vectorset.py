@@ -27,6 +27,9 @@ class VectorSet:
     def card(self) -> int:
         return len(self._vectors)
 
+    def vector_names(self) -> List[bytes]:
+        return list(self._vectors.keys())
+
     def exists(self, name: bytes) -> bool:
         return name in self._vectors
 

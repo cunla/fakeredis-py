@@ -1,5 +1,6 @@
+import random
 import struct
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem
@@ -160,8 +161,21 @@ class VectorSetCommandsMixin:
         return [None] * len(args)
 
     @command(name="VRANDMEMBER", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vrandmember(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
-        return None
+    def vrandmember(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
+        if key.value is None:
+            return None if len(args) == 0 else []
+        try:
+            count = 1 if len(args) == 0 else int(args[0])
+        except ValueError:
+            raise SimpleError("ERR COUNT value is not an integer")
+        vector_set: VectorSet = key.value
+        vector_names = vector_set.vector_names()
+        if count < 0:  # Allow repetitions
+            res = random.choices(sorted(vector_names), k=-count)
+        else:  # Unique values from hash
+            count = min(count, len(vector_names))
+            res = random.sample(sorted(vector_names), count)
+        return res[0] if len(args) == 0 else res
 
     @command(name="VREM", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
     def vrem(self, key: CommandItem, member: bytes) -> int:
