@@ -57,10 +57,13 @@ class VectorSetCommandsMixin:
     @command(name="VADD", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vadd(self, key: CommandItem, *args: bytes) -> int:
         i = 0
-        reduce, cas, vector_values, name, attributes, quantization = None, None, None, None, None, None
+        numlinks, reduce, cas, vector_values, name, attributes, quantization = None, None, None, None, None, None, None
 
         while i < len(args):
-            if casematch(args[i], b"cas"):
+            if casematch(args[i], b"m") and i + 1 < len(args):
+                numlinks = int(args[i + 1])
+                i += 2
+            elif casematch(args[i], b"cas"):
                 cas = True  # unused for now
                 i += 1
             elif casematch(args[i], b"reduce") and i + 1 < len(args):
@@ -100,13 +103,8 @@ class VectorSetCommandsMixin:
         if vector_set.exists(name):
             return 0
 
-        vector = Vector(
-            name.decode(),
-            vector_values,
-            attributes or b"",
-            quantization or "noquant",
-        )
-        vector_set.add(vector)
+        vector = Vector(name.decode(), vector_values, attributes or b"", quantization or "noquant")
+        vector_set.add(vector, numlinks or 16)
         key.update(vector_set)
         return 1
 

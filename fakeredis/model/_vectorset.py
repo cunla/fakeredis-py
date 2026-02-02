@@ -18,6 +18,7 @@ class VectorSet:
     def __init__(self, dimensions: int):
         self._dimensions = dimensions
         self._vectors: Dict[bytes, Vector] = dict()
+        self._links: Dict[bytes, int] = dict()
 
     @property
     def dimensions(self) -> int:
@@ -33,13 +34,15 @@ class VectorSet:
     def exists(self, name: bytes) -> bool:
         return name in self._vectors
 
-    def add(self, vector: Vector) -> None:
+    def add(self, vector: Vector, numlinks: int) -> None:
         self._vectors[vector.name.encode()] = vector
+        self._links[vector.name.encode()] = numlinks  # type: ignore
 
     def remove(self, name: bytes) -> int:
         if name not in self._vectors:
             return 0
         del self._vectors[name]
+        del self._links[name]
         return 1
 
     def info(self) -> Dict[str, Any]:
