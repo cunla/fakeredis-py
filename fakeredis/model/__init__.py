@@ -16,22 +16,7 @@ from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
 from ._zset import ZSet
 
-try:
-    import probables  # noqa: F401
-    from ._cuckoo_filter import ScalableCuckooFilter
-    from ._cms import CountMinSketch
-except ImportError:
-
-    class CountMinSketch:
-        pass
-
-    class ScalableCuckooFilter:
-        pass
-
-
 __all__ = [
-    "CountMinSketch",
-    "ScalableCuckooFilter",
     "BaseModel",
     "XStream",
     "StreamRangeTest",
@@ -52,3 +37,12 @@ __all__ = [
     "ClientInfo",
     "TDigest",
 ]
+
+try:
+    import probables  # noqa: F401
+    from ._filters import ScalableCuckooFilter, ScalableBloomFilter  # noqa: F401
+    from ._cms import CountMinSketch  # noqa: F401
+
+    __all__.extend(["CountMinSketch", "ScalableCuckooFilter", "ScalableBloomFilter"])
+except ImportError:
+    pass
