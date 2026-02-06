@@ -80,20 +80,7 @@ class StreamsCommandsMixin:
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
     def xread(self, *args: bytes) -> Optional[Dict[str, Any]]:
-        (
-            (
-                count,
-                timeout,
-            ),
-            left_args,
-        ) = extract_args(
-            args,
-            (
-                "+count",
-                "+block",
-            ),
-            error_on_unexpected=False,
-        )
+        ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -370,8 +357,8 @@ class StreamsCommandsMixin:
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
-        # On blocking read, when count is not None, and there are no results, return None (instead of an empty list)
-        if blocking and count and len(res) == 0:
+        # On blocking read, and there are no results, return None (instead of an empty list)
+        if blocking and len(res) == 0:
             return None
         if self._client_info.protocol_version == 2:
             return [[k, v] for k, v in res.items()]

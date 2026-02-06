@@ -17,6 +17,7 @@ toc_depth: 2
 
 - Add missing keys to `XINFO STREAM` #445
 - Caching LuaRuntime to prevent memory leak in eval() @chrisguidry #449 #446
+- Blocking `XREAD` with `block=0` works as expected #453
 
 ### 🧰 Maintenance
 
