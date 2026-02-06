@@ -14,6 +14,12 @@ pytestmark.extend(
 )
 
 
+@pytest.mark.min_server("7")
+def test_topk_type(r: redis.Redis):
+    assert r.topk().reserve("topk", 3, 10, 3, 1)
+    assert r.type("topk") == b"TopK-TYPE"
+
+
 def test_topk_incrby(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert [None, None, None] == r.topk().incrby("topk", ["bar", "baz", "42"], [3, 6, 4])
