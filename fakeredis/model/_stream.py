@@ -300,6 +300,8 @@ class XStream:
     ]
     """
 
+    _model_type = b"stream"
+
     def __init__(self) -> None:
         self._ids: List[StreamEntryKey] = []
         self._values_dict: Dict[StreamEntryKey, List[bytes]] = {}

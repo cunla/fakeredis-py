@@ -6,7 +6,7 @@ from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, G
 
 import redis
 
-from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
+from fakeredis.model import ClientInfo, BaseModel
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
@@ -449,13 +449,7 @@ class BaseFakeSocket:
             return SimpleString(b"string")
         elif isinstance(key.value, list):
             return SimpleString(b"list")
-        elif isinstance(key.value, ExpiringMembersSet):
-            return SimpleString(b"set")
-        elif isinstance(key.value, ZSet):
-            return SimpleString(b"zset")
-        elif isinstance(key.value, Hash):
-            return SimpleString(b"hash")
-        elif isinstance(key.value, XStream):
-            return SimpleString(b"stream")
+        elif isinstance(key.value, BaseModel):
+            return key.value.model_type()
         else:
             assert False  # pragma: nocover
