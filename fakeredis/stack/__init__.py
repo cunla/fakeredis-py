@@ -17,9 +17,9 @@ except ImportError as e:
 try:
     import probables  # noqa: F401
 
-    from ._bf_mixin import BFCommandsMixin  # noqa: F401
-    from ._cf_mixin import CFCommandsMixin  # noqa: F401
-    from ._cms_mixin import CMSCommandsMixin  # noqa: F401
+    from ._bf_mixin import BFCommandsMixin
+    from ._cf_mixin import CFCommandsMixin
+    from ._cms_mixin import CMSCommandsMixin
 except ImportError as e:
     if e.name == "fakeredis.stack._bf_mixin" or e.name == "fakeredis.stack._cf_mixin":
         raise e
