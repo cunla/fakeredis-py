@@ -4,7 +4,9 @@ QUANTIZATION_TYPE = Literal["noquant", "bin", "q8"]
 
 
 class Vector:
-    def __init__(self, name: str, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE) -> None:
+    def __init__(
+        self, name: str, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE, ef: int
+    ) -> None:
         self.name = name
         self.values = values
         self.attributes = attributes
