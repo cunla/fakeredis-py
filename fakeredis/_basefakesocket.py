@@ -450,6 +450,6 @@ class BaseFakeSocket:
         elif isinstance(key.value, list):
             return SimpleString(b"list")
         elif isinstance(key.value, BaseModel):
-            return key.value.model_type()
+            return SimpleString(key.value.model_type())
         else:
             assert False  # pragma: nocover

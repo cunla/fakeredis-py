@@ -8,6 +8,7 @@ from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence
 
 from fakeredis._commands import BeforeAny, AfterAny
 from fakeredis._helpers import current_time
+from ._base_type import BaseModel
 
 
 class StreamEntryKey(NamedTuple):
@@ -286,7 +287,7 @@ class StreamGroup(object):
         return msgs[:count]
 
 
-class XStream:
+class XStream(BaseModel):
     """Class representing stream.
 
     The stream contains entries with keys (timestamp, sequence) and field->value pairs.
