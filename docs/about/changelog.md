@@ -18,6 +18,10 @@ toc_depth: 2
 - Add missing keys to `XINFO STREAM` #445
 - Caching LuaRuntime to prevent memory leak in eval() @chrisguidry #449 #446
 
+### 🧰 Maintenance
+
+- Refactor models to use BaseModel with redis-type #454
+
 ## v2.33.0 - 2025-12-16
 
 ### 🚀 Features
