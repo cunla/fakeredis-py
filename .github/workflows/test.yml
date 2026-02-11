@@ -24,7 +24,7 @@ jobs:
     needs: ["ruff", "basic_tests"]
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 6
+      max-parallel: 8
       fail-fast: false
       matrix:
         redis-image:
@@ -104,6 +104,7 @@ jobs:
           VERSION=$(uv version --short)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
+        timeout-minutes: 4
         if: ${{ !matrix.coverage }}
         run: |
           uv run pytest -v -m "not slow and not tcp_server"

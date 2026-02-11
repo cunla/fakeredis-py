@@ -273,3 +273,15 @@ async def test_hrandfield(async_redis: redis.Redis):
     assert len(await async_redis.hrandfield("key", 10)) == 5
     # with duplications
     assert len(await async_redis.hrandfield("key", -10)) == 10
+
+
+@pytest.mark.asyncio
+async def test_async_lock(async_redis: redis.Redis):
+    from redis.asyncio.lock import Lock
+
+    lock = Lock(async_redis, "lock_key")
+
+    async with lock:
+        pass
+
+    assert not await lock.locked()  # already released

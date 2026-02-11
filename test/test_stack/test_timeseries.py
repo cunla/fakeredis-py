@@ -52,6 +52,12 @@ class InfoClass:
         return getattr(self, k)
 
 
+def test_ts_type(r: redis.Redis):
+    key = "key"
+    r.ts().add(key, "*", 1)
+    assert r.type(key) == b"TSDB-TYPE"
+
+
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)

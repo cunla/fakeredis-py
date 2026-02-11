@@ -8,6 +8,7 @@ from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence
 
 from fakeredis._commands import BeforeAny, AfterAny
 from fakeredis._helpers import current_time
+from ._base_type import BaseModel
 
 
 class StreamEntryKey(NamedTuple):
@@ -286,7 +287,7 @@ class StreamGroup(object):
         return msgs[:count]
 
 
-class XStream:
+class XStream(BaseModel):
     """Class representing stream.
 
     The stream contains entries with keys (timestamp, sequence) and field->value pairs.
@@ -300,12 +301,15 @@ class XStream:
     ]
     """
 
+    _model_type = b"stream"
+
     def __init__(self) -> None:
         self._ids: List[StreamEntryKey] = []
         self._values_dict: Dict[StreamEntryKey, List[bytes]] = {}
         self._groups: Dict[bytes, StreamGroup] = {}
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
+        self._last_generated_id: Optional[bytes] = None
 
     def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
         return self._groups.get(group_name, None)
@@ -341,6 +345,9 @@ class XStream:
             b"length": len(self._ids),
             b"groups": len(self._groups),
             b"first-entry": self.format_record(self._ids[0]) if len(self._ids) > 0 else None,
+            b"last-generated-id": self._last_generated_id if self._last_generated_id else None,
+            b"radix-tree-keys": len(self._ids),
+            b"radix-tree-nodes": len(self._ids),
             b"last-entry": self.format_record(self._ids[-1]) if len(self._ids) > 0 else None,
             b"max-deleted-entry-id": self._max_deleted_id.encode(),
             b"entries-added": self._entries_added,
@@ -385,7 +392,8 @@ class XStream:
             None if nothing was added.
         :raises AssertionError: If len(fields) is not even.
         """
-        assert len(fields) % 2 == 0
+        if len(fields) % 2 != 0:
+            raise AssertionError("The number of fields is not even")
         if isinstance(entry_key, bytes):
             entry_key = entry_key.decode()
 
@@ -413,6 +421,7 @@ class XStream:
         self._ids.append(ts_seq)
         self._values_dict[ts_seq] = list(fields)
         self._entries_added += 1
+        self._last_generated_id = ts_seq.encode()
         return ts_seq.encode()
 
     def __bool__(self):
