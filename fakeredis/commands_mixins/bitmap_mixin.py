@@ -231,10 +231,12 @@ class BitmapCommandsMixin:
         return new_value if value is None else ans
 
     @command(fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key: CommandItem, *args: bytes) -> List[Optional[int]]:
+    def bitfield(self, key: CommandItem, *args: bytes) -> Optional[List[Optional[int]]]:
         overflow = b"WRAP"
         results: List[Optional[int]] = []
         i = 0
+        if len(args) == 0 and self._server.server_type == "dragonfly":
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitfield"))
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
                 overflow = args[i + 1].upper()
@@ -269,4 +271,6 @@ class BitmapCommandsMixin:
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
+        if len(results) == 0 and self._server.server_type == "dragonfly":
+            return None
         return results

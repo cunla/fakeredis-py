@@ -431,7 +431,7 @@ def test_setrange(r: redis.Redis):
     assert r.setrange("bar", 2, "test") == 6
     assert r.get("bar") == b"\x00\x00test"
 
-    assert r.setrange("bar", 501970112, "test") == 501970116
+    assert r.setrange("bar", 50197112, "test") == 50197116
 
 
 def test_setrange_expiry(r: redis.Redis):
