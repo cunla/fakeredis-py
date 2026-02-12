@@ -3,7 +3,7 @@ import struct
 from typing import Any, List, Optional, Union
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import Key, command, CommandItem
+from fakeredis._commands import Key, command, CommandItem, StringTest
 from fakeredis._helpers import OK, SimpleError, casematch
 from fakeredis.model import VectorSet, Vector
 
@@ -157,24 +157,6 @@ class VectorSetCommandsMixin:
         # Return the vector values as a list of floats
         return vector.values
 
-    @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vinfo(self, key: CommandItem):
-        if key.value is None:
-            return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        # TODO
-        return None
-
-    @command(name="VLINKS", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes) -> List[Optional[bytes]]:
-        if key.value is None:
-            raise SimpleError("ERR key does not exist")
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        # TODO
-        return [None] * len(args)
-
     @command(name="VRANDMEMBER", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vrandmember(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
         if key.value is None:
@@ -204,4 +186,40 @@ class VectorSetCommandsMixin:
     def vsim(self, key: CommandItem, *args: bytes) -> int:
         if key.value is None:
             raise SimpleError("ERR key does not exist")
+        # todo
         return 0
+
+    @command(
+        name="VRANGE",
+        fixed=(Key(VectorSet), StringTest, StringTest),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
+    def vrange(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> int:
+        if len(args) > 1:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VRANGE"))
+        if key.value is None:
+            raise SimpleError("ERR key does not exist")
+        if len(args) == 1:
+            count = int(args[0])
+        # todo
+        print(count)
+        return 0
+
+    @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
+    def vinfo(self, key: CommandItem):
+        if key.value is None:
+            return None
+        if not isinstance(key.value, VectorSet):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        # TODO
+        return None
+
+    @command(name="VLINKS", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes) -> List[Optional[bytes]]:
+        if key.value is None:
+            raise SimpleError("ERR key does not exist")
+        if not isinstance(key.value, VectorSet):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        # TODO
+        return [None] * len(args)

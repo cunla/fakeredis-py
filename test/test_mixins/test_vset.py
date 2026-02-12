@@ -36,9 +36,11 @@ def test_vadd_same_vector_twice(r: redis.Redis):
     float_array = [1, 4.32, 0.11]
     resp = r.vset().vadd("myset", float_array, "elem1")
     assert resp == 1
-    float_array = [1, 4.32, 0.11]
+    float_array = [1, 2, 3]
     resp = r.vset().vadd("myset", float_array, "elem1")
     assert resp == 0
+    resp = r.vset().vrandmember("myset")
+    assert resp == b"elem1"
 
 
 def test_add_elem_with_values(r: redis.Redis):
