@@ -106,10 +106,15 @@ class VectorSetCommandsMixin:
             else:
                 raise SimpleError("ERR syntax error in 'VADD' command")
         cas = cas or False
+        if reduce is not None and key.value is not None:
+            raise SimpleError("ERR cannot add projection to existing set without projection")
+        if reduce is not None and reduce < 0:
+            raise SimpleError("ERR invalid vector specification")
         vector_set = key.value or VectorSet(reduce or len(vector_values))
         dimensions = vector_set.dimensions
+
         if len(vector_values) != dimensions:
-            # implements random projection to reduce the dimensionality of the vector
+            # If reduce is specified, we allow vectors with more dimensions and just ignore the extra values.
             pass
 
         if vector_set.exists(name):

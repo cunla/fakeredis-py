@@ -424,6 +424,22 @@ def test_vdim(r: redis.Redis):
         r.vset().vdim("myset_unexisting")
 
 
+def test_vdim_errors(r: redis.Redis):
+    float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
+    r.vset().vadd("myset", float_array, "elem1")
+
+    dim = r.vset().vdim("myset")
+    assert dim == len(float_array)
+    with pytest.raises(redis.ResponseError) as ctx:
+        r.vset().vadd("myset", float_array, "elem2", reduce_dim=4)
+    assert str(ctx.value) == "cannot add projection to existing set without projection"
+
+    float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
+    with pytest.raises(redis.ResponseError) as ctx:
+        r.vset().vadd("myset1", float_array, "elem1", reduce_dim=-4)
+    assert str(ctx.value) == "invalid vector specification"
+
+
 def test_vcard(r: redis.Redis):
     n = 20
     for i in range(n):
