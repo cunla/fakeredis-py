@@ -195,16 +195,19 @@ class VectorSetCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def vrange(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> int:
+    def vrange(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> List[bytes]:
         if len(args) > 1:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VRANGE"))
         if key.value is None:
             raise SimpleError("ERR key does not exist")
+        count = None
         if len(args) == 1:
             count = int(args[0])
-        # todo
-        print(count)
-        return 0
+        vset = key.value
+        if not isinstance(vset, VectorSet):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        res = vset.range(_min.value, _min.inclusive, _max.value, _max.inclusive, count)
+        return res
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vinfo(self, key: CommandItem):

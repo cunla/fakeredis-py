@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Any, Literal, Optional
 
 QUANTIZATION_TYPE = Literal["noquant", "bin", "q8"]
 
@@ -56,6 +56,24 @@ class VectorSet:
             "vset-uid": 1,  # TODO
             "hnsw-max-node-uid": 0,  # TODO
         }
+
+    def range(
+        self,
+        min_value: Optional[bytes],
+        include_min: bool,
+        max_value: Optional[bytes],
+        include_max: bool,
+        count: Optional[int],
+    ) -> List[bytes]:
+        res: List[bytes] = []
+        for name in self._vectors.keys():
+            if (min_value is None or name > min_value or (include_min and name == min_value)) and (
+                max_value is None or name < max_value or (include_max and name == max_value)
+            ):
+                res.append(name)
+            if count is not None and len(res) >= count:
+                break
+        return res
 
     def __contains__(self, k: bytes) -> bool:
         return k in self._vectors

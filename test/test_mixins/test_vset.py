@@ -7,6 +7,7 @@ import pytest
 import redis
 from redis.commands.vectorset.commands import QuantizationOptions
 
+
 pytestmark = []
 pytestmark.extend(
     [
