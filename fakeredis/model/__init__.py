@@ -1,5 +1,7 @@
 from ._acl import AccessControlList
+from ._base_type import BaseModel
 from ._client_info import ClientInfo
+
 from ._command_info import (
     get_all_commands_info,
     get_command_info,
@@ -9,12 +11,14 @@ from ._command_info import (
 from ._expiring_members_set import ExpiringMembersSet
 from ._hash import Hash
 from ._stream import XStream, StreamEntryKey, StreamGroup, StreamRangeTest
+from ._tdigest import TDigest
 from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
 from ._zset import ZSet
 from ._vectorset import VectorSet, Vector
 
 __all__ = [
+    "BaseModel",
     "XStream",
     "StreamRangeTest",
     "StreamGroup",
@@ -32,6 +36,16 @@ __all__ = [
     "get_commands_by_category",
     "AccessControlList",
     "ClientInfo",
+    "TDigest",
     "VectorSet",
     "Vector",
 ]
+
+try:
+    import probables  # noqa: F401
+    from ._filters import ScalableCuckooFilter, ScalableBloomFilter  # noqa: F401
+    from ._cms import CountMinSketch  # noqa: F401
+
+    __all__.extend(["CountMinSketch", "ScalableCuckooFilter", "ScalableBloomFilter"])
+except ImportError:
+    pass
