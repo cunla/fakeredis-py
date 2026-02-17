@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.34.1
+
+### 🐛 Bug Fixes
+
+- Fix handling of deprecated arguments in `FakeRedis` to support redis-py 7.2.0 #457
+
 ## v2.34.0
 
 ### 🚀 Features
