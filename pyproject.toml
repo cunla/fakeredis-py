@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.34.0"
+version = "2.34.1"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -42,8 +42,8 @@ classifiers = [
 ]
 dependencies = [
     "redis>=4 ; python_version < '3.8'",
-    "redis>=4.3 ; python_version > '3.8'",
-    "redis<8 ; python_version < '3.10'",
+    "redis>=4.3; python_version > '3.8'",
+    "redis<7.2 ; python_version < '3.10'",
     "sortedcontainers>=2",
     "typing-extensions~=4.7 ; python_version < '3.11'",
 ]

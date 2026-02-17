@@ -3,7 +3,7 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union
+from typing import Dict, Tuple, Any, List, Optional, Union, Set, Type
 
 import redis
 
@@ -85,18 +85,32 @@ class FakeServer:
 
 class FakeBaseConnectionMixin(object):
     def __init__(
-        self, *args: Any, version: VersionType = (7, 0), server_type: ServerType = "redis", **kwargs: Any
+        self,
+        *args: Any,
+        version: VersionType = (7, 0),
+        server_type: ServerType = "redis",
+        server: Optional[FakeServer] = None,
+        client_class: Type[redis.Redis] = redis.Redis,
+        lua_modules: Optional[Set[str]] = None,
+        writer=None,
+        connected: bool = True,
+        path: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
+        """
+        Initializes the class and sets up the required attributes and configurations for the server and client interaction.
+
+        """
         self.client_name: Optional[str] = None
         self.server_key: str
         self._sock = None
         self._selector: Optional[FakeSelector] = None
-        self._server = kwargs.pop("server", None)
-        self._client_class = kwargs.pop("client_class", redis.Redis)
-        self._lua_modules = kwargs.pop("lua_modules", set())
-        self._writer = kwargs.pop("writer", None)
-        path = kwargs.pop("path", None)
-        connected = kwargs.pop("connected", True)
+        self._server = server
+        self._client_class = client_class
+        self._lua_modules = lua_modules
+        self._writer = writer
+        path = path
+        connected = connected
         if self._server is None:
             if path:
                 self.server_key = path
