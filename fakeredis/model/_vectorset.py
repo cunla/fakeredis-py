@@ -65,6 +65,8 @@ class VectorSet:
         include_max: bool,
         count: Optional[int],
     ) -> List[bytes]:
+        if count is not None and count < 0:
+            count = None
         res: List[bytes] = []
         for name in self._vectors.keys():
             if (min_value is None or name > min_value or (include_min and name == min_value)) and (

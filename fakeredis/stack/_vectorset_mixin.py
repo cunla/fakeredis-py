@@ -199,13 +199,15 @@ class VectorSetCommandsMixin:
         if len(args) > 1:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VRANGE"))
         if key.value is None:
-            raise SimpleError("ERR key does not exist")
-        count = None
-        if len(args) == 1:
-            count = int(args[0])
+            return []
         vset = key.value
         if not isinstance(vset, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
+        count = None
+        if len(args) == 1:
+            count = int(args[0])
+        if count == 0:
+            return []
         res = vset.range(_min.value, _min.inclusive, _max.value, _max.inclusive, count)
         return res
 
