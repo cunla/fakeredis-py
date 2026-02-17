@@ -14,7 +14,19 @@ def test_deprecated_args_show_warnings_for_retry_on_timeout(warn_mock: mock.Magi
     warn_mock.assert_called_once_with(
         "Call to '__init__' function with deprecated usage of input argument/s 'retry_on_timeout'. (TimeoutError is included by default.) -- Deprecated since version 6.0.0.",
         category=DeprecationWarning,
-        stacklevel=3,
+        stacklevel=mock.ANY,
+    )
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "7.2")
+@mock.patch("warnings.warn")
+def test_deprecated_args_show_warnings_for_lib_name(warn_mock: mock.MagicMock):
+    fakeredis.FakeStrictRedis(host="localhost", port=6390, db=0, lib_name="SDSS")
+    warn_mock.assert_called_once_with(
+        "Call to '__init__' function with deprecated usage of input argument/s 'lib_name'. (Use 'driver_info' parameter instead. lib_name and lib_version will be removed in a future version.)",
+        category=DeprecationWarning,
+        stacklevel=mock.ANY,
     )
 
 

@@ -7,8 +7,6 @@ import weakref
 from collections import defaultdict
 from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type, MutableMapping
 
-import redis
-
 
 class SimpleString:
     def __init__(self, value: bytes) -> None:
@@ -261,8 +259,8 @@ class FakeSelector(object):
         return True
 
 
-def _get_args_to_warn() -> Set[str]:
-    closure = redis.Redis.__init__.__closure__
+def _get_args_to_warn(method: Callable) -> Set[str]:
+    closure = method.__closure__
     if closure is None:
         return set()
     res = set()
@@ -270,13 +268,15 @@ def _get_args_to_warn() -> Set[str]:
         value = cell.cell_contents
         if isinstance(value, list) and len(value) > 0:
             res.update(value)
+        elif callable(value):
+            res.update(_get_args_to_warn(value))
     return res
 
 
 def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Interpret the positional and keyword arguments according to the version of redis in use"""
     parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
-    args_to_warn = _get_args_to_warn()
+    args_to_warn = _get_args_to_warn(klass.__init__)
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
     kwargs.setdefault("host", uuid.uuid4().hex)
