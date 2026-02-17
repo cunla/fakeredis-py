@@ -265,16 +265,17 @@ def _get_args_to_warn() -> Set[str]:
     closure = redis.Redis.__init__.__closure__
     if closure is None:
         return set()
+    res = set()
     for cell in closure:
         value = cell.cell_contents
         if isinstance(value, list) and len(value) > 0:
-            return set(value)
-    return set()
+            res.update(value)
+    return res
 
 
-def convert_args_to_redis_init_kwargs(redis_class: Type[redis.Redis], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Interpret the positional and keyword arguments according to the version of redis in use"""
-    parameters = list(inspect.signature(redis_class.__init__).parameters.values())[1:]
+    parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
     args_to_warn = _get_args_to_warn()
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})

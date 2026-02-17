@@ -5,7 +5,7 @@ from typing import Tuple, Any, List, Optional, Set, Sequence, Union, Type
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector, convert_args_to_redis_init_kwargs
+from fakeredis._helpers import FakeSelector, convert_args_kwargs
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
@@ -110,7 +110,7 @@ class FakeRedisMixin:
         :param lua_modules: A set of Lua modules to load.
         :param client_class: The Redis client class to use, e.g., redis.Redis or valkey.Valkey.
         """
-        kwds = convert_args_to_redis_init_kwargs(client_class, *args, **kwargs)
+        kwds = convert_args_kwargs(client_class, *args, **kwargs)
         kwds["server"] = server
         if not kwds.get("connection_pool", None):
             charset = kwds.get("charset", None)
@@ -154,9 +154,13 @@ class FakeRedisMixin:
         kwds.pop("version", None)
         kwds.pop("server_type", None)
         kwds.pop("lua_modules", None)
-        if "lib_name" in kwds and "lib_version" in kwds:
+        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
             kwds["lib_name"] = "fakeredis"
             kwds["lib_version"] = lib_version
+        if "driver_info" in kwds:
+            from redis import DriverInfo
+
+            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod
