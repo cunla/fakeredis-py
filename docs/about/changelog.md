@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - Fix handling of deprecated arguments in `FakeRedis` to support redis-py 7.2.0 #457
+- Blocking `XREAD` with `block=0` works as expected #453
 
 ## v2.34.0
 
@@ -23,7 +24,6 @@ toc_depth: 2
 
 - Add missing keys to `XINFO STREAM` #445
 - Caching LuaRuntime to prevent memory leak in eval() @chrisguidry #449 #446
-- Blocking `XREAD` with `block=0` works as expected #453
 
 ### 🧰 Maintenance
 
