@@ -1,7 +1,15 @@
 from ._tdigest_mixin import TDigestCommandsMixin
 from ._timeseries_mixin import TimeSeriesCommandsMixin
 from ._topk_mixin import TopkCommandsMixin  # noqa: F401
-from ._vectorset_mixin import VectorSetCommandsMixin  # noqa: F401
+
+try:
+    import numpy  # noqa: F401
+    from ._vectorset_mixin import VectorSetCommandsMixin  # noqa: F401
+except ImportError:
+
+    class VectorSetCommandsMixin:
+        pass
+
 
 try:
     from jsonpath_ng.ext import parse  # noqa: F401

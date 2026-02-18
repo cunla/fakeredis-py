@@ -2,8 +2,11 @@ import json
 import random
 from typing import List
 
-import numpy as np
 import pytest
+
+pytest.importorskip("numpy")
+
+import numpy as np
 import redis
 from redis.commands.vectorset.commands import QuantizationOptions
 
