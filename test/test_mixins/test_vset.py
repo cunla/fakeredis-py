@@ -418,6 +418,7 @@ def test_vemb_bin_quantization(r: redis.Redis):
     assert emb_no_quant_raw["quantization"] == b"bin"
     assert isinstance(emb_no_quant_raw["raw"], bytes)
     assert isinstance(emb_no_quant_raw["l2"], float)
+    assert emb_no_quant_raw["l2"] == pytest.approx(5.29, rel=0.01)
     assert "range" not in emb_no_quant_raw
 
 

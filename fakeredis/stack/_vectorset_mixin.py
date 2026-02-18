@@ -82,6 +82,8 @@ class VectorSetCommandsMixin:
                 if quantization is not None:
                     raise SimpleError("ERR multiple quantization types specified")
                 quantization = args[i].lower().decode()
+                if quantization == "q8":
+                    quantization = "int8"
                 i += 1
             elif casematch(args[i], b"values") and i + 1 < len(args):
                 num_values = int(args[i + 1])
@@ -135,11 +137,7 @@ class VectorSetCommandsMixin:
         if raw:
             # For now, we're storing vectors as fp32 (no quantization in the basic implementation)
             # Return raw format with quantization info
-            raw_bytes = struct.pack(f"{len(vector.values)}f", *vector.values)
-
-            l2_norm = sum(v * v for v in vector.values) ** 0.5
-            # Return dict with quantization info
-            return [vector.quantization.encode(), raw_bytes, l2_norm]
+            return vector.raw()
 
             # Return the vector values as a list of floats
         return vector.values
