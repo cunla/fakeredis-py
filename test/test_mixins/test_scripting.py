@@ -11,6 +11,7 @@ import redis.client
 from redis.exceptions import ResponseError
 
 import fakeredis
+from fakeredis import _msgs as msgs
 from test import testtools
 from test.testtools import raw_command
 
@@ -316,22 +317,14 @@ def test_eval_convert_bool(r: redis.Redis):
     assert not isinstance(val, bool)
 
 
-@pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("valkey")
-def test_eval_call_bool7_redis(r: redis.Redis):
+def test_eval_call_bool(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(redis.ResponseError) as exc_info:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
-    assert "Lua redis lib command arguments must be strings or integers" in str(exc_info.value)
-
-
-@pytest.mark.min_server("7")
-@pytest.mark.unsupported_server_types("redis")
-def test_eval_call_bool7_valkey(r: redis.Redis):
-    # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError) as exc_info:
-        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
-    assert "Command arguments must be strings or integers script" in str(exc_info.value)
+    count = 0
+    for m in (msgs.LUA_COMMAND_ARG_MSG6, msgs.LUA_COMMAND_ARG_MSG, msgs.VALKEY_LUA_COMMAND_ARG_MSG):
+        count += m[4:] in str(exc_info.value)
+    assert count == 1, "Expected one of the error messages to match, but got: %s" % str(exc_info.value)
 
 
 def test_eval_return_error(r: redis.Redis):
