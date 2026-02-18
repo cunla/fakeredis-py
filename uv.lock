@@ -664,6 +664,9 @@ valkey = [
     { name = "valkey", version = "6.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "valkey", version = "6.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
+vectorset = [
+    { name = "numpy", marker = "python_full_version >= '3.11'" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -680,7 +683,6 @@ test = [
     { name = "coverage", version = "7.13.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' and python_full_version < '3.14'" },
     { name = "hypothesis", version = "6.141.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "hypothesis", version = "6.151.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "numpy", marker = "python_full_version >= '3.11'" },
     { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "pytest", version = "9.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pytest-asyncio", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
@@ -695,6 +697,7 @@ test = [
 requires-dist = [
     { name = "jsonpath-ng", marker = "extra == 'json'", specifier = ">=1.6" },
     { name = "lupa", marker = "extra == 'lua'", specifier = ">=2.1" },
+    { name = "numpy", marker = "python_full_version >= '3.11' and extra == 'vectorset'", specifier = ">=2.4.0" },
     { name = "pyprobables", marker = "extra == 'bf'", specifier = ">=0.6" },
     { name = "pyprobables", marker = "extra == 'cf'", specifier = ">=0.6" },
     { name = "pyprobables", marker = "extra == 'probabilistic'", specifier = ">=0.6" },
@@ -705,7 +708,7 @@ requires-dist = [
     { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = "~=4.7" },
     { name = "valkey", marker = "python_full_version >= '3.8' and extra == 'valkey'", specifier = ">=6" },
 ]
-provides-extras = ["lua", "json", "bf", "cf", "probabilistic", "valkey"]
+provides-extras = ["lua", "json", "bf", "cf", "probabilistic", "valkey", "vectorset"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -720,7 +723,6 @@ docs = [
 test = [
     { name = "coverage", marker = "python_full_version >= '3.9' and python_full_version < '3.14'", specifier = ">=7.10" },
     { name = "hypothesis", marker = "python_full_version >= '3.9'", specifier = ">=6.138" },
-    { name = "numpy", marker = "python_full_version >= '3.11'", specifier = ">=2.4.0" },
     { name = "pytest", marker = "python_full_version >= '3.9'", specifier = ">=8.4" },
     { name = "pytest-asyncio", marker = "python_full_version >= '3.9'", specifier = ">=1.1" },
     { name = "pytest-cov", marker = "python_full_version >= '3.9'", specifier = ">=6.3" },

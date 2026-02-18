@@ -15,7 +15,6 @@ from ._tdigest import TDigest
 from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
 from ._topk import HeavyKeeper
 from ._zset import ZSet
-from ._vectorset import VectorSet, Vector
 
 __all__ = [
     "BaseModel",
@@ -37,9 +36,15 @@ __all__ = [
     "AccessControlList",
     "ClientInfo",
     "TDigest",
-    "VectorSet",
-    "Vector",
 ]
+
+try:
+    import numpy as np  # noqa: F401
+    from ._vectorset import VectorSet, Vector  # noqa: F401
+
+    __all__.extend(["VectorSet", "Vector"])
+except ImportError:
+    pass
 
 try:
     import probables  # noqa: F401
