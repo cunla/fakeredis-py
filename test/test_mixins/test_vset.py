@@ -89,12 +89,7 @@ def test_add_elem_cas(r: redis.Redis):
 
 def test_add_elem_no_quant(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem1",
-        quantization=QuantizationOptions.NOQUANT,
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.NOQUANT)
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
@@ -103,12 +98,7 @@ def test_add_elem_no_quant(r: redis.Redis):
 
 def test_add_elem_bin_quant(r: redis.Redis):
     float_array = [1, 4.32, 0.0, 0.05, -2.9]
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem1",
-        quantization=QuantizationOptions.BIN,
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.BIN)
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
@@ -117,12 +107,7 @@ def test_add_elem_bin_quant(r: redis.Redis):
 
 def test_add_elem_q8_quant(r: redis.Redis):
     float_array = [1, 4.32, 10.0, -21, -2.9]
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem1",
-        quantization=QuantizationOptions.BIN,
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.BIN)
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
@@ -147,12 +132,7 @@ def test_add_elem_ef(r: redis.Redis):
 def test_add_elem_with_attr(r: redis.Redis):
     float_array = [1, 4.32, 10.0, -21, -2.9]
     attrs_dict = {"key1": "value1", "key2": "value2"}
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem3",
-        attributes=attrs_dict,
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem3", attributes=attrs_dict)
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem3")
@@ -161,12 +141,7 @@ def test_add_elem_with_attr(r: redis.Redis):
     attr_saved = r.vset().vgetattr("myset", "elem3")
     assert attr_saved == attrs_dict
 
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem4",
-        attributes={},
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem4", attributes={})
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem4")
@@ -175,12 +150,7 @@ def test_add_elem_with_attr(r: redis.Redis):
     attr_saved = r.vset().vgetattr("myset", "elem4")
     assert attr_saved is None
 
-    resp = r.vset().vadd(
-        "myset",
-        vector=float_array,
-        element="elem5",
-        attributes=json.dumps(attrs_dict),
-    )
+    resp = r.vset().vadd("myset", vector=float_array, element="elem5", attributes=json.dumps(attrs_dict))
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem5")
@@ -195,12 +165,7 @@ def test_add_elem_with_numlinks(r: redis.Redis):
     vector_dim = 10
     for i in range(elements_count):
         float_array = [random.randint(0, 10) for x in range(vector_dim)]
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem{i}",
-            numlinks=8,
-        )
+        r.vset().vadd("myset", float_array, f"elem{i}", numlinks=8)
 
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2, 0.3, 0.4, 0.5]
     resp = r.vset().vadd("myset", float_array, "elem_numlinks", numlinks=8)
@@ -219,12 +184,7 @@ def test_vsim_count(r: redis.Redis):
     vector_dim = 800
     for i in range(elements_count):
         float_array = [random.uniform(0, 10) for x in range(vector_dim)]
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem{i}",
-            numlinks=64,
-        )
+        r.vset().vadd("myset", float_array, f"elem{i}", numlinks=64)
 
     vsim = r.vset().vsim("myset", input="elem1")
     assert len(vsim) == 10
@@ -252,12 +212,7 @@ def test_vsim_with_scores(r: redis.Redis):
     vector_dim = 50
     for i in range(elements_count):
         float_array = [random.uniform(0, 10) for x in range(vector_dim)]
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem{i}",
-            numlinks=64,
-        )
+        r.vset().vadd("myset", float_array, f"elem{i}", numlinks=64)
 
     vsim = r.vset().vsim("myset", input="elem1", with_scores=True)
     assert len(vsim) == 10
@@ -272,13 +227,7 @@ def test_vsim_with_different_vector_input_types(r: redis.Redis):
     for i in range(elements_count):
         float_array = [random.uniform(0, 10) for x in range(vector_dim)]
         attributes = {"index": i, "elem_name": f"elem_{i}"}
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem_{i}",
-            numlinks=4,
-            attributes=attributes,
-        )
+        r.vset().vadd("myset", float_array, f"elem_{i}", numlinks=4, attributes=attributes)
     sim = r.vset().vsim("myset", input="elem_1")
     assert len(sim) == 10
     assert isinstance(sim, list)
@@ -315,22 +264,10 @@ def test_vsim_with_filter(r: redis.Redis):
     for i in range(elements_count):
         float_array = [random.uniform(10, 20) for x in range(vector_dim)]
         attributes = {"index": i, "elem_name": f"elem_{i}"}
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem_{i}",
-            numlinks=4,
-            attributes=attributes,
-        )
+        r.vset().vadd("myset", float_array, f"elem_{i}", numlinks=4, attributes=attributes)
     float_array = [-random.uniform(10, 20) for x in range(vector_dim)]
     attributes = {"index": elements_count, "elem_name": "elem_special"}
-    r.vset().vadd(
-        "myset",
-        float_array,
-        "elem_special",
-        numlinks=4,
-        attributes=attributes,
-    )
+    r.vset().vadd("myset", float_array, "elem_special", numlinks=4, attributes=attributes)
     sim = r.vset().vsim("myset", input="elem_1", filter=".index > 10")
     assert len(sim) == 10
     assert isinstance(sim, list)
@@ -338,19 +275,14 @@ def test_vsim_with_filter(r: redis.Redis):
         assert int(elem.split(b"_")[1]) > 10
 
     sim = r.vset().vsim(
-        "myset",
-        input="elem_1",
-        filter=".index > 10 and .index < 15 and .elem_name in ['elem_12', 'elem_17']",
+        "myset", input="elem_1", filter=".index > 10 and .index < 15 and .elem_name in ['elem_12', 'elem_17']"
     )
     assert len(sim) == 1
     assert isinstance(sim, list)
     assert sim[0] == b"elem_12"
 
     sim = r.vset().vsim(
-        "myset",
-        input="elem_1",
-        filter=".index > 25 and .elem_name in ['elem_12', 'elem_17', 'elem_19']",
-        ef=100,
+        "myset", input="elem_1", filter=".index > 25 and .elem_name in ['elem_12', 'elem_17', 'elem_19']", ef=100
     )
     assert len(sim) == 0
     assert isinstance(sim, list)
@@ -478,12 +410,7 @@ def test_vrem(r: redis.Redis):
 
 def test_vemb_bin_quantization(r: redis.Redis):
     e = [1, 4.32, 0.0, 0.05, -2.9]
-    r.vset().vadd(
-        "myset",
-        e,
-        "elem",
-        quantization=QuantizationOptions.BIN,
-    )
+    r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.BIN)
     emb_no_quant = r.vset().vemb("myset", "elem")
     assert emb_no_quant == [1, 1, -1, 1, -1]
 
@@ -567,12 +494,7 @@ def test_vlinks(r: redis.Redis):
     vector_dim = 800
     for i in range(elements_count):
         float_array = [random.uniform(0, 10) for x in range(vector_dim)]
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem{i}",
-            numlinks=8,
-        )
+        r.vset().vadd("myset", float_array, f"elem{i}", numlinks=8)
 
     element_links_all_layers = r.vset().vlinks("myset", "elem1")
     assert len(element_links_all_layers) >= 1
@@ -621,13 +543,7 @@ def test_vinfo(r: redis.Redis):
     vector_dim = 800
     for i in range(elements_count):
         float_array = [random.uniform(0, 10) for x in range(vector_dim)]
-        r.vset().vadd(
-            "myset",
-            float_array,
-            f"elem{i}",
-            numlinks=8,
-            quantization=QuantizationOptions.BIN,
-        )
+        r.vset().vadd("myset", float_array, f"elem{i}", numlinks=8, quantization=QuantizationOptions.BIN)
 
     vset_info = r.vset().vinfo("myset")
     assert vset_info[b"quant-type"] == b"bin"
