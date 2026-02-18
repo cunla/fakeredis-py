@@ -436,7 +436,9 @@ def test_vemb_q8_quantization(r: redis.Redis):
     assert emb_q8_quant_raw["quantization"] == b"int8"
     assert isinstance(emb_q8_quant_raw["raw"], bytes)
     assert isinstance(emb_q8_quant_raw["l2"], float)
+    assert emb_q8_quant_raw["l2"] == pytest.approx(16.369, rel=0.01)
     assert isinstance(emb_q8_quant_raw["range"], float)
+    assert emb_q8_quant_raw["range"] == pytest.approx(0.76, rel=0.01)
 
 
 def test_vemb_no_quantization(r: redis.Redis):
