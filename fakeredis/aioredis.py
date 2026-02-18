@@ -11,7 +11,7 @@ from redis.asyncio.connection import DefaultParser
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
-from ._helpers import SimpleError, convert_args_to_redis_init_kwargs
+from ._helpers import SimpleError, convert_args_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
 from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
 
@@ -208,7 +208,7 @@ class FakeRedisMixin:
         client_class=redis_async.Redis,
         **kwargs: Any,
     ) -> None:
-        kwds = convert_args_to_redis_init_kwargs(client_class, *args, **kwargs)
+        kwds = convert_args_kwargs(client_class, *args, **kwargs)
         kwds["server"] = server
         kwds["connected"] = kwargs.get("connected", True)
         if not kwds.get("connection_pool", None):
