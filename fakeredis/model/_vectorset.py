@@ -11,6 +11,8 @@ class Vector:
         self.values = values
         self.attributes = attributes
         self.quantization = quantization
+        if self.quantization == "bin":
+            self.values = [1 if v > 0 else -1 for v in self.values]
 
     def __repr__(self):
         return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes}, quantization={self.quantization})"

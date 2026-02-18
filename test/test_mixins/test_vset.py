@@ -112,8 +112,7 @@ def test_add_elem_bin_quant(r: redis.Redis):
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
-    expected_array = [1, 1, -1, 1, -1]
-    assert _validate_quantization(expected_array, emb, tolerance=0.0)
+    assert _validate_quantization([1, 1, -1, 1, -1], emb, tolerance=0.0)
 
 
 def test_add_elem_q8_quant(r: redis.Redis):
@@ -127,8 +126,7 @@ def test_add_elem_q8_quant(r: redis.Redis):
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
-    expected_array = [1, 1, 1, -1, -1]
-    assert _validate_quantization(expected_array, emb, tolerance=0.0)
+    assert _validate_quantization([1, 1, 1, -1, -1], emb, tolerance=0.0)
 
 
 def test_add_elem_ef(r: redis.Redis):
@@ -913,7 +911,4 @@ def _validate_quantization(original, quantized, tolerance=0.1):
     quantized = np.array(quantized, dtype=np.float32)
 
     max_diff = np.max(np.abs(original - quantized))
-    if max_diff > tolerance:
-        return False
-    else:
-        return True
+    return max_diff <= tolerance

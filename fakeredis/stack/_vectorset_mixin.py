@@ -148,13 +148,9 @@ class VectorSetCommandsMixin:
 
             l2_norm = sum(v * v for v in vector.values) ** 0.5
             # Return dict with quantization info
-            return {
-                b"quantization": vector.quantization,
-                b"raw": raw_bytes,
-                b"l2": l2_norm,
-            }
+            return [vector.quantization.encode(), raw_bytes, l2_norm]
 
-        # Return the vector values as a list of floats
+            # Return the vector values as a list of floats
         return vector.values
 
     @command(name="VRANDMEMBER", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
