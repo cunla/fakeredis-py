@@ -15,8 +15,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
 from fakeredis.model import ZSet, ClientInfo
-
-JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
+from fakeredis._typing import JsonType
 
 
 def _format_path(path: Union[bytes, str]) -> str:
@@ -75,8 +74,7 @@ class JSONObject:
 
     @classmethod
     def encode(cls, value: Any) -> Optional[bytes]:
-        """Serialize the supplied Python object into a valid, JSON-formatted
-        byte-encoded string."""
+        """Serialize the supplied Python object into a valid, JSON-formatted byte-encoded string."""
         return json.dumps(value, default=str).encode() if value is not None else None
 
 

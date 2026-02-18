@@ -319,6 +319,10 @@ class StringTest(RedisType):
         self.value = value
         self.exclusive = exclusive
 
+    @property
+    def inclusive(self) -> bool:
+        return not self.exclusive
+
     @classmethod
     def decode(cls, value: bytes) -> "StringTest":
         if value == b"-":
