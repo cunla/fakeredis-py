@@ -68,7 +68,6 @@ METADATA = [
             "VEMB",
             "VGETATTR",
             "VINFO",
-            "VISMEMBER",
             "VLINKS",
             "VRANDMEMBER",
             "VRANGE",
