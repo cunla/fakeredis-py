@@ -108,7 +108,7 @@ if __name__ == "__main__":
     implemented = implemented_commands()
     command_info_dict: Dict[str, List[Any]] = {}
     for cmd_meta in METADATA:
-        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url)
+        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
         for cmd in cmds:
             if cmd not in implemented:
                 continue

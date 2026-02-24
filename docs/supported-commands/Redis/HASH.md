@@ -1,4 +1,4 @@
-# Redis `hash` commands (25/27 implemented)
+# Redis `hash` commands (28/30 implemented)
 
 ## [HDEL](https://redis.io/commands/hdel/)
 
@@ -27,6 +27,14 @@ Returns the value of a field in a hash.
 ## [HGETALL](https://redis.io/commands/hgetall/)
 
 Returns all fields and values in a hash.
+
+## [HGETDEL](https://redis.io/commands/hgetdel/)
+
+Returns the value of a field and deletes it from the hash.
+
+## [HGETEX](https://redis.io/commands/hgetex/)
+
+Get the value of one or more fields of a given hash key, and optionally set
 
 ## [HINCRBY](https://redis.io/commands/hincrby/)
 
@@ -84,6 +92,10 @@ Iterates over fields and values of a hash.
 
 Creates or modifies the value of a field in a hash.
 
+## [HSETEX](https://redis.io/commands/hsetex/)
+
+Set the value of one or more fields of a given hash key, and optionally set
+
 ## [HSETNX](https://redis.io/commands/hsetnx/)
 
 Sets the value of a field in a hash only when the field doesn't exist.
@@ -101,8 +113,8 @@ Returns the TTL in seconds of a hash field.
 Returns all values in a hash.
 
 
-## Unsupported hash commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported hash commands
+> To implement support for a command, see [here](/guides/implement-command/)
 
 #### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
 
@@ -111,5 +123,3 @@ For each specified field, returns its value and optionally set the field's remai
 #### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
 
 For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
-
-

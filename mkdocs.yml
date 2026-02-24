@@ -78,6 +78,7 @@ nav:
           - Sorted Set: supported-commands/Redis/SORTEDSET.md
           - Stream: supported-commands/Redis/STREAM.md
           - String: supported-commands/Redis/STRING.md
+          - Vector Set: supported-commands/Redis/VECTOR_SET.md
           - Transactions: supported-commands/Redis/TRANSACTIONS.md
       - RedisJSON commands: supported-commands/RedisJson/JSON.md
       - Time Series commands: supported-commands/RedisTimeSeries/TIMESERIES.md
