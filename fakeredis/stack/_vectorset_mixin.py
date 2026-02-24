@@ -167,13 +167,6 @@ class VectorSetCommandsMixin:
             raise SimpleError(msgs.WRONGTYPE_MSG)
         return key.value.remove(member)
 
-    @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vsim(self, key: CommandItem, *args: bytes) -> int:
-        if key.value is None:
-            raise SimpleError("ERR key does not exist")
-        # todo
-        return 0
-
     @command(
         name="VRANGE",
         fixed=(Key(VectorSet), StringTest, StringTest),
@@ -195,6 +188,13 @@ class VectorSetCommandsMixin:
             return []
         res = vset.range(_min.value, _min.inclusive, _max.value, _max.inclusive, count)
         return res
+
+    @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def vsim(self, key: CommandItem, *args: bytes) -> int:
+        if key.value is None:
+            raise SimpleError("ERR key does not exist")
+        # todo
+        return 0
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vinfo(self, key: CommandItem):
