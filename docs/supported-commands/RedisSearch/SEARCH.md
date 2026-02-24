@@ -1,6 +1,6 @@
 
-## Unsupported search commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported search commands
+> To implement support for a command, see [here](/guides/implement-command/)
 
 #### [FT._LIST](https://redis.io/commands/ft._list/) <small>(not implemented)</small>
 
@@ -74,6 +74,10 @@ Returns the execution plan for a complex query
 
 Returns the execution plan for a complex query
 
+#### [FT.HYBRID](https://redis.io/commands/ft.hybrid/) <small>(not implemented)</small>
+
+Performs hybrid search combining text search and vector similarity search
+
 #### [FT.INFO](https://redis.io/commands/ft.info/) <small>(not implemented)</small>
 
 Returns information and statistics on the index
@@ -101,5 +105,3 @@ Creates or updates a synonym group with additional terms
 #### [FT.TAGVALS](https://redis.io/commands/ft.tagvals/) <small>(not implemented)</small>
 
 Returns the distinct tags indexed in a Tag field
-
-

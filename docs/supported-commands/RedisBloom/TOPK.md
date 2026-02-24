@@ -2,7 +2,7 @@
 
 ## [TOPK.ADD](https://redis.io/commands/topk.add/)
 
-Increases the count of one or more items by increment
+Adds an item to a Top-k sketch. Multiple items can be added at the same time.
 
 ## [TOPK.COUNT](https://redis.io/commands/topk.count/)
 
@@ -18,7 +18,7 @@ Returns information about a sketch
 
 ## [TOPK.LIST](https://redis.io/commands/topk.list/)
 
-Return full list of items in Top K list
+Return the full list of items in Top-K sketch.
 
 ## [TOPK.QUERY](https://redis.io/commands/topk.query/)
 
@@ -26,7 +26,4 @@ Checks whether one or more items are in a sketch
 
 ## [TOPK.RESERVE](https://redis.io/commands/topk.reserve/)
 
-Initializes a TopK with specified parameters
-
-
-
+Initializes a Top-K sketch with specified parameters
