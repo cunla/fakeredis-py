@@ -7,6 +7,8 @@ from fakeredis._commands import Key, command, CommandItem, StringTest
 from fakeredis._helpers import OK, SimpleError, casematch
 from fakeredis.model import VectorSet, Vector
 
+VSET_ERR_NOTEXIST = "ERR key does not exist"
+
 
 class VectorSetCommandsMixin:
     """`CommandsMixin` for enabling VectorSet compatibility in `fakeredis`."""
@@ -28,7 +30,7 @@ class VectorSetCommandsMixin:
     @command(name="VDIM", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vdim(self, key: CommandItem) -> int:
         if key.value is None:
-            raise SimpleError("ERR key does not exist")
+            raise SimpleError(VSET_ERR_NOTEXIST)
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         return key.value.dimensions
@@ -89,7 +91,7 @@ class VectorSetCommandsMixin:
                 num_values = int(args[i + 1])
                 i += 2
                 if i + num_values > len(args):  # VALUES num_values values element
-                    raise SimpleError("ERR wrong number of arguments for 'VADD' command")
+                    raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
                 vector_values = [float(v) for v in args[i : i + num_values]]
                 name = args[i + num_values]
                 i += num_values + 1
@@ -121,7 +123,7 @@ class VectorSetCommandsMixin:
     @command(name="VEMB", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vemb(self, key: CommandItem, element: bytes, *args: bytes):
         if key.value is None:
-            raise SimpleError("ERR key does not exist")
+            raise SimpleError(VSET_ERR_NOTEXIST)
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if element not in key.value:
@@ -135,11 +137,8 @@ class VectorSetCommandsMixin:
 
         # Return raw format if requested
         if raw:
-            # For now, we're storing vectors as fp32 (no quantization in the basic implementation)
-            # Return raw format with quantization info
             return vector.raw()
-
-            # Return the vector values as a list of floats
+        # Return the vector values as a list of floats
         return vector.values
 
     @command(name="VRANDMEMBER", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -191,8 +190,50 @@ class VectorSetCommandsMixin:
 
     @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vsim(self, key: CommandItem, *args: bytes) -> int:
+        """
+        VSIM key (ELE | FP32 | VALUES num) (vector | element) [WITHSCORES] [WITHATTRIBS] [COUNT num]
+          [EPSILON delta] [EF search-exploration-factor] [FILTER expression] [FILTER-EF max-filtering-effort]
+          [TRUTH] [NOTHREAD]
+        """
         if key.value is None:
-            raise SimpleError("ERR key does not exist")
+            raise SimpleError(VSET_ERR_NOTEXIST)
+        if not isinstance(key.value, VectorSet):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        i = 0
+        vector: Optional[Vector] = None  # The vector to compare against.
+        while i < len(args):
+            if casematch(args[i], b"ele") and i + 1 < len(args):
+                vector = key.value.get(args[i + 1])
+                if vector is None:
+                    raise SimpleError("ERR element not found in vector set")
+                i += 2
+            elif casematch(args[i], b"fp32") and i + 2 < len(args):
+                i += 3
+            elif casematch(args[i], b"values") and i + 1 < len(args):
+                num_values = int(args[i + 1])
+
+                i += 2 + num_values
+            elif casematch(args[i], b"withscores"):
+                i += 1
+            elif casematch(args[i], b"withattribs"):
+                i += 1
+            elif casematch(args[i], b"count") and i + 1 < len(args):
+                # count for limiting number of results, not supported in this basic implementation
+                i += 2
+            elif casematch(args[i], b"epsilon") and i + 1 < len(args):
+                i += 2
+            elif casematch(args[i], b"ef") and i + 1 < len(args):
+                i += 2
+            elif casematch(args[i], b"filter") and i + 1 < len(args):
+                i += 2
+            elif casematch(args[i], b"filter-ef") and i + 1 < len(args):
+                i += 2
+            elif casematch(args[i], b"truth"):
+                i += 1
+            elif casematch(args[i], b"nothread"):
+                i += 1
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         # todo
         return 0
 
@@ -208,7 +249,7 @@ class VectorSetCommandsMixin:
     @command(name="VLINKS", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vlinks(self, key: CommandItem, elem: bytes, *args: bytes) -> List[Optional[bytes]]:
         if key.value is None:
-            raise SimpleError("ERR key does not exist")
+            raise SimpleError(VSET_ERR_NOTEXIST)
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         # TODO
