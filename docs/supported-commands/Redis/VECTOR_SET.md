@@ -1,4 +1,4 @@
-# Redis `vector_set` commands (12/12 implemented)
+# Redis `vector_set` commands (9/12 implemented)
 
 ## [VADD](https://redis.io/commands/vadd/)
 
@@ -20,14 +20,6 @@ Return the vector associated with an element.
 
 Retrieve the JSON attributes of elements.
 
-## [VINFO](https://redis.io/commands/vinfo/)
-
-Return information about a vector set.
-
-## [VLINKS](https://redis.io/commands/vlinks/)
-
-Return the neighbors of an element at each layer in the HNSW graph.
-
 ## [VRANDMEMBER](https://redis.io/commands/vrandmember/)
 
 Return one or multiple random members from a vector set.
@@ -44,6 +36,18 @@ Remove an element from a vector set.
 
 Associate or remove the JSON attributes of elements.
 
-## [VSIM](https://redis.io/commands/vsim/)
+
+## Unsupported vector_set commands
+> To implement support for a command, see [here](/guides/implement-command/)
+
+#### [VINFO](https://redis.io/commands/vinfo/) <small>(not implemented)</small>
+
+Return information about a vector set.
+
+#### [VLINKS](https://redis.io/commands/vlinks/) <small>(not implemented)</small>
+
+Return the neighbors of an element at each layer in the HNSW graph.
+
+#### [VSIM](https://redis.io/commands/vsim/) <small>(not implemented)</small>
 
 Return elements by vector similarity.
