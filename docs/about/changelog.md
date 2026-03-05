@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.34.2
+
+### 🧰 Maintenance
+
+- Update typing-extensions version constraint to support newer versions #458
+
 ## v2.34.1
 
 ### 🐛 Bug Fixes
