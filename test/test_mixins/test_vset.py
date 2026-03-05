@@ -4,6 +4,8 @@ from typing import List
 
 import pytest
 
+from test import testtools
+
 pytest.importorskip("numpy")
 
 import numpy as np
@@ -687,64 +689,6 @@ def test_randmember_bad_count_type(r: redis.Redis):
     assert excinfo.value.args[0] == "COUNT value is not an integer"
 
 
-def test_vrange_basic(r: redis.Redis):
-    """Test basic VRANGE functionality with lexicographical ordering."""
-    # Add elements with different names
-    elements = [b"apple", b"banana", b"cherry", b"date", b"elderberry"]
-    for elem in elements:
-        r.vset().vadd(b"myset", [1.0, 2.0, 3.0], elem)
-
-    # Test full range
-    result = r.vset().vrange(b"myset", "-", "+")
-    assert result == elements
-    assert len(result) == 5
-
-    # Test inclusive range
-    result = r.vset().vrange(b"myset", "[banana", "[date")
-    assert result == [b"banana", b"cherry", b"date"]
-
-    # Test exclusive range
-    result = r.vset().vrange("myset", "(banana", "(date")
-    assert result == [b"cherry"]
-
-
-def test_vrange_error(r: redis.Redis):
-    r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
-        r.vset().vrange("not_a_vset", "-", "+")
-    assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
-
-    res = r.vset().vrange("x", "-", "+")
-    assert res == []
-
-
-def test_vrange_with_count(r: redis.Redis):
-    """Test VRANGE with count parameter."""
-    # Add elements
-    elements = [b"a", b"b", b"c", b"d", b"e", b"f", b"g"]
-    for elem in elements:
-        r.vset().vadd("myset", [1.0, 2.0], elem)
-
-    # Test with positive count
-    result = r.vset().vrange("myset", "-", "+", count=3)
-    assert len(result) == 3
-    assert result == [b"a", b"b", b"c"]
-
-    # Test with count larger than set size
-    result = r.vset().vrange("myset", "-", "+", count=100)
-    assert len(result) == 7
-    assert result == elements
-
-    # Test with count = 0
-    result = r.vset().vrange("myset", "-", "+", count=0)
-    assert result == []
-
-    # Test with negative count (should return all)
-    result = r.vset().vrange("myset", "-", "+", count=-1)
-    assert len(result) == 7
-    assert result == elements
-
-
 def test_vset_commands_without_decoding_responces(r: redis.Redis):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
@@ -834,3 +778,67 @@ def _validate_quantization(original, quantized, tolerance=0.1):
 
     max_diff = np.max(np.abs(original - quantized))
     return max_diff <= tolerance
+
+
+@testtools.run_test_if_redispy_ver("gte", "7.2")
+@pytest.mark.min_server("8.4")
+def test_vrange_basic(r: redis.Redis):
+    """Test basic VRANGE functionality with lexicographical ordering."""
+    # Add elements with different names
+    elements = [b"apple", b"banana", b"cherry", b"date", b"elderberry"]
+    for elem in elements:
+        r.vset().vadd(b"myset", [1.0, 2.0, 3.0], elem)
+
+    # Test full range
+    result = r.vset().vrange(b"myset", "-", "+")
+    assert result == elements
+    assert len(result) == 5
+
+    # Test inclusive range
+    result = r.vset().vrange(b"myset", "[banana", "[date")
+    assert result == [b"banana", b"cherry", b"date"]
+
+    # Test exclusive range
+    result = r.vset().vrange("myset", "(banana", "(date")
+    assert result == [b"cherry"]
+
+
+@testtools.run_test_if_redispy_ver("gte", "7.2")
+@pytest.mark.min_server("8.4")
+def test_vrange_error(r: redis.Redis):
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(redis.ResponseError) as excinfo:
+        r.vset().vrange("not_a_vset", "-", "+")
+    assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
+
+    res = r.vset().vrange("x", "-", "+")
+    assert res == []
+
+
+@testtools.run_test_if_redispy_ver("gte", "7.2")
+@pytest.mark.min_server("8.4")
+def test_vrange_with_count(r: redis.Redis):
+    """Test VRANGE with count parameter."""
+    # Add elements
+    elements = [b"a", b"b", b"c", b"d", b"e", b"f", b"g"]
+    for elem in elements:
+        r.vset().vadd("myset", [1.0, 2.0], elem)
+
+    # Test with positive count
+    result = r.vset().vrange("myset", "-", "+", count=3)
+    assert len(result) == 3
+    assert result == [b"a", b"b", b"c"]
+
+    # Test with count larger than set size
+    result = r.vset().vrange("myset", "-", "+", count=100)
+    assert len(result) == 7
+    assert result == elements
+
+    # Test with count = 0
+    result = r.vset().vrange("myset", "-", "+", count=0)
+    assert result == []
+
+    # Test with negative count (should return all)
+    result = r.vset().vrange("myset", "-", "+", count=-1)
+    assert len(result) == 7
+    assert result == elements
