@@ -352,6 +352,12 @@ class XStream(BaseModel):
             b"max-deleted-entry-id": self._max_deleted_id.encode(),
             b"entries-added": self._entries_added,
             b"recorded-first-entry-id": self._ids[0].encode() if len(self._ids) > 0 else b"0-0",
+            b"idmp-duration": 0,  # TODO
+            b"idmp-maxsize": 0,  # TODO
+            b"pids-tracked": 0,  # TODO
+            b"iids-tracked": 0,  # TODO
+            b"iids-added": 0,  # TODO
+            b"iids-duplicates": 0,  # TODO
         }
         if full:
             res[b"entries"] = [self.format_record(i) for i in self._ids]
@@ -374,7 +380,13 @@ class XStream(BaseModel):
                 res += 1
         return res
 
-    def add(self, fields: Sequence[Union[bytes, int]], entry_key: str = "*") -> Union[None, bytes]:
+    def add(
+        self,
+        fields: Sequence[Union[bytes, int]],
+        entry_key: str = "*",
+        producer_id: Optional[str] = None,
+        idempotent_id: Optional[str] = None,
+    ) -> Union[None, bytes]:
         """Add entry to a stream.
 
         If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
@@ -387,6 +399,12 @@ class XStream(BaseModel):
             on the last entry key of the stream.
             If entry_key is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
             then the sequence will be calculated accordingly.
+        :param producer_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
+        :param idempotent_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
         :returns:
             The key of the added entry.
             None if nothing was added.
