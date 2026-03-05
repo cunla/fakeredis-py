@@ -78,6 +78,7 @@ METADATA = [
             "hgetex",
             "hsetex",
             "hgetdel",
+            "XCFGSET",
         ],
     ),
     CommandsMeta(
