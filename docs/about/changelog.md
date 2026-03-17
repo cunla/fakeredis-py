@@ -9,6 +9,10 @@ toc_depth: 2
 
 ## v2.34.2
 
+### 🐛 Bug Fixes
+
+- fix XREADGROUP on multiple streams only returns one message #460
+
 ### 🧰 Maintenance
 
 - Update typing-extensions version constraint to support newer versions #458
