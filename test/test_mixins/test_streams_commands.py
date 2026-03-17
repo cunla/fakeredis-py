@@ -826,6 +826,25 @@ def test_xreadgroup_length_less_than_count(r: redis.Redis):
     assert len(messages) == 1
 
 
+def test_xreadgroup_read_2(r: redis.Redis):
+    priority_range = (0, 1)
+    stream_name = "test_stream"
+    streams = {f"{stream_name}:{priority}": ">" for priority in priority_range}
+    consumer_name = "test_consumer"
+
+    # Create group and stream for each priority
+    for stream in streams:
+        r.xgroup_create(stream, consumer_name, mkstream=True)
+
+    # Add 1 message to each stream
+    for stream in streams:
+        r.xadd(stream, {"field": "value"})
+
+    # Consumer reads a message from each stream
+    messages = r.xreadgroup(consumer_name, consumer_name, streams)
+    assert len(messages) == len(streams)
+
+
 def test_xadd_change_time(r: redis.Redis):
     res = r.xadd("foobar", {"a": "1"})
     ts, seq = res.decode().split("-")

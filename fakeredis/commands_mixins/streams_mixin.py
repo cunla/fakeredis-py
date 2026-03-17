@@ -121,13 +121,7 @@ class StreamsCommandsMixin:
                 raise SimpleError(
                     msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(left_args[i].decode(), group_name.decode())
                 )
-            group_params.append(
-                (
-                    group,
-                    left_args[i],
-                    left_args[i + num_streams],
-                )
-            )
+            group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
             res = self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
@@ -136,7 +130,7 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
         if self._client_info.protocol_version == 2:
-            return [res] if res else None
+            return [[k, v] for k, v in res.items()] if res else None
         return res
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
