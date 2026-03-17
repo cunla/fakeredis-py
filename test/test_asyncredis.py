@@ -285,3 +285,17 @@ async def test_async_lock(async_redis: redis.Redis):
         pass
 
     assert not await lock.locked()  # already released
+
+
+@pytest.mark.asyncio
+async def test_async_xread(async_redis: redis.Redis):
+    task = asyncio.create_task(async_redis.xread({"stream": "$"}, block=0))
+    await asyncio.sleep(0)
+    await async_redis.xadd("stream", {"data": "data"}, maxlen=1000, approximate=True)
+    messages = await task
+    assert len(messages) == 1
+    protocol_version = testtools.get_protocol_version(async_redis)
+    if protocol_version == 2:
+        assert messages[0][0] == b"stream"
+    else:
+        assert b"stream" in messages
