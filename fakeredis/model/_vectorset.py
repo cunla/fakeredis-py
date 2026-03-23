@@ -52,7 +52,8 @@ class Vector:
             return [self.quantization.encode(), raw_bytes, self.l2_norm, scale, zero_point]
         if self.quantization == "bin":
             return [self.quantization.encode(), raw_bytes, self.l2_norm]
-        return self.values
+
+        return [b"f32", raw_bytes, self.l2_norm]
 
     def similarity(self, other: Vector) -> float:
         me = np.array(self.values)

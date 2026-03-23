@@ -121,9 +121,9 @@ class VectorSetCommandsMixin:
         return 1
 
     @command(name="VEMB", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vemb(self, key: CommandItem, element: bytes, *args: bytes):
+    def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> List[float]:
         if key.value is None:
-            raise SimpleError(VSET_ERR_NOTEXIST)
+            return None
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if element not in key.value:
