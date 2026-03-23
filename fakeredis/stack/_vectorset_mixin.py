@@ -1,8 +1,8 @@
+import itertools
 import random
 import struct
-from itertools import islice
-from typing import Any, List, Optional, Union, Dict
 from collections import OrderedDict
+from typing import Any, List, Optional, Union, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem, StringTest
@@ -92,7 +92,7 @@ class VectorSetCommandsMixin:
                 i += 2
                 if i + num_values > len(args):  # VALUES num_values values element
                     raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
-                vector_values = [float(v) for v in args[i : i + num_values]]
+                vector_values = [float(v) for v in args[i: i + num_values]]
                 name = args[i + num_values]
                 i += num_values + 1
             elif casematch(args[i], b"setattr") and i + 1 < len(args):
@@ -115,7 +115,7 @@ class VectorSetCommandsMixin:
         if vector_set.exists(name):
             return 0
 
-        vector = Vector(name, vector_values, attributes or b"", quantization or "int8", ef)
+        vector = Vector(name, vector_values, attributes, quantization or "int8", ef)
         vector_set.add(vector, numlinks or 16)
         key.update(vector_set)
         return 1
@@ -189,7 +189,7 @@ class VectorSetCommandsMixin:
         return res
 
     @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vsim(self, key: CommandItem, *args: bytes) -> Union[List[str], Dict[str, float]]:
+    def vsim(self, key: CommandItem, *args: bytes) -> Union[List[bytes], Dict[bytes, float]]:
         """
         VSIM key (ELE | FP32 | VALUES num) (vector | element) [WITHSCORES] [WITHATTRIBS] [COUNT num]
           [EPSILON delta] [EF search-exploration-factor] [FILTER expression] [FILTER-EF max-filtering-effort]
@@ -225,7 +225,7 @@ class VectorSetCommandsMixin:
                 i += 2
                 if i + num_values > len(args):  # VALUES num_values values element
                     raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
-                vector_values = [float(v) for v in args[i : i + num_values]]
+                vector_values = [float(v) for v in args[i: i + num_values]]
                 vector = Vector.from_vector_values(vector_values)
                 i += num_values
             elif casematch(args[i], b"withscores"):
@@ -258,12 +258,19 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res: Dict[bytes, float] = {v.name: v.similarity(vector) for v in vector_set}
-        res = OrderedDict(islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
+        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set}
+        if epsilon is not None:
+            res = {k: v for k, v in res.items() if v >= 1 - epsilon}
+        res = OrderedDict(itertools.islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
+        if with_scores and with_attributes:
+            if self._client_info.protocol_version == 2:
+                return list(itertools.chain.from_iterable([[k.name, v, k.attributes] for k, v in res.items()]))
+            return {k.name: [v, k.attributes] for k, v in res.items()}
         if with_scores:
-            return res
-
-        return list(res.keys())
+            return {k.name: v for k, v in res.items()}
+        if with_attributes:
+            return {k.name: k.attributes for k in res}
+        return [k.name for k in res]
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vinfo(self, key: CommandItem):

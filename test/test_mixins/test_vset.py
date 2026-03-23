@@ -689,7 +689,7 @@ def test_randmember_bad_count_type(r: redis.Redis):
         r.vset().vrandmember("myset", count="not_an_integer")
     assert excinfo.value.args[0] == "COUNT value is not an integer"
 
-
+@pytest.mark.fake
 def test_vset_commands_without_decoding_responces(r: redis.Redis):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
@@ -721,6 +721,24 @@ def test_vset_commands_without_decoding_responces(r: redis.Redis):
     assert len(vsim_with_scores) == 3
     assert isinstance(vsim_with_scores, dict)
     assert isinstance(vsim_with_scores[b"elem1"], float)
+
+    # test vsim with scores with attributes
+    vsim_with_scores = r.vset().vsim("myset", input="elem1", with_scores=True, with_attribs=True)
+    assert len(vsim_with_scores) == 3
+    assert isinstance(vsim_with_scores, dict)
+    assert len(vsim_with_scores) == 3
+    assert isinstance(vsim_with_scores, dict)
+    assert isinstance(vsim_with_scores[b"elem1"], dict)
+    assert vsim_with_scores[b"elem1"]["attributes"] is None
+    assert isinstance(vsim_with_scores[b"elem1"]["score"], float)
+
+    # test vsim with attributes
+    vsim_with_scores = r.vset().vsim("myset", input="elem1", with_attribs=True)
+    assert len(vsim_with_scores) == 3
+    assert isinstance(vsim_with_scores, dict)
+    assert len(vsim_with_scores) == 3
+    assert isinstance(vsim_with_scores, dict)
+    assert vsim_with_scores[b"elem1"] is None
 
     # test vlinks - no scores
     element_links_all_layers = r.vset().vlinks("myset", "elem1")

@@ -7,8 +7,8 @@ QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 
 def quantize_int8(x):
-    qmin = -(2.0**7) if (x < 0).any() else 0  # Signed or unsigned range
-    qmax = 2.0**7 - 1 if (x < 0).any() else 2.0**8 - 1
+    qmin = -(2.0 ** 7) if (x < 0).any() else 0  # Signed or unsigned range
+    qmax = 2.0 ** 7 - 1 if (x < 0).any() else 2.0 ** 8 - 1
 
     min_val, max_val = x.min(), x.max()
 
@@ -28,7 +28,7 @@ def quantize_int8(x):
 
 class Vector:
     def __init__(
-        self, name: bytes, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE, ef: int
+            self, name: bytes, values: List[float], attributes: Optional[bytes], quantization: QUANTIZATION_TYPE, ef: int
     ) -> None:
         self.name = name
         self.values = values
@@ -40,6 +40,9 @@ class Vector:
 
     def __repr__(self):
         return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes}, quantization={self.quantization})"
+
+    def __hash__(self):
+        return hash(self.name)
 
     @classmethod
     def from_vector_values(cls, values: List[float]) -> Vector:
@@ -103,19 +106,19 @@ class VectorSet:
         }
 
     def range(
-        self,
-        min_value: Optional[bytes],
-        include_min: bool,
-        max_value: Optional[bytes],
-        include_max: bool,
-        count: Optional[int],
+            self,
+            min_value: Optional[bytes],
+            include_min: bool,
+            max_value: Optional[bytes],
+            include_max: bool,
+            count: Optional[int],
     ) -> List[bytes]:
         if count is not None and count < 0:
             count = None
         res: List[bytes] = []
         for name in self._vectors.keys():
             if (min_value is None or name > min_value or (include_min and name == min_value)) and (
-                max_value is None or name < max_value or (include_max and name == max_value)
+                    max_value is None or name < max_value or (include_max and name == max_value)
             ):
                 res.append(name)
             if count is not None and len(res) >= count:
