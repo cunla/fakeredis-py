@@ -20,10 +20,8 @@ class StreamsCommandsMixin:
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
-        (nomkstream, limit, maxlen, minid), left_args = extract_args(
-            args,
-            ("nomkstream", "+limit", "~+maxlen", "~minid"),
-            error_on_unexpected=False,
+        (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
+            args, ("nomkstream", "+limit", "~+maxlen", "~minid", "*idmpauto", "**idmp"), error_on_unexpected=False
         )
         if nomkstream and key.value is None:
             return None
@@ -34,7 +32,14 @@ class StreamsCommandsMixin:
         stream = key.value if key.value is not None else XStream()
         if self.version < (7,) and entry_key != b"*" and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
-        res: Optional[bytes] = stream.add(elements, entry_key=entry_key)
+        producer_id, idempotent_id = None, None
+        if idmp is not None:
+            producer_id, idempotent_id = idmp
+        if idmpauto is not None:
+            producer_id = idmpauto
+        res: Optional[bytes] = stream.add(
+            elements, entry_key=entry_key, producer_id=producer_id, idempotent_id=idempotent_id
+        )
         if res is None:
             if not StreamRangeTest.valid_key(left_args[0]):
                 raise SimpleError(msgs.XADD_INVALID_ID)
@@ -60,20 +65,12 @@ class StreamsCommandsMixin:
     def xlen(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @command(
-        name="XRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
+    @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
-    @command(
-        name="XREVRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
+    @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
@@ -143,11 +140,7 @@ class StreamsCommandsMixin:
         res: int = key.value.delete(args)
         return res
 
-    @command(
-        name="XACK",
-        fixed=(Key(XStream), bytes),
-        repeat=(bytes,),
-    )
+    @command(name="XACK", fixed=(Key(XStream), bytes), repeat=(bytes,))
     def xack(self, key: CommandItem, group_name: bytes, *args: bytes) -> int:
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xack"))
@@ -307,6 +300,25 @@ class StreamsCommandsMixin:
         if self.version >= (7,):
             res.append([msg.encode() for msg in msgs_removed])
         return res
+
+    @command(name="XCFGSET", fixed=(Key(XStream),), repeat=(bytes,))
+    def xcfgset(self, key: CommandItem, *args: bytes) -> SimpleString:
+        stream = key.value
+        if stream is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        (duration, max_size), _ = extract_args(args, ("+idmp-duration", "+idmp-maxsize"))
+        if duration is not None:
+            if 1 <= duration <= 86400:
+                stream.set_idmp_duration(duration)
+            else:
+                raise SimpleError("ERR IDMP-DURATION must be between 1 and 86400 seconds")
+        if max_size is not None:
+            if 1 <= max_size <= 10000:
+                stream.set_idmp_duration(max_size)
+            else:
+                raise SimpleError("ERR IDMP-MAXSIZE must be between 1 and 10000 entries")
+        key.update(stream)
+        return OK
 
     @staticmethod
     def _xrange(

@@ -7,7 +7,11 @@ tags:
 toc_depth: 2
 ---
 
-## v2.34.2
+## v2.35.0
+
+### 🚀 Features
+
+- Support for idempotent message processing introduced in Redis 8.6 #461
 
 ### 🐛 Bug Fixes
 
