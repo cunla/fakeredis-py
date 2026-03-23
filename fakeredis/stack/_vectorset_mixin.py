@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem, StringTest
-from fakeredis._helpers import OK, SimpleError, casematch
+from fakeredis._helpers import SimpleError, casematch
 from fakeredis.model import VectorSet, Vector
 
 VSET_ERR_NOTEXIST = "ERR key does not exist"
@@ -15,9 +15,6 @@ class VectorSetCommandsMixin:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-
-    def _set_attributes(self, v: Vector, attr: bytes) -> None:
-        v.attributes = attr
 
     @command(name="VCARD", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vcard(self, key: CommandItem) -> Optional[bytes]:
@@ -53,8 +50,9 @@ class VectorSetCommandsMixin:
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if member not in key.value:
             return 0
-        self._set_attributes(key.value[member], attr)
-        return OK
+        key.value[member].attributes = attr
+        key.update(key.value)
+        return 1
 
     @command(name="VADD", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def vadd(self, key: CommandItem, *args: bytes) -> int:
