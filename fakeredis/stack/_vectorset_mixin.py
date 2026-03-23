@@ -1,6 +1,8 @@
 import random
 import struct
-from typing import Any, List, Optional, Union
+from itertools import islice
+from typing import Any, List, Optional, Union, Dict
+from collections import OrderedDict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem, StringTest
@@ -113,7 +115,7 @@ class VectorSetCommandsMixin:
         if vector_set.exists(name):
             return 0
 
-        vector = Vector(name.decode(), vector_values, attributes or b"", quantization or "int8", ef)
+        vector = Vector(name, vector_values, attributes or b"", quantization or "int8", ef)
         vector_set.add(vector, numlinks or 16)
         key.update(vector_set)
         return 1
@@ -187,7 +189,7 @@ class VectorSetCommandsMixin:
         return res
 
     @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vsim(self, key: CommandItem, *args: bytes) -> List[bytes]:
+    def vsim(self, key: CommandItem, *args: bytes) -> Union[List[str], Dict[str, float]]:
         """
         VSIM key (ELE | FP32 | VALUES num) (vector | element) [WITHSCORES] [WITHATTRIBS] [COUNT num]
           [EPSILON delta] [EF search-exploration-factor] [FILTER expression] [FILTER-EF max-filtering-effort]
@@ -199,7 +201,7 @@ class VectorSetCommandsMixin:
             raise SimpleError(msgs.WRONGTYPE_MSG)
         vector_set: VectorSet = key.value
         vector: Optional[Vector] = None  # The vector to compare against.
-        with_scores, with_attributes, count, epsilon = False, False, None, None
+        with_scores, with_attributes, count, epsilon = False, False, 10, None
         i = 0
         while i < len(args):
             if casematch(args[i], b"ele") and i + 1 < len(args):
@@ -256,11 +258,12 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res = []
-        for vec in vector_set:
-            sim = vec.similarity(vector)
+        res: Dict[bytes, float] = {v.name: v.similarity(vector) for v in vector_set}
+        res = OrderedDict(islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
+        if with_scores:
+            return res
 
-        return 0
+        return list(res.keys())
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vinfo(self, key: CommandItem):

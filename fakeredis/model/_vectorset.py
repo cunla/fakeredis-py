@@ -28,7 +28,7 @@ def quantize_int8(x):
 
 class Vector:
     def __init__(
-        self, name: str, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE, ef: int
+        self, name: bytes, values: List[float], attributes: bytes, quantization: QUANTIZATION_TYPE, ef: int
     ) -> None:
         self.name = name
         self.values = values
@@ -58,7 +58,7 @@ class Vector:
     def similarity(self, other: Vector) -> float:
         me = np.array(self.values)
         other = np.array(other.values)
-        return np.dot(me, other) / (np.linalg.norm(me) * np.linalg.norm(other))
+        return float(np.dot(me, other) / (np.linalg.norm(me) * np.linalg.norm(other)))
 
 
 class VectorSet:
@@ -82,8 +82,8 @@ class VectorSet:
         return name in self._vectors
 
     def add(self, vector: Vector, numlinks: int) -> None:
-        self._vectors[vector.name.encode()] = vector
-        self._links[vector.name.encode()] = numlinks  # type: ignore
+        self._vectors[vector.name] = vector
+        self._links[vector.name] = numlinks  # type: ignore
 
     def remove(self, name: bytes) -> int:
         if name not in self._vectors:

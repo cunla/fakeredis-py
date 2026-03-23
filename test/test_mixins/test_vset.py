@@ -223,7 +223,7 @@ def test_vsim_with_scores(r: redis.Redis):
     assert len(vsim) == 10
     assert isinstance(vsim, dict)
     assert isinstance(vsim[b"elem1"], float)
-    assert 0 <= vsim[b"elem1"] <= 1
+    assert vsim[b"elem1"] >= 0.99
 
 
 def test_vsim_with_different_vector_input_types(r: redis.Redis):
