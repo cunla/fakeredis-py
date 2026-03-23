@@ -301,9 +301,23 @@ class StreamsCommandsMixin:
             res.append([msg.encode() for msg in msgs_removed])
         return res
 
-    @command(name="XCFGSET", fixed=(Key(),), repeat=(bytes,))
+    @command(name="XCFGSET", fixed=(Key(XStream),), repeat=(bytes,))
     def xcfgset(self, key: CommandItem, *args: bytes) -> SimpleString:
-        pass  # TODO
+        stream = key.value
+        if stream is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        (duration, max_size), _ = extract_args(args, ("+idmp-duration", "+idmp-maxsize"))
+        if duration is not None:
+            if 1 <= duration <= 86400:
+                stream.set_idmp_duration(duration)
+            else:
+                raise SimpleError("ERR IDMP-DURATION must be between 1 and 86400 seconds")
+        if max_size is not None:
+            if 1 <= max_size <= 10000:
+                stream.set_idmp_duration(max_size)
+            else:
+                raise SimpleError("ERR IDMP-MAXSIZE must be between 1 and 10000 entries")
+        return OK
 
     @staticmethod
     def _xrange(

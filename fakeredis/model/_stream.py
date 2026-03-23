@@ -310,6 +310,16 @@ class XStream(BaseModel):
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
         self._last_generated_id: Optional[bytes] = None
+        self._idmp_duration: int = 100
+        self._idmp_max_size: int = 100
+
+    def set_idmp_duration(self, duration: int) -> None:
+        if duration is not None and 1 <= duration <= 86400:
+            self._idmp_duration = duration
+
+    def set_idmp_max_size(self, max_size: int) -> None:
+        if max_size is not None and 1 <= max_size <= 10000:
+            self._idmp_max_size = max_size
 
     def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
         return self._groups.get(group_name, None)
@@ -352,8 +362,8 @@ class XStream(BaseModel):
             b"max-deleted-entry-id": self._max_deleted_id.encode(),
             b"entries-added": self._entries_added,
             b"recorded-first-entry-id": self._ids[0].encode() if len(self._ids) > 0 else b"0-0",
-            b"idmp-duration": 0,  # TODO
-            b"idmp-maxsize": 0,  # TODO
+            b"idmp-duration": self._idmp_duration,
+            b"idmp-maxsize": self._idmp_max_size,
             b"pids-tracked": 0,  # TODO
             b"iids-tracked": 0,  # TODO
             b"iids-added": 0,  # TODO

@@ -975,3 +975,22 @@ def test_xinfo_stream_idempotent_fields(r: redis.Redis):
     assert info["iids-tracked"] == 2  # Two iids tracked
     assert info["iids-added"] == 2  # Two unique entries
     assert info["iids-duplicates"] == 1  # Still one duplicate
+
+
+@pytest.mark.min_server("8.6")
+def test_xinfo_stream_idempotent_fields_config(r: redis.Redis):
+    stream = "stream"
+    r.xadd(stream, {"foo": "bar"})
+    r.xcfgset(stream, 300)
+    info = r.xinfo_stream(stream)
+    assert "idmp-duration" in info
+    assert "idmp-maxsize" in info
+    assert info["idmp-duration"] == 300
+
+    with pytest.raises(redis.ResponseError) as excinfo:
+        testtools.raw_command(r, "XCFGSET", stream, "idmp-duration", -1)
+    assert str(excinfo.value) == "IDMP-DURATION must be between 1 and 86400 seconds"
+
+    with pytest.raises(redis.ResponseError) as excinfo:
+        testtools.raw_command(r, "XCFGSET", stream, "idmp-maxsize", -1)
+    assert str(excinfo.value) == "IDMP-MAXSIZE must be between 1 and 10000 entries"
