@@ -981,6 +981,7 @@ def test_xinfo_stream_idempotent_fields(r: redis.Redis):
 
 
 @pytest.mark.min_server("8.6")
+@testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xinfo_stream_idempotent_fields_config(r: redis.Redis):
     stream = "stream"
     r.xadd(stream, {"foo": "bar"})
