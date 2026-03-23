@@ -870,6 +870,7 @@ def test_xinfo_groups_pending(r: redis.Redis):
 
 
 @pytest.mark.min_server("8.6")
+@testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xadd_idmp(r: redis.Redis):
     stream = "stream"
 
