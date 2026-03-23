@@ -189,44 +189,65 @@ class VectorSetCommandsMixin:
         return res
 
     @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vsim(self, key: CommandItem, *args: bytes) -> int:
+    def vsim(self, key: CommandItem, *args: bytes) -> List[bytes]:
         """
         VSIM key (ELE | FP32 | VALUES num) (vector | element) [WITHSCORES] [WITHATTRIBS] [COUNT num]
           [EPSILON delta] [EF search-exploration-factor] [FILTER expression] [FILTER-EF max-filtering-effort]
           [TRUTH] [NOTHREAD]
         """
         if key.value is None:
-            raise SimpleError(VSET_ERR_NOTEXIST)
+            return []
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        i = 0
+        vector_set: VectorSet = key.value
         vector: Optional[Vector] = None  # The vector to compare against.
+        with_scores, with_attributes, count, epsilon = False, False, None, None
+        i = 0
         while i < len(args):
             if casematch(args[i], b"ele") and i + 1 < len(args):
+                if vector is not None:
+                    raise SimpleError("ERR ELE | FP32 | VALUES num")
                 vector = key.value.get(args[i + 1])
                 if vector is None:
-                    raise SimpleError("ERR element not found in vector set")
+                    raise SimpleError("ERR element not found in set")
                 i += 2
             elif casematch(args[i], b"fp32") and i + 2 < len(args):
-                i += 3
+                if vector is not None:
+                    raise SimpleError("ERR ELE | FP32 | VALUES num")
+                byte_array = args[i + 1]
+                vector_values = list(struct.unpack(f"{len(byte_array) // 4}f", byte_array))
+                vector = Vector.from_vector_values(vector_values)
+                i += 2
             elif casematch(args[i], b"values") and i + 1 < len(args):
+                if vector is not None:
+                    raise SimpleError("ERR ELE | FP32 | VALUES num")
                 num_values = int(args[i + 1])
-
-                i += 2 + num_values
+                i += 2
+                if i + num_values > len(args):  # VALUES num_values values element
+                    raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
+                vector_values = [float(v) for v in args[i : i + num_values]]
+                vector = Vector.from_vector_values(vector_values)
+                i += num_values
             elif casematch(args[i], b"withscores"):
+                with_scores = True
                 i += 1
             elif casematch(args[i], b"withattribs"):
+                with_attributes = True
                 i += 1
             elif casematch(args[i], b"count") and i + 1 < len(args):
-                # count for limiting number of results, not supported in this basic implementation
+                count = int(args[i + 1])
                 i += 2
             elif casematch(args[i], b"epsilon") and i + 1 < len(args):
+                epsilon = float(args[i + 1])
                 i += 2
             elif casematch(args[i], b"ef") and i + 1 < len(args):
+                ef = int(args[i + 1])
                 i += 2
             elif casematch(args[i], b"filter") and i + 1 < len(args):
+                filter_expression = args[i + 1]
                 i += 2
             elif casematch(args[i], b"filter-ef") and i + 1 < len(args):
+                filter_expression_ef = args[i + 1]
                 i += 2
             elif casematch(args[i], b"truth"):
                 i += 1
@@ -234,7 +255,13 @@ class VectorSetCommandsMixin:
                 i += 1
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        # todo
+
+        if vector is None:
+            raise SimpleError(VSET_ERR_NOTEXIST)
+        res = []
+        for vec in vector_set:
+            sim = vec.similarity(vector)
+
         return 0
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)

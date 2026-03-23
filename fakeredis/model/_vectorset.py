@@ -1,5 +1,5 @@
 import struct
-from typing import List, Dict, Any, Literal, Optional
+from typing import List, Dict, Any, Literal, Optional, Iterator
 
 import numpy as np
 
@@ -41,6 +41,10 @@ class Vector:
     def __repr__(self):
         return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes}, quantization={self.quantization})"
 
+    @classmethod
+    def from_vector_values(cls, values: List[float]) -> Vector:
+        return cls("", values, b"", "int8", 0)
+
     def raw(self) -> List[Any]:
         raw_bytes = struct.pack(f"{len(self.values)}f", *self.values)
         if self.quantization == "int8":
@@ -49,6 +53,11 @@ class Vector:
         if self.quantization == "bin":
             return [self.quantization.encode(), raw_bytes, self.l2_norm]
         return self.values
+
+    def similarity(self, other: Vector) -> float:
+        me = np.array(self.values)
+        other = np.array(other.values)
+        return np.dot(me, other) / (np.linalg.norm(me) * np.linalg.norm(other))
 
 
 class VectorSet:
@@ -119,3 +128,11 @@ class VectorSet:
         if k not in self._vectors:
             raise KeyError(f"Vector with name {k} does not exist.")
         return self._vectors[k]
+
+    def __iter__(self) -> Iterator[Vector]:
+        return iter(self._vectors.values())
+
+    def get(self, k: bytes) -> Optional[Vector]:
+        if k in self._vectors:
+            return self._vectors[k]
+        return None

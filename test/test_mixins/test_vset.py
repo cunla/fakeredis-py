@@ -256,9 +256,10 @@ def test_vsim_unexisting(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(redis.ResponseError) as exc_info:
         r.vset().vsim("myset", input="elem_not_existing")
 
+    assert str(exc_info.value) == "element not found in set"
     sim = r.vset().vsim("myset_not_existing", input="elem1")
     assert sim == []
 
