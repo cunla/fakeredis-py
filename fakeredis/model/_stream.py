@@ -312,6 +312,9 @@ class XStream(BaseModel):
         self._last_generated_id: Optional[bytes] = None
         self._idmp_duration: int = 100
         self._idmp_max_size: int = 100
+        self._idmp_map: Dict[bytes, Dict[bytes, StreamEntryKey]] = dict()  # producer_id -> idempotent_id -> entry_key
+        self._iids_added: int = 0
+        self._iids_duplicates: int = 0
 
     def set_idmp_duration(self, duration: int) -> None:
         if duration is not None and 1 <= duration <= 86400:
@@ -351,6 +354,8 @@ class XStream(BaseModel):
         return res
 
     def stream_info(self, full: bool) -> List[Any]:
+        iids_tracked = sum([len(v) for v in self._idmp_map.values()])
+
         res: Dict[bytes, Any] = {
             b"length": len(self._ids),
             b"groups": len(self._groups),
@@ -364,10 +369,10 @@ class XStream(BaseModel):
             b"recorded-first-entry-id": self._ids[0].encode() if len(self._ids) > 0 else b"0-0",
             b"idmp-duration": self._idmp_duration,
             b"idmp-maxsize": self._idmp_max_size,
-            b"pids-tracked": 0,  # TODO
-            b"iids-tracked": 0,  # TODO
-            b"iids-added": 0,  # TODO
-            b"iids-duplicates": 0,  # TODO
+            b"pids-tracked": len(self._idmp_map),
+            b"iids-tracked": iids_tracked,
+            b"iids-added": self._iids_added,
+            b"iids-duplicates": self._iids_duplicates,
         }
         if full:
             res[b"entries"] = [self.format_record(i) for i in self._ids]
@@ -394,8 +399,8 @@ class XStream(BaseModel):
         self,
         fields: Sequence[Union[bytes, int]],
         entry_key: str = "*",
-        producer_id: Optional[str] = None,
-        idempotent_id: Optional[str] = None,
+        producer_id: Optional[bytes] = None,
+        idempotent_id: Optional[bytes] = None,
     ) -> Union[None, bytes]:
         """Add entry to a stream.
 
@@ -425,6 +430,12 @@ class XStream(BaseModel):
         if isinstance(entry_key, bytes):
             entry_key = entry_key.decode()
 
+        if producer_id is not None:
+            if idempotent_id is None:
+                idempotent_id = hex(hash(fields)).encode()
+            if producer_id in self._idmp_map and idempotent_id in self._idmp_map[producer_id]:
+                self._iids_duplicates += 1
+                return self._idmp_map[producer_id][idempotent_id].encode()
         if entry_key is None or entry_key == "*":
             ts, seq = int(1000 * time.time()), 0
             if len(self._ids) > 0 and self._ids[-1].ts >= ts and self._ids[-1].seq >= seq:
@@ -450,6 +461,11 @@ class XStream(BaseModel):
         self._values_dict[ts_seq] = list(fields)
         self._entries_added += 1
         self._last_generated_id = ts_seq.encode()
+        if producer_id is not None and idempotent_id is not None:
+            if producer_id not in self._idmp_map:
+                self._idmp_map[producer_id] = dict()
+            self._idmp_map[producer_id][idempotent_id] = ts_seq
+            self._iids_added += 1
         return ts_seq.encode()
 
     def __bool__(self):

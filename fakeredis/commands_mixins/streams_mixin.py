@@ -317,6 +317,7 @@ class StreamsCommandsMixin:
                 stream.set_idmp_duration(max_size)
             else:
                 raise SimpleError("ERR IDMP-MAXSIZE must be between 1 and 10000 entries")
+        key.update(stream)
         return OK
 
     @staticmethod
