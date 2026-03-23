@@ -310,6 +310,19 @@ class XStream(BaseModel):
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
         self._last_generated_id: Optional[bytes] = None
+        self._idmp_duration: int = 100
+        self._idmp_max_size: int = 100
+        self._idmp_map: Dict[bytes, Dict[bytes, StreamEntryKey]] = dict()  # producer_id -> idempotent_id -> entry_key
+        self._iids_added: int = 0
+        self._iids_duplicates: int = 0
+
+    def set_idmp_duration(self, duration: int) -> None:
+        if duration is not None and 1 <= duration <= 86400:
+            self._idmp_duration = duration
+
+    def set_idmp_max_size(self, max_size: int) -> None:
+        if max_size is not None and 1 <= max_size <= 10000:
+            self._idmp_max_size = max_size
 
     def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
         return self._groups.get(group_name, None)
@@ -341,6 +354,8 @@ class XStream(BaseModel):
         return res
 
     def stream_info(self, full: bool) -> List[Any]:
+        iids_tracked = sum([len(v) for v in self._idmp_map.values()])
+
         res: Dict[bytes, Any] = {
             b"length": len(self._ids),
             b"groups": len(self._groups),
@@ -352,6 +367,12 @@ class XStream(BaseModel):
             b"max-deleted-entry-id": self._max_deleted_id.encode(),
             b"entries-added": self._entries_added,
             b"recorded-first-entry-id": self._ids[0].encode() if len(self._ids) > 0 else b"0-0",
+            b"idmp-duration": self._idmp_duration,
+            b"idmp-maxsize": self._idmp_max_size,
+            b"pids-tracked": len(self._idmp_map),
+            b"iids-tracked": iids_tracked,
+            b"iids-added": self._iids_added,
+            b"iids-duplicates": self._iids_duplicates,
         }
         if full:
             res[b"entries"] = [self.format_record(i) for i in self._ids]
@@ -374,7 +395,13 @@ class XStream(BaseModel):
                 res += 1
         return res
 
-    def add(self, fields: Sequence[Union[bytes, int]], entry_key: str = "*") -> Union[None, bytes]:
+    def add(
+        self,
+        fields: Sequence[Union[bytes, int]],
+        entry_key: str = "*",
+        producer_id: Optional[bytes] = None,
+        idempotent_id: Optional[bytes] = None,
+    ) -> Union[None, bytes]:
         """Add entry to a stream.
 
         If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
@@ -387,6 +414,12 @@ class XStream(BaseModel):
             on the last entry key of the stream.
             If entry_key is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
             then the sequence will be calculated accordingly.
+        :param producer_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
+        :param idempotent_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
         :returns:
             The key of the added entry.
             None if nothing was added.
@@ -397,6 +430,12 @@ class XStream(BaseModel):
         if isinstance(entry_key, bytes):
             entry_key = entry_key.decode()
 
+        if producer_id is not None:
+            if idempotent_id is None:
+                idempotent_id = hex(hash(fields)).encode()
+            if producer_id in self._idmp_map and idempotent_id in self._idmp_map[producer_id]:
+                self._iids_duplicates += 1
+                return self._idmp_map[producer_id][idempotent_id].encode()
         if entry_key is None or entry_key == "*":
             ts, seq = int(1000 * time.time()), 0
             if len(self._ids) > 0 and self._ids[-1].ts >= ts and self._ids[-1].seq >= seq:
@@ -422,6 +461,11 @@ class XStream(BaseModel):
         self._values_dict[ts_seq] = list(fields)
         self._entries_added += 1
         self._last_generated_id = ts_seq.encode()
+        if producer_id is not None and idempotent_id is not None:
+            if producer_id not in self._idmp_map:
+                self._idmp_map[producer_id] = dict()
+            self._idmp_map[producer_id][idempotent_id] = ts_seq
+            self._iids_added += 1
         return ts_seq.encode()
 
     def __bool__(self):
