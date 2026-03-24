@@ -92,7 +92,7 @@ class VectorSetCommandsMixin:
                 i += 2
                 if i + num_values > len(args):  # VALUES num_values values element
                     raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
-                vector_values = [float(v) for v in args[i: i + num_values]]
+                vector_values = [float(v) for v in args[i : i + num_values]]
                 name = args[i + num_values]
                 i += num_values + 1
             elif casematch(args[i], b"setattr") and i + 1 < len(args):
@@ -201,7 +201,7 @@ class VectorSetCommandsMixin:
             raise SimpleError(msgs.WRONGTYPE_MSG)
         vector_set: VectorSet = key.value
         vector: Optional[Vector] = None  # The vector to compare against.
-        with_scores, with_attributes, count, epsilon = False, False, 10, None
+        with_scores, with_attributes, count, epsilon, filter_expression = False, False, 10, None, None
         i = 0
         while i < len(args):
             if casematch(args[i], b"ele") and i + 1 < len(args):
@@ -225,7 +225,7 @@ class VectorSetCommandsMixin:
                 i += 2
                 if i + num_values > len(args):  # VALUES num_values values element
                     raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
-                vector_values = [float(v) for v in args[i: i + num_values]]
+                vector_values = [float(v) for v in args[i : i + num_values]]
                 vector = Vector.from_vector_values(vector_values)
                 i += num_values
             elif casematch(args[i], b"withscores"):
@@ -258,7 +258,7 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set}
+        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set if v.accept_filter(filter_expression)}
         if epsilon is not None:
             res = {k: v for k, v in res.items() if v >= 1 - epsilon}
         res = OrderedDict(itertools.islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
