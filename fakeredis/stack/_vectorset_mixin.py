@@ -211,7 +211,7 @@ class VectorSetCommandsMixin:
                 if vector is None:
                     raise SimpleError("ERR element not found in set")
                 i += 2
-            elif casematch(args[i], b"fp32") and i + 2 < len(args):
+            elif casematch(args[i], b"fp32") and i + 1 < len(args):
                 if vector is not None:
                     raise SimpleError("ERR ELE | FP32 | VALUES num")
                 byte_array = args[i + 1]
