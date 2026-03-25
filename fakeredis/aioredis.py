@@ -111,7 +111,27 @@ class FakeWriter:
             self._socket.sendall(chunk)  # type:ignore
 
 
-class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
+class FakeConnection(FakeBaseConnectionMixin):
+    manifested_connection_classes = {}
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "FakeConnection":
+        """Inherit dynamically from the correct Connection class.
+
+        Currently, only Valkey is a special case.
+        """
+
+        connection_class = kwargs.get("connection_class", redis_async.Connection)
+
+        if connection_class not in cls.manifested_connection_classes:
+            module_name, _, _ = connection_class.__module__.partition(".")
+            new_class_name = f"Fake{module_name.title()}Connection"
+            base_class = type(new_class_name, (cls, connection_class), {})
+            cls.manifested_connection_classes[connection_class] = base_class
+        else:
+            base_class = cls.manifested_connection_classes[connection_class]
+
+        return object.__new__(base_class)
+
     async def _connect(self) -> None:
         if not self._server.connected:
             raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
@@ -247,7 +267,14 @@ class FakeRedisMixin:
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+            if server_type == "valkey":
+                import valkey.asyncio.connection
+
+                v_pool = valkey.asyncio.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+                kwds["connection_pool"] = v_pool
+            else:
+                r_pool = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+                kwds["connection_pool"] = r_pool
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

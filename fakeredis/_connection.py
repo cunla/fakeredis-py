@@ -11,7 +11,27 @@ from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 
 
-class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
+class FakeConnection(FakeBaseConnectionMixin):
+    manifested_connection_classes = {}
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "FakeConnection":
+        """Inherit dynamically from the correct Connection class.
+
+        Currently, only Valkey is a special case.
+        """
+
+        connection_class = kwargs.get("connection_class", redis.Connection)
+
+        if connection_class not in cls.manifested_connection_classes:
+            module_name, _, _ = connection_class.__module__.partition(".")
+            new_class_name = f"Fake{module_name.title()}Connection"
+            base_class = type(new_class_name, (cls, connection_class), {})
+            cls.manifested_connection_classes[connection_class] = base_class
+        else:
+            base_class = cls.manifested_connection_classes[connection_class]
+
+        return object.__new__(base_class)
+
     def __init__(*args: Any, **kwargs: Any) -> None:
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
@@ -148,7 +168,14 @@ class FakeRedisMixin:
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)
+            if server_type == "valkey":
+                import valkey.connection
+
+                valkey_pool = valkey.connection.ConnectionPool(**connection_kwargs)
+                kwds["connection_pool"] = valkey_pool
+            else:
+                redis_pool = redis.connection.ConnectionPool(**connection_kwargs)
+                kwds["connection_pool"] = redis_pool
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

@@ -17,6 +17,7 @@ def _validate_server_type(args_dict: Dict[str, Any]) -> None:
 class FakeValkey(FakeRedisMixin, valkey.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
+        kwargs["connection_class"] = valkey.Connection
         super().__init__(*args, **kwargs)
 
     @classmethod
@@ -27,6 +28,7 @@ class FakeValkey(FakeRedisMixin, valkey.Valkey):
 class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _validate_server_type(kwargs)
+        kwargs["connection_class"] = valkey.Connection
         super(FakeStrictValkey, self).__init__(*args, **kwargs)
 
     @classmethod
@@ -38,6 +40,7 @@ class FakeAsyncValkey(FakeAsyncRedisMixin, valkey.asyncio.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault("client_class", valkey.asyncio.Valkey)
         _validate_server_type(kwargs)
+        kwargs["connection_class"] = valkey.asyncio.connection.Connection
         super(FakeAsyncValkey, self).__init__(*args, **kwargs)
 
     @classmethod
