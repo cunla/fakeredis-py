@@ -13,6 +13,11 @@ pytestmark.extend(
 )
 
 
+def test_cms_type(r: redis.Redis):
+    assert r.cms().initbydim("cmsDim", 100, 5)
+    assert r.type("cmsDim") == b"CMSk-TYPE"
+
+
 def test_cms_create(r: redis.Redis):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbyprob("cmsProb", 0.01, 0.01)

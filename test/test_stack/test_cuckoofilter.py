@@ -14,6 +14,12 @@ pytestmark.extend(
 
 
 @pytest.mark.min_server("7")
+def test_cf_type(r: redis.Redis):
+    assert r.cf().create("cuckoo", 1000)
+    assert r.type("cuckoo") == b"MBbloomCF"
+
+
+@pytest.mark.min_server("7")
 def test_cf_add_and_insert(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")

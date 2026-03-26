@@ -1,23 +1,11 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
 
-from typing import Optional, Tuple, List, Any, Dict
-
-import probables
+from typing import Tuple, List, Any, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, CommandItem, Int, Key, Float
 from fakeredis._helpers import OK, SimpleString, SimpleError, casematch, Database
-
-
-class CountMinSketch(probables.CountMinSketch):
-    def __init__(
-        self,
-        width: Optional[int] = None,
-        depth: Optional[int] = None,
-        probability: Optional[float] = None,
-        error_rate: Optional[float] = None,
-    ):
-        super().__init__(width=width, depth=depth, error_rate=error_rate, confidence=probability)
+from fakeredis.model import CountMinSketch
 
 
 class CMSCommandsMixin:

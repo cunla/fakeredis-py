@@ -2,36 +2,12 @@
 
 from typing import Any, List, Union, Dict
 
-from probables import ExpandingBloomFilter
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Float, Int
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
-
-
-class ScalableBloomFilter(ExpandingBloomFilter):
-    NO_GROWTH = 0
-
-    def __init__(self, capacity: int = 100, error_rate: float = 0.001, scale: int = 2):
-        super().__init__(capacity, error_rate)
-        self.scale: int = scale
-
-    def add_item(self, key: bytes) -> bool:
-        if key in self:
-            return True
-        if self.scale == self.NO_GROWTH and self.elements_added >= self.estimated_elements:
-            raise SimpleError(msgs.FILTER_FULL_MSG)
-        super(ScalableBloomFilter, self).add(key)
-        return False
-
-    @classmethod
-    def bf_frombytes(cls, b: bytes, **kwargs: Any) -> "ScalableBloomFilter":
-        size, est_els, added_els, fpr = cls._parse_footer(b)
-        blm = ScalableBloomFilter(capacity=est_els, error_rate=fpr)
-        blm._parse_blooms(b, size)
-        blm._added_elements = added_els
-        return blm
+from fakeredis.model import ScalableBloomFilter
 
 
 class BFCommandsMixin:

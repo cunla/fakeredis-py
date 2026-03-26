@@ -20,10 +20,8 @@ class StreamsCommandsMixin:
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
-        (nomkstream, limit, maxlen, minid), left_args = extract_args(
-            args,
-            ("nomkstream", "+limit", "~+maxlen", "~minid"),
-            error_on_unexpected=False,
+        (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
+            args, ("nomkstream", "+limit", "~+maxlen", "~minid", "*idmpauto", "**idmp"), error_on_unexpected=False
         )
         if nomkstream and key.value is None:
             return None
@@ -34,7 +32,14 @@ class StreamsCommandsMixin:
         stream = key.value if key.value is not None else XStream()
         if self.version < (7,) and entry_key != b"*" and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
-        res: Optional[bytes] = stream.add(elements, entry_key=entry_key)
+        producer_id, idempotent_id = None, None
+        if idmp is not None:
+            producer_id, idempotent_id = idmp
+        if idmpauto is not None:
+            producer_id = idmpauto
+        res: Optional[bytes] = stream.add(
+            elements, entry_key=entry_key, producer_id=producer_id, idempotent_id=idempotent_id
+        )
         if res is None:
             if not StreamRangeTest.valid_key(left_args[0]):
                 raise SimpleError(msgs.XADD_INVALID_ID)
@@ -60,40 +65,19 @@ class StreamsCommandsMixin:
     def xlen(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @command(
-        name="XRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
+    @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
-    @command(
-        name="XREVRANGE",
-        fixed=(Key(XStream), StreamRangeTest, StreamRangeTest),
-        repeat=(bytes,),
-    )
+    @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
     def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
     def xread(self, *args: bytes) -> Optional[Dict[str, Any]]:
-        (
-            (
-                count,
-                timeout,
-            ),
-            left_args,
-        ) = extract_args(
-            args,
-            (
-                "+count",
-                "+block",
-            ),
-            error_on_unexpected=False,
-        )
+        ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -137,13 +121,7 @@ class StreamsCommandsMixin:
                 raise SimpleError(
                     msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(left_args[i].decode(), group_name.decode())
                 )
-            group_params.append(
-                (
-                    group,
-                    left_args[i],
-                    left_args[i + num_streams],
-                )
-            )
+            group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
             res = self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
@@ -152,7 +130,7 @@ class StreamsCommandsMixin:
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
         if self._client_info.protocol_version == 2:
-            return [res] if res else None
+            return [[k, v] for k, v in res.items()] if res else None
         return res
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
@@ -162,11 +140,7 @@ class StreamsCommandsMixin:
         res: int = key.value.delete(args)
         return res
 
-    @command(
-        name="XACK",
-        fixed=(Key(XStream), bytes),
-        repeat=(bytes,),
-    )
+    @command(name="XACK", fixed=(Key(XStream), bytes), repeat=(bytes,))
     def xack(self, key: CommandItem, group_name: bytes, *args: bytes) -> int:
         if len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xack"))
@@ -327,6 +301,25 @@ class StreamsCommandsMixin:
             res.append([msg.encode() for msg in msgs_removed])
         return res
 
+    @command(name="XCFGSET", fixed=(Key(XStream),), repeat=(bytes,))
+    def xcfgset(self, key: CommandItem, *args: bytes) -> SimpleString:
+        stream = key.value
+        if stream is None:
+            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+        (duration, max_size), _ = extract_args(args, ("+idmp-duration", "+idmp-maxsize"))
+        if duration is not None:
+            if 1 <= duration <= 86400:
+                stream.set_idmp_duration(duration)
+            else:
+                raise SimpleError("ERR IDMP-DURATION must be between 1 and 86400 seconds")
+        if max_size is not None:
+            if 1 <= max_size <= 10000:
+                stream.set_idmp_duration(max_size)
+            else:
+                raise SimpleError("ERR IDMP-MAXSIZE must be between 1 and 10000 entries")
+        key.update(stream)
+        return OK
+
     @staticmethod
     def _xrange(
         stream: XStream,
@@ -370,8 +363,8 @@ class StreamsCommandsMixin:
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
-        # On blocking read, when count is not None, and there are no results, return None (instead of an empty list)
-        if blocking and count and len(res) == 0:
+        # On blocking read, and there are no results, return None (instead of an empty list)
+        if blocking and len(res) == 0:
             return None
         if self._client_info.protocol_version == 2:
             return [[k, v] for k, v in res.items()]

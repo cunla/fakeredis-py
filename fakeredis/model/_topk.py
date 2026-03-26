@@ -3,6 +3,8 @@ import random
 import time
 from typing import List, Optional, Tuple
 
+from ._base_type import BaseModel
+
 
 class Bucket(object):
     def __init__(self, counter: int, fingerprint: int):
@@ -53,8 +55,9 @@ class HashArray(object):
         return hash(item) ^ self._seed
 
 
-class HeavyKeeper(object):
+class HeavyKeeper(BaseModel):
     is_topk_initialized = False
+    _model_type = b"TopK-TYPE"
 
     def __init__(self, k: int, width: int = 1024, depth: int = 5, decay: float = 0.9) -> None:
         if not HeavyKeeper.is_topk_initialized:

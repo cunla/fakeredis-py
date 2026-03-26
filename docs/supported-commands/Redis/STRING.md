@@ -1,4 +1,4 @@
-# Redis `string` commands (22/22 implemented)
+# Redis `string` commands (23/23 implemented)
 
 ## [APPEND](https://redis.io/commands/append/)
 
@@ -56,6 +56,10 @@ Atomically returns the string values of one or more keys.
 
 Atomically creates or modifies the string values of one or more keys.
 
+## [MSETEX](https://redis.io/commands/msetex/)
+
+Atomically sets multiple string keys with a shared expiration in a single
+
 ## [MSETNX](https://redis.io/commands/msetnx/)
 
 Atomically modifies the string values of one or more keys only when all keys don't exist.
@@ -87,6 +91,3 @@ Returns the length of a string value.
 ## [SUBSTR](https://redis.io/commands/substr/)
 
 Returns a substring from a string value.
-
-
-

@@ -2,12 +2,11 @@ import itertools
 import queue
 import time
 import weakref
-import logging
 from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
 
 import redis
 
-from fakeredis.model import XStream, ZSet, Hash, ExpiringMembersSet, ClientInfo
+from fakeredis.model import ClientInfo, BaseModel
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
@@ -21,9 +20,7 @@ from ._helpers import (
     QUEUED,
     decode_command_bytes,
 )
-from ._typing import ResponseErrorType
-
-LOGGER = logging.getLogger("fakeredis")
+from ._typing import ResponseErrorType, VersionType, ServerType
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -130,11 +127,11 @@ class BaseFakeSocket:
         return self._client_info.user
 
     @property
-    def version(self) -> Tuple[int, ...]:
+    def version(self) -> VersionType:
         return self._server.version
 
     @property
-    def server_type(self) -> str:
+    def server_type(self) -> ServerType:
         return self._server.server_type
 
     def put_response(self, msg: Any) -> None:
@@ -217,7 +214,8 @@ class BaseFakeSocket:
                 while b"\n" not in buf:
                     buf += yield
                 line, buf = self._extract_line(buf)
-                assert line[:1] == b"$"  # string
+                if line[:1] != b"$":
+                    raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -228,7 +226,6 @@ class BaseFakeSocket:
     def _process_command(self, fields: List[bytes]) -> None:
         if not fields:
             return
-        LOGGER.debug(f">>> {self._client_info.get('raddr')}: {fields}")
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         try:
@@ -287,10 +284,10 @@ class BaseFakeSocket:
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(result)
-                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    assert valid_response_type(result, self._client_info.protocol_version), (
-                        f"Invalid response type for {result}"
-                    )
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
+                    result, self._client_info.protocol_version
+                ):
+                    raise AssertionError(f"Invalid response type for {result}")
         except SimpleError as exc:
             result = exc
         for command_item in command_items:
@@ -452,13 +449,7 @@ class BaseFakeSocket:
             return SimpleString(b"string")
         elif isinstance(key.value, list):
             return SimpleString(b"list")
-        elif isinstance(key.value, ExpiringMembersSet):
-            return SimpleString(b"set")
-        elif isinstance(key.value, ZSet):
-            return SimpleString(b"zset")
-        elif isinstance(key.value, Hash):
-            return SimpleString(b"hash")
-        elif isinstance(key.value, XStream):
-            return SimpleString(b"stream")
+        elif isinstance(key.value, BaseModel):
+            return SimpleString(key.value.model_type())
         else:
             assert False  # pragma: nocover

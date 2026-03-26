@@ -19,6 +19,11 @@ def intlist(obj):
     return [int(v) for v in obj]
 
 
+def test_bf_type(r: redis.Redis):
+    assert r.bf().create("bloom", 0.01, 1000)
+    assert r.type("bloom") == b"MBbloom--"
+
+
 def test_create_bf(r: redis.Redis):
     assert r.bf().create("bloom", 0.01, 1000)
     assert r.bf().create("bloom_e", 0.01, 1000, expansion=1)

@@ -2,11 +2,12 @@ from typing import Iterable, Tuple, Optional, Any, Dict, AnyStr
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time, asbytes
+from ._base_type import BaseModel
 
 
-class Hash:
+class Hash(BaseModel):
     DECODE_ERROR = msgs.INVALID_HASH_MSG
-    redis_type = b"hash"
+    _model_type = b"hash"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

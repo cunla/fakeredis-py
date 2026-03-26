@@ -52,6 +52,12 @@ class InfoClass:
         return getattr(self, k)
 
 
+def test_ts_type(r: redis.Redis):
+    key = "key"
+    r.ts().add(key, "*", 1)
+    assert r.type(key) == b"TSDB-TYPE"
+
+
 def test_add_ts_close(r: redis.Redis):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)
@@ -200,7 +206,9 @@ def test_add_duplicate_policy(r: redis.Redis):
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)
     with pytest.raises(Exception) as e:
         r.ts().add("time-serie-add-ooo-block", 1, 5.0, on_duplicate="block")
-    assert str(e.value) == "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
+    assert str(e.value).startswith(
+        "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
+    )
 
     # Test for duplicate policy LAST
     assert 1 == r.ts().add("time-serie-add-ooo-last", 1, 5.0)

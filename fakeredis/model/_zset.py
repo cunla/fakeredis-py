@@ -3,9 +3,12 @@ from typing import Any, Tuple, Optional, Generator, Dict, ItemsView, Union
 import sortedcontainers
 
 from fakeredis._commands import AfterAny, BeforeAny
+from ._base_type import BaseModel
 
 
-class ZSet:
+class ZSet(BaseModel):
+    _model_type = b"zset"
+
     def __init__(self) -> None:
         self._bylex: Dict[bytes, float] = {}  # Maps value to score
         self._byscore = sortedcontainers.SortedList()

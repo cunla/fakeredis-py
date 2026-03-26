@@ -2,9 +2,12 @@ from typing import List, Dict, Tuple, Union, Optional, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import Database, SimpleError
+from ._base_type import BaseModel
 
 
-class TimeSeries:
+class TimeSeries(BaseModel):
+    _model_type = b"TSDB-TYPE"
+
     def __init__(
         self,
         name: bytes,

@@ -17,6 +17,12 @@ pytestmark.extend(
 
 
 @pytest.mark.min_server("7")
+def test_tdigest_type(r: redis.Redis):
+    assert r.tdigest().create("tDigest", 10)
+    assert r.type("tDigest") == b"TDIS-TYPE"
+
+
+@pytest.mark.min_server("7")
 def test_tdigest_reset(r: redis.Redis):
     assert r.tdigest().create("tDigest", 10)
     # reset on empty histogram

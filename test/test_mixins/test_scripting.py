@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import gc
 import logging
+import weakref
 from typing import cast
 
 import pytest
@@ -720,3 +722,56 @@ def test_lock(r: redis.Redis) -> None:
     lock.acquire()
     assert lock.locked() is True
     lock.release()
+
+
+@testtools.fake_only
+def test_lua_runtime_reused_across_eval_calls(r: redis.Redis) -> None:
+    """LuaRuntime should be cached on FakeServer and reused across eval calls."""
+    server = r.connection_pool.connection_kwargs["server"]
+
+    r.eval("return 1", 0)
+    runtime_id_1 = id(server._lua_runtime)
+
+    r.eval("return 2", 0)
+    runtime_id_2 = id(server._lua_runtime)
+
+    assert runtime_id_1 == runtime_id_2
+
+
+@pytest.mark.fake
+def test_lua_runtime_freed_with_server() -> None:
+    """FakeServer (and its cached LuaRuntime) should be garbage collected when destroyed."""
+    server = fakeredis.FakeServer()
+    r = fakeredis.FakeRedis(server=server)
+
+    r.eval("return 1", 0)
+    assert hasattr(server, "_lua_runtime")
+
+    server_ref = weakref.ref(server)
+    assert server_ref() is not None
+
+    del r
+    del server
+    gc.collect()
+
+    assert server_ref() is None
+
+
+@testtools.fake_only
+def test_lua_state_isolated_between_eval_calls(r: redis.Redis) -> None:
+    """Lua state should not leak between eval calls when runtime is reused."""
+    # First call: set KEYS/ARGV and return them
+    result1 = r.eval("return {KEYS[1], ARGV[1]}", 1, "key1", "arg1")
+    assert result1 == [b"key1", b"arg1"]
+
+    # Second call: different KEYS/ARGV should be independent
+    result2 = r.eval("return {KEYS[1], ARGV[1]}", 1, "key2", "arg2")
+    assert result2 == [b"key2", b"arg2"]
+
+    # Third call: no KEYS/ARGV - verify they're reset (nil in Lua = empty table returned)
+    result3 = r.eval("return {KEYS[1], ARGV[1]}", 0)
+    assert result3 == []  # Lua tables stop at first nil
+
+    # Verify KEYS/ARGV are actually nil, not stale values
+    result4 = r.eval("return KEYS[1] == nil and ARGV[1] == nil", 0)
+    assert result4 == 1  # true in Lua = 1

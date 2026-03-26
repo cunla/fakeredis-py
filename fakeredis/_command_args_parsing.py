@@ -52,13 +52,10 @@ def extract_args(
     - A numerical (Int) parameter is identified with '+'
     - A float (Float) parameter is identified with '.'
     - A non-numerical parameter is identified with a '*'
-    - An argument with potentially ~ or = between the
-      argument name and the value is identified with a '~'
-    - A numberical argument with potentially ~ or = between the
-      argument name and the value marked with a '~+'
+    - An argument with potentially ~ or = between the argument name and the value is identified with a '~'
+    - A numberical argument with potentially ~ or = between the argument name and the value marked with a '~+'
 
-    E.g.
-    '++limit' will translate as an argument with 2 int parameters.
+    E.g. '++limit' will translate as an argument with 2 int parameters.
 
     >>> extract_args((b'nx', b'ex', b'324', b'xx',), ('nx', 'xx', '+ex', 'keepttl'))
     [True, True, 324, False], None

@@ -53,6 +53,7 @@ class CommandsMeta:
     local_filename: str
     stack: str
     url: str
+    markdown_commands: list[str]
 
 
 METADATA = [
@@ -60,37 +61,91 @@ METADATA = [
         ".commands.json",
         "Redis",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
+        [
+            "VADD",
+            "VCARD",
+            "VDIM",
+            "VEMB",
+            "VGETATTR",
+            "VINFO",
+            "VLINKS",
+            "VRANDMEMBER",
+            "VRANGE",
+            "VREM",
+            "VSETATTR",
+            "VSIM",
+            "msetex",
+            "hgetex",
+            "hsetex",
+            "hgetdel",
+            "XCFGSET",
+        ],
     ),
     CommandsMeta(
         ".json.commands.json",
         "RedisJson",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisjson.json",
+        [],
     ),
     CommandsMeta(
         ".ts.commands.json",
         "RedisTimeSeries",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redistimeseries.json",
+        [],
     ),
     CommandsMeta(
         ".ft.commands.json",
         "RedisSearch",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisearch.json",
+        [],
     ),
     CommandsMeta(
         ".bloom.commands.json",
         "RedisBloom",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisbloom.json",
+        [],
     ),
 ]
 
 
-def download_single_stack_commands(filename, url) -> dict:
+def download_command_markdown(command: str) -> dict:
+    url = f"https://raw.githubusercontent.com/redis/docs/refs/heads/main/content/commands/{command.lower()}.md"
+    filename = os.path.join(THIS_DIR, f"{command}.md")
+    if not os.path.exists(filename):
+        contents = requests.get(url).content
+        open(filename, "wb").write(contents)
+    # Read markdown file and extract metadata from the top of the file, which is in the format:
+    # ---
+    # summary: "summary of the command"
+    # group: "group of the command"
+    # ---
+    with open(filename, "r") as f:
+        lines = f.readlines()
+    metadata = {}
+    if lines[0].strip() == "---":
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            metadata[key.strip()] = value.strip().strip('"')
+    return metadata
+
+
+def download_single_stack_commands(filename, url, markdown_commands: list[str]) -> dict:
     full_filename = os.path.join(THIS_DIR, filename)
     if not os.path.exists(full_filename):
         contents = requests.get(url).content
         open(full_filename, "wb").write(contents)
     curr_cmds = json.load(open(full_filename))
     cmds = {k.lower(): v for k, v in curr_cmds.items()}
+    for cmd in markdown_commands:
+        if cmd.lower() not in cmds:
+            try:
+                cmds[cmd.lower()] = download_command_markdown(cmd)
+            except Exception as e:
+                print(f"Failed to download markdown for command {cmd}: {e}")
     return cmds
 
 
@@ -149,7 +204,7 @@ if __name__ == "__main__":
     implemented = implemented_commands()
     non_redis_commands = implemented
     for cmd_meta in METADATA:
-        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url)
+        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
         generate_redis_commands_markdown_files(cmds, implemented, cmd_meta.stack)
         non_redis_commands = non_redis_commands - set(cmds.keys())
     print("Commands not in any redis stack:")

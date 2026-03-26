@@ -7,12 +7,58 @@ tags:
 toc_depth: 2
 ---
 
-## v2.32.2 -
+## v2.35.0
+
+### 🚀 Features
+
+- Support for idempotent message processing introduced in Redis 8.6 #461
 
 ### 🐛 Bug Fixes
 
-- fix: FakeAsyncRedis supports protocol=3 #442
-- fix: TcpFakeServer supports pub/sub #431
+- fix XREADGROUP on multiple streams only returns one message #460
+
+### 🧰 Maintenance
+
+- Update typing-extensions version constraint to support newer versions #458
+
+## v2.34.1
+
+### 🐛 Bug Fixes
+
+- Fix handling of deprecated arguments in `FakeRedis` to support redis-py 7.2.0 #457
+- Blocking `XREAD` with `block=0` works as expected #453
+
+## v2.34.0
+
+### 🚀 Features
+
+- TcpFakeServer supports RESP3 #437
+
+### 🐛 Bug Fixes
+
+- Add missing keys to `XINFO STREAM` #445
+- Caching LuaRuntime to prevent memory leak in eval() @chrisguidry #449 #446
+
+### 🧰 Maintenance
+
+- Refactor models to use BaseModel with redis-type #454
+
+## v2.33.0 - 2025-12-16
+
+### 🚀 Features
+
+- Implement `MSETEX` (From Redis 8.4)
+
+### 🐛 Bug Fixes
+
+- fix[FakeAsyncRedis]: FakeAsyncRedis supports protocol=3 #442
+- fix[TcpFakeServer]: TcpFakeServer supports pub/sub #431
+- fix[TcpFakeServer]: preserve whitespace in bulk strings @oliverhaas #435
+
+### 🧰 Maintenance
+
+- Update tests to support redis-py 7.1.0 and Redis 8.4
+- Async tests run on resp3 and resp2
 
 ## v2.32.1 - 2025-11-05
 

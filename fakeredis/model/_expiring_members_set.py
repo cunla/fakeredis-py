@@ -3,11 +3,12 @@ from typing import Iterable, Optional, Any, Dict, Union, Set
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import Self
+from ._base_type import BaseModel
 
 
-class ExpiringMembersSet:
+class ExpiringMembersSet(BaseModel):
     DECODE_ERROR = msgs.INVALID_HASH_MSG
-    redis_type = b"set"
+    _model_type = b"set"
 
     def __init__(self, values: Optional[Dict[bytes, Optional[int]]] = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
