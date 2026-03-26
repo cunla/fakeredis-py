@@ -1,8 +1,6 @@
 import sys
 from typing import Tuple, Union
 
-import redis
-
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -23,15 +21,27 @@ lib_version = metadata.version("fakeredis")
 VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
 
-RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
-ResponseErrorType = redis.ResponseError
-try:
+try:  # redis + valkey
     import valkey
+    import redis
 
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
     ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]
 except ImportError:
-    pass
+    try:  # redis only
+        import redis
+
+        RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
+        ResponseErrorType = redis.ResponseError
+    except ImportError:
+        pass
+    try:  # Valkey only
+        import valkey
+
+        RaiseErrorTypes = (valkey.ResponseError, valkey.AuthenticationError)
+        ResponseErrorType = valkey.ResponseError
+    except ImportError:
+        pass
 
 __all__ = [
     "Self",
