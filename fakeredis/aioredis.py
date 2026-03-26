@@ -222,24 +222,7 @@ class FakeRedisMixin:
             if errors is not None:
                 warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds["encoding_errors"] = errors
-            conn_pool_args = {
-                "host",
-                "port",
-                "db",
-                "username",
-                "password",
-                "socket_timeout",
-                "encoding",
-                "encoding_errors",
-                "decode_responses",
-                "retry_on_timeout",
-                "max_connections",
-                "health_check_interval",
-                "client_name",
-                "connected",
-                "server",
-                "protocol",
-            }
+            conn_pool_args = convert_args_kwargs(connection_pool_class).keys()
             connection_kwargs = {
                 "connection_class": FakeAsyncConnection,
                 "version": version,
