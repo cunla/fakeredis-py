@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 import warnings
 from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence
 
@@ -12,7 +11,7 @@ from redis.asyncio.connection import DefaultParser
 from . import _fakesocket
 from . import _helpers
 from . import _msgs as msgs
-from ._helpers import SimpleError, get_default_init_kwargs
+from ._helpers import SimpleError, convert_args_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
 from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
 
@@ -210,8 +209,7 @@ class FakeRedisMixin:
         connection_pool_class=redis_async.connection.ConnectionPool,
         **kwargs: Any,
     ) -> None:
-        kwargs.setdefault("host", uuid.uuid4().hex)
-        kwds = get_default_init_kwargs(client_class, *args, **kwargs)
+        kwds = convert_args_kwargs(client_class, *args, **kwargs)
         kwds["server"] = server
         kwds["connected"] = kwargs.get("connected", True)
         if not kwds.get("connection_pool", None):
@@ -224,16 +222,33 @@ class FakeRedisMixin:
             if errors is not None:
                 warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
                 kwds["encoding_errors"] = errors
-            conn_pool_args = get_default_init_kwargs(connection_pool_class).keys()
-            connection_kwargs = dict(
-                connection_class=FakeAsyncConnection,
-                version=version,
-                server_type=server_type,
-                lua_modules=lua_modules,
-                client_class=client_class,
-            )
+            conn_pool_args = {
+                "host",
+                "port",
+                "db",
+                "username",
+                "password",
+                "socket_timeout",
+                "encoding",
+                "encoding_errors",
+                "decode_responses",
+                "retry_on_timeout",
+                "max_connections",
+                "health_check_interval",
+                "client_name",
+                "connected",
+                "server",
+                "protocol",
+            }
+            connection_kwargs = {
+                "connection_class": FakeAsyncConnection,
+                "version": version,
+                "server_type": server_type,
+                "lua_modules": lua_modules,
+                "client_class": client_class,
+            }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

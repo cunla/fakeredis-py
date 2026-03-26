@@ -2,18 +2,16 @@ import inspect
 import re
 import threading
 import time
+import uuid
 import weakref
 from collections import defaultdict
 from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type, MutableMapping
 
-import redis
-
-from fakeredis._typing import ServerType
-
 
 class SimpleString:
     def __init__(self, value: bytes) -> None:
-        assert isinstance(value, bytes)
+        if not isinstance(value, bytes):
+            raise TypeError("SimpleString value must be bytes")
         self.value = value
 
     @classmethod
@@ -28,7 +26,8 @@ class SimpleError(Exception):
     """Exception that will be turned into a frontend-specific exception."""
 
     def __init__(self, value: str) -> None:
-        assert isinstance(value, str)
+        if not isinstance(value, str):
+            raise TypeError("SimpleError value must be str")
         self.value = value
 
 
@@ -128,7 +127,8 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
                     parts[-1] = "(?:$.)"
                 else:
                     # Negated empty group - matches any character
-                    assert parts[-1] == "^"
+                    if parts[-1] != "^":
+                        raise AssertionError("Invalid pattern")
                     parts.pop()
                     parts[-1] = "."
             else:
@@ -259,31 +259,30 @@ class FakeSelector(object):
         return True
 
 
-def _get_args_to_warn(clazz: Type) -> Set[str]:
-    closure = clazz.__init__.__closure__
+def _get_args_to_warn(method: Callable) -> Set[str]:
+    closure = method.__closure__
     if closure is None:
         return set()
+    res = set()
     for cell in closure:
         value = cell.cell_contents
         if isinstance(value, list) and len(value) > 0:
-            return set(value)
-    return set()
-
-
-def get_default_init_kwargs(clazz: Type, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-    parameters = list(inspect.signature(clazz.__init__).parameters.values())[1:]
-    args_to_warn = _get_args_to_warn(clazz)
-
-    kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-    res = {
-        p.name: kwargs.get(p.name, p.default)
-        for p in parameters
-        if (p.default != inspect.Parameter.empty and p.name not in args_to_warn) or p.name in kwargs
-    }
+            res.update(value)
+        elif callable(value):
+            res.update(_get_args_to_warn(value))
     return res
 
 
-def get_connection_pool_class(server_type: ServerType) -> Optional[Type]:
-    if server_type == "redis":
-        return redis.ConnectionPool
-    return None
+def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Interpret the positional and keyword arguments according to the version of redis in use"""
+    parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
+    args_to_warn = _get_args_to_warn(klass.__init__)
+    # Convert args => kwargs
+    kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
+    kwargs.setdefault("host", uuid.uuid4().hex)
+    kwds = {
+        p.name: kwargs.get(p.name, p.default)
+        for ind, p in enumerate(parameters)
+        if p.default != inspect.Parameter.empty and (p.name not in args_to_warn or p.name in kwargs)
+    }
+    return kwds
