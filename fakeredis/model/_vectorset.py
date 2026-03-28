@@ -1,4 +1,5 @@
 import json
+import re
 import struct
 from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union
 
@@ -13,14 +14,23 @@ from fakeredis._helpers import SimpleError
 QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 
-def _format_path(path: Union[bytes, str]) -> str:
+def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
     path_str = path.decode() if isinstance(path, bytes) else path
-    path_str = " & ".join(["@" + i.strip() for i in path_str.split("&")])
+    path_str = path_str.replace("and", "&").replace("or", "|").replace("not", "!").replace(".", "@.")
+
+    # Replace `v in [x, y, z]` with `(v=~'x|y|z')`
+    def expand_in(m: re.Match) -> str:
+        var = m.group(1)
+        items = [item.strip().replace("'", "") for item in m.group(2).split(",")]
+        return f"({var}=~'{'|'.join(items)}')"
+
+    path_str = re.sub(r"(\S+)\s+in\s+\[([^]]+)]", expand_in, path_str)
+
     return f"$[?({path_str})]"
 
 
 def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
-    path_str: str = _format_path(path)
+    path_str: str = _update_to_jsonpath_format(path)
     try:
         return parse(path_str)
     except JsonPathParserError:
