@@ -241,13 +241,13 @@ class VectorSetCommandsMixin:
                 epsilon = float(args[i + 1])
                 i += 2
             elif casematch(args[i], b"ef") and i + 1 < len(args):
-                ef = int(args[i + 1])
+                ef = int(args[i + 1])  # noqa: F841
                 i += 2
             elif casematch(args[i], b"filter") and i + 1 < len(args):
                 filter_expression = args[i + 1]
                 i += 2
             elif casematch(args[i], b"filter-ef") and i + 1 < len(args):
-                filter_expression_ef = args[i + 1]
+                filter_expression_ef = args[i + 1]  # noqa: F841
                 i += 2
             elif casematch(args[i], b"truth"):
                 i += 1
