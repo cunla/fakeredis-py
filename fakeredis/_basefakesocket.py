@@ -292,6 +292,45 @@ class BaseFakeSocket:
             result = exc
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+        
+
+
+
+
+
+
+
+
+
+        # KEYSPACE NOTIFICATIONS
+        for command_item in command_items:
+            if getattr(command_item, '_modified', False) or getattr(command_item, '_expireat_modified', False):
+                try:
+                    db_index = getattr(self, '_db_num', 0)
+                    key = command_item.key
+                    event = getattr(sig, 'name', b'')
+                    if isinstance(event, str):
+                        event = event.encode()
+                    
+                    # Notify logic
+                    keyspace_chan = f"__keyspace@{db_index}__:".encode() + key
+                    keyevent_chan = f"__keyevent@{db_index}__:".encode() + event
+                    
+                    from fakeredis._helpers import compile_pattern
+                    for chan, message in [(keyspace_chan, event), (keyevent_chan, key)]:
+                        msg = [b"message", chan, message]
+                        subs = self._server.subscribers.get(chan, set())
+                        for sock in subs:
+                            sock.put_response(msg)
+                            
+                        for pattern, socks in self._server.psubscribers.items():
+                            regex = compile_pattern(pattern)
+                            if regex.match(chan):
+                                pmsg = [b"pmessage", pattern, chan, message]
+                                for sock in socks:
+                                    sock.put_response(pmsg)
+                except Exception as e:
+                    pass
         return result
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
