@@ -19,7 +19,7 @@ class VectorSetCommandsMixin:
         super().__init__(*args, **kwargs)
 
     @command(name="VCARD", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vcard(self, key: CommandItem) -> Optional[bytes]:
+    def vcard(self, key: CommandItem) -> Optional[int]:
         if key.value is None:
             return None
         if not isinstance(key.value, VectorSet):
@@ -110,7 +110,7 @@ class VectorSetCommandsMixin:
 
         if len(vector_values) != dimensions:
             # If reduce is specified, we allow vectors with more dimensions and just ignore the extra values.
-            pass
+            vector_values = vector_values[:dimensions]
 
         if vector_set.exists(name):
             return 0
