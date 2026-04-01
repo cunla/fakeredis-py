@@ -1,4 +1,5 @@
 import json
+import math
 import re
 import struct
 from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union
@@ -108,6 +109,17 @@ class VectorSet:
         self._dimensions = dimensions
         self._vectors: Dict[bytes, Vector] = dict()
         self._links: Dict[bytes, int] = dict()
+        self._quant_type: Optional[str] = None
+        self._node_uid_counter: int = 0
+        self._max_level: int = 0
+        self._node_levels: Dict[bytes, int] = dict()
+        self._node_links: Dict[bytes, Dict[int, List[bytes]]] = dict()
+
+    @staticmethod
+    def _compute_level(node_index: int, M: int) -> int:
+        if M <= 1:
+            return 0
+        return int(math.log(node_index + 1) / math.log(M))
 
     @property
     def dimensions(self) -> int:
@@ -124,25 +136,70 @@ class VectorSet:
         return name in self._vectors
 
     def add(self, vector: Vector, numlinks: int) -> None:
+        if self._quant_type is None:
+            self._quant_type = vector.quantization
+
+        node_index = self._node_uid_counter
+        self._node_uid_counter += 1
+
+        level = self._compute_level(node_index, numlinks)
+        self._node_levels[vector.name] = level
+        if level > self._max_level:
+            self._max_level = level
+
+        # Build links for this node at each of its levels
+        self._node_links[vector.name] = {}
+        query = np.array(vector.values)
+        for lvl in range(level + 1):
+            candidates = [name for name, l in self._node_levels.items() if l >= lvl and name != vector.name]
+            if candidates:
+                scored = []
+                for name in candidates:
+                    cand = self._vectors[name]
+                    cand_arr = np.array(cand.values)
+                    norm = vector.l2_norm * cand.l2_norm
+                    sim = float(np.dot(query, cand_arr)) / norm if norm > 0 else 0.0
+                    scored.append((name, sim))
+                scored.sort(key=lambda x: x[1], reverse=True)
+                self._node_links[vector.name][lvl] = [n for n, _ in scored[:numlinks]]
+            else:
+                self._node_links[vector.name][lvl] = []
+
         self._vectors[vector.name] = vector
-        self._links[vector.name] = numlinks  # type: ignore
+        self._links[vector.name] = numlinks
 
     def remove(self, name: bytes) -> int:
         if name not in self._vectors:
             return 0
         del self._vectors[name]
         del self._links[name]
+        self._node_levels.pop(name, None)
+        if name in self._node_links:
+            del self._node_links[name]
+        for levels_links in self._node_links.values():
+            for neighbors in levels_links.values():
+                if name in neighbors:
+                    neighbors.remove(name)
         return 1
 
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> Dict[bytes, Any]:
+        quant = self._quant_type or b"fp32"
+        # Normalize quantization type name for the info response
+        if quant == "noquant":
+            quant = b"f32"
         return {
-            "quant-type": "fp32",
-            "vector-dim": self._dimensions,
-            "size": len(self._vectors),
-            "max-level": 0,  # TODO
-            "vset-uid": 1,  # TODO
-            "hnsw-max-node-uid": 0,  # TODO
+            b"quant-type": quant.encode() if isinstance(quant, str) else quant,
+            b"vector-dim": self._dimensions,
+            b"size": len(self._vectors),
+            b"max-level": self._max_level,
+            b"vset-uid": 1,
+            b"hnsw-max-node-uid": self._node_uid_counter,
         }
+
+    def links(self, name: bytes) -> Optional[Dict[int, List[bytes]]]:
+        if name not in self._vectors:
+            return None
+        return self._node_links.get(name, {0: []})
 
     def range(
         self,

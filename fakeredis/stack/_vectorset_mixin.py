@@ -278,14 +278,31 @@ class VectorSetCommandsMixin:
             return None
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        # TODO
-        return None
+        info = key.value.info()
+        return info
 
     @command(name="VLINKS", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes) -> List[Optional[bytes]]:
+    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes):
         if key.value is None:
-            raise SimpleError(VSET_ERR_NOTEXIST)
+            return None
         if not isinstance(key.value, VectorSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        # TODO
-        return [None] * len(args)
+        vset: VectorSet = key.value
+        if elem not in vset:
+            return None
+        with_scores = len(args) > 0 and casematch(args[0], b"withscores")
+        node_links = vset.links(elem)
+        levels = sorted(node_links.keys())
+        if not with_scores:
+            # Both RESP2 and RESP3: list of lists of bytes names per layer
+            return [node_links[lvl] for lvl in levels]
+        query_vector = vset[elem]
+        # RESP3 (no callback): return list of dicts {str_name: float_score}
+        result = []
+        for lvl in levels:
+            layer_dict = {}
+            for name in node_links[lvl]:
+                if name in vset:
+                    layer_dict[name.decode()] = vset[name].similarity(query_vector)
+            result.append(layer_dict)
+        return result
