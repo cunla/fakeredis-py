@@ -20,9 +20,13 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "hpexpire",
     "hpexpiretime",
     "httl",
+    "hgetdel",
+    "msetex",
+    "xcfgset",
 }
 
 
+@pytest.mark.min_server("8.4")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
