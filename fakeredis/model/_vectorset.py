@@ -83,8 +83,9 @@ class Vector:
     def raw(self) -> List[Any]:
         raw_bytes = struct.pack(f"{len(self.values)}f", *self.values)
         if self.quantization == "int8":
-            q_values, scale, zero_point = quantize_int8(np.array(self.values))
-            return [self.quantization.encode(), raw_bytes, self.l2_norm, scale, zero_point]
+            norm_values = np.array(self.values) / self.l2_norm if self.l2_norm != 0 else np.array(self.values)
+            range_val = float(np.max(np.abs(norm_values)))
+            return [self.quantization.encode(), raw_bytes, self.l2_norm, range_val]
         if self.quantization == "bin":
             return [self.quantization.encode(), raw_bytes, self.l2_norm]
 

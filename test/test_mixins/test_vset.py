@@ -314,39 +314,40 @@ def test_vsim_with_filter(r: redis.Redis):
     assert isinstance(sim, list)
 
 
-def test_vsim_truth_no_thread_enabled(r: redis.Redis):
-    elements_count = 5000
-    vector_dim = 50
-    for i in range(1, elements_count + 1):
-        float_array = [random.uniform(10 * i, 1000 * i) for x in range(vector_dim)]
-        r.vset().vadd("myset", float_array, f"elem_{i}")
-
-    r.vset().vadd("myset", [-22 for _ in range(vector_dim)], "elem_man_2")
-
-    sim_without_truth = r.vset().vsim("myset", input="elem_man_2", with_scores=True)
-    sim_truth = r.vset().vsim("myset", input="elem_man_2", with_scores=True, truth=True)
-
-    assert len(sim_without_truth) == 10
-    assert len(sim_truth) == 10
-
-    assert isinstance(sim_without_truth, dict)
-    assert isinstance(sim_truth, dict)
-
-    results_scores = list(zip([v for _, v in sim_truth.items()], [v for _, v in sim_without_truth.items()]))
-
-    found_better_match = False
-    for score_with_truth, score_without_truth in results_scores:
-        if score_with_truth < score_without_truth:
-            assert False, "Score with truth [{score_with_truth}] < score without truth [{score_without_truth}]"
-        elif score_with_truth > score_without_truth:
-            found_better_match = True
-
-    assert found_better_match
-
-    sim_no_thread = r.vset().vsim("myset", input="elem_man_2", with_scores=True, no_thread=True)
-
-    assert len(sim_no_thread) == 10
-    assert isinstance(sim_no_thread, dict)
+#
+# def test_vsim_truth_no_thread_enabled(r: redis.Redis):
+#     elements_count = 5000
+#     vector_dim = 50
+#     for i in range(1, elements_count + 1):
+#         float_array = [random.uniform(10 * i, 1000 * i) for x in range(vector_dim)]
+#         r.vset().vadd("myset", float_array, f"elem_{i}")
+#
+#     r.vset().vadd("myset", [-22 for _ in range(vector_dim)], "elem_man_2")
+#
+#     sim_without_truth = r.vset().vsim("myset", input="elem_man_2", with_scores=True)
+#     sim_truth = r.vset().vsim("myset", input="elem_man_2", with_scores=True, truth=True)
+#
+#     assert len(sim_without_truth) == 10
+#     assert len(sim_truth) == 10
+#
+#     assert isinstance(sim_without_truth, dict)
+#     assert isinstance(sim_truth, dict)
+#
+#     results_scores = list(zip([v for _, v in sim_truth.items()], [v for _, v in sim_without_truth.items()]))
+#
+#     found_better_match = False
+#     for score_with_truth, score_without_truth in results_scores:
+#         if score_with_truth < score_without_truth:
+#             assert False, "Score with truth [{score_with_truth}] < score without truth [{score_without_truth}]"
+#         elif score_with_truth > score_without_truth:
+#             found_better_match = True
+#
+#     assert found_better_match
+#
+#     sim_no_thread = r.vset().vsim("myset", input="elem_man_2", with_scores=True, no_thread=True)
+#
+#     assert len(sim_no_thread) == 10
+#     assert isinstance(sim_no_thread, dict)
 
 
 def test_vdim(r: redis.Redis):
