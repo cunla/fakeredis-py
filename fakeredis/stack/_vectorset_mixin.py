@@ -209,7 +209,7 @@ class VectorSetCommandsMixin:
                     raise SimpleError("ERR ELE | FP32 | VALUES num")
                 vector = key.value.get(args[i + 1])
                 if vector is None:
-                    raise SimpleError("ERR element not found in set")
+                    raise SimpleError("element not found in set")
                 i += 2
             elif casematch(args[i], b"fp32") and i + 1 < len(args):
                 if vector is not None:
