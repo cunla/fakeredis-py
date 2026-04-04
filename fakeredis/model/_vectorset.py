@@ -117,10 +117,10 @@ class VectorSet:
         self._node_links: Dict[bytes, Dict[int, List[bytes]]] = dict()
 
     @staticmethod
-    def _compute_level(node_index: int, M: int) -> int:
-        if M <= 1:
+    def _compute_level(node_index: int, m: int) -> int:
+        if m <= 1:
             return 0
-        return int(math.log(node_index + 1) / math.log(M))
+        return int(math.log(node_index + 1) / math.log(m))
 
     @property
     def dimensions(self) -> int:
@@ -152,7 +152,7 @@ class VectorSet:
         self._node_links[vector.name] = {}
         query = np.array(vector.values)
         for lvl in range(level + 1):
-            candidates = [name for name, l in self._node_levels.items() if l >= lvl and name != vector.name]
+            candidates = [name for name, level in self._node_levels.items() if level >= lvl and name != vector.name]
             if candidates:
                 scored = []
                 for name in candidates:
