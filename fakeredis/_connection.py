@@ -11,7 +11,7 @@ from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 
 
-class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
+class FakeBaseConnection(FakeBaseConnectionMixin):
     def __init__(*args: Any, **kwargs: Any) -> None:
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
@@ -92,6 +92,10 @@ class FakeConnection(FakeBaseConnectionMixin, redis.Connection):
         return self.server_key
 
 
+class FakeRedisConnection(FakeBaseConnection, redis.Connection):
+    pass
+
+
 class FakeRedisMixin:
     def __init__(
         self,
@@ -101,6 +105,8 @@ class FakeRedisMixin:
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
         client_class: Type[redis.Redis] = redis.Redis,
+        connection_class: Type[FakeBaseConnection] = FakeRedisConnection,
+        connection_pool_class: Type[redis.ConnectionPool] = redis.ConnectionPool,
         **kwargs: Any,
     ) -> None:
         """
@@ -141,14 +147,14 @@ class FakeRedisMixin:
                 "protocol",
             }
             connection_kwargs = {
-                "connection_class": FakeConnection,
+                "connection_class": connection_class,
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis.connection.ConnectionPool(**connection_kwargs)
+            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
@@ -167,9 +173,10 @@ class FakeRedisMixin:
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
         kwargs.setdefault("version", "7.4")
         kwargs.setdefault("server_type", "redis")
-        pool = redis.ConnectionPool.from_url(*args, **kwargs)
+        connection_pool_class = kwargs.pop("connection_pool_class", redis.ConnectionPool)
+        pool = connection_pool_class.from_url(*args, **kwargs)
         # Now override how it creates connections
-        pool.connection_class = FakeConnection
+        pool.connection_class = kwargs.get("connection_class", FakeRedisConnection)
         return cls(connection_pool=pool, *args, **kwargs)
 
 
