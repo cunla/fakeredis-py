@@ -681,6 +681,7 @@ valkey = [
     { name = "valkey", version = "6.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 vectorset = [
+    { name = "jsonpath-ng", marker = "python_full_version >= '3.11'" },
     { name = "numpy", marker = "python_full_version >= '3.11'" },
 ]
 
@@ -688,6 +689,7 @@ vectorset = [
 dev = [
     { name = "mypy", marker = "python_full_version >= '3.10'" },
     { name = "pre-commit", marker = "python_full_version >= '3.10'" },
+    { name = "pyyaml", marker = "python_full_version >= '3.10'" },
     { name = "ruff" },
 ]
 docs = [
@@ -711,6 +713,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jsonpath-ng", marker = "python_full_version >= '3.11' and extra == 'vectorset'", specifier = ">=1.6" },
     { name = "jsonpath-ng", marker = "extra == 'json'", specifier = ">=1.6" },
     { name = "lupa", marker = "extra == 'lua'", specifier = ">=2.1" },
     { name = "numpy", marker = "python_full_version >= '3.11' and extra == 'vectorset'", specifier = ">=2.4.0" },
@@ -730,6 +733,7 @@ provides-extras = ["lua", "json", "bf", "cf", "probabilistic", "valkey", "vector
 dev = [
     { name = "mypy", marker = "python_full_version >= '3.10'", specifier = ">=1.15" },
     { name = "pre-commit", marker = "python_full_version >= '3.10'", specifier = ">=4.2" },
+    { name = "pyyaml", marker = "python_full_version >= '3.10'", specifier = ">=6" },
     { name = "ruff", specifier = ">=0.15" },
 ]
 docs = [

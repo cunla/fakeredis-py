@@ -94,7 +94,10 @@ class Vector:
     def similarity(self, other: Self) -> float:
         me = np.array(self.values)
         o = np.array(other.values)
-        return float(np.dot(me, o)) / (self.l2_norm * other.l2_norm)
+        denominator = self.l2_norm * other.l2_norm
+        if denominator == 0:
+            return 0.0
+        return float(np.dot(me, o)) / denominator
 
     def accept_filter(self, filter_expression: Optional[bytes]) -> bool:
         if filter_expression is None:

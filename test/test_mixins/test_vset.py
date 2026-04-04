@@ -694,7 +694,7 @@ def test_randmember_bad_count_type(r: redis.Redis):
 
 
 @pytest.mark.fake
-def test_vset_commands_without_decoding_responces(r: redis.Redis):
+def test_vset_commands_without_decoding_responses(r: redis.Redis):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
