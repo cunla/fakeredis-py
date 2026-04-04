@@ -112,11 +112,11 @@ def test_add_elem_bin_quant(r: redis.Redis):
 
 def test_add_elem_q8_quant(r: redis.Redis):
     float_array = [1, 4.32, 10.0, -21, -2.9]
-    resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.BIN)
+    resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.Q8)
     assert resp == 1
 
     emb = r.vset().vemb("myset", "elem1")
-    assert _validate_quantization([1, 1, 1, -1, -1], emb, tolerance=0.0)
+    assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
 def test_add_elem_ef(r: redis.Redis):
