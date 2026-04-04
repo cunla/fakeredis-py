@@ -12,6 +12,8 @@ toc_depth: 2
 ### 🚀 Features
 
 - Support for idempotent message processing introduced in Redis 8.6 #461
+- Support for vector set commands `VADD`, `VCARD`, `VDIM`, `VEMB`, `VGETATTR`, `VINFO`, `VLINKS`, `VRANDMEMBER`,
+  `VRANGE`, `VREM`, `VSETATTR`, `VSIM` #451
 
 ### 🐛 Bug Fixes
 

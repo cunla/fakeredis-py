@@ -7,6 +7,7 @@ import os
 from dataclasses import dataclass
 
 import requests
+import yaml
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 
@@ -123,13 +124,10 @@ def download_command_markdown(command: str) -> dict:
         lines = f.readlines()
     metadata = {}
     if lines[0].strip() == "---":
-        for line in lines[1:]:
+        for ind, line in enumerate(lines[1:], 1):
             if line.strip() == "---":
                 break
-            if ":" not in line:
-                continue
-            key, value = line.split(":", 1)
-            metadata[key.strip()] = value.strip().strip('"')
+        metadata = yaml.load("".join(lines[1:ind]), Loader=yaml.SafeLoader)
     return metadata
 
 

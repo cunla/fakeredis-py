@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple, Union
+from typing import Tuple, Union, Dict, Any, List
 
 import redis
 
@@ -22,9 +22,10 @@ except ImportError:  # for Python < 3.8
 lib_version = metadata.version("fakeredis")
 VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
-
+JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError
+
 try:
     import valkey
 

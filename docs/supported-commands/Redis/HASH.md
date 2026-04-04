@@ -34,7 +34,7 @@ Returns the value of a field and deletes it from the hash.
 
 ## [HGETEX](https://redis.io/commands/hgetex/)
 
-Get the value of one or more fields of a given hash key, and optionally set
+Get the value of one or more fields of a given hash key, and optionally set their expiration.
 
 ## [HINCRBY](https://redis.io/commands/hincrby/)
 
@@ -94,7 +94,7 @@ Creates or modifies the value of a field in a hash.
 
 ## [HSETEX](https://redis.io/commands/hsetex/)
 
-Set the value of one or more fields of a given hash key, and optionally set
+Set the value of one or more fields of a given hash key, and optionally set their expiration.
 
 ## [HSETNX](https://redis.io/commands/hsetnx/)
 

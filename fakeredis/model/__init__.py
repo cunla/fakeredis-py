@@ -39,6 +39,14 @@ __all__ = [
 ]
 
 try:
+    import numpy as np  # noqa: F401
+    from ._vectorset import VectorSet, Vector  # noqa: F401
+
+    __all__.extend(["VectorSet", "Vector"])
+except ImportError:
+    pass
+
+try:
     import probables  # noqa: F401
     from ._filters import ScalableCuckooFilter, ScalableBloomFilter  # noqa: F401
     from ._cms import CountMinSketch  # noqa: F401
