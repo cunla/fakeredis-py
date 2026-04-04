@@ -520,7 +520,7 @@ def test_vlinks(r: redis.Redis):
     for neighbours_dict_for_layer in elem_links_all_layers_with_scores:
         assert isinstance(neighbours_dict_for_layer, dict)
         for neighbour_key, score_value in neighbours_dict_for_layer.items():
-            assert isinstance(neighbour_key, str)
+            assert isinstance(neighbour_key, bytes)
             assert isinstance(score_value, float)
 
     float_array = [0.75, 0.25, 0.5, 0.1, 0.9]

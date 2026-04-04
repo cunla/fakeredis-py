@@ -297,12 +297,11 @@ class VectorSetCommandsMixin:
             # Both RESP2 and RESP3: list of lists of bytes names per layer
             return [node_links[lvl] for lvl in levels]
         query_vector = vset[elem]
-        # RESP3 (no callback): return list of dicts {str_name: float_score}
         result = []
         for lvl in levels:
             layer_dict = {}
             for name in node_links[lvl]:
                 if name in vset:
-                    layer_dict[name.decode()] = vset[name].similarity(query_vector)
+                    layer_dict[name] = vset[name].similarity(query_vector)
             result.append(layer_dict)
         return result
