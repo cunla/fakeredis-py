@@ -20,6 +20,9 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "hpexpire",
     "hpexpiretime",
     "httl",
+    "hgetdel",
+    "msetex",
+    "xcfgset",
 }
 
 
