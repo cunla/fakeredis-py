@@ -20,7 +20,7 @@ class FakeValkeyConnection(FakeBaseConnection, valkey.Connection):
     pass
 
 
-class FakeAysncValkeyConnection(FakeBaseAsyncConnection, valkey.Connection):
+class FakeAysncValkeyConnection(FakeBaseAsyncConnection, valkey.asyncio.Connection):
     pass
 
 
