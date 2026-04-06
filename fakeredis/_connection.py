@@ -12,6 +12,8 @@ from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
+    _connection_error_class = redis.ConnectionError
+
     def __init__(*args: Any, **kwargs: Any) -> None:
         FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
@@ -22,7 +24,7 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
 
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
-            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         return FakeSocket(
             self._server,
             client_class=self._client_class,
@@ -55,14 +57,14 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
 
     def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
-            raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except queue.Empty:
                 if kwargs.get("disconnect_on_error", True):
                     self.disconnect()
-                raise redis.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         else:
             response = self._sock.responses.get()
 
@@ -93,7 +95,7 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
 
 
 class FakeRedisConnection(FakeBaseConnection, redis.Connection):
-    pass
+    _connection_error_class = redis.ConnectionError
 
 
 class FakeRedisMixin:

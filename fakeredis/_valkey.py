@@ -17,10 +17,12 @@ def _validate_server_type(args_dict: Dict[str, Any]) -> None:
 
 
 class FakeValkeyConnection(FakeBaseConnection, valkey.Connection):
+    _connection_error_class = valkey.ConnectionError
     pass
 
 
 class FakeAysncValkeyConnection(FakeBaseAsyncConnection, valkey.asyncio.Connection):
+    _connection_error_class = valkey.ConnectionError
     pass
 
 

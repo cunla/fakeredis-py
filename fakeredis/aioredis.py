@@ -112,9 +112,11 @@ class FakeWriter:
 
 
 class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
+    _connection_error_class = redis_async.ConnectionError
+
     async def _connect(self) -> None:
         if not self._server.connected:
-            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(
             self._server, self.db, client_class=self._client_class, lua_modules=self._lua_modules
         )
@@ -169,14 +171,14 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
 
     async def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
-            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except asyncio.QueueEmpty:
                 if kwargs.get("disconnect_on_error", True):
                     await self.disconnect()
-                raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         else:
             timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
