@@ -58,7 +58,7 @@ Atomically creates or modifies the string values of one or more keys.
 
 ## [MSETEX](https://redis.io/commands/msetex/)
 
-Atomically sets multiple string keys with a shared expiration in a single
+Atomically sets multiple string keys with a shared expiration in a single operation.
 
 ## [MSETNX](https://redis.io/commands/msetnx/)
 
