@@ -1,5 +1,5 @@
 import random
-from typing import Callable, List, Any, Optional, Sequence, Union, Mapping
+from typing import Callable, Dict, List, Any, Optional, Sequence, Union, cast
 
 import math
 
@@ -28,7 +28,7 @@ class HashCommandsMixin:
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
         previous_keys_count = len(h.keys())
-        h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # type: ignore  # https://stackoverflow.com/a/12739974/1056460
+        h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # https://stackoverflow.com/a/12739974/1056460
         created = len(h.keys()) - previous_keys_count
 
         key.updated()
@@ -54,8 +54,9 @@ class HashCommandsMixin:
         return key.value.get(field)
 
     @command((Key(Hash),))
-    def hgetall(self, key: CommandItem) -> Mapping[str, str]:
-        return key.value.getall()
+    def hgetall(self, key: CommandItem) -> Dict[bytes, bytes]:
+        hash_val: Hash = key.value
+        return hash_val.getall()
 
     @command(fixed=(Key(Hash), bytes, bytes))
     def hincrby(self, key: CommandItem, field: bytes, amount_bytes: bytes) -> int:
@@ -96,17 +97,17 @@ class HashCommandsMixin:
     @command((Key(Hash), Int), (bytes,))
     def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Any]:
         no_values = any(casematch(arg, b"novalues") for arg in args)
+        scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
+        scan_result = self._scan(key.value, cursor, *scan_args)
+        result_cursor = scan_result[0]
+        keys: List[bytes] = [k.encode("utf-8") if isinstance(k, str) else k for k in cast(List[Any], scan_result[1])]
         if no_values:
-            args = [arg for arg in args if not casematch(arg, b"novalues")]
-        cursor, keys = self._scan(key.value, cursor, *args)
-        keys = [k.encode("utf-8") for k in keys if isinstance(k, str)]
-        if no_values:
-            return [cursor, keys]
+            return [result_cursor, keys]
         items = []
         for k in keys:
             items.append(k)
             items.append(key.value[k])
-        return [cursor, items]
+        return [result_cursor, items]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
     def hset(self, key: CommandItem, *args: bytes) -> int:
@@ -135,7 +136,7 @@ class HashCommandsMixin:
         count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
         withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
         if count == 0:
-            return {}
+            return []
 
         if count < 0:  # Allow repetitions
             res = random.choices(sorted(key.value.items()), k=-count)
@@ -239,7 +240,7 @@ class HashCommandsMixin:
         return [(i // 1000 if i > 0 else i) for i in res]
 
     @command(name="HPEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
-    def hpexpiretime(self, key: CommandItem, *args: bytes) -> List[float]:
+    def hpexpiretime(self, key: CommandItem, *args: bytes) -> List[int]:
         res = self._get_expireat(b"HPEXPIRETIME", key, *args)
         return res
 
