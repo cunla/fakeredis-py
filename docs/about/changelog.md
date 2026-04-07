@@ -18,6 +18,7 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - fix XREADGROUP on multiple streams only returns one message #460
+- fix: XDEL sending ResponseError when stream ID is invalid #465
 
 ### 🧰 Maintenance
 
