@@ -325,6 +325,10 @@ def test_xdel(r: redis.Redis):
     assert ex.value.args[0] == msgs.WRONG_ARGS_MSG6.format("xdel")[4:]
     assert r.xdel("non-existing-key", "1-1") == 0
 
+    with pytest.raises(redis.ResponseError) as ex:
+        testtools.raw_command(r, "XDEL", stream, b"")
+    assert ex.value.args[0] == "Invalid stream ID specified as stream command argument"
+
 
 def test_xgroup_destroy(r: redis.Redis):
     stream = "stream"
