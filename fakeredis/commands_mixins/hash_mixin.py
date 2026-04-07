@@ -151,14 +151,14 @@ class HashCommandsMixin:
             res = [t[0] for t in res]
         return res
 
-    def _hexpire(self, key: CommandItem, when_ms: int, *args: bytes) -> List[int]:
+    def _hexpire(self, key: CommandItem, when_ms: int, *args: bytes, command: str = "hexpire") -> List[int]:
         # Deal with input arguments
         (nx, xx, gt, lt), left_args = extract_args(
             args, ("nx", "xx", "gt", "lt"), left_from_first_unexpected=True, error_on_unexpected=False
         )
         if (nx, xx, gt, lt).count(True) > 1:
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
-        fields = _get_fields(left_args)
+        fields = _get_fields(left_args, command=command)
         hash_val: Hash = key.value
         if hash_val is None:
             return [-2] * len(fields)
@@ -181,7 +181,7 @@ class HashCommandsMixin:
         return res
 
     def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
-        fields = _get_fields(args)
+        fields = _get_fields(args, command=command.decode().lower())
         hash_val: Hash = key.value
         if hash_val is None:
             return [-2] * len(fields)
@@ -200,25 +200,25 @@ class HashCommandsMixin:
     @command(name="HEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hexpire(self, key: CommandItem, seconds: int, *args: bytes) -> List[int]:
         when_ms = current_time() + seconds * 1000
-        return self._hexpire(key, when_ms, *args)
+        return self._hexpire(key, when_ms, *args, command="hexpire")
 
     @command(name="HPEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hpexpire(self, key: CommandItem, milliseconds: int, *args: bytes) -> List[int]:
         when_ms = current_time() + milliseconds
-        return self._hexpire(key, when_ms, *args)
+        return self._hexpire(key, when_ms, *args, command="hpexpire")
 
     @command(name="HEXPIREAT", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hexpireat(self, key: CommandItem, unix_time_seconds: int, *args: bytes) -> List[int]:
         when_ms = unix_time_seconds * 1000
-        return self._hexpire(key, when_ms, *args)
+        return self._hexpire(key, when_ms, *args, command="hexpireat")
 
     @command(name="HPEXPIREAT", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hpexpireat(self, key: CommandItem, unix_time_ms: int, *args: bytes) -> List[int]:
-        return self._hexpire(key, unix_time_ms, *args)
+        return self._hexpire(key, unix_time_ms, *args, command="hpexpireat")
 
     @command(name="HPERSIST", fixed=(Key(Hash),), repeat=(bytes,))
     def hpersist(self, key: CommandItem, *args: bytes) -> List[int]:
-        fields = _get_fields(args)
+        fields = _get_fields(args, command="hpersist")
         hash_val: Hash = key.value
         res = []
         for field in fields:
@@ -257,7 +257,7 @@ class HashCommandsMixin:
 
     @command(name="HGETDEL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
     def hgetdel(self, key: CommandItem, *args: bytes) -> List[Any]:
-        fields = _get_fields(args)
+        fields = _get_fields(args, command="hgetdel")
         hash_val: Hash = key.value
         res = [hash_val.pop(field) for field in fields]
         return res
@@ -272,7 +272,7 @@ class HashCommandsMixin:
         )
         if (ex is not None, px is not None, exat is not None, pxat is not None, persist).count(True) > 1:
             raise SimpleError("Only one of EX, PX, EXAT, PXAT or PERSIST arguments can be specified")
-        fields = _get_fields(left_args)
+        fields = _get_fields(left_args, command="hgetex")
         hash_val: Hash = key.value
 
         when_ms = _get_when_ms(ex, px, exat, pxat)
@@ -297,7 +297,7 @@ class HashCommandsMixin:
             raise SimpleError("Only one of EX, PX, EXAT, PXAT or KEEPTTL arguments can be specified")
         if (fnx, fxx).count(True) > 1:
             raise SimpleError("Only one of FNX or FXX arguments can be specified")
-        field_vals = _get_fields(left_args, with_values=True)
+        field_vals = _get_fields(left_args, with_values=True, command="hsetex")
         hash_val: Hash = key.value
         when_ms = _get_when_ms(ex, px, exat, pxat)
 
@@ -317,7 +317,7 @@ class HashCommandsMixin:
         return res
 
 
-def _get_fields(args: Sequence[bytes], with_values: bool = False) -> Sequence[bytes]:
+def _get_fields(args: Sequence[bytes], with_values: bool = False, command: str = "") -> Sequence[bytes]:
     if len(args) < 3 or not casematch(args[0], b"fields"):
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
     num_fields = Int.decode(args[1])
