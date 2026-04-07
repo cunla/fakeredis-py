@@ -86,16 +86,20 @@ test = [
     "pytest-mock>=3.15 ; python_version >= '3.9'",
     "pytest-html>=4.1 ; python_version >= '3.9'",
 ]
-docs = [
+scripts = [
     "python-dotenv>=1.1 ; python_version >= '3.10'",
     "pygithub>=2.8 ; python_version >= '3.10'",
+]
+documentation = [
+    "mkdocs>=1.6.1; python_version >= '3.10'",
+    "mkdocs-material>=9.6.14; python_version >= '3.10'",
 ]
 
 [tool.uv]
 default-groups = [
     "dev",
     "test",
-    "docs",
+    "scripts",
 ]
 
 [tool.hatch.build.targets.sdist]
