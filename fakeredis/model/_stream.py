@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator, AnyStr
 
 from fakeredis._commands import BeforeAny, AfterAny
-from fakeredis._helpers import current_time
+from fakeredis._helpers import current_time, SimpleError
 from ._base_type import BaseModel
 
 
@@ -22,6 +22,8 @@ class StreamEntryKey(NamedTuple):
     def parse_str(entry_key: AnyStr) -> "StreamEntryKey":
         entry_key_str: str = entry_key.decode() if isinstance(entry_key, bytes) else entry_key
         parts = entry_key_str.split("-")
+        if not all([parts[i].isdigit() for i in range(len(parts))]):
+            raise SimpleError("Invalid stream ID specified as stream command argument")
         (timestamp, sequence) = (int(parts[0]), 0) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
         return StreamEntryKey(timestamp, sequence)
 
