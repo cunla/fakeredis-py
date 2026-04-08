@@ -2,12 +2,12 @@ from . import _typing
 from ._connection import (
     FakeRedis,
     FakeStrictRedis,
-    FakeConnection,
+    FakeRedisConnection,
 )
 from ._server import FakeServer
 from .aioredis import (
     FakeRedis as FakeAsyncRedis,
-    FakeConnection as FakeAsyncConnection,
+    FakeAsyncRedisConnection,
 )
 from ._tcp_server import TcpFakeServer
 
@@ -24,9 +24,9 @@ __all__ = [
     "FakeServer",
     "FakeRedis",
     "FakeStrictRedis",
-    "FakeConnection",
+    "FakeRedisConnection",
     "FakeAsyncRedis",
-    "FakeAsyncConnection",
+    "FakeAsyncRedisConnection",
     "TcpFakeServer",
 ]
 

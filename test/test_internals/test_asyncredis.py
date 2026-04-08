@@ -98,10 +98,10 @@ async def test_async():
 @testtools.run_test_if_redispy_ver("gte", "4.4.0")
 @pytest.mark.parametrize("nowait", [False, True])
 @pytest.mark.fake
-async def test_connection_disconnect(nowait):
+async def test_connection_disconnect(nowait: bool):
     server = FakeServer()
     r = aioredis.FakeRedis(server=server)
-    conn = await r.connection_pool.get_connection("_")
+    conn = await r.connection_pool.get_connection()
     assert conn is not None
 
     await conn.disconnect(nowait=nowait)

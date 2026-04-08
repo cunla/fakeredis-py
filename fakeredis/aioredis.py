@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence
+from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence, Type
 
 import redis.asyncio as redis_async
 from redis import ResponseError
@@ -111,10 +111,12 @@ class FakeWriter:
             self._socket.sendall(chunk)  # type:ignore
 
 
-class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
+class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
+    _connection_error_class = redis_async.ConnectionError
+
     async def _connect(self) -> None:
         if not self._server.connected:
-            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(
             self._server, self.db, client_class=self._client_class, lua_modules=self._lua_modules
         )
@@ -169,14 +171,14 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
 
     async def read_response(self, **kwargs: Any) -> Any:  # type: ignore
         if not self._sock:
-            raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
             try:
                 response = self._sock.responses.get_nowait()
             except asyncio.QueueEmpty:
                 if kwargs.get("disconnect_on_error", True):
                     await self.disconnect()
-                raise redis_async.ConnectionError(msgs.CONNECTION_ERROR_MSG)
+                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         else:
             timeout: Optional[float] = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
@@ -197,6 +199,10 @@ class FakeConnection(FakeBaseConnectionMixin, redis_async.Connection):
         return self.server_key
 
 
+class FakeAsyncRedisConnection(FakeBaseAsyncConnection, redis_async.Connection):
+    pass
+
+
 class FakeRedisMixin:
     def __init__(
         self,
@@ -206,6 +212,8 @@ class FakeRedisMixin:
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
         client_class=redis_async.Redis,
+        connection_class: Type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
+        connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,
     ) -> None:
         kwds = convert_args_kwargs(client_class, *args, **kwargs)
@@ -240,14 +248,14 @@ class FakeRedisMixin:
                 "protocol",
             }
             connection_kwargs = {
-                "connection_class": FakeConnection,
+                "connection_class": connection_class,
                 "version": version,
                 "server_type": server_type,
                 "lua_modules": lua_modules,
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = redis_async.connection.ConnectionPool(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)  # type: ignore
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)
@@ -262,7 +270,7 @@ class FakeRedisMixin:
     def from_url(cls, url: str, **kwargs: Any) -> Self:
         self: redis_async.Redis = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
-        pool.connection_class = FakeConnection
+        pool.connection_class = kwargs.pop("connection_class", FakeAsyncRedisConnection)
         pool.connection_kwargs.setdefault("version", "7.4")
         pool.connection_kwargs.setdefault("server_type", "redis")
         return self
