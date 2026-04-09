@@ -1,19 +1,33 @@
 # Implementing support for a command
 
-Creating a new command support should be done in the `FakeSocket` class (in `_fakesocket.py`) by creating the method
-and using `@command` decorator (which should be the command syntax, you can use existing samples on the file).
+Commands are implemented as methods on mixin classes inside `fakeredis/commands_mixins/` (or `fakeredis/stack/` for
+Redis Stack module commands). All mixins are composed into `FakeSocket` at import time.
 
-For example:
+## Command dispatch flow
+
+```mermaid
+flowchart TD
+    IN["Bytes received\nfrom client"] --> SIG["Signature.apply()\n_commands.py"]
+    SIG -->|"invalid types\nor arity"| ERR["SimpleError →\nclient gets Redis error"]
+    SIG -->|"valid"| KEY["Auto-fetch Key(s)\nfrom Database"]
+    KEY --> MX["Mixin method\nexecutes"]
+    MX -->|"key.update(value)"| WB["Key marked dirty\n→ written back to DB"]
+    MX -->|"raise SimpleError"| ERR
+    MX -->|"return value"| Q["Response queued\nin FakeSocket"]
+    WB --> Q
+    Q --> OUT["read_response() →\nclient"]
+```
+
+Add the new method to the appropriate mixin file and annotate it with `@command`:
 
 ```python
-class FakeSocket(BaseFakeSocket, FakeLuaSocket):
-    # ...
-    @command(name='zscore', fixed=(Key(ZSet), bytes), repeat=(), flags=[])
-    def zscore(self, key, member):
-        try:
-            return self._encodefloat(key.value[member], False)
-        except KeyError:
-            return None
+# fakeredis/commands_mixins/sortedset_mixin.py
+@command(name='zscore', fixed=(Key(ZSet), bytes), repeat=(), flags=[])
+def zscore(self, key, member):
+    try:
+        return self._encodefloat(key.value[member], False)
+    except KeyError:
+        return None
 ```
 
 ## Parsing command arguments
@@ -104,8 +118,7 @@ Lastly, run from the root of the project the script to regenerate documentation 
 supported and unsupported commands:
 
 ```bash
-python scripts/generate_supported_commands_doc.py
+uv run python scripts/generate_supported_commands_doc.py
 ```
 
 Include the changes in the `docs/` directory in your pull request.
-
