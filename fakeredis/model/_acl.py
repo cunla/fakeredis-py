@@ -1,6 +1,6 @@
 import fnmatch
 import hashlib
-from typing import Dict, Set, List, Union, Optional, Any, AnyStr
+from typing import Dict, Set, List, Union, Optional, Any
 
 from fakeredis import _msgs as msgs
 from ._command_info import get_commands_by_category, get_command_info
@@ -95,16 +95,16 @@ class UserAccessControlList:
         if len(self._key_patterns) == 0:
             return []
         keys = self._get_keys(command_info, fields)
-        res:Set[bytes] = set()
+        res: Set[bytes] = set()
         for pat in self._key_patterns:
             res = res.union(fnmatch.filter(keys, pat))
         return list(set(keys) - res)
 
     def channels_not_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
-        if len(self._key_patterns) == 0:
+        if len(self._channel_patterns) == 0:
             return []
         channels = fields[1:2]
-        res:Set[bytes] = set()
+        res: Set[bytes] = set()
         for pat in self._channel_patterns:
             res = res.union(fnmatch.filter(channels, pat))
         return list(set(channels) - res)
@@ -162,14 +162,14 @@ class UserAccessControlList:
         self._channel_patterns.add(channel_pattern)
 
     def add_selector(self, selector: bytes) -> None:
-        selector = Selector.from_bytes(selector)
-        self._selectors[selector.command] = selector
+        parsed_selector = Selector.from_bytes(selector)
+        self._selectors[parsed_selector.command] = parsed_selector
 
-    def _get_selectors(self) -> List[Dict[str, str]]:
-        results: List[Dict[str, str]] = []
+    def _get_selectors(self) -> List[Dict[str, bytes]]:
+        results: List[Dict[str, bytes]] = []
         for command, selector in self._selectors.items():
-            s: Dict[str, str] = {
-                "commands": "-@all " + ("+" if selector.allowed else "-") + command.decode(),
+            s: Dict[str, bytes] = {
+                "commands": b"-@all " + (b"+" if selector.allowed else b"-") + command,
                 "keys": selector.keys,
                 "channels": selector.channels,
             }
@@ -190,18 +190,18 @@ class UserAccessControlList:
         return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
 
     def _get_flags(self) -> List[bytes]:
-        flags = []
+        flags: List[bytes] = []
         flags.append(b"on" if self.enabled else b"off")
         if self._nopass:
             flags.append(b"nopass")
-        if "*" in self._key_patterns:
+        if b"*" in self._key_patterns:
             flags.append(b"allkeys")
-        if "*" in self._channel_patterns:
+        if b"*" in self._channel_patterns:
             flags.append(b"allchannels")
         return flags
 
-    def as_array(self) -> List[Union[bytes, List[bytes]]]:
-        results: List[Union[bytes, List[bytes]]] = []
+    def as_array(self) -> List[Union[bytes, List[bytes], List[Dict[str, bytes]]]]:
+        results: List[Union[bytes, List[bytes], List[Dict[str, bytes]]]] = []
         results.extend(
             [
                 b"flags",
@@ -267,19 +267,19 @@ class AclLogRecord:
         self.client_info: bytes = client_info
         self.entry_id: int = entry_id
 
-    def as_dict(self) -> Dict[str, AnyStr]:
+    def as_dict(self) -> Dict[str, bytes]:
         age_seconds = (current_time() - self.created_ts) / 1000
-        res: Dict[str, AnyStr] = {
+        res: Dict[str, bytes] = {
             "count": str(self.count).encode(),
             "reason": self.reason,
             "context": self.context,
             "object": self.object,
             "username": self.username,
-            "age-seconds": f"{age_seconds:.3f}",
+            "age-seconds": f"{age_seconds:.3f}".encode(),
             "client-info": self.client_info,
-            "entry-id": str(self.entry_id),
-            "timestamp-created": str(self.created_ts),
-            "timestamp-last-updated": str(self.updated_ts),
+            "entry-id": str(self.entry_id).encode(),
+            "timestamp-created": str(self.created_ts).encode(),
+            "timestamp-last-updated": str(self.updated_ts).encode(),
         }
         return res
 
@@ -312,7 +312,7 @@ class AccessControlList:
     def reset_log(self) -> None:
         self._log.clear()
 
-    def log(self, count: int) -> List[Dict[str, AnyStr]]:
+    def log(self, count: int) -> List[Dict[str, bytes]]:
         if count > len(self._log) or count < 0:
             count = 0
         res = [x.as_dict() for x in self._log[-count:]]
@@ -343,7 +343,7 @@ class AccessControlList:
         )
         self._log.append(entry)
 
-    def validate_command(self, username: bytes, client_info: bytes, fields: List[bytes]):
+    def validate_command(self, username: bytes, client_info: bytes, fields: List[bytes]) -> None:
         if username not in self._user_acl:
             return
         if fields and fields[0].lower() == b"auth":
