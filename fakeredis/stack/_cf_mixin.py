@@ -15,7 +15,7 @@ class CFCommandsMixin:
     def _cf_add(key: CommandItem, item: bytes) -> int:
         if key.value is None:
             key.update(ScalableCuckooFilter(1024))
-        res = key.value.insert(item)  # type:ignore
+        res = key.value.insert(item)
         key.updated()
         return 1 if res else 0
 
