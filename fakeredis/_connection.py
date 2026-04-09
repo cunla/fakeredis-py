@@ -98,6 +98,11 @@ class FakeRedisConnection(FakeBaseConnection, redis.Connection):
     _connection_error_class = redis.ConnectionError
 
 
+def FakeConnection(*args: Any, **kwargs: Any):
+    warnings.warn("FakeConnection is deprecated. Use FakeRedisConnection instead", DeprecationWarning, 2)
+    return FakeRedisConnection(*args, **kwargs)
+
+
 class FakeRedisMixin:
     def __init__(
         self,

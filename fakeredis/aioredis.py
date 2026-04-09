@@ -278,3 +278,13 @@ class FakeRedisMixin:
 
 class FakeRedis(FakeRedisMixin, redis_async.Redis):
     pass
+
+
+def FakeConnection(*args: Any, **kwargs: Any):
+    warnings.warn("FakeConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
+    return FakeAsyncRedisConnection(*args, **kwargs)
+
+
+def FakeAsyncConnection(*args: Any, **kwargs: Any):
+    warnings.warn("FakeAsyncConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
+    return FakeAsyncRedisConnection(*args, **kwargs)

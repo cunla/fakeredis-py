@@ -1,16 +1,8 @@
 from . import _typing
-from ._connection import (
-    FakeRedis,
-    FakeStrictRedis,
-    FakeRedisConnection,
-)
+from ._connection import FakeRedis, FakeStrictRedis, FakeRedisConnection, FakeConnection
 from ._server import FakeServer
-from .aioredis import (
-    FakeRedis as FakeAsyncRedis,
-    FakeAsyncRedisConnection,
-)
 from ._tcp_server import TcpFakeServer
-
+from .aioredis import FakeRedis as FakeAsyncRedis, FakeAsyncRedisConnection, FakeConnection as FakeAsyncConnection
 
 __version__ = _typing.lib_version
 __author__ = "Daniel Moran"
@@ -25,8 +17,10 @@ __all__ = [
     "FakeRedis",
     "FakeStrictRedis",
     "FakeRedisConnection",
+    "FakeConnection",
     "FakeAsyncRedis",
     "FakeAsyncRedisConnection",
+    "FakeAsyncConnection",
     "TcpFakeServer",
 ]
 
