@@ -131,7 +131,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL GETUSER", fixed=(bytes,), repeat=())
-    def acl_getuser(self, username: bytes) -> List[bytes | List[bytes] | List[dict[str, bytes]]]:
+    def acl_getuser(self, username: bytes) -> List[bytes | List[bytes] | List[Dict[str, bytes]]]:
         res = self._acl.get_user_acl(username).as_array()
         return res
 
