@@ -23,8 +23,8 @@ class Selector:
         channels = b""
         command = b""
         allowed = False
-        data = data.split(b" ")
-        for item in data:
+        data_parts = data.split(b" ")
+        for item in data_parts:
             if item.startswith(b"&"):  # channels
                 channels = item
                 continue
@@ -95,7 +95,7 @@ class UserAccessControlList:
         if len(self._key_patterns) == 0:
             return []
         keys = self._get_keys(command_info, fields)
-        res = set()
+        res:Set[bytes] = set()
         for pat in self._key_patterns:
             res = res.union(fnmatch.filter(keys, pat))
         return list(set(keys) - res)
@@ -104,7 +104,7 @@ class UserAccessControlList:
         if len(self._key_patterns) == 0:
             return []
         channels = fields[1:2]
-        res = set()
+        res:Set[bytes] = set()
         for pat in self._channel_patterns:
             res = res.union(fnmatch.filter(channels, pat))
         return list(set(channels) - res)
@@ -117,7 +117,7 @@ class UserAccessControlList:
         password_provided: bool = password is not None and password != b""
         if self._nopass:
             return not password_provided
-        elif not password_provided:
+        elif not password_provided or password is None:
             return False
         password_hex = hashlib.sha256(password).hexdigest().encode()
         return password_hex in self._passwords and self.enabled
