@@ -20,10 +20,13 @@ toc_depth: 2
 - fix XREADGROUP on multiple streams only returns one message #460
 - fix: XDEL sending ResponseError when stream ID is invalid #465
 - Fix DeprecationWarning caused by mixing valkey and redis classes #462 #464
+- fix: bug referencing non existing variable #465
 
 ### 🧰 Maintenance
 
 - Update typing-extensions version constraint to support newer versions #458
+- Improved documentation with mermaidjs diagrams #467
+- Move documentation dependencies to pyproject.toml
 
 ## v2.34.1
 
