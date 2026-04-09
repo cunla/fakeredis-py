@@ -527,7 +527,7 @@ class SortedSetCommandsMixin:
         return min(limit, len(res))
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> list[Optional[float]]:
+    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> List[Optional[float]]:
         """Get the scores associated with the specified members in the sorted set stored at the key.
 
         For every member that does not exist in the sorted set, a nil value is returned.
@@ -536,7 +536,7 @@ class SortedSetCommandsMixin:
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args) -> Optional[list[float]]:
+    def zrandmember(self, key: CommandItem, *args) -> Optional[List[float]]:
         count, withscores = 1, None
         if len(args) > 0:
             count = Int.decode(args[0])
