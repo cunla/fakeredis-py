@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../STREAM/">
+        <link rel="prev" href="../STRING/">
       
       
-        <link rel="next" href="../VECTOR_SET/">
+        <link rel="next" href="../TRANSACTIONS/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>String - fakeredis</title>
+        <title>Vector Set - fakeredis</title>
       
     
     
@@ -92,7 +92,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#redis-string-commands-2323-implemented" class="md-skip">
+        <a href="#redis-vector_set-commands-1212-implemented" class="md-skip">
           Skip to content
         </a>
       
@@ -128,7 +128,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              String
+              Vector Set
             
           </span>
         </div>
@@ -982,6 +982,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../STRING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    String
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1001,7 +1029,7 @@
   <span class="md-ellipsis">
     
   
-    String
+    Vector Set
   
 
     
@@ -1019,7 +1047,7 @@
   <span class="md-ellipsis">
     
   
-    String
+    Vector Set
   
 
     
@@ -1045,9 +1073,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-    <a href="#append" class="md-nav__link">
+    <a href="#vadd" class="md-nav__link">
       <span class="md-ellipsis">
-        APPEND
+        VADD
       </span>
     </a>
 
@@ -1056,9 +1084,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#decr" class="md-nav__link">
+    <a href="#vcard" class="md-nav__link">
       <span class="md-ellipsis">
-        DECR
+        VCARD
       </span>
     </a>
 
@@ -1067,9 +1095,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#decrby" class="md-nav__link">
+    <a href="#vdim" class="md-nav__link">
       <span class="md-ellipsis">
-        DECRBY
+        VDIM
       </span>
     </a>
 
@@ -1078,9 +1106,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#get" class="md-nav__link">
+    <a href="#vemb" class="md-nav__link">
       <span class="md-ellipsis">
-        GET
+        VEMB
       </span>
     </a>
 
@@ -1089,9 +1117,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getdel" class="md-nav__link">
+    <a href="#vgetattr" class="md-nav__link">
       <span class="md-ellipsis">
-        GETDEL
+        VGETATTR
       </span>
     </a>
 
@@ -1100,9 +1128,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getex" class="md-nav__link">
+    <a href="#vinfo" class="md-nav__link">
       <span class="md-ellipsis">
-        GETEX
+        VINFO
       </span>
     </a>
 
@@ -1111,9 +1139,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getrange" class="md-nav__link">
+    <a href="#vlinks" class="md-nav__link">
       <span class="md-ellipsis">
-        GETRANGE
+        VLINKS
       </span>
     </a>
 
@@ -1122,9 +1150,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getset" class="md-nav__link">
+    <a href="#vrandmember" class="md-nav__link">
       <span class="md-ellipsis">
-        GETSET
+        VRANDMEMBER
       </span>
     </a>
 
@@ -1133,9 +1161,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incr" class="md-nav__link">
+    <a href="#vrange" class="md-nav__link">
       <span class="md-ellipsis">
-        INCR
+        VRANGE
       </span>
     </a>
 
@@ -1144,9 +1172,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incrby" class="md-nav__link">
+    <a href="#vrem" class="md-nav__link">
       <span class="md-ellipsis">
-        INCRBY
+        VREM
       </span>
     </a>
 
@@ -1155,9 +1183,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incrbyfloat" class="md-nav__link">
+    <a href="#vsetattr" class="md-nav__link">
       <span class="md-ellipsis">
-        INCRBYFLOAT
+        VSETATTR
       </span>
     </a>
 
@@ -1166,130 +1194,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#lcs" class="md-nav__link">
+    <a href="#vsim" class="md-nav__link">
       <span class="md-ellipsis">
-        LCS
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#mget" class="md-nav__link">
-      <span class="md-ellipsis">
-        MGET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#mset" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#msetex" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#msetnx" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSETNX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#psetex" class="md-nav__link">
-      <span class="md-ellipsis">
-        PSETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#set" class="md-nav__link">
-      <span class="md-ellipsis">
-        SET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setex" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setnx" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETNX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setrange" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETRANGE
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#strlen" class="md-nav__link">
-      <span class="md-ellipsis">
-        STRLEN
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#substr" class="md-nav__link">
-      <span class="md-ellipsis">
-        SUBSTR
+        VSIM
       </span>
     </a>
 
@@ -1301,34 +1208,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../VECTOR_SET/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Vector Set
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1883,9 +1762,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-    <a href="#append" class="md-nav__link">
+    <a href="#vadd" class="md-nav__link">
       <span class="md-ellipsis">
-        APPEND
+        VADD
       </span>
     </a>
 
@@ -1894,9 +1773,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#decr" class="md-nav__link">
+    <a href="#vcard" class="md-nav__link">
       <span class="md-ellipsis">
-        DECR
+        VCARD
       </span>
     </a>
 
@@ -1905,9 +1784,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#decrby" class="md-nav__link">
+    <a href="#vdim" class="md-nav__link">
       <span class="md-ellipsis">
-        DECRBY
+        VDIM
       </span>
     </a>
 
@@ -1916,9 +1795,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#get" class="md-nav__link">
+    <a href="#vemb" class="md-nav__link">
       <span class="md-ellipsis">
-        GET
+        VEMB
       </span>
     </a>
 
@@ -1927,9 +1806,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getdel" class="md-nav__link">
+    <a href="#vgetattr" class="md-nav__link">
       <span class="md-ellipsis">
-        GETDEL
+        VGETATTR
       </span>
     </a>
 
@@ -1938,9 +1817,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getex" class="md-nav__link">
+    <a href="#vinfo" class="md-nav__link">
       <span class="md-ellipsis">
-        GETEX
+        VINFO
       </span>
     </a>
 
@@ -1949,9 +1828,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getrange" class="md-nav__link">
+    <a href="#vlinks" class="md-nav__link">
       <span class="md-ellipsis">
-        GETRANGE
+        VLINKS
       </span>
     </a>
 
@@ -1960,9 +1839,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#getset" class="md-nav__link">
+    <a href="#vrandmember" class="md-nav__link">
       <span class="md-ellipsis">
-        GETSET
+        VRANDMEMBER
       </span>
     </a>
 
@@ -1971,9 +1850,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incr" class="md-nav__link">
+    <a href="#vrange" class="md-nav__link">
       <span class="md-ellipsis">
-        INCR
+        VRANGE
       </span>
     </a>
 
@@ -1982,9 +1861,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incrby" class="md-nav__link">
+    <a href="#vrem" class="md-nav__link">
       <span class="md-ellipsis">
-        INCRBY
+        VREM
       </span>
     </a>
 
@@ -1993,9 +1872,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#incrbyfloat" class="md-nav__link">
+    <a href="#vsetattr" class="md-nav__link">
       <span class="md-ellipsis">
-        INCRBYFLOAT
+        VSETATTR
       </span>
     </a>
 
@@ -2004,130 +1883,9 @@
 </li>
       
         <li class="md-nav__item">
-    <a href="#lcs" class="md-nav__link">
+    <a href="#vsim" class="md-nav__link">
       <span class="md-ellipsis">
-        LCS
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#mget" class="md-nav__link">
-      <span class="md-ellipsis">
-        MGET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#mset" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#msetex" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#msetnx" class="md-nav__link">
-      <span class="md-ellipsis">
-        MSETNX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#psetex" class="md-nav__link">
-      <span class="md-ellipsis">
-        PSETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#set" class="md-nav__link">
-      <span class="md-ellipsis">
-        SET
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setex" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETEX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setnx" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETNX
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#setrange" class="md-nav__link">
-      <span class="md-ellipsis">
-        SETRANGE
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#strlen" class="md-nav__link">
-      <span class="md-ellipsis">
-        STRLEN
-      </span>
-    </a>
-
-    <!-- Table of contents list -->
-    
-</li>
-      
-        <li class="md-nav__item">
-    <a href="#substr" class="md-nav__link">
-      <span class="md-ellipsis">
-        SUBSTR
+        VSIM
       </span>
     </a>
 
@@ -2152,7 +1910,7 @@
 
 
   
-    <a href="https://github.com/cunla/fakeredis/edit/master/docs/supported-commands/Redis/STRING.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cunla/fakeredis/edit/master/docs/supported-commands/Redis/VECTOR_SET.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2161,60 +1919,38 @@
     
       
     
-    <a href="https://github.com/cunla/fakeredis/raw/master/docs/supported-commands/Redis/STRING.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/cunla/fakeredis/raw/master/docs/supported-commands/Redis/VECTOR_SET.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="redis-string-commands-2323-implemented">Redis <code>string</code> commands (23/23 implemented)<a class="headerlink" href="#redis-string-commands-2323-implemented" title="Permanent link">&para;</a></h1>
-<h2 id="append"><a href="https://redis.io/commands/append/">APPEND</a><a class="headerlink" href="#append" title="Permanent link">&para;</a></h2>
-<p>Appends a string to the value of a key. Creates the key if it doesn't exist.</p>
-<h2 id="decr"><a href="https://redis.io/commands/decr/">DECR</a><a class="headerlink" href="#decr" title="Permanent link">&para;</a></h2>
-<p>Decrements the integer value of a key by one. Uses 0 as initial value if the key doesn't exist.</p>
-<h2 id="decrby"><a href="https://redis.io/commands/decrby/">DECRBY</a><a class="headerlink" href="#decrby" title="Permanent link">&para;</a></h2>
-<p>Decrements a number from the integer value of a key. Uses 0 as initial value if the key doesn't exist.</p>
-<h2 id="get"><a href="https://redis.io/commands/get/">GET</a><a class="headerlink" href="#get" title="Permanent link">&para;</a></h2>
-<p>Returns the string value of a key.</p>
-<h2 id="getdel"><a href="https://redis.io/commands/getdel/">GETDEL</a><a class="headerlink" href="#getdel" title="Permanent link">&para;</a></h2>
-<p>Returns the string value of a key after deleting the key.</p>
-<h2 id="getex"><a href="https://redis.io/commands/getex/">GETEX</a><a class="headerlink" href="#getex" title="Permanent link">&para;</a></h2>
-<p>Returns the string value of a key after setting its expiration time.</p>
-<h2 id="getrange"><a href="https://redis.io/commands/getrange/">GETRANGE</a><a class="headerlink" href="#getrange" title="Permanent link">&para;</a></h2>
-<p>Returns a substring of the string stored at a key.</p>
-<h2 id="getset"><a href="https://redis.io/commands/getset/">GETSET</a><a class="headerlink" href="#getset" title="Permanent link">&para;</a></h2>
-<p>Returns the previous string value of a key after setting it to a new value.</p>
-<h2 id="incr"><a href="https://redis.io/commands/incr/">INCR</a><a class="headerlink" href="#incr" title="Permanent link">&para;</a></h2>
-<p>Increments the integer value of a key by one. Uses 0 as initial value if the key doesn't exist.</p>
-<h2 id="incrby"><a href="https://redis.io/commands/incrby/">INCRBY</a><a class="headerlink" href="#incrby" title="Permanent link">&para;</a></h2>
-<p>Increments the integer value of a key by a number. Uses 0 as initial value if the key doesn't exist.</p>
-<h2 id="incrbyfloat"><a href="https://redis.io/commands/incrbyfloat/">INCRBYFLOAT</a><a class="headerlink" href="#incrbyfloat" title="Permanent link">&para;</a></h2>
-<p>Increment the floating point value of a key by a number. Uses 0 as initial value if the key doesn't exist.</p>
-<h2 id="lcs"><a href="https://redis.io/commands/lcs/">LCS</a><a class="headerlink" href="#lcs" title="Permanent link">&para;</a></h2>
-<p>Finds the longest common substring.</p>
-<h2 id="mget"><a href="https://redis.io/commands/mget/">MGET</a><a class="headerlink" href="#mget" title="Permanent link">&para;</a></h2>
-<p>Atomically returns the string values of one or more keys.</p>
-<h2 id="mset"><a href="https://redis.io/commands/mset/">MSET</a><a class="headerlink" href="#mset" title="Permanent link">&para;</a></h2>
-<p>Atomically creates or modifies the string values of one or more keys.</p>
-<h2 id="msetex"><a href="https://redis.io/commands/msetex/">MSETEX</a><a class="headerlink" href="#msetex" title="Permanent link">&para;</a></h2>
-<p>Atomically sets multiple string keys with a shared expiration in a single operation.</p>
-<h2 id="msetnx"><a href="https://redis.io/commands/msetnx/">MSETNX</a><a class="headerlink" href="#msetnx" title="Permanent link">&para;</a></h2>
-<p>Atomically modifies the string values of one or more keys only when all keys don't exist.</p>
-<h2 id="psetex"><a href="https://redis.io/commands/psetex/">PSETEX</a><a class="headerlink" href="#psetex" title="Permanent link">&para;</a></h2>
-<p>Sets both string value and expiration time in milliseconds of a key. The key is created if it doesn't exist.</p>
-<h2 id="set"><a href="https://redis.io/commands/set/">SET</a><a class="headerlink" href="#set" title="Permanent link">&para;</a></h2>
-<p>Sets the string value of a key, ignoring its type. The key is created if it doesn't exist.</p>
-<h2 id="setex"><a href="https://redis.io/commands/setex/">SETEX</a><a class="headerlink" href="#setex" title="Permanent link">&para;</a></h2>
-<p>Sets the string value and expiration time of a key. Creates the key if it doesn't exist.</p>
-<h2 id="setnx"><a href="https://redis.io/commands/setnx/">SETNX</a><a class="headerlink" href="#setnx" title="Permanent link">&para;</a></h2>
-<p>Set the string value of a key only when the key doesn't exist.</p>
-<h2 id="setrange"><a href="https://redis.io/commands/setrange/">SETRANGE</a><a class="headerlink" href="#setrange" title="Permanent link">&para;</a></h2>
-<p>Overwrites a part of a string value with another by an offset. Creates the key if it doesn't exist.</p>
-<h2 id="strlen"><a href="https://redis.io/commands/strlen/">STRLEN</a><a class="headerlink" href="#strlen" title="Permanent link">&para;</a></h2>
-<p>Returns the length of a string value.</p>
-<h2 id="substr"><a href="https://redis.io/commands/substr/">SUBSTR</a><a class="headerlink" href="#substr" title="Permanent link">&para;</a></h2>
-<p>Returns a substring from a string value.</p>
+<h1 id="redis-vector_set-commands-1212-implemented">Redis <code>vector_set</code> commands (12/12 implemented)<a class="headerlink" href="#redis-vector_set-commands-1212-implemented" title="Permanent link">&para;</a></h1>
+<h2 id="vadd"><a href="https://redis.io/commands/vadd/">VADD</a><a class="headerlink" href="#vadd" title="Permanent link">&para;</a></h2>
+<p>Add a new element to a vector set, or update its vector if it already exists.</p>
+<h2 id="vcard"><a href="https://redis.io/commands/vcard/">VCARD</a><a class="headerlink" href="#vcard" title="Permanent link">&para;</a></h2>
+<p>Return the number of elements in a vector set.</p>
+<h2 id="vdim"><a href="https://redis.io/commands/vdim/">VDIM</a><a class="headerlink" href="#vdim" title="Permanent link">&para;</a></h2>
+<p>Return the dimension of vectors in the vector set.</p>
+<h2 id="vemb"><a href="https://redis.io/commands/vemb/">VEMB</a><a class="headerlink" href="#vemb" title="Permanent link">&para;</a></h2>
+<p>Return the vector associated with an element.</p>
+<h2 id="vgetattr"><a href="https://redis.io/commands/vgetattr/">VGETATTR</a><a class="headerlink" href="#vgetattr" title="Permanent link">&para;</a></h2>
+<p>Retrieve the JSON attributes of elements.</p>
+<h2 id="vinfo"><a href="https://redis.io/commands/vinfo/">VINFO</a><a class="headerlink" href="#vinfo" title="Permanent link">&para;</a></h2>
+<p>Return information about a vector set.</p>
+<h2 id="vlinks"><a href="https://redis.io/commands/vlinks/">VLINKS</a><a class="headerlink" href="#vlinks" title="Permanent link">&para;</a></h2>
+<p>Return the neighbors of an element at each layer in the HNSW graph.</p>
+<h2 id="vrandmember"><a href="https://redis.io/commands/vrandmember/">VRANDMEMBER</a><a class="headerlink" href="#vrandmember" title="Permanent link">&para;</a></h2>
+<p>Return one or multiple random members from a vector set.</p>
+<h2 id="vrange"><a href="https://redis.io/commands/vrange/">VRANGE</a><a class="headerlink" href="#vrange" title="Permanent link">&para;</a></h2>
+<p>Return elements in a lexicographical range</p>
+<h2 id="vrem"><a href="https://redis.io/commands/vrem/">VREM</a><a class="headerlink" href="#vrem" title="Permanent link">&para;</a></h2>
+<p>Remove an element from a vector set.</p>
+<h2 id="vsetattr"><a href="https://redis.io/commands/vsetattr/">VSETATTR</a><a class="headerlink" href="#vsetattr" title="Permanent link">&para;</a></h2>
+<p>Associate or remove the JSON attributes of elements.</p>
+<h2 id="vsim"><a href="https://redis.io/commands/vsim/">VSIM</a><a class="headerlink" href="#vsim" title="Permanent link">&para;</a></h2>
+<p>Return elements by vector similarity.</p>
 
 
 
@@ -2246,7 +1982,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../STREAM/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Stream">
+          <a href="../STRING/" class="md-footer__link md-footer__link--prev" aria-label="Previous: String">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2256,20 +1992,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Stream
+                String
               </div>
             </div>
           </a>
         
         
           
-          <a href="../VECTOR_SET/" class="md-footer__link md-footer__link--next" aria-label="Next: Vector Set">
+          <a href="../TRANSACTIONS/" class="md-footer__link md-footer__link--next" aria-label="Next: Transactions">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Vector Set
+                Transactions
               </div>
             </div>
             <div class="md-footer__button md-icon">
