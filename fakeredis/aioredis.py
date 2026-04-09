@@ -108,7 +108,7 @@ class FakeWriter:
         if self._socket is None:
             return
         for chunk in data:
-            self._socket.sendall(chunk)  # type:ignore
+            self._socket.sendall(chunk)
 
 
 class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
@@ -123,7 +123,7 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         self._reader: Optional[FakeReader] = FakeReader(self._sock)
         self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
 
-    def __del__(self):
+    def __del__(self) -> None:
         # Ensure _writer is cleared even if disconnect() was never called
         # This prevents ResourceWarning on Python 3.13+ during garbage collection
         self._writer = None
@@ -169,7 +169,7 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         else:
             return response
 
-    async def read_response(self, **kwargs: Any) -> Any:  # type: ignore
+    async def read_response(self, **kwargs: Any) -> Any:
         if not self._sock:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
@@ -255,7 +255,7 @@ class FakeRedisMixin:
                 "client_class": client_class,
             }
             connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)  # type: ignore
+            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
         kwds.pop("server", None)
         kwds.pop("connected", None)
         kwds.pop("version", None)

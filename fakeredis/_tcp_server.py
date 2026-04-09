@@ -137,7 +137,7 @@ class Resp3Writer(Writer):
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-    server: "TcpFakeServer"  # type: ignore
+    server: "TcpFakeServer"
     shutdown_request: bool = False
 
     def setup(self) -> None:

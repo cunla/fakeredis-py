@@ -125,7 +125,7 @@ class StreamsCommandsMixin:
         if timeout is None:
             res = self._xreadgroup(consumer_name, group_params, count, noack, False)
         else:
-            res = self._blocking(  # type: ignore
+            res = self._blocking(
                 timeout / 1000.0,
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
             )
