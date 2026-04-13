@@ -120,38 +120,34 @@ class FakeBaseConnectionMixin(object):
             self.server_key += f":{server_type}:v{_version_to_str(version)[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
-        client_info = kwargs.pop("client_info", {})
+        client_info_arg = kwargs.pop("client_info", {})
         super().__init__(*args, **kwargs)
         protocol = getattr(self, "protocol", 2)
 
-        client_info.update(
-            dict(
-                id=self._server.get_next_client_id(),
-                addr="127.0.0.1:57275",  # TODO get IP
-                laddr="127.0.0.1:6379",  # TODO get IP
-                fd=8,
-                name="",
-                idle=0,
-                flags="N",
-                db=0,
-                sub=0,
-                psub=0,
-                ssub=0,
-                multi=-1,
-                qbuf=48,
-                qbuf_free=16842,
-                argv_mem=25,
-                multi_mem=0,
-                rbs=1024,
-                rbp=0,
-                obl=0,
-                oll=0,
-                omem=0,
-                tot_mem=18737,
-                events="r",
-                cmd="auth",
-                redir=-1,
-                resp=protocol,
-            )
+        client_info = dict(
+            id=self._server.get_next_client_id(),
+            name="",
+            idle=0,
+            flags="N",
+            db=0,
+            sub=0,
+            psub=0,
+            ssub=0,
+            multi=-1,
+            qbuf=48,
+            qbuf_free=16842,
+            argv_mem=25,
+            multi_mem=0,
+            rbs=1024,
+            rbp=0,
+            obl=0,
+            oll=0,
+            omem=0,
+            tot_mem=18737,
+            events="r",
+            cmd="auth",
+            redir=-1,
+            resp=protocol,
         )
+        client_info.update(client_info_arg)
         self._client_info = ClientInfo(**client_info)
