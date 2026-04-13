@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Any
 
 from fakeredis._commands import command, Key, Int, CommandItem
 from fakeredis._helpers import Database, current_time
@@ -8,7 +8,7 @@ from fakeredis.model import ExpiringMembersSet
 class DragonflyCommandsMixin(object):
     _expireat: Callable[[CommandItem, int], int]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db: Database
 
