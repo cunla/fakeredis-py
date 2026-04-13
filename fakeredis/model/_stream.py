@@ -205,7 +205,7 @@ class StreamGroup(object):
         end: Optional[StreamRangeTest],
         count: Optional[int],
         consumer: Optional[bytes],
-    ) -> List[List[bytes]]:
+    ) -> List[List[Union[bytes, int]]]:
         _time = current_time()
         relevant_ids = list(self.pel.keys())
         if consumer is not None:
@@ -460,7 +460,7 @@ class XStream(BaseModel):
         if len(self._ids) > 0 and self._ids[-1] > ts_seq:
             return None
         self._ids.append(ts_seq)
-        self._values_dict[ts_seq] = list(fields)
+        self._values_dict[ts_seq] = list(fields)  # type: ignore
         self._entries_added += 1
         self._last_generated_id = ts_seq.encode()
         if producer_id is not None and idempotent_id is not None:
@@ -470,7 +470,7 @@ class XStream(BaseModel):
             self._iids_added += 1
         return ts_seq.encode()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return True
 
     def __len__(self) -> int:
@@ -595,7 +595,7 @@ class XStream(BaseModel):
         end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
         return self._ids[start_ind:end_ind]
 
-    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, Dict[bytes, bytes]]]:
+    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, List[bytes]]]:
         # results: Dict[bytes, bytes] = dict(zip(*[iter(self._values_dict[key])] * 2))
         results = self._values_dict[key]
         return [key.encode(), results]
