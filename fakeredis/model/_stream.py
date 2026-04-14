@@ -147,17 +147,24 @@ class StreamGroup(object):
         return res
 
     def group_read(
-        self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
-    ) -> List[List[Union[bytes, Dict[bytes, bytes]]]]:
+        self, consumer_name: bytes, start_id: bytes, count: Optional[int], noack: bool
+    ) -> List[List[Union[bytes, Optional[Dict[bytes, bytes]]]]]:
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
 
         self.consumers[consumer_name].last_attempt = _time
-        if start_id == b">":
-            start_key = self.last_delivered_key
-        else:
-            start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
+        if start_id != b">":
+            threshold = StreamEntryKey.parse_str(start_id)
+            pel_keys = sorted(k for k, v in self.pel.items() if v.consumer_name == consumer_name and k > threshold)
+            if count is not None:
+                pel_keys = pel_keys[:count]
+            for k in pel_keys:
+                entry = self.pel[k]
+                self.pel[k] = PelEntry(entry.consumer_name, entry.time_read, entry.times_delivered + 1)
+            self.consumers[consumer_name].last_success = _time
+            return [self.stream.format_record(k) if k in self.stream else [k.encode(), None] for k in pel_keys]
+        start_key = self.last_delivered_key
         ids_read = self.stream.stream_read(start_key, count)
         if not noack:
             for k in ids_read:
