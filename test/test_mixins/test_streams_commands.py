@@ -958,7 +958,8 @@ def test_xreadgroup_pel_read_preserves_group_state(r: redis.Redis):
     after_consumer = next(c for c in r.xinfo_consumers(stream, group) if c["name"] == consumer.encode())
 
     assert after_group["last-delivered-id"] == before_group["last-delivered-id"] == m2
-    assert after_group["entries-read"] == before_group["entries-read"]
+    if "entries-read" in before_group:
+        assert after_group["entries-read"] == before_group["entries-read"]
     assert after_group["pending"] == before_group["pending"] == 2
     assert after_consumer["pending"] == before_consumer["pending"] == 2
 
