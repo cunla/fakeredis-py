@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.35.2
+
+### 🐛 Bug Fixes
+
+- fix: XREADGROUP with non-'>' ID returns consumer PEL @tomtom103 #470
+
 ## v2.35.1
 
 ### 🐛 Bug Fixes
