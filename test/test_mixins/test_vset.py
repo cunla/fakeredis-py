@@ -1190,3 +1190,26 @@ def test_vadd_numlinks_one(r: redis.Redis):
     info = r.vset().vinfo("myset")
     assert info[b"size"] == 3
 
+
+@pytest.mark.parametrize(
+    "cmd_args",
+    [
+        ("VCARD", "not_a_vset"),
+        ("VDIM", "not_a_vset"),
+        ("VGETATTR", "not_a_vset", "member"),
+        ("VSETATTR", "not_a_vset", "member", "{}"),
+        ("VEMB", "not_a_vset", "member"),
+        ("VREM", "not_a_vset", "member"),
+        ("VRANGE", "not_a_vset", "-", "+"),
+        ("VSIM", "not_a_vset", "ELE", "member"),
+        ("VINFO", "not_a_vset"),
+        ("VLINKS", "not_a_vset", "member"),
+    ],
+)
+def test_wrongtype_on_string_key(r: redis.Redis, cmd_args):
+    """All vset commands raise WRONGTYPE when the key holds a string."""
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(redis.ResponseError) as excinfo:
+        r.execute_command(*cmd_args)
+    assert "WRONGTYPE" in excinfo.value.args[0]
+
