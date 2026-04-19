@@ -38,25 +38,6 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
         raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
 
 
-def quantize_int8(x):
-    qmin = -(2.0**7) if (x < 0).any() else 0  # Signed or unsigned range
-    qmax = 2.0**7 - 1 if (x < 0).any() else 2.0**8 - 1
-
-    min_val, max_val = x.min(), x.max()
-
-    # Calculate the scale factor
-    scale = (max_val - min_val) / (qmax - qmin)
-
-    # Calculate the initial zero point and clamp it to the valid range
-    initial_zero_point = qmin - min_val / scale
-    zero_point = int(np.clip(initial_zero_point, qmin, qmax))
-
-    # Quantize the values and round them
-    q_x = zero_point + x / scale
-    q_x = np.clip(q_x, qmin, qmax).round().astype(np.int8)  # Use np.int8 for the final data type
-
-    return q_x, scale, zero_point
-
 
 class Vector:
     def __init__(

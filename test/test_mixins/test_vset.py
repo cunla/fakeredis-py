@@ -1047,3 +1047,146 @@ def test_vlinks_valid_neighbors(r: redis.Redis):
             assert neighbor != b"b"
             assert isinstance(score, float)
             assert -1.0 <= score <= 1.0
+
+
+def test_vcard_nonexistent_key(r: redis.Redis):
+    """Test that vcard returns None (nil) for a key that does not exist."""
+    assert r.vset().vcard("nonexistent") is None
+
+
+def test_vadd_multiple_quant_types(r: redis.Redis):
+    """Test that specifying two quantization flags in one VADD raises an error."""
+    with pytest.raises(redis.ResponseError, match="multiple quantization"):
+        r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
+
+
+def test_vadd_values_insufficient_args(r: redis.Redis):
+    """Test that VADD VALUES N raises when fewer than N floats follow."""
+    with pytest.raises(redis.ResponseError):
+        # Claims 5 values but only 2 are provided before the element name
+        r.execute_command("VADD", "myset", "VALUES", "5", "1.0", "2.0", "a")
+
+
+def test_vadd_unknown_syntax(r: redis.Redis):
+    """Test that an unrecognised VADD keyword raises a syntax error."""
+    with pytest.raises(redis.ResponseError, match="syntax error"):
+        r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BADPARAM")
+
+
+def test_vemb_too_many_args(r: redis.Redis):
+    """Test that VEMB with more than one optional arg raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError, match="wrong number of arguments"):
+        r.execute_command("VEMB", "myset", "a", "RAW", "EXTRA")
+
+
+def test_vrange_too_many_args(r: redis.Redis):
+    """Test that VRANGE with more than one extra arg (after min/max) raises an error."""
+    r.vset().vadd("myset", [1.0, 2.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VRANGE", "myset", "-", "+", "5", "EXTRA")
+
+
+def test_vsim_duplicate_ele(r: redis.Redis):
+    """Test that specifying ELE twice in VSIM raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "ELE", "a", "ELE", "b")
+
+
+def test_vsim_duplicate_values(r: redis.Redis):
+    """Test that specifying VALUES twice in VSIM raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "VALUES", "3", "1.0", "0.0", "0.0")
+
+
+def test_vsim_values_insufficient_args(r: redis.Redis):
+    """Test that VSIM VALUES N raises when fewer than N floats follow."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "VALUES", "5", "1.0", "2.0")
+
+
+def test_vsim_epsilon(r: redis.Redis):
+    """Test that VSIM EPSILON filters out elements below the similarity threshold."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "opposite", quantization=QuantizationOptions.NOQUANT)
+
+    # epsilon=0.1: keep score >= 0.9; only "same" (score=1.0) qualifies
+    result = r.execute_command("VSIM", "myset", "ELE", "same", "EPSILON", "0.1")
+    assert result == [b"same"]
+
+    # epsilon=0.6: keep score >= 0.4; "same" (1.0) and "orthogonal" (0.5) qualify
+    result = r.execute_command("VSIM", "myset", "ELE", "same", "EPSILON", "0.6")
+    assert set(result) == {b"same", b"orthogonal"}
+
+
+def test_vsim_truth_nothread(r: redis.Redis):
+    """Test that VSIM with TRUTH and NOTHREAD flags returns the same results."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+
+    base = r.execute_command("VSIM", "myset", "ELE", "a")
+    with_truth = r.execute_command("VSIM", "myset", "ELE", "a", "TRUTH")
+    with_nothread = r.execute_command("VSIM", "myset", "ELE", "a", "NOTHREAD")
+
+    assert set(base) == set(with_truth) == set(with_nothread)
+
+
+def test_vsim_no_vector_specified(r: redis.Redis):
+    """Test that VSIM without ELE/FP32/VALUES raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "WITHSCORES")
+
+
+def test_vsim_syntax_error(r: redis.Redis):
+    """Test that an unrecognised VSIM keyword raises a syntax error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError, match="syntax"):
+        r.execute_command("VSIM", "myset", "ELE", "a", "BADPARAM")
+
+
+def test_vsim_invalid_filter_expression(r: redis.Redis):
+    """Test that an unparseable FILTER expression raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", attributes={"x": 1})
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "ELE", "a", "FILTER", "!!!invalid!!!")
+
+
+def test_vsim_filter_excludes_no_attr_elements(r: redis.Redis):
+    """Test that VSIM FILTER skips elements that have no attributes (accept_filter → False)."""
+    r.vset().vadd("myset", [1.0, 0.0], "has_attr", attributes={"score": 100})
+    r.vset().vadd("myset", [0.9, 0.1], "low_attr", attributes={"score": 1})
+    r.vset().vadd("myset", [0.8, 0.2], "no_attr")
+
+    # Only "has_attr" has score > 50; "no_attr" is excluded because it has no attributes
+    result = r.vset().vsim("myset", input="has_attr", filter=".score > 50", count=3)
+    assert b"has_attr" in result
+    assert b"no_attr" not in result
+    assert b"low_attr" not in result
+
+
+def test_vsim_zero_norm_vector(r: redis.Redis):
+    """Test that similarity with a zero-norm vector returns 0.0."""
+    r.execute_command("VADD", "myset", "VALUES", "3", "0.0", "0.0", "0.0", "zero")
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "unit")
+
+    result = r.vset().vsim("myset", input="zero", with_scores=True, count=2)
+    assert result[b"zero"] == pytest.approx(0.0, abs=0.001)
+    assert result[b"unit"] == pytest.approx(0.0, abs=0.001)
+
+
+def test_vadd_numlinks_one(r: redis.Redis):
+    """Test vadd with numlinks=1 (exercises _compute_level branch where m <= 1)."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", numlinks=1)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", numlinks=1)
+
+    assert r.vset().vcard("myset") == 3
+    info = r.vset().vinfo("myset")
+    assert info[b"size"] == 3
+
