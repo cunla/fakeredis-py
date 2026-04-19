@@ -1212,4 +1212,3 @@ def test_wrongtype_on_string_key(r: redis.Redis, cmd_args):
     with pytest.raises(redis.ResponseError) as excinfo:
         r.execute_command(*cmd_args)
     assert "WRONGTYPE" in excinfo.value.args[0]
-

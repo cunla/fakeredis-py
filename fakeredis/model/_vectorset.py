@@ -38,7 +38,6 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
         raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
 
 
-
 class Vector:
     def __init__(
         self, name: bytes, values: List[float], attributes: Optional[bytes], quantization: QUANTIZATION_TYPE, ef: int
