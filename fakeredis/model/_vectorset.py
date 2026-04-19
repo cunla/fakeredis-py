@@ -97,7 +97,8 @@ class Vector:
         denominator = self.l2_norm * other.l2_norm
         if denominator == 0:
             return 0.0
-        return float(np.dot(me, o)) / denominator
+        cosine_sim = float(np.dot(me, o)) / denominator
+        return (1.0 + cosine_sim) / 2.0
 
     def accept_filter(self, filter_expression: Optional[bytes]) -> bool:
         if filter_expression is None:

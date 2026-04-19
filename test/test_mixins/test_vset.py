@@ -1,4 +1,5 @@
 import json
+import math
 import random
 from typing import List
 
@@ -865,3 +866,184 @@ def test_vrange_with_count(r: redis.Redis):
     result = r.vset().vrange("myset", "-", "+", count=-1)
     assert len(result) == 7
     assert result == elements
+
+
+def test_vsim_cosine_scores(r: redis.Redis):
+    """Test exact cosine similarity scores using NOQUANT with unit vectors."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "opposite", quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="same", with_scores=True, count=3)
+
+    assert list(result.keys()) == [b"same", b"orthogonal", b"opposite"]
+    assert result[b"same"] == pytest.approx(1.0, abs=0.001)
+    assert result[b"orthogonal"] == pytest.approx(0.5, abs=0.01)
+    assert result[b"opposite"] == pytest.approx(0.0, abs=0.001)
+
+
+def test_vsim_cosine_diagonal(r: redis.Redis):
+    """Test cosine similarity equals 1/sqrt(2) for a 45-degree vector."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "x_axis", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [1.0, 1.0, 0.0], "diagonal", quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="x_axis", with_scores=True, count=2)
+
+    assert list(result.keys()) == [b"x_axis", b"diagonal"]
+    assert result[b"x_axis"] == pytest.approx(1.0, abs=0.001)
+    assert result[b"diagonal"] == pytest.approx((1.0 + 1.0 / math.sqrt(2)) / 2, abs=0.01)
+
+
+def test_vsim_fp32_input_scores(r: redis.Redis):
+    """Test that querying by float array gives the same scores as querying by element name."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", quantization=QuantizationOptions.NOQUANT)
+
+    by_name = r.vset().vsim("myset", input="a", with_scores=True, count=3)
+    by_vector = r.vset().vsim("myset", input=[1.0, 0.0, 0.0], with_scores=True, count=3)
+
+    assert list(by_name.keys()) == list(by_vector.keys())
+    for key in by_name:
+        assert by_name[key] == pytest.approx(by_vector[key], abs=0.001)
+
+
+def test_vsim_count_exact(r: redis.Redis):
+    """Test vsim count with 5 NOQUANT vectors whose similarity ordering is precisely known."""
+    # Cosine similarities to [1, 0, 0]: a=1.0, b≈0.994, c≈0.707, d=0.0, e=-1.0
+    for name, vec in [
+        ("a", [1.0, 0.0, 0.0]),
+        ("b", [0.9, 0.1, 0.0]),
+        ("c", [0.5, 0.5, 0.0]),
+        ("d", [0.0, 1.0, 0.0]),
+        ("e", [-1.0, 0.0, 0.0]),
+    ]:
+        r.vset().vadd("myset", vec, name, quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="a", count=2)
+    assert len(result) == 2
+    assert result[0] == b"a"
+    assert result[1] == b"b"
+
+    result_all = r.vset().vsim("myset", input="a", count=100)
+    assert len(result_all) == 5
+    assert result_all[0] == b"a"
+    assert result_all[-1] == b"e"
+
+
+def test_vcard_exact_count(r: redis.Redis):
+    """Test vcard returns the precise element count after each modification."""
+    r.vset().vadd("myset", [1.0, 0.0], "a")
+    assert r.vset().vcard("myset") == 1
+
+    r.vset().vadd("myset", [0.0, 1.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0], "c")
+    assert r.vset().vcard("myset") == 3
+
+    r.vset().vrem("myset", "b")
+    assert r.vset().vcard("myset") == 2
+
+
+def test_vrem_exact(r: redis.Redis):
+    """Test vrem removes exactly the targeted element and returns correct status codes."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c")
+
+    assert r.vset().vrem("myset", "b") == 1
+    assert r.vset().vcard("myset") == 2
+    assert r.vset().vemb("myset", "b") is None
+    assert r.vset().vemb("myset", "a") is not None
+    assert r.vset().vemb("myset", "c") is not None
+
+    assert r.vset().vrem("myset", "b") == 0
+    assert r.vset().vcard("myset") == 2
+
+    assert r.vset().vrem("myset_nonexistent", "a") == 0
+
+
+def test_vinfo_exact_fields(r: redis.Redis):
+    """Test vinfo returns correct size, dim, uid, and quant-type for a known set."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"f32"
+    assert info[b"vector-dim"] == 3
+    assert info[b"size"] == 2
+    assert info[b"hnsw-max-node-uid"] == 2
+
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", quantization=QuantizationOptions.NOQUANT)
+    info = r.vset().vinfo("myset")
+    assert info[b"size"] == 3
+    assert info[b"hnsw-max-node-uid"] == 3
+
+
+def test_vinfo_bin_quant_type(r: redis.Redis):
+    """Test vinfo reports bin quantization type and correct dimension."""
+    r.vset().vadd("myset", [1.0, 4.0, 0.0, -1.0], "a", quantization=QuantizationOptions.BIN)
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"bin"
+    assert info[b"vector-dim"] == 4
+    assert info[b"size"] == 1
+
+
+def test_vinfo_int8_quant_type(r: redis.Redis):
+    """Test vinfo reports int8 as the default quantization type."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"int8"
+    assert info[b"vector-dim"] == 3
+    assert info[b"size"] == 1
+
+
+def test_vrandmember_exact_pool(r: redis.Redis):
+    """Test vrandmember always returns members from the exact set, with correct counts."""
+    known = {"alpha", "beta", "gamma"}
+    r.vset().vadd("myset", [1.0, 0.0], "alpha")
+    r.vset().vadd("myset", [0.0, 1.0], "beta")
+    r.vset().vadd("myset", [-1.0, 0.0], "gamma")
+
+    single = r.vset().vrandmember("myset")
+    assert single.decode() in known
+
+    all_unique = r.vset().vrandmember("myset", count=3)
+    assert len(all_unique) == 3
+    assert {m.decode() for m in all_unique} == known
+
+    more_than_set = r.vset().vrandmember("myset", count=10)
+    assert len(more_than_set) == 3
+    assert {m.decode() for m in more_than_set} == known
+
+    with_reps = r.vset().vrandmember("myset", count=-5)
+    assert len(with_reps) == 5
+    assert all(m.decode() in known for m in with_reps)
+
+
+def test_vlinks_valid_neighbors(r: redis.Redis):
+    """Test vlinks returns only valid element names (no self-links, no unknown names)."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c")
+
+    valid = {b"a", b"b", b"c"}
+    for name in [b"a", b"b", b"c"]:
+        links = r.vset().vlinks("myset", name)
+        assert links is not None
+        for layer in links:
+            assert isinstance(layer, list)
+            for neighbor in layer:
+                assert neighbor in valid
+                assert neighbor != name
+
+    links_with_scores = r.vset().vlinks("myset", b"b", with_scores=True)
+    assert links_with_scores is not None
+    for layer_dict in links_with_scores:
+        assert isinstance(layer_dict, dict)
+        for neighbor, score in layer_dict.items():
+            assert neighbor in valid
+            assert neighbor != b"b"
+            assert isinstance(score, float)
+            assert -1.0 <= score <= 1.0
