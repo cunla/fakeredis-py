@@ -92,7 +92,7 @@ class FakeBaseConnectionMixin(object):
         server: Optional[FakeServer] = None,
         client_class: Type[redis.Redis] = redis.Redis,
         lua_modules: Optional[Set[str]] = None,
-        writer=None,
+        writer: Any = None,
         connected: bool = True,
         path: Optional[str] = None,
         **kwargs: Any,
