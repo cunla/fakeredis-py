@@ -17,7 +17,10 @@ QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
     path_str = path.decode() if isinstance(path, bytes) else path
-    path_str = path_str.replace("and", "&").replace("or", "|").replace("not", "!").replace(".", "@.")
+    path_str = re.sub(r"\band\b", "&", path_str)
+    path_str = re.sub(r"\bor\b", "|", path_str)
+    path_str = re.sub(r"\bnot\b", "!", path_str)
+    path_str = path_str.replace(".", "@.")
 
     # Replace `v in [x, y, z]` with `(v=~'x|y|z')`
     def expand_in(m: re.Match) -> str:
