@@ -2,7 +2,6 @@
 
 from typing import Any, List, Union, Dict
 
-
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Float, Int
@@ -109,17 +108,25 @@ class BFCommandsMixin:
                 b"Expansion rate": key.value.scale if key.value.scale > 0 else None,
             }
         if casematch(args[0], b"CAPACITY"):
-            return key.value.estimated_elements
+            res_key = b"Capacity"
+            res = key.value.estimated_elements
         elif casematch(args[0], b"SIZE"):
-            return key.value.estimated_elements
+            res_key = b"Size"
+            res = key.value.estimated_elements
         elif casematch(args[0], b"FILTERS"):
-            return key.value.expansions + 1
+            res_key = b"Number of filters"
+            res = key.value.expansions + 1
         elif casematch(args[0], b"ITEMS"):
-            return key.value.elements_added
+            res_key = b"Number of items inserted"
+            res = key.value.elements_added
         elif casematch(args[0], b"EXPANSION"):
-            return key.value.expansions if key.value.expansions > 0 else None
+            res_key = b"Expansion rate"
+            res = key.value.scale if key.value.scale > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if self._client_info.protocol_version == 2:
+            return [res]
+        return {res_key: res}
 
     @command(name="BF.SCANDUMP", fixed=(Key(), Int), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def bf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:

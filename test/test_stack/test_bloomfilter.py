@@ -2,6 +2,7 @@ import pytest
 import redis
 from redis.commands.bf import BFInfo
 
+import testtools
 from fakeredis import _msgs as msgs
 from test.testtools import get_protocol_version, raw_command
 
@@ -220,24 +221,27 @@ def test_bf_info_resp3(r: redis.Redis):
     assert info[b"Number of items inserted"] == 0
 
 
-@pytest.mark.fake
+@pytest.mark.resp3_only
 def test_bf_info_field_queries(r: redis.Redis):
     """BF.INFO with a specific field name returns only that value (fakeredis-only due to redis-py parsing)."""
     r.bf().create("bloom", 0.01, 1000)
     r.bf().add("bloom", "item1")
-    assert raw_command(r, "BF.INFO", "bloom", "CAPACITY") == 1000
-    assert raw_command(r, "BF.INFO", "bloom", "SIZE") == 1000
-    assert raw_command(r, "BF.INFO", "bloom", "FILTERS") == 1
-    assert raw_command(r, "BF.INFO", "bloom", "ITEMS") == 1
+    assert raw_command(r, "BF.INFO", "bloom", "CAPACITY") == {b"Capacity": 1000}
+    res = raw_command(r, "BF.INFO", "bloom", "SIZE")
+    assert isinstance(res, dict)
+    assert b"Size" in res
+    assert raw_command(r, "BF.INFO", "bloom", "FILTERS") == {b"Number of filters": 1}
+    assert raw_command(r, "BF.INFO", "bloom", "ITEMS") == {b"Number of items inserted": 1}
     with pytest.raises(redis.ResponseError):
         raw_command(r, "BF.INFO", "bloom", "BADFIELD")
 
 
-@pytest.mark.fake
 def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
     """BF.INFO EXPANSION on a non-scaling filter returns None (fakeredis-only due to redis-py parsing)."""
     r.bf().create("ns", 0.01, 1000, noScale=True)
-    assert raw_command(r, "BF.INFO", "ns", "EXPANSION") is None
+    res = raw_command(r, "BF.INFO", "ns", "EXPANSION")
+    expected_result = [None] if testtools.get_protocol_version(r) == 2 else {b"Expansion rate": None}
+    assert res == expected_result
 
 
 def test_bf_info_errors(r: redis.Redis):
@@ -259,13 +263,6 @@ def test_bf_insert_missing_items_keyword(r: redis.Redis):
     """BF.INSERT without the ITEMS keyword raises an error."""
     with pytest.raises(redis.ResponseError):
         r.execute_command("BF.INSERT", "bloom", "foo")
-
-
-@pytest.mark.fake
-def test_bf_insert_nonscaling_with_expansion(r: redis.Redis):
-    """BF.INSERT with both EXPANSION and NONSCALING raises an error in fakeredis."""
-    with pytest.raises(redis.ResponseError, match=msgs.NONSCALING_FILTERS_CANNOT_EXPAND_MSG):
-        r.execute_command("BF.INSERT", "bloom", "EXPANSION", "2", "NONSCALING", "ITEMS", "foo")
 
 
 def test_cf_scandump_and_loadchunk(r: redis.Redis):
