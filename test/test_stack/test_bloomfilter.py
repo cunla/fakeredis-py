@@ -221,8 +221,9 @@ def test_bf_info_resp3(r: redis.Redis):
 
 
 @pytest.mark.resp3_only
+@pytest.mark.min_server("7")
 def test_bf_info_field_queries(r: redis.Redis):
-    """BF.INFO with a specific field name returns only that value (fakeredis-only due to redis-py parsing)."""
+    """BF.INFO with a specific field name returns only that value"""
     r.bf().create("bloom", 0.01, 1000)
     r.bf().add("bloom", "item1")
     assert testtools.raw_command(r, "BF.INFO", "bloom", "CAPACITY") == {b"Capacity": 1000}
@@ -235,8 +236,9 @@ def test_bf_info_field_queries(r: redis.Redis):
         testtools.raw_command(r, "BF.INFO", "bloom", "BADFIELD")
 
 
+@pytest.mark.min_server("7")
 def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
-    """BF.INFO EXPANSION on a non-scaling filter returns None (fakeredis-only due to redis-py parsing)."""
+    """BF.INFO EXPANSION on a non-scaling filter returns None"""
     r.bf().create("ns", 0.01, 1000, noScale=True)
     res = testtools.raw_command(r, "BF.INFO", "ns", "EXPANSION")
     expected_result = [None] if testtools.get_protocol_version(r) == 2 else {b"Expansion rate": None}
