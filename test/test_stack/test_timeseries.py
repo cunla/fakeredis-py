@@ -1040,7 +1040,10 @@ def test_ts_filter_expression_not_operator(r: redis.Redis):
 
     # != value: exclude ts:a (region=east), include ts:b
     res = r.ts().mrange("-", "+", filters=["region!=east"])
-    assert any(b"ts:b" in str(r_item).encode() or (isinstance(r_item, dict) and b"ts:b" in r_item) for r_item in (res if isinstance(res, list) else [res]))
+    assert any(
+        b"ts:b" in str(r_item).encode() or (isinstance(r_item, dict) and b"ts:b" in r_item)
+        for r_item in (res if isinstance(res, list) else [res])
+    )
 
     # != - means "label must exist"
     res2 = r.ts().mrange("-", "+", filters=["region!=-"])
