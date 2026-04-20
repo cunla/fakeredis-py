@@ -21,7 +21,7 @@ class VectorSetCommandsMixin:
     @command(name="VCARD", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vcard(self, key: CommandItem) -> Optional[int]:
         if key.value is None:
-            return None
+            return 0
         return key.value.card
 
     @command(name="VDIM", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -59,6 +59,8 @@ class VectorSetCommandsMixin:
                 i += 2
             elif casematch(args[i], b"m") and i + 1 < len(args):
                 numlinks = int(args[i + 1])
+                if numlinks < 2:
+                    raise SimpleError("ERR invalid M")
                 i += 2
             elif casematch(args[i], b"cas"):
                 cas = True  # unused for now
@@ -73,8 +75,6 @@ class VectorSetCommandsMixin:
                 name = args[i + 2]
                 i += 3
             elif casematch(args[i], b"bin") or casematch(args[i], b"q8") or casematch(args[i], b"noquant"):
-                if quantization is not None:
-                    raise SimpleError("ERR multiple quantization types specified")
                 quantization = args[i].lower().decode()
                 if quantization == "q8":
                     quantization = "int8"
@@ -91,7 +91,7 @@ class VectorSetCommandsMixin:
                 attributes = args[i + 1]
                 i += 2
             else:
-                raise SimpleError("ERR syntax error in 'VADD' command")
+                raise SimpleError("ERR invalid option")
         cas = cas or False
         if reduce is not None and key.value is not None:
             raise SimpleError("ERR cannot add projection to existing set without projection")
@@ -119,7 +119,7 @@ class VectorSetCommandsMixin:
         if element not in key.value:
             return None
         if len(args) > 1:
-            raise SimpleError("ERR wrong number of arguments for 'VEMB' command")
+            raise SimpleError("ERR invalid option")
         raw = False
         if len(args) > 0 and casematch(args[0], b"raw"):
             raw = True

@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union
 
 import numpy as np
 from jsonpath_ng import JSONPath
-from jsonpath_ng.exceptions import JsonPathParserError
+from jsonpath_ng.exceptions import JSONPathError
 from jsonpath_ng.ext import parse
 
 from fakeredis import _msgs as msgs
@@ -34,7 +34,7 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
     path_str: str = _update_to_jsonpath_format(path)
     try:
         return parse(path_str)
-    except JsonPathParserError:
+    except JSONPathError:
         raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
 
 
