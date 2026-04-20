@@ -1,5 +1,5 @@
 class BaseModel:
-    _model_type = None
+    _model_type: bytes
 
     @classmethod
     def model_type(cls) -> bytes:

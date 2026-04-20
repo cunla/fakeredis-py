@@ -55,11 +55,12 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT GETNAME", fixed=(), repeat=())
     def client_getname(self) -> bytes:
-        return self._client_info.get("name", "").encode("utf-8")
+        name: str = self._client_info.get("name", "")
+        return name.encode("utf-8")
 
     @command(name="CLIENT ID", fixed=(), repeat=())
     def client_getid(self) -> int:
-        return self._client_info.get("id", 1)
+        return int(self._client_info.get("id", 1))
 
     @command(name="CLIENT INFO", fixed=(), repeat=())
     def client_info_cmd(self) -> bytes:
@@ -113,4 +114,4 @@ class ConnectionCommandsMixin:
 
     @command(name="CLIENT MAINT_NOTIFICATIONS", fixed=(), repeat=(bytes,))
     def client_maint_notifications(self, *args: bytes) -> SimpleString:
-        pass
+        return OK

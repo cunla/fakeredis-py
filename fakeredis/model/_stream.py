@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator, AnyStr
 
 from fakeredis._commands import BeforeAny, AfterAny
-from fakeredis._helpers import current_time
+from fakeredis._helpers import current_time, SimpleError
 from ._base_type import BaseModel
 
 
@@ -22,6 +22,8 @@ class StreamEntryKey(NamedTuple):
     def parse_str(entry_key: AnyStr) -> "StreamEntryKey":
         entry_key_str: str = entry_key.decode() if isinstance(entry_key, bytes) else entry_key
         parts = entry_key_str.split("-")
+        if not all([parts[i].isdigit() for i in range(len(parts))]):
+            raise SimpleError("Invalid stream ID specified as stream command argument")
         (timestamp, sequence) = (int(parts[0]), 0) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
         return StreamEntryKey(timestamp, sequence)
 
@@ -145,17 +147,24 @@ class StreamGroup(object):
         return res
 
     def group_read(
-        self, consumer_name: bytes, start_id: bytes, count: int, noack: bool
-    ) -> List[List[Union[bytes, Dict[bytes, bytes]]]]:
+        self, consumer_name: bytes, start_id: bytes, count: Optional[int], noack: bool
+    ) -> List[List[Union[bytes, Optional[Dict[bytes, bytes]]]]]:
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
 
         self.consumers[consumer_name].last_attempt = _time
-        if start_id == b">":
-            start_key = self.last_delivered_key
-        else:
-            start_key = max(StreamEntryKey.parse_str(start_id), self.last_delivered_key)
+        if start_id != b">":
+            threshold = StreamEntryKey.parse_str(start_id)
+            pel_keys = sorted(k for k, v in self.pel.items() if v.consumer_name == consumer_name and k > threshold)
+            if count is not None:
+                pel_keys = pel_keys[:count]
+            for k in pel_keys:
+                entry = self.pel[k]
+                self.pel[k] = PelEntry(entry.consumer_name, entry.time_read, entry.times_delivered + 1)
+            self.consumers[consumer_name].last_success = _time
+            return [self.stream.format_record(k) if k in self.stream else [k.encode(), None] for k in pel_keys]
+        start_key = self.last_delivered_key
         ids_read = self.stream.stream_read(start_key, count)
         if not noack:
             for k in ids_read:
@@ -203,7 +212,7 @@ class StreamGroup(object):
         end: Optional[StreamRangeTest],
         count: Optional[int],
         consumer: Optional[bytes],
-    ) -> List[List[bytes]]:
+    ) -> List[List[Union[bytes, int]]]:
         _time = current_time()
         relevant_ids = list(self.pel.keys())
         if consumer is not None:
@@ -310,6 +319,19 @@ class XStream(BaseModel):
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
         self._last_generated_id: Optional[bytes] = None
+        self._idmp_duration: int = 100
+        self._idmp_max_size: int = 100
+        self._idmp_map: Dict[bytes, Dict[bytes, StreamEntryKey]] = dict()  # producer_id -> idempotent_id -> entry_key
+        self._iids_added: int = 0
+        self._iids_duplicates: int = 0
+
+    def set_idmp_duration(self, duration: int) -> None:
+        if duration is not None and 1 <= duration <= 86400:
+            self._idmp_duration = duration
+
+    def set_idmp_max_size(self, max_size: int) -> None:
+        if max_size is not None and 1 <= max_size <= 10000:
+            self._idmp_max_size = max_size
 
     def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
         return self._groups.get(group_name, None)
@@ -341,6 +363,8 @@ class XStream(BaseModel):
         return res
 
     def stream_info(self, full: bool) -> List[Any]:
+        iids_tracked = sum([len(v) for v in self._idmp_map.values()])
+
         res: Dict[bytes, Any] = {
             b"length": len(self._ids),
             b"groups": len(self._groups),
@@ -352,6 +376,12 @@ class XStream(BaseModel):
             b"max-deleted-entry-id": self._max_deleted_id.encode(),
             b"entries-added": self._entries_added,
             b"recorded-first-entry-id": self._ids[0].encode() if len(self._ids) > 0 else b"0-0",
+            b"idmp-duration": self._idmp_duration,
+            b"idmp-maxsize": self._idmp_max_size,
+            b"pids-tracked": len(self._idmp_map),
+            b"iids-tracked": iids_tracked,
+            b"iids-added": self._iids_added,
+            b"iids-duplicates": self._iids_duplicates,
         }
         if full:
             res[b"entries"] = [self.format_record(i) for i in self._ids]
@@ -374,7 +404,13 @@ class XStream(BaseModel):
                 res += 1
         return res
 
-    def add(self, fields: Sequence[Union[bytes, int]], entry_key: str = "*") -> Union[None, bytes]:
+    def add(
+        self,
+        fields: Sequence[Union[bytes, int]],
+        entry_key: str = "*",
+        producer_id: Optional[bytes] = None,
+        idempotent_id: Optional[bytes] = None,
+    ) -> Union[None, bytes]:
         """Add entry to a stream.
 
         If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
@@ -387,6 +423,12 @@ class XStream(BaseModel):
             on the last entry key of the stream.
             If entry_key is 'ts-*', and the timestamp is greater or equal than the last entry timestamp,
             then the sequence will be calculated accordingly.
+        :param producer_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
+        :param idempotent_id:
+            Uses the specified idempotent-id for the given producer-id. If this producer-id/idempotent-id combination
+            was already used, the command returns the ID of the existing entry instead of creating a duplicate.
         :returns:
             The key of the added entry.
             None if nothing was added.
@@ -397,6 +439,12 @@ class XStream(BaseModel):
         if isinstance(entry_key, bytes):
             entry_key = entry_key.decode()
 
+        if producer_id is not None:
+            if idempotent_id is None:
+                idempotent_id = hex(hash(fields)).encode()
+            if producer_id in self._idmp_map and idempotent_id in self._idmp_map[producer_id]:
+                self._iids_duplicates += 1
+                return self._idmp_map[producer_id][idempotent_id].encode()
         if entry_key is None or entry_key == "*":
             ts, seq = int(1000 * time.time()), 0
             if len(self._ids) > 0 and self._ids[-1].ts >= ts and self._ids[-1].seq >= seq:
@@ -419,12 +467,17 @@ class XStream(BaseModel):
         if len(self._ids) > 0 and self._ids[-1] > ts_seq:
             return None
         self._ids.append(ts_seq)
-        self._values_dict[ts_seq] = list(fields)
+        self._values_dict[ts_seq] = list(fields)  # type: ignore
         self._entries_added += 1
         self._last_generated_id = ts_seq.encode()
+        if producer_id is not None and idempotent_id is not None:
+            if producer_id not in self._idmp_map:
+                self._idmp_map[producer_id] = dict()
+            self._idmp_map[producer_id][idempotent_id] = ts_seq
+            self._iids_added += 1
         return ts_seq.encode()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return True
 
     def __len__(self) -> int:
@@ -549,7 +602,7 @@ class XStream(BaseModel):
         end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
         return self._ids[start_ind:end_ind]
 
-    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, Dict[bytes, bytes]]]:
+    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, List[bytes]]]:
         # results: Dict[bytes, bytes] = dict(zip(*[iter(self._values_dict[key])] * 2))
         results = self._values_dict[key]
         return [key.encode(), results]

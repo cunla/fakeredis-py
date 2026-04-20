@@ -7,6 +7,39 @@ tags:
 toc_depth: 2
 ---
 
+## v2.35.2
+
+### 🐛 Bug Fixes
+
+- fix: XREADGROUP with non-'>' ID returns consumer PEL @tomtom103 #470
+
+## v2.35.1
+
+### 🐛 Bug Fixes
+
+- fix: Breaking change in 2.35.0: FakeConnection renamed without backward-compatible alias #468
+
+## v2.35.0
+
+### 🚀 Features
+
+- Support for idempotent message processing introduced in Redis 8.6 #461
+- Support for vector set commands `VADD`, `VCARD`, `VDIM`, `VEMB`, `VGETATTR`, `VINFO`, `VLINKS`, `VRANDMEMBER`,
+  `VRANGE`, `VREM`, `VSETATTR`, `VSIM` #451
+
+### 🐛 Bug Fixes
+
+- fix XREADGROUP on multiple streams only returns one message #460
+- fix: XDEL sending ResponseError when stream ID is invalid #465
+- Fix DeprecationWarning caused by mixing valkey and redis classes @kurtmckee #462 #464
+- fix: bug referencing non existing variable #465
+
+### 🧰 Maintenance
+
+- Update typing-extensions version constraint to support newer versions #458
+- Improved documentation with mermaidjs diagrams #467
+- Move documentation dependencies to pyproject.toml
+
 ## v2.34.1
 
 ### 🐛 Bug Fixes

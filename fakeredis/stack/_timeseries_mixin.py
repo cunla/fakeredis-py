@@ -168,15 +168,16 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
         repeat=(Key(TimeSeries), Timestamp, Float),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def ts_madd(self, *args: Any) -> List[int]:
+    def ts_madd(self, *args: Any) -> List[Any]:
         if len(args) % 3 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
-        results: List[int] = []
+        results: List[Any] = []
         for i in range(0, len(args), 3):
             key, timestamp, value = args[i : i + 3]
             if key.value is None:
-                raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-            results.append(key.value.add(timestamp, value))
+                results.append(SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST))
+            else:
+                results.append(key.value.add(timestamp, value))
         return results
 
     @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)

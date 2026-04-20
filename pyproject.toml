@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.34.1"
+version = "2.35.2"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -38,6 +38,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
@@ -45,7 +46,7 @@ dependencies = [
     "redis>=4.3; python_version > '3.8'",
     "redis<7.2 ; python_version < '3.10'",
     "sortedcontainers>=2",
-    "typing-extensions~=4.7 ; python_version < '3.11'",
+    "typing-extensions>=4.7 ; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +57,10 @@ cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
 valkey = [
     "valkey>=6 ; python_version >= '3.8'",
+]
+vectorset = [
+    "numpy>=2.4.0 ; python_version >= '3.11'",
+    "jsonpath_ng>=1.6 ; python_version >= '3.11'",
 ]
 
 [project.urls]
@@ -70,6 +75,7 @@ dev = [
     "ruff>=0.15",
     "mypy>=1.15 ; python_version >= '3.10'",
     "pre-commit>=4.2 ; python_version >= '3.10'",
+    "pyyaml>=6 ; python_version >= '3.10'",
 ]
 test = [
     "coverage>=7.10 ; python_version >= '3.9' and python_version < '3.14'",
@@ -81,16 +87,20 @@ test = [
     "pytest-mock>=3.15 ; python_version >= '3.9'",
     "pytest-html>=4.1 ; python_version >= '3.9'",
 ]
-docs = [
+scripts = [
     "python-dotenv>=1.1 ; python_version >= '3.10'",
     "pygithub>=2.8 ; python_version >= '3.10'",
+]
+documentation = [
+    "mkdocs>=1.6.1; python_version >= '3.10'",
+    "mkdocs-material>=9.6.14; python_version >= '3.10'",
 ]
 
 [tool.uv]
 default-groups = [
     "dev",
     "test",
-    "docs",
+    "scripts",
 ]
 
 [tool.hatch.build.targets.sdist]

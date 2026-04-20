@@ -24,6 +24,7 @@ from fakeredis.stack import (
     TopkCommandsMixin,
     TDigestCommandsMixin,
     TimeSeriesCommandsMixin,
+    VectorSetCommandsMixin,
 )
 from ._basefakesocket import BaseFakeSocket
 from ._server import FakeServer
@@ -56,6 +57,7 @@ class FakeSocket(
     TimeSeriesCommandsMixin,
     DragonflyCommandsMixin,
     AclCommandsMixin,
+    VectorSetCommandsMixin,
 ):
     def __init__(
         self,

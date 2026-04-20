@@ -17,7 +17,7 @@ from typing import Dict, Tuple, Any, Union
 
 from redis.connection import DefaultParser
 
-from fakeredis import FakeServer, FakeConnection
+from fakeredis import FakeServer, FakeRedisConnection
 from fakeredis._typing import VersionType, ServerType
 
 LOGGER = logging.getLogger("fakeredis")
@@ -137,7 +137,7 @@ class Resp3Writer(Writer):
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-    server: "TcpFakeServer"  # type: ignore
+    server: "TcpFakeServer"
     shutdown_request: bool = False
 
     def setup(self) -> None:
@@ -150,10 +150,14 @@ class TCPFakeRequestHandler(StreamRequestHandler):
             self.current_client = self.server.clients[self.client_address]
         else:
             self.writer = Resp3Writer(self.client_address, self.wfile, self)
-            self.current_client = FakeConnection(
+            self.current_client = FakeRedisConnection(
                 server=self.server.fake_server,
                 writer=self.writer,
-                client_info={"raddr": self.client_address},
+                client_info={
+                    "laddr": self.connection.getsockname(),
+                    "addr": self.connection.getpeername(),
+                    "fd": self.connection.fileno(),
+                },
             )
 
             self.server.clients[self.client_address] = self.current_client
@@ -202,7 +206,7 @@ class TcpFakeServer(ThreadingTCPServer):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
-        self.clients: Dict[int, FakeConnection] = {}
+        self.clients: Dict[int, FakeRedisConnection] = {}
 
 
 TCP_SERVER_TEST_PORT = 19000

@@ -21,3 +21,5 @@ docker-compose.yml
 scratch*
 .python-version
 .env
+scripts/*.md
+CLAUDE.md

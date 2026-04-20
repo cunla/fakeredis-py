@@ -1,4 +1,4 @@
-# Redis `stream` commands (20/20 implemented)
+# Redis `stream` commands (21/21 implemented)
 
 ## [XACK](https://redis.io/commands/xack/)
 
@@ -11,6 +11,10 @@ Appends a new message to a stream. Creates the key if it doesn't exist.
 ## [XAUTOCLAIM](https://redis.io/commands/xautoclaim/)
 
 Changes, or acquires, ownership of messages in a consumer group, as if the messages were delivered to as consumer group member.
+
+## [XCFGSET](https://redis.io/commands/xcfgset/)
+
+Sets the IDMP configuration parameters for a stream.
 
 ## [XCLAIM](https://redis.io/commands/xclaim/)
 
@@ -79,6 +83,3 @@ Returns the messages from a stream within a range of IDs in reverse order.
 ## [XTRIM](https://redis.io/commands/xtrim/)
 
 Deletes messages from the beginning of a stream.
-
-
-

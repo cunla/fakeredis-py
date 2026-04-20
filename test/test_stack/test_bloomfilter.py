@@ -2,8 +2,9 @@ import pytest
 import redis
 from redis.commands.bf import BFInfo
 
+import testtools
 from fakeredis import _msgs as msgs
-from test.testtools import get_protocol_version
+from test.testtools import get_protocol_version, raw_command
 
 bloom_tests = pytest.importorskip("probables")
 
@@ -218,3 +219,73 @@ def test_bf_info_resp3(r: redis.Redis):
     assert info[b"Expansion rate"] == 4
     assert info[b"Capacity"] == 1000
     assert info[b"Number of items inserted"] == 0
+
+
+@pytest.mark.resp3_only
+def test_bf_info_field_queries(r: redis.Redis):
+    """BF.INFO with a specific field name returns only that value (fakeredis-only due to redis-py parsing)."""
+    r.bf().create("bloom", 0.01, 1000)
+    r.bf().add("bloom", "item1")
+    assert raw_command(r, "BF.INFO", "bloom", "CAPACITY") == {b"Capacity": 1000}
+    res = raw_command(r, "BF.INFO", "bloom", "SIZE")
+    assert isinstance(res, dict)
+    assert b"Size" in res
+    assert raw_command(r, "BF.INFO", "bloom", "FILTERS") == {b"Number of filters": 1}
+    assert raw_command(r, "BF.INFO", "bloom", "ITEMS") == {b"Number of items inserted": 1}
+    with pytest.raises(redis.ResponseError):
+        raw_command(r, "BF.INFO", "bloom", "BADFIELD")
+
+
+def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
+    """BF.INFO EXPANSION on a non-scaling filter returns None (fakeredis-only due to redis-py parsing)."""
+    r.bf().create("ns", 0.01, 1000, noScale=True)
+    res = raw_command(r, "BF.INFO", "ns", "EXPANSION")
+    expected_result = [None] if testtools.get_protocol_version(r) == 2 else {b"Expansion rate": None}
+    assert res == expected_result
+
+
+def test_bf_info_errors(r: redis.Redis):
+    """BF.INFO raises errors for non-existent keys and too many arguments."""
+    with pytest.raises(redis.ResponseError):
+        r.bf().info("nokey")
+    r.bf().create("bloom", 0.01, 1000)
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("BF.INFO", "bloom", "CAPACITY", "EXTRA")
+
+
+def test_bf_scandump_nonexistent(r: redis.Redis):
+    """BF.SCANDUMP on a non-existent key raises NOT_FOUND."""
+    with pytest.raises(redis.ResponseError, match="not found"):
+        r.execute_command("BF.SCANDUMP", "nokey", 0)
+
+
+def test_bf_insert_missing_items_keyword(r: redis.Redis):
+    """BF.INSERT without the ITEMS keyword raises an error."""
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("BF.INSERT", "bloom", "foo")
+
+
+def test_cf_scandump_and_loadchunk(r: redis.Redis):
+    r.cf().create("myCuckoo", 1000)
+
+    for x in range(100):
+        r.cf().add("myCuckoo", x)
+        assert r.cf().exists("myCuckoo", x)
+
+    cmds = []
+    first = 0
+    while first is not None:
+        cur = r.cf().scandump("myCuckoo", first)
+        if cur[0] == 0:
+            first = None
+        else:
+            first = cur[0]
+            cmds.append(cur)
+
+    r.cf().client.delete("myCuckoo")
+
+    for cmd in cmds:
+        r.cf().loadchunk("myCuckoo2", *cmd)
+
+    for x in range(100):
+        assert r.cf().exists("myCuckoo2", x), f"{x} not in filter"

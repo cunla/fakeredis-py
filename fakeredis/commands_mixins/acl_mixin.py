@@ -131,7 +131,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL GETUSER", fixed=(bytes,), repeat=())
-    def acl_getuser(self, username: bytes) -> List[Union[bytes, List[bytes]]]:
+    def acl_getuser(self, username: bytes) -> List[Union[bytes, List[bytes], List[Dict[str, bytes]]]]:
         res = self._acl.get_user_acl(username).as_array()
         return res
 
@@ -179,7 +179,7 @@ class AclCommandsMixin:
         return OK
 
     @command(name="ACL LOG", fixed=(), repeat=(bytes,))
-    def acl_log(self, *args: bytes) -> Union[SimpleString, List[Dict[str, str]]]:
+    def acl_log(self, *args: bytes) -> Union[SimpleString, List[Dict[str, bytes]]]:
         if len(args) == 1 and casematch(args[0], b"RESET"):
             self._acl.reset_log()
             return OK
