@@ -16,7 +16,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.ADD", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def topk_add(self, key: CommandItem, *args: bytes) -> List[Optional[bytes]]:
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         res = [key.value.add(_item, 1) for _item in args]
@@ -26,7 +26,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.COUNT", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def topk_count(self, key: CommandItem, *args: bytes) -> List[int]:
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         res: List[int] = [key.value.count(_item) for _item in args]
@@ -35,7 +35,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.QUERY", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def topk_query(self, key: CommandItem, *args: bytes) -> List[int]:
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         topk = {item[1] for item in key.value.list()}
@@ -45,7 +45,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.INCRBY", fixed=(Key(), bytes, Int), repeat=(bytes, Int), flags=msgs.FLAG_DO_NOT_CREATE)
     def topk_incrby(self, key: CommandItem, *args: Any) -> List[Optional[bytes]]:
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         if len(args) % 2 != 0:
@@ -60,7 +60,7 @@ class TopkCommandsMixin:
     @command(name="TOPK.INFO", fixed=(Key(),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def topk_info(self, key: CommandItem) -> Dict[bytes, Any]:
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         return {
@@ -74,7 +74,7 @@ class TopkCommandsMixin:
     def topk_list(self, key: CommandItem, *args: Any) -> List[Any]:
         (withcount,), _ = extract_args(args, ("withcount",))
         if key.value is None:
-            raise SimpleError("TOPK: key does not exist")
+            raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         value_list: List[Tuple[int, bytes]] = key.value.list()
@@ -91,6 +91,6 @@ class TopkCommandsMixin:
         else:
             width, depth, decay = 8, 7, 0.9
         if key.value is not None:
-            raise SimpleError("TOPK: key already set")
+            raise SimpleError("TopK: key already exists")
         key.update(HeavyKeeper(topk, width, depth, decay))
         return OK
