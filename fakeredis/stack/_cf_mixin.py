@@ -159,6 +159,5 @@ class CFCommandsMixin:
     def cf_loadchunk(self, key: CommandItem, _: int, data: bytes) -> SimpleString:
         if key.value is not None and type(key.value) is not ScalableCuckooFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)
-        key.value = ScalableCuckooFilter.frombytes(data)
-        key.updated()
+        key.update(ScalableCuckooFilter.frombytes(data))
         return OK

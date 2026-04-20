@@ -1032,25 +1032,26 @@ def test_ts_add_invalid_duplicate_policy(r: redis.Redis):
 
 def test_ts_filter_expression_not_operator(r: redis.Redis):
     """TS.MRANGE filter with != operator works correctly."""
-    r.ts().create("ts:a", labels={"region": "east"})
-    r.ts().create("ts:b", labels={"region": "west"})
+    r.ts().create("ts:a", labels={"type": "sensor", "region": "east"})
+    r.ts().create("ts:b", labels={"type": "sensor", "region": "west"})
     t = 1_700_000_000_000
     r.ts().add("ts:a", t, 1.0)
     r.ts().add("ts:b", t, 2.0)
 
     # != value: exclude ts:a (region=east), include ts:b
-    res = r.ts().mrange("-", "+", filters=["region!=east"])
+    # Redis requires at least one positive equality matcher alongside != filters
+    res = r.ts().mrange("-", "+", filters=["type=sensor", "region!=east"])
     assert any(
         b"ts:b" in str(r_item).encode() or (isinstance(r_item, dict) and b"ts:b" in r_item)
         for r_item in (res if isinstance(res, list) else [res])
     )
 
     # != - means "label must exist"
-    res2 = r.ts().mrange("-", "+", filters=["region!=-"])
+    res2 = r.ts().mrange("-", "+", filters=["type=sensor", "region!=-"])
     assert len(res2) == 2  # both have the label
 
     # != (list) syntax
-    res3 = r.ts().mrange("-", "+", filters=["region!=(east,north)"])
+    res3 = r.ts().mrange("-", "+", filters=["type=sensor", "region!=(east,north)"])
     assert len(res3) == 1  # only ts:b (west)
 
 
@@ -1099,7 +1100,8 @@ def test_ts_range_align_to_range_boundary(r: redis.Redis):
 
 
 def test_ts_madd_nonexistent_key(r: redis.Redis):
-    """TS.MADD raises an error when any key does not exist."""
+    """TS.MADD returns partial results when any key does not exist."""
     r.ts().create("ts1")
-    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
-        r.ts().madd([("ts1", 1000, 1.0), ("nokey", 2000, 2.0)])
+    result = r.ts().madd([("ts1", 1000, 1.0), ("nokey", 2000, 2.0)])
+    assert result[0] == 1000
+    assert isinstance(result[1], redis.ResponseError)
