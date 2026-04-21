@@ -79,7 +79,7 @@ class Vector:
         o = np.array(other.values)
         denominator = self.l2_norm * other.l2_norm
         if denominator == 0:
-            return 0.0
+            return 0.5
         cosine_sim = float(np.dot(me, o)) / denominator
         return (1.0 + cosine_sim) / 2.0
 
