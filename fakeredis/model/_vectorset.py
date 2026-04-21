@@ -83,14 +83,6 @@ class Vector:
         cosine_sim = float(np.dot(me, o)) / denominator
         return (1.0 + cosine_sim) / 2.0
 
-    def accept_filter(self, filter_expression: Optional[bytes]) -> bool:
-        if filter_expression is None:
-            return True
-        if self.attributes is None:
-            return False
-        json_obj = json.loads(self.attributes)
-        return len(_parse_jsonfilter(filter_expression).find([json_obj])) > 0
-
 
 class VectorSet:
     def __init__(self, dimensions: int):
@@ -224,3 +216,14 @@ class VectorSet:
         if k in self._vectors:
             return self._vectors[k]
         return None
+
+    def accept_filter(self, filter_expression: Optional[bytes]) -> list[Vector]:
+        if filter_expression is None:
+            return list(self._vectors.values())
+        parsed_expression = _parse_jsonfilter(filter_expression)
+        res = [
+            i
+            for i in self._vectors.values()
+            if i.attributes is not None and (len(parsed_expression.find([json.loads(i.attributes)])) > 0)
+        ]
+        return res

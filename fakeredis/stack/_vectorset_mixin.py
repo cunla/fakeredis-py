@@ -242,7 +242,7 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set if v.accept_filter(filter_expression)}
+        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set.accept_filter(filter_expression)}
         if epsilon is not None:
             res = {k: v for k, v in res.items() if v >= 1 - epsilon}
         res = OrderedDict(itertools.islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
