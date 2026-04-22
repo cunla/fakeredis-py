@@ -46,6 +46,11 @@ jobs:
             install-extras: false
             coverage: false
         include:
+          - python-version: "3.9"
+            redis-image: "redis:8.6.2"
+            redis-py: "4.6.0"
+            install-extras: false
+            coverage: false
           - python-version: "3.14"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
             redis-py: "7.4.0"
