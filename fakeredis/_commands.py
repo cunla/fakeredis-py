@@ -90,7 +90,7 @@ class CommandItem:
 
     @property
     def is_modified(self) -> bool:
-        return self._modified
+        return self._modified or self._expireat_modified
 
     def writeback(self, remove_empty_val: bool = True) -> None:
         if self._modified:

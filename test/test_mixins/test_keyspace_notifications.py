@@ -1,6 +1,8 @@
-import pytest
 import time
+
+import redis
 from redis.client import PubSub
+
 
 def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False):
     now = time.time()
@@ -13,35 +15,55 @@ def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=Fals
         now = time.time()
     return None
 
-def test_keyspace_notifications(r):
+
+def test_keyspace_notifications_keyspace(r: redis.Redis):
     # Enable keyspace notifications in redis
-    r.config_set('notify-keyspace-events', 'KEA')
-    
+    r.config_set("notify-keyspace-events", "KEA")
+
     p = r.pubsub()
-    p.psubscribe('__keyspace@*__:*')
-    p.psubscribe('__keyevent@*__:*')
-    
+    p.psubscribe("__keyspace@*__:*")
+
     msg1 = wait_for_message(p)
-    msg2 = wait_for_message(p)
-    assert msg1['type'] == 'psubscribe'
-    assert msg2['type'] == 'psubscribe'
-    
-    r.set('foo', 'bar')
-    
+
+    assert msg1["type"] == "psubscribe"
+
+    r.set("foo", "bar")
+
     msgs = []
     msg = wait_for_message(p, timeout=1.0)
     while msg is not None:
         msgs.append(msg)
         msg = wait_for_message(p, timeout=0.1)
-        
-    assert len(msgs) >= 2
-    
-    # We are using db=2 based on conftest.py
-    keyspace_msg = next((m for m in msgs if m['channel'] == b'__keyspace@2__:foo'), None)
-    keyevent_msg = next((m for m in msgs if m['channel'] == b'__keyevent@2__:set'), None)
-    
+
+    assert len(msgs) >= 1
+    keyspace_msg = next((m for m in msgs if m["channel"] == b"__keyspace@2__:foo"), None)
+
     assert keyspace_msg is not None
-    assert keyspace_msg['data'] == b'set'
-    
+    assert keyspace_msg["data"] == b"set"
+
+
+def test_keyspace_notifications_event(r: redis.Redis):
+    # Enable keyspace notifications in redis
+    r.config_set("notify-keyspace-events", "KEA")
+
+    p = r.pubsub()
+    p.psubscribe("__keyevent@*__:*")
+
+    msg1 = wait_for_message(p)
+    assert msg1["type"] == "psubscribe"
+
+    r.set("foo", "bar")
+
+    msgs = []
+    msg = wait_for_message(p, timeout=1.0)
+    while msg is not None:
+        msgs.append(msg)
+        msg = wait_for_message(p, timeout=0.1)
+
+    assert len(msgs) >= 1
+
+    # We are using db=2 based on conftest.py
+    keyevent_msg = next((m for m in msgs if m["channel"] == b"__keyevent@2__:set"), None)
+
     assert keyevent_msg is not None
-    assert keyevent_msg['data'] == b'foo'
+    assert keyevent_msg["data"] == b"foo"

@@ -1,8 +1,10 @@
 import itertools
+import logging
 import queue
+import re
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type, Dict
 
 import redis
 
@@ -21,6 +23,8 @@ from ._helpers import (
     decode_command_bytes,
 )
 from ._typing import ResponseErrorType, VersionType, ServerType
+
+LOGGER = logging.getLogger("fakeredis")
 
 
 def _convert_to_resp2(val: Any) -> Any:
@@ -292,34 +296,38 @@ class BaseFakeSocket:
             result = exc
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+        self._keyspace_notifications(command_items, sig.name.encode())
+        return result
 
-        # KEYSPACE NOTIFICATIONS
-        db_index = self._db_num
-        event = sig.name
+    def _keyspace_notifications(self, command_items: List[CommandItem], event: bytes) -> None:
+        """Send keyspace notifications"""
         if isinstance(event, str):
             event = event.encode()
-        pattern_regex = {pattern: compile_pattern(pattern) for pattern in self._server.psubscribers}
+        pattern_regex: Dict[bytes, re.Pattern] = {
+            pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
+        }
+        keyspace_channel_prefix: bytes = f"__keyspace@{self._db_num}__:".encode()
+        keyevent_channel: bytes = f"__keyevent@{self._db_num}__:".encode() + event
         for command_item in command_items:
-            if command_item.is_modified or getattr(command_item, "_expireat_modified", False):
-                try:
-                    # Notify logic
-                    keyspace_channel = f"__keyspace@{db_index}__:".encode() + command_item.key
-                    keyevent_channel = f"__keyevent@{db_index}__:".encode() + event
+            if not command_item.is_modified:
+                continue
+            try:
+                keyspace_channel = keyspace_channel_prefix + command_item.key
 
-                    for channel, message in [(keyspace_channel, event), (keyevent_channel, command_item.key)]:
-                        msg = [b"message", channel, message]
-                        subs = self._server.subscribers.get(channel, set())
-                        for sock in subs:
-                            sock.put_response(msg)
+                for channel, message in [(keyspace_channel, event), (keyevent_channel, command_item.key)]:
+                    msg = [b"message", channel, message]
+                    subs = self._server.subscribers.get(channel, set())
+                    for sock in subs:
+                        sock.put_response(msg)
 
-                        for pattern, regex in pattern_regex.items():
-                            if regex.match(channel):
-                                pmsg = [b"pmessage", pattern, channel, message]
-                                for sock in self._server.psubscribers[pattern]:
-                                    sock.put_response(pmsg)
-                except Exception:
-                    pass
-        return result
+                    for pattern, regex in pattern_regex.items():
+                        if regex.match(channel):
+                            pmsg = [b"pmessage", pattern, channel, message]
+                            for sock in self._server.psubscribers[pattern]:
+                                sock.put_response(pmsg)
+            except Exception as e:
+                LOGGER.error(f"Error sending keyspace notification for event `{event}` on key {command_item.key}: {e}")
+                pass
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):
