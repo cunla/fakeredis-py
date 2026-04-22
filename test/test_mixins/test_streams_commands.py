@@ -849,6 +849,134 @@ def test_xreadgroup_read_2(r: redis.Redis):
     assert len(messages) == len(streams)
 
 
+def test_xreadgroup_pel_read(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    c1 = {b"foo": b"bar"}
+    c2 = {b"bing": b"baz"}
+    m1 = r.xadd(stream, c1)
+    m2 = r.xadd(stream, c2)
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    expected_resp2 = [[stream.encode(), [(m1, c1), (m2, c2)]]]
+    expected_resp3 = {stream.encode(): [[(m1, c1), (m2, c2)]]}
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=100) == resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
+
+    expected_resp2 = [[stream.encode(), [(m2, c2)]]]
+    expected_resp3 = {stream.encode(): [[(m2, c2)]]}
+    assert r.xreadgroup(group, consumer, streams={stream: m1}) == resp_conversion(r, expected_resp3, expected_resp2)
+
+    # PEL read does not advance last_delivered_id
+    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, {}, [])
+
+    # other consumer has empty PEL
+    tmp = r.xreadgroup(group, "consumer2", streams={stream: "0"})
+    res = tmp[stream.encode()][0] if get_protocol_version(r) == 3 else tmp[0][1]
+    assert len(res) == 0
+
+
+def test_xreadgroup_pel_read_multi_consumer(r: redis.Redis):
+    stream, group = "stream", "group"
+    c1 = {b"k": b"1"}
+    c2 = {b"k": b"2"}
+    m1 = r.xadd(stream, c1)
+    m2 = r.xadd(stream, c2)
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"}, count=1)
+    r.xreadgroup(group, "consumer2", streams={stream: ">"}, count=1)
+
+    expected_resp2 = [[stream.encode(), [(m1, c1)]]]
+    expected_resp3 = {stream.encode(): [[(m1, c1)]]}
+    assert r.xreadgroup(group, "consumer1", streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+
+    expected_resp2 = [[stream.encode(), [(m2, c2)]]]
+    expected_resp3 = {stream.encode(): [[(m2, c2)]]}
+    assert r.xreadgroup(group, "consumer2", streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+
+
+def test_xreadgroup_pel_read_count(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    c1 = {b"k": b"1"}
+    m1 = r.xadd(stream, c1)
+    r.xadd(stream, {"k": "2"})
+    r.xadd(stream, {"k": "3"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    expected_resp2 = [[stream.encode(), [(m1, c1)]]]
+    expected_resp3 = {stream.encode(): [[(m1, c1)]]}
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=1) == resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
+
+
+def test_xreadgroup_pel_read_bumps_delivery_count(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    m1 = r.xadd(stream, {"k": "1"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    r.xreadgroup(group, consumer, streams={stream: "0"})
+    r.xreadgroup(group, consumer, streams={stream: "0"})
+
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert len(pending) == 1
+    assert pending[0]["message_id"] == m1
+    assert pending[0]["times_delivered"] == 3
+
+
+def test_xreadgroup_pel_read_after_ack(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    c1 = {b"k": b"1"}
+    m1 = r.xadd(stream, c1)
+    m2 = r.xadd(stream, {"k": "2"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    r.xack(stream, group, m2)
+
+    expected_resp2 = [[stream.encode(), [(m1, c1)]]]
+    expected_resp3 = {stream.encode(): [[(m1, c1)]]}
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+
+
+def test_xreadgroup_pel_read_preserves_group_state(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    r.xadd(stream, {"k": "1"})
+    m2 = r.xadd(stream, {"k": "2"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    before_group = r.xinfo_groups(stream)[0]
+    before_consumer = next(c for c in r.xinfo_consumers(stream, group) if c["name"] == consumer.encode())
+
+    r.xreadgroup(group, consumer, streams={stream: "0"})
+    r.xreadgroup(group, consumer, streams={stream: "0"})
+
+    after_group = r.xinfo_groups(stream)[0]
+    after_consumer = next(c for c in r.xinfo_consumers(stream, group) if c["name"] == consumer.encode())
+
+    assert after_group["last-delivered-id"] == before_group["last-delivered-id"] == m2
+    if "entries-read" in before_group:
+        assert after_group["entries-read"] == before_group["entries-read"]
+    assert after_group["pending"] == before_group["pending"] == 2
+    assert after_consumer["pending"] == before_consumer["pending"] == 2
+
+
+def test_xreadgroup_pel_read_deleted_entry(r: redis.Redis):
+    stream, group, consumer = "stream", "group", "consumer1"
+    m1 = r.xadd(stream, {"k": "1"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    r.xdel(stream, m1)
+
+    tmp = r.xreadgroup(group, consumer, streams={stream: "0"})
+    res = tmp[stream.encode()][0] if get_protocol_version(r) == 3 else tmp[0][1]
+    assert len(res) == 1
+    assert res[0][0] == m1
+
+
 def test_xadd_change_time(r: redis.Redis):
     res = r.xadd("foobar", {"a": "1"})
     ts, seq = res.decode().split("-")

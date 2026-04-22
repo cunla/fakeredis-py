@@ -55,7 +55,7 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         else:
             return response
 
-    def read_response(self, **kwargs: Any) -> Any:  # type: ignore
+    def read_response(self, **kwargs: Any) -> Any:
         if not self._sock:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if not self._server.connected:
@@ -96,6 +96,11 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
 
 class FakeRedisConnection(FakeBaseConnection, redis.Connection):
     _connection_error_class = redis.ConnectionError
+
+
+def FakeConnection(*args: Any, **kwargs: Any):
+    warnings.warn("FakeConnection is deprecated. Use FakeRedisConnection instead", DeprecationWarning, 2)
+    return FakeRedisConnection(*args, **kwargs)
 
 
 class FakeRedisMixin:

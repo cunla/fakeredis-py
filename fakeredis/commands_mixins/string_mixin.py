@@ -1,4 +1,5 @@
 import math
+from abc import abstractmethod, ABC
 from typing import Tuple, Callable, List, Any, Optional, Dict
 
 from fakeredis import _msgs as msgs
@@ -71,7 +72,7 @@ def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[List[object]]]:
     return opt[l1][l2], result.encode(), matches
 
 
-class StringCommandsMixin:
+class StringCommandsMixin(ABC):
     _encodeint: Callable[
         [
             int,
@@ -83,7 +84,11 @@ class StringCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(StringCommandsMixin, self).__init__(*args, **kwargs)
         self._db: Database
-        self.version: VersionType
+
+    @property
+    @abstractmethod
+    def version(self) -> VersionType:
+        pass
 
     def _incrby(self, key: CommandItem, amount: int) -> int:
         c = Int.decode(key.get(b"0")) + amount

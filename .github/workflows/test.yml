@@ -41,7 +41,7 @@ jobs:
           - python-version: "3.9"
             redis-py: "7.2.1"
           - python-version: "3.13"
-            redis-image: "redis:8.6.1"
+            redis-image: "redis:8.6.2"
             redis-py: "7.2.1"
             install-extras: false
             coverage: false
@@ -55,7 +55,7 @@ jobs:
             redis-py: "7.2.1"
             install-extras: true
           - python-version: "3.13"
-            redis-image: "redis:8.6.1"
+            redis-image: "redis:8.6.2"
             redis-py: "7.2.1"
             install-extras: true
             coverage: true

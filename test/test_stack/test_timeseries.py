@@ -982,3 +982,101 @@ def test_mrange_with_in_condition(r: redis.Redis):
 
     res = r.ts().mrange("-", "+", filters=["sensor=(A,C)"])
     assert len(res) == 2
+
+
+def test_ts_create_bad_encoding(r: redis.Redis):
+    """TS.CREATE with an invalid ENCODING raises an error."""
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TS.CREATE", "ts", "ENCODING", "INVALID")
+
+
+def test_ts_create_bad_chunk_size(r: redis.Redis):
+    """TS.CREATE with a chunk_size not divisible by 8 raises an error."""
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TS.CREATE", "ts", "CHUNK_SIZE", "7")
+
+
+def test_ts_info_nonexistent_key(r: redis.Redis):
+    """TS.INFO raises an error for a non-existent key."""
+    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+        r.ts().info("nokey")
+
+
+def test_ts_range_nonexistent_key(r: redis.Redis):
+    """TS.RANGE and TS.REVRANGE raise errors for non-existent keys."""
+    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+        r.ts().range("nokey", "-", "+")
+    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+        r.ts().revrange("nokey", "-", "+")
+
+
+def test_ts_alter_nonexistent_key(r: redis.Redis):
+    """TS.ALTER raises an error for a non-existent key."""
+    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+        r.ts().alter("nokey", retention_msecs=1000)
+
+
+def test_ts_alter_bad_chunk_size(r: redis.Redis):
+    """TS.ALTER with a chunk_size not divisible by 8 raises an error."""
+    r.ts().create("ts")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TS.ALTER", "ts", "CHUNK_SIZE", "9")
+
+
+def test_ts_add_invalid_duplicate_policy(r: redis.Redis):
+    """TS.ADD with an invalid ON_DUPLICATE policy raises an error."""
+    r.ts().create("ts")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TS.ADD", "ts", "1000", "1.0", "ON_DUPLICATE", "INVALID")
+
+
+def test_ts_filter_no_equals_operator(r: redis.Redis):
+    """A filter expression without = or != raises an error."""
+    r.ts().create("ts", labels={"x": "1"})
+    r.ts().add("ts", 1000, 1.0)
+    with pytest.raises(redis.ResponseError):
+        r.ts().mrange("-", "+", filters=["invalidfilter"])
+
+
+def test_ts_incrby_timestamp_lower_than_max(r: redis.Redis):
+    """TS.INCRBY raises an error when the timestamp is lower than the latest."""
+    r.ts().create("ts")
+    r.ts().incrby("ts", 1.0, timestamp=2000)
+    with pytest.raises(redis.ResponseError):
+        r.ts().incrby("ts", 1.0, timestamp=1000)
+
+
+def test_ts_range_bad_aggregation_type(r: redis.Redis):
+    """TS.RANGE with an invalid aggregation type raises an error."""
+    r.ts().create("ts")
+    r.ts().add("ts", 1000, 1.0)
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TS.RANGE", "ts", "-", "+", "AGGREGATION", "BADTYPE", "100")
+
+
+def test_ts_range_filter_by_ts(r: redis.Redis):
+    """TS.RANGE with FILTER_BY_TS returns only matching timestamps."""
+    r.ts().create("ts")
+    for t in [1000, 2000, 3000, 4000]:
+        r.ts().add("ts", t, float(t))
+    res = r.ts().range("ts", "-", "+", filter_by_ts=[1000, 3000])
+    assert len(res) == 2
+    assert res[0][0] == 1000
+    assert res[1][0] == 3000
+
+
+def test_ts_range_align_to_range_boundary(r: redis.Redis):
+    """TS.RANGE with ALIGN + (range end) executes without error."""
+    r.ts().create("ts")
+    for t in [1000, 2000, 3000]:
+        r.ts().add("ts", t, float(t))
+    res = r.execute_command("TS.RANGE", "ts", "1000", "3000", "ALIGN", "+", "AGGREGATION", "sum", "1000")
+    assert len(res) > 0
+
+
+def test_ts_madd_nonexistent_key(r: redis.Redis):
+    """TS.MADD returns partial results when any key does not exist."""
+    r.ts().create("ts1")
+    result = r.ts().madd([("ts1", 1000, 1.0), ("nokey", 2000, 2.0)])
+    assert result[0] == 1000
+    assert isinstance(result[1], redis.ResponseError)

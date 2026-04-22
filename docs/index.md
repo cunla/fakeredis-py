@@ -40,6 +40,25 @@ pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFil
 
 ## How to Use
 
+FakeRedis supports two connection modes:
+
+```mermaid
+graph LR
+    subgraph direct["Direct (in-process)"]
+        D1["FakeRedis()"] -->|"in-memory"| DB1["FakeServer\n(shared state)"]
+        D2["FakeAsyncRedis()"] --> DB1
+    end
+
+    subgraph tcp["TCP server (socket-compatible)"]
+        T["TcpFakeServer\n(Thread)"] -->|"listens on\n127.0.0.1:port"| DB2["FakeServer\n(shared state)"]
+        C1["redis.Redis(host=...)"] -->|"TCP"| T
+        C2["Any Redis client"] -->|"TCP"| T
+    end
+```
+
+Use **direct mode** for unit/integration tests — zero setup, fastest possible execution.
+Use **TCP server mode** when your code creates its own `redis.Redis` connection and you can't inject a fake client.
+
 ### Start a server on a thread
 
 It is possible to start a server on a thread and use it as a connect to it as you would a real redis server.
@@ -284,6 +303,45 @@ async def app_client(redis_client: redis.Redis) -> AsyncIterator[httpx.AsyncClie
 async def test_app(app_client: httpx.AsyncClient) -> None:
     response = await app_client.get("/")
     assert response.json()["redis_keys"] == ["foo"]
+```
+
+## Architecture
+
+### How it works
+
+FakeRedis intercepts redis-py (or valkey-py) at the connection layer and routes commands through an in-memory
+implementation that mirrors Redis behaviour, without any network I/O.
+
+```mermaid
+flowchart LR
+    Client["redis-py / valkey-py\nclient"] -->|"send_command()"| FC["FakeConnection\n_connection.py"]
+    FC -->|"_connect()"| FS["FakeSocket\n(mixin stack)"]
+    FS -->|"dispatch"| MX["Command mixin\ncommands_mixins/"]
+    MX -->|"read / write"| DB["Database\n_helpers.py"]
+    DB -->|"result"| FS
+    FS -->|"read_response()"| Client
+
+    SRV["FakeServer\n_server.py"] -. "owns" .-> DB
+    FC -. "references" .-> SRV
+```
+
+### Sharing state between clients
+
+Each `FakeRedis` instance uses a `FakeServer` to hold all database state. Passing the same `FakeServer` to
+multiple clients lets them share data, just like connections to the same real Redis instance.
+
+```mermaid
+graph TD
+    SRV["FakeServer"]
+
+    SRV -->|"db index 0"| D0["Database 0\ndict + TTLs"]
+    SRV -->|"db index 1"| D1["Database 1\ndict + TTLs"]
+    SRV -->|"pub/sub state"| PS["PubSub channels\n& patterns"]
+    SRV -->|"script cache"| SC["Lua script\ncache"]
+
+    C1["FakeRedis (client 1)"] -->|"server="| SRV
+    C2["FakeRedis (client 2)"] -->|"server="| SRV
+    C3["FakeAsyncRedis (client 3)"] -->|"server="| SRV
 ```
 
 ## Known Limitations

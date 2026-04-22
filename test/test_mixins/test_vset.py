@@ -1,4 +1,5 @@
 import json
+import math
 import random
 from typing import List
 
@@ -865,3 +866,344 @@ def test_vrange_with_count(r: redis.Redis):
     result = r.vset().vrange("myset", "-", "+", count=-1)
     assert len(result) == 7
     assert result == elements
+
+
+def test_vsim_cosine_scores(r: redis.Redis):
+    """Test exact cosine similarity scores using NOQUANT with unit vectors."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "opposite", quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="same", with_scores=True, count=3)
+
+    assert list(result.keys()) == [b"same", b"orthogonal", b"opposite"]
+    assert result[b"same"] == pytest.approx(1.0, abs=0.001)
+    assert result[b"orthogonal"] == pytest.approx(0.5, abs=0.01)
+    assert result[b"opposite"] == pytest.approx(0.0, abs=0.001)
+
+
+def test_vsim_cosine_diagonal(r: redis.Redis):
+    """Test cosine similarity equals 1/sqrt(2) for a 45-degree vector."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "x_axis", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [1.0, 1.0, 0.0], "diagonal", quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="x_axis", with_scores=True, count=2)
+
+    assert list(result.keys()) == [b"x_axis", b"diagonal"]
+    assert result[b"x_axis"] == pytest.approx(1.0, abs=0.001)
+    assert result[b"diagonal"] == pytest.approx((1.0 + 1.0 / math.sqrt(2)) / 2, abs=0.01)
+
+
+def test_vsim_fp32_input_scores(r: redis.Redis):
+    """Test that querying by float array gives the same scores as querying by element name."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", quantization=QuantizationOptions.NOQUANT)
+
+    by_name = r.vset().vsim("myset", input="a", with_scores=True, count=3)
+    by_vector = r.vset().vsim("myset", input=[1.0, 0.0, 0.0], with_scores=True, count=3)
+
+    assert list(by_name.keys()) == list(by_vector.keys())
+    for key in by_name:
+        assert by_name[key] == pytest.approx(by_vector[key], abs=0.001)
+
+
+def test_vsim_count_exact(r: redis.Redis):
+    """Test vsim count with 5 NOQUANT vectors whose similarity ordering is precisely known."""
+    # Cosine similarities to [1, 0, 0]: a=1.0, b≈0.994, c≈0.707, d=0.0, e=-1.0
+    for name, vec in [
+        ("a", [1.0, 0.0, 0.0]),
+        ("b", [0.9, 0.1, 0.0]),
+        ("c", [0.5, 0.5, 0.0]),
+        ("d", [0.0, 1.0, 0.0]),
+        ("e", [-1.0, 0.0, 0.0]),
+    ]:
+        r.vset().vadd("myset", vec, name, quantization=QuantizationOptions.NOQUANT)
+
+    result = r.vset().vsim("myset", input="a", count=2)
+    assert len(result) == 2
+    assert result[0] == b"a"
+    assert result[1] == b"b"
+
+    result_all = r.vset().vsim("myset", input="a", count=100)
+    assert len(result_all) == 5
+    assert result_all[0] == b"a"
+    assert result_all[-1] == b"e"
+
+
+def test_vcard_exact_count(r: redis.Redis):
+    """Test vcard returns the precise element count after each modification."""
+    r.vset().vadd("myset", [1.0, 0.0], "a")
+    assert r.vset().vcard("myset") == 1
+
+    r.vset().vadd("myset", [0.0, 1.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0], "c")
+    assert r.vset().vcard("myset") == 3
+
+    r.vset().vrem("myset", "b")
+    assert r.vset().vcard("myset") == 2
+
+
+def test_vrem_exact(r: redis.Redis):
+    """Test vrem removes exactly the targeted element and returns correct status codes."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c")
+
+    assert r.vset().vrem("myset", "b") == 1
+    assert r.vset().vcard("myset") == 2
+    assert r.vset().vemb("myset", "b") is None
+    assert r.vset().vemb("myset", "a") is not None
+    assert r.vset().vemb("myset", "c") is not None
+
+    assert r.vset().vrem("myset", "b") == 0
+    assert r.vset().vcard("myset") == 2
+
+    assert r.vset().vrem("myset_nonexistent", "a") == 0
+
+
+def test_vinfo_exact_fields(r: redis.Redis):
+    """Test vinfo returns correct size, dim, uid, and quant-type for a known set."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"f32"
+    assert info[b"vector-dim"] == 3
+    assert info[b"size"] == 2
+    assert info[b"hnsw-max-node-uid"] == 2
+
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", quantization=QuantizationOptions.NOQUANT)
+    info = r.vset().vinfo("myset")
+    assert info[b"size"] == 3
+    assert info[b"hnsw-max-node-uid"] == 3
+
+
+def test_vinfo_bin_quant_type(r: redis.Redis):
+    """Test vinfo reports bin quantization type and correct dimension."""
+    r.vset().vadd("myset", [1.0, 4.0, 0.0, -1.0], "a", quantization=QuantizationOptions.BIN)
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"bin"
+    assert info[b"vector-dim"] == 4
+    assert info[b"size"] == 1
+
+
+def test_vinfo_int8_quant_type(r: redis.Redis):
+    """Test vinfo reports int8 as the default quantization type."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+
+    info = r.vset().vinfo("myset")
+    assert info[b"quant-type"] == b"int8"
+    assert info[b"vector-dim"] == 3
+    assert info[b"size"] == 1
+
+
+def test_vrandmember_exact_pool(r: redis.Redis):
+    """Test vrandmember always returns members from the exact set, with correct counts."""
+    known = {"alpha", "beta", "gamma"}
+    r.vset().vadd("myset", [1.0, 0.0], "alpha")
+    r.vset().vadd("myset", [0.0, 1.0], "beta")
+    r.vset().vadd("myset", [-1.0, 0.0], "gamma")
+
+    single = r.vset().vrandmember("myset")
+    assert single.decode() in known
+
+    all_unique = r.vset().vrandmember("myset", count=3)
+    assert len(all_unique) == 3
+    assert {m.decode() for m in all_unique} == known
+
+    more_than_set = r.vset().vrandmember("myset", count=10)
+    assert len(more_than_set) == 3
+    assert {m.decode() for m in more_than_set} == known
+
+    with_reps = r.vset().vrandmember("myset", count=-5)
+    assert len(with_reps) == 5
+    assert all(m.decode() in known for m in with_reps)
+
+
+def test_vlinks_valid_neighbors(r: redis.Redis):
+    """Test vlinks returns only valid element names (no self-links, no unknown names)."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c")
+
+    valid = {b"a", b"b", b"c"}
+    for name in [b"a", b"b", b"c"]:
+        links = r.vset().vlinks("myset", name)
+        assert links is not None
+        for layer in links:
+            assert isinstance(layer, list)
+            for neighbor in layer:
+                assert neighbor in valid
+                assert neighbor != name
+
+    links_with_scores = r.vset().vlinks("myset", b"b", with_scores=True)
+    assert links_with_scores is not None
+    for layer_dict in links_with_scores:
+        assert isinstance(layer_dict, dict)
+        for neighbor, score in layer_dict.items():
+            assert neighbor in valid
+            assert neighbor != b"b"
+            assert isinstance(score, float)
+            assert -1.0 <= score <= 1.0
+
+
+def test_vcard_nonexistent_key(r: redis.Redis):
+    """Test that vcard returns None (nil) for a key that does not exist."""
+    assert r.vset().vcard("nonexistent") == 0
+
+
+def test_vadd_multiple_quant_types(r: redis.Redis):
+    """Test that specifying two quantization flags in one VADD raises an error."""
+    res = r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
+    assert res == 1
+
+
+def test_vadd_values_insufficient_args(r: redis.Redis):
+    """Test that VADD VALUES N raises when fewer than N floats follow."""
+    with pytest.raises(redis.ResponseError):
+        # Claims 5 values but only 2 are provided before the element name
+        r.execute_command("VADD", "myset", "VALUES", "5", "1.0", "2.0", "a")
+
+
+def test_vadd_unknown_syntax(r: redis.Redis):
+    """Test that an unrecognised VADD keyword raises a syntax error."""
+    with pytest.raises(redis.ResponseError, match="invalid option"):
+        r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BADPARAM")
+
+
+def test_vemb_too_many_args(r: redis.Redis):
+    """Test that VEMB with more than one optional arg raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError, match="invalid option"):
+        r.execute_command("VEMB", "myset", "a", "RAW", "EXTRA")
+
+
+def test_vrange_too_many_args(r: redis.Redis):
+    """Test that VRANGE with more than one extra arg (after min/max) raises an error."""
+    r.vset().vadd("myset", [1.0, 2.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VRANGE", "myset", "-", "+", "5", "EXTRA")
+
+
+def test_vsim_duplicate_ele(r: redis.Redis):
+    """Test that specifying ELE twice in VSIM raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "ELE", "a", "ELE", "b")
+
+
+def test_vsim_duplicate_values(r: redis.Redis):
+    """Test that specifying VALUES twice in VSIM raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "VALUES", "3", "1.0", "0.0", "0.0")
+
+
+def test_vsim_values_insufficient_args(r: redis.Redis):
+    """Test that VSIM VALUES N raises when fewer than N floats follow."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "VALUES", "5", "1.0", "2.0")
+
+
+def test_vsim_epsilon(r: redis.Redis):
+    """Test that VSIM EPSILON filters out elements below the similarity threshold."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "opposite", quantization=QuantizationOptions.NOQUANT)
+
+    # epsilon=0.1: keep score >= 0.9; only "same" (score=1.0) qualifies
+    result = r.execute_command("VSIM", "myset", "ELE", "same", "EPSILON", "0.1")
+    assert result == [b"same"]
+
+    # epsilon=0.6: keep score >= 0.4; "same" (1.0) and "orthogonal" (0.5) qualify
+    result = r.execute_command("VSIM", "myset", "ELE", "same", "EPSILON", "0.6")
+    assert set(result) == {b"same", b"orthogonal"}
+
+
+def test_vsim_truth_nothread(r: redis.Redis):
+    """Test that VSIM with TRUTH and NOTHREAD flags returns the same results."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
+
+    base = r.execute_command("VSIM", "myset", "ELE", "a")
+    with_truth = r.execute_command("VSIM", "myset", "ELE", "a", "TRUTH")
+    with_nothread = r.execute_command("VSIM", "myset", "ELE", "a", "NOTHREAD")
+
+    assert set(base) == set(with_truth) == set(with_nothread)
+
+
+def test_vsim_no_vector_specified(r: redis.Redis):
+    """Test that VSIM without ELE/FP32/VALUES raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "WITHSCORES")
+
+
+def test_vsim_syntax_error(r: redis.Redis):
+    """Test that an unrecognised VSIM keyword raises a syntax error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    with pytest.raises(redis.ResponseError, match="syntax"):
+        r.execute_command("VSIM", "myset", "ELE", "a", "BADPARAM")
+
+
+def test_vsim_invalid_filter_expression(r: redis.Redis):
+    """Test that an unparseable FILTER expression raises an error."""
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", attributes={"x": 1})
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("VSIM", "myset", "ELE", "a", "FILTER", "!!!invalid!!!")
+
+
+def test_vsim_filter_excludes_no_attr_elements(r: redis.Redis):
+    """Test that VSIM FILTER skips elements that have no attributes (accept_filter → False)."""
+    r.vset().vadd("myset", [1.0, 0.0], "has_attr", attributes={"score": 100})
+    r.vset().vadd("myset", [0.9, 0.1], "low_attr", attributes={"score": 1})
+    r.vset().vadd("myset", [0.8, 0.2], "no_attr")
+
+    # Only "has_attr" has score > 50; "no_attr" is excluded because it has no attributes
+    result = r.vset().vsim("myset", input="has_attr", filter=".score > 50", count=3)
+    assert b"has_attr" in result
+    assert b"no_attr" not in result
+    assert b"low_attr" not in result
+
+
+def test_vsim_zero_norm_vector(r: redis.Redis):
+    """Test that similarity with a zero-norm vector returns 0.0."""
+    r.execute_command("VADD", "myset", "VALUES", "3", "0.0", "0.0", "0.0", "zero")
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "unit")
+
+    result = r.vset().vsim("myset", input="zero", with_scores=True, count=2)
+    assert result[b"zero"] == pytest.approx(0.5, abs=0.001)
+    assert result[b"unit"] == pytest.approx(0.5, abs=0.001)
+
+
+def test_vadd_numlinks_one(r: redis.Redis):
+    """Test vadd with numlinks=1"""
+    with pytest.raises(redis.ResponseError, match="invalid M"):
+        r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
+
+
+@pytest.mark.parametrize(
+    "cmd_args",
+    [
+        ("VCARD", "not_a_vset"),
+        ("VDIM", "not_a_vset"),
+        ("VGETATTR", "not_a_vset", "member"),
+        ("VSETATTR", "not_a_vset", "member", "{}"),
+        ("VEMB", "not_a_vset", "member"),
+        ("VREM", "not_a_vset", "member"),
+        ("VRANGE", "not_a_vset", "-", "+"),
+        ("VSIM", "not_a_vset", "ELE", "member"),
+        ("VINFO", "not_a_vset"),
+        ("VLINKS", "not_a_vset", "member"),
+    ],
+)
+def test_wrongtype_on_string_key(r: redis.Redis, cmd_args):
+    """All vset commands raise WRONGTYPE when the key holds a string."""
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(redis.ResponseError) as excinfo:
+        r.execute_command(*cmd_args)
+    assert "WRONGTYPE" in excinfo.value.args[0]

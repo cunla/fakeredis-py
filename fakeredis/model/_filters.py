@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ByteString
 
 from probables import CountingCuckooFilter, CuckooFilterFullError, ExpandingBloomFilter
 
@@ -57,3 +57,23 @@ class ScalableCuckooFilter(CountingCuckooFilter, BaseModel):
             self.deleted += 1
             return True
         return False
+
+    @classmethod
+    def frombytes(cls, b: ByteString, **kwargs: Any) -> "ScalableCuckooFilter":
+        base = CountingCuckooFilter.frombytes(b, **kwargs)
+        obj = cls.__new__(cls)
+        for c in CountingCuckooFilter.__mro__:
+            for slot in getattr(c, "__slots__", ()):
+                # Apply Python name mangling for double-underscore slots
+                if slot.startswith("__") and not slot.endswith("__"):
+                    attr = f"_{c.__name__}{slot}"
+                else:
+                    attr = slot
+                try:
+                    object.__setattr__(obj, attr, object.__getattribute__(base, attr))
+                except AttributeError:
+                    pass
+        obj.initial_capacity = base.capacity
+        obj.inserted = base.elements_added
+        obj.deleted = 0
+        return obj

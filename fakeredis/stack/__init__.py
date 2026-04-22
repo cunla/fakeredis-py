@@ -7,7 +7,7 @@ try:
     from ._vectorset_mixin import VectorSetCommandsMixin  # noqa: F401
 except ImportError:
 
-    class VectorSetCommandsMixin:
+    class VectorSetCommandsMixin:  # type: ignore
         pass
 
 

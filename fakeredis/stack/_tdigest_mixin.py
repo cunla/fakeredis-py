@@ -71,14 +71,11 @@ class TDigestCommandsMixin:
         if len(sources) != len(sources_names):
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
 
-        if override:
-            if dest.value is None:
-                compression = compression or max([source.compression for source in sources])
-                dest.value = TDigest(compression)
-            else:
-                dest.value.clear()
         if dest.value is None:
-            raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
+            compression = compression or max([source.compression for source in sources])
+            dest.value = TDigest(compression)
+        elif override:
+            dest.value.clear()
         for source in sources:
             dest.value.update(source)
         dest.updated()

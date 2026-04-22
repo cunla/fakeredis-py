@@ -137,7 +137,7 @@ class Resp3Writer(Writer):
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-    server: "TcpFakeServer"  # type: ignore
+    server: "TcpFakeServer"
     shutdown_request: bool = False
 
     def setup(self) -> None:
@@ -153,7 +153,11 @@ class TCPFakeRequestHandler(StreamRequestHandler):
             self.current_client = FakeRedisConnection(
                 server=self.server.fake_server,
                 writer=self.writer,
-                client_info={"raddr": self.client_address},
+                client_info={
+                    "laddr": self.connection.getsockname(),
+                    "addr": self.connection.getpeername(),
+                    "fd": self.connection.fileno(),
+                },
             )
 
             self.server.clients[self.client_address] = self.current_client

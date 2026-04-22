@@ -58,3 +58,33 @@ def test_topk(r: redis.Redis):
         assert 50 == info[b"width"]
         assert 3 == info[b"depth"]
         assert 0.9 == round(float(info[b"decay"]), 1)
+
+
+def test_topk_commands_on_nonexistent_key(r: redis.Redis):
+    """All TopK commands raise an error when the key does not exist."""
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.topk().add("nokey", "item")
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.execute_command("TOPK.COUNT", "nokey", "item")
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.topk().query("nokey", "item")
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.topk().incrby("nokey", ["item"], [1])
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.topk().info("nokey")
+    with pytest.raises(redis.ResponseError, match="key does not exist"):
+        r.topk().list("nokey")
+
+
+def test_topk_reserve_already_exists(r: redis.Redis):
+    """TOPK.RESERVE raises an error when the key already exists."""
+    r.topk().reserve("topk", 3, 10, 3, 0.9)
+    with pytest.raises(redis.ResponseError, match="already exists"):
+        r.topk().reserve("topk", 5, 10, 3, 0.9)
+
+
+def test_topk_incrby_odd_args(r: redis.Redis):
+    """TOPK.INCRBY raises an error when items and increments are mismatched."""
+    r.topk().reserve("topk", 3, 10, 3, 0.9)
+    with pytest.raises(redis.ResponseError):
+        r.execute_command("TOPK.INCRBY", "topk", "item1", "3", "item2")

@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union
 
 import numpy as np
 from jsonpath_ng import JSONPath
-from jsonpath_ng.exceptions import JsonPathParserError
+from jsonpath_ng.exceptions import JSONPathError
 from jsonpath_ng.ext import parse
 
 from fakeredis import _msgs as msgs
@@ -17,7 +17,10 @@ QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
     path_str = path.decode() if isinstance(path, bytes) else path
-    path_str = path_str.replace("and", "&").replace("or", "|").replace("not", "!").replace(".", "@.")
+    path_str = re.sub(r"\band\b", "&", path_str)
+    path_str = re.sub(r"\bor\b", "|", path_str)
+    path_str = re.sub(r"\bnot\b", "!", path_str)
+    path_str = path_str.replace(".", "@.")
 
     # Replace `v in [x, y, z]` with `(v=~'x|y|z')`
     def expand_in(m: re.Match) -> str:
@@ -34,28 +37,8 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
     path_str: str = _update_to_jsonpath_format(path)
     try:
         return parse(path_str)
-    except JsonPathParserError:
+    except JSONPathError:
         raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
-
-
-def quantize_int8(x):
-    qmin = -(2.0**7) if (x < 0).any() else 0  # Signed or unsigned range
-    qmax = 2.0**7 - 1 if (x < 0).any() else 2.0**8 - 1
-
-    min_val, max_val = x.min(), x.max()
-
-    # Calculate the scale factor
-    scale = (max_val - min_val) / (qmax - qmin)
-
-    # Calculate the initial zero point and clamp it to the valid range
-    initial_zero_point = qmin - min_val / scale
-    zero_point = int(np.clip(initial_zero_point, qmin, qmax))
-
-    # Quantize the values and round them
-    q_x = zero_point + x / scale
-    q_x = np.clip(q_x, qmin, qmax).round().astype(np.int8)  # Use np.int8 for the final data type
-
-    return q_x, scale, zero_point
 
 
 class Vector:
@@ -96,16 +79,9 @@ class Vector:
         o = np.array(other.values)
         denominator = self.l2_norm * other.l2_norm
         if denominator == 0:
-            return 0.0
-        return float(np.dot(me, o)) / denominator
-
-    def accept_filter(self, filter_expression: Optional[bytes]) -> bool:
-        if filter_expression is None:
-            return True
-        if self.attributes is None:
-            return False
-        json_obj = json.loads(self.attributes)
-        return len(_parse_jsonfilter(filter_expression).find([json_obj])) > 0
+            return 0.5
+        cosine_sim = float(np.dot(me, o)) / denominator
+        return (1.0 + cosine_sim) / 2.0
 
 
 class VectorSet:
@@ -240,3 +216,14 @@ class VectorSet:
         if k in self._vectors:
             return self._vectors[k]
         return None
+
+    def accept_filter(self, filter_expression: Optional[bytes]) -> list[Vector]:
+        if filter_expression is None:
+            return list(self._vectors.values())
+        parsed_expression = _parse_jsonfilter(filter_expression)
+        res = [
+            i
+            for i in self._vectors.values()
+            if i.attributes is not None and (len(parsed_expression.find([json.loads(i.attributes)])) > 0)
+        ]
+        return res

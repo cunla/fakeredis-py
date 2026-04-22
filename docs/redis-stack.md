@@ -2,6 +2,37 @@
 
 To install all supported modules, you can install fakeredis with `pip install fakeredis[lua,json,bf]`.
 
+## Optional extras overview
+
+```mermaid
+graph LR
+    subgraph extras["Installation extras"]
+        L["fakeredis[lua]"]
+        J["fakeredis[json]"]
+        P["fakeredis[probabilistic]"]
+        VS["fakeredis[vectorset]"]
+    end
+
+    subgraph deps["Python dependencies"]
+        LU["lupa ≥ 2.1"]
+        JN["jsonpath-ng ≥ 1.6"]
+        PB["pyprobables ≥ 0.6"]
+        NP["numpy + jsonpath-ng"]
+    end
+
+    subgraph features["Features enabled"]
+        LF["EVAL / EVALSHA\nLua scripting"]
+        JF["JSON.* commands\n(RedisJSON)"]
+        PF["BF.* / CF.* / CMS.*\nTOPK.* / TDIGEST.*"]
+        VSF["VSET.* commands\nVector search"]
+    end
+
+    L --> LU --> LF
+    J --> JN --> JF
+    P --> PB --> PF
+    VS --> NP --> VSF
+```
+
 ## RedisJson support
 
 The JSON capability of Redis Stack provides JavaScript Object Notation (JSON) support for Redis. It lets you store,

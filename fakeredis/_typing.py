@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple, Union, Dict, Any, List
+from typing import Tuple, Union, Dict, Any, List, Type
 
 import redis
 
@@ -23,14 +23,14 @@ lib_version = metadata.version("fakeredis")
 VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
-RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError)
+RaiseErrorTypes: Tuple[Type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError
 
 try:
     import valkey
 
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
-    ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]
+    ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]  # type: ignore[misc, assignment]
 except ImportError:
     pass
 

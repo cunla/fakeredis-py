@@ -21,25 +21,19 @@ class VectorSetCommandsMixin:
     @command(name="VCARD", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vcard(self, key: CommandItem) -> Optional[int]:
         if key.value is None:
-            return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
+            return 0
         return key.value.card
 
     @command(name="VDIM", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vdim(self, key: CommandItem) -> int:
         if key.value is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         return key.value.dimensions
 
     @command(name="VGETATTR", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
     def vgetattr(self, key: CommandItem, member: bytes) -> Optional[bytes]:
         if key.value is None:
             return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         if member not in key.value:
             return None
         return key.value[member].attributes
@@ -48,8 +42,6 @@ class VectorSetCommandsMixin:
     def vsetattr(self, key: CommandItem, member: bytes, attr: bytes) -> int:
         if key.value is None:
             return 0
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         if member not in key.value:
             return 0
         key.value[member].attributes = attr
@@ -67,6 +59,8 @@ class VectorSetCommandsMixin:
                 i += 2
             elif casematch(args[i], b"m") and i + 1 < len(args):
                 numlinks = int(args[i + 1])
+                if numlinks < 2:
+                    raise SimpleError("ERR invalid M")
                 i += 2
             elif casematch(args[i], b"cas"):
                 cas = True  # unused for now
@@ -81,8 +75,6 @@ class VectorSetCommandsMixin:
                 name = args[i + 2]
                 i += 3
             elif casematch(args[i], b"bin") or casematch(args[i], b"q8") or casematch(args[i], b"noquant"):
-                if quantization is not None:
-                    raise SimpleError("ERR multiple quantization types specified")
                 quantization = args[i].lower().decode()
                 if quantization == "q8":
                     quantization = "int8"
@@ -99,7 +91,7 @@ class VectorSetCommandsMixin:
                 attributes = args[i + 1]
                 i += 2
             else:
-                raise SimpleError("ERR syntax error in 'VADD' command")
+                raise SimpleError("ERR invalid option")
         cas = cas or False
         if reduce is not None and key.value is not None:
             raise SimpleError("ERR cannot add projection to existing set without projection")
@@ -124,12 +116,10 @@ class VectorSetCommandsMixin:
     def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> List[float]:
         if key.value is None:
             return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         if element not in key.value:
             return None
         if len(args) > 1:
-            raise SimpleError("ERR wrong number of arguments for 'VEMB' command")
+            raise SimpleError("ERR invalid option")
         raw = False
         if len(args) > 0 and casematch(args[0], b"raw"):
             raw = True
@@ -162,8 +152,6 @@ class VectorSetCommandsMixin:
     def vrem(self, key: CommandItem, member: bytes) -> int:
         if key.value is None:
             return 0
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         return key.value.remove(member)
 
     @command(
@@ -178,8 +166,6 @@ class VectorSetCommandsMixin:
         if key.value is None:
             return []
         vset = key.value
-        if not isinstance(vset, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         count = None
         if len(args) == 1:
             count = int(args[0])
@@ -197,8 +183,6 @@ class VectorSetCommandsMixin:
         """
         if key.value is None:
             return []
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         vector_set: VectorSet = key.value
         vector: Optional[Vector] = None  # The vector to compare against.
         with_scores, with_attributes, count, epsilon, filter_expression = False, False, 10, None, None
@@ -258,7 +242,7 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set if v.accept_filter(filter_expression)}
+        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set.accept_filter(filter_expression)}
         if epsilon is not None:
             res = {k: v for k, v in res.items() if v >= 1 - epsilon}
         res = OrderedDict(itertools.islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
@@ -276,8 +260,6 @@ class VectorSetCommandsMixin:
     def vinfo(self, key: CommandItem):
         if key.value is None:
             return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         info = key.value.info()
         return info
 
@@ -285,8 +267,6 @@ class VectorSetCommandsMixin:
     def vlinks(self, key: CommandItem, elem: bytes, *args: bytes):
         if key.value is None:
             return None
-        if not isinstance(key.value, VectorSet):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
         vset: VectorSet = key.value
         if elem not in vset:
             return None
