@@ -7,11 +7,24 @@ tags:
 toc_depth: 2
 ---
 
-## v2.35.2
+## v2.36.0
+
+### 🚀 Features
+
+- Implement keyspace notifications @alexbthundiyil-spec (#463)
 
 ### 🐛 Bug Fixes
 
 - fix: XREADGROUP with non-'>' ID returns consumer PEL @tomtom103 #470
+- fix: similarity calculation in vector set `VSIM` command
+- fix: `CF.RESERVE` and `CF.SCANDUMP` should not create keys if they do not exist
+- fix: various issues in vector set commands `VSET`
+
+### 🧰 Maintenance
+
+- Improved `CLIENT INFO` and `CLIENT GETNAME` commands
+- Better TDigest implementation
+- Update Redis 8 image used in CI to 8.6.2
 
 ## v2.35.1
 

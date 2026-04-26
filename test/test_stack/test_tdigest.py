@@ -160,6 +160,7 @@ def test_tdigest_quantile_nan(r: redis.Redis):
     assert math.isnan(float(res)), f"Expected NaN, got {res}"
 
 
+@pytest.mark.min_server("7")
 def test_tdigest_create_default_compression(r: redis.Redis):
     """TDIGEST.CREATE without compression uses default of 100."""
     r.tdigest().create("td")

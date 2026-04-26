@@ -61,7 +61,7 @@ jobs:
           -v
       - name: Upload Tests Result
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: tests-result-${{ matrix.tests }}
           path: report-${{ matrix.tests }}.html
@@ -74,6 +74,6 @@ jobs:
       contents: read
     steps:
       - name: Collect Tests Result
-        uses: actions/upload-artifact/merge@v5
+        uses: actions/upload-artifact/merge@v7
         with:
           delete-merged: true

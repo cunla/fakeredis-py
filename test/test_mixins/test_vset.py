@@ -1051,13 +1051,13 @@ def test_vlinks_valid_neighbors(r: redis.Redis):
 
 def test_vcard_nonexistent_key(r: redis.Redis):
     """Test that vcard returns None (nil) for a key that does not exist."""
-    assert r.vset().vcard("nonexistent") is None
+    assert r.vset().vcard("nonexistent") == 0
 
 
 def test_vadd_multiple_quant_types(r: redis.Redis):
     """Test that specifying two quantization flags in one VADD raises an error."""
-    with pytest.raises(redis.ResponseError, match="multiple quantization"):
-        r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
+    res = r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
+    assert res == 1
 
 
 def test_vadd_values_insufficient_args(r: redis.Redis):
@@ -1069,14 +1069,14 @@ def test_vadd_values_insufficient_args(r: redis.Redis):
 
 def test_vadd_unknown_syntax(r: redis.Redis):
     """Test that an unrecognised VADD keyword raises a syntax error."""
-    with pytest.raises(redis.ResponseError, match="syntax error"):
+    with pytest.raises(redis.ResponseError, match="invalid option"):
         r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BADPARAM")
 
 
 def test_vemb_too_many_args(r: redis.Redis):
     """Test that VEMB with more than one optional arg raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError, match="wrong number of arguments"):
+    with pytest.raises(redis.ResponseError, match="invalid option"):
         r.execute_command("VEMB", "myset", "a", "RAW", "EXTRA")
 
 
@@ -1176,19 +1176,14 @@ def test_vsim_zero_norm_vector(r: redis.Redis):
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "unit")
 
     result = r.vset().vsim("myset", input="zero", with_scores=True, count=2)
-    assert result[b"zero"] == pytest.approx(0.0, abs=0.001)
-    assert result[b"unit"] == pytest.approx(0.0, abs=0.001)
+    assert result[b"zero"] == pytest.approx(0.5, abs=0.001)
+    assert result[b"unit"] == pytest.approx(0.5, abs=0.001)
 
 
 def test_vadd_numlinks_one(r: redis.Redis):
-    """Test vadd with numlinks=1 (exercises _compute_level branch where m <= 1)."""
-    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
-    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", numlinks=1)
-    r.vset().vadd("myset", [-1.0, 0.0, 0.0], "c", numlinks=1)
-
-    assert r.vset().vcard("myset") == 3
-    info = r.vset().vinfo("myset")
-    assert info[b"size"] == 3
+    """Test vadd with numlinks=1"""
+    with pytest.raises(redis.ResponseError, match="invalid M"):
+        r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
 
 
 @pytest.mark.parametrize(

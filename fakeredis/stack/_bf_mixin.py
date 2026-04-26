@@ -139,7 +139,12 @@ class BFCommandsMixin:
         else:
             return [0, None]
 
-    @command(name="BF.LOADCHUNK", fixed=(Key(), Int, bytes), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="BF.LOADCHUNK",
+        fixed=(Key(), Int, bytes),
+        repeat=(),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_DO_NOT_CREATE,
+    )
     def bf_loadchunk(self, key: CommandItem, iterator: int, data: bytes) -> SimpleString:
         if key.value is not None and type(key.value) is not ScalableBloomFilter:
             raise SimpleError(msgs.NOT_FOUND_MSG)

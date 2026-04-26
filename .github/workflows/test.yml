@@ -34,29 +34,39 @@ jobs:
           - "valkey/valkey:8.1.6"
           - "redis:6.2.17"
         python-version: ["3.9", "3.12", "3.13", "3.14"]
-        redis-py: ["4.6.0", "5.3.1", "6.4.0", "7.2.1"]
+        redis-py: ["6.4.0", "7.4.0", "8.0.0b2"]
         install-extras: [false]
         coverage: [false]
         exclude:
           - python-version: "3.9"
-            redis-py: "7.2.1"
-          - python-version: "3.13"
-            redis-image: "redis:8.6.1"
-            redis-py: "7.2.1"
+            redis-py: "7.4.0"
+          - python-version: "3.14"
+            redis-image: "redis:8.6.2"
+            redis-py: "7.4.0"
             install-extras: false
             coverage: false
         include:
-          - python-version: "3.13"
+          - python-version: "3.9"
+            redis-image: "redis:8.6.2"
+            redis-py: "4.6.0"
+            install-extras: false
+            coverage: false
+          - python-version: "3.9"
+            redis-image: "redis:8.6.2"
+            redis-py: "5.3.1"
+            install-extras: false
+            coverage: false
+          - python-version: "3.14"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
-            redis-py: "7.2.1"
+            redis-py: "7.4.0"
             install-extras: true
-          - python-version: "3.13"
+          - python-version: "3.14"
             redis-image: "redis/redis-stack-server:7.4.0-v8"
-            redis-py: "7.2.1"
+            redis-py: "7.4.0"
             install-extras: true
-          - python-version: "3.13"
-            redis-image: "redis:8.6.1"
-            redis-py: "7.2.1"
+          - python-version: "3.14"
+            redis-image: "redis:8.6.2"
+            redis-py: "7.4.0"
             install-extras: true
             coverage: true
     permissions:
@@ -83,7 +93,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8
       - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
