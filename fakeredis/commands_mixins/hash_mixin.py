@@ -27,12 +27,6 @@ class HashCommandsMixin:
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
-        # Use len(h) (O(1) via Hash.__len__) rather than len(h.keys())
-        # which builds a fresh list of all field names and is therefore
-        # O(n) in the existing hash size. Both functions invoke
-        # _expire_keys() with identical semantics, so swapping has no
-        # behavioral effect — only a complexity fix that brings HSET
-        # back to the O(1) cost real Redis exhibits.
         previous_keys_count = len(h)
         h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # https://stackoverflow.com/a/12739974/1056460
         created = len(h) - previous_keys_count
