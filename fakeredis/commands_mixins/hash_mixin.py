@@ -27,9 +27,9 @@ class HashCommandsMixin:
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
-        previous_keys_count = len(h.keys())
+        previous_keys_count = len(h)
         h.update(dict(zip(*[iter(args)] * 2)), clear_expiration=True)  # https://stackoverflow.com/a/12739974/1056460
-        created = len(h.keys()) - previous_keys_count
+        created = len(h) - previous_keys_count
 
         key.updated()
         return created
