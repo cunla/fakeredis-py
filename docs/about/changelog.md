@@ -25,6 +25,7 @@ toc_depth: 2
 - Improved `CLIENT INFO` and `CLIENT GETNAME` commands
 - Better TDigest implementation
 - Update Redis 8 image used in CI to 8.6.2
+- perf(hash): make HSET O(1) by using len(h) instead of len(h.keys()) @invoker-bot (#473)
 
 ## v2.35.1
 
