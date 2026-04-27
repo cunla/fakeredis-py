@@ -5,6 +5,7 @@ from typing import Dict, Any, AnyStr
 
 import pytest
 import redis
+import valkey
 
 from fakeredis import _msgs as msgs
 from test.testtools import raw_command, get_protocol_version, resp_conversion, resp_conversion_from_resp2
@@ -67,47 +68,55 @@ def test_add_ts_close(r: redis.Redis):
 
 def test_createrule_errors(r: redis.Redis):
     timeseries = r.ts()
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
     timeseries.create("t1")
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
     timeseries.create("t2")
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, 1, 2)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) in msgs.WRONG_ARGS_MSG6.format("ts.createrule")
 
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         raw_command(r, "TS.CREATERULE", "t1", "t2", "AGGREGATION", "sum", 10, "20c")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_BAD_TIMESTAMP
 
 
 def test_deleterule_errors(r: redis.Redis):
     timeseries = r.ts()
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         timeseries.deleterule("t1", "t2")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
     timeseries.create("t1")
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         timeseries.deleterule("t1", "t2")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_RULE_DOES_NOT_EXIST
 
 
 def test_create_key_exist(r: redis.Redis):
     assert r.ts().create(1)
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().create(1)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_EXISTS
 
 
 def test_create_bad_duplicate_policy(r: redis.Redis):
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         assert r.ts().create(1, duplicate_policy="bad")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_INVALID_DUPLICATE_POLICY
 
 
@@ -156,8 +165,9 @@ def test_alter(r: redis.Redis):
     assert 10 == info["retention_msecs"]
 
     # Test for a chunk size of 50 Bytes on TS.ALTER
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().alter(1, chunk_size=50)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
 
 
@@ -182,8 +192,9 @@ def test_add(r: redis.Redis):
 def test_add_before_retention(r: redis.Redis):
     r.ts().create("time-serie-1", retention_msecs=1000)
     assert r.ts().add("time-serie-1", 10000, 10.0)
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().add("time-serie-1", 2, 20.0)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION
 
 
@@ -193,8 +204,9 @@ def test_add_before_last(r: redis.Redis):
     assert r.ts().add("time-serie-1", 2, 20.0) == 2
 
     assert r.ts().incrby("time-serie-1", 10.0, timestamp=100) == 100
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().incrby("time-serie-1", 20.0, timestamp=2)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert (
         str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V7
         or str(e.value) == msgs.TIMESERIES_TIMESTAMP_LOWER_THAN_MAX_V6
@@ -300,8 +312,9 @@ def test_create_and_delete_rule(r: redis.Redis):
 
 
 def test_del_range(r: redis.Redis):
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().delete("test", 0, 100)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
     for i in range(100):
@@ -764,12 +777,14 @@ def test_get_latest(r: redis.Redis):
 def test_mget_errors(r: redis.Redis):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().mget([])
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value).lower() == "wrong number of arguments for 'ts.mget' command"
 
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().mget(["Test=(Th=is"], with_labels="true")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == "TSDB: failed parsing labels"
 
 
@@ -936,14 +951,16 @@ def test_create_rule_green(r: redis.Redis):
 def test_create_rule_bad_aggregator(r: redis.Redis):
     r.ts().create(1)
     r.ts().create(2)
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().createrule(1, 2, "bad", 100, align_timestamp=50)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_BAD_AGGREGATION_TYPE
 
 
 def test_create_rule_key_not_exist(r: redis.Redis):
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().createrule(1, 2, "avg", 100)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
 
@@ -951,8 +968,9 @@ def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
     r.ts().create(1)
     r.ts().create(2)
     r.ts().createrule(1, 2, "avg", 100)
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         r.ts().createrule(1, 2, "avg", 100)
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_RULE_EXISTS
 
 
@@ -986,72 +1004,93 @@ def test_mrange_with_in_condition(r: redis.Redis):
 
 def test_ts_create_bad_encoding(r: redis.Redis):
     """TS.CREATE with an invalid ENCODING raises an error."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TS.CREATE", "ts", "ENCODING", "INVALID")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_create_bad_chunk_size(r: redis.Redis):
     """TS.CREATE with a chunk_size not divisible by 8 raises an error."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TS.CREATE", "ts", "CHUNK_SIZE", "7")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_info_nonexistent_key(r: redis.Redis):
     """TS.INFO raises an error for a non-existent key."""
-    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+    with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().info("nokey")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_range_nonexistent_key(r: redis.Redis):
     """TS.RANGE and TS.REVRANGE raise errors for non-existent keys."""
-    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+    with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().range("nokey", "-", "+")
-    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().revrange("nokey", "-", "+")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_alter_nonexistent_key(r: redis.Redis):
     """TS.ALTER raises an error for a non-existent key."""
-    with pytest.raises(redis.ResponseError, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST):
+    with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().alter("nokey", retention_msecs=1000)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_alter_bad_chunk_size(r: redis.Redis):
     """TS.ALTER with a chunk_size not divisible by 8 raises an error."""
     r.ts().create("ts")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TS.ALTER", "ts", "CHUNK_SIZE", "9")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_add_invalid_duplicate_policy(r: redis.Redis):
     """TS.ADD with an invalid ON_DUPLICATE policy raises an error."""
     r.ts().create("ts")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TS.ADD", "ts", "1000", "1.0", "ON_DUPLICATE", "INVALID")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_filter_no_equals_operator(r: redis.Redis):
     """A filter expression without = or != raises an error."""
     r.ts().create("ts", labels={"x": "1"})
     r.ts().add("ts", 1000, 1.0)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.ts().mrange("-", "+", filters=["invalidfilter"])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_incrby_timestamp_lower_than_max(r: redis.Redis):
     """TS.INCRBY raises an error when the timestamp is lower than the latest."""
     r.ts().create("ts")
     r.ts().incrby("ts", 1.0, timestamp=2000)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.ts().incrby("ts", 1.0, timestamp=1000)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_range_bad_aggregation_type(r: redis.Redis):
     """TS.RANGE with an invalid aggregation type raises an error."""
     r.ts().create("ts")
     r.ts().add("ts", 1000, 1.0)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TS.RANGE", "ts", "-", "+", "AGGREGATION", "BADTYPE", "100")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ts_range_filter_by_ts(r: redis.Redis):

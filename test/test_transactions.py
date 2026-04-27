@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import redis
 import redis.client
+import valkey
 
 from . import testtools
 
@@ -29,11 +30,13 @@ def test_watch_state_is_cleared_after_abort(r: redis.Redis):
     # test, so raw commands are used instead.
     testtools.raw_command(r, "watch", "foo")
     testtools.raw_command(r, "multi")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "mget")  # Wrong number of arguments
-    with pytest.raises(redis.exceptions.ExecAbortError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "exec")
 
+    assert isinstance(ctx.value, (redis.exceptions.ExecAbortError, valkey.exceptions.ExecAbortError))
     testtools.raw_command(r, "set", "foo", "bar")  # Should NOT trigger the watch from earlier
     testtools.raw_command(r, "multi")
     testtools.raw_command(r, "set", "abc", "done")
@@ -93,8 +96,10 @@ def test_pipeline_no_commands(r: redis.Redis):
     p = r.pipeline()
     p.watch("foo")
     r.set("foo", "2")
-    with pytest.raises(redis.WatchError):
+    with pytest.raises(Exception) as ctx:
         p.execute()
+
+    assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
 
 
 def test_pipeline_failed_transaction(r: redis.Redis):
@@ -105,8 +110,9 @@ def test_pipeline_failed_transaction(r: redis.Redis):
     p.execute_command("set")
     # It should be an ExecAbortError, but redis-py tries to DISCARD after the
     # failed EXEC, which raises a ResponseError.
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         p.execute()
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
@@ -133,23 +139,28 @@ def test_pipeline_move(r: redis.Redis):
     # older versions of redis-py.
     p.multi()
     p.set("bar", "baz")
-    with pytest.raises(redis.exceptions.WatchError):
+    with pytest.raises(Exception) as ctx:
         p.execute()
+
+    assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
 
 
 @pytest.mark.min_redis_version("6.0.6")
 def test_exec_bad_arguments(r: redis.Redis):
     # Redis 6.0.6 changed the behaviour of exec so that it always fails with
     # EXECABORT, even when it's just bad syntax.
-    with pytest.raises(redis.exceptions.ExecAbortError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
+
+    assert isinstance(ctx.value, (redis.exceptions.ExecAbortError, valkey.exceptions.ExecAbortError))
 
 
 @pytest.mark.min_redis_version("6.0.6")
 def test_exec_bad_arguments_abort(r: redis.Redis):
     r.execute_command("multi")
-    with pytest.raises(redis.exceptions.ExecAbortError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
+    assert isinstance(ctx.value, (redis.exceptions.ExecAbortError, valkey.exceptions.ExecAbortError))
     # Should have aborted the transaction, so we can run another one
     p = r.pipeline()
     p.multi()
@@ -184,8 +195,9 @@ def test_pipeline_ignore_errors(r: redis.Redis):
     with r.pipeline() as p:
         p.set("foo", "bar")
         p.rename("baz", "bats")
-        with pytest.raises(redis.exceptions.ResponseError):
+        with pytest.raises(Exception) as ctx:
             p.execute()
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
         assert [] == p.execute()
     with r.pipeline() as p:
         p.set("foo", "bar")
@@ -220,8 +232,9 @@ def test_pipeline_raises_when_watched_key_changed(r: redis.Redis):
         p.multi()
         p.set("foo", nextf)
 
-        with pytest.raises(redis.WatchError):
+        with pytest.raises(Exception) as ctx:
             p.execute()
+        assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
     finally:
         p.reset()
 
@@ -278,9 +291,10 @@ def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
         r.set("foo", "three")
         p.multi()
         p.set("foo", "three")
-        with pytest.raises(redis.WatchError):
+        with pytest.raises(Exception) as ctx:
             p.execute()
 
+        assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
         # Now watch another key.  It should be ok to change
         # foo as we're no longer watching it.
         p.watch("bar")

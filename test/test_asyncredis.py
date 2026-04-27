@@ -167,8 +167,10 @@ class TestScripts:
     @pytest.mark.max_redis_version("6.2.7")
     async def test_failed_script_error6(self, async_redis):
         await async_redis.set("foo", "bar")
-        with pytest.raises(redis.asyncio.ResponseError, match="^Error running script"):
+        with pytest.raises(Exception, match="^Error running script") as ctx:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
+
+        assert isinstance(ctx.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
     @pytest.mark.min_redis_version("7")
     async def test_failed_script_error7(self, async_redis):

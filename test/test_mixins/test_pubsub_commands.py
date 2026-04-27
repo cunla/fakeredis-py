@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any
 
 import pytest
 import redis
+import valkey
 from redis.client import PubSub
 
 import fakeredis
@@ -295,14 +296,17 @@ def test_pubsub_run_in_thread(r: redis.Redis):
     assert not pubsub_thread.is_alive()
 
     pubsub.subscribe(channel=None)
-    with pytest.raises(redis.exceptions.PubSubError):
+    with pytest.raises(Exception) as ctx:
         pubsub_thread = pubsub.run_in_thread()
 
+    assert isinstance(ctx.value, (redis.exceptions.PubSubError, valkey.PubSubError))
     pubsub.unsubscribe("channel")
 
     pubsub.psubscribe(channel=None)
-    with pytest.raises(redis.exceptions.PubSubError):
+    with pytest.raises(Exception) as ctx:
         pubsub_thread = pubsub.run_in_thread()
+
+    assert isinstance(ctx.value, (redis.exceptions.PubSubError, valkey.PubSubError))
 
 
 @pytest.mark.slow
@@ -357,8 +361,10 @@ def test_pubsub_channels_pattern(r: redis.Redis):
 
 
 def test_pubsub_no_subcommands(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "PUBSUB")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.min_redis_version("7.1")

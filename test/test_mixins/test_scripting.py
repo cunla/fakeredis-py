@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 import redis
 import redis.client
+import valkey
 from redis.exceptions import ResponseError
 
 import fakeredis
@@ -21,9 +22,10 @@ _ = pytest.importorskip("lupa")
 def test_script_exists_redis7(r: redis.Redis):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "SCRIPT EXISTS")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # use single character characters for non-existing scripts, as those
     # will never be equal to an actual sha1 hash digest
     assert r.script_exists("a") == [0]
@@ -41,8 +43,10 @@ def test_script_exists_redis7(r: redis.Redis):
 
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
 def test_script_flush_errors_with_args(r, args):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "SCRIPT FLUSH %s" % " ".join(args))
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_script_flush(r: redis.Redis):
@@ -60,8 +64,10 @@ def test_script_flush(r: redis.Redis):
 
 
 def test_script_no_subcommands(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "SCRIPT")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.max_redis_version("7")
@@ -114,8 +120,10 @@ def test_script_help73(r: redis.Redis):
 @pytest.mark.max_redis_version("7.1")
 def test_eval_blpop(r: redis.Redis):
     r.rpush("foo", "bar")
-    with pytest.raises(redis.ResponseError, match="This Redis command is not allowed from script"):
+    with pytest.raises(Exception, match="This Redis command is not allowed from script") as ctx:
         r.eval('return redis.pcall("BLPOP", KEYS[1], 1)', 1, "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_set_value_to_arg(r: redis.Redis):
@@ -241,28 +249,38 @@ def test_eval_hgetall_iterate(r: redis.Redis):
 
 
 def test_eval_invalid_command(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval('return redis.call("FOO")', 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_syntax_error(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval('return "', 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_runtime_error(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval('error("CRASH")', 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_more_keys_than_args(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("return 1", 42)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_numkeys_float_string(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("return KEYS[1]", "0.7", "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_numkeys_integer_string(r: redis.Redis):
@@ -271,24 +289,30 @@ def test_eval_numkeys_integer_string(r: redis.Redis):
 
 
 def test_eval_numkeys_negative(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("return KEYS[1]", -1, "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_numkeys_float(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("return KEYS[1]", 0.7, "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_global_variable(r: redis.Redis):
     # Redis doesn't allow script to define global variables
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("a=10", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_global_and_return_ok(r: redis.Redis):
     # Redis doesn't allow script to define global variables
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval(
             """
             a=10
@@ -296,6 +320,8 @@ def test_eval_global_and_return_ok(r: redis.Redis):
             """,
             0,
         )
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_convert_number(r: redis.Redis):
@@ -320,8 +346,9 @@ def test_eval_convert_bool(r: redis.Redis):
 @pytest.mark.unsupported_server_types("valkey")
 def test_eval_call_bool7_redis(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert "Lua redis lib command arguments must be strings or integers" in str(exc_info.value)
 
 
@@ -329,23 +356,27 @@ def test_eval_call_bool7_redis(r: redis.Redis):
 @pytest.mark.unsupported_server_types("redis")
 def test_eval_call_bool7_valkey(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert "Command arguments must be strings or integers script" in str(exc_info.value)
 
 
 def test_eval_return_error(r: redis.Redis):
-    with pytest.raises(redis.ResponseError, match="Testing") as exc_info:
+    with pytest.raises(Exception, match="Testing") as exc_info:
         r.eval('return {err="Testing"}', 0)
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert isinstance(exc_info.value.args[0], str)
-    with pytest.raises(redis.ResponseError, match="Testing") as exc_info:
+    with pytest.raises(Exception, match="Testing") as exc_info:
         r.eval('return redis.error_reply("Testing")', 0)
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert isinstance(exc_info.value.args[0], str)
 
 
 def test_eval_return_redis_error(r: redis.Redis):
-    with pytest.raises(redis.ResponseError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         r.eval('return redis.pcall("BADCOMMAND")', 0)
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert isinstance(exc_info.value.args[0], str)
 
 
@@ -369,8 +400,10 @@ def test_eval_return_ok_nested(r: redis.Redis):
 
 
 def test_eval_return_ok_wrong_type(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval("return redis.status_reply(123)", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_pcall(r: redis.Redis):
@@ -388,8 +421,10 @@ def test_eval_pcall(r: redis.Redis):
 
 
 def test_eval_pcall_return_value(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.eval('return redis.pcall("foo")', 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_delete(r: redis.Redis):
@@ -550,8 +585,10 @@ def test_lua_log(r, caplog):
 def test_lua_log_no_message(r: redis.Redis):
     script = "redis.log(redis.LOG_DEBUG)"
     script = r.register_script(script)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         script()
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @testtools.fake_only
@@ -567,8 +604,10 @@ def test_lua_log_different_types(r, caplog):
 def test_lua_log_wrong_level(r: redis.Redis):
     script = "redis.log(10, 'string')"
     script = r.register_script(script)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         script()
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @testtools.fake_only

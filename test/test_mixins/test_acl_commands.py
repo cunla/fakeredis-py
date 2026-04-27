@@ -1,5 +1,6 @@
 import pytest
 import redis
+import valkey
 from redis import exceptions
 
 from fakeredis._helpers import asbytes
@@ -62,12 +63,14 @@ def test_acl_genpass(r: redis.Redis):
 
 
 def test_auth(r: redis.Redis):
-    with pytest.raises(redis.AuthenticationError):
+    with pytest.raises(Exception) as ctx:
         r.auth("some_password")
 
-    with pytest.raises(redis.AuthenticationError):
+    assert isinstance(ctx.value, (redis.AuthenticationError, valkey.AuthenticationError))
+    with pytest.raises(Exception) as ctx:
         r.auth("some_password", "some_user")
 
+    assert isinstance(ctx.value, (redis.AuthenticationError, valkey.AuthenticationError))
     # first, test for the default user (`username` is supposed to be optional)
     default_username = "default"
     temp_pass = "temp_pass"
@@ -84,9 +87,10 @@ def test_auth(r: redis.Redis):
 
     assert r.auth(username=username, password="strong_password") is True
 
-    with pytest.raises(redis.AuthenticationError):
+    with pytest.raises(Exception) as ctx:
         r.auth(username=username, password="wrong_password")
 
+    assert isinstance(ctx.value, (redis.AuthenticationError, valkey.AuthenticationError))
     # test that a user can log in even if the default user is disabled
     r.acl_setuser(default_username, enabled=False)
     assert r.auth(username=username, password="strong_password") is True

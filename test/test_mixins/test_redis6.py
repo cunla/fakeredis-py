@@ -1,6 +1,7 @@
 import pytest
 import redis
 import redis.client
+import valkey
 
 from test import testtools
 from test.test_mixins.test_streams_commands import get_stream_message
@@ -10,20 +11,26 @@ from test.testtools import raw_command
 @pytest.mark.max_redis_version("6.2.7")
 def test_bitcount_mode_redis6(r: redis.Redis):
     r.set("key", "foobar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.bitcount("key", start=1, end=1, mode="byte")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.bitcount("key", start=1, end=1, mode="bit")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitcount", "key", "1", "2", "dsd", "cd")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.max_redis_version("6.2.7")
 def test_bitops_mode_redis6(r: redis.Redis):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         assert r.bitpos(key, 0, 8, -1, "bit") == 12
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.max_redis_version("7.2")
@@ -103,8 +110,10 @@ def test_xautoclaim_redis6(r: redis.Redis):
 @pytest.mark.max_redis_version("6.2.7")
 def test_set_get_nx_redis6(r: redis.Redis):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "set", "foo", "bar", "NX", "GET")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.max_redis_version("6.2.7")
@@ -133,5 +142,6 @@ def test_xgroup_create_connection6(r: redis.Redis):
 @pytest.mark.max_redis_version("6.2.7")
 def test_eval_call_bool6(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
-    with pytest.raises(redis.ResponseError, match=r"Lua redis\(\) command arguments must be strings or integers"):
+    with pytest.raises(Exception, match=r"Lua redis\(\) command arguments must be strings or integers") as ctx:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

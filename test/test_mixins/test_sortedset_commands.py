@@ -7,6 +7,7 @@ import math
 import pytest
 import redis
 import redis.client
+import valkey
 from packaging.version import Version
 
 from test import testtools
@@ -67,8 +68,10 @@ def test_zrange_with_bylex_and_byscore(r: redis.Redis):
     r.zadd("foo", {"two_a": 0})
     r.zadd("foo", {"two_b": 0})
     r.zadd("foo", {"three_a": 0})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "zrange", "foo", "(t", "+", "bylex", "byscore")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrange_with_rev_and_bylex(r: redis.Redis):
@@ -135,8 +138,10 @@ def test_zcard_non_existent_key(r: redis.Redis):
 
 def test_zcard_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zcard("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zcount(r: redis.Redis):
@@ -166,8 +171,10 @@ def test_zcount_exclusive(r: redis.Redis):
 
 def test_zcount_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zcount("foo", "-inf", "+inf")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zincrby(r: redis.Redis):
@@ -178,8 +185,10 @@ def test_zincrby(r: redis.Redis):
 
 def test_zincrby_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         zincrby(r, "foo", 10, "one")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrange_descending(r: redis.Redis):
@@ -208,8 +217,10 @@ def test_zrange_with_positive_indices(r: redis.Redis):
 
 def test_zrange_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrange("foo", 0, -1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.resp2_only
@@ -251,8 +262,10 @@ def test_zrank_non_existent_member(r: redis.Redis):
 
 def test_zrank_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrank("foo", "one")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrem(r: redis.Redis):
@@ -282,8 +295,10 @@ def test_zrem_numeric_member(r: redis.Redis):
 
 def test_zrem_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrem("foo", "bar")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zscore(r: redis.Redis):
@@ -297,8 +312,10 @@ def test_zscore_non_existent_member(r: redis.Redis):
 
 def test_zscore_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zscore("foo", "one")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zmscore(r: redis.Redis):
@@ -386,8 +403,10 @@ def test_zrevrank_non_existent_member(r: redis.Redis):
 
 def test_zrevrank_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrank("foo", "one")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrevrange(r: redis.Redis):
@@ -409,8 +428,10 @@ def test_zrevrange_sorted_keys(r: redis.Redis):
 
 def test_zrevrange_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrange("foo", 0, 2)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.resp2_only
@@ -425,10 +446,13 @@ def test_zrevrange_score_cast(r: redis.Redis):
 
 
 def test_zrange_with_large_int(r: redis.Redis):
-    with pytest.raises(redis.ResponseError, match="value is not an integer or out of range"):
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
         r.zrange("", 0, 9223372036854775808)
-    with pytest.raises(redis.ResponseError, match="value is not an integer or out of range"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
         r.zrange("", 0, -9223372036854775809)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrangebyscore(r: redis.Redis):
@@ -462,20 +486,27 @@ def test_zrangebyscore_raises_error(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrangebyscore("foo", "one", 2)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebyscore("foo", 2, "three")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebyscore("foo", 2, "3)")
-    with pytest.raises(redis.RedisError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebyscore("foo", 2, "3)", 0, None)
+
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 def test_zrangebyscore_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrangebyscore("foo", "(1", "(2")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrangebyscore_slice(r: redis.Redis):
@@ -537,20 +568,27 @@ def test_zrevrangebyscore_raises_error(r: redis.Redis):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"three": 3})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebyscore("foo", "three", 1)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebyscore("foo", 3, "one")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebyscore("foo", 3, "1)")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebyscore("foo", "((3", "1)")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrevrangebyscore_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebyscore("foo", "(3", "(1")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.resp2_only
@@ -586,8 +624,10 @@ def test_zrangebylex(r: redis.Redis):
 
 def test_zrangebylex_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"-", b"+")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zlexcount(r: redis.Redis):
@@ -611,8 +651,10 @@ def test_zlexcount(r: redis.Redis):
 
 def test_zlexcount_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zlexcount("foo", b"-", b"+")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zrangebylex_with_limit(r: redis.Redis):
@@ -637,23 +679,30 @@ def test_zrangebylex_raises_error(r: redis.Redis):
     r.zadd("foo", {"two_b": 0})
     r.zadd("foo", {"three_a": 0})
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"", b"[two_b")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"-", b"two_b")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"(t", b"two_b")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"t", b"+")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"[two_a", b"")
 
-    with pytest.raises(redis.RedisError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrangebylex("foo", b"(two_a", b"[two_b", 1)
+
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 def test_zrevrangebylex(r: redis.Redis):
@@ -689,29 +738,38 @@ def test_zrevrangebylex_raises_error(r: redis.Redis):
     r.zadd("foo", {"two_b": 0})
     r.zadd("foo", {"three_a": 0})
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"[two_b", b"")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"two_b", b"-")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"two_b", b"(t")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"+", b"t")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"", b"[two_a")
 
-    with pytest.raises(redis.RedisError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"[two_a", b"(two_b", 1)
+
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 def test_zrevrangebylex_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zrevrangebylex("foo", b"+", b"-")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zremrangebyrank(r: redis.Redis):
@@ -737,8 +795,10 @@ def test_zremrangebyrank_out_of_bounds(r: redis.Redis):
 
 def test_zremrangebyrank_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyrank("foo", 1, 3)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zremrangebyscore(r: redis.Redis):
@@ -777,14 +837,19 @@ def test_zremrangebyscore_raises_error(r: redis.Redis):
     r.zadd("foo", {"zero": 0})
     r.zadd("foo", {"two": 2})
     r.zadd("foo", {"four": 4})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyscore("foo", "three", 1)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyscore("foo", 3, "one")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyscore("foo", 3, "1)")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyscore("foo", "((3", "1)")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zremrangebyscore_badkey(r: redis.Redis):
@@ -793,8 +858,10 @@ def test_zremrangebyscore_badkey(r: redis.Redis):
 
 def test_zremrangebyscore_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zremrangebyscore("foo", 0, 2)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zremrangebylex(r: redis.Redis):
@@ -816,14 +883,18 @@ def test_zremrangebylex_error(r: redis.Redis):
     r.zadd("foo", {"two_b": 0})
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"three_a": 0})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zremrangebylex("foo", b"(t", b"two_b")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zremrangebylex("foo", b"t", b"+")
 
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.zremrangebylex("foo", b"[two_a", b"")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zremrangebylex_badkey(r: redis.Redis):
@@ -832,8 +903,10 @@ def test_zremrangebylex_badkey(r: redis.Redis):
 
 def test_zremrangebylex_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zremrangebylex("foo", b"bar", b"baz")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zunionstore(r: redis.Redis):
@@ -949,8 +1022,10 @@ def test_zunionstore_badkey(r: redis.Redis):
 @pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
 def test_zunionstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zunionstore("baz", ["foo", "bar"])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zinterstore(r: redis.Redis):
@@ -991,8 +1066,10 @@ def test_zinterstore_onekey(r: redis.Redis):
 
 
 def test_zinterstore_nokey(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zinterstore("baz", [], aggregate="MAX")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.unsupported_server_types("dragonfly")  # TODO causes a crash!
@@ -1004,15 +1081,19 @@ def test_zinterstore_nan_to_zero(r: redis.Redis):
 
 
 def test_zunionstore_nokey(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zunionstore("baz", [], aggregate="MAX")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.unsupported_server_types("dragonfly")  # TODO Hang server
 def test_zinterstore_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.zinterstore("baz", ["foo", "bar"])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_empty_zset(r: redis.Redis):
@@ -1125,8 +1206,9 @@ def test_zinter(r: redis.Redis):
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
     assert r.zinter(["a", "b", "c"]) == [b"a3", b"a1"]
     # invalid aggregation
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.zinter(["a", "b", "c"], aggregate="foo", withscores=True)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
     # aggregate with SUM
     assert r.zinter(["a", "b", "c"], withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 8), (b"a1", 9)])
     # aggregate with MAX
@@ -1177,8 +1259,9 @@ def test_zmpop(r: redis.Redis):
     assert r.zmpop("2", ["b", "a"], min=True, count=2) == resp_conversion(
         r, [b"a", [[b"a1", 1.0], [b"a2", 2.0]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
     )
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.zmpop("2", ["b", "a"], count=2)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
     assert r.zmpop("2", ["b", "a"], max=True) == resp_conversion(r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]])
 
@@ -1189,8 +1272,9 @@ def test_bzmpop(r: redis.Redis):
     assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == resp_conversion(
         r, [b"a", [[b"a1", 1], [b"a2", 2]]], [b"a", [[b"a1", b"1"], [b"a2", b"2"]]]
     )
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.bzmpop(1, "2", ["b", "a"], count=2)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
     r.zadd("b", {"b1": 10, "ab": 9, "b3": 8})
     assert r.bzmpop(0, "2", ["b", "a"], max=True) == resp_conversion(
         r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]]

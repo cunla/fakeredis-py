@@ -3,6 +3,7 @@ from math import inf
 
 import pytest
 import redis
+import valkey
 
 from test.testtools import get_protocol_version
 
@@ -131,8 +132,10 @@ def test_tdigest_byrank(r: redis.Redis):
     assert 1 == r.tdigest().byrank("t-digest", 0)[0]
     assert 10 == r.tdigest().byrank("t-digest", 9)[0]
     assert r.tdigest().byrank("t-digest", 100)[0] == inf
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().byrank("t-digest", -1)[0]
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_byrevrank(r: redis.Redis):
@@ -141,8 +144,10 @@ def test_tdigest_byrevrank(r: redis.Redis):
     assert 10 == r.tdigest().byrevrank("t-digest", 0)[0]
     assert 1 == r.tdigest().byrevrank("t-digest", 9)[0]
     assert r.tdigest().byrevrank("t-digest", 100)[0] == -inf
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().byrevrank("t-digest", -1)[0]
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_quantile_nan(r: redis.Redis):
@@ -174,34 +179,48 @@ def test_tdigest_create_default_compression(r: redis.Redis):
 def test_tdigest_create_already_exists(r: redis.Redis):
     """TDIGEST.CREATE raises an error when the key already exists."""
     r.tdigest().create("td", 100)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().create("td", 100)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_commands_on_nonexistent_key(r: redis.Redis):
     """TDIGEST commands raise key-not-exist errors on missing keys."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().reset("nokey")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().add("nokey", [1.0])
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().max("nokey")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().min("nokey")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().rank("nokey", 1.0)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().revrank("nokey", 1.0)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().quantile("nokey", 0.5)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().cdf("nokey", 1.0)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().trimmed_mean("nokey", 0.1, 0.9)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().byrank("nokey", 0)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().byrevrank("nokey", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_commands_on_empty_digest(r: redis.Redis):
@@ -220,18 +239,23 @@ def test_tdigest_quantile_bad_value(r: redis.Redis):
     """TDIGEST.QUANTILE raises an error for quantile values outside [0, 1]."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", [1.0, 2.0, 3.0])
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().quantile("td", -0.1)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.tdigest().quantile("td", 1.1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_trimmed_mean_bad_bounds(r: redis.Redis):
     """TDIGEST.TRIMMED_MEAN raises an error for invalid bounds."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", list(range(10)))
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().trimmed_mean("td", 0.9, 0.1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_trimmed_mean_adjacent_bounds(r: redis.Redis):
@@ -247,16 +271,20 @@ def test_tdigest_merge_wrong_numkeys(r: redis.Redis):
     r.tdigest().create("src", 100)
     r.tdigest().add("src", [1.0, 2.0])
     r.tdigest().create("dst", 100)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TDIGEST.MERGE", "dst", "3", "src")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_merge_missing_source(r: redis.Redis):
     """TDIGEST.MERGE raises an error when a source key does not exist."""
     r.tdigest().create("src", 100)
     r.tdigest().create("dst", 100)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.tdigest().merge("dst", 2, "src", "nonexistent")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_tdigest_merge_override_into_nonexistent_dest(r: redis.Redis):

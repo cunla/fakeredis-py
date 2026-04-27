@@ -8,6 +8,7 @@ import json
 
 import pytest
 import redis
+import valkey
 from redis.commands.json.path import Path
 
 from test import testtools
@@ -178,13 +179,17 @@ def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
         Exception, match="nx and xx are mutually exclusive: use one, the other or neither - but not both"
     ):
         r.json().set("obj", Path("foo"), "baz", nx=True, xx=True)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "NX", "XX")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_json_unknown_param(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "unknown")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_jsonmget(r: redis.Redis):
@@ -266,8 +271,10 @@ def test_jsonclear_dollar(r: redis.Redis):
 
 def test_jsonclear_no_doc(r: redis.Redis):
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().clear("non_existing_doc", "$..a")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_jsonstrlen(r: redis.Redis):
@@ -299,9 +306,10 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen("doc1", "$.nested2.a") == [None]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         r.json().strlen("non_existing_doc", "$..a")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
 
 
@@ -312,8 +320,10 @@ def test_toggle(r: redis.Redis):
 
     r.json().set("num", Path.root_path(), 1)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().toggle("num", Path.root_path())
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_toggle_dollar(r: redis.Redis):
@@ -331,8 +341,10 @@ def test_toggle_dollar(r: redis.Redis):
     assert r.json().get("doc1", "$") == [data]
 
     # Test missing key
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().toggle("non_existing_doc", "$..a")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_json_commands_in_pipeline(r: redis.Redis):
@@ -377,9 +389,10 @@ def test_strappend(r: redis.Redis):
     assert r.json().get("doc1") == {"a": "foobar", "nested1": {"a": "hellobarbaz"}, "nested2": {"a": 31}}
 
     # Test missing key
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().strappend("non_existing_doc", "$..a", "err")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test multi
     r.json().set("doc2", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": "hi"}})
     assert r.json().strappend("doc2", "bar", "$.*.a") == [8, 5]
@@ -387,12 +400,15 @@ def test_strappend(r: redis.Redis):
 
     # Test missing path
     r.json().set("doc1", Path.root_path(), {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().strappend("doc1", "add", "piu")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test raw command with no arguments
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.strappend", "")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.decode_responses(True)
@@ -512,9 +528,10 @@ def test_type(r: redis.Redis):
 
 def test_objlen(r: redis.Redis):
     # Test missing key, and path
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().objlen("non_existing_doc", "$..a")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     obj = {"foo": "bar", "baz": "qaz"}
 
     r.json().set("obj", Path.root_path(), obj)
@@ -583,9 +600,10 @@ def test_objkeys(r: redis.Redis):
     assert r.json().objkeys("non_existing_doc", "..a") is None
 
     # Test non existing doc
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         assert r.json().objkeys("non_existing_doc", "$..a") == []
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.json().objkeys("doc1", "$..nowhere") == []
 
 
@@ -632,10 +650,11 @@ def test_nummultby(r: redis.Redis):
         assert r.json().nummultby("doc1", "$.b[1].a", 3) == [150.0]
 
     # test missing keys
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().numincrby("non_existing_doc", "$..a", 2)
         r.json().nummultby("non_existing_doc", "$..a", 2)
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test legacy NUMINCRBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
     assert r.json().numincrby("doc1", ".b[0].a", 3) == resp_conversion(r, [5], 5)

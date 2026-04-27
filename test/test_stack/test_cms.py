@@ -1,5 +1,6 @@
 import pytest
 import redis
+import valkey
 
 from test import testtools
 from test.testtools import get_protocol_version
@@ -22,23 +23,30 @@ def test_cms_create(r: redis.Redis):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbyprob("cmsProb", 0.01, 0.01)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.cms().initbydim("cmsDim", 1, 5)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().initbydim("cmsDim2", 0, 5)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().initbydim("cmsDim2", 3, 0)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb", 0.01, 0.1)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb2", 2, 0.01)
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb2", 0.01, 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cms_incrby(r: redis.Redis):
@@ -51,20 +59,26 @@ def test_cms_incrby(r: redis.Redis):
     assert r.cms().query("cmsDim", "foo", "bar") == [7, 1]
     assert r.cms().query("cmsDim", "noexist") == [0]
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.cms().query("cmsDim")
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.cms().query("noexist", "foo")
 
-    with pytest.raises(redis.exceptions.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "CMS.INCRBY", "cmsDim", "foo", 1, "bar")
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="CMS: key does not exist") as ctx:
         r.cms().incrby("noexist", ["foo", "bar"], [3, 4])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: Cannot parse number"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="CMS: Cannot parse number") as ctx:
         r.cms().incrby("cmsDim", ["foo", "bar"], [3, "four"])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cms_merge(r: redis.Redis):
@@ -76,20 +90,26 @@ def test_cms_merge(r: redis.Redis):
     assert r.cms().merge("cmsDim", 1, ["cms2"])
     assert r.cms().query("cmsDim", "foo", "bar") == [4, 1]
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+    with pytest.raises(Exception, match="CMS: key does not exist") as ctx:
         r.cms().merge("noexist", 1, ["cms2"])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: Number of keys must be positive"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="CMS: Number of keys must be positive") as ctx:
         r.cms().merge("cms2", 0, ["cmsDim"])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="wrong number of arguments for '.*' command"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="wrong number of arguments for '.*' command") as ctx:
         r.cms().merge("cms2", 1, [])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: wrong number of keys/weights"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="CMS: wrong number of keys/weights") as ctx:
         r.cms().merge("cmsDim", 1, ["cms2", "cms1"], [4, 3])
 
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="CMS: key does not exist") as ctx:
         r.cms().merge("cmsDim", 2, ["cms2", "noexist"], [4, 3])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.min_redis_version("7")
@@ -119,8 +139,10 @@ def test_cms_info(r: redis.Redis):
         assert info[b"width"] == 1000
         assert info[b"depth"] == 5
         assert info[b"count"] == 17
-    with pytest.raises(redis.exceptions.ResponseError, match="CMS: key does not exist"):
+    with pytest.raises(Exception, match="CMS: key does not exist") as ctx:
         r.cms().info("noexist")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.xfail(reason="Bug in pyprobables")

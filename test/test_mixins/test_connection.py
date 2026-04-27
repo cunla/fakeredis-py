@@ -1,7 +1,7 @@
 import pytest
 import redis
 import redis.client
-from redis.exceptions import ResponseError
+import valkey
 
 from fakeredis import _msgs as msgs
 from test import testtools
@@ -11,8 +11,10 @@ from test.testtools import raw_command, resp_conversion
 def test_ping(r: redis.Redis):
     assert r.ping()
     assert testtools.raw_command(r, "ping", "test") == b"test"
-    with pytest.raises(redis.ResponseError, match=msgs.WRONG_ARGS_MSG6.format("ping")[4:]):
+    with pytest.raises(Exception, match=msgs.WRONG_ARGS_MSG6.format("ping")[4:]) as ctx:
         raw_command(r, "ping", "arg1", "arg2")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_echo(r: redis.Redis):
@@ -21,8 +23,10 @@ def test_echo(r: redis.Redis):
 
 
 def test_unknown_command(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "0 3 3")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @testtools.fake_only
@@ -117,8 +121,9 @@ class TestDecodeResponses:
 
     def test_decode_error(self, r):
         r.set("foo", "bar")
-        with pytest.raises(ResponseError) as exc_info:
+        with pytest.raises(Exception) as exc_info:
             r.hset("foo", "bar", "baz")
+        assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
         assert isinstance(exc_info.value.args[0], str)
 
 

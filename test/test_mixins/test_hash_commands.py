@@ -1,6 +1,7 @@
 import pytest
 import redis
 import redis.client
+import valkey
 
 from test import testtools
 from test.testtools import raw_command, resp_conversion
@@ -35,8 +36,10 @@ def test_hset_update(r: redis.Redis):
 
 def test_hset_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hset("foo", "key", "value")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hgetall(r: redis.Redis):
@@ -52,8 +55,10 @@ def test_hgetall_empty_key(r: redis.Redis):
 
 def test_hgetall_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hgetall("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hexists(r: redis.Redis):
@@ -65,8 +70,10 @@ def test_hexists(r: redis.Redis):
 
 def test_hexists_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hexists("foo", "key")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hkeys(r: redis.Redis):
@@ -78,8 +85,10 @@ def test_hkeys(r: redis.Redis):
 
 def test_hkeys_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hkeys("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hlen(r: redis.Redis):
@@ -90,8 +99,10 @@ def test_hlen(r: redis.Redis):
 
 def test_hlen_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hlen("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hvals(r: redis.Redis):
@@ -103,8 +114,10 @@ def test_hvals(r: redis.Redis):
 
 def test_hvals_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hvals("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hmget(r: redis.Redis):
@@ -124,8 +137,10 @@ def test_hmget(r: redis.Redis):
 
 def test_hmget_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hmget("foo", "key1", "key2")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hdel(r: redis.Redis):
@@ -145,8 +160,10 @@ def test_hdel(r: redis.Redis):
 
 def test_hdel_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hdel("foo", "key")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hincrby(r: redis.Redis):
@@ -170,8 +187,10 @@ def test_hincrby_with_range_param(r: redis.Redis):
 
 def test_hincrby_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hincrby("foo", "key", 2)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hincrbyfloat(r: redis.Redis):
@@ -195,19 +214,25 @@ def test_hincrbyfloat_with_range_param(r: redis.Redis):
 
 def test_hincrbyfloat_on_non_float_value_raises_error(r: redis.Redis):
     r.hset("foo", "counter", "cat")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hincrbyfloat("foo", "counter")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hincrbyfloat_with_non_float_amount_raises_error(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hincrbyfloat("foo", "counter", "cat")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hincrbyfloat_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hincrbyfloat("foo", "key", 0.1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_hincrbyfloat_precision(r: redis.Redis):
@@ -223,8 +248,10 @@ def test_hsetnx(r: redis.Redis):
 
 
 def test_hmset_empty_raises_error(r: redis.Redis):
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.hmset("foo", {})
+
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
 @testtools.run_test_if_redispy_ver("lte", "4.6")
@@ -235,8 +262,10 @@ def test_hmset_redispy4(r: redis.Redis):
 
 def test_hmset_wrong_type(r: redis.Redis):
     r.zadd("foo", {"bar": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.hmset("foo", {"key": "value"})
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_empty_hash(r: redis.Redis):
@@ -342,5 +371,6 @@ def test_hrandfield(r: redis.Redis):
     # with duplications
     assert len(r.hrandfield("key", -10)) == 10
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "HRANDFIELD", "key", 3, "WITHVALUES", 3)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
