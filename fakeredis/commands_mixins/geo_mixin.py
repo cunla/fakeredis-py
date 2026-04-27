@@ -188,7 +188,7 @@ class GeoCommandsMixin:
         return self._georadius(key, long, lat, radius, *args)
 
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
-    def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes) -> List[Any]:
+    def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes) -> Union[List[Any], int]:
         member_score = key.value.get(member_name)
         lat, long, _, _ = geo_decode(member_score)
         return self._georadius(key, long, lat, radius, *args)
@@ -197,7 +197,7 @@ class GeoCommandsMixin:
     def georadiusbymember_ro(self, key: CommandItem, member_name: bytes, radius: float, *args: float) -> List[Any]:
         member_score = key.value.get(member_name)
         lat, long, _, _ = geo_decode(member_score)
-        return self.georadius_ro(key, long, lat, radius, *args)
+        return self.georadius_ro(key, long, lat, radius, *args)  # type: ignore[no-any-return]
 
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
     def geosearch(self, key: CommandItem, *args: bytes) -> List[Any]:
@@ -212,7 +212,7 @@ class GeoCommandsMixin:
         if frommember is not None and long is not None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if frommember:
-            return self.georadiusbymember_ro(key, frommember, radius, *left_args)
+            return self.georadiusbymember_ro(key, frommember, radius, *left_args)  # type: ignore[no-any-return]
         else:
             return self.georadius_ro(key, long, lat, radius, *left_args)  # type: ignore
 
@@ -238,6 +238,6 @@ class GeoCommandsMixin:
         additional = [b"storedist", dst] if storedist else [b"store", dst]
 
         if frommember:
-            return self.georadiusbymember(src, frommember, radius, *left_args, *additional)
+            return self.georadiusbymember(src, frommember, radius, *left_args, *additional)  # type: ignore[no-any-return]
         else:
             return self._georadius(src, long, lat, radius, *left_args, *additional)  # type: ignore
