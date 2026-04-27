@@ -74,7 +74,8 @@ class JSONObject:
 
     @classmethod
     def encode(cls, value: Any) -> Optional[bytes]:
-        """Serialize the supplied Python object into a valid, JSON-formatted byte-encoded string."""
+        """Serialize the supplied Python object into a valid, JSON-formatted
+        byte-encoded string."""
         return json.dumps(value, default=str).encode() if value is not None else None
 
 
