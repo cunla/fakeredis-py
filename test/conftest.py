@@ -93,6 +93,9 @@ def _marker_version_value(request, marker_name: str):
 
 def _validate_server_versions(request, real_server_details: ServerDetails) -> None:
     server_type, server_version = real_server_details
+    unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
+    if unsupported_server_types and server_type in unsupported_server_types.args:
+        pytest.skip(f"Server type {server_type} is not supported")
     if server_type == "redis":
         min_redis_version = _marker_version_value(request, "min_redis_version")
         max_redis_version = _marker_version_value(request, "max_redis_version")
@@ -150,9 +153,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     resp3only = request.node.get_closest_marker("resp3_only")
     if resp3only and protocol == 2:
         pytest.skip("Test is for RESP3 only")
-    unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
-    if unsupported_server_types and server_type in unsupported_server_types.args:
-        pytest.skip(f"Server type {server_type} is not supported")
+
     _validate_server_versions(request, real_server_details)
     decode_responses = request.node.get_closest_marker("decode_responses") is not None
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
@@ -190,11 +191,7 @@ async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.a
         pytest.skip("Redis is not running")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
-
     decode_responses = bool(request.node.get_closest_marker("decode_responses"))
-    unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
-    if unsupported_server_types and server_type in unsupported_server_types.args:
-        pytest.skip(f"Server type {server_type} is not supported")
     _validate_server_versions(request, real_server_details)
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
