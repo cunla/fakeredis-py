@@ -244,6 +244,7 @@ def test_zrank(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("7.2")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gt", "4.6")
 def test_zrank_redis7_2(r: redis.Redis):
     r.zadd("foo", {"one": 1})
@@ -385,6 +386,7 @@ def test_zrevrank(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("7.2")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gt", "4.6")
 def test_zrevrank_redis7_2(r: redis.Redis):
     r.zadd("foo", {"one": 1})
