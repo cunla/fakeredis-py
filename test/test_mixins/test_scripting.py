@@ -70,7 +70,7 @@ def test_script_no_subcommands(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("7")
+@pytest.mark.max_redis_version("6.9")
 def test_script_help(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
