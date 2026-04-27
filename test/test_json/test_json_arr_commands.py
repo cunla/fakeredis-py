@@ -38,7 +38,6 @@ def test_arrlen(r: redis.Redis):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}})
     # Test multi (return result of last path)
@@ -55,7 +54,6 @@ def test_arrlen(r: redis.Redis):
 def test_arrappend(r: redis.Redis):
     with pytest.raises(Exception) as ctx:
         r.json().arrappend("non-existing-key", Path.root_path(), 2)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.json().set("arr", Path.root_path(), [1])
     assert r.json().arrappend("arr", Path.root_path(), 2) == 2
@@ -99,7 +97,6 @@ def test_arrappend(r: redis.Redis):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
@@ -285,7 +282,6 @@ def test_arrinsert(r: redis.Redis):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 

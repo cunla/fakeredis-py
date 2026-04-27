@@ -29,19 +29,15 @@ def test_cms_create(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.cms().initbydim("cmsDim2", 0, 5)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.cms().initbydim("cmsDim2", 3, 0)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb", 0.01, 0.1)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb2", 2, 0.01)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.cms().initbyprob("cmsProb2", 0.01, 0)

@@ -181,14 +181,12 @@ def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
         r.json().set("obj", Path("foo"), "baz", nx=True, xx=True)
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "NX", "XX")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_json_unknown_param(r: redis.Redis):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "unknown")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
@@ -308,7 +306,6 @@ def test_jsonstrlen(r: redis.Redis):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().strlen("non_existing_doc", "$..a")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
 
@@ -322,7 +319,6 @@ def test_toggle(r: redis.Redis):
 
     with pytest.raises(Exception) as ctx:
         r.json().toggle("num", Path.root_path())
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
@@ -343,7 +339,6 @@ def test_toggle_dollar(r: redis.Redis):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().toggle("non_existing_doc", "$..a")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 

@@ -133,7 +133,6 @@ def test_bf_mexists(r: redis.Redis):
     r.set("key1", "value")
     with pytest.raises(Exception) as ctx:
         r.bf().add("key1", "v")
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
