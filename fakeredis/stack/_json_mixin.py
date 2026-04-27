@@ -14,8 +14,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
-from fakeredis.model import ZSet, ClientInfo
 from fakeredis._typing import JsonType
+from fakeredis.model import ZSet, ClientInfo
 
 
 def _format_path(path: Union[bytes, str]) -> str:
@@ -483,7 +483,7 @@ class JSONCommandsMixin:
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bytes]], Optional[bytes]]:
         res = _json_read_iterate(lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
-        return self._resp3_wrapping_list(res, wrap_list=True)
+        return self._resp3_wrapping_list(res, wrap_list=True)  # type:ignore
 
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key: CommandItem, *args: bytes) -> Union[List[Optional[bytes]], Optional[bytes]]:
