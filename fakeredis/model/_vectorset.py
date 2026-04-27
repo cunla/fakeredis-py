@@ -23,7 +23,7 @@ def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
     path_str = path_str.replace(".", "@.")
 
     # Replace `v in [x, y, z]` with `(v=~'x|y|z')`
-    def expand_in(m: re.Match) -> str:
+    def expand_in(m: re.Match[str]) -> str:
         var = m.group(1)
         items = [item.strip().replace("'", "") for item in m.group(2).split(",")]
         return f"({var}=~'{'|'.join(items)}')"
@@ -53,15 +53,15 @@ class Vector:
         if self.quantization == "bin":
             self.values = [1 if v > 0 else -1 for v in self.values]
 
-    def __repr__(self):
-        return f"Vector(name={self.name}, values={self.values}, attributes={self.attributes}, quantization={self.quantization})"
+    def __repr__(self) -> str:
+        return f"Vector(name={self.name!r}, values={self.values}, attributes={self.attributes!r}, quantization={self.quantization})"
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
     @classmethod
     def from_vector_values(cls, values: List[float]) -> Self:
-        return cls("", values, b"", "int8", 0)
+        return cls(b"", values, b"", "int8", 0)
 
     def raw(self) -> List[Any]:
         raw_bytes = struct.pack(f"{len(self.values)}f", *self.values)
@@ -80,7 +80,7 @@ class Vector:
         denominator = self.l2_norm * other.l2_norm
         if denominator == 0:
             return 0.5
-        cosine_sim = float(np.dot(me, o)) / denominator
+        cosine_sim: float = float(np.dot(me, o)) / denominator
         return (1.0 + cosine_sim) / 2.0
 
 
@@ -206,7 +206,7 @@ class VectorSet:
 
     def __getitem__(self, k: bytes) -> Vector:
         if k not in self._vectors:
-            raise KeyError(f"Vector with name {k} does not exist.")
+            raise KeyError(f"Vector with name {k!r} does not exist.")
         return self._vectors[k]
 
     def __iter__(self) -> Iterator[Vector]:
