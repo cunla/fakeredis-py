@@ -207,7 +207,7 @@ def test_pipeline_ignore_errors(r: redis.Redis):
         assert [] == p.execute()
 
         assert len(res) == 2
-        assert isinstance(res[1], redis.exceptions.ResponseError)
+        assert isinstance(res[1], (redis.exceptions.ResponseError, valkey.ResponseError))
 
 
 def test_pipeline_non_transactional(r: redis.Redis):

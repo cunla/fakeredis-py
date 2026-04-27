@@ -459,10 +459,9 @@ def test_xreadgroup(r: redis.Redis):
     c2 = {b"bing": b"baz"}
     m1 = r.xadd(stream, c1)
     m2 = r.xadd(stream, c2)
-    with pytest.raises(
-        redis.exceptions.ResponseError, match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)
-    ):
+    with pytest.raises(Exception, match=msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(stream, group)) as ctx:
         r.xreadgroup(group, consumer, streams={stream: ">"})
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.xgroup_create(stream, group, 0)
 
     expected_resp2 = [
@@ -1026,6 +1025,7 @@ def test_xinfo_groups_pending(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("8.6")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xadd_idmp(r: redis.Redis):
     stream = "stream"
@@ -1053,6 +1053,7 @@ def test_xadd_idmp(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("8.6")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xadd_idmp_validation(r: redis.Redis):
     stream = "stream"
@@ -1090,6 +1091,7 @@ def test_xadd_idmp_validation(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("8.6")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xinfo_stream_idempotent_fields(r: redis.Redis):
     stream = "stream"
@@ -1144,6 +1146,7 @@ def test_xinfo_stream_idempotent_fields(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("8.6")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xinfo_stream_idempotent_fields_config(r: redis.Redis):
     stream = "stream"
