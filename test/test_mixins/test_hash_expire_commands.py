@@ -10,6 +10,7 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        pytest.mark.min_redis_version("7.1"),
     ]
 )
 
