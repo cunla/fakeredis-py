@@ -1,7 +1,7 @@
 import time
 from threading import Thread
-from typing import Callable, Tuple, Optional, Any, Generator, Dict
-
+from typing import Callable, Tuple, Optional, Any, Generator, Dict, Type
+import valkey
 import pytest
 import pytest_asyncio
 import redis
@@ -91,6 +91,43 @@ def _marker_version_value(request, marker_name: str):
     return _create_version(marker_value.args[0])
 
 
+def _validate_server_versions(request, real_server_details: ServerDetails) -> None:
+    server_type, server_version = real_server_details
+    if server_type == "redis":
+        min_redis_version = _marker_version_value(request, "min_redis_version")
+        max_redis_version = _marker_version_value(request, "max_redis_version")
+        if server_version < min_redis_version:
+            pytest.skip(f"Redis server {min_redis_version} or more required but {server_version} found")
+        if server_version > max_redis_version:
+            pytest.skip(f"Redis server {max_redis_version} or less required but {server_version} found")
+    elif server_type == "valkey":
+        max_redis_version = _marker_version_value(request, "max_redis_version")
+        if max_redis_version < (7,):
+            pytest.skip("Test should run only on older versions of Redis")
+
+
+# Map from (server_type is valkey, fake flag, async flag) -> client class
+
+CLIENT_CLASS_MAP: Dict[Tuple[bool, bool, bool], Type] = {
+    (True, True, False): fakeredis.FakeValkey,
+    (True, False, False): valkey.StrictValkey,
+    (False, True, False): fakeredis.FakeStrictRedis,
+    (False, False, False): redis.StrictRedis,
+    (True, True, True): fakeredis.FakeAsyncValkey,
+    (True, False, True): valkey.asyncio.StrictValkey,
+    (False, True, True): fakeredis.FakeAsyncRedis,
+    (False, False, True): redis.asyncio.StrictRedis,
+}
+
+
+def _get_class(cls_type: str, real_server_details: ServerDetails, async_client: bool):
+    server_type, _ = real_server_details
+    is_valkey = server_type == "valkey"
+    is_fake = cls_type.lower().startswith("fake")
+    res = CLIENT_CLASS_MAP[is_valkey, is_fake, async_client]
+    return res
+
+
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
@@ -101,11 +138,11 @@ def _marker_version_value(request, marker_name: str):
     ],
 )
 def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], redis.Redis]:
-    cls_name, protocol = request.param[:-1], int(request.param[-1])
+    cls_type, protocol = request.param[:-1], int(request.param[-1])
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     server_type, server_version = real_server_details
-    if not cls_name.startswith("Fake") and not server_version:
+    if not cls_type.startswith("Fake") and not server_version:
         pytest.skip("Redis is not running")
     resp2only = request.node.get_closest_marker("resp2_only")
     if resp2only and protocol == 3:
@@ -116,12 +153,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
-    min_redis_version = _marker_version_value(request, "min_redis_version")
-    max_redis_version = _marker_version_value(request, "max_redis_version")
-    if server_version < min_redis_version:
-        pytest.skip(f"Redis server {min_redis_version} or more required but {server_version} found")
-    if server_version > max_redis_version:
-        pytest.skip(f"Redis server {max_redis_version} or less required but {server_version} found")
+    _validate_server_versions(request, real_server_details)
     decode_responses = request.node.get_closest_marker("decode_responses") is not None
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
@@ -131,19 +163,12 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     def factory(**kwargs: Any) -> redis.Redis:
         if REDIS_PY_VERSION.major >= 5:
             kwargs["protocol"] = protocol
-        if cls_name.startswith("Fake"):
+        cls = _get_class(cls_type, real_server_details, False)
+        if cls_type.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
-            return fakeredis.FakeStrictRedis(
-                decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs
-            )
-        # Real
-        if server_type == "valkey":
-            import valkey
-
-            cls = valkey.StrictValkey
+            return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
         else:
-            cls = redis.StrictRedis
-        return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
+            return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory
 
@@ -170,26 +195,18 @@ async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.a
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
-    min_redis_version_marker = _marker_version_value(request, "min_redis_version")
-    max_redis_version_marker = _marker_version_value(request, "max_redis_version")
-    if server_version < min_redis_version_marker:
-        pytest.skip(f"Redis server {min_redis_version_marker} or more required but {server_version} found")
-    if server_version > max_redis_version_marker:
-        pytest.skip(f"Redis server {max_redis_version_marker} or less required but {server_version} found")
+    _validate_server_versions(request, real_server_details)
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
     fake_server: Optional[fakeredis.FakeServer]
+    cls = _get_class(param_type, real_server_details, True)
     if param_type == "fake":
         fake_server = request.getfixturevalue("fake_server")
-        ret = fakeredis.FakeAsyncRedis(
-            server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses, protocol=protocol
-        )
+        ret = cls(server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses, protocol=protocol)
     else:
-        ret = redis.asyncio.Redis(
-            host="localhost", port=6390, db=2, decode_responses=decode_responses, protocol=protocol
-        )
+        ret = cls(host="localhost", port=6390, db=2, decode_responses=decode_responses, protocol=protocol)
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()
