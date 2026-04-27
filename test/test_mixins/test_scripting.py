@@ -9,7 +9,6 @@ import pytest
 import redis
 import redis.client
 import valkey
-from redis.exceptions import ResponseError
 
 import fakeredis
 from test import testtools
@@ -118,6 +117,7 @@ def test_script_help73(r: redis.Redis):
 
 
 @pytest.mark.max_redis_version("7.1")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_eval_blpop(r: redis.Redis):
     r.rpush("foo", "bar")
     with pytest.raises(Exception, match="This Redis command is not allowed from script") as ctx:
@@ -417,7 +417,7 @@ def test_eval_pcall(r: redis.Redis):
     )
     assert isinstance(val, list)
     assert len(val) == 1
-    assert isinstance(val[0], ResponseError)
+    assert isinstance(val[0], (redis.ResponseError, valkey.ResponseError))
 
 
 def test_eval_pcall_return_value(r: redis.Redis):
