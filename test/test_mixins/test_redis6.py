@@ -34,6 +34,7 @@ def test_bitops_mode_redis6(r: redis.Redis):
 
 
 @pytest.mark.max_redis_version("7.2")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_bitcount_error_v6(r: redis.Redis):
     r = raw_command(r, b"BITCOUNT", b"", b"", b"")
     assert r == 0

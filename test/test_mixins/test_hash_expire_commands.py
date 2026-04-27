@@ -7,7 +7,11 @@ import redis.client
 from test import testtools
 
 pytestmark = []
-pytestmark.extend([pytest.mark.min_redis_version("7.4"), testtools.run_test_if_redispy_ver("gte", "5")])
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+    ]
+)
 
 
 @pytest.mark.parametrize(
