@@ -100,7 +100,7 @@ class TDigestCommandsMixin:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
             return float("nan")
-        val: float = key.value[-1]
+        val: float = key.value[0]
         return val
 
     @command(

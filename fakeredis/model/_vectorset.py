@@ -2,7 +2,9 @@ import json
 import math
 import re
 import struct
-from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union
+from collections import OrderedDict
+from functools import lru_cache
+from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union, Set
 
 import numpy as np
 from jsonpath_ng import JSONPath
@@ -33,6 +35,7 @@ def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
     return f"$[?({path_str})]"
 
 
+@lru_cache(maxsize=64)
 def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
     path_str: str = _update_to_jsonpath_format(path)
     try:
@@ -49,9 +52,13 @@ class Vector:
         self.values = values
         self.attributes = attributes
         self.quantization = quantization
-        self.l2_norm = sum(v * v for v in values) ** 0.5
+        _raw = np.array(values, dtype=np.float32)
+        self.l2_norm = float(np.linalg.norm(_raw))
         if self.quantization == "bin":
             self.values = [1 if v > 0 else -1 for v in self.values]
+            self._arr = np.array(self.values, dtype=np.float32)
+        else:
+            self._arr = _raw
 
     def __repr__(self) -> str:
         return f"Vector(name={self.name!r}, values={self.values}, attributes={self.attributes!r}, quantization={self.quantization})"
@@ -75,12 +82,10 @@ class Vector:
         return [b"f32", raw_bytes, self.l2_norm]
 
     def similarity(self, other: Self) -> float:
-        me = np.array(self.values)
-        o = np.array(other.values)
         denominator = self.l2_norm * other.l2_norm
         if denominator == 0:
             return 0.5
-        cosine_sim: float = float(np.dot(me, o)) / denominator
+        cosine_sim: float = float(np.dot(self._arr, other._arr)) / denominator
         return (1.0 + cosine_sim) / 2.0
 
 
@@ -93,7 +98,7 @@ class VectorSet:
         self._node_uid_counter: int = 0
         self._max_level: int = 0
         self._node_levels: Dict[bytes, int] = dict()
-        self._node_links: Dict[bytes, Dict[int, List[bytes]]] = dict()
+        self._node_links: Dict[bytes, Dict[int, Set[bytes]]] = dict()
 
     @staticmethod
     def _compute_level(node_index: int, m: int) -> int:
@@ -129,21 +134,26 @@ class VectorSet:
 
         # Build links for this node at each of its levels
         self._node_links[vector.name] = {}
-        query = np.array(vector.values)
+        query_arr = vector._arr
+        query_norm = vector.l2_norm
         for lvl in range(level + 1):
-            candidates = [name for name, level in self._node_levels.items() if level >= lvl and name != vector.name]
-            if candidates:
-                scored = []
-                for name in candidates:
-                    cand = self._vectors[name]
-                    cand_arr = np.array(cand.values)
-                    norm = vector.l2_norm * cand.l2_norm
-                    sim = float(np.dot(query, cand_arr)) / norm if norm > 0 else 0.0
-                    scored.append((name, sim))
-                scored.sort(key=lambda x: x[1], reverse=True)
-                self._node_links[vector.name][lvl] = [n for n, _ in scored[:numlinks]]
+            cand_names = [n for n, node_lvl in self._node_levels.items() if node_lvl >= lvl and n != vector.name]
+            if cand_names:
+                cand_vecs = [self._vectors[n] for n in cand_names]
+                cand_matrix = np.stack([c._arr for c in cand_vecs])
+                cand_norms = np.array([c.l2_norm for c in cand_vecs], dtype=np.float64) * query_norm
+                dots = (cand_matrix @ query_arr).astype(np.float64)
+                valid = cand_norms > 0
+                sims = np.where(valid, dots / np.where(valid, cand_norms, 1.0), 0.0)
+                k = min(numlinks, len(cand_names))
+                if k < len(cand_names):
+                    top_idx = np.argpartition(sims, -k)[-k:]
+                    top_idx = top_idx[np.argsort(sims[top_idx])[::-1]]
+                else:
+                    top_idx = np.argsort(sims)[::-1]
+                self._node_links[vector.name][lvl] = {cand_names[i] for i in top_idx}
             else:
-                self._node_links[vector.name][lvl] = []
+                self._node_links[vector.name][lvl] = set()
 
         self._vectors[vector.name] = vector
         self._links[vector.name] = numlinks
@@ -158,8 +168,7 @@ class VectorSet:
             del self._node_links[name]
         for levels_links in self._node_links.values():
             for neighbors in levels_links.values():
-                if name in neighbors:
-                    neighbors.remove(name)
+                neighbors.discard(name)
         return 1
 
     def info(self) -> Dict[bytes, Any]:
@@ -179,7 +188,8 @@ class VectorSet:
     def links(self, name: bytes) -> Optional[Dict[int, List[bytes]]]:
         if name not in self._vectors:
             return None
-        return self._node_links.get(name, {0: []})
+        node_links = self._node_links.get(name, {0: set()})
+        return {lvl: list(neighbors) for lvl, neighbors in node_links.items()}
 
     def range(
         self,
@@ -216,6 +226,38 @@ class VectorSet:
         if k in self._vectors:
             return self._vectors[k]
         return None
+
+    def top_similar(
+        self,
+        query: Vector,
+        filter_expression: Optional[bytes],
+        count: int,
+        epsilon: Optional[float],
+    ) -> "OrderedDict[Vector, float]":
+        """Return top-k most similar vectors using a single batched matrix operation."""
+        candidates = self.accept_filter(filter_expression)
+        if not candidates:
+            return OrderedDict()
+        arr_matrix = np.stack([v._arr for v in candidates])  # (n, d) float32
+        norms = np.array([v.l2_norm for v in candidates], dtype=np.float64) * query.l2_norm
+        dots = (arr_matrix @ query._arr).astype(np.float64)  # one BLAS gemv call
+        valid = norms > 0
+        cosine = np.where(valid, dots / np.where(valid, norms, 1.0), 0.0)
+        scores = (1.0 + cosine) / 2.0
+        if epsilon is not None:
+            mask = scores >= 1.0 - epsilon
+            candidates = [v for v, keep in zip(candidates, mask) if keep]
+            scores = scores[mask]
+        n = len(candidates)
+        if n == 0:
+            return OrderedDict()
+        k = min(count, n)
+        if k < n:
+            top_idx = np.argpartition(scores, -k)[-k:]
+            top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
+        else:
+            top_idx = np.argsort(scores)[::-1]
+        return OrderedDict((candidates[i], float(scores[i])) for i in top_idx)
 
     def accept_filter(self, filter_expression: Optional[bytes]) -> list[Vector]:
         if filter_expression is None:
