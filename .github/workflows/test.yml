@@ -40,6 +40,8 @@ jobs:
         exclude:
           - python-version: "3.9"
             redis-py: "7.4.0"
+          - python-version: "3.9"
+            redis-py: "8.0.0b2"
           - python-version: "3.14"
             redis-image: "redis:8.6.2"
             redis-py: "7.4.0"
