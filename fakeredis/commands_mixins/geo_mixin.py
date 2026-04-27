@@ -184,11 +184,13 @@ class GeoCommandsMixin:
     @command(name="GEORADIUS", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
     def georadius(
         self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes
-    ) -> Union[List[Any], int]:
+    ) -> Union[List[bytes], int]:
         return self._georadius(key, long, lat, radius, *args)
 
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
-    def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes) -> Union[List[Any], int]:
+    def georadiusbymember(
+        self, key: CommandItem, member_name: bytes, radius: float, *args: bytes
+    ) -> Union[List[bytes], int]:
         member_score = key.value.get(member_name)
         lat, long, _, _ = geo_decode(member_score)
         return self._georadius(key, long, lat, radius, *args)

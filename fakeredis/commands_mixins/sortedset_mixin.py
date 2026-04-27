@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import functools
 import itertools
+import math
 import random
 import sys
 from typing import Union, Optional, List, Tuple, Callable, Any, Dict, Sequence, TypeVar
-
-import math
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -27,8 +26,8 @@ from fakeredis._helpers import (
     null_terminate,
     Database,
 )
-from fakeredis.model import ZSet, ExpiringMembersSet, ClientInfo
 from fakeredis._typing import VersionType
+from fakeredis.model import ZSet, ExpiringMembersSet, ClientInfo
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -107,7 +106,7 @@ class SortedSetCommandsMixin:
             out.append(item)
         return out
 
-    def _apply_withscores(self, items: List[Any], withscores: bool) -> List[Any]:
+    def _apply_withscores(self, items: List[Tuple[bytes, bytes]], withscores: bool) -> List[Any]:
         if withscores:
             if self._client_info.protocol_version == 2:
                 out = []
@@ -207,7 +206,14 @@ class SortedSetCommandsMixin:
         return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)  # type: ignore[no-any-return]
 
     def _zrangebyscore(
-        self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, reverse: bool, withscores: bool, offset: int, count: int
+        self,
+        key: CommandItem,
+        _min: ScoreTest,
+        _max: ScoreTest,
+        reverse: bool,
+        withscores: bool,
+        offset: int,
+        count: int,
     ) -> List[Any]:
         zset = key.value
         if reverse:
@@ -224,8 +230,8 @@ class SortedSetCommandsMixin:
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
         else:
-            assert start.bytes_val is not None
-            assert stop.bytes_val is not None
+            if start.bytes_val is None or stop.bytes_val is None:
+                raise ValueError("start and stop must not be None")
             start_i, stop_i = Int.decode(start.bytes_val), Int.decode(stop.bytes_val)
             start_i, stop_i = fix_range(start_i, stop_i, len(zset))
             if reverse:
@@ -400,9 +406,7 @@ class SortedSetCommandsMixin:
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
-    def _zunioninterdiff(
-        self, func: str, dest: Optional[CommandItem], numkeys: int, *args: bytes
-    ) -> Union[ZSet, int]:
+    def _zunioninterdiff(self, func: str, dest: Optional[CommandItem], numkeys: int, *args: bytes) -> Union[ZSet, int]:
         if numkeys < 1:
             raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
         if numkeys > len(args):
@@ -417,7 +421,7 @@ class SortedSetCommandsMixin:
                 weights = [Float.decode(x, decode_error=msgs.INVALID_WEIGHT_MSG) for x in args[i + 1 : i + numkeys + 1]]
                 i += numkeys + 1
             elif casematch(arg, b"aggregate") and i + 1 < len(args):
-                aggregate = null_terminate(args[i + 1])
+                aggregate = null_terminate(args[i + 1]).lower()
                 if aggregate not in (b"sum", b"min", b"max"):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
@@ -434,9 +438,8 @@ class SortedSetCommandsMixin:
         for s in sets[1:]:
             out_members = method(out_members, set(s))  # type: ignore[no-untyped-call]
 
-        # We first build a regular dict and turn it into a ZSet. The
-        # reason is subtle: a ZSet won't update a score from -0 to +0
-        # (or vice versa) through assignment, but a regular dict will.
+        # We first build a regular dict and turn it into a ZSet. The reason is subtle: a ZSet won't update a score from
+        # -0 to +0 (or vice versa) through assignment, but a regular dict will.
         out: Dict[bytes, Any] = {}
         # The sort affects the order of floating-point operations.
         # Note that redis uses qsort(1), which has no stability guarantees,
@@ -458,10 +461,8 @@ class SortedSetCommandsMixin:
                             score = 0.0
                     elif aggregate == b"max":
                         score = max(old, score)
-                    elif aggregate == b"min":
+                    else:  # aggregate == b"min"
                         score = min(old, score)
-                    else:
-                        assert False  # pragma: nocover
                 if math.isnan(score):
                     score = 0.0
                 out[member] = score
