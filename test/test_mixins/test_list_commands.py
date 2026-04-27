@@ -665,8 +665,9 @@ def test_blmove(r: redis.Redis):
 @pytest.mark.disconnected
 @testtools.fake_only
 def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
-    with pytest.raises(redis.ConnectionError):
+    with pytest.raises(Exception) as ctx:
         r.lmove(1, 2, "LEFT", "RIGHT")
+    assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
 
 def test_lpos(r: redis.Redis):
