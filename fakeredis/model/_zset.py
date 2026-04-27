@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Optional, Generator, Dict, ItemsView, Union
+from typing import Any, Tuple, Optional, Generator, Dict, ItemsView, Union, cast
 
 import sortedcontainers
 
@@ -88,8 +88,8 @@ class ZSet(BaseModel):
         if len(self._byscore) == 0:
             return iter([])
         default_score = self._byscore[0][0]
-        start_elem = (self._bylex.get(start, default_score), start) if start != BeforeAny else None
-        stop_elem = (self._bylex.get(stop, default_score), stop) if stop != AfterAny else None
+        start_elem = (self._bylex.get(cast(bytes, start), default_score), start) if start != BeforeAny else None
+        stop_elem = (self._bylex.get(cast(bytes, stop), default_score), stop) if stop != AfterAny else None
         it = self._byscore.irange(start_elem, stop_elem, inclusive=inclusive, reverse=reverse)
         return (item[1] for item in it)
 

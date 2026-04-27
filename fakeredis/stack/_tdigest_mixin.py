@@ -8,7 +8,7 @@ from fakeredis.model import TDigest
 
 
 class TDigestCommandsMixin:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._db: Database
 
     @command(
@@ -67,7 +67,7 @@ class TDigestCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("tdigest.merge"))
         sources_names = args[:numkeys]
         (compression, override), _ = extract_args(args[numkeys:], ("+compression", "override"))
-        sources = [self._db.get(name).value for name in sources_names if name in self._db]
+        sources: List[TDigest] = [self._db.get(name).value for name in sources_names if name in self._db]  # type:ignore
         if len(sources) != len(sources_names):
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
 
@@ -89,7 +89,8 @@ class TDigestCommandsMixin:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
             return float("nan")
-        return key.value[-1]
+        val: float = key.value[-1]
+        return val
 
     @command(
         name="TDIGEST.MIN", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
@@ -99,7 +100,8 @@ class TDigestCommandsMixin:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
             return float("nan")
-        return key.value[0]
+        val: float = key.value[-1]
+        return val
 
     @command(
         name="TDIGEST.RANK",
@@ -218,7 +220,7 @@ class TDigestCommandsMixin:
             return float("nan")
         left = int(lower * len(key.value))
         right = int(upper * len(key.value))
-        res = key.value[(left + right) // 2]
+        res: float = key.value[(left + right) // 2]
         if right == left + 1:
             res = (res + key.value[right]) / 2
         return res
