@@ -6,7 +6,7 @@ from datetime import timedelta
 import pytest
 import redis
 import redis.client
-from redis.exceptions import ResponseError
+import valkey
 
 from fakeredis._helpers import current_time
 from .. import testtools
@@ -26,8 +26,9 @@ def test_append_with_no_preexisting_key(r: redis.Redis):
 
 def test_append_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.append("foo", b"x")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_decr(r: redis.Redis):
@@ -49,11 +50,13 @@ def test_decr_expiry(r: redis.Redis):
 
 def test_decr_badtype(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.decr("foo", 15)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("foo2", 1)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.decr("foo2", 15)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_get_does_not_exist(r: redis.Redis):
@@ -67,8 +70,9 @@ def test_get_with_non_str_keys(r: redis.Redis):
 
 def test_get_invalid_type(r: redis.Redis):
     assert r.hset("foo", "key", "value") == 1
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.get("foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_getset_exists(r: redis.Redis):
@@ -81,8 +85,9 @@ def test_getset_exists(r: redis.Redis):
 
 def test_getset_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.getset("foo", "bar")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_getdel(r: redis.Redis):
@@ -119,16 +124,19 @@ def test_incr_expiry(r: redis.Redis):
 
 def test_incr_bad_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.incr("foo", 15)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("foo2", 1)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.incr("foo2", 15)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_incr_with_float(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.incr("foo", 2.0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_incr_followed_by_mget(r: redis.Redis):
@@ -161,11 +169,13 @@ def test_incrbyfloat_expiry(r: redis.Redis):
 
 def test_incrbyfloat_bad_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError, match="not a valid float"):
+    with pytest.raises(Exception, match="not a valid float") as ctx:
         r.incrbyfloat("foo", 1.0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("foo2", 1)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.incrbyfloat("foo2", 1.0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_incrbyfloat_precision(r: redis.Redis):
@@ -196,8 +206,9 @@ def test_mget_mixed_types(r: redis.Redis):
 
 
 def test_mset_with_no_keys(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.mset({})
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_mset(r: redis.Redis):
@@ -223,14 +234,16 @@ def test_setex_using_timedelta(r: redis.Redis):
 
 
 def test_setex_using_float(r: redis.Redis):
-    with pytest.raises(redis.ResponseError, match="integer"):
+    with pytest.raises(Exception, match="integer") as ctx:
         r.setex("foo", 1.2, "bar")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.min_redis_version("6.2")
 def test_setex_overflow(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.setex("foo", 18446744073709561, "bar")  # Overflows longlong in ms
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_set_ex(r: redis.Redis):
@@ -260,13 +273,15 @@ def test_set_ex_using_timedelta(r: redis.Redis):
 
 
 def test_set_ex_overflow(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=18446744073709561)  # Overflows longlong in ms
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_set_px_overflow(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", px=2**63 - 2)  # Overflows after adding current time
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_set_px(r: redis.Redis):
@@ -281,55 +296,68 @@ def test_set_px_using_timedelta(r: redis.Redis):
 
 @testtools.run_test_if_redispy_ver("lt", "5.9")  # This will run for redis-py 4.2.0 or above.
 def test_set_conflicting_expire_options(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=1, px=1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_set_raises_wrong_ex(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=-100)
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
 def test_set_using_timedelta_raises_wrong_ex(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=timedelta(seconds=-100))
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", ex=timedelta(seconds=0))
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
 def test_set_raises_wrong_px(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", px=-100)
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", px=0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
 def test_set_using_timedelta_raises_wrong_px(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", px=timedelta(milliseconds=-100))
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.set("foo", "bar", px=timedelta(milliseconds=0))
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
 def test_setex_raises_wrong_ex(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.setex("foo", -100, "bar")
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.setex("foo", 0, "bar")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
 def test_setex_using_timedelta_raises_wrong_ex(r: redis.Redis):
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.setex("foo", timedelta(seconds=-100), "bar")
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.setex("foo", timedelta(seconds=-100), "bar")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert not r.exists("foo")
 
 
@@ -380,8 +408,9 @@ def test_set_get_nx_redis7(r: redis.Redis):
 @pytest.mark.min_redis_version("6.2")
 def set_get_wrongtype(r: redis.Redis):
     r.lpush("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "set", "foo", "bar", "GET")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_substr(r: redis.Redis):
@@ -402,8 +431,9 @@ def test_substr_noexist_key(r: redis.Redis):
 
 def test_substr_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.substr("foo", 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_strlen(r: redis.Redis):
@@ -415,8 +445,9 @@ def test_strlen(r: redis.Redis):
 
 def test_strlen_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.strlen("foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_setrange(r: redis.Redis):
@@ -491,11 +522,12 @@ def test_getitem_non_existent_key(r: redis.Redis):
 @pytest.mark.slow
 def test_getex(r: redis.Redis):
     # Exceptions
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "getex", "foo", "px", 1000, "ex", 1)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "getex", "foo", "dsac", 1000, "ex", 1)
-
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.set("foo", "val")
     assert r.getex("foo", ex=1) == b"val"
     time.sleep(1.5)
@@ -536,7 +568,9 @@ def test_lcs(r: redis.Redis):
         r, {b"len": 6, b"matches": [[[4, 7], [5, 8]]]}, [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
     )
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         assert r.lcs("key1", "key2", len=True, idx=True)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "lcs", "key1", "key2", "not_supported_arg")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

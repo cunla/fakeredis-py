@@ -3,6 +3,7 @@ from typing import Tuple, List, Dict
 import pytest
 import redis
 import redis.client
+import valkey
 from packaging.version import Version
 
 from test import testtools
@@ -13,9 +14,10 @@ REDIS_VERSION = Version(redis.__version__)
 
 def test_zadd_roman(r: redis.Redis):
     testtools.raw_command(r, "ZADD", "b", "0", "c")
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "SORT", "b")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "One or more scores can't be converted into double"
 
 
@@ -30,8 +32,9 @@ def test_zadd(r: redis.Redis):
 
 def test_zadd_empty(r: redis.Redis):
     # Have to add at least one key/value pair
-    with pytest.raises(redis.RedisError):
+    with pytest.raises(Exception) as ctx:
         r.zadd("foo", {})
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 @pytest.mark.min_redis_version("7")
@@ -43,8 +46,9 @@ def test_zadd_minus_zero_redis7(r: redis.Redis):
 
 def test_zadd_wrong_type(r: redis.Redis):
     r.sadd("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as exc_info:
         r.zadd("foo", {"two": 2})
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_zadd_multiple(r: redis.Redis):
@@ -169,8 +173,9 @@ def test_zadd_with_xx(
 @pytest.mark.parametrize("ch", [False, True])
 def test_zadd_with_nx_and_xx(r: redis.Redis, ch: bool):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.zadd("foo", {"four": -4.0, "three": -3.0}, nx=True, xx=True, ch=ch)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
 @pytest.mark.parametrize("ch", [False, True])
@@ -195,7 +200,9 @@ def test_zadd_with_xx_and_gt_and_ch(r: redis.Redis):
 def test_zadd_and_zrangebyscore(r: redis.Redis):
     raw_command(r, "zadd", "", 0.0, "")
     assert raw_command(r, "zrangebyscore", "", 0.0, 0.0, "limit", 0, 0) == []
-    with pytest.raises(redis.RedisError):
+    with pytest.raises(Exception) as exc_info:
         raw_command(r, "zrangebyscore", "", 0.0, 0.0, "limit", 0)
-    with pytest.raises(redis.RedisError):
+    assert isinstance(exc_info.value, (redis.RedisError, valkey.ValkeyError))
+    with pytest.raises(Exception) as exc_info:
         raw_command(r, "zadd", "t", 0.0, "xx", "")
+    assert isinstance(exc_info.value, (redis.RedisError, valkey.ValkeyError))
