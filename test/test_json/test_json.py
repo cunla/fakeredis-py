@@ -471,7 +471,7 @@ def test_set_path(r: redis.Redis):
     assert r.json().get(jsonfile.name.rsplit(".")[0]) == {"hello": "world"}
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_type(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1)
 
@@ -589,7 +589,7 @@ def test_objkeys(r: redis.Redis):
     assert r.json().objkeys("doc1", "$..nowhere") == []
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_numincrby(r: redis.Redis):
     r.json().set("num", Path.root_path(), 1)
 
@@ -609,7 +609,7 @@ def test_numincrby(r: redis.Redis):
     assert r.json().numincrby("doc1", "$.b[1].a", 3.5) == [15.0]
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_nummultby(r: redis.Redis):
     r.json().set("num", Path.root_path(), 1)
 
@@ -648,7 +648,7 @@ def test_nummultby(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")
-@pytest.mark.min_server("7.1")
+@pytest.mark.min_redis_version("7.1")
 def test_json_merge(r: redis.Redis):
     # Test with root path $
     assert r.json().set(
@@ -671,7 +671,7 @@ def test_json_merge(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")
-@pytest.mark.min_server("7.1")
+@pytest.mark.min_redis_version("7.1")
 def test_mset(r: redis.Redis):
     r.json().mset([("1", Path.root_path(), 1), ("2", Path.root_path(), 2)])
 

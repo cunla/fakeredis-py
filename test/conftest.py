@@ -87,24 +87,21 @@ def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generato
 def _marker_version_value(request, marker_name: str):
     marker_value = request.node.get_closest_marker(marker_name)
     if marker_value is None:
-        return (0,) if marker_name == "min_server" else (100,)
+        return (0,) if marker_name == "min_redis_version" else (100,)
     return _create_version(marker_value.args[0])
 
 
 @pytest_asyncio.fixture(
     name="create_connection",
     params=[
-        pytest.param("StrictRedis2", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis2", marks=pytest.mark.fake),
-        pytest.param("StrictRedis3", marks=pytest.mark.real),
-        pytest.param("FakeStrictRedis3", marks=pytest.mark.fake),
+        pytest.param("Strict2", marks=pytest.mark.real),
+        pytest.param("FakeStrict2", marks=pytest.mark.fake),
+        pytest.param("Strict3", marks=pytest.mark.real),
+        pytest.param("FakeStrict3", marks=pytest.mark.fake),
     ],
 )
 def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], redis.Redis]:
     cls_name, protocol = request.param[:-1], int(request.param[-1])
-    valkey_client_test = request.node.get_closest_marker("valkey_client_test") is not None
-    if valkey_client_test:
-        cls_name = cls_name.replace("Redis", "Valkey")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     server_type, server_version = real_server_details
@@ -119,12 +116,12 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
-    min_server = _marker_version_value(request, "min_server")
-    max_server = _marker_version_value(request, "max_server")
-    if server_version < min_server:
-        pytest.skip(f"Redis server {min_server} or more required but {server_version} found")
-    if server_version > max_server:
-        pytest.skip(f"Redis server {max_server} or less required but {server_version} found")
+    min_redis_version = _marker_version_value(request, "min_redis_version")
+    max_redis_version = _marker_version_value(request, "max_redis_version")
+    if server_version < min_redis_version:
+        pytest.skip(f"Redis server {min_redis_version} or more required but {server_version} found")
+    if server_version > max_redis_version:
+        pytest.skip(f"Redis server {max_redis_version} or less required but {server_version} found")
     decode_responses = request.node.get_closest_marker("decode_responses") is not None
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
@@ -136,15 +133,16 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
             kwargs["protocol"] = protocol
         if cls_name.startswith("Fake"):
             fake_server = request.getfixturevalue("fake_server")
-            cls = getattr(fakeredis, cls_name)
-            return cls(decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs)
+            return fakeredis.FakeStrictRedis(
+                decode_responses=decode_responses, server=fake_server, lua_modules=lua_modules, **kwargs
+            )
         # Real
-        if valkey_client_test:
+        if server_type == "valkey":
             import valkey
 
-            cls = getattr(valkey, cls_name)
+            cls = valkey.StrictValkey
         else:
-            cls = getattr(redis, cls_name)
+            cls = redis.StrictRedis
         return cls("localhost", port=6390, decode_responses=decode_responses, **kwargs)
 
     return factory
@@ -172,12 +170,12 @@ async def _req_aioredis2(request, real_server_details: ServerDetails) -> redis.a
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
-    min_server_marker = _marker_version_value(request, "min_server")
-    max_server_marker = _marker_version_value(request, "max_server")
-    if server_version < min_server_marker:
-        pytest.skip(f"Redis server {min_server_marker} or more required but {server_version} found")
-    if server_version > max_server_marker:
-        pytest.skip(f"Redis server {max_server_marker} or less required but {server_version} found")
+    min_redis_version_marker = _marker_version_value(request, "min_redis_version")
+    max_redis_version_marker = _marker_version_value(request, "max_redis_version")
+    if server_version < min_redis_version_marker:
+        pytest.skip(f"Redis server {min_redis_version_marker} or more required but {server_version} found")
+    if server_version > max_redis_version_marker:
+        pytest.skip(f"Redis server {max_redis_version_marker} or less required but {server_version} found")
     lua_modules_marker = request.node.get_closest_marker("load_lua_modules")
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
     if lua_modules and not _check_lua_module_supported():

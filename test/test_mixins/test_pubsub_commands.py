@@ -361,7 +361,7 @@ def test_pubsub_no_subcommands(r: redis.Redis):
         testtools.raw_command(r, "PUBSUB")
 
 
-@pytest.mark.min_server("7.1")
+@pytest.mark.min_redis_version("7.1")
 def test_pubsub_help_redis71(r: redis.Redis):
     assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
@@ -400,7 +400,7 @@ def test_pubsub_numsub(r: redis.Redis):
     assert r.pubsub_numsub(a, "non-existing") == [(a.encode(), 2), (b"non-existing", 0)]
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_published_message_to_shard_channel(r: redis.Redis):
     p = r.pubsub()
@@ -413,7 +413,7 @@ def test_published_message_to_shard_channel(r: redis.Redis):
     assert message == make_message("smessage", "foo", "test message")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
     p = r.pubsub()
@@ -459,7 +459,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
     assert p.subscribed is False
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0")
 def test_pubsub_shardnumsub(r: redis.Redis):
     channels = {b"foo", b"bar", b"baz"}
@@ -479,7 +479,7 @@ def test_pubsub_shardnumsub(r: redis.Redis):
     assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_pubsub_shardchannels(r: redis.Redis):
     p = r.pubsub()

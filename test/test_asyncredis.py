@@ -159,13 +159,13 @@ class TestScripts:
         with pytest.raises(redis.exceptions.NoScriptError):
             await async_redis.evalsha("0123456789abcdef0123456789abcdef", 0)
 
-    @pytest.mark.max_server("6.2.7")
+    @pytest.mark.max_redis_version("6.2.7")
     async def test_failed_script_error6(self, async_redis):
         await async_redis.set("foo", "bar")
         with pytest.raises(redis.asyncio.ResponseError, match="^Error running script"):
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
 
-    @pytest.mark.min_server("7")
+    @pytest.mark.min_redis_version("7")
     async def test_failed_script_error7(self, async_redis):
         await async_redis.set("foo", "bar")
         with pytest.raises(redis.asyncio.ResponseError):

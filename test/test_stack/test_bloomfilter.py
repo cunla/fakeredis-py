@@ -123,7 +123,7 @@ def test_bf_mexists(r: redis.Redis):
         r.bf().add("key1", "v")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_bf_insert(r: redis.Redis):
     assert r.bf().create("key", 0.01, 1000)
     assert r.bf().insert("key", ["foo"]) == [1]
@@ -204,7 +204,7 @@ def test_bf_info_resp2(r: redis.Redis):
     assert info.insertedNum == 0
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @pytest.mark.resp3_only
 def test_bf_info_resp3(r: redis.Redis):
     # Store a filter
@@ -221,7 +221,7 @@ def test_bf_info_resp3(r: redis.Redis):
 
 
 @pytest.mark.resp3_only
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_bf_info_field_queries(r: redis.Redis):
     """BF.INFO with a specific field name returns only that value"""
     r.bf().create("bloom", 0.01, 1000)
@@ -236,7 +236,7 @@ def test_bf_info_field_queries(r: redis.Redis):
         testtools.raw_command(r, "BF.INFO", "bloom", "BADFIELD")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
     """BF.INFO EXPANSION on a non-scaling filter returns None"""
     r.bf().create("ns", 0.01, 1000, noScale=True)

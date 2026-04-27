@@ -16,13 +16,13 @@ pytestmark.extend(
 )
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_tdigest_type(r: redis.Redis):
     assert r.tdigest().create("tDigest", 10)
     assert r.type("tDigest") == b"TDIS-TYPE"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_tdigest_reset(r: redis.Redis):
     assert r.tdigest().create("tDigest", 10)
     # reset on empty histogram
@@ -36,7 +36,7 @@ def test_tdigest_reset(r: redis.Redis):
     assert 0 == info.get("unmerged_weight" if get_protocol_version(r) == 2 else b"Unmerged weight")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_tdigest_merge(r: redis.Redis):
     assert r.tdigest().create("to-tDigest", 10)
     assert r.tdigest().create("from-tDigest", 10)
@@ -160,7 +160,7 @@ def test_tdigest_quantile_nan(r: redis.Redis):
     assert math.isnan(float(res)), f"Expected NaN, got {res}"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_tdigest_create_default_compression(r: redis.Redis):
     """TDIGEST.CREATE without compression uses default of 100."""
     r.tdigest().create("td")

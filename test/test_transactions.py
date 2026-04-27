@@ -122,7 +122,7 @@ def test_pipeline_srem_no_change(r: redis.Redis):
 
 
 # The behaviour changed in redis 6.0 (see https://github.com/redis/redis/issues/6594).
-@pytest.mark.min_server("6.0")
+@pytest.mark.min_redis_version("6.0")
 def test_pipeline_move(r: redis.Redis):
     # A regression test for a case picked up by hypothesis tests.
     r.set("foo", "bar")
@@ -137,7 +137,7 @@ def test_pipeline_move(r: redis.Redis):
         p.execute()
 
 
-@pytest.mark.min_server("6.0.6")
+@pytest.mark.min_redis_version("6.0.6")
 def test_exec_bad_arguments(r: redis.Redis):
     # Redis 6.0.6 changed the behaviour of exec so that it always fails with
     # EXECABORT, even when it's just bad syntax.
@@ -145,7 +145,7 @@ def test_exec_bad_arguments(r: redis.Redis):
         r.execute_command("exec", "blahblah")
 
 
-@pytest.mark.min_server("6.0.6")
+@pytest.mark.min_redis_version("6.0.6")
 def test_exec_bad_arguments_abort(r: redis.Redis):
     r.execute_command("multi")
     with pytest.raises(redis.exceptions.ExecAbortError):

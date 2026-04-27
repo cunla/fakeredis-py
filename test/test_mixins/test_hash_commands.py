@@ -6,7 +6,7 @@ from test import testtools
 from test.testtools import raw_command, resp_conversion
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.min_redis_version("7.4")
 def test_hexpire_empty_key(r: redis.Redis):
     raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 
@@ -251,7 +251,7 @@ def test_hset_removing_last_field_delete_key(r: redis.Redis):
     assert r.keys("*") == []
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.min_redis_version("7.4")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_hscan_no_values(r: redis.Redis):
     name = "hscan-test"

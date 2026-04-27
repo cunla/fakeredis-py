@@ -227,7 +227,7 @@ def test_setex_using_float(r: redis.Redis):
         r.setex("foo", 1.2, "bar")
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_setex_overflow(r: redis.Redis):
     with pytest.raises(ResponseError):
         r.setex("foo", 18446744073709561, "bar")  # Overflows longlong in ms
@@ -238,14 +238,14 @@ def test_set_ex(r: redis.Redis):
     assert r.get("foo") == b"bar"
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_set_exat(r: redis.Redis):
     curr_time = int(time.time())
     assert r.set("foo", "bar", exat=curr_time + 100) is True
     assert r.get("foo") == b"bar"
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_set_pxat(r: redis.Redis):
     curr_time = current_time()
     assert r.set("foo", "bar", pxat=curr_time + 100) is True
@@ -353,7 +353,7 @@ def test_set_xx(r: redis.Redis):
     assert r.set("foo", "bar", xx=True) is True
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_set_get(r: redis.Redis):
     assert raw_command(r, "set", "foo", "bar", "GET") is None
     assert r.get("foo") == b"bar"
@@ -361,7 +361,7 @@ def test_set_get(r: redis.Redis):
     assert r.get("foo") == b"baz"
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_set_get_xx(r: redis.Redis):
     assert raw_command(r, "set", "foo", "bar", "XX", "GET") is None
     assert r.get("foo") is None
@@ -371,13 +371,13 @@ def test_set_get_xx(r: redis.Redis):
     assert raw_command(r, "set", "foo", "baz", "GET") == b"baz"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_set_get_nx_redis7(r: redis.Redis):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
     assert raw_command(r, "set", "foo", "bar", "NX", "GET") is None
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def set_get_wrongtype(r: redis.Redis):
     r.lpush("foo", "bar")
     with pytest.raises(redis.ResponseError):
@@ -523,7 +523,7 @@ def test_getex(r: redis.Redis):
     assert r.get("foo5") == b"val"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_lcs(r: redis.Redis):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     assert r.lcs("key1", "key2") == b"mytext"

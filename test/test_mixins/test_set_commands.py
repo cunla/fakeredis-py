@@ -377,7 +377,7 @@ def test_sscan(r: redis.Redis):
     assert len(results) == 2
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_sintercard(r: redis.Redis):
     r.sadd("foo", "member1")
     r.sadd("foo", "member2")
@@ -387,7 +387,7 @@ def test_sintercard(r: redis.Redis):
     assert r.sintercard(1, ["foo"]) == 2
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_sintercard_key_doesnt_exist(r: redis.Redis):
     r.sadd("foo", "member1")
     r.sadd("foo", "member2")
@@ -399,7 +399,7 @@ def test_sintercard_key_doesnt_exist(r: redis.Redis):
     assert r.sintercard(3, ["foo", "bar", "ddd"]) == 0
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_sintercard_bytes_keys(r: redis.Redis):
     foo = os.urandom(10)
     bar = os.urandom(10)
@@ -412,7 +412,7 @@ def test_sintercard_bytes_keys(r: redis.Redis):
     assert r.sintercard(1, [foo], limit=1) == 1
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_sintercard_wrong_type(r: redis.Redis):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")
@@ -422,7 +422,7 @@ def test_sintercard_wrong_type(r: redis.Redis):
         r.sintercard(2, ["bar", "foo"])
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_sintercard_syntax_error(r: redis.Redis):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")

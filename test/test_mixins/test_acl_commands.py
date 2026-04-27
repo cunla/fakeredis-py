@@ -11,7 +11,7 @@ from test.testtools import resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_server("7"),
+        pytest.mark.min_redis_version("7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.unsupported_server_types("dragonfly"),
     ]
@@ -32,7 +32,7 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 }
 
 
-@pytest.mark.min_server("8.4")
+@pytest.mark.min_redis_version("8.4")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}

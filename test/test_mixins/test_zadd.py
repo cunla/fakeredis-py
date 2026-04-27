@@ -34,7 +34,7 @@ def test_zadd_empty(r: redis.Redis):
         r.zadd("foo", {})
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_zadd_minus_zero_redis7(r: redis.Redis):
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})

@@ -57,7 +57,7 @@ def test_xadd_redis__green(r: redis.Redis):
         r.xadd(stream, {"add": "more"}, id=f"{ts1}-1")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_xadd_redis7(r: redis.Redis):  # Using ts-*
     stream = "stream"
     m1 = r.xadd(stream, {"some": "other"})
@@ -109,7 +109,7 @@ def test_xtrim(r: redis.Redis):
     assert r.xtrim(stream, 3, approximate=False) == 1
 
 
-@pytest.mark.min_server("6.2.4")
+@pytest.mark.min_redis_version("6.2.4")
 def test_xtrim_minlen_and_length_args(r: redis.Redis):
     stream = "stream"
     add_items(r, stream, 4)
@@ -341,7 +341,7 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_xgroup_create_connection7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -360,8 +360,8 @@ def test_xgroup_create_connection7(r: redis.Redis):
     assert r.xinfo_groups(stream) == expected
 
 
-@pytest.mark.min_server("7")
-@pytest.mark.max_server("8.2")
+@pytest.mark.min_redis_version("7")
+@pytest.mark.max_redis_version("8.2")
 def test_xgroup_setid_redis7(r: redis.Redis):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -569,7 +569,7 @@ def test_xack(r: redis.Redis):
     assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 0}])
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_xinfo_stream_redis7(r: redis.Redis):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -704,7 +704,7 @@ def test_xpending_range_negative(r: redis.Redis):
         r.xpending_range(stream, group, min=None, max=None, count=None, consumername=0)
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 @testtools.run_test_if_redispy_ver("gte", "4.4")
 def test_xautoclaim_redis7(r: redis.Redis):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
@@ -734,7 +734,7 @@ def test_xautoclaim_redis7(r: redis.Redis):
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_xclaim_trimmed_redis7(r: redis.Redis):
     # xclaim should not raise an exception if the item is not there
     stream, group = "stream", "group"
@@ -1001,7 +1001,7 @@ def test_xinfo_groups_pending(r: redis.Redis):
     assert r.xinfo_groups(stream_name)[0]["pending"] == 1
 
 
-@pytest.mark.min_server("8.6")
+@pytest.mark.min_redis_version("8.6")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xadd_idmp(r: redis.Redis):
     stream = "stream"
@@ -1028,7 +1028,7 @@ def test_xadd_idmp(r: redis.Redis):
     assert r.xlen(stream) == 4
 
 
-@pytest.mark.min_server("8.6")
+@pytest.mark.min_redis_version("8.6")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xadd_idmp_validation(r: redis.Redis):
     stream = "stream"
@@ -1058,7 +1058,7 @@ def test_xadd_idmp_validation(r: redis.Redis):
         r.xadd(stream, {"foo": "bar"}, idmp=("producer1", b"msg1", "extra"))
 
 
-@pytest.mark.min_server("8.6")
+@pytest.mark.min_redis_version("8.6")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xinfo_stream_idempotent_fields(r: redis.Redis):
     stream = "stream"
@@ -1112,7 +1112,7 @@ def test_xinfo_stream_idempotent_fields(r: redis.Redis):
     assert info["iids-duplicates"] == 1  # Still one duplicate
 
 
-@pytest.mark.min_server("8.6")
+@pytest.mark.min_redis_version("8.6")
 @testtools.run_test_if_redispy_ver("gte", "7.2")
 def test_xinfo_stream_idempotent_fields_config(r: redis.Redis):
     stream = "stream"
