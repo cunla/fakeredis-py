@@ -373,15 +373,13 @@ def test_expire_should_throw_error(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
         r.expire("foo", 1, gt=True, lt=True)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("7")
+@pytest.mark.max_redis_version("6.9")
 def test_expire_extra_params_return_error(r: redis.Redis):
-    with pytest.raises(Exception) as ctx:
+    with pytest.raises(redis.exceptions.ResponseError) as ctx:
         r.expire("foo", 1, nx=True)
-
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 

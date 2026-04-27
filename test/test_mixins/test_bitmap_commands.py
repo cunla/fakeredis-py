@@ -25,6 +25,7 @@ def test_getbit_wrong_type(r: redis.Redis):
 
 
 @pytest.mark.min_redis_version("7.4")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_bitcount_error(r: redis.Redis):
     with pytest.raises(Exception) as e:
         raw_command(r, b"BITCOUNT", b"", b"", b"")
