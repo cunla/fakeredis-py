@@ -1286,6 +1286,7 @@ def test_bzmpop(r: ClientType):
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
+@pytest.mark.supported_redis_versions(min_ver="8")
 def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     r.zadd("A", {"A": 0.0})
     r.zadd("B", {"A": 0.0})
