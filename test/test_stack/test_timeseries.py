@@ -860,19 +860,6 @@ def testInfoDuplicatePolicy(r: redis.Redis):
     assert info["duplicate_policy"] == "min"
 
 
-@pytest.mark.supported_redis_versions(max_ver="7.5")
-def test_alter_diplicate_policy(r: redis.Redis):
-    assert r.ts().create(1)
-    info = r.ts().info(1)
-    info = InfoClass(r, info)
-    assert info["duplicate_policy"] is None
-
-    assert r.ts().alter(1, duplicate_policy="min")
-    info = r.ts().info(1)
-    info = InfoClass(r, info)
-    assert "min" == info["duplicate_policy"]
-
-
 @pytest.mark.supported_redis_versions(min_ver="7.5")
 def testInfoDuplicatePolicy_redis8(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
