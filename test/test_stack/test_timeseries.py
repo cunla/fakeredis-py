@@ -14,7 +14,7 @@ timeseries_tests = pytest.importorskip("probables")
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_redis_version("7"),
+        pytest.mark.supported_redis_versions(min_ver="7"),
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
     ]
 )
@@ -847,7 +847,7 @@ def test_info(r: redis.Redis):
     assert info["labels"]["currentLabel"] == "currentData"
 
 
-@pytest.mark.max_redis_version("7.5")
+@pytest.mark.supported_redis_versions(max_ver="7.5")
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
@@ -860,7 +860,7 @@ def testInfoDuplicatePolicy(r: redis.Redis):
     assert info["duplicate_policy"] == "min"
 
 
-@pytest.mark.max_redis_version("7.5")
+@pytest.mark.supported_redis_versions(max_ver="7.5")
 def test_alter_diplicate_policy(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)
@@ -873,7 +873,7 @@ def test_alter_diplicate_policy(r: redis.Redis):
     assert "min" == info["duplicate_policy"]
 
 
-@pytest.mark.min_redis_version("7.5")
+@pytest.mark.supported_redis_versions(min_ver="7.5")
 def testInfoDuplicatePolicy_redis8(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
@@ -886,7 +886,7 @@ def testInfoDuplicatePolicy_redis8(r: redis.Redis):
     assert info["duplicate_policy"] == "min"
 
 
-@pytest.mark.min_redis_version("7.5")
+@pytest.mark.supported_redis_versions(min_ver="7.5")
 def test_alter_diplicate_policy_redis8(r: redis.Redis):
     assert r.ts().create(1)
     info = r.ts().info(1)

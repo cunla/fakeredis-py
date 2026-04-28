@@ -10,12 +10,12 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
-        pytest.mark.min_redis_version("7"),
+        pytest.mark.supported_redis_versions(min_ver="7"),
     ]
 )
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_topk_type(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert r.type("topk") == b"TopK-TYPE"

@@ -25,10 +25,13 @@ ServerType = Literal["redis", "dragonfly", "valkey"]
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 RaiseErrorTypes: Tuple[Type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError
-
+ClientType = redis.Redis
+AsyncClientType = redis.asyncio.Redis
 try:
     import valkey
 
+    ClientType = Union[redis.Redis, valkey.Valkey]
+    AsyncClientType = Union[redis.asyncio.Redis, valkey.asyncio.Valkey]
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
     ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]  # type: ignore[misc, assignment]
 except ImportError:
@@ -39,6 +42,7 @@ __all__ = [
     "async_timeout",
     "VersionType",
     "ServerType",
+    "ClientType",
     "lib_version",
     "RaiseErrorTypes",
     "ResponseErrorType",

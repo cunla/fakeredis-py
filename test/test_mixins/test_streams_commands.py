@@ -7,6 +7,7 @@ import redis
 import valkey
 
 from fakeredis import _msgs as msgs
+from fakeredis._typing import ClientType
 from test import testtools
 from test.testtools import resp_conversion, get_protocol_version
 
@@ -15,7 +16,7 @@ def get_ids(results):
     return [result[0] for result in results]
 
 
-def add_items(r: redis.Redis, stream: str, n: int):
+def add_items(r: ClientType, stream: str, n: int):
     id_list = []
     for i in range(n):
         id_list.append(r.xadd(stream, {"k": i}))
@@ -24,7 +25,7 @@ def add_items(r: redis.Redis, stream: str, n: int):
 
 @pytest.mark.resp3_only
 @pytest.mark.decode_responses
-def test_xadd_xread_resp3(r: redis.Redis):
+def test_xadd_xread_resp3(r: ClientType):
     stream = "stream"
     fields = {"some": "other"}
     m1 = r.xadd(stream, fields=fields)
@@ -34,7 +35,7 @@ def test_xadd_xread_resp3(r: redis.Redis):
     assert res[stream] == [[(m1, fields)]]
 
 
-def test_xadd_redis__green(r: redis.Redis):
+def test_xadd_redis__green(r: ClientType):
     stream = "stream"
     before = int(1000 * time.time())
     m1 = r.xadd(stream, {"some": "other"})
@@ -60,8 +61,8 @@ def test_xadd_redis__green(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.min_redis_version("7")
-def test_xadd_redis7(r: redis.Redis):  # Using ts-*
+@pytest.mark.supported_redis_versions(min_ver="7")
+def test_xadd_redis7(r: ClientType):  # Using ts-*
     stream = "stream"
     m1 = r.xadd(stream, {"some": "other"})
     ts1, seq1 = m1.decode().split("-")
@@ -73,7 +74,7 @@ def test_xadd_redis7(r: redis.Redis):  # Using ts-*
     assert seq2 == seq1 + 1
 
 
-def test_xadd_maxlen(r: redis.Redis):
+def test_xadd_maxlen(r: ClientType):
     stream = "stream"
     id_list = add_items(r, stream, 10)
     maxlen = 5
@@ -91,7 +92,7 @@ def test_xadd_maxlen(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_xadd_minid(r: redis.Redis):
+def test_xadd_minid(r: ClientType):
     stream = "stream"
     id_list = add_items(r, stream, 10)
     minid = id_list[6]
@@ -101,7 +102,7 @@ def test_xadd_minid(r: redis.Redis):
     assert get_ids(results) == id_list[6:]
 
 
-def test_xtrim(r: redis.Redis):
+def test_xtrim(r: ClientType):
     stream = "stream"
 
     # trimming an empty key doesn't do anything
@@ -115,8 +116,8 @@ def test_xtrim(r: redis.Redis):
     assert r.xtrim(stream, 3, approximate=False) == 1
 
 
-@pytest.mark.min_redis_version("6.2.4")
-def test_xtrim_minlen_and_length_args(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="6.2.4")
+def test_xtrim_minlen_and_length_args(r: ClientType):
     stream = "stream"
     add_items(r, stream, 4)
 
@@ -148,7 +149,7 @@ def test_xtrim_minlen_and_length_args(r: redis.Redis):
     assert r.xtrim(stream, approximate=False, minid=m3) == 3
 
 
-def test_xadd_nomkstream(r: redis.Redis):
+def test_xadd_nomkstream(r: ClientType):
     r.xadd("stream2", {"some": "other"}, nomkstream=True)
     assert r.xlen("stream2") == 0
     # nomkstream option
@@ -160,14 +161,14 @@ def test_xadd_nomkstream(r: redis.Redis):
     assert r.xlen(stream) == 3
 
 
-def _add_to_stream(r: redis.Redis, stream_name: str, n: int):
+def _add_to_stream(r: ClientType, stream_name: str, n: int):
     res = []
     for _ in range(n):
         res.append(r.xadd(stream_name, {"foo": "bar"}))
     return res
 
 
-def test_xrevrange(r: redis.Redis):
+def test_xrevrange(r: ClientType):
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
 
@@ -184,7 +185,7 @@ def test_xrevrange(r: redis.Redis):
     assert get_ids(results) == [m4]
 
 
-def test_xrevrange_exclusive(r: redis.Redis):
+def test_xrevrange_exclusive(r: ClientType):
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
 
@@ -204,7 +205,7 @@ def test_xrevrange_exclusive(r: redis.Redis):
     assert get_ids(results) == [m4, m3, m2]
 
 
-def test_xrange(r: redis.Redis):
+def test_xrange(r: ClientType):
     m = r.xadd("stream1", {"foo": "bar"})
     assert r.xrange("stream1") == [(m, {b"foo": b"bar"})]
 
@@ -236,7 +237,7 @@ def get_stream_message(client, stream, message_id):
     return response[0]
 
 
-def test_xread_multiple_streams_blocking(r: redis.Redis):
+def test_xread_multiple_streams_blocking(r: ClientType):
     stream1 = "stream1"
     stream2 = "stream2"
     r.xadd(stream1, {"foo": "bar"})
@@ -246,7 +247,7 @@ def test_xread_multiple_streams_blocking(r: redis.Redis):
     assert len(res) == 2
 
 
-def test_xread_blocking_no_count(r: redis.Redis):
+def test_xread_blocking_no_count(r: ClientType):
     k = b"key"
     r.xadd(k, {"value": 1234})
     streams = {k: "0"}
@@ -258,7 +259,7 @@ def test_xread_blocking_no_count(r: redis.Redis):
     assert m1[0][1] == {b"value": b"1234"}
 
 
-def test_xread(r: redis.Redis):
+def test_xread(r: ClientType):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
@@ -289,7 +290,7 @@ def test_xread(r: redis.Redis):
     assert r.xread(streams={stream: m2}) == resp_conversion(r, {}, [])
 
 
-def test_xread_count(r: redis.Redis):
+def test_xread_count(r: ClientType):
     r.xadd("test", {"x": 1})
     result = r.xread(streams={"test": "0"}, count=100, block=10)
     if get_protocol_version(r) == 3:
@@ -300,7 +301,7 @@ def test_xread_count(r: redis.Redis):
     assert values == {b"x": b"1"}
 
 
-def test_xread_bad_commands(r: redis.Redis):
+def test_xread_bad_commands(r: ClientType):
     with pytest.raises(Exception) as exc_info:
         testtools.raw_command(r, "xread", "foo", "11-1")
     assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
@@ -316,7 +317,7 @@ def test_xread_bad_commands(r: redis.Redis):
     print(ex2)
 
 
-def test_xdel(r: redis.Redis):
+def test_xdel(r: ClientType):
     stream = "stream"
 
     # deleting from an empty stream doesn't do anything
@@ -342,7 +343,7 @@ def test_xdel(r: redis.Redis):
     assert ex.value.args[0] == "Invalid stream ID specified as stream command argument"
 
 
-def test_xgroup_destroy(r: redis.Redis):
+def test_xgroup_destroy(r: ClientType):
     stream = "stream"
     group = "group"
     r.xadd(stream, {"foo": "bar"})
@@ -353,8 +354,8 @@ def test_xgroup_destroy(r: redis.Redis):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.min_redis_version("7")
-def test_xgroup_create_connection7(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="7")
+def test_xgroup_create_connection7(r: ClientType):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
@@ -372,9 +373,8 @@ def test_xgroup_create_connection7(r: redis.Redis):
     assert r.xinfo_groups(stream) == expected
 
 
-@pytest.mark.min_redis_version("7")
-@pytest.mark.max_redis_version("8.2")
-def test_xgroup_setid_redis7(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="7", max_ver="8.2")
+def test_xgroup_setid_redis7(r: ClientType):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
 
@@ -394,7 +394,7 @@ def test_xgroup_setid_redis7(r: redis.Redis):
     assert r.xinfo_groups(stream) == expected
 
 
-def test_xgroup_delconsumer(r: redis.Redis):
+def test_xgroup_delconsumer(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
@@ -410,7 +410,7 @@ def test_xgroup_delconsumer(r: redis.Redis):
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
 
-def test_xgroup_createconsumer(r: redis.Redis):
+def test_xgroup_createconsumer(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
@@ -426,7 +426,7 @@ def test_xgroup_createconsumer(r: redis.Redis):
     assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
 
-def test_xinfo_consumers(r: redis.Redis):
+def test_xinfo_consumers(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
@@ -450,7 +450,7 @@ def test_xinfo_consumers(r: redis.Redis):
     assert info == expected
 
 
-def test_xreadgroup(r: redis.Redis):
+def test_xreadgroup(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     with pytest.raises(Exception) as ctx:
         r.xreadgroup(group, consumer, streams={stream: ">"})
@@ -525,7 +525,7 @@ def test_xreadgroup(r: redis.Redis):
     r.xreadgroup(group, consumer, streams={stream: ">"}, count=10, block=500)
 
 
-def test_xinfo_stream(r: redis.Redis):
+def test_xinfo_stream(r: ClientType):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -546,7 +546,7 @@ def test_xinfo_stream(r: redis.Redis):
     assert info["last-entry"] == get_stream_message(r, stream, m2)
 
 
-def assert_consumer_info(r: redis.Redis, stream: str, group: str, equal_keys: List) -> List:
+def assert_consumer_info(r: ClientType, stream: str, group: str, equal_keys: List) -> List:
     res = r.xinfo_consumers(stream, group)
     assert len(res) == len(equal_keys)
     for i in range(len(equal_keys)):
@@ -558,7 +558,7 @@ def assert_consumer_info(r: redis.Redis, stream: str, group: str, equal_keys: Li
     return res
 
 
-def test_xack(r: redis.Redis):
+def test_xack(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     # xack on a stream that doesn't exist
     assert r.xack(stream, group, "0-0") == 0
@@ -581,8 +581,8 @@ def test_xack(r: redis.Redis):
     assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 0}])
 
 
-@pytest.mark.min_redis_version("7")
-def test_xinfo_stream_redis7(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="7")
+def test_xinfo_stream_redis7(r: ClientType):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -613,7 +613,7 @@ def test_xinfo_stream_redis7(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_xinfo_stream_full(r: redis.Redis):
+def test_xinfo_stream_full(r: ClientType):
     stream, group = "stream", "group"
     m1 = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, 0)
@@ -624,7 +624,7 @@ def test_xinfo_stream_full(r: redis.Redis):
     assert len(info["groups"]) == 1
 
 
-def test_xpending(r: redis.Redis):
+def test_xpending(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -650,7 +650,7 @@ def test_xpending(r: redis.Redis):
     assert r.xpending(stream, group) == expected
 
 
-def test_xpending_range(r: redis.Redis):
+def test_xpending_range(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -682,7 +682,7 @@ def test_xpending_range(r: redis.Redis):
     assert response[0]["consumer"] == consumer1.encode()
 
 
-def test_xpending_range_idle(r: redis.Redis):
+def test_xpending_range_idle(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     r.xadd(stream, {"foo": "bar"})
     r.xadd(stream, {"foo": "bar"})
@@ -698,7 +698,7 @@ def test_xpending_range_idle(r: redis.Redis):
     assert len(response) == 0
 
 
-def test_xpending_range_negative(r: redis.Redis):
+def test_xpending_range_negative(r: ClientType):
     stream, group = "stream", "group"
     with pytest.raises(Exception) as ctx:
         r.xpending_range(stream, group, min="-", max="+", count=None)
@@ -725,9 +725,9 @@ def test_xpending_range_negative(r: redis.Redis):
     assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "4.4")
-def test_xautoclaim_redis7(r: redis.Redis):
+def test_xautoclaim_redis7(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
     message_id1 = r.xadd(stream, {"john": "wick"})
@@ -755,8 +755,8 @@ def test_xautoclaim_redis7(r: redis.Redis):
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.min_redis_version("7")
-def test_xclaim_trimmed_redis7(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="7")
+def test_xclaim_trimmed_redis7(r: ClientType):
     # xclaim should not raise an exception if the item is not there
     stream, group = "stream", "group"
 
@@ -779,7 +779,7 @@ def test_xclaim_trimmed_redis7(r: redis.Redis):
     assert item[0][0] == sid2
 
 
-def test_xclaim(r: redis.Redis):
+def test_xclaim(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
     message_id = r.xadd(stream, {"john": "wick"})
@@ -829,7 +829,7 @@ def test_xread_blocking(create_connection):
         assert result[b"stream"][0][0][1] == {b"x": b"1"}
 
 
-def test_stream_ttl(r: redis.Redis):
+def test_stream_ttl(r: ClientType):
     stream = "stream"
 
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -840,7 +840,7 @@ def test_stream_ttl(r: redis.Redis):
     assert r.ttl(stream) == -1
 
 
-def test_xreadgroup_length_less_than_count(r: redis.Redis):
+def test_xreadgroup_length_less_than_count(r: ClientType):
     r.xadd("test-events", {"message": "hello"})
     r.xadd("test-events", {"message": "bye"})
 
@@ -851,7 +851,7 @@ def test_xreadgroup_length_less_than_count(r: redis.Redis):
     assert len(messages) == 1
 
 
-def test_xreadgroup_read_2(r: redis.Redis):
+def test_xreadgroup_read_2(r: ClientType):
     priority_range = (0, 1)
     stream_name = "test_stream"
     streams = {f"{stream_name}:{priority}": ">" for priority in priority_range}
@@ -870,7 +870,7 @@ def test_xreadgroup_read_2(r: redis.Redis):
     assert len(messages) == len(streams)
 
 
-def test_xreadgroup_pel_read(r: redis.Redis):
+def test_xreadgroup_pel_read(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     c1 = {b"foo": b"bar"}
     c2 = {b"bing": b"baz"}
@@ -899,7 +899,7 @@ def test_xreadgroup_pel_read(r: redis.Redis):
     assert len(res) == 0
 
 
-def test_xreadgroup_pel_read_multi_consumer(r: redis.Redis):
+def test_xreadgroup_pel_read_multi_consumer(r: ClientType):
     stream, group = "stream", "group"
     c1 = {b"k": b"1"}
     c2 = {b"k": b"2"}
@@ -918,7 +918,7 @@ def test_xreadgroup_pel_read_multi_consumer(r: redis.Redis):
     assert r.xreadgroup(group, "consumer2", streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
 
 
-def test_xreadgroup_pel_read_count(r: redis.Redis):
+def test_xreadgroup_pel_read_count(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     c1 = {b"k": b"1"}
     m1 = r.xadd(stream, c1)
@@ -934,7 +934,7 @@ def test_xreadgroup_pel_read_count(r: redis.Redis):
     )
 
 
-def test_xreadgroup_pel_read_bumps_delivery_count(r: redis.Redis):
+def test_xreadgroup_pel_read_bumps_delivery_count(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     m1 = r.xadd(stream, {"k": "1"})
     r.xgroup_create(stream, group, 0)
@@ -948,7 +948,7 @@ def test_xreadgroup_pel_read_bumps_delivery_count(r: redis.Redis):
     assert pending[0]["times_delivered"] == 3
 
 
-def test_xreadgroup_pel_read_after_ack(r: redis.Redis):
+def test_xreadgroup_pel_read_after_ack(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     c1 = {b"k": b"1"}
     m1 = r.xadd(stream, c1)
@@ -962,7 +962,7 @@ def test_xreadgroup_pel_read_after_ack(r: redis.Redis):
     assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
 
 
-def test_xreadgroup_pel_read_preserves_group_state(r: redis.Redis):
+def test_xreadgroup_pel_read_preserves_group_state(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     r.xadd(stream, {"k": "1"})
     m2 = r.xadd(stream, {"k": "2"})
@@ -985,7 +985,7 @@ def test_xreadgroup_pel_read_preserves_group_state(r: redis.Redis):
     assert after_consumer["pending"] == before_consumer["pending"] == 2
 
 
-def test_xreadgroup_pel_read_deleted_entry(r: redis.Redis):
+def test_xreadgroup_pel_read_deleted_entry(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer1"
     m1 = r.xadd(stream, {"k": "1"})
     r.xgroup_create(stream, group, 0)
@@ -998,7 +998,7 @@ def test_xreadgroup_pel_read_deleted_entry(r: redis.Redis):
     assert res[0][0] == m1
 
 
-def test_xadd_change_time(r: redis.Redis):
+def test_xadd_change_time(r: ClientType):
     res = r.xadd("foobar", {"a": "1"})
     ts, seq = res.decode().split("-")
     new_ts = int(ts) - 10
@@ -1009,7 +1009,7 @@ def test_xadd_change_time(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_xinfo_groups_pending(r: redis.Redis):
+def test_xinfo_groups_pending(r: ClientType):
     stream_name = "testing_stream"
     group_name = "testing_group"
     consumer_name = "testing_consumer"
@@ -1022,147 +1022,3 @@ def test_xinfo_groups_pending(r: redis.Redis):
     r.xreadgroup(group_name, consumer_name, {stream_name: ">"}, count=1)
     assert r.xpending(stream_name, group_name)["pending"] == 1
     assert r.xinfo_groups(stream_name)[0]["pending"] == 1
-
-
-@pytest.mark.min_redis_version("8.6")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-@testtools.run_test_if_redispy_ver("gte", "7.2")
-def test_xadd_idmp(r: redis.Redis):
-    stream = "stream"
-
-    # XADD with IDMP - first write
-    message_id1 = r.xadd(stream, {"field1": "value1"}, idmp=("producer1", b"msg1"))
-
-    # Test XADD with IDMP - duplicate write returns same ID
-    message_id2 = r.xadd(stream, {"field1": "value1"}, idmp=("producer1", b"msg1"))
-    assert message_id1 == message_id2
-
-    # Test XADD with IDMP - different iid creates new entry
-    message_id3 = r.xadd(stream, {"field1": "value1"}, idmp=("producer1", b"msg2"))
-    assert message_id3 != message_id1
-
-    # Test XADD with IDMP - different producer creates new entry
-    message_id4 = r.xadd(stream, {"field1": "value1"}, idmp=("producer2", b"msg1"))
-    assert message_id4 != message_id1
-
-    # Test XADD with IDMP - shorter binary iid
-    r.xadd(stream, {"field1": "value1"}, idmp=("producer1", b"\x01"))
-
-    # Verify stream has 4 entries
-    assert r.xlen(stream) == 4
-
-
-@pytest.mark.min_redis_version("8.6")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-@testtools.run_test_if_redispy_ver("gte", "7.2")
-def test_xadd_idmp_validation(r: redis.Redis):
-    stream = "stream"
-
-    # Test error: both idmpauto and idmp specified
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, idmpauto="producer1", idmp=("producer1", b"msg1"))
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-    # Test error: idmpauto with explicit id
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, id="1234567890-0", idmpauto="producer1")
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-    # Test error: idmp with explicit id
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, id="1234567890-0", idmp=("producer1", b"msg1"))
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-    # Test error: idmp not a tuple
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, idmp="invalid")
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-    # Test error: idmp tuple with wrong number of elements
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, idmp=("producer1",))
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-    # Test error: idmp tuple with wrong number of elements
-    with pytest.raises(Exception) as ctx:
-        r.xadd(stream, {"foo": "bar"}, idmp=("producer1", b"msg1", "extra"))
-
-    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
-
-
-@pytest.mark.min_redis_version("8.6")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-@testtools.run_test_if_redispy_ver("gte", "7.2")
-def test_xinfo_stream_idempotent_fields(r: redis.Redis):
-    stream = "stream"
-
-    # Create stream with regular entry
-    r.xadd(stream, {"foo": "bar"})
-    info = r.xinfo_stream(stream)
-
-    # Verify new idempotent producer fields are present with default values
-    assert "idmp-duration" in info
-    assert "idmp-maxsize" in info
-    assert "pids-tracked" in info
-    assert "iids-tracked" in info
-    assert "iids-added" in info
-    assert "iids-duplicates" in info
-
-    # Default values (before any idempotent entries)
-    assert info["pids-tracked"] == 0
-    assert info["iids-tracked"] == 0
-    assert info["iids-added"] == 0
-    assert info["iids-duplicates"] == 0
-
-    # Add idempotent entry
-    r.xadd(stream, {"field1": "value1"}, idmpauto="producer1")
-    info = r.xinfo_stream(stream)
-
-    # After adding idempotent entry
-    assert info["pids-tracked"] == 1  # One producer tracked
-    assert info["iids-tracked"] == 1  # One iid tracked
-    assert info["iids-added"] == 1  # One idempotent entry added
-    assert info["iids-duplicates"] == 0  # No duplicates yet
-
-    # Add duplicate entry
-    r.xadd(stream, {"field1": "value1"}, idmpauto="producer1")
-    info = r.xinfo_stream(stream)
-
-    # After duplicate
-    assert info["pids-tracked"] == 1  # Still one producer
-    assert info["iids-tracked"] == 1  # Still one iid (duplicate doesn't add new)
-    assert info["iids-added"] == 1  # Still one unique entry
-    assert info["iids-duplicates"] == 1  # One duplicate detected
-
-    # Add entry from different producer
-    r.xadd(stream, {"field2": "value2"}, idmpauto="producer2")
-    info = r.xinfo_stream(stream)
-
-    # After second producer
-    assert info["pids-tracked"] == 2  # Two producers tracked
-    assert info["iids-tracked"] == 2  # Two iids tracked
-    assert info["iids-added"] == 2  # Two unique entries
-    assert info["iids-duplicates"] == 1  # Still one duplicate
-
-
-@pytest.mark.min_redis_version("8.6")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-@testtools.run_test_if_redispy_ver("gte", "7.2")
-def test_xinfo_stream_idempotent_fields_config(r: redis.Redis):
-    stream = "stream"
-    r.xadd(stream, {"foo": "bar"})
-    r.xcfgset(stream, 300)
-    info = r.xinfo_stream(stream)
-    assert "idmp-duration" in info
-    assert "idmp-maxsize" in info
-    assert info["idmp-duration"] == 300
-
-    with pytest.raises(Exception) as excinfo:
-        testtools.raw_command(r, "XCFGSET", stream, "idmp-duration", -1)
-    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
-    assert str(excinfo.value) == "IDMP-DURATION must be between 1 and 86400 seconds"
-
-    with pytest.raises(Exception) as excinfo:
-        testtools.raw_command(r, "XCFGSET", stream, "idmp-maxsize", -1)
-    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
-    assert str(excinfo.value) == "IDMP-MAXSIZE must be between 1 and 10000 entries"

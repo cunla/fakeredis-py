@@ -3,6 +3,7 @@ import redis
 import valkey
 
 from fakeredis._helpers import asbytes
+from fakeredis._typing import ClientType
 from fakeredis.model import get_categories, get_commands_by_category
 from test import testtools
 from test.conftest import ServerDetails
@@ -11,7 +12,7 @@ from test.testtools import resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_redis_version("7"),
+        pytest.mark.supported_redis_versions(min_ver="7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.unsupported_server_types("dragonfly"),
     ]
@@ -29,12 +30,13 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "hgetdel",
     "msetex",
     "xcfgset",
+    "hgetex",
+    "hsetex",
 }
 
 
-@pytest.mark.min_redis_version("8.4")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
+@pytest.mark.supported_redis_versions(min_ver="8.4")
+def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
     fakeredis_categories.add(b"search")
@@ -48,7 +50,7 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
         commands = {cmd.decode() for cmd in commands}
         assert len(commands) >= 0
         commands.discard("hpersist")
-        if real_server_details[0] == "valkey":
+        if real_server_details.server_type == "valkey":
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
         commands = {asbytes(cmd.replace(" ", "|")) for cmd in commands}
         server_commands = r.acl_cat(cat)
@@ -57,19 +59,17 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
         assert len(diff) == 0, f"Commands not found in category {cat}: {diff}"
 
 
-def test_acl_genpass(r: redis.Redis):
+def test_acl_genpass(r: ClientType):
     assert len(r.acl_genpass()) == 64
     assert len(r.acl_genpass(128)) == 32
 
 
-def test_auth(r: redis.Redis):
+def test_auth(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.auth("some_password")
-
     assert isinstance(ctx.value, (redis.AuthenticationError, valkey.AuthenticationError))
     with pytest.raises(Exception) as ctx:
         r.auth("some_password", "some_user")
-
     assert isinstance(ctx.value, (redis.AuthenticationError, valkey.AuthenticationError))
     # first, test for the default user (`username` is supposed to be optional)
     default_username = "default"
@@ -99,7 +99,7 @@ def test_auth(r: redis.Redis):
     r.auth("", "default")
 
 
-def test_acl_list(r: redis.Redis):
+def test_acl_list(r: ClientType):
     username = "fakeredis-user"
     r.acl_deluser(username)
     start = r.acl_list()
@@ -135,7 +135,7 @@ def test_acl_list(r: redis.Redis):
     assert "(%W~app* resetchannels -@all -hset)" in user_rule
 
 
-def test_acl_getuser_setuser(r: redis.Redis):
+def test_acl_getuser_setuser(r: ClientType):
     username = "fakeredis-user"
 
     # test enabled=False
@@ -280,7 +280,7 @@ def test_acl_getuser_setuser(r: redis.Redis):
     )
 
 
-def test_acl_users(r: redis.Redis):
+def test_acl_users(r: ClientType):
     username = "fakeredis-user"
     r.acl_deluser(username)
     start = r.acl_users()
@@ -291,7 +291,7 @@ def test_acl_users(r: redis.Redis):
     assert (username.encode() in users) or (username in users)
 
 
-def test_acl_whoami(r: redis.Redis):
+def test_acl_whoami(r: ClientType):
     # first, test for the default user (`username` is supposed to be optional)
     default_username = "default"
     temp_pass = "temp_pass"
@@ -310,7 +310,7 @@ def test_acl_whoami(r: redis.Redis):
     r.config_set("requirepass", "")
 
 
-def test_acl_log_auth_exist(r: redis.Redis, request):
+def test_acl_log_auth_exist(r: ClientType, request):
     username = "fredis-py-user"
 
     def teardown():
@@ -350,7 +350,7 @@ def test_acl_log_auth_exist(r: redis.Redis, request):
     assert auth_record["object"] == "AUTH"
 
 
-def test_acl_log_invalid_key(r: redis.Redis, request):
+def test_acl_log_invalid_key(r: ClientType, request):
     username = "fredis-py-user"
 
     def teardown():
@@ -404,7 +404,7 @@ def test_acl_log_invalid_key(r: redis.Redis, request):
     assert bad_command_record["object"].lower() == "hset"
 
 
-def test_acl_log_invalid_channel(r: redis.Redis, request):
+def test_acl_log_invalid_channel(r: ClientType, request):
     username = "fredis-py-user"
 
     def teardown():
