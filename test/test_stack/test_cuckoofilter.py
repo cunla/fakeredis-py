@@ -1,5 +1,6 @@
 import pytest
 import redis
+import valkey
 
 from test.testtools import get_protocol_version
 
@@ -13,13 +14,13 @@ pytestmark.extend(
 )
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_cf_type(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.type("cuckoo") == b"MBbloomCF"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_cf_add_and_insert(r: redis.Redis):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
@@ -72,39 +73,52 @@ def test_cf_add_autocreates_filter(r: redis.Redis):
 
 def test_cf_del_nonexistent_key(r: redis.Redis):
     """CF.DEL raises NOT_FOUND when the key does not exist."""
-    with pytest.raises(redis.ResponseError, match="[Nn]ot [Ff]ound"):
+    with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.cf().delete("nokey", "item")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cf_info_nonexistent_key(r: redis.Redis):
     """CF.INFO raises an error when the key does not exist."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.cf().info("nokey")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cf_reserve_key_exists(r: redis.Redis):
     """CF.RESERVE raises an error when the key already exists."""
     r.cf().create("cuckoo", 1000)
-    with pytest.raises(redis.ResponseError, match="item exists"):
+    with pytest.raises(Exception, match="item exists") as ctx:
         r.cf().create("cuckoo", 2000)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cf_insert_errors(r: redis.Redis):
     """CF.INSERT and CF.INSERTNX raise errors for missing ITEMS keyword or nocreate."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("CF.INSERT", "cuckoo", "foo")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.execute_command("CF.INSERTNX", "cuckoo", "foo")
-    with pytest.raises(redis.ResponseError, match="[Nn]ot [Ff]ound"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.execute_command("CF.INSERT", "nokey", "NOCREATE", "ITEMS", "foo")
-    with pytest.raises(redis.ResponseError, match="[Nn]ot [Ff]ound"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.execute_command("CF.INSERTNX", "nokey", "NOCREATE", "ITEMS", "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cf_scandump_nonexistent(r: redis.Redis):
     """CF.SCANDUMP on a non-existent key raises NOT_FOUND."""
-    with pytest.raises(redis.ResponseError, match="[Nn]ot [Ff]ound"):
+    with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.execute_command("CF.SCANDUMP", "nokey", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_cf_scandump_and_loadchunk(r: redis.Redis):

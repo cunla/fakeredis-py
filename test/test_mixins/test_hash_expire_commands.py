@@ -7,7 +7,12 @@ import redis.client
 from test import testtools
 
 pytestmark = []
-pytestmark.extend([pytest.mark.min_server("7.4"), testtools.run_test_if_redispy_ver("gte", "5")])
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        pytest.mark.min_redis_version("7.1"),
+    ]
+)
 
 
 @pytest.mark.parametrize(
@@ -351,7 +356,7 @@ def test_hincrby_with_hash_key_expiration(r: redis.Redis):
     assert res[0] >= 0
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.min_redis_version("7.4")
 def test_hexpire_empty_key(r: redis.Redis):
     testtools.raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 

@@ -5,6 +5,7 @@ import pytest
 import pytest_asyncio
 import redis
 import redis.asyncio
+import valkey
 
 from fakeredis import FakeServer, aioredis
 from fakeredis._typing import async_timeout
@@ -55,8 +56,9 @@ async def test_transaction_fail(async_redis: redis.asyncio.Redis):
         await async_redis.set("foo", "2")  # Different connection
         tr.multi()
         tr.get("foo")
-        with pytest.raises(redis.asyncio.WatchError):
+        with pytest.raises(Exception) as exc_info:
             await tr.execute()
+        assert isinstance(exc_info.value, (redis.asyncio.WatchError, valkey.asyncio.WatchError))
 
 
 async def test_pubsub(async_redis):
@@ -133,13 +135,15 @@ async def test_blocking_unblock(async_redis, conn):
 
 async def test_wrongtype_error(async_redis: redis.asyncio.Redis):
     await async_redis.set("foo", "bar")
-    with pytest.raises(redis.asyncio.ResponseError, match="^WRONGTYPE"):
+    with pytest.raises(Exception, match="^WRONGTYPE") as exc_info:
         await async_redis.rpush("foo", "baz")
+    assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
 
 async def test_syntax_error(async_redis: redis.asyncio.Redis):
-    with pytest.raises(redis.asyncio.ResponseError, match="^wrong number of arguments for 'get' command$"):
+    with pytest.raises(Exception, match="^wrong number of arguments for 'get' command$") as exc_info:
         await async_redis.execute_command("get")
+    assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
 
 @pytest.mark.decode_responses
@@ -156,20 +160,24 @@ async def test_never_decode(async_redis: redis.asyncio.Redis):
 @testtools.run_test_if_lupa
 class TestScripts:
     async def test_no_script_error(self, async_redis: redis.asyncio.Redis):
-        with pytest.raises(redis.exceptions.NoScriptError):
+        with pytest.raises(Exception) as exc_info:
             await async_redis.evalsha("0123456789abcdef0123456789abcdef", 0)
+        assert isinstance(exc_info.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
 
-    @pytest.mark.max_server("6.2.7")
+    @pytest.mark.max_redis_version("6.2.7")
     async def test_failed_script_error6(self, async_redis):
         await async_redis.set("foo", "bar")
-        with pytest.raises(redis.asyncio.ResponseError, match="^Error running script"):
+        with pytest.raises(Exception, match="^Error running script") as ctx:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
 
-    @pytest.mark.min_server("7")
+        assert isinstance(ctx.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
+
+    @pytest.mark.min_redis_version("7")
     async def test_failed_script_error7(self, async_redis):
         await async_redis.set("foo", "bar")
-        with pytest.raises(redis.asyncio.ResponseError):
+        with pytest.raises(Exception) as exc_info:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
+        assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
 
 async def test_type(async_redis: redis.asyncio.Redis):
@@ -276,6 +284,7 @@ async def test_hrandfield(async_redis: redis.Redis):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 async def test_async_lock(async_redis: redis.Redis):
     from redis.asyncio.lock import Lock
 

@@ -2,6 +2,7 @@ from typing import Dict, Any
 
 import pytest
 import redis
+import valkey
 
 from test import testtools
 from test.testtools import resp_conversion
@@ -23,14 +24,19 @@ def test_geoadd(r: redis.Redis):
     values = (2.1909389952632, 41.433791470673, "place1")
     assert r.geoadd("a", values) == 1
 
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.geoadd("barcelona", (1, 2))
-    with pytest.raises(redis.DataError):
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         r.geoadd("t", values, ch=True, nx=True, xx=True)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "geoadd", "barcelona", "1", "2")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "geoadd", "barcelona", "nx", "xx", *values)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_geoadd_xx(r: redis.Redis):
@@ -89,8 +95,10 @@ def test_geodist_units(r: redis.Redis):
     assert r.geodist("barcelona", "place1", "place2", "km") == pytest.approx(3.0674, 0.0001)
     assert r.geodist("barcelona", "place1", "place2", "mi") == pytest.approx(1.906, 0.0001)
     assert r.geodist("barcelona", "place1", "place2", "ft") == pytest.approx(10063.6998, 0.0001)
-    with pytest.raises(redis.RedisError):
+    with pytest.raises(Exception) as ctx:
         assert r.geodist("x", "y", "z", "inches")
+
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 def test_geodist_missing_one_member(r: redis.Redis):
@@ -198,18 +206,23 @@ def test_georadius_errors(r: redis.Redis):
 
     r.geoadd("Sicily", values)
 
-    with pytest.raises(redis.DataError):  # Unsupported unit
+    with pytest.raises(Exception) as ctx:
         r.georadius("barcelona", 2.191, 41.433, 3000, unit="dsf")
-    with pytest.raises(redis.ResponseError):  # Unsupported unit
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(
             r, "GEORADIUS", "Sicily", "15", "37", "200", "ddds", "STOREDIST", "neardist", "STORE", "near"
         )
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     bad_values = (13.361389, 38.115556, "Palermo", 15.087269, "Catania")
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.geoadd("newgroup", bad_values)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "geoadd", "newgroup", *bad_values)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_geosearch(r: redis.Redis):

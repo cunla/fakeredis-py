@@ -4,6 +4,7 @@ from time import sleep
 import pytest
 import redis
 import redis.client
+import valkey
 
 from .. import testtools
 from ..testtools import resp_conversion
@@ -59,8 +60,10 @@ def test_lpush_with_nonstr_key(r: redis.Redis):
 
 def test_lpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lpush("foo", "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_llen(r: redis.Redis):
@@ -76,8 +79,10 @@ def test_llen_no_exist(r: redis.Redis):
 
 def test_llen_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.llen("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lrem_positive_count(r: redis.Redis):
@@ -133,8 +138,10 @@ def test_lrem_return_value(r: redis.Redis):
 
 def test_lrem_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lrem("foo", 0, "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_rpush(r: redis.Redis):
@@ -147,8 +154,10 @@ def test_rpush(r: redis.Redis):
 
 def test_rpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rpush("foo", "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lpop(r: redis.Redis):
@@ -180,17 +189,21 @@ def test_lpop_zero_non_existing_list(r: redis.Redis):
 
 def test_lpop_zero_wrong_type(r: redis.Redis):
     r.set(b"", b"")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lpop(b"", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lpop_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lpop("foo")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-@pytest.mark.min_server("6.2")
+
+@pytest.mark.min_redis_version("6.2")
 def test_lpop_count(r: redis.Redis):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
@@ -201,10 +214,12 @@ def test_lpop_count(r: redis.Redis):
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_lpop_count_negative(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "lpop", "foo", -1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lset(r: redis.Redis):
@@ -218,14 +233,18 @@ def test_lset(r: redis.Redis):
 
 def test_lset_index_out_of_range(r: redis.Redis):
     r.rpush("foo", "one")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lset("foo", 3, "three")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lset_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lset("foo", 0, "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_rpushx(r: redis.Redis):
@@ -238,8 +257,10 @@ def test_rpushx(r: redis.Redis):
 
 def test_rpushx_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rpushx("foo", "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ltrim(r: redis.Redis):
@@ -267,8 +288,10 @@ def test_ltrim_expiry(r: redis.Redis):
 
 def test_ltrim_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.ltrim("foo", 1, -1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lindex(r: redis.Redis):
@@ -281,8 +304,10 @@ def test_lindex(r: redis.Redis):
 
 def test_lindex_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lindex("foo", 0)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lpushx(r: redis.Redis):
@@ -295,8 +320,10 @@ def test_lpushx(r: redis.Redis):
 
 def test_lpushx_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lpushx("foo", "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_rpop(r: redis.Redis):
@@ -310,11 +337,13 @@ def test_rpop(r: redis.Redis):
 
 def test_rpop_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rpop("foo")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-@pytest.mark.min_server("6.2")
+
+@pytest.mark.min_redis_version("6.2")
 def test_rpop_count(r: redis.Redis):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
@@ -325,10 +354,12 @@ def test_rpop_count(r: redis.Redis):
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
-@pytest.mark.min_server("6.2")
+@pytest.mark.min_redis_version("6.2")
 def test_rpop_count_negative(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "rpop", "foo", -1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_linsert_before(r: redis.Redis):
@@ -347,8 +378,10 @@ def test_linsert_after(r: redis.Redis):
 
 
 def test_linsert_bad_command(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "LINSERT", "x", "NOT_BEFORE", "pivot", "val")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_linsert_no_pivot(r: redis.Redis):
@@ -360,8 +393,10 @@ def test_linsert_no_pivot(r: redis.Redis):
 
 def test_linsert_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.linsert("foo", "after", "bar", "element")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_rpoplpush(r: redis.Redis):
@@ -403,12 +438,14 @@ def test_rpoplpush_one_to_self(r: redis.Redis):
 def test_rpoplpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     r.rpush("list", "element")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rpoplpush("foo", "list")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rpoplpush("list", "foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
 
@@ -475,8 +512,10 @@ def test_brpop_block(r: redis.Redis):
 
 def test_blpop_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.blpop("foo", timeout=1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_blpop_transaction(r: redis.Redis):
@@ -506,8 +545,10 @@ def test_brpop_single_key(r: redis.Redis):
 
 def test_brpop_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.brpop("foo", timeout=1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_brpoplpush_multi_keys(r: redis.Redis):
@@ -525,12 +566,14 @@ def test_brpoplpush_multi_keys(r: redis.Redis):
 def test_brpoplpush_wrong_type(r: redis.Redis):
     r.set("foo", "bar")
     r.rpush("list", "element")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.brpoplpush("foo", "list")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.brpoplpush("list", "foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
 
@@ -566,17 +609,20 @@ def test_lmove_expiry(r: redis.Redis):
 def test_lmove_wrong_type(r: redis.Redis):
     r.rpush("foo", "one")
     r.rpush("bar", "two")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "LMOVE", "foo", "bar", "left", "NOT_LEFT_OR_RIGHT")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.set("foo", "bar")
     r.rpush("list", "element")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lmove("foo", "list", "RIGHT", "LEFT")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lmove("list", "foo", "RIGHT", "LEFT")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.get("foo") == b"bar"
     assert r.lrange("list", 0, -1) == [b"element"]
 
@@ -619,8 +665,9 @@ def test_blmove(r: redis.Redis):
 @pytest.mark.disconnected
 @testtools.fake_only
 def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
-    with pytest.raises(redis.ConnectionError):
+    with pytest.raises(Exception) as ctx:
         r.lmove(1, 2, "LEFT", "RIGHT")
+    assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
 
 def test_lpos(r: redis.Redis):
@@ -655,7 +702,7 @@ def test_lpos(r: redis.Redis):
     assert r.lpos("a", "c", count=0, maxlen=7, rank=2) == [6]
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_blmpop(r: redis.Redis):
     r.rpush("a", "1", "2", "3", "4", "5")
     res = [b"a", [b"1", b"2"]]
@@ -667,12 +714,13 @@ def test_blmpop(r: redis.Redis):
     assert r.blmpop(1, "2", "foo", "bar", direction="RIGHT") is None
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_lmpop(r: redis.Redis):
     r.rpush("foo", "1", "2", "3", "4", "5")
     result = [b"foo", [b"1", b"2"]]
     assert r.lmpop("2", "bar", "foo", direction="LEFT", count=2) == result
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.lmpop("2", "bar", "foo", direction="up", count=2)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("bar", "a", "b", "c", "d")
     assert r.lmpop("2", "bar", "foo", direction="LEFT") == [b"bar", [b"a"]]

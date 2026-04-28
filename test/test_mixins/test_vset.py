@@ -11,12 +11,13 @@ pytest.importorskip("numpy")
 
 import numpy as np
 import redis
+import valkey
 from redis.commands.vectorset.commands import QuantizationOptions
 
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_server("8"),
+        pytest.mark.min_redis_version("8"),
     ]
 )
 
@@ -57,11 +58,12 @@ def test_add_elem_with_values(r: redis.Redis):
     emb = r.vset().vemb("myset", "elem1")
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset_invalid_data", None, "elem1")
-
-    with pytest.raises(redis.DataError):
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset_invalid_data", [12, 45], None, reduce_dim=3)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
 def test_add_elem_with_vector(r: redis.Redis):
@@ -249,17 +251,20 @@ def test_vsim_with_different_vector_input_types(r: redis.Redis):
     assert isinstance(sim_to_fp32_vector, list)
     assert sim_to_float_array == sim_to_fp32_vector
 
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vsim("myset", input=None)
+
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
 def test_vsim_unexisting(r: redis.Redis):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
 
-    with pytest.raises(redis.ResponseError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         r.vset().vsim("myset", input="elem_not_existing")
 
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert str(exc_info.value) == "element not found in set"
     sim = r.vset().vsim("myset_not_existing", input="elem1")
     assert sim == []
@@ -362,8 +367,10 @@ def test_vdim(r: redis.Redis):
     reduced_dim = r.vset().vdim("myset_reduced")
     assert reduced_dim == 4
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vdim("myset_unexisting")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vdim_errors(r: redis.Redis):
@@ -372,13 +379,15 @@ def test_vdim_errors(r: redis.Redis):
 
     dim = r.vset().vdim("myset")
     assert dim == len(float_array)
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset", float_array, "elem2", reduce_dim=4)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "cannot add projection to existing set without projection"
 
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset1", float_array, "elem1", reduce_dim=-4)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "invalid vector specification"
 
 
@@ -391,8 +400,10 @@ def test_vcard(r: redis.Redis):
     card = r.vset().vcard("myset")
     assert card == n
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vdim("myset_unexisting")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vrem(r: redis.Redis):
@@ -678,8 +689,9 @@ def test_vrandmember(r: redis.Redis):
 def test_vrandmember_wrong_type(r: redis.Redis):
     # Test with non vset value
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrandmember("not_a_vset")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
 
 
@@ -689,8 +701,9 @@ def test_randmember_bad_count_type(r: redis.Redis):
     for elem in elements:
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
         r.vset().vadd("myset", float_array, element=elem)
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrandmember("myset", count="not_an_integer")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "COUNT value is not an integer"
 
 
@@ -805,7 +818,7 @@ def _validate_quantization(original, quantized, tolerance=0.1):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
+@pytest.mark.min_redis_version("8.4")
 def test_vrange_basic(r: redis.Redis):
     """Test basic VRANGE functionality with lexicographical ordering."""
     # Add elements with different names
@@ -828,11 +841,12 @@ def test_vrange_basic(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
+@pytest.mark.min_redis_version("8.4")
 def test_vrange_error(r: redis.Redis):
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrange("not_a_vset", "-", "+")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
 
     res = r.vset().vrange("x", "-", "+")
@@ -840,7 +854,7 @@ def test_vrange_error(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
+@pytest.mark.min_redis_version("8.4")
 def test_vrange_with_count(r: redis.Redis):
     """Test VRANGE with count parameter."""
     # Add elements
@@ -1062,51 +1076,65 @@ def test_vadd_multiple_quant_types(r: redis.Redis):
 
 def test_vadd_values_insufficient_args(r: redis.Redis):
     """Test that VADD VALUES N raises when fewer than N floats follow."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         # Claims 5 values but only 2 are provided before the element name
         r.execute_command("VADD", "myset", "VALUES", "5", "1.0", "2.0", "a")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vadd_unknown_syntax(r: redis.Redis):
     """Test that an unrecognised VADD keyword raises a syntax error."""
-    with pytest.raises(redis.ResponseError, match="invalid option"):
+    with pytest.raises(Exception, match="invalid option") as ctx:
         r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BADPARAM")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vemb_too_many_args(r: redis.Redis):
     """Test that VEMB with more than one optional arg raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError, match="invalid option"):
+    with pytest.raises(Exception, match="invalid option") as ctx:
         r.execute_command("VEMB", "myset", "a", "RAW", "EXTRA")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vrange_too_many_args(r: redis.Redis):
     """Test that VRANGE with more than one extra arg (after min/max) raises an error."""
     r.vset().vadd("myset", [1.0, 2.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VRANGE", "myset", "-", "+", "5", "EXTRA")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_duplicate_ele(r: redis.Redis):
     """Test that specifying ELE twice in VSIM raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "ELE", "b")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_duplicate_values(r: redis.Redis):
     """Test that specifying VALUES twice in VSIM raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "VALUES", "3", "1.0", "0.0", "0.0")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_values_insufficient_args(r: redis.Redis):
     """Test that VSIM VALUES N raises when fewer than N floats follow."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "VALUES", "5", "1.0", "2.0")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_epsilon(r: redis.Redis):
@@ -1139,22 +1167,28 @@ def test_vsim_truth_nothread(r: redis.Redis):
 def test_vsim_no_vector_specified(r: redis.Redis):
     """Test that VSIM without ELE/FP32/VALUES raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "WITHSCORES")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_syntax_error(r: redis.Redis):
     """Test that an unrecognised VSIM keyword raises a syntax error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError, match="syntax"):
+    with pytest.raises(Exception, match="syntax") as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "BADPARAM")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_invalid_filter_expression(r: redis.Redis):
     """Test that an unparseable FILTER expression raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", attributes={"x": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "FILTER", "!!!invalid!!!")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_vsim_filter_excludes_no_attr_elements(r: redis.Redis):
@@ -1182,8 +1216,10 @@ def test_vsim_zero_norm_vector(r: redis.Redis):
 
 def test_vadd_numlinks_one(r: redis.Redis):
     """Test vadd with numlinks=1"""
-    with pytest.raises(redis.ResponseError, match="invalid M"):
+    with pytest.raises(Exception, match="invalid M") as ctx:
         r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.parametrize(
@@ -1204,6 +1240,7 @@ def test_vadd_numlinks_one(r: redis.Redis):
 def test_wrongtype_on_string_key(r: redis.Redis, cmd_args):
     """All vset commands raise WRONGTYPE when the key holds a string."""
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.execute_command(*cmd_args)
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert "WRONGTYPE" in excinfo.value.args[0]

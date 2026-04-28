@@ -12,7 +12,7 @@ class ClientInfo(Dict[str, Any]):
             self[k.replace("-", "_")] = v
 
     def items(self) -> Any:
-        res = {k: v for k, v in super().items() if not k.startswith("-")}
+        res = {k.replace("_", "-"): v for k, v in super().items() if not k.startswith("-")}
         res["age"] = int(time.time()) - int(self.get("-created", 0))
         return res.items()
 

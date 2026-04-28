@@ -1,6 +1,7 @@
 import pytest
 import redis
 import redis.client
+import valkey
 
 from test.testtools import raw_command
 
@@ -17,18 +18,22 @@ def test_getbit(r: redis.Redis):
 
 def test_getbit_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.getbit("foo", 1)
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-@pytest.mark.min_server("7.4")
+
+@pytest.mark.min_redis_version("7.4")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_bitcount_error(r: redis.Redis):
-    with pytest.raises(redis.ResponseError) as e:
+    with pytest.raises(Exception) as e:
         raw_command(r, b"BITCOUNT", b"", b"", b"")
+    assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == "value is not an integer or out of range"
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.min_redis_version("7.4")
 def test_bitcount_does_not_exist(r: redis.Redis):
     res = raw_command(r, b"BITCOUNT", b"", 0, 0)
     assert res == 0
@@ -91,8 +96,10 @@ def test_setbits_and_getkeys(r: redis.Redis):
 
 def test_setbit_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.setbit("foo", 0, 1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_setbit_expiry(r: redis.Redis):
@@ -114,28 +121,34 @@ def test_bitcount(r: redis.Redis):
     r.set("foo", " ")
     assert r.bitcount("foo") == 1
     r.set("key", "foobar")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitcount", "key", "1", "2", "dsd")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.bitcount("key") == 26
     assert r.bitcount("key", start=0, end=0) == 4
     assert r.bitcount("key", start=1, end=1) == 6
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_bitcount_mode_redis7(r: redis.Redis):
     r.set("key", "foobar")
     assert r.bitcount("key", start=1, end=1, mode="byte") == 6
     assert r.bitcount("key", start=5, end=30, mode="bit") == 17
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.bitcount("key", start=5, end=30, mode="dscd")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitcount", "key", "1", "2", "dsd", "cd")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitcount_wrong_type(r: redis.Redis):
     r.rpush("foo", b"x")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.bitcount("foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitop(r: redis.Redis):
@@ -159,14 +172,19 @@ def test_bitop_errors(r: redis.Redis):
     r.set("key1", "foobar")
     r.set("key2", "abcdef")
     r.sadd("key-set", "member1")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.bitop("not", "dest", "key1", "key2")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.bitop("badop", "dest", "key1", "key2")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.bitop("and", "dest", "key1", "key-set")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.bitop("and", "dest")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitpos(r: redis.Redis):
@@ -195,25 +213,31 @@ def test_bitpos(r: redis.Redis):
     assert r.bitpos("nokey:bitpos", 1, 1) == -1
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_bitops_mode_redis7(r: redis.Redis):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")
     assert r.bitpos(key, 0, 8, -1, "bit") == 12
     assert r.bitpos(key, 1, 8, -1, "bit") == 8
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         assert r.bitpos(key, 0, 8, -1, "bad_mode") == 12
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitpos_wrong_arguments(r: redis.Redis):
     key = "key:bitpos:wrong:args"
     r.set(key, b"\xff\xf0\x00")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitpos", key, "7")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitpos", key, 1, "6", "5", "BYTE", "6")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitpos", key)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitfield_empty(r: redis.Redis):
@@ -225,14 +249,19 @@ def test_bitfield_empty(r: redis.Redis):
 
 def test_bitfield_wrong_arguments(r: redis.Redis):
     key = "key:bitfield:wrong:args"
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "foo")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "overflow")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "overflow", "foo")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitfield_get(r: redis.Redis):
@@ -367,28 +396,38 @@ def test_bitfield_incr_fail(r: redis.Redis):
 def test_bitfield_get_wrong_arguments(r: redis.Redis):
     key = "key:bitfield_get:wrong:args"
     r.set(key, b"\xff\xf0\x00")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "get")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "get", "i16")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "get", "i16", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     for encoding in ("I8", "i-42", "i5?", "u0", "i0", "i65", "u64", "i 60"):
-        with pytest.raises(redis.ResponseError):
+        with pytest.raises(Exception) as ctx:
             raw_command(r, "bitfield", key, "get", encoding, 0)
+
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_bitfield_set_wrong_arguments(r: redis.Redis):
     key = "key:bitfield_set:wrong:args"
     r.set(key, b"\xff\xf0\x00")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "set")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "set", "i16")
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "set", "i16", -1)
-    with pytest.raises(redis.ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         raw_command(r, "bitfield", key, "set", "i16", 0, "foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     for encoding in ("I8", "i-42", "i5?", "u0", "i0", "i65", "u64", "i 60"):
-        with pytest.raises(redis.ResponseError):
+        with pytest.raises(Exception) as ctx:
             raw_command(r, "bitfield", key, "set", encoding, 0, 0)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

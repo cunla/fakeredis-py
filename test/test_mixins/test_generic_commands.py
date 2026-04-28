@@ -3,7 +3,7 @@ from time import sleep, time
 
 import pytest
 import redis
-from redis.exceptions import ResponseError
+import valkey
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
@@ -39,7 +39,7 @@ def test_expireat_should_return_false_for_missing_key(r: redis.Redis):
     assert r.expireat("missing", int(time() + 1)) is False
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expireat_should_not_expire_when_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -55,11 +55,13 @@ def test_del_operator(r: redis.Redis):
 
 def test_expire_should_not_handle_floating_point_values(r: redis.Redis):
     r.set("foo", "bar")
-    with pytest.raises(redis.ResponseError, match="value is not an integer or out of range"):
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
         r.expire("something_new", 1.2)
         r.pexpire("something_new", 1000.2)
         r.expire("some_unused_key", 1.2)
         r.pexpire("some_unused_key", 1000.2)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_ttl_should_return_minus_one_for_non_expiring_key(r: redis.Redis):
@@ -87,8 +89,10 @@ def test_sort_range_offset_range_and_desc(r: redis.Redis):
 
 
 def test_sort_range_offset_norange(r: redis.Redis):
-    with pytest.raises(redis.RedisError):
+    with pytest.raises(Exception) as ctx:
         r.sort("foo", start=1)
+
+    assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
 def test_sort_range_with_large_range(r: redis.Redis):
@@ -121,11 +125,13 @@ def test_sort_foo(r: redis.Redis):
     r.rpush("foo", "1b")
     r.rpush("foo", "2b")
     r.rpush("foo", "1a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.sort("foo", alpha=False)
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-@pytest.mark.min_server("7")
+
+@pytest.mark.min_redis_version("7")
 def test_sort_ro(r: redis.Redis):
     r["score:1"] = 8
     r["score:2"] = 3
@@ -137,14 +143,14 @@ def test_sort_ro(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expiretime(r: redis.Redis):
     r.set("a", "foo")
     r.expireat("a", 33_177_117_420)
     assert r.expiretime("a") == 33_177_117_420
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expiretime_dragonfly(r: redis.Redis):
     r.set("a", "foo")
     r.expire("a", 5)
@@ -152,7 +158,7 @@ def test_expiretime_dragonfly(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_pexpiretime(r: redis.Redis):
     r.set("a", "foo")
     r.pexpireat("a", 33_177_117_420_000)
@@ -165,8 +171,10 @@ def test_sort_empty(r: redis.Redis):
 
 def test_sort_wrong_type(r: redis.Redis):
     r.set("string", "3")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.sort("string")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_sort_with_store_option(r: redis.Redis):
@@ -302,22 +310,28 @@ def test_dump_restore_replace(r: redis.Redis):
 def test_restore_exists(r: redis.Redis):
     r.set("foo", "bar")
     dump = r.dump("foo")
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.restore("foo", 0, dump)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_restore_invalid_dump(r: redis.Redis):
     r.set("foo", "bar")
     dump = r.dump("foo")
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.restore("baz", 0, dump[:-1])
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_restore_invalid_ttl(r: redis.Redis):
     r.set("foo", "bar")
     dump = r.dump("foo")
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.restore("baz", -1, dump)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_set_then_get(r: redis.Redis):
@@ -329,8 +343,10 @@ def test_exists(r: redis.Redis):
     assert "foo" not in r
     r.set("foo", "bar")
     assert "foo" in r
-    with pytest.raises(redis.ResponseError, match=msgs.WRONG_ARGS_MSG6.format("exists")[4:]):
+    with pytest.raises(Exception, match=msgs.WRONG_ARGS_MSG6.format("exists")[4:]) as ctx:
         raw_command(r, "exists")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.slow
@@ -346,20 +362,25 @@ def test_expire_should_expire_key(r: redis.Redis):
 def test_expire_should_throw_error(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.expire("foo", 1, nx=True, xx=True)
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.expire("foo", 1, nx=True, gt=True)
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.expire("foo", 1, nx=True, lt=True)
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.expire("foo", 1, gt=True, lt=True)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_server("7")
+@pytest.mark.max_redis_version("6.9")
 def test_expire_extra_params_return_error(r: redis.Redis):
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(redis.exceptions.ResponseError) as ctx:
         r.expire("foo", 1, nx=True)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_expire_should_return_true_for_existing_key(r: redis.Redis):
@@ -398,8 +419,10 @@ def test_watch_expire(r: redis.Redis):
         r.expire("foo", 10000)
         p.multi()
         p.get("foo")
-        with pytest.raises(redis.exceptions.WatchError):
+        with pytest.raises(Exception) as ctx:
             p.execute()
+
+        assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
 
 
 @pytest.mark.slow
@@ -499,8 +522,10 @@ def test_watch_persist(r: redis.Redis):
         r.persist("foo")
         p.multi()
         p.get("foo")
-        with pytest.raises(redis.exceptions.WatchError):
+        with pytest.raises(Exception) as ctx:
             p.execute()
+
+        assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
 
 
 def test_set_existing_key_persists(r: redis.Redis):
@@ -534,14 +559,14 @@ def test_set_float_value(r: redis.Redis):
     assert float(r.get("foo")) == x
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expire_should_not_expire__when_no_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
     assert r.expire("foo", 1, xx=True) == 0
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expire_should_not_expire__when_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -549,7 +574,7 @@ def test_expire_should_not_expire__when_expire_is_set(r: redis.Redis):
     assert r.expire("foo", 2, nx=True) == 0
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expire_should_expire__when_expire_is_greater(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -558,7 +583,7 @@ def test_expire_should_expire__when_expire_is_greater(r: redis.Redis):
     assert r.expire("foo", 200, gt=True) == 1
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_expire_should_expire__when_expire_is_lessthan(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -574,8 +599,10 @@ def test_rename(r: redis.Redis):
 
 
 def test_rename_nonexistent_key(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.rename("foo", "bar")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_renamenx_doesnt_exist(r: redis.Redis):
@@ -694,7 +721,7 @@ def test_key_patterns(r: redis.Redis):
     assert sorted(r.keys()) == [b"four", b"one", b"three", b"two"]
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_watch_when_setbit_does_not_change_value(r: redis.Redis):
     r.set("foo", b"0")
 
@@ -715,7 +742,7 @@ def test_from_hypothesis_redis7(r: redis.Redis):
     assert r.get(b"") == b"\x00"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_copy_preserves_expiry(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -734,7 +761,7 @@ def test_copy_replaces(r: redis.Redis):
     assert r.get("bar") == b"0"
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_copy_replaces_with_expiry(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -748,7 +775,7 @@ def test_copy_replaces_with_expiry(r: redis.Redis):
     assert r.expiretime("bar") == 33177117420
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_copy_db_replaces_with_expire(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -775,8 +802,10 @@ def test_copy_invalid_db(r: redis.Redis):
     assert r.copy("foo", "bar", destination_db="1") == 1
     assert r.copy("foo", "bar", destination_db="3") == 1
 
-    with pytest.raises(redis.ResponseError, match=msgs.INVALID_INT_MSG[4:]):
+    with pytest.raises(Exception, match=msgs.INVALID_INT_MSG[4:]) as ctx:
         r.copy("foo", "bar", destination_db="not a database")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_copy_non_existing_key(r: redis.Redis):
@@ -784,12 +813,15 @@ def test_copy_non_existing_key(r: redis.Redis):
     assert r.copy("bar", "baz", destination_db="1") == 0
     assert r.copy("foo", "bar", destination_db="3") == 1
 
-    with pytest.raises(redis.ResponseError, match=msgs.INVALID_INT_MSG[4:]):
+    with pytest.raises(Exception, match=msgs.INVALID_INT_MSG[4:]) as ctx:
         r.copy("foo", "bar", destination_db="not a database")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_copy_same_db(r: redis.Redis):
     r.select(1)
     r.set("foo", "0")
-    with pytest.raises(redis.ResponseError, match=msgs.SRC_DST_SAME_MSG[4:]):
+    with pytest.raises(Exception, match=msgs.SRC_DST_SAME_MSG[4:]) as ctx:
         r.copy("foo", "foo", destination_db="1")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

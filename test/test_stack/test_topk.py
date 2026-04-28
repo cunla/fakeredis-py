@@ -1,5 +1,6 @@
 import pytest
 import redis
+import valkey
 
 from test.testtools import resp_conversion, get_protocol_version
 
@@ -9,12 +10,12 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
-        pytest.mark.min_server("7"),
+        pytest.mark.min_redis_version("7"),
     ]
 )
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.min_redis_version("7")
 def test_topk_type(r: redis.Redis):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert r.type("topk") == b"TopK-TYPE"
@@ -62,29 +63,39 @@ def test_topk(r: redis.Redis):
 
 def test_topk_commands_on_nonexistent_key(r: redis.Redis):
     """All TopK commands raise an error when the key does not exist."""
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().add("nokey", "item")
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.execute_command("TOPK.COUNT", "nokey", "item")
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().query("nokey", "item")
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().incrby("nokey", ["item"], [1])
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().info("nokey")
-    with pytest.raises(redis.ResponseError, match="key does not exist"):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().list("nokey")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_topk_reserve_already_exists(r: redis.Redis):
     """TOPK.RESERVE raises an error when the key already exists."""
     r.topk().reserve("topk", 3, 10, 3, 0.9)
-    with pytest.raises(redis.ResponseError, match="already exists"):
+    with pytest.raises(Exception, match="already exists") as ctx:
         r.topk().reserve("topk", 5, 10, 3, 0.9)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_topk_incrby_odd_args(r: redis.Redis):
     """TOPK.INCRBY raises an error when items and increments are mismatched."""
     r.topk().reserve("topk", 3, 10, 3, 0.9)
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("TOPK.INCRBY", "topk", "item1", "3", "item2")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

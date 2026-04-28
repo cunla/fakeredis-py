@@ -4,7 +4,7 @@ from time import sleep
 
 import pytest
 import redis
-from redis.exceptions import ResponseError
+import valkey
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 from test import testtools
@@ -39,10 +39,13 @@ def test_save(r: redis.Redis):
 def test_bgsave(r: redis.Redis):
     assert r.bgsave()
     time.sleep(0.1)
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("BGSAVE", "SCHEDULE", "FOO")
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.execute_command("BGSAVE", "FOO")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_lastsave(r: redis.Redis):
