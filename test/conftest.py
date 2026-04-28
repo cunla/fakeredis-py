@@ -113,14 +113,11 @@ def _validate_server_versions(request, real_server_details: ServerDetails) -> No
     marker = request.node.get_closest_marker("supported_redis_versions")
     min_redis_ver = _create_version(marker.kwargs["min_ver"]) if marker and "min_ver" in marker.kwargs else (0,)
     max_redis_ver = _create_version(marker.kwargs["max_ver"]) if marker and "max_ver" in marker.kwargs else (100,)
-    if server_type == "redis":
-        if redis_version < min_redis_ver:
-            pytest.skip(f"Redis server {min_redis_ver} or more required but {redis_version} found")
-        if redis_version > max_redis_ver:
-            pytest.skip(f"Redis server {max_redis_ver} or less required but {redis_version} found")
-    elif server_type == "valkey":
-        if max_redis_ver < (7,):
-            pytest.skip("Test should run only on older versions of Redis")
+
+    if redis_version < min_redis_ver:
+        pytest.skip(f"Redis server {min_redis_ver} or more required but {redis_version} found")
+    if redis_version > max_redis_ver:
+        pytest.skip(f"Redis server {max_redis_ver} or less required but {redis_version} found")
 
 
 # Map from (server_type is valkey, fake flag, async flag) -> client class
@@ -161,7 +158,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
         pytest.skip("redis-py 4.x does not support RESP3")
 
     if not cls_type.startswith("Fake") and not real_server_details.redis_version:
-        pytest.skip("Redis is not running")
+        pytest.skip("Real server is not running")
     resp2only = request.node.get_closest_marker("resp2_only")
     if resp2only and protocol == 3:
         pytest.skip("Test is for RESP2 only")
@@ -200,10 +197,9 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     ids=lambda x: f"{x[0]}_resp{x[1]}",
 )
 async def _req_aioredis2(request, real_server_details: ServerDetails) -> AsyncClientType:
-    server_type, server_version = real_server_details
     param_type, protocol = request.param[0], int(request.param[1])
-    if param_type != "fake" and not server_version:
-        pytest.skip("Redis is not running")
+    if param_type != "fake" and not real_server_details.server_version:
+        pytest.skip("Real server is not running")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
     decode_responses = bool(request.node.get_closest_marker("decode_responses"))

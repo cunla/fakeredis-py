@@ -23,7 +23,7 @@ pytestmark.extend(
 )
 
 
-def redis_server_time(client):
+def redis_server_time(client: ClientType):
     seconds, milliseconds = client.time()
     timestamp = float(f"{seconds}.{milliseconds}")
     return datetime.fromtimestamp(timestamp)
