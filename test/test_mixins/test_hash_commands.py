@@ -8,6 +8,7 @@ from test.testtools import raw_command, resp_conversion
 
 
 @pytest.mark.min_redis_version("7.4")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_hexpire_empty_key(r: redis.Redis):
     raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 
