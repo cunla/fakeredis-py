@@ -6,11 +6,12 @@ import redis
 import redis.client
 import valkey
 
+from fakeredis._typing import ClientType
 from .. import testtools
 from ..testtools import resp_conversion
 
 
-def _push_thread(r: redis.Redis) -> threading.Thread:
+def _push_thread(r: ClientType) -> threading.Thread:
     def run():
         sleep(0.5)
         r.rpush("foo", "value1")
@@ -24,14 +25,14 @@ def _push_thread(r: redis.Redis) -> threading.Thread:
     return thread
 
 
-def test_lpush_then_lrange_all(r: redis.Redis):
+def test_lpush_then_lrange_all(r: ClientType):
     assert r.lpush("foo", "bar") == 1
     assert r.lpush("foo", "baz") == 2
     assert r.lpush("foo", "bam", "buzz") == 4
     assert r.lrange("foo", 0, -1) == [b"buzz", b"bam", b"baz", b"bar"]
 
 
-def test_lpush_then_lrange_portion(r: redis.Redis):
+def test_lpush_then_lrange_portion(r: ClientType):
     r.lpush("foo", "one")
     r.lpush("foo", "two")
     r.lpush("foo", "three")
@@ -40,17 +41,17 @@ def test_lpush_then_lrange_portion(r: redis.Redis):
     assert r.lrange("foo", 0, 3) == [b"four", b"three", b"two", b"one"]
 
 
-def test_lrange_negative_indices(r: redis.Redis):
+def test_lrange_negative_indices(r: ClientType):
     r.rpush("foo", "a", "b", "c")
     assert r.lrange("foo", -1, -2) == []
     assert r.lrange("foo", -2, -1) == [b"b", b"c"]
 
 
-def test_lpush_key_does_not_exist(r: redis.Redis):
+def test_lpush_key_does_not_exist(r: ClientType):
     assert r.lrange("foo", 0, -1) == []
 
 
-def test_lpush_with_nonstr_key(r: redis.Redis):
+def test_lpush_with_nonstr_key(r: ClientType):
     r.lpush(1, "one")
     r.lpush(1, "two")
     r.lpush(1, "three")
@@ -58,7 +59,7 @@ def test_lpush_with_nonstr_key(r: redis.Redis):
     assert r.lrange("1", 0, 2) == [b"three", b"two", b"one"]
 
 
-def test_lpush_wrong_type(r: redis.Redis):
+def test_lpush_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lpush("foo", "element")
@@ -66,18 +67,18 @@ def test_lpush_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_llen(r: redis.Redis):
+def test_llen(r: ClientType):
     r.lpush("foo", "one")
     r.lpush("foo", "two")
     r.lpush("foo", "three")
     assert r.llen("foo") == 3
 
 
-def test_llen_no_exist(r: redis.Redis):
+def test_llen_no_exist(r: ClientType):
     assert r.llen("foo") == 0
 
 
-def test_llen_wrong_type(r: redis.Redis):
+def test_llen_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.llen("foo")
@@ -85,7 +86,7 @@ def test_llen_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lrem_positive_count(r: redis.Redis):
+def test_lrem_positive_count(r: ClientType):
     r.lpush("foo", "same")
     r.lpush("foo", "same")
     r.lpush("foo", "different")
@@ -93,7 +94,7 @@ def test_lrem_positive_count(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == [b"different"]
 
 
-def test_lrem_negative_count(r: redis.Redis):
+def test_lrem_negative_count(r: ClientType):
     r.lpush("foo", "removeme")
     r.lpush("foo", "three")
     r.lpush("foo", "two")
@@ -105,7 +106,7 @@ def test_lrem_negative_count(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == [b"removeme", b"one", b"two", b"three"]
 
 
-def test_lrem_zero_count(r: redis.Redis):
+def test_lrem_zero_count(r: ClientType):
     r.lpush("foo", "one")
     r.lpush("foo", "one")
     r.lpush("foo", "one")
@@ -113,7 +114,7 @@ def test_lrem_zero_count(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == []
 
 
-def test_lrem_default_value(r: redis.Redis):
+def test_lrem_default_value(r: ClientType):
     r.lpush("foo", "one")
     r.lpush("foo", "one")
     r.lpush("foo", "one")
@@ -121,7 +122,7 @@ def test_lrem_default_value(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == []
 
 
-def test_lrem_does_not_exist(r: redis.Redis):
+def test_lrem_does_not_exist(r: ClientType):
     r.lpush("foo", "one")
     r.lrem("foo", 0, "one")
     # These should be noops.
@@ -129,14 +130,14 @@ def test_lrem_does_not_exist(r: redis.Redis):
     r.lrem("foo", 2, "one")
 
 
-def test_lrem_return_value(r: redis.Redis):
+def test_lrem_return_value(r: ClientType):
     r.lpush("foo", "one")
     count = r.lrem("foo", 0, "one")
     assert count == 1
     assert r.lrem("foo", 0, "one") == 0
 
 
-def test_lrem_wrong_type(r: redis.Redis):
+def test_lrem_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lrem("foo", 0, "element")
@@ -144,7 +145,7 @@ def test_lrem_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_rpush(r: redis.Redis):
+def test_rpush(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     r.rpush("foo", "three")
@@ -152,7 +153,7 @@ def test_rpush(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == [b"one", b"two", b"three", b"four", b"five"]
 
 
-def test_rpush_wrong_type(r: redis.Redis):
+def test_rpush_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.rpush("foo", "element")
@@ -160,7 +161,7 @@ def test_rpush_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lpop(r: redis.Redis):
+def test_lpop(r: ClientType):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
     assert r.rpush("foo", "three") == 3
@@ -169,7 +170,7 @@ def test_lpop(r: redis.Redis):
     assert r.lpop("foo") == b"three"
 
 
-def test_lpop_empty_list(r: redis.Redis):
+def test_lpop_empty_list(r: ClientType):
     r.rpush("foo", "one")
     r.lpop("foo")
     assert r.lpop("foo") is None
@@ -178,16 +179,16 @@ def test_lpop_empty_list(r: redis.Redis):
     assert r.lpop("noexists") is None
 
 
-def test_lpop_zero_elem(r: redis.Redis):
+def test_lpop_zero_elem(r: ClientType):
     r.rpush(b"\x00", b"")
     assert r.lpop(b"\x00", 0) == []
 
 
-def test_lpop_zero_non_existing_list(r: redis.Redis):
+def test_lpop_zero_non_existing_list(r: ClientType):
     assert r.lpop(b"", 0) is None
 
 
-def test_lpop_zero_wrong_type(r: redis.Redis):
+def test_lpop_zero_wrong_type(r: ClientType):
     r.set(b"", b"")
     with pytest.raises(Exception) as ctx:
         r.lpop(b"", 0)
@@ -195,7 +196,7 @@ def test_lpop_zero_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lpop_wrong_type(r: redis.Redis):
+def test_lpop_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lpop("foo")
@@ -204,7 +205,7 @@ def test_lpop_wrong_type(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="6.2")
-def test_lpop_count(r: redis.Redis):
+def test_lpop_count(r: ClientType):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
     assert r.rpush("foo", "three") == 3
@@ -215,14 +216,14 @@ def test_lpop_count(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="6.2")
-def test_lpop_count_negative(r: redis.Redis):
+def test_lpop_count_negative(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "lpop", "foo", -1)
 
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lset(r: redis.Redis):
+def test_lset(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     r.rpush("foo", "three")
@@ -231,7 +232,7 @@ def test_lset(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == [b"four", b"five", b"three"]
 
 
-def test_lset_index_out_of_range(r: redis.Redis):
+def test_lset_index_out_of_range(r: ClientType):
     r.rpush("foo", "one")
     with pytest.raises(Exception) as ctx:
         r.lset("foo", 3, "three")
@@ -239,7 +240,7 @@ def test_lset_index_out_of_range(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lset_wrong_type(r: redis.Redis):
+def test_lset_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lset("foo", 0, "element")
@@ -247,7 +248,7 @@ def test_lset_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_rpushx(r: redis.Redis):
+def test_rpushx(r: ClientType):
     r.rpush("foo", "one")
     r.rpushx("foo", "two")
     r.rpushx("bar", "three")
@@ -255,7 +256,7 @@ def test_rpushx(r: redis.Redis):
     assert r.lrange("bar", 0, -1) == []
 
 
-def test_rpushx_wrong_type(r: redis.Redis):
+def test_rpushx_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.rpushx("foo", "element")
@@ -263,7 +264,7 @@ def test_rpushx_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ltrim(r: redis.Redis):
+def test_ltrim(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     r.rpush("foo", "three")
@@ -275,18 +276,18 @@ def test_ltrim(r: redis.Redis):
     assert r.lrange("foo", 0, -1) == [b"three", b"four"]
 
 
-def test_ltrim_with_non_existent_key(r: redis.Redis):
+def test_ltrim_with_non_existent_key(r: ClientType):
     assert r.ltrim("foo", 0, -1)
 
 
-def test_ltrim_expiry(r: redis.Redis):
+def test_ltrim_expiry(r: ClientType):
     r.rpush("foo", "one", "two", "three")
     r.expire("foo", 10)
     r.ltrim("foo", 1, 2)
     assert r.ttl("foo") > 0
 
 
-def test_ltrim_wrong_type(r: redis.Redis):
+def test_ltrim_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.ltrim("foo", 1, -1)
@@ -294,7 +295,7 @@ def test_ltrim_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lindex(r: redis.Redis):
+def test_lindex(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     assert r.lindex("foo", 0) == b"one"
@@ -302,7 +303,7 @@ def test_lindex(r: redis.Redis):
     assert r.lindex("bar", 4) is None
 
 
-def test_lindex_wrong_type(r: redis.Redis):
+def test_lindex_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lindex("foo", 0)
@@ -310,7 +311,7 @@ def test_lindex_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lpushx(r: redis.Redis):
+def test_lpushx(r: ClientType):
     r.lpush("foo", "two")
     r.lpushx("foo", "one")
     r.lpushx("bar", "one")
@@ -318,7 +319,7 @@ def test_lpushx(r: redis.Redis):
     assert r.lrange("bar", 0, -1) == []
 
 
-def test_lpushx_wrong_type(r: redis.Redis):
+def test_lpushx_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.lpushx("foo", "element")
@@ -326,7 +327,7 @@ def test_lpushx_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_rpop(r: redis.Redis):
+def test_rpop(r: ClientType):
     assert r.rpop("foo") is None
     r.rpush("foo", "one")
     r.rpush("foo", "two")
@@ -335,7 +336,7 @@ def test_rpop(r: redis.Redis):
     assert r.rpop("foo") is None
 
 
-def test_rpop_wrong_type(r: redis.Redis):
+def test_rpop_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.rpop("foo")
@@ -344,7 +345,7 @@ def test_rpop_wrong_type(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="6.2")
-def test_rpop_count(r: redis.Redis):
+def test_rpop_count(r: ClientType):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
     assert r.rpush("foo", "three") == 3
@@ -355,14 +356,14 @@ def test_rpop_count(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="6.2")
-def test_rpop_count_negative(r: redis.Redis):
+def test_rpop_count_negative(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "rpop", "foo", -1)
 
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_linsert_before(r: redis.Redis):
+def test_linsert_before(r: ClientType):
     r.rpush("foo", "hello")
     r.rpush("foo", "world")
     assert r.linsert("foo", "before", "world", "there") == 3
@@ -370,28 +371,28 @@ def test_linsert_before(r: redis.Redis):
     assert r.linsert("empty_list", "before", "world", "there") == 0
 
 
-def test_linsert_after(r: redis.Redis):
+def test_linsert_after(r: ClientType):
     r.rpush("foo", "hello")
     r.rpush("foo", "world")
     assert r.linsert("foo", "after", "hello", "there") == 3
     assert r.lrange("foo", 0, -1) == [b"hello", b"there", b"world"]
 
 
-def test_linsert_bad_command(r: redis.Redis):
+def test_linsert_bad_command(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "LINSERT", "x", "NOT_BEFORE", "pivot", "val")
 
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_linsert_no_pivot(r: redis.Redis):
+def test_linsert_no_pivot(r: ClientType):
     r.rpush("foo", "hello")
     r.rpush("foo", "world")
     assert r.linsert("foo", "after", "goodbye", "bar") == -1
     assert r.lrange("foo", 0, -1) == [b"hello", b"world"]
 
 
-def test_linsert_wrong_type(r: redis.Redis):
+def test_linsert_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.linsert("foo", "after", "bar", "element")
@@ -399,7 +400,7 @@ def test_linsert_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_rpoplpush(r: redis.Redis):
+def test_rpoplpush(r: ClientType):
     assert r.rpoplpush("foo", "bar") is None
     assert r.lpop("bar") is None
     r.rpush("foo", "one")
@@ -415,13 +416,13 @@ def test_rpoplpush(r: redis.Redis):
     assert r.lrem("bar", -1, "two") == 1
 
 
-def test_rpoplpush_to_nonexistent_destination(r: redis.Redis):
+def test_rpoplpush_to_nonexistent_destination(r: ClientType):
     r.rpush("foo", "one")
     assert r.rpoplpush("foo", "bar") == b"one"
     assert r.rpop("bar") == b"one"
 
 
-def test_rpoplpush_expiry(r: redis.Redis):
+def test_rpoplpush_expiry(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("bar", "two")
     r.expire("bar", 10)
@@ -429,13 +430,13 @@ def test_rpoplpush_expiry(r: redis.Redis):
     assert r.ttl("bar") > 0
 
 
-def test_rpoplpush_one_to_self(r: redis.Redis):
+def test_rpoplpush_one_to_self(r: ClientType):
     r.rpush("list", "element")
     assert r.brpoplpush("list", "list") == b"element"
     assert r.lrange("list", 0, -1) == [b"element"]
 
 
-def test_rpoplpush_wrong_type(r: redis.Redis):
+def test_rpoplpush_wrong_type(r: ClientType):
     r.set("foo", "bar")
     r.rpush("list", "element")
     with pytest.raises(Exception) as ctx:
@@ -450,14 +451,14 @@ def test_rpoplpush_wrong_type(r: redis.Redis):
     assert r.lrange("list", 0, -1) == [b"element"]
 
 
-def test_blpop_single_list(r: redis.Redis):
+def test_blpop_single_list(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     r.rpush("foo", "three")
     assert r.blpop(["foo"], timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
 
 
-def test_blpop_test_multiple_lists(r: redis.Redis):
+def test_blpop_test_multiple_lists(r: ClientType):
     r.rpush("baz", "zero")
     assert r.blpop(["foo", "baz"], timeout=1) == resp_conversion(r, [b"baz", b"zero"], (b"baz", b"zero"))
     assert not r.exists("baz")
@@ -474,14 +475,14 @@ def test_blpop_test_multiple_lists(r: redis.Redis):
     assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
-def test_blpop_allow_single_key(r: redis.Redis):
+def test_blpop_allow_single_key(r: ClientType):
     # blpop converts single key arguments to a one element list.
     r.rpush("foo", "one")
     assert r.blpop("foo", timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
 
 
 @pytest.mark.slow
-def test_blpop_block(r: redis.Redis):
+def test_blpop_block(r: ClientType):
     thread = _push_thread(r)
     try:
         assert r.blpop("foo") == resp_conversion(r, [b"foo", b"value1"], (b"foo", b"value1"))
@@ -491,7 +492,7 @@ def test_blpop_block(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_blpop_block_float(r: redis.Redis):
+def test_blpop_block_float(r: ClientType):
     thread = _push_thread(r)
     try:
         assert testtools.raw_command(r, "blpop", "foo", 0) == [b"foo", b"value1"]
@@ -501,7 +502,7 @@ def test_blpop_block_float(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_brpop_block(r: redis.Redis):
+def test_brpop_block(r: ClientType):
     thread = _push_thread(r)
     try:
         assert r.brpop("foo") == resp_conversion(r, [b"foo", b"value1"], (b"foo", b"value1"))
@@ -510,7 +511,7 @@ def test_brpop_block(r: redis.Redis):
         thread.join()
 
 
-def test_blpop_wrong_type(r: redis.Redis):
+def test_blpop_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.blpop("foo", timeout=1)
@@ -518,7 +519,7 @@ def test_blpop_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_blpop_transaction(r: redis.Redis):
+def test_blpop_transaction(r: ClientType):
     p = r.pipeline()
     p.multi()
     p.blpop("missing", timeout=1000)
@@ -527,7 +528,7 @@ def test_blpop_transaction(r: redis.Redis):
     assert result == [None]
 
 
-def test_brpop_test_multiple_lists(r: redis.Redis):
+def test_brpop_test_multiple_lists(r: ClientType):
     r.rpush("baz", "zero")
     assert r.brpop(["foo", "baz"], timeout=1) == resp_conversion(r, [b"baz", b"zero"], (b"baz", b"zero"))
     assert not r.exists("baz")
@@ -537,13 +538,13 @@ def test_brpop_test_multiple_lists(r: redis.Redis):
     assert r.brpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
-def test_brpop_single_key(r: redis.Redis):
+def test_brpop_single_key(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
     assert r.brpop("foo", timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
-def test_brpop_wrong_type(r: redis.Redis):
+def test_brpop_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
         r.brpop("foo", timeout=1)
@@ -551,7 +552,7 @@ def test_brpop_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_brpoplpush_multi_keys(r: redis.Redis):
+def test_brpoplpush_multi_keys(r: ClientType):
     assert r.lpop("bar") is None
     r.rpush("foo", "one")
     r.rpush("foo", "two")
@@ -563,7 +564,7 @@ def test_brpoplpush_multi_keys(r: redis.Redis):
     assert r.lrem("bar", -1, "two") == 1
 
 
-def test_brpoplpush_wrong_type(r: redis.Redis):
+def test_brpoplpush_wrong_type(r: ClientType):
     r.set("foo", "bar")
     r.rpush("list", "element")
     with pytest.raises(Exception) as ctx:
@@ -579,26 +580,26 @@ def test_brpoplpush_wrong_type(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_blocking_operations_when_empty(r: redis.Redis):
+def test_blocking_operations_when_empty(r: ClientType):
     assert r.blpop(["foo"], timeout=1) is None
     assert r.blpop(["bar", "foo"], timeout=1) is None
     assert r.brpop("foo", timeout=1) is None
     assert r.brpoplpush("foo", "bar", timeout=1) is None
 
 
-def test_empty_list(r: redis.Redis):
+def test_empty_list(r: ClientType):
     r.rpush("foo", "bar")
     r.rpop("foo")
     assert not r.exists("foo")
 
 
-def test_lmove_to_nonexistent_destination(r: redis.Redis):
+def test_lmove_to_nonexistent_destination(r: ClientType):
     r.rpush("foo", "one")
     assert r.lmove("foo", "bar", "RIGHT", "LEFT") == b"one"
     assert r.rpop("bar") == b"one"
 
 
-def test_lmove_expiry(r: redis.Redis):
+def test_lmove_expiry(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("bar", "two")
     r.expire("bar", 10)
@@ -606,7 +607,7 @@ def test_lmove_expiry(r: redis.Redis):
     assert r.ttl("bar") > 0
 
 
-def test_lmove_wrong_type(r: redis.Redis):
+def test_lmove_wrong_type(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("bar", "two")
     with pytest.raises(Exception) as ctx:
@@ -627,7 +628,7 @@ def test_lmove_wrong_type(r: redis.Redis):
     assert r.lrange("list", 0, -1) == [b"element"]
 
 
-def test_lmove(r: redis.Redis):
+def test_lmove(r: ClientType):
     assert r.lmove("foo", "bar", "RIGHT", "LEFT") is None
     assert r.lpop("bar") is None
     r.rpush("foo", "one")
@@ -656,7 +657,7 @@ def test_lmove(r: redis.Redis):
     assert r.lrem("bar", -1, "two") == 1
 
 
-def test_blmove(r: redis.Redis):
+def test_blmove(r: ClientType):
     r.rpush("a", "one", "two", "three", "four")
     assert r.blmove("a", "b", 5)
     assert r.blmove("a", "b", 1, "RIGHT", "LEFT")
@@ -664,13 +665,13 @@ def test_blmove(r: redis.Redis):
 
 @pytest.mark.disconnected
 @testtools.fake_only
-def test_lmove_disconnected_raises_connection_error(r: redis.Redis):
+def test_lmove_disconnected_raises_connection_error(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.lmove(1, 2, "LEFT", "RIGHT")
     assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
 
-def test_lpos(r: redis.Redis):
+def test_lpos(r: ClientType):
     assert r.rpush("a", "a", "b", "c", "1", "2", "3", "c", "c") == 8
     assert r.lpos("a", "a") == 0
     assert r.lpos("a", "c") == 2
@@ -703,7 +704,7 @@ def test_lpos(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="7")
-def test_blmpop(r: redis.Redis):
+def test_blmpop(r: ClientType):
     r.rpush("a", "1", "2", "3", "4", "5")
     res = [b"a", [b"1", b"2"]]
     assert r.blmpop(1, "2", "b", "a", direction="LEFT", count=2) == res
@@ -715,7 +716,7 @@ def test_blmpop(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="7")
-def test_lmpop(r: redis.Redis):
+def test_lmpop(r: ClientType):
     r.rpush("foo", "1", "2", "3", "4", "5")
     result = [b"foo", [b"1", b"2"]]
     assert r.lmpop("2", "bar", "foo", direction="LEFT", count=2) == result

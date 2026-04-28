@@ -4,11 +4,12 @@ import redis.client
 import valkey
 
 from fakeredis import _msgs as msgs
+from fakeredis._typing import ClientType
 from test import testtools
 from test.testtools import raw_command, resp_conversion
 
 
-def test_ping(r: redis.Redis):
+def test_ping(r: ClientType):
     assert r.ping()
     assert testtools.raw_command(r, "ping", "test") == b"test"
     with pytest.raises(Exception, match=msgs.WRONG_ARGS_MSG6.format("ping")[4:]) as ctx:
@@ -17,12 +18,12 @@ def test_ping(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_echo(r: redis.Redis):
+def test_echo(r: ClientType):
     assert r.echo(b"hello") == b"hello"
     assert r.echo("hello") == b"hello"
 
 
-def test_unknown_command(r: redis.Redis):
+def test_unknown_command(r: ClientType):
     with pytest.raises(Exception) as ctx:
         raw_command(r, "0 3 3")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -41,7 +42,7 @@ def test_time(r, mocker):
 
 # @pytest.mark.supported_redis_versions(min_ver="7")
 # @pytest.mark.unsupported_server_types("dragonfly")
-# def test_hello(r: redis.Redis):
+# def test_hello(r: ClientType):
 #     client_info = r.client_info()
 #     protocol = int(client_info.get("resp"))
 #     if protocol == 2:
@@ -56,7 +57,7 @@ def test_time(r, mocker):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_redis_versions(min_ver="7")
-def test_client_list(r: redis.Redis):
+def test_client_list(r: ClientType):
     client_info = r.client_info()
     client_id = client_info["id"]
     client_list = r.client_list()
@@ -78,7 +79,7 @@ def test_client_list(r: redis.Redis):
 @pytest.mark.supported_redis_versions(min_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly")
 @testtools.run_test_if_redispy_ver("gte", "5")
-def test_client_info(r: redis.Redis):
+def test_client_info(r: ClientType):
     client_info = r.client_info()
     assert client_info.get("lib-name", "redis-py") in {"redis-py", "valkey-py"}
     r.client_setinfo(b"lib-name", b"fakeredis")
@@ -89,13 +90,13 @@ def test_client_info(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_client_id(r: redis.Redis):
+def test_client_id(r: ClientType):
     client_id = r.client_id()
     client_info = r.client_info()
     assert client_id == client_info["id"]
 
 
-def test_client_setname(r: redis.Redis):
+def test_client_setname(r: ClientType):
     assert r.client_setname("test") is True
     assert r.client_getname() == resp_conversion(r, b"test", "test")
 

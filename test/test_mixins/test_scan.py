@@ -1,12 +1,12 @@
 from time import sleep
 
 import pytest
-import redis
 
+from fakeredis._typing import ClientType
 from test.testtools import key_val_dict
 
 
-def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
+def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: ClientType):
     size = 600
     name = "sscan-test"
     all_keys_set = {f"{i}".encode() for i in range(size)}
@@ -27,7 +27,7 @@ def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.
     assert key_to_remove not in keys
 
 
-def test_hscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
+def test_hscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: ClientType):
     size = 600
     name = "hscan-test"
     all_keys_dict = key_val_dict(size=size)
@@ -48,7 +48,7 @@ def test_hscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: redis.
     assert key_to_remove not in keys
 
 
-def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: redis.Redis):
+def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: ClientType):
     size = 30
     all_keys_dict = key_val_dict(size=size)
     assert all(r.set(k, v) for k, v in all_keys_dict.items())
@@ -68,7 +68,7 @@ def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: 
 
 
 # @pytest.mark.xfail # todo
-# def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: redis.Redis):
+# def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: ClientType):
 #     size = 30
 #     all_keys_dict = key_val_dict(size=size)
 #     assert all(r.set(k, v) for k, v in all_keys_dict.items())
@@ -89,7 +89,7 @@ def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: 
 #     assert key_to_remove in keys
 
 
-def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
+def test_scan_add_key_while_scanning_should_return_all_keys(r: ClientType):
     size = 30
     all_keys_dict = key_val_dict(size=size)
     assert all(r.set(k, v) for k, v in all_keys_dict.items())
@@ -106,7 +106,7 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: redis.Redis):
     assert len(keys) >= size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
 
 
-def test_scan(r: redis.Redis):
+def test_scan(r: ClientType):
     # Set up the data
     for ix in range(20):
         k = "scan-test:%s" % ix
@@ -140,12 +140,12 @@ def test_scan(r: redis.Redis):
     assert len(set(results)) == 2
 
 
-def test_scan_single(r: redis.Redis):
+def test_scan_single(r: ClientType):
     r.set("foo1", "bar1")
     assert r.scan(match="foo*") == (0, [b"foo1"])
 
 
-def test_scan_iter_single_page(r: redis.Redis):
+def test_scan_iter_single_page(r: ClientType):
     r.set("foo1", "bar1")
     r.set("foo2", "bar2")
     assert set(r.scan_iter(match="foo*")) == {b"foo1", b"foo2"}
@@ -156,13 +156,13 @@ def test_scan_iter_single_page(r: redis.Redis):
     }
 
 
-def test_scan_iter_multiple_pages(r: redis.Redis):
+def test_scan_iter_multiple_pages(r: ClientType):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     assert set(r.scan_iter()) == set(all_keys)
 
 
-def test_scan_iter_multiple_pages_with_match(r: redis.Redis):
+def test_scan_iter_multiple_pages_with_match(r: ClientType):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     # Now add a few keys that don't match the key:<number> pattern.
@@ -172,13 +172,13 @@ def test_scan_iter_multiple_pages_with_match(r: redis.Redis):
     assert actual == set(all_keys)
 
 
-def test_scan_multiple_pages_with_count_arg(r: redis.Redis):
+def test_scan_multiple_pages_with_count_arg(r: ClientType):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     assert set(r.scan_iter(count=1000)) == set(all_keys)
 
 
-def test_scan_all_in_single_call(r: redis.Redis):
+def test_scan_all_in_single_call(r: ClientType):
     all_keys = key_val_dict(size=100)
     assert all(r.set(k, v) for k, v in all_keys.items())
     # Specify way more than the 100 keys we've added.
@@ -188,14 +188,14 @@ def test_scan_all_in_single_call(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_scan_expired_key(r: redis.Redis):
+def test_scan_expired_key(r: ClientType):
     r.set("expiringkey", "value")
     r.pexpire("expiringkey", 1)
     sleep(1)
     assert r.scan()[1] == []
 
 
-def test_scan_stream(r: redis.Redis):
+def test_scan_stream(r: ClientType):
     r.xadd("mystream", {"test": "value"})
     assert r.type("mystream") == b"stream"
     for s in r.scan_iter(_type="STRING"):

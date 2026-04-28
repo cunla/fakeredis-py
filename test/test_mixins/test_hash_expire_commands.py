@@ -2,8 +2,8 @@ import time
 from typing import Optional, Dict
 
 import pytest
-import redis.client
 
+from fakeredis._typing import ClientType
 from test import testtools
 
 pytestmark = []
@@ -40,7 +40,7 @@ pytestmark.extend(
     ],
 )
 def test_hexpire(
-    r: redis.Redis,
+    r: ClientType,
     expiration_seconds: int,
     preset_expiration: Optional[int],
     flags: Dict[str, bool],
@@ -55,7 +55,7 @@ def test_hexpire(
 
 
 @pytest.mark.slow
-def test_hexpire_basic(r: redis.Redis):
+def test_hexpire_basic(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     assert r.hexpire("redis-key", 1, "field1") == [1]
@@ -65,7 +65,7 @@ def test_hexpire_basic(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_hexpire_conditions(r: redis.Redis):
+def test_hexpire_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     assert r.hexpire("redis-key", 2, "field1", xx=True) == [0]
@@ -82,14 +82,14 @@ def test_hexpire_conditions(r: redis.Redis):
     assert r.hexists("redis-key", "field1") is False
 
 
-def test_hexpire_nonexistent_key_or_field(r: redis.Redis):
+def test_hexpire_nonexistent_key_or_field(r: ClientType):
     r.delete("redis-key")
     assert r.hexpire("redis-key", 1, "field1") == [-2]
     r.hset("redis-key", "field1", "value1")
     assert r.hexpire("redis-key", 1, "nonexistent_field") == [-2]
 
 
-def test_hexpire_after_hset(r: redis.Redis):
+def test_hexpire_after_hset(r: ClientType):
     r.delete("redis-key")
     assert r.hexpire("redis-key", 5, "field1") == [-2]
     r.hset("redis-key", "field1", "value1")
@@ -99,7 +99,7 @@ def test_hexpire_after_hset(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_hexpire_multiple_fields(r: redis.Redis):
+def test_hexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
     r.hset(
         "redis-key",
@@ -112,7 +112,7 @@ def test_hexpire_multiple_fields(r: redis.Redis):
     assert r.hexists("redis-key", "field3") is True
 
 
-def test_hpexpire_basic(r: redis.Redis):
+def test_hpexpire_basic(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     assert r.hpexpire("redis-key", 100, "field1") == [1]
@@ -122,7 +122,7 @@ def test_hpexpire_basic(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_hpexpire_conditions(r: redis.Redis):
+def test_hpexpire_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     assert r.hpexpire("redis-key", 1500, "field1", xx=True) == [0]
@@ -139,14 +139,14 @@ def test_hpexpire_conditions(r: redis.Redis):
     assert r.hexists("redis-key", "field1") is False
 
 
-def test_hpexpire_nonexistent_key_or_field(r: redis.Redis):
+def test_hpexpire_nonexistent_key_or_field(r: ClientType):
     r.delete("redis-key")
     assert r.hpexpire("redis-key", 500, "field1") == [-2]
     r.hset("redis-key", "field1", "value1")
     assert r.hpexpire("redis-key", 500, "nonexistent_field") == [-2]
 
 
-def test_hpexpire_multiple_fields(r: redis.Redis):
+def test_hpexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
     r.hset(
         "redis-key",
@@ -159,7 +159,7 @@ def test_hpexpire_multiple_fields(r: redis.Redis):
     assert r.hexists("redis-key", "field3") is True
 
 
-def test_hpexpire_multiple_condition_flags_error(r: redis.Redis):
+def test_hpexpire_multiple_condition_flags_error(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     with pytest.raises(ValueError) as e:
@@ -168,7 +168,7 @@ def test_hpexpire_multiple_condition_flags_error(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_hexpireat_basic(r: redis.Redis):
+def test_hexpireat_basic(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     exp_time = (testtools.current_time() + 1000) // 1000
@@ -178,7 +178,7 @@ def test_hexpireat_basic(r: redis.Redis):
     assert r.hexists("redis-key", "field2") is True
 
 
-def test_hexpireat_conditions(r: redis.Redis):
+def test_hexpireat_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     future_exp_time = testtools.current_time() // 1000 + 20
@@ -190,7 +190,7 @@ def test_hexpireat_conditions(r: redis.Redis):
     assert r.hexists("redis-key", "field1") is False
 
 
-def test_hexpireat_nonexistent_key_or_field(r: redis.Redis):
+def test_hexpireat_nonexistent_key_or_field(r: ClientType):
     r.delete("redis-key")
     future_exp_time = (testtools.current_time() + 1000) // 1000
     assert r.hexpireat("redis-key", future_exp_time, "field1") == [-2]
@@ -198,7 +198,7 @@ def test_hexpireat_nonexistent_key_or_field(r: redis.Redis):
     assert r.hexpireat("redis-key", future_exp_time, "nonexistent_field") == [-2]
 
 
-def test_hexpireat_multiple_fields(r: redis.Redis):
+def test_hexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
     r.hset(
         "redis-key",
@@ -212,7 +212,7 @@ def test_hexpireat_multiple_fields(r: redis.Redis):
     assert r.hexists("redis-key", "field3") is True
 
 
-def test_hexpireat_multiple_condition_flags_error(r: redis.Redis):
+def test_hexpireat_multiple_condition_flags_error(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     exp_time = (testtools.current_time() + 1000) // 1000
@@ -221,7 +221,7 @@ def test_hexpireat_multiple_condition_flags_error(r: redis.Redis):
     assert "Only one of" in str(e)
 
 
-def test_hpexpireat_basic(r: redis.Redis):
+def test_hpexpireat_basic(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     exp_time = testtools.current_time() + 100
@@ -231,7 +231,7 @@ def test_hpexpireat_basic(r: redis.Redis):
     assert r.hexists("redis-key", "field2") is True
 
 
-def test_hpexpireat_conditions(r: redis.Redis):
+def test_hpexpireat_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     future_exp_time = testtools.current_time() + 500
@@ -243,7 +243,7 @@ def test_hpexpireat_conditions(r: redis.Redis):
     assert r.hexists("redis-key", "field1") is False
 
 
-def test_hpexpireat_nonexistent_key_or_field(r: redis.Redis):
+def test_hpexpireat_nonexistent_key_or_field(r: ClientType):
     r.delete("redis-key")
     future_exp_time = testtools.current_time() + 500
     assert r.hpexpireat("redis-key", future_exp_time, "field1") == [-2]
@@ -251,7 +251,7 @@ def test_hpexpireat_nonexistent_key_or_field(r: redis.Redis):
     assert r.hpexpireat("redis-key", future_exp_time, "nonexistent_field") == [-2]
 
 
-def test_hpexpireat_multiple_fields(r: redis.Redis):
+def test_hpexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
     r.hset(
         "redis-key",
@@ -265,7 +265,7 @@ def test_hpexpireat_multiple_fields(r: redis.Redis):
     assert r.hexists("redis-key", "field3") is True
 
 
-def test_hpexpireat_multiple_condition_flags_error(r: redis.Redis):
+def test_hpexpireat_multiple_condition_flags_error(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1"})
     exp_time = testtools.current_time() + 500
@@ -274,19 +274,19 @@ def test_hpexpireat_multiple_condition_flags_error(r: redis.Redis):
     assert "Only one of" in str(e)
 
 
-def test_hpersist_multiple_fields(r: redis.Redis):
+def test_hpersist_multiple_fields(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     r.hexpire("redis-key", 5000, "field1")
     assert r.hpersist("redis-key", "field1", "field2", "field3") == [1, -1, -2]
 
 
-def test_hpersist_nonexistent_key(r: redis.Redis):
+def test_hpersist_nonexistent_key(r: ClientType):
     r.delete("redis-key")
     assert r.hpersist("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
 
 
-def test_hexpiretime_multiple_fields_mixed_conditions(r: redis.Redis):
+def test_hexpiretime_multiple_fields_mixed_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     future_time = testtools.current_time() // 1000 + 30 * 60
@@ -296,12 +296,12 @@ def test_hexpiretime_multiple_fields_mixed_conditions(r: redis.Redis):
     assert result[1:] == [-1, -2]
 
 
-def test_hexpiretime_nonexistent_key(r: redis.Redis):
+def test_hexpiretime_nonexistent_key(r: ClientType):
     r.delete("redis-key")
     assert r.hexpiretime("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
 
 
-def test_hpexpiretime_multiple_fields_mixed_conditions(r: redis.Redis):
+def test_hpexpiretime_multiple_fields_mixed_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     future_time = testtools.current_time() // 1000 + 30 * 60
@@ -311,12 +311,12 @@ def test_hpexpiretime_multiple_fields_mixed_conditions(r: redis.Redis):
     assert result[1:] == [-1, -2]
 
 
-def test_hpexpiretime_nonexistent_key(r: redis.Redis):
+def test_hpexpiretime_nonexistent_key(r: ClientType):
     r.delete("redis-key")
     assert r.hpexpiretime("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
 
 
-def test_httl_multiple_fields_mixed_conditions(r: redis.Redis):
+def test_httl_multiple_fields_mixed_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     future_time = testtools.current_time() // 1000 + 30 * 60
@@ -326,12 +326,12 @@ def test_httl_multiple_fields_mixed_conditions(r: redis.Redis):
     assert result[1:] == [-1, -2]
 
 
-def test_httl_nonexistent_key(r: redis.Redis):
+def test_httl_nonexistent_key(r: ClientType):
     r.delete("redis-key")
     assert r.httl("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
 
 
-def test_hpttl_multiple_fields_mixed_conditions(r: redis.Redis):
+def test_hpttl_multiple_fields_mixed_conditions(r: ClientType):
     r.delete("redis-key")
     r.hset("redis-key", mapping={"field1": "value1", "field2": "value2"})
     future_time = testtools.current_time() // 1000 + 30 * 60
@@ -341,12 +341,12 @@ def test_hpttl_multiple_fields_mixed_conditions(r: redis.Redis):
     assert result[1:] == [-1, -2]
 
 
-def test_hpttl_nonexistent_key(r: redis.Redis):
+def test_hpttl_nonexistent_key(r: ClientType):
     r.delete("redis-key")
     assert r.hpttl("redis-key", "field1", "field2", "field3") == [-2, -2, -2]
 
 
-def test_hincrby_with_hash_key_expiration(r: redis.Redis):
+def test_hincrby_with_hash_key_expiration(r: ClientType):
     r.hincrby("foo", "counter")
     r.hexpire("foo", 10, "counter")
     assert r.hincrby("foo", "counter") == 2
@@ -357,11 +357,11 @@ def test_hincrby_with_hash_key_expiration(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="7.4")
-def test_hexpire_empty_key(r: redis.Redis):
+def test_hexpire_empty_key(r: ClientType):
     testtools.raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 
 
-def test_hincrbyfloat_with_hash_key_expiration(r: redis.Redis):
+def test_hincrbyfloat_with_hash_key_expiration(r: ClientType):
     r.hincrbyfloat("foo", "counter", 1.0)
     r.hexpire("foo", 10, "counter")
     assert r.hincrbyfloat("foo", "counter", 2.0) == 3.0

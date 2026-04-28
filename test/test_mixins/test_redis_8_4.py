@@ -2,8 +2,9 @@ import time
 from datetime import datetime, timedelta
 
 import pytest
-import redis
 from redis import exceptions
+
+from fakeredis._typing import ClientType
 
 pytest.importorskip("jsonpath_ng")
 try:
@@ -28,7 +29,7 @@ def redis_server_time(client):
     return datetime.fromtimestamp(timestamp)
 
 
-def test_msetex_no_expiration_with_cluster_client(r: redis.Redis):
+def test_msetex_no_expiration_with_cluster_client(r: ClientType):
     all_test_keys = ["1:{test:1}", "2:{test:1}"]
     for key in all_test_keys:
         r.delete(key)
@@ -40,7 +41,7 @@ def test_msetex_no_expiration_with_cluster_client(r: redis.Redis):
     assert r.ttl("2:{test:1}") == -1
 
 
-def test_msetex_expiration_ex_and_keepttl_with_cluster_client(r: redis.Redis):
+def test_msetex_expiration_ex_and_keepttl_with_cluster_client(r: ClientType):
     all_test_keys = ["1:{test:1}", "2:{test:1}"]
     for key in all_test_keys:
         r.delete(key)
@@ -64,7 +65,7 @@ def test_msetex_expiration_ex_and_keepttl_with_cluster_client(r: redis.Redis):
     assert r.ttl("1:{test:1}") < 10
 
 
-def test_msetex_expiration_px_with_cluster_client(r: redis.Redis):
+def test_msetex_expiration_px_with_cluster_client(r: ClientType):
     all_test_keys = ["1:{test:1}", "2:{test:1}"]
     for key in all_test_keys:
         r.delete(key)
@@ -80,7 +81,7 @@ def test_msetex_expiration_px_with_cluster_client(r: redis.Redis):
     assert r.mget(*mapping.keys()) == [b"1", b"2"]
 
 
-def test_msetex_expiration_pxat_and_nx_with_cluster_client(r: redis.Redis):
+def test_msetex_expiration_pxat_and_nx_with_cluster_client(r: ClientType):
     all_test_keys = [
         "1:{test:1}",
         "2:{test:1}",
@@ -134,7 +135,7 @@ def test_msetex_expiration_pxat_and_nx_with_cluster_client(r: redis.Redis):
     ]
 
 
-def test_msetex_expiration_exat_and_xx_with_cluster_client(r: redis.Redis):
+def test_msetex_expiration_exat_and_xx_with_cluster_client(r: ClientType):
     all_test_keys = ["1:{test:1}", "2:{test:1}", "3:{test:1}", "new:{test:1}"]
     for key in all_test_keys:
         r.delete(key)
@@ -178,7 +179,7 @@ def test_msetex_expiration_exat_and_xx_with_cluster_client(r: redis.Redis):
     ]
 
 
-def test_msetex_no_expiration(r: redis.Redis):
+def test_msetex_no_expiration(r: ClientType):
     all_test_keys = ["1", "2"]
     for key in all_test_keys:
         r.delete(key)
@@ -190,7 +191,7 @@ def test_msetex_no_expiration(r: redis.Redis):
     assert r.ttl("2") == -1
 
 
-def test_msetex_expiration_ex_and_keepttl(r: redis.Redis):
+def test_msetex_expiration_ex_and_keepttl(r: ClientType):
     all_test_keys = ["1", "2"]
     for key in all_test_keys:
         r.delete(key)
@@ -214,7 +215,7 @@ def test_msetex_expiration_ex_and_keepttl(r: redis.Redis):
     assert r.ttl("1") < 10
 
 
-def test_msetex_expiration_px(r: redis.Redis):
+def test_msetex_expiration_px(r: ClientType):
     all_test_keys = ["1", "2"]
     for key in all_test_keys:
         r.delete(key)
@@ -230,7 +231,7 @@ def test_msetex_expiration_px(r: redis.Redis):
     assert r.mget(*mapping.keys()) == [b"1", b"2"]
 
 
-def test_msetex_expiration_pxat_and_nx(r: redis.Redis):
+def test_msetex_expiration_pxat_and_nx(r: ClientType):
     all_test_keys = ["1", "2", "3", "new", "new_2"]
     for key in all_test_keys:
         r.delete(key)
@@ -277,7 +278,7 @@ def test_msetex_expiration_pxat_and_nx(r: redis.Redis):
     ]
 
 
-def test_msetex_expiration_exat_and_xx(r: redis.Redis):
+def test_msetex_expiration_exat_and_xx(r: ClientType):
     all_test_keys = ["1", "2", "3", "new"]
     for key in all_test_keys:
         r.delete(key)
@@ -321,37 +322,37 @@ def test_msetex_expiration_exat_and_xx(r: redis.Redis):
     ]
 
 
-def test_msetex_invalid_ex_and_keepttl(r: redis.Redis):
+def test_msetex_invalid_ex_and_keepttl(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", 2, "1", 1, "2", 2, "EX", 10, "KEEPTTL")
     assert str(excinfo.value) == "syntax error"
 
 
-def test_msetex_invalid_ex(r: redis.Redis):
+def test_msetex_invalid_ex(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", 2, "1", 1, "2", 2, "EX", -1)
     assert str(excinfo.value) == "invalid expire time in 'msetex' command"
 
 
-def test_msetex_invalid_nx_and_xx(r: redis.Redis):
+def test_msetex_invalid_nx_and_xx(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", 2, "1", 1, "2", 2, "EX", 10, "XX", "NX")
     assert str(excinfo.value) == "syntax error"
 
 
-def test_msetex_invalid_wrong_number_of_keys(r: redis.Redis):
+def test_msetex_invalid_wrong_number_of_keys(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", 1, "1", 1, "2", 2, "EX", 10, "XX", "NX")
     assert str(excinfo.value) == "syntax error"
 
 
-def test_msetex_invalid_negative_number_of_keys(r: redis.Redis):
+def test_msetex_invalid_negative_number_of_keys(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", -1, "1", 1, "2", 2, "EX", 10, "XX", "NX")
     assert str(excinfo.value) == "invalid numkeys value"
 
 
-def test_msetex_invalid_less_keys(r: redis.Redis):
+def test_msetex_invalid_less_keys(r: ClientType):
     with pytest.raises(exceptions.ResponseError) as excinfo:
         raw_command(r, "MSETEX", 5, "1", 1, "2", 2)
     assert str(excinfo.value) == "wrong number of key-value pairs"

@@ -11,6 +11,7 @@ import valkey
 from redis.client import PubSub
 
 import fakeredis
+from fakeredis._typing import ClientType
 from .. import testtools
 from ..testtools import resp_conversion
 
@@ -36,7 +37,7 @@ def make_message(_type, channel, data, pattern=None):
     }
 
 
-def test_ping_pubsub(r: redis.Redis):
+def test_ping_pubsub(r: ClientType):
     p = r.pubsub()
     p.subscribe("channel")
     p.parse_response()  # Consume the subscribe command reply
@@ -47,7 +48,7 @@ def test_ping_pubsub(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_subscribe(r: redis.Redis):
+def test_pubsub_subscribe(r: ClientType):
     pubsub = r.pubsub()
     pubsub.subscribe("channel")
     sleep(1)
@@ -64,7 +65,7 @@ def test_pubsub_subscribe(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_numpat(r: redis.Redis):
+def test_pubsub_numpat(r: ClientType):
     p = r.pubsub()
     p.psubscribe("*oo", "*ar", "b*z")
     for i in range(3):
@@ -73,7 +74,7 @@ def test_pubsub_numpat(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_psubscribe(r: redis.Redis):
+def test_pubsub_psubscribe(r: ClientType):
     pubsub = r.pubsub()
     pubsub.psubscribe("channel.*")
     sleep(1)
@@ -86,7 +87,7 @@ def test_pubsub_psubscribe(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_unsubscribe(r: redis.Redis):
+def test_pubsub_unsubscribe(r: ClientType):
     pubsub = r.pubsub()
     pubsub.subscribe("channel-1", "channel-2", "channel-3")
     sleep(1)
@@ -114,7 +115,7 @@ def test_pubsub_unsubscribe(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_punsubscribe(r: redis.Redis):
+def test_pubsub_punsubscribe(r: ClientType):
     pubsub = r.pubsub()
     pubsub.psubscribe("channel-1.*", "channel-2.*", "channel-3.*")
     sleep(1)
@@ -141,7 +142,7 @@ def test_pubsub_punsubscribe(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_listen(r: redis.Redis):
+def test_pubsub_listen(r: ClientType):
     def _listen(pubsub, q):
         count = 0
         for message in pubsub.listen():
@@ -179,7 +180,7 @@ def test_pubsub_listen(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_listen_handler(r: redis.Redis):
+def test_pubsub_listen_handler(r: ClientType):
     def _handler(message):
         calls.append(message)
 
@@ -210,7 +211,7 @@ def test_pubsub_listen_handler(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_ignore_sub_messages_listen(r: redis.Redis):
+def test_pubsub_ignore_sub_messages_listen(r: ClientType):
     def _listen(pubsub, q):
         count = 0
         for message in pubsub.listen():
@@ -252,7 +253,7 @@ def test_pubsub_ignore_sub_messages_listen(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_binary(r: redis.Redis):
+def test_pubsub_binary(r: ClientType):
     def _listen(pubsub, q):
         for message in pubsub.listen():
             q.put(message)
@@ -274,7 +275,7 @@ def test_pubsub_binary(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_pubsub_run_in_thread(r: redis.Redis):
+def test_pubsub_run_in_thread(r: ClientType):
     q = Queue()
 
     pubsub = r.pubsub()
@@ -344,14 +345,14 @@ def test_socket_cleanup_pubsub(fake_server):
     r2.publish("test", "foo")
 
 
-def test_pubsub_channels(r: redis.Redis):
+def test_pubsub_channels(r: ClientType):
     p = r.pubsub()
     p.subscribe("foo", "bar", "baz", "test")
     expected = {b"foo", b"bar", b"baz", b"test"}
     assert set(r.pubsub_channels()) == expected
 
 
-def test_pubsub_channels_pattern(r: redis.Redis):
+def test_pubsub_channels_pattern(r: ClientType):
     p = r.pubsub()
     p.subscribe("foo", "bar", "baz", "test")
     assert set(r.pubsub_channels("b*")) == {
@@ -360,7 +361,7 @@ def test_pubsub_channels_pattern(r: redis.Redis):
     }
 
 
-def test_pubsub_no_subcommands(r: redis.Redis):
+def test_pubsub_no_subcommands(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "PUBSUB")
 
@@ -368,7 +369,7 @@ def test_pubsub_no_subcommands(r: redis.Redis):
 
 
 @pytest.mark.supported_redis_versions(min_ver="7.1")
-def test_pubsub_help_redis71(r: redis.Redis):
+def test_pubsub_help_redis71(r: ClientType):
     assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"CHANNELS [<pattern>]",
@@ -387,7 +388,7 @@ def test_pubsub_help_redis71(r: redis.Redis):
     ]
 
 
-def test_pubsub_numsub(r: redis.Redis):
+def test_pubsub_numsub(r: ClientType):
     a = uuid.uuid4().hex
     b = uuid.uuid4().hex
     c = uuid.uuid4().hex
@@ -408,7 +409,7 @@ def test_pubsub_numsub(r: redis.Redis):
 
 @pytest.mark.supported_redis_versions(min_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
-def test_published_message_to_shard_channel(r: redis.Redis):
+def test_published_message_to_shard_channel(r: ClientType):
     p = r.pubsub()
     p.ssubscribe("foo")
     assert wait_for_message(p) == make_message("ssubscribe", "foo", 1)
@@ -421,7 +422,7 @@ def test_published_message_to_shard_channel(r: redis.Redis):
 
 @pytest.mark.supported_redis_versions(min_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
-def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
+def test_subscribe_property_with_shard_channels_cluster(r: ClientType):
     p = r.pubsub()
     keys = ["foo", "bar", "uni" + chr(4456) + "code"]
     assert p.subscribed is False
@@ -467,7 +468,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: redis.Redis):
 
 @pytest.mark.supported_redis_versions(min_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0")
-def test_pubsub_shardnumsub(r: redis.Redis):
+def test_pubsub_shardnumsub(r: ClientType):
     channels = {b"foo", b"bar", b"baz"}
     p1 = r.pubsub()
     p1.ssubscribe(*channels)
@@ -487,7 +488,7 @@ def test_pubsub_shardnumsub(r: redis.Redis):
 
 @pytest.mark.supported_redis_versions(min_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
-def test_pubsub_shardchannels(r: redis.Redis):
+def test_pubsub_shardchannels(r: ClientType):
     p = r.pubsub()
     p.ssubscribe("foo", "bar", "baz", "quux")
     for i in range(4):
