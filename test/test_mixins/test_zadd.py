@@ -37,7 +37,7 @@ def test_zadd_empty(r: redis.Redis):
     assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_zadd_minus_zero_redis7(r: redis.Redis):
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})

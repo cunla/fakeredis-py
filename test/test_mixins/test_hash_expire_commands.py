@@ -10,7 +10,7 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
-        pytest.mark.min_redis_version("7.1"),
+        pytest.mark.supported_redis_versions(min_ver="7.1"),
     ]
 )
 
@@ -356,7 +356,7 @@ def test_hincrby_with_hash_key_expiration(r: redis.Redis):
     assert res[0] >= 0
 
 
-@pytest.mark.min_redis_version("7.4")
+@pytest.mark.supported_redis_versions(min_ver="7.4")
 def test_hexpire_empty_key(r: redis.Redis):
     testtools.raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
 

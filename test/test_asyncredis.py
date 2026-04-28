@@ -164,7 +164,7 @@ class TestScripts:
             await async_redis.evalsha("0123456789abcdef0123456789abcdef", 0)
         assert isinstance(exc_info.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
 
-    @pytest.mark.max_redis_version("6.2.7")
+    @pytest.mark.supported_redis_versions(max_ver="6.2.7")
     async def test_failed_script_error6(self, async_redis):
         await async_redis.set("foo", "bar")
         with pytest.raises(Exception, match="^Error running script") as ctx:
@@ -172,7 +172,7 @@ class TestScripts:
 
         assert isinstance(ctx.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
-    @pytest.mark.min_redis_version("7")
+    @pytest.mark.supported_redis_versions(min_ver="7")
     async def test_failed_script_error7(self, async_redis):
         await async_redis.set("foo", "bar")
         with pytest.raises(Exception) as exc_info:

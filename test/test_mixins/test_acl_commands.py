@@ -11,7 +11,7 @@ from test.testtools import resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_redis_version("7"),
+        pytest.mark.supported_redis_versions(min_ver="7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.unsupported_server_types("dragonfly"),
     ]
@@ -29,11 +29,12 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "hgetdel",
     "msetex",
     "xcfgset",
+    "hgetex",
+    "hsetex",
 }
 
 
-@pytest.mark.min_redis_version("8.4")
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.supported_redis_versions(min_ver="8.4")
 def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
@@ -48,7 +49,7 @@ def test_acl_cat(r: redis.Redis, real_server_details: ServerDetails):
         commands = {cmd.decode() for cmd in commands}
         assert len(commands) >= 0
         commands.discard("hpersist")
-        if real_server_details[0] == "valkey":
+        if real_server_details.server_type == "valkey":
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
         commands = {asbytes(cmd.replace(" ", "|")) for cmd in commands}
         server_commands = r.acl_cat(cat)

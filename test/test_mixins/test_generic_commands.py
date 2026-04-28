@@ -39,7 +39,7 @@ def test_expireat_should_return_false_for_missing_key(r: redis.Redis):
     assert r.expireat("missing", int(time() + 1)) is False
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expireat_should_not_expire_when_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -131,7 +131,7 @@ def test_sort_foo(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_sort_ro(r: redis.Redis):
     r["score:1"] = 8
     r["score:2"] = 3
@@ -143,14 +143,14 @@ def test_sort_ro(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expiretime(r: redis.Redis):
     r.set("a", "foo")
     r.expireat("a", 33_177_117_420)
     assert r.expiretime("a") == 33_177_117_420
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expiretime_dragonfly(r: redis.Redis):
     r.set("a", "foo")
     r.expire("a", 5)
@@ -158,7 +158,7 @@ def test_expiretime_dragonfly(r: redis.Redis):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_pexpiretime(r: redis.Redis):
     r.set("a", "foo")
     r.pexpireat("a", 33_177_117_420_000)
@@ -376,7 +376,7 @@ def test_expire_should_throw_error(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("6.9")
+@pytest.mark.supported_redis_versions(max_ver="6.9")
 def test_expire_extra_params_return_error(r: redis.Redis):
     with pytest.raises(redis.exceptions.ResponseError) as ctx:
         r.expire("foo", 1, nx=True)
@@ -559,14 +559,14 @@ def test_set_float_value(r: redis.Redis):
     assert float(r.get("foo")) == x
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expire_should_not_expire__when_no_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
     assert r.expire("foo", 1, xx=True) == 0
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expire_should_not_expire__when_expire_is_set(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -574,7 +574,7 @@ def test_expire_should_not_expire__when_expire_is_set(r: redis.Redis):
     assert r.expire("foo", 2, nx=True) == 0
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expire_should_expire__when_expire_is_greater(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -583,7 +583,7 @@ def test_expire_should_expire__when_expire_is_greater(r: redis.Redis):
     assert r.expire("foo", 200, gt=True) == 1
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_expire_should_expire__when_expire_is_lessthan(r: redis.Redis):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -721,7 +721,7 @@ def test_key_patterns(r: redis.Redis):
     assert sorted(r.keys()) == [b"four", b"one", b"three", b"two"]
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_watch_when_setbit_does_not_change_value(r: redis.Redis):
     r.set("foo", b"0")
 
@@ -742,7 +742,7 @@ def test_from_hypothesis_redis7(r: redis.Redis):
     assert r.get(b"") == b"\x00"
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_copy_preserves_expiry(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -761,7 +761,7 @@ def test_copy_replaces(r: redis.Redis):
     assert r.get("bar") == b"0"
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_copy_replaces_with_expiry(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -775,7 +775,7 @@ def test_copy_replaces_with_expiry(r: redis.Redis):
     assert r.expiretime("bar") == 33177117420
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_copy_db_replaces_with_expire(r: redis.Redis):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)

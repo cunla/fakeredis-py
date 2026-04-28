@@ -39,7 +39,7 @@ def test_time(r, mocker):
     assert r.time() == (1234567891, 0)
 
 
-# @pytest.mark.min_redis_version("7")
+# @pytest.mark.supported_redis_versions(min_ver="7")
 # @pytest.mark.unsupported_server_types("dragonfly")
 # def test_hello(r: redis.Redis):
 #     client_info = r.client_info()
@@ -55,7 +55,7 @@ def test_time(r, mocker):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_client_list(r: redis.Redis):
     client_info = r.client_info()
     client_id = client_info["id"]
@@ -75,7 +75,7 @@ def test_client_list(r: redis.Redis):
     assert len(client_list) == 0
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: redis.Redis):

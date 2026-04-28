@@ -11,7 +11,7 @@ from test.testtools import redis_server_time, REDIS_PY_VERSION
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_redis_version("7.9"),
+        pytest.mark.supported_redis_versions(min_ver="7.9"),
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
         testtools.run_test_if_redispy_ver("gte", "5.9"),
     ]

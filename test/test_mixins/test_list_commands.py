@@ -203,7 +203,7 @@ def test_lpop_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.min_redis_version("6.2")
+@pytest.mark.supported_redis_versions(min_ver="6.2")
 def test_lpop_count(r: redis.Redis):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
@@ -214,7 +214,7 @@ def test_lpop_count(r: redis.Redis):
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
-@pytest.mark.min_redis_version("6.2")
+@pytest.mark.supported_redis_versions(min_ver="6.2")
 def test_lpop_count_negative(r: redis.Redis):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "lpop", "foo", -1)
@@ -343,7 +343,7 @@ def test_rpop_wrong_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.min_redis_version("6.2")
+@pytest.mark.supported_redis_versions(min_ver="6.2")
 def test_rpop_count(r: redis.Redis):
     assert r.rpush("foo", "one") == 1
     assert r.rpush("foo", "two") == 2
@@ -354,7 +354,7 @@ def test_rpop_count(r: redis.Redis):
     assert raw is None or raw == []  # https://github.com/redis/redis/pull/10095
 
 
-@pytest.mark.min_redis_version("6.2")
+@pytest.mark.supported_redis_versions(min_ver="6.2")
 def test_rpop_count_negative(r: redis.Redis):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "rpop", "foo", -1)
@@ -702,7 +702,7 @@ def test_lpos(r: redis.Redis):
     assert r.lpos("a", "c", count=0, maxlen=7, rank=2) == [6]
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_blmpop(r: redis.Redis):
     r.rpush("a", "1", "2", "3", "4", "5")
     res = [b"a", [b"1", b"2"]]
@@ -714,7 +714,7 @@ def test_blmpop(r: redis.Redis):
     assert r.blmpop(1, "2", "foo", "bar", direction="RIGHT") is None
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_lmpop(r: redis.Redis):
     r.rpush("foo", "1", "2", "3", "4", "5")
     result = [b"foo", [b"1", b"2"]]

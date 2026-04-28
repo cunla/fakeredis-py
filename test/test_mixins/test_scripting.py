@@ -17,7 +17,7 @@ from test.testtools import raw_command
 _ = pytest.importorskip("lupa")
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 def test_script_exists_redis7(r: redis.Redis):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
@@ -66,7 +66,7 @@ def test_script_no_subcommands(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("6.9")
+@pytest.mark.supported_redis_versions(max_ver="6.9")
 def test_script_help(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
@@ -89,7 +89,7 @@ def test_script_help(r: redis.Redis):
     ]
 
 
-@pytest.mark.min_redis_version("7.1")
+@pytest.mark.supported_redis_versions(min_ver="7.1")
 @pytest.mark.unsupported_server_types("valkey")
 def test_script_help73(r: redis.Redis):
     assert raw_command(r, "SCRIPT HELP") == [
@@ -113,7 +113,7 @@ def test_script_help73(r: redis.Redis):
     ]
 
 
-@pytest.mark.max_redis_version("7.1")
+@pytest.mark.supported_redis_versions(max_ver="7.1")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_eval_blpop(r: redis.Redis):
     r.rpush("foo", "bar")
@@ -331,7 +331,7 @@ def test_eval_convert_bool(r: redis.Redis):
     assert not isinstance(val, bool)
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 @pytest.mark.unsupported_server_types("valkey")
 def test_eval_call_bool7_redis(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call
@@ -341,7 +341,7 @@ def test_eval_call_bool7_redis(r: redis.Redis):
     assert "Lua redis lib command arguments must be strings or integers" in str(exc_info.value)
 
 
-@pytest.mark.min_redis_version("7")
+@pytest.mark.supported_redis_versions(min_ver="7")
 @pytest.mark.unsupported_server_types("redis")
 def test_eval_call_bool7_valkey(r: redis.Redis):
     # Redis doesn't allow Lua bools to be passed to [p]call

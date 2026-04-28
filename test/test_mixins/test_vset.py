@@ -17,7 +17,7 @@ from redis.commands.vectorset.commands import QuantizationOptions
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_redis_version("8"),
+        pytest.mark.supported_redis_versions(min_ver="8"),
     ]
 )
 
@@ -818,7 +818,7 @@ def _validate_quantization(original, quantized, tolerance=0.1):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_redis_version("8.4")
+@pytest.mark.supported_redis_versions(min_ver="8.4")
 def test_vrange_basic(r: redis.Redis):
     """Test basic VRANGE functionality with lexicographical ordering."""
     # Add elements with different names
@@ -841,7 +841,7 @@ def test_vrange_basic(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_redis_version("8.4")
+@pytest.mark.supported_redis_versions(min_ver="8.4")
 def test_vrange_error(r: redis.Redis):
     r.set("not_a_vset", "some_value")
     with pytest.raises(Exception) as excinfo:
@@ -854,7 +854,7 @@ def test_vrange_error(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_redis_version("8.4")
+@pytest.mark.supported_redis_versions(min_ver="8.4")
 def test_vrange_with_count(r: redis.Redis):
     """Test VRANGE with count parameter."""
     # Add elements
