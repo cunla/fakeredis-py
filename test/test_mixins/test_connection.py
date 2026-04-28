@@ -40,21 +40,6 @@ def test_time(r, mocker):
     assert r.time() == (1234567891, 0)
 
 
-# @pytest.mark.supported_redis_versions(min_ver="7")
-# @pytest.mark.unsupported_server_types("dragonfly")
-# def test_hello(r: ClientType):
-#     client_info = r.client_info()
-#     protocol = int(client_info.get("resp"))
-#     if protocol == 2:
-#         return
-#     assert r.hello() == {
-#         "server": "fakeredis",
-#         "version": "1.0.0",
-#         "proto": 2,
-#         "id": 1,
-#     }
-
-
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_redis_versions(min_ver="7")
 def test_client_list(r: ClientType):
