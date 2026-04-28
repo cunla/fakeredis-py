@@ -3,13 +3,14 @@ import redis
 import redis.client
 import valkey
 
+from fakeredis._typing import ClientType
 from test import testtools
 from test.test_mixins.test_streams_commands import get_stream_message
 from test.testtools import raw_command
 
 
-@pytest.mark.max_redis_version("6.2.7")
-def test_bitcount_mode_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_bitcount_mode_redis6(r: ClientType):
     r.set("key", "foobar")
     with pytest.raises(Exception) as ctx:
         r.bitcount("key", start=1, end=1, mode="byte")
@@ -23,8 +24,8 @@ def test_bitcount_mode_redis6(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("6.2.7")
-def test_bitops_mode_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_bitops_mode_redis6(r: ClientType):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")
     with pytest.raises(Exception) as ctx:
@@ -33,15 +34,15 @@ def test_bitops_mode_redis6(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("7.2")
+@pytest.mark.supported_redis_versions(max_ver="7.2")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
-def test_bitcount_error_v6(r: redis.Redis):
+def test_bitcount_error_v6(r: ClientType):
     r = raw_command(r, b"BITCOUNT", b"", b"", b"")
     assert r == 0
 
 
-@pytest.mark.max_redis_version("6.2.7")
-def test_pubsub_help_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_pubsub_help_redis6(r: ClientType):
     assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
         b"CHANNELS [<pattern>]",
@@ -56,8 +57,8 @@ def test_pubsub_help_redis6(r: redis.Redis):
     ]
 
 
-@pytest.mark.max_redis_version("6.2.7")
-def test_script_exists_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_script_exists_redis6(r: ClientType):
     # test response for no arguments by bypassing the py-redis command
     # as it requires at least one argument
     assert raw_command(r, "SCRIPT EXISTS") == []
@@ -77,9 +78,9 @@ def test_script_exists_redis6(r: redis.Redis):
     assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
 
 
-@pytest.mark.max_redis_version("6.3")
+@pytest.mark.supported_redis_versions(max_ver="6.3")
 @testtools.run_test_if_redispy_ver("gte", "4.4")
-def test_xautoclaim_redis6(r: redis.Redis):
+def test_xautoclaim_redis6(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
 
     message_id1 = r.xadd(stream, {"john": "wick"})
@@ -107,9 +108,8 @@ def test_xautoclaim_redis6(r: redis.Redis):
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.min_redis_version("6.2")
-@pytest.mark.max_redis_version("6.2.7")
-def test_set_get_nx_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="6.2", max_ver="6.2.7")
+def test_set_get_nx_redis6(r: ClientType):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
     with pytest.raises(Exception) as ctx:
         raw_command(r, "set", "foo", "bar", "NX", "GET")
@@ -117,16 +117,16 @@ def test_set_get_nx_redis6(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.max_redis_version("6.2.7")
-def test_zadd_minus_zero_redis6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_zadd_minus_zero_redis6(r: ClientType):
     # Changing -0 to +0 is ignored
     r.zadd("foo", {"a": -0.0})
     r.zadd("foo", {"a": 0.0})
     assert raw_command(r, "zscore", "foo", "a") == b"-0"
 
 
-@pytest.mark.max_redis_version("6.3")
-def test_xgroup_create_connection6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.3")
+def test_xgroup_create_connection6(r: ClientType):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
     r.xgroup_create(stream, group, message_id)
@@ -140,8 +140,8 @@ def test_xgroup_create_connection6(r: redis.Redis):
 
 
 @testtools.run_test_if_lupa_installed()
-@pytest.mark.max_redis_version("6.2.7")
-def test_eval_call_bool6(r: redis.Redis):
+@pytest.mark.supported_redis_versions(max_ver="6.2.7")
+def test_eval_call_bool6(r: ClientType):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(Exception, match=r"Lua redis\(\) command arguments must be strings or integers") as ctx:
         r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
