@@ -847,7 +847,7 @@ def test_info(r: redis.Redis):
     assert info["labels"]["currentLabel"] == "currentData"
 
 
-@pytest.mark.supported_redis_versions(max_ver="7.5")
+@pytest.mark.supported_redis_versions(min_ver="7", max_ver="7.5")
 def testInfoDuplicatePolicy(r: redis.Redis):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
