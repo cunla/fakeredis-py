@@ -1,6 +1,7 @@
 import pytest
 import redis
 import redis.asyncio
+import valkey
 
 from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
 from test import testtools
@@ -24,16 +25,19 @@ pytestmark.extend(
 @fake_only
 @pytest.mark.disconnected
 async def test_not_connected(async_redis: redis.asyncio.Redis):
-    with pytest.raises(redis.asyncio.ConnectionError):
+    with pytest.raises(Exception) as ctx:
         await async_redis.ping()
+
+    assert isinstance(ctx.value, (redis.asyncio.ConnectionError, valkey.asyncio.ConnectionError))
 
 
 @fake_only
 async def test_disconnect_server(async_redis, fake_server):
     await async_redis.ping()
     fake_server.connected = False
-    with pytest.raises(redis.asyncio.ConnectionError):
+    with pytest.raises(Exception) as ctx:
         await async_redis.ping()
+    assert isinstance(ctx.value, (redis.asyncio.ConnectionError, valkey.asyncio.ConnectionError))
     fake_server.connected = True
 
 
@@ -80,8 +84,10 @@ async def test_without_server():
 @pytest.mark.fake
 async def test_without_server_disconnected():
     r = aioredis.FakeRedis(connected=False)
-    with pytest.raises(redis.asyncio.ConnectionError):
+    with pytest.raises(Exception) as ctx:
         await r.ping()
+
+    assert isinstance(ctx.value, (redis.asyncio.ConnectionError, valkey.asyncio.ConnectionError))
 
 
 @pytest.mark.fake

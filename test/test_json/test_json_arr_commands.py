@@ -1,5 +1,6 @@
 import pytest
 import redis
+import valkey
 from redis.commands.json.path import Path
 
 from test.testtools import raw_command
@@ -35,9 +36,9 @@ def test_arrlen(r: redis.Redis):
     assert r.json().arrlen("doc1", "$.nested1.a") == [6]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
-
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}})
     # Test multi (return result of last path)
     assert r.json().arrlen("doc1", "$..a") == [1, 3, None]
@@ -51,9 +52,9 @@ def test_arrlen(r: redis.Redis):
 
 
 def test_arrappend(r: redis.Redis):
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrappend("non-existing-key", Path.root_path(), 2)
-
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.json().set("arr", Path.root_path(), [1])
     assert r.json().arrappend("arr", Path.root_path(), 2) == 2
     assert r.json().arrappend("arr", Path.root_path(), 3, 4) == 4
@@ -94,8 +95,9 @@ def test_arrappend(r: redis.Redis):
     ]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_arrindex(r: redis.Redis):
@@ -235,8 +237,9 @@ def test_arrindex(r: redis.Redis):
     assert r.json().arrindex("test_num", ".[0].arr", 3) == 3
     assert r.json().arrindex("test_num", ".[0].arr", 9) == -1
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrindex("test_num", ".[0].arr_not", 3)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test index of string scalar in single value
     assert r.json().arrindex("test_string", ".[0].arr", "baz") == 3
     assert r.json().arrindex("test_string", ".[0].arr", "faz") == -1
@@ -277,8 +280,9 @@ def test_arrinsert(r: redis.Redis):
     ]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrappend("non_existing_doc", "$..a")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_arrpop(r: redis.Redis):
@@ -309,8 +313,10 @@ def test_arrpop(r: redis.Redis):
     assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": ["hello", "world"]}, "nested2": {"a": 31}}]
 
     # # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrpop("non_existing_doc", "..a")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_arrtrim(r: redis.Redis):
@@ -348,9 +354,10 @@ def test_arrtrim(r: redis.Redis):
     assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": []}, "nested2": {"a": 31}}]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrtrim("non_existing_doc", "..a", "0", 1)
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test legacy
     r.json().set("doc1", "$", {"a": ["foo"], "nested1": {"a": ["hello", None, "world"]}, "nested2": {"a": 31}})
 
@@ -362,5 +369,6 @@ def test_arrtrim(r: redis.Redis):
     assert r.json().get("doc1", "$") == [{"a": [], "nested1": {"a": ["world"]}, "nested2": {"a": 31}}]
 
     # Test missing key
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.json().arrtrim("non_existing_doc", "..a", 1, 1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

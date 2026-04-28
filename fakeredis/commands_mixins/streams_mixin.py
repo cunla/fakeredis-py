@@ -76,7 +76,7 @@ class StreamsCommandsMixin:
         return self._xrange(key.value, _max, _min, True, count)
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
-    def xread(self, *args: bytes) -> Optional[Dict[str, Any]]:
+    def xread(self, *args: bytes) -> Union[None, Dict[bytes, Any], List[List[Any]]]:
         ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -99,7 +99,7 @@ class StreamsCommandsMixin:
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
         self, group_const: bytes, group_name: bytes, consumer_name: bytes, *args: bytes
-    ) -> Optional[List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+    ) -> Optional[Union[Dict[bytes, Any], List[List[Any]]]]:
         if not casematch(b"GROUP", group_const):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         (count, timeout, noack), left_args = extract_args(
@@ -152,7 +152,7 @@ class StreamsCommandsMixin:
         return group.ack(args)  # type: ignore
 
     @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
-    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[List[bytes]]]:
+    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[Any]]:
         if key.value is None:
             return 0
         idle, start, end, count, consumer = None, None, None, None, None

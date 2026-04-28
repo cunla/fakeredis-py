@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Any, Dict, Union, Set
+from typing import Iterable, Iterator, Optional, Any, Dict, Union, Set
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
@@ -46,7 +46,7 @@ class ExpiringMembersSet(BaseModel):
         self._expire_members()
         return len(self._values)
 
-    def __iter__(self) -> Iterable[bytes]:
+    def __iter__(self) -> Iterator[bytes]:
         self._expire_members()
         now = current_time()
         return iter({k for k in self._values if (self._values[k] or (now + 1)) >= now})

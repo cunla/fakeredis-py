@@ -59,7 +59,7 @@ class ScalableCuckooFilter(CountingCuckooFilter, BaseModel):
         return False
 
     @classmethod
-    def frombytes(cls, b: ByteString, **kwargs: Any) -> "ScalableCuckooFilter":
+    def frombytes(cls, b: ByteString, **kwargs: Any) -> "ScalableCuckooFilter":  # type: ignore[override]
         base = CountingCuckooFilter.frombytes(b, **kwargs)
         obj = cls.__new__(cls)
         for c in CountingCuckooFilter.__mro__:

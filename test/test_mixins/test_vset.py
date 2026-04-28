@@ -5,23 +5,25 @@ from typing import List
 
 import pytest
 
+from fakeredis._typing import ClientType
 from test import testtools
 
 pytest.importorskip("numpy")
 
 import numpy as np
 import redis
+import valkey
 from redis.commands.vectorset.commands import QuantizationOptions
 
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.min_server("8"),
+        pytest.mark.supported_redis_versions(min_ver="8"),
     ]
 )
 
 
-def test_vgetattr_non_existing_element(r: redis.Redis):
+def test_vgetattr_non_existing_element(r: ClientType):
     # Test vgetattr on a non-existing element
 
     assert r.vset().vgetattr("myset", "non_existing_element") is None
@@ -38,7 +40,7 @@ def test_vgetattr_non_existing_element(r: redis.Redis):
     assert attrs == attrs_dict
 
 
-def test_vadd_same_vector_twice(r: redis.Redis):
+def test_vadd_same_vector_twice(r: ClientType):
     float_array = [1, 4.32, 0.11]
     resp = r.vset().vadd("myset", float_array, "elem1")
     assert resp == 1
@@ -49,7 +51,7 @@ def test_vadd_same_vector_twice(r: redis.Redis):
     assert resp == b"elem1"
 
 
-def test_add_elem_with_values(r: redis.Redis):
+def test_add_elem_with_values(r: ClientType):
     float_array = [1, 4.32, 0.11]
     resp = r.vset().vadd("myset", float_array, "elem1")
     assert resp == 1
@@ -57,14 +59,15 @@ def test_add_elem_with_values(r: redis.Redis):
     emb = r.vset().vemb("myset", "elem1")
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset_invalid_data", None, "elem1")
-
-    with pytest.raises(redis.DataError):
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset_invalid_data", [12, 45], None, reduce_dim=3)
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
-def test_add_elem_with_vector(r: redis.Redis):
+def test_add_elem_with_vector(r: ClientType):
     float_array = [1, 4.32, 0.11]
     # Convert the list of floats to a byte array in fp32 format
     byte_array = _to_fp32_blob_array(float_array)
@@ -75,7 +78,7 @@ def test_add_elem_with_vector(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
-def test_add_elem_reduced_dim(r: redis.Redis):
+def test_add_elem_reduced_dim(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd("myset", float_array, "elem1", reduce_dim=3)
     assert resp == 1
@@ -84,7 +87,7 @@ def test_add_elem_reduced_dim(r: redis.Redis):
     assert dim == 3
 
 
-def test_add_elem_cas(r: redis.Redis):
+def test_add_elem_cas(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
     assert resp == 1
@@ -93,7 +96,7 @@ def test_add_elem_cas(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
-def test_add_elem_no_quant(r: redis.Redis):
+def test_add_elem_no_quant(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.NOQUANT)
     assert resp == 1
@@ -102,7 +105,7 @@ def test_add_elem_no_quant(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.0)
 
 
-def test_add_elem_bin_quant(r: redis.Redis):
+def test_add_elem_bin_quant(r: ClientType):
     float_array = [1, 4.32, 0.0, 0.05, -2.9]
     resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.BIN)
     assert resp == 1
@@ -111,7 +114,7 @@ def test_add_elem_bin_quant(r: redis.Redis):
     assert _validate_quantization([1, 1, -1, 1, -1], emb, tolerance=0.0)
 
 
-def test_add_elem_q8_quant(r: redis.Redis):
+def test_add_elem_q8_quant(r: ClientType):
     float_array = [1, 4.32, 10.0, -21, -2.9]
     resp = r.vset().vadd("myset", vector=float_array, element="elem1", quantization=QuantizationOptions.Q8)
     assert resp == 1
@@ -120,7 +123,7 @@ def test_add_elem_q8_quant(r: redis.Redis):
     assert _validate_quantization(float_array, emb, tolerance=0.1)
 
 
-def test_add_elem_ef(r: redis.Redis):
+def test_add_elem_ef(r: ClientType):
     r.vset().vadd("myset", vector=[5, 55, 65, -20, 30], element="elem1")
     r.vset().vadd("myset", vector=[-40, -40.32, 10.0, -4, 2.9], element="elem2")
 
@@ -135,7 +138,7 @@ def test_add_elem_ef(r: redis.Redis):
     assert len(sim) == 3
 
 
-def test_add_elem_with_attr(r: redis.Redis):
+def test_add_elem_with_attr(r: ClientType):
     float_array = [1, 4.32, 10.0, -21, -2.9]
     attrs_dict = {"key1": "value1", "key2": "value2"}
     resp = r.vset().vadd("myset", vector=float_array, element="elem3", attributes=attrs_dict)
@@ -166,7 +169,7 @@ def test_add_elem_with_attr(r: redis.Redis):
     assert attr_saved == attrs_dict
 
 
-def test_add_elem_with_numlinks(r: redis.Redis):
+def test_add_elem_with_numlinks(r: ClientType):
     elements_count = 100
     vector_dim = 10
     for i in range(elements_count):
@@ -185,7 +188,7 @@ def test_add_elem_with_numlinks(r: redis.Redis):
         assert len(neighbours_list_for_layer) <= 8
 
 
-def test_vsim_count(r: redis.Redis):
+def test_vsim_count(r: ClientType):
     elements_count = 30
     vector_dim = 800
     for i in range(elements_count):
@@ -213,7 +216,7 @@ def test_vsim_count(r: redis.Redis):
     assert isinstance(vsim[0], bytes)
 
 
-def test_vsim_with_scores(r: redis.Redis):
+def test_vsim_with_scores(r: ClientType):
     elements_count = 20
     vector_dim = 50
     for i in range(elements_count):
@@ -227,7 +230,7 @@ def test_vsim_with_scores(r: redis.Redis):
     assert vsim[b"elem1"] >= 0.99
 
 
-def test_vsim_with_different_vector_input_types(r: redis.Redis):
+def test_vsim_with_different_vector_input_types(r: ClientType):
     elements_count = 10
     vector_dim = 5
     for i in range(elements_count):
@@ -249,23 +252,26 @@ def test_vsim_with_different_vector_input_types(r: redis.Redis):
     assert isinstance(sim_to_fp32_vector, list)
     assert sim_to_float_array == sim_to_fp32_vector
 
-    with pytest.raises(redis.DataError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vsim("myset", input=None)
 
+    assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
-def test_vsim_unexisting(r: redis.Redis):
+
+def test_vsim_unexisting(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9]
     r.vset().vadd("myset", vector=float_array, element="elem1", cas=True)
 
-    with pytest.raises(redis.ResponseError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         r.vset().vsim("myset", input="elem_not_existing")
 
+    assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
     assert str(exc_info.value) == "element not found in set"
     sim = r.vset().vsim("myset_not_existing", input="elem1")
     assert sim == []
 
 
-def test_vsim_with_filter(r: redis.Redis):
+def test_vsim_with_filter(r: ClientType):
     elements_count = 50
     vector_dim = 800
     for i in range(elements_count):
@@ -316,7 +322,7 @@ def test_vsim_with_filter(r: redis.Redis):
 
 
 #
-# def test_vsim_truth_no_thread_enabled(r: redis.Redis):
+# def test_vsim_truth_no_thread_enabled(r: ClientType):
 #     elements_count = 5000
 #     vector_dim = 50
 #     for i in range(1, elements_count + 1):
@@ -351,7 +357,7 @@ def test_vsim_with_filter(r: redis.Redis):
 #     assert isinstance(sim_no_thread, dict)
 
 
-def test_vdim(r: redis.Redis):
+def test_vdim(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
     r.vset().vadd("myset", float_array, "elem1")
 
@@ -362,27 +368,31 @@ def test_vdim(r: redis.Redis):
     reduced_dim = r.vset().vdim("myset_reduced")
     assert reduced_dim == 4
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vdim("myset_unexisting")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vdim_errors(r: redis.Redis):
+
+def test_vdim_errors(r: ClientType):
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
     r.vset().vadd("myset", float_array, "elem1")
 
     dim = r.vset().vdim("myset")
     assert dim == len(float_array)
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset", float_array, "elem2", reduce_dim=4)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "cannot add projection to existing set without projection"
 
     float_array = [1, 4.32, 0.11, 0.5, 0.9, 0.1, 0.2]
-    with pytest.raises(redis.ResponseError) as ctx:
+    with pytest.raises(Exception) as ctx:
         r.vset().vadd("myset1", float_array, "elem1", reduce_dim=-4)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert str(ctx.value) == "invalid vector specification"
 
 
-def test_vcard(r: redis.Redis):
+def test_vcard(r: ClientType):
     n = 20
     for i in range(n):
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
@@ -391,11 +401,13 @@ def test_vcard(r: redis.Redis):
     card = r.vset().vcard("myset")
     assert card == n
 
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.vset().vdim("myset_unexisting")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vrem(r: redis.Redis):
+
+def test_vrem(r: ClientType):
     n = 3
     for i in range(n):
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
@@ -418,7 +430,7 @@ def test_vrem(r: redis.Redis):
     assert resp == 0
 
 
-def test_vemb_bin_quantization(r: redis.Redis):
+def test_vemb_bin_quantization(r: ClientType):
     e = [1, 4.32, 0.0, 0.05, -2.9]
     r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.BIN)
     emb_no_quant = r.vset().vemb("myset", "elem")
@@ -432,7 +444,7 @@ def test_vemb_bin_quantization(r: redis.Redis):
     assert "range" not in emb_no_quant_raw
 
 
-def test_vemb_q8_quantization(r: redis.Redis):
+def test_vemb_q8_quantization(r: ClientType):
     e = [1, 10.32, 0.0, 2.05, -12.5]
     r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.Q8)
 
@@ -448,7 +460,7 @@ def test_vemb_q8_quantization(r: redis.Redis):
     assert emb_q8_quant_raw["range"] == pytest.approx(0.76, rel=0.01)
 
 
-def test_vemb_no_quantization(r: redis.Redis):
+def test_vemb_no_quantization(r: ClientType):
     e = [1, 10.32, 0.0, 2.05, -12.5]
     r.vset().vadd("myset", e, "elem", quantization=QuantizationOptions.NOQUANT)
 
@@ -462,7 +474,7 @@ def test_vemb_no_quantization(r: redis.Redis):
     assert "range" not in emb_no_quant_raw
 
 
-def test_vemb_default_quantization(r: redis.Redis):
+def test_vemb_default_quantization(r: ClientType):
     e = [1, 5.32, 0.0, 0.25, -5]
     r.vset().vadd("myset", vector=e, element="elem")
 
@@ -476,7 +488,7 @@ def test_vemb_default_quantization(r: redis.Redis):
     assert isinstance(emb_default_quant_raw["range"], float)
 
 
-def test_vemb_fp32_quantization(r: redis.Redis):
+def test_vemb_fp32_quantization(r: ClientType):
     float_array_fp32 = [1, 4.32, 0.11]
     # Convert the list of floats to a byte array in fp32 format
     byte_array = _to_fp32_blob_array(float_array_fp32)
@@ -492,7 +504,7 @@ def test_vemb_fp32_quantization(r: redis.Redis):
     assert isinstance(emb_fp32_quant_raw["range"], float)
 
 
-def test_vemb_unexisting(r: redis.Redis):
+def test_vemb_unexisting(r: ClientType):
     emb_not_existing = r.vset().vemb("not_existing", "elem")
     assert emb_not_existing is None
 
@@ -502,7 +514,7 @@ def test_vemb_unexisting(r: redis.Redis):
     assert emb_elem_not_existing is None
 
 
-def test_vlinks(r: redis.Redis):
+def test_vlinks(r: ClientType):
     elements_count = 100
     vector_dim = 800
     for i in range(elements_count):
@@ -551,7 +563,7 @@ def test_vlinks(r: redis.Redis):
     assert unexisting_vset_links is None
 
 
-def test_vinfo(r: redis.Redis):
+def test_vinfo(r: ClientType):
     elements_count = 100
     vector_dim = 800
     for i in range(elements_count):
@@ -569,7 +581,7 @@ def test_vinfo(r: redis.Redis):
     assert unexisting_vset_info is None
 
 
-def test_vset_vget_attributes(r: redis.Redis):
+def test_vset_vget_attributes(r: ClientType):
     float_array = [1, 4.32, 0.11]
     attributes = {"key1": "value1", "key2": "value2"}
 
@@ -624,7 +636,7 @@ def test_vset_vget_attributes(r: redis.Redis):
     assert attr_saved is None
 
 
-def test_vrandmember(r: redis.Redis):
+def test_vrandmember(r: ClientType):
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
@@ -675,27 +687,29 @@ def test_vrandmember(r: redis.Redis):
     assert members_list == []
 
 
-def test_vrandmember_wrong_type(r: redis.Redis):
+def test_vrandmember_wrong_type(r: ClientType):
     # Test with non vset value
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrandmember("not_a_vset")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
 
 
-def test_randmember_bad_count_type(r: redis.Redis):
+def test_randmember_bad_count_type(r: ClientType):
     # Test with bad count type
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
         float_array = [random.uniform(0, 10) for x in range(1, 8)]
         r.vset().vadd("myset", float_array, element=elem)
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrandmember("myset", count="not_an_integer")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "COUNT value is not an integer"
 
 
 @pytest.mark.fake
-def test_vset_commands_without_decoding_responses(r: redis.Redis):
+def test_vset_commands_without_decoding_responses(r: ClientType):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
@@ -805,8 +819,8 @@ def _validate_quantization(original, quantized, tolerance=0.1):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
-def test_vrange_basic(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="8.4")
+def test_vrange_basic(r: ClientType):
     """Test basic VRANGE functionality with lexicographical ordering."""
     # Add elements with different names
     elements = [b"apple", b"banana", b"cherry", b"date", b"elderberry"]
@@ -828,11 +842,12 @@ def test_vrange_basic(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
-def test_vrange_error(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="8.4")
+def test_vrange_error(r: ClientType):
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.vset().vrange("not_a_vset", "-", "+")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert excinfo.value.args[0] == "WRONGTYPE Operation against a key holding the wrong kind of value"
 
     res = r.vset().vrange("x", "-", "+")
@@ -840,8 +855,8 @@ def test_vrange_error(r: redis.Redis):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.min_server("8.4")
-def test_vrange_with_count(r: redis.Redis):
+@pytest.mark.supported_redis_versions(min_ver="8.4")
+def test_vrange_with_count(r: ClientType):
     """Test VRANGE with count parameter."""
     # Add elements
     elements = [b"a", b"b", b"c", b"d", b"e", b"f", b"g"]
@@ -868,7 +883,7 @@ def test_vrange_with_count(r: redis.Redis):
     assert result == elements
 
 
-def test_vsim_cosine_scores(r: redis.Redis):
+def test_vsim_cosine_scores(r: ClientType):
     """Test exact cosine similarity scores using NOQUANT with unit vectors."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
@@ -882,7 +897,7 @@ def test_vsim_cosine_scores(r: redis.Redis):
     assert result[b"opposite"] == pytest.approx(0.0, abs=0.001)
 
 
-def test_vsim_cosine_diagonal(r: redis.Redis):
+def test_vsim_cosine_diagonal(r: ClientType):
     """Test cosine similarity equals 1/sqrt(2) for a 45-degree vector."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "x_axis", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [1.0, 1.0, 0.0], "diagonal", quantization=QuantizationOptions.NOQUANT)
@@ -894,7 +909,7 @@ def test_vsim_cosine_diagonal(r: redis.Redis):
     assert result[b"diagonal"] == pytest.approx((1.0 + 1.0 / math.sqrt(2)) / 2, abs=0.01)
 
 
-def test_vsim_fp32_input_scores(r: redis.Redis):
+def test_vsim_fp32_input_scores(r: ClientType):
     """Test that querying by float array gives the same scores as querying by element name."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
@@ -908,7 +923,7 @@ def test_vsim_fp32_input_scores(r: redis.Redis):
         assert by_name[key] == pytest.approx(by_vector[key], abs=0.001)
 
 
-def test_vsim_count_exact(r: redis.Redis):
+def test_vsim_count_exact(r: ClientType):
     """Test vsim count with 5 NOQUANT vectors whose similarity ordering is precisely known."""
     # Cosine similarities to [1, 0, 0]: a=1.0, b≈0.994, c≈0.707, d=0.0, e=-1.0
     for name, vec in [
@@ -931,7 +946,7 @@ def test_vsim_count_exact(r: redis.Redis):
     assert result_all[-1] == b"e"
 
 
-def test_vcard_exact_count(r: redis.Redis):
+def test_vcard_exact_count(r: ClientType):
     """Test vcard returns the precise element count after each modification."""
     r.vset().vadd("myset", [1.0, 0.0], "a")
     assert r.vset().vcard("myset") == 1
@@ -944,7 +959,7 @@ def test_vcard_exact_count(r: redis.Redis):
     assert r.vset().vcard("myset") == 2
 
 
-def test_vrem_exact(r: redis.Redis):
+def test_vrem_exact(r: ClientType):
     """Test vrem removes exactly the targeted element and returns correct status codes."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
@@ -962,7 +977,7 @@ def test_vrem_exact(r: redis.Redis):
     assert r.vset().vrem("myset_nonexistent", "a") == 0
 
 
-def test_vinfo_exact_fields(r: redis.Redis):
+def test_vinfo_exact_fields(r: ClientType):
     """Test vinfo returns correct size, dim, uid, and quant-type for a known set."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
@@ -979,7 +994,7 @@ def test_vinfo_exact_fields(r: redis.Redis):
     assert info[b"hnsw-max-node-uid"] == 3
 
 
-def test_vinfo_bin_quant_type(r: redis.Redis):
+def test_vinfo_bin_quant_type(r: ClientType):
     """Test vinfo reports bin quantization type and correct dimension."""
     r.vset().vadd("myset", [1.0, 4.0, 0.0, -1.0], "a", quantization=QuantizationOptions.BIN)
 
@@ -989,7 +1004,7 @@ def test_vinfo_bin_quant_type(r: redis.Redis):
     assert info[b"size"] == 1
 
 
-def test_vinfo_int8_quant_type(r: redis.Redis):
+def test_vinfo_int8_quant_type(r: ClientType):
     """Test vinfo reports int8 as the default quantization type."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
 
@@ -999,7 +1014,7 @@ def test_vinfo_int8_quant_type(r: redis.Redis):
     assert info[b"size"] == 1
 
 
-def test_vrandmember_exact_pool(r: redis.Redis):
+def test_vrandmember_exact_pool(r: ClientType):
     """Test vrandmember always returns members from the exact set, with correct counts."""
     known = {"alpha", "beta", "gamma"}
     r.vset().vadd("myset", [1.0, 0.0], "alpha")
@@ -1022,7 +1037,7 @@ def test_vrandmember_exact_pool(r: redis.Redis):
     assert all(m.decode() in known for m in with_reps)
 
 
-def test_vlinks_valid_neighbors(r: redis.Redis):
+def test_vlinks_valid_neighbors(r: ClientType):
     """Test vlinks returns only valid element names (no self-links, no unknown names)."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
@@ -1049,67 +1064,81 @@ def test_vlinks_valid_neighbors(r: redis.Redis):
             assert -1.0 <= score <= 1.0
 
 
-def test_vcard_nonexistent_key(r: redis.Redis):
+def test_vcard_nonexistent_key(r: ClientType):
     """Test that vcard returns None (nil) for a key that does not exist."""
     assert r.vset().vcard("nonexistent") == 0
 
 
-def test_vadd_multiple_quant_types(r: redis.Redis):
+def test_vadd_multiple_quant_types(r: ClientType):
     """Test that specifying two quantization flags in one VADD raises an error."""
     res = r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
     assert res == 1
 
 
-def test_vadd_values_insufficient_args(r: redis.Redis):
+def test_vadd_values_insufficient_args(r: ClientType):
     """Test that VADD VALUES N raises when fewer than N floats follow."""
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         # Claims 5 values but only 2 are provided before the element name
         r.execute_command("VADD", "myset", "VALUES", "5", "1.0", "2.0", "a")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vadd_unknown_syntax(r: redis.Redis):
+
+def test_vadd_unknown_syntax(r: ClientType):
     """Test that an unrecognised VADD keyword raises a syntax error."""
-    with pytest.raises(redis.ResponseError, match="invalid option"):
+    with pytest.raises(Exception, match="invalid option") as ctx:
         r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BADPARAM")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vemb_too_many_args(r: redis.Redis):
+
+def test_vemb_too_many_args(r: ClientType):
     """Test that VEMB with more than one optional arg raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError, match="invalid option"):
+    with pytest.raises(Exception, match="invalid option") as ctx:
         r.execute_command("VEMB", "myset", "a", "RAW", "EXTRA")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vrange_too_many_args(r: redis.Redis):
+
+def test_vrange_too_many_args(r: ClientType):
     """Test that VRANGE with more than one extra arg (after min/max) raises an error."""
     r.vset().vadd("myset", [1.0, 2.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VRANGE", "myset", "-", "+", "5", "EXTRA")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_duplicate_ele(r: redis.Redis):
+
+def test_vsim_duplicate_ele(r: ClientType):
     """Test that specifying ELE twice in VSIM raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "ELE", "b")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_duplicate_values(r: redis.Redis):
+
+def test_vsim_duplicate_values(r: ClientType):
     """Test that specifying VALUES twice in VSIM raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "VALUES", "3", "1.0", "0.0", "0.0")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_values_insufficient_args(r: redis.Redis):
+
+def test_vsim_values_insufficient_args(r: ClientType):
     """Test that VSIM VALUES N raises when fewer than N floats follow."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "VALUES", "5", "1.0", "2.0")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_epsilon(r: redis.Redis):
+
+def test_vsim_epsilon(r: ClientType):
     """Test that VSIM EPSILON filters out elements below the similarity threshold."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "same", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "orthogonal", quantization=QuantizationOptions.NOQUANT)
@@ -1124,7 +1153,7 @@ def test_vsim_epsilon(r: redis.Redis):
     assert set(result) == {b"same", b"orthogonal"}
 
 
-def test_vsim_truth_nothread(r: redis.Redis):
+def test_vsim_truth_nothread(r: ClientType):
     """Test that VSIM with TRUTH and NOTHREAD flags returns the same results."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", quantization=QuantizationOptions.NOQUANT)
     r.vset().vadd("myset", [0.0, 1.0, 0.0], "b", quantization=QuantizationOptions.NOQUANT)
@@ -1136,28 +1165,34 @@ def test_vsim_truth_nothread(r: redis.Redis):
     assert set(base) == set(with_truth) == set(with_nothread)
 
 
-def test_vsim_no_vector_specified(r: redis.Redis):
+def test_vsim_no_vector_specified(r: ClientType):
     """Test that VSIM without ELE/FP32/VALUES raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "WITHSCORES")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_syntax_error(r: redis.Redis):
+
+def test_vsim_syntax_error(r: ClientType):
     """Test that an unrecognised VSIM keyword raises a syntax error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
-    with pytest.raises(redis.ResponseError, match="syntax"):
+    with pytest.raises(Exception, match="syntax") as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "BADPARAM")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_invalid_filter_expression(r: redis.Redis):
+
+def test_vsim_invalid_filter_expression(r: ClientType):
     """Test that an unparseable FILTER expression raises an error."""
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", attributes={"x": 1})
-    with pytest.raises(redis.ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("VSIM", "myset", "ELE", "a", "FILTER", "!!!invalid!!!")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_vsim_filter_excludes_no_attr_elements(r: redis.Redis):
+
+def test_vsim_filter_excludes_no_attr_elements(r: ClientType):
     """Test that VSIM FILTER skips elements that have no attributes (accept_filter → False)."""
     r.vset().vadd("myset", [1.0, 0.0], "has_attr", attributes={"score": 100})
     r.vset().vadd("myset", [0.9, 0.1], "low_attr", attributes={"score": 1})
@@ -1170,7 +1205,7 @@ def test_vsim_filter_excludes_no_attr_elements(r: redis.Redis):
     assert b"low_attr" not in result
 
 
-def test_vsim_zero_norm_vector(r: redis.Redis):
+def test_vsim_zero_norm_vector(r: ClientType):
     """Test that similarity with a zero-norm vector returns 0.0."""
     r.execute_command("VADD", "myset", "VALUES", "3", "0.0", "0.0", "0.0", "zero")
     r.vset().vadd("myset", [1.0, 0.0, 0.0], "unit")
@@ -1180,10 +1215,12 @@ def test_vsim_zero_norm_vector(r: redis.Redis):
     assert result[b"unit"] == pytest.approx(0.5, abs=0.001)
 
 
-def test_vadd_numlinks_one(r: redis.Redis):
+def test_vadd_numlinks_one(r: ClientType):
     """Test vadd with numlinks=1"""
-    with pytest.raises(redis.ResponseError, match="invalid M"):
+    with pytest.raises(Exception, match="invalid M") as ctx:
         r.vset().vadd("myset", [1.0, 0.0, 0.0], "a", numlinks=1)
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.parametrize(
@@ -1201,9 +1238,10 @@ def test_vadd_numlinks_one(r: redis.Redis):
         ("VLINKS", "not_a_vset", "member"),
     ],
 )
-def test_wrongtype_on_string_key(r: redis.Redis, cmd_args):
+def test_wrongtype_on_string_key(r: ClientType, cmd_args):
     """All vset commands raise WRONGTYPE when the key holds a string."""
     r.set("not_a_vset", "some_value")
-    with pytest.raises(redis.ResponseError) as excinfo:
+    with pytest.raises(Exception) as excinfo:
         r.execute_command(*cmd_args)
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
     assert "WRONGTYPE" in excinfo.value.args[0]

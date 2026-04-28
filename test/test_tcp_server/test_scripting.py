@@ -2,6 +2,7 @@ from typing import Tuple
 
 import pytest
 import redis
+import valkey
 from redis.lock import Lock
 
 pytest.importorskip("lupa")
@@ -18,8 +19,10 @@ def test_evalsha_missing_script(tcp_server_address: Tuple[str, int]):
     """Test that EVALSHA with a non-existent script returns NOSCRIPT error."""
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         fake_sha = "0" * 40
-        with pytest.raises(redis.exceptions.NoScriptError):
+        with pytest.raises(Exception) as ctx:
             r.evalsha(fake_sha, 0)
+
+        assert isinstance(ctx.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
 
 
 def test_tcp_server_lock(tcp_server_address: Tuple[str, int]):

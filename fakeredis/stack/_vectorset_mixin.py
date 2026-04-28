@@ -1,7 +1,6 @@
 import itertools
 import random
 import struct
-from collections import OrderedDict
 from typing import Any, List, Optional, Union, Dict
 
 from fakeredis import _msgs as msgs
@@ -242,10 +241,7 @@ class VectorSetCommandsMixin:
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res: Dict[Vector, float] = {v: v.similarity(vector) for v in vector_set.accept_filter(filter_expression)}
-        if epsilon is not None:
-            res = {k: v for k, v in res.items() if v >= 1 - epsilon}
-        res = OrderedDict(itertools.islice(sorted(res.items(), key=lambda t: t[1], reverse=True), count))
+        res = vector_set.top_similar(vector, filter_expression, count, epsilon)
         if with_scores and with_attributes:
             if self._client_info.protocol_version == 2:
                 return list(itertools.chain.from_iterable([[k.name, v, k.attributes] for k, v in res.items()]))

@@ -6,10 +6,14 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Float, Int
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
-from fakeredis.model import ScalableBloomFilter
+from fakeredis.model import ScalableBloomFilter, ClientInfo
 
 
 class BFCommandsMixin:
+    def __init(self, *args: Any, **kwargs: Any) -> None:
+        super(BFCommandsMixin, self).__init__(*args, **kwargs)
+        self._client_info: ClientInfo
+
     @staticmethod
     def _bf_add(key: CommandItem, item: bytes) -> int:
         res = key.value.add_item(item)

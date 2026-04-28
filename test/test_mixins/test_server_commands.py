@@ -4,9 +4,10 @@ from time import sleep
 
 import pytest
 import redis
-from redis.exceptions import ResponseError
+import valkey
 
 from fakeredis._commands import SUPPORTED_COMMANDS
+from fakeredis._typing import ClientType
 from test import testtools
 
 
@@ -27,30 +28,33 @@ def test_swapdb(r, create_connection):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_swapdb_same_db(r: redis.Redis):
+def test_swapdb_same_db(r: ClientType):
     assert r.swapdb(1, 1)
 
 
-def test_save(r: redis.Redis):
+def test_save(r: ClientType):
     assert r.save()
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_bgsave(r: redis.Redis):
+def test_bgsave(r: ClientType):
     assert r.bgsave()
     time.sleep(0.1)
-    with pytest.raises(ResponseError):
+    with pytest.raises(Exception) as ctx:
         r.execute_command("BGSAVE", "SCHEDULE", "FOO")
-    with pytest.raises(ResponseError):
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
         r.execute_command("BGSAVE", "FOO")
 
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
-def test_lastsave(r: redis.Redis):
+
+def test_lastsave(r: ClientType):
     assert isinstance(r.lastsave(), datetime)
 
 
 @testtools.fake_only
-def test_command(r: redis.Redis):
+def test_command(r: ClientType):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
     server_unsupported_commands = one_word_commands - set(commands_dict.keys())
@@ -62,7 +66,7 @@ def test_command(r: redis.Redis):
 
 
 @testtools.fake_only
-def test_command_count(r: redis.Redis):
+def test_command_count(r: ClientType):
     assert r.command_count() >= len(
         [cmd for (cmd, cmd_info) in SUPPORTED_COMMANDS.items() if " " not in cmd and "redis" in cmd_info.server_types]
     )
@@ -70,7 +74,7 @@ def test_command_count(r: redis.Redis):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.slow
-def test_bgsave_timestamp_update(r: redis.Redis):
+def test_bgsave_timestamp_update(r: ClientType):
     early_timestamp = r.lastsave()
     sleep(1)
     assert r.bgsave()
@@ -80,7 +84,7 @@ def test_bgsave_timestamp_update(r: redis.Redis):
 
 
 @pytest.mark.slow
-def test_save_timestamp_update(r: redis.Redis):
+def test_save_timestamp_update(r: ClientType):
     early_timestamp = r.lastsave()
     sleep(1)
     assert r.save()
@@ -88,14 +92,14 @@ def test_save_timestamp_update(r: redis.Redis):
     assert early_timestamp < late_timestamp
 
 
-def test_dbsize(r: redis.Redis):
+def test_dbsize(r: ClientType):
     assert r.dbsize() == 0
     r.set("foo", "bar")
     r.set("bar", "foo")
     assert r.dbsize() == 2
 
 
-def test_flushdb_redispy4(r: redis.Redis):
+def test_flushdb_redispy4(r: ClientType):
     r.set("foo", "bar")
     assert r.keys() == [b"foo"]
     assert r.flushdb() is True

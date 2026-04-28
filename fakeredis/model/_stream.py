@@ -148,7 +148,7 @@ class StreamGroup(object):
 
     def group_read(
         self, consumer_name: bytes, start_id: bytes, count: Optional[int], noack: bool
-    ) -> List[List[Union[bytes, Optional[Dict[bytes, bytes]]]]]:
+    ) -> List[List[Union[bytes, List[bytes], None]]]:
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
@@ -163,7 +163,7 @@ class StreamGroup(object):
                 entry = self.pel[k]
                 self.pel[k] = PelEntry(entry.consumer_name, entry.time_read, entry.times_delivered + 1)
             self.consumers[consumer_name].last_success = _time
-            return [self.stream.format_record(k) if k in self.stream else [k.encode(), None] for k in pel_keys]
+            return [self.stream.format_record(k) if k in self.stream else [k.encode(), None] for k in pel_keys]  # type: ignore[misc]
         start_key = self.last_delivered_key
         ids_read = self.stream.stream_read(start_key, count)
         if not noack:
@@ -175,7 +175,7 @@ class StreamGroup(object):
             self.entries_read = (self.entries_read or 0) + len(ids_read)
         self.consumers[consumer_name].last_success = _time
         self.consumers[consumer_name].pending += len(ids_read)
-        return [self.stream.format_record(x) for x in ids_read]
+        return [self.stream.format_record(x) for x in ids_read]  # type: ignore[misc]
 
     def _calc_consumer_last_time(self) -> None:
         # pel values are PelEntry namedtuples

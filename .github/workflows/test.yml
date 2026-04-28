@@ -40,6 +40,8 @@ jobs:
         exclude:
           - python-version: "3.9"
             redis-py: "7.4.0"
+          - python-version: "3.9"
+            redis-py: "8.0.0b2"
           - python-version: "3.14"
             redis-image: "redis:8.6.2"
             redis-py: "7.4.0"
@@ -93,7 +95,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.1.0
       - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock
