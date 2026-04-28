@@ -999,7 +999,6 @@ def test_zunionstore_nan_to_zero_ordering(r: ClientType):
     assert r.zscore("baz", "e1") == 0.0
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
 def test_zunionstore_mixed_set_types(r: ClientType):
     # No score, redis will use 1.0.
     r.sadd("foo", "one")
@@ -1075,7 +1074,7 @@ def test_zinterstore_nokey(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO causes a crash!
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
 def test_zinterstore_nan_to_zero(r: ClientType):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
@@ -1090,7 +1089,6 @@ def test_zunionstore_nokey(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO Hang server
 def test_zinterstore_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
@@ -1172,6 +1170,7 @@ def test_zdiffstore(r: ClientType):
     assert r.zrange("out", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 3.0)])
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
 def test_zdiff(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     r.zadd("b", {"a1": 1, "a2": 2})
@@ -1179,6 +1178,7 @@ def test_zdiff(r: ClientType):
     assert r.zdiff(["a", "b"], withscores=True) == resp_conversion(r, [[b"a3", 3.0]], [b"a3", b"3"])
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
 def test_zunion(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 1, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
@@ -1203,6 +1203,7 @@ def test_zunion(r: ClientType):
     )
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
 def test_zinter(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
@@ -1285,10 +1286,9 @@ def test_bzmpop(r: ClientType):
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
-# TODO https://github.com/redis/redis/issues/13952
-# def test_zrangebyscore_negative_start_after_sort(r: ClientType):
-#     r.zadd("A", {"A": 0.0})
-#     r.zadd("B", {"A": 0.0})
-#     with pytest.raises(redis.ResponseError):
-#         r.sort("B")
-#     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == [b"A"]
+def test_zrangebyscore_negative_start_after_sort(r: ClientType):
+    r.zadd("A", {"A": 0.0})
+    r.zadd("B", {"A": 0.0})
+    with pytest.raises(redis.ResponseError):
+        r.sort("B")
+    assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == []

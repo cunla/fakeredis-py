@@ -59,7 +59,7 @@ def real_server_details(real_server_address: Tuple[str, int]) -> ServerDetails:
         redis_version = _create_version(client_info["redis_version"]) or (7,)
         valkey_version = _create_version(client_info["valkey_version"]) if "valkey_version" in client_info else None
         dragonfly_version = (
-            _create_version(client_info["dragonfly_version"]) if "dragonfly_version" in client_info else None
+            _create_version(client_info["dragonfly_version"][4:]) if "dragonfly_version" in client_info else None
         )
         return ServerDetails(server_type, redis_version, valkey_version, dragonfly_version)
     except redis.ConnectionError as e:
