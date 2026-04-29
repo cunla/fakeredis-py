@@ -87,8 +87,8 @@ def _tcp_fake_server() -> Generator[tuple[str, int], Any, None]:
     t.start()
     time.sleep(0.1)
     yield server_address
-    server.server_close()
     server.shutdown()
+    server.server_close()
     t.join()
 
 
