@@ -13,7 +13,7 @@ from . import _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_kwargs
 from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, lib_version, Self, RaiseErrorTypes
+from ._typing import async_timeout, lib_version, RaiseErrorTypes
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -267,7 +267,7 @@ class FakeRedisMixin:
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> Self:
+    def from_url(cls, url: str, **kwargs: Any) -> FakeRedisMixin:
         self: redis_async.Redis = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = kwargs.pop("connection_class", FakeAsyncRedisConnection)
