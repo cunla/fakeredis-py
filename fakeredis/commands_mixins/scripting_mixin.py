@@ -148,6 +148,8 @@ class ScriptingCommandsMixin:
             log_levels_str = "\n".join(
                 [f"redis.{level.decode()} = {value}" for level, value in REDIS_LOG_LEVELS.items()]
             )
+            # Valkey exposes a `server` alias for the `redis` global in Lua scripts
+            server_alias_str = "server = redis" if server.server_type == "valkey" else ""
 
             # Create initialization function that sets up callbacks once
             set_globals_init = lua_runtime.eval(
@@ -160,6 +162,7 @@ class ScriptingCommandsMixin:
                     {log_levels_str}
                     redis.error_reply = function(msg) return {{err=msg}} end
                     redis.status_reply = function(msg) return {{ok=msg}} end
+                    {server_alias_str}
 
                     cjson = {{}}
                     cjson.encode = cjson_encode
