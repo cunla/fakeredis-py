@@ -79,11 +79,11 @@ class JSONObject:
 
 
 def _json_write_iterate(
-    method: Callable[[JsonType], Tuple[Optional[JsonType], Optional[JsonType], bool]],
+    method: Callable[[JsonType], Tuple[JsonType, JsonType, bool]],
     key: CommandItem,
     path_str: Union[str, bytes],
     allow_result_none: bool = False,
-) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+) -> JsonType:
     """Implement json.* write commands.
     Iterate over values with path_str in key and running method to get new value for path item.
     """
@@ -95,7 +95,7 @@ def _json_write_iterate(
         raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
 
     curr_value = copy.deepcopy(key.value)
-    res: List[Optional[JsonType]] = []
+    res: List[JsonType] = []
     for item in found_matches:
         new_value, res_val, update = method(item.value)
         if update:
@@ -366,11 +366,11 @@ class JSONCommandsMixin:
         return _json_write_iterate(arrinsert, key, path_str)
 
     @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_arrpop(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+    def json_arrpop(self, key: CommandItem, *args: bytes) -> JsonType:
         path_str: Union[bytes, str] = args[0] if len(args) > 0 else "$"
         index = Int.decode(args[1]) if len(args) > 1 else -1
 
-        def arrpop(val: JsonType) -> Tuple[Optional[JsonType], Optional[bytes], bool]:
+        def arrpop(val: JsonType) -> Tuple[JsonType, Optional[bytes], bool]:
             if type(val) is list and len(val) > 0:
                 ind = index if index < len(val) else -1
                 res = val.pop(ind)
@@ -381,7 +381,7 @@ class JSONCommandsMixin:
         return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
 
     @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_arrtrim(self, key: CommandItem, *args: bytes) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+    def json_arrtrim(self, key: CommandItem, *args: bytes) -> JsonType:
         path_str: bytes = args[0] if len(args) > 0 else b"$"
         start = Int.decode(args[1]) if len(args) > 1 else 0
         stop = Int.decode(args[2]) if len(args) > 2 else None
@@ -415,7 +415,8 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._resp3_wrapping_list(_json_write_iterate(numincrby, key, path_str))
+        res: JsonType = self._resp3_wrapping_list(_json_write_iterate(numincrby, key, path_str))
+        return res
 
     @command(
         name="JSON.NUMMULTBY",
@@ -423,9 +424,7 @@ class JSONCommandsMixin:
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_SKIP_CONVERT_TO_RESP2,
     )
-    def json_nummultby(
-        self, key: CommandItem, path_str: bytes, mult_by: float, *_: bytes
-    ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+    def json_nummultby(self, key: CommandItem, path_str: bytes, mult_by: float, *_: bytes) -> JsonType:
         def nummultby(val: Optional[JsonType]) -> Tuple[Optional[JsonType], Optional[float], bool]:
             if type(val) in {int, float}:
                 new_value = val * mult_by  # type: ignore
@@ -433,13 +432,12 @@ class JSONCommandsMixin:
             else:
                 return None, None, False
 
-        return self._resp3_wrapping_list(_json_write_iterate(nummultby, key, path_str))
+        res: JsonType = self._resp3_wrapping_list(_json_write_iterate(nummultby, key, path_str))
+        return res
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_arrindex(
-        self, key: CommandItem, path_str: bytes, encoded_value: bytes, *args: bytes
-    ) -> Union[List[Optional[JsonType]], Optional[JsonType]]:
+    def json_arrindex(self, key: CommandItem, path_str: bytes, encoded_value: bytes, *args: bytes) -> JsonType:
         start = max(0, Int.decode(args[0]) if len(args) > 0 else 0)
         end = Int.decode(args[1]) if len(args) > 1 else -1
         end = end if end > 0 else -1
