@@ -57,7 +57,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES
         )
 
-    def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
+    def _create_timeseries(self, name: bytes, *args: bytes) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)), left_args = (
             extract_args(
                 args,
@@ -465,7 +465,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             res[name.encode("utf-8")] = [labels, {b"reducers": [reducer]}, {b"sources": sources}, measurements]
         return res
 
-    def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes):
+    def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes) -> Any:
         args_lower = [arg.lower() for arg in args]
         arg_words = {
             b"latest",

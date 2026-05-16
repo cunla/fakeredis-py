@@ -210,7 +210,7 @@ class FakeRedisMixin:
         version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
-        client_class=redis_async.Redis,
+        client_class: Type[redis_async.Redis] = redis_async.Redis,
         connection_class: Type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
         connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,

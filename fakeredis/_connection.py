@@ -98,7 +98,7 @@ class FakeRedisConnection(FakeBaseConnection, redis.Connection):
     _connection_error_class = redis.ConnectionError
 
 
-def FakeConnection(*args: Any, **kwargs: Any):
+def FakeConnection(*args: Any, **kwargs: Any) -> FakeRedisConnection:
     warnings.warn("FakeConnection is deprecated. Use FakeRedisConnection instead", DeprecationWarning, 2)
     return FakeRedisConnection(*args, **kwargs)
 
