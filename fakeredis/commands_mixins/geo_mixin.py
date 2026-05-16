@@ -82,7 +82,6 @@ def _find_near(
 
 
 class GeoCommandsMixin(CommandsMixinBase):
-
     def _store_geo_results(self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool) -> int:
         db_item = CommandItem(item_name, self._db, item=self._db.get(item_name), default=ZSet())
         db_item.value = ZSet()

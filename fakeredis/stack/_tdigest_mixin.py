@@ -9,7 +9,6 @@ from fakeredis.model import TDigest
 
 
 class TDigestCommandsMixin(CommandsMixinBase):
-
     @command(
         name="TDIGEST.CREATE",
         fixed=(Key(TDigest),),

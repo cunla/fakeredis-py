@@ -10,7 +10,6 @@ from fakeredis.model import CountMinSketch
 
 
 class CMSCommandsMixin(CommandsMixinBase):
-
     @command(
         name="CMS.INCRBY",
         fixed=(Key(CountMinSketch), bytes, bytes),
