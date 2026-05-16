@@ -22,7 +22,7 @@ def _create_version(v: Union[Tuple[int, ...], int, str]) -> VersionType:
     if isinstance(v, str):
         v_split = v.split(".")
         return tuple(int(x) for x in v_split)
-    raise Exception(f"Unsupported version: {v}")
+    raise ValueError(f"Unsupported version: {v}")
 
 
 def _version_to_str(v: VersionType) -> str:

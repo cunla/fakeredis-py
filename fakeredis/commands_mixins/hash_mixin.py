@@ -100,7 +100,7 @@ class HashCommandsMixin:
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
         scan_result = self._scan(key.value, cursor, *scan_args)
         result_cursor = scan_result[0]
-        keys: List[bytes] = [k.encode("utf-8") if isinstance(k, str) else k for k in cast(List[Any], scan_result[1])]
+        keys: List[bytes] = cast(List[bytes], scan_result[1])
         if no_values:
             return [result_cursor, keys]
         items = []
