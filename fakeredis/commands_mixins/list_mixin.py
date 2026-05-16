@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, List, Optional, Union, Any
+from typing import Callable, List, Optional, Sequence, Union, Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -20,9 +20,7 @@ def _list_pop_count(get_slice: Callable[[int], slice], key: CommandItem, count: 
     return ret
 
 
-def _list_pop(
-    get_slice: Callable[[int], slice], key: CommandItem, *args: bytes
-) -> Optional[Union[bytes, List[bytes]]]:
+def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
     """Implements lpop and rpop.
 
     `get_slice` must take a count and return a slice expression for the range to pop.
@@ -38,7 +36,7 @@ def _list_pop(
             raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
     ret = _list_pop_count(get_slice, key, count)
     if ret and not args:
-        ret = ret[0]
+        return ret[0]
     return ret
 
 
@@ -62,20 +60,20 @@ class ListCommandsMixin(CommandsMixinBase):
                 return [key, ret]
         return None
 
-    def _bpop(self, args: Any, op: Callable[[List[bytes]], bytes]) -> Optional[List[bytes]]:
+    def _bpop(self, args: Any, op: Callable[[List[bytes]], bytes]) -> Any:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def blpop(self, *args: bytes) -> Optional[List[bytes]]:
+    def blpop(self, *args: bytes) -> Any:
         return self._bpop(args, lambda lst: lst.pop(0))
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def brpop(self, *args: bytes) -> Optional[List[bytes]]:
+    def brpop(self, *args: bytes) -> Any:
         return self._bpop(args, lambda lst: lst.pop())
 
-    def _brpoplpush_pass(self, source: bytes, destination: bytes, first_pass: bool) -> Optional[bytes]:
+    def _brpoplpush_pass(self, source: bytes, destination: bytes, first_pass: bool) -> Any:
         src = CommandItem(source, self._db, item=self._db.get(source), default=[])
         if not isinstance(src.value, list):
             if first_pass:
@@ -98,11 +96,11 @@ class ListCommandsMixin(CommandsMixinBase):
         return el
 
     @command(name="BRPOPLPUSH", fixed=(bytes, bytes, Timeout), flags=msgs.FLAG_NO_SCRIPT)
-    def brpoplpush(self, source: bytes, destination: bytes, timeout: float) -> Optional[bytes]:
+    def brpoplpush(self, source: bytes, destination: bytes, timeout: float) -> Any:
         return self._blocking(timeout, functools.partial(self._brpoplpush_pass, source, destination))
 
     @command((Key(list, None), Int))
-    def lindex(self, key: CommandItem, index: int) -> Optional[bytes]:
+    def lindex(self, key: CommandItem, index: int) -> Any:
         try:
             return key.value[index]
         except IndexError:
@@ -136,7 +134,7 @@ class ListCommandsMixin(CommandsMixinBase):
         src: bytes,
         dst: bytes,
         first_pass: bool,
-    ) -> Optional[bytes]:
+    ) -> Any:
         if (not casematch(src, b"left") and not casematch(src, b"right")) or (
             not casematch(dst, b"left") and not casematch(dst, b"right")
         ):
@@ -147,7 +145,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return el
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString))
-    def lmove(self, first_list: CommandItem, second_list: CommandItem, src: bytes, dst: bytes) -> Optional[bytes]:
+    def lmove(self, first_list: CommandItem, second_list: CommandItem, src: bytes, dst: bytes) -> Any:
         return self._lmove(first_list, second_list, src, dst, False)
 
     @command((Key(list, None), Key(list), SimpleString, SimpleString, Timeout))
@@ -158,16 +156,14 @@ class ListCommandsMixin(CommandsMixinBase):
         src: bytes,
         dst: bytes,
         timeout: float,
-    ) -> Optional[bytes]:
+    ) -> Any:
         return self._blocking(timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
 
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
         return _list_pop(lambda count: slice(None, count), key, *args)
 
-    def _lmpop(
-        self, keys: List[bytes], count: int, direction_left: bool, first_pass: bool
-    ) -> Optional[List[Any]]:
+    def _lmpop(self, keys: Sequence[bytes], count: int, direction_left: bool, first_pass: bool) -> Optional[List[Any]]:
         if direction_left:
             op = lambda count: slice(None, count)  # noqa:E731
         else:
@@ -195,7 +191,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return self._lmpop(args[:-1], count, casematch(args[-1], b"left"), False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
-    def blmpop(self, timeout: float, numkeys: int, *args: bytes) -> Optional[List[Any]]:
+    def blmpop(self, timeout: float, numkeys: int, *args: bytes) -> Any:
         if numkeys <= 0:
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         if casematch(args[-2], b"count"):
@@ -219,13 +215,13 @@ class ListCommandsMixin(CommandsMixinBase):
         return len(key.value)
 
     @command((Key(list), bytes), (bytes,))
-    def lpushx(self, key: CommandItem, *values: bytes) -> int:
+    def lpushx(self, key: CommandItem, *values: bytes) -> Any:
         if not key:
             return 0
         return self.lpush(key, *values)
 
     @command((Key(list), Int, Int))
-    def lrange(self, key: CommandItem, start: int, stop: int) -> List[bytes]:
+    def lrange(self, key: CommandItem, start: int, stop: int) -> Any:
         start, stop = fix_range(start, stop, len(key.value))
         return key.value[start:stop]
 
@@ -254,9 +250,9 @@ class ListCommandsMixin(CommandsMixinBase):
     def lset(self, key: CommandItem, index: bytes, value: bytes) -> SimpleString:
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
-        index = Int.decode(index)
+        idx = Int.decode(index)
         try:
-            key.value[index] = value
+            key.value[idx] = value
             key.updated()
         except IndexError:
             raise SimpleError(msgs.INDEX_ERROR_MSG)
@@ -265,11 +261,8 @@ class ListCommandsMixin(CommandsMixinBase):
     @command((Key(list), Int, Int))
     def ltrim(self, key: CommandItem, start: int, stop: int) -> SimpleString:
         if key:
-            if stop == -1:
-                stop = None
-            else:
-                stop += 1
-            new_value = key.value[start:stop]
+            end: Optional[int] = None if stop == -1 else stop + 1
+            new_value = key.value[start:end]
             # TODO: check if this should actually be conditional
             if len(new_value) != len(key.value):
                 key.update(new_value)
@@ -280,7 +273,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return _list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
 
     @command((Key(list, None), Key(list)))
-    def rpoplpush(self, src: CommandItem, dst: CommandItem) -> Optional[bytes]:
+    def rpoplpush(self, src: CommandItem, dst: CommandItem) -> Any:
         el = self.rpop(src)
         self.lpush(dst, el)
         return el
@@ -293,7 +286,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return len(key.value)
 
     @command((Key(list), bytes), (bytes,))
-    def rpushx(self, key: CommandItem, *values: bytes) -> int:
+    def rpushx(self, key: CommandItem, *values: bytes) -> Any:
         if not key:
             return 0
         return self.rpush(key, *values)
