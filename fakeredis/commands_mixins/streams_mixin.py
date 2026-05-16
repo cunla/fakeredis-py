@@ -4,19 +4,13 @@ from typing import List, Union, Tuple, Callable, Optional, Any, Dict
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, CommandItem, Int
-from fakeredis._helpers import SimpleError, casematch, OK, current_time, Database, SimpleString
-from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey, ClientInfo
-from fakeredis._typing import VersionType
+from fakeredis._helpers import SimpleError, casematch, OK, current_time, SimpleString
+from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
-class StreamsCommandsMixin:
+class StreamsCommandsMixin(CommandsMixinBase):
     _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(StreamsCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
-        self.version: VersionType
-        self._client_info: ClientInfo
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:

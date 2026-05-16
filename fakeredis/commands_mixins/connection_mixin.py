@@ -3,20 +3,17 @@ from typing import Any, List, Union, Dict
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
-from fakeredis.model import ClientInfo
+from fakeredis._helpers import SimpleError, OK, SimpleString, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
 
 
-class ConnectionCommandsMixin:
+class ConnectionCommandsMixin(CommandsMixinBase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
         self._db_num: int
         self._pubsub: int
-        self._client_info: ClientInfo
-        self._server: Any
 
     @command((bytes,))
     def echo(self, message: bytes) -> bytes:

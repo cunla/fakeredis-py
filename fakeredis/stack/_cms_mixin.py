@@ -4,14 +4,12 @@ from typing import Tuple, List, Any, Dict
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import OK, SimpleString, SimpleError, casematch, Database
+from fakeredis._helpers import OK, SimpleString, SimpleError, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import CountMinSketch
 
 
-class CMSCommandsMixin:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self._db: Database
+class CMSCommandsMixin(CommandsMixinBase):
 
     @command(
         name="CMS.INCRBY",

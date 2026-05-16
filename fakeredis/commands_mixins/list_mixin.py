@@ -4,7 +4,8 @@ from typing import Callable, List, Optional, Union, Any
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, Int, CommandItem, Timeout, fix_range
-from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, Database
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
 def _list_pop_count(get_slice, key, count):
@@ -39,12 +40,8 @@ def _list_pop(get_slice, key, *args):
     return ret
 
 
-class ListCommandsMixin:
+class ListCommandsMixin(CommandsMixinBase):
     _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
-
-    def __init__(self, *args, **kwargs):
-        super(ListCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
 
     def _bpop_pass(self, keys, op, first_pass):
         for key in keys:

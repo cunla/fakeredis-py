@@ -20,6 +20,7 @@ from fakeredis._helpers import (
 from .. import _msgs as msgs
 from .._server import FakeServer
 from .._typing import VersionType, ServerType
+from ._mixin_base import CommandsMixinBase
 
 __LUA_RUNTIMES_MAP = {
     "5.1": "lupa.lua51",
@@ -49,13 +50,11 @@ REDIS_LOG_LEVELS_TO_LOGGING = {
 _lua_cjson_null = object()  # sentinel value
 
 
-class ScriptingCommandsMixin:
+class ScriptingCommandsMixin(CommandsMixinBase):
     _name_to_func: Callable[[str], Tuple[Optional[Callable[..., Any]], Signature]]
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.version: VersionType
-        self._server: FakeServer
         self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 

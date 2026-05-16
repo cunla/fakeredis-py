@@ -4,20 +4,14 @@ from typing import List, Union, Optional, Any, Set, Dict
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
-from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
-from fakeredis._typing import VersionType
-from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS, ClientInfo
+from fakeredis._helpers import SimpleString, OK, SimpleError, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
 
 
-class TimeSeriesCommandsMixin:  # TimeSeries commands
+class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     _timeseries_keys: Set[bytes] = set()
     DUPLICATE_POLICIES = [b"BLOCK", b"FIRST", b"LAST", b"MIN", b"MAX", b"SUM"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._db: Database
-        self.version: VersionType
-        self._client_info: ClientInfo
 
     @staticmethod
     def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:

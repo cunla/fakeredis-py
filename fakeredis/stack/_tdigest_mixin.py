@@ -3,13 +3,12 @@ from typing import List, Dict, Any
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import SimpleString, SimpleError, OK, Database
+from fakeredis._helpers import SimpleString, SimpleError, OK
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import TDigest
 
 
-class TDigestCommandsMixin:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._db: Database
+class TDigestCommandsMixin(CommandsMixinBase):
 
     @command(
         name="TDIGEST.CREATE",

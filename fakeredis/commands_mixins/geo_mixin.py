@@ -5,7 +5,8 @@ from typing import List, Any, Optional, Union
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Float, CommandItem
-from fakeredis._helpers import SimpleError, Database
+from fakeredis._helpers import SimpleError
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.geo import distance, geo_encode, geo_decode
 from fakeredis.model import ZSet
 
@@ -80,10 +81,7 @@ def _find_near(
     return results
 
 
-class GeoCommandsMixin:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(GeoCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
+class GeoCommandsMixin(CommandsMixinBase):
 
     def _store_geo_results(self, item_name: bytes, geo_results: List[GeoResult], scoredist: bool) -> int:
         db_item = CommandItem(item_name, self._db, item=self._db.get(item_name), default=ZSet())

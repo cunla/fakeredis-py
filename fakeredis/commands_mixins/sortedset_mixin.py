@@ -24,10 +24,9 @@ from fakeredis._helpers import (
     SimpleError,
     casematch,
     null_terminate,
-    Database,
 )
-from fakeredis._typing import VersionType
-from fakeredis.model import ZSet, ExpiringMembersSet, ClientInfo
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import ZSet, ExpiringMembersSet
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -41,16 +40,10 @@ SORTED_SET_METHODS = {
 _T = TypeVar("_T")
 
 
-class SortedSetCommandsMixin:
+class SortedSetCommandsMixin(CommandsMixinBase):
     _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
     _scan: Callable[..., Any]
     _encodefloat: Callable[[float, bool], bytes]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(SortedSetCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: VersionType
-        self._db: Database
-        self._client_info: ClientInfo
 
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[List[Any]]:
         zset = key.value
