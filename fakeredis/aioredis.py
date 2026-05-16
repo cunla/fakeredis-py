@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence, Type
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple, Type, Union
 
 import redis.asyncio as redis_async
 from redis import ResponseError
 from redis.asyncio.connection import DefaultParser
 
-from . import _fakesocket
-from . import _helpers
+from . import _fakesocket, _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_kwargs
-from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, lib_version, RaiseErrorTypes
+from ._server import FakeBaseConnectionMixin, FakeServer
+from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
