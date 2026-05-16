@@ -5,21 +5,22 @@ import itertools
 import json
 import logging
 import os
-from typing import Callable, AnyStr, Set, Any, Tuple, List, Optional
+from typing import Any, AnyStr, Callable, List, Optional, Set, Tuple
 
 import lupa
 
-from fakeredis._commands import command, Int, Signature, Float
+from fakeredis._commands import Float, Int, Signature, command
 from fakeredis._helpers import (
+    OK,
     SimpleError,
     SimpleString,
-    null_terminate,
-    OK,
     decode_command_bytes,
+    null_terminate,
 )
+
 from .. import _msgs as msgs
 from .._server import FakeServer
-from .._typing import VersionType, ServerType
+from .._typing import ServerType, VersionType
 from ._mixin_base import CommandsMixinBase
 
 __LUA_RUNTIMES_MAP = {
@@ -54,7 +55,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
     _name_to_func: Callable[[str], Tuple[Optional[Callable[..., Any]], Signature]]
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
