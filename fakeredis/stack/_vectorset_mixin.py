@@ -1,7 +1,7 @@
 import itertools
 import random
 import struct
-from typing import Any, List, Literal, Optional, Union, Dict, cast
+from typing import Any, List, Literal, Optional, Union, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem, StringTest
