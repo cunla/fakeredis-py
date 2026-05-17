@@ -111,9 +111,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             return 1 if result else None
         return result
 
-    def _lua_redis_call(
-        self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any
-    ) -> Any:
+    def _lua_redis_call(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
@@ -124,9 +122,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         result = self._convert_redis_result(lua_runtime, result)
         return result
 
-    def _lua_redis_pcall(
-        self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any
-    ) -> Any:
+    def _lua_redis_pcall(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:

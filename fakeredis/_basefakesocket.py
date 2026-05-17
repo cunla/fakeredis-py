@@ -324,7 +324,9 @@ class BaseFakeSocket:
                             for sock in self._server.psubscribers[pattern]:
                                 sock.put_response(pmsg)
             except Exception as e:
-                LOGGER.error(f"Error sending keyspace notification for event `{event.decode()}` on key {command_item.key.decode()}: {e}")
+                LOGGER.error(
+                    f"Error sending keyspace notification for event `{event.decode()}` on key {command_item.key.decode()}: {e}"
+                )
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):
