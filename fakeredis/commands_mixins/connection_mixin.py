@@ -30,9 +30,9 @@ class ConnectionCommandsMixin(CommandsMixinBase):
             return args[0] if args else PONG
 
     @command(name="SELECT", fixed=(DbIndex,))
-    def select(self, index: DbIndex) -> SimpleString:
+    def select(self, index: int) -> SimpleString:
         self._db = self._server.dbs[index]
-        self._db_num = index  # type: ignore
+        self._db_num = index
         return OK
 
     @command(name="CLIENT SETINFO", fixed=(bytes, bytes), repeat=())
@@ -94,7 +94,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
             elif args[i] == b"AUTH" and i + 2 < len(args):
                 user = args[i + 1]
                 password = args[i + 2]
-                self._server._acl.get_user_acl(user).check_password(password)
+                self._server.acl.get_user_acl(user).check_password(password)
                 i += 3
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

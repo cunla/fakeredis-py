@@ -4,7 +4,7 @@ import queue
 import re
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type, Dict
+from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type, Dict, Iterable
 
 import redis
 
@@ -301,7 +301,7 @@ class BaseFakeSocket:
         """Send keyspace notifications"""
         if isinstance(event, str):
             event = event.encode()
-        pattern_regex: Dict[bytes, re.Pattern] = {
+        pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }
         keyspace_channel_prefix: bytes = f"__keyspace@{self._db_num}__:".encode()
@@ -314,7 +314,7 @@ class BaseFakeSocket:
 
                 for channel, message in [(keyspace_channel, event), (keyevent_channel, command_item.key)]:
                     msg = [b"message", channel, message]
-                    subs = self._server.subscribers.get(channel, set())
+                    subs: Iterable[Any] = self._server.subscribers.get(channel, set())
                     for sock in subs:
                         sock.put_response(msg)
 
@@ -324,7 +324,9 @@ class BaseFakeSocket:
                             for sock in self._server.psubscribers[pattern]:
                                 sock.put_response(pmsg)
             except Exception as e:
-                LOGGER.error(f"Error sending keyspace notification for event `{event}` on key {command_item.key}: {e}")
+                LOGGER.error(
+                    f"Error sending keyspace notification for event `{event.decode()}` on key {command_item.key.decode()}: {e}"
+                )
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):

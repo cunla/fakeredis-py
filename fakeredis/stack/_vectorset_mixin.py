@@ -1,17 +1,18 @@
 import itertools
 import random
 import struct
-from typing import Any, List, Optional, Union, Dict
+from typing import Any, List, Literal, Optional, Union, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command, CommandItem, StringTest
 from fakeredis._helpers import SimpleError, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import VectorSet, Vector
 
 VSET_ERR_NOTEXIST = "ERR key does not exist"
 
 
-class VectorSetCommandsMixin:
+class VectorSetCommandsMixin(CommandsMixinBase):
     """`CommandsMixin` for enabling VectorSet compatibility in `fakeredis`."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -21,21 +22,24 @@ class VectorSetCommandsMixin:
     def vcard(self, key: CommandItem) -> Optional[int]:
         if key.value is None:
             return 0
-        return key.value.card
+        vs: VectorSet = key.value
+        return vs.card
 
     @command(name="VDIM", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
     def vdim(self, key: CommandItem) -> int:
         if key.value is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        return key.value.dimensions
+        vs: VectorSet = key.value
+        return vs.dimensions
 
     @command(name="VGETATTR", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
     def vgetattr(self, key: CommandItem, member: bytes) -> Optional[bytes]:
         if key.value is None:
             return None
-        if member not in key.value:
+        vs: VectorSet = key.value
+        if member not in vs:
             return None
-        return key.value[member].attributes
+        return vs[member].attributes
 
     @command(name="VSETATTR", fixed=(Key(VectorSet), bytes, bytes), flags=msgs.FLAG_DO_NOT_CREATE)
     def vsetattr(self, key: CommandItem, member: bytes, attr: bytes) -> int:
@@ -92,6 +96,8 @@ class VectorSetCommandsMixin:
             else:
                 raise SimpleError("ERR invalid option")
         cas = cas or False
+        if vector_values is None or name is None:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VADD"))
         if reduce is not None and key.value is not None:
             raise SimpleError("ERR cannot add projection to existing set without projection")
         if reduce is not None and reduce < 0:
@@ -106,13 +112,14 @@ class VectorSetCommandsMixin:
         if vector_set.exists(name):
             return 0
 
-        vector = Vector(name, vector_values, attributes, quantization or "int8", ef)
+        quant = cast(Literal["noquant", "bin", "int8"], quantization or "int8")
+        vector = Vector(name, vector_values, attributes, quant, ef or 0)
         vector_set.add(vector, numlinks or 16)
         key.update(vector_set)
         return 1
 
     @command(name="VEMB", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> List[float]:
+    def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> Optional[List[float]]:
         if key.value is None:
             return None
         if element not in key.value:
@@ -151,7 +158,8 @@ class VectorSetCommandsMixin:
     def vrem(self, key: CommandItem, member: bytes) -> int:
         if key.value is None:
             return 0
-        return key.value.remove(member)
+        vs: VectorSet = key.value
+        return vs.remove(member)
 
     @command(
         name="VRANGE",
@@ -164,17 +172,19 @@ class VectorSetCommandsMixin:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VRANGE"))
         if key.value is None:
             return []
-        vset = key.value
+        vset: VectorSet = key.value
         count = None
         if len(args) == 1:
             count = int(args[0])
         if count == 0:
             return []
-        res = vset.range(_min.value, _min.inclusive, _max.value, _max.inclusive, count)
+        min_val = _min.value if isinstance(_min.value, bytes) else None
+        max_val = _max.value if isinstance(_max.value, bytes) else None
+        res = vset.range(min_val, _min.inclusive, max_val, _max.inclusive, count)
         return res
 
     @command(name="VSIM", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vsim(self, key: CommandItem, *args: bytes) -> Union[List[bytes], Dict[bytes, float]]:
+    def vsim(self, key: CommandItem, *args: bytes) -> Any:
         """
         VSIM key (ELE | FP32 | VALUES num) (vector | element) [WITHSCORES] [WITHATTRIBS] [COUNT num]
           [EPSILON delta] [EF search-exploration-factor] [FILTER expression] [FILTER-EF max-filtering-effort]
@@ -268,6 +278,8 @@ class VectorSetCommandsMixin:
             return None
         with_scores = len(args) > 0 and casematch(args[0], b"withscores")
         node_links = vset.links(elem)
+        if node_links is None:
+            return None
         levels = sorted(node_links.keys())
         if not with_scores:
             # Both RESP2 and RESP3: list of lists of bytes names per layer
