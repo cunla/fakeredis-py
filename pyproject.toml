@@ -60,7 +60,7 @@ valkey = [
 ]
 vectorset = [
     "numpy>=2.4.0 ; python_version >= '3.11'",
-    "jsonpath_ng>=1.6 ; python_version >= '3.11'",
+    "jsonpath-ng>=1.6 ; python_version >= '3.11'",
 ]
 
 [project.urls]

@@ -8,10 +8,11 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Int, Float, CommandItem
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis._helpers import current_time
-from fakeredis.model import Hash, ClientInfo
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import Hash
 
 
-class HashCommandsMixin:
+class HashCommandsMixin(CommandsMixinBase):
     _encodeint: Callable[
         [
             int,
@@ -20,10 +21,6 @@ class HashCommandsMixin:
     ]
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(HashCommandsMixin, self).__init__(*args, **kwargs)
-        self._client_info: ClientInfo
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
@@ -100,7 +97,7 @@ class HashCommandsMixin:
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
         scan_result = self._scan(key.value, cursor, *scan_args)
         result_cursor = scan_result[0]
-        keys: List[bytes] = [k.encode("utf-8") if isinstance(k, str) else k for k in cast(List[Any], scan_result[1])]
+        keys: List[bytes] = cast(List[bytes], scan_result[1])
         if no_values:
             return [result_cursor, keys]
         items = []

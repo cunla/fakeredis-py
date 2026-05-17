@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Union, Optional, Any, Callable, Iterable, Tuple, List, Set, Sequence, Type
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple, Type, Union
 
 import redis.asyncio as redis_async
 from redis import ResponseError
 from redis.asyncio.connection import DefaultParser
 
-from . import _fakesocket
-from . import _helpers
+from . import _fakesocket, _helpers
 from . import _msgs as msgs
 from ._helpers import SimpleError, convert_args_kwargs
-from ._server import FakeBaseConnectionMixin, VersionType, FakeServer, ServerType
-from ._typing import async_timeout, lib_version, RaiseErrorTypes
+from ._server import FakeBaseConnectionMixin, FakeServer
+from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -211,7 +210,7 @@ class FakeRedisMixin:
         version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
-        client_class=redis_async.Redis,
+        client_class: Type[redis_async.Redis] = redis_async.Redis,
         connection_class: Type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
         connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,
@@ -280,11 +279,11 @@ class FakeRedis(FakeRedisMixin, redis_async.Redis):
     pass
 
 
-def FakeConnection(*args: Any, **kwargs: Any):
+def FakeConnection(*args: Any, **kwargs: Any) -> FakeAsyncRedisConnection:
     warnings.warn("FakeConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
     return FakeAsyncRedisConnection(*args, **kwargs)
 
 
-def FakeAsyncConnection(*args: Any, **kwargs: Any):
+def FakeAsyncConnection(*args: Any, **kwargs: Any) -> FakeAsyncRedisConnection:
     warnings.warn("FakeAsyncConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
     return FakeAsyncRedisConnection(*args, **kwargs)
