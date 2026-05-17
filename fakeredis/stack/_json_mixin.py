@@ -80,7 +80,7 @@ class JSONObject:
 
 
 def _json_write_iterate(
-    method: Callable[[JsonType], Tuple[JsonType, JsonType, bool]],
+    method: Callable[[JsonType], Tuple[Optional[JsonType], Any, bool]],
     key: CommandItem,
     path_str: Union[str, bytes],
     allow_result_none: bool = False,

@@ -259,7 +259,7 @@ class FakeSelector(object):
         return True
 
 
-def _get_args_to_warn(method: Callable) -> Set[str]:
+def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
     closure = method.__closure__
     if closure is None:
         return set()

@@ -30,8 +30,8 @@ AsyncClientType = redis.asyncio.Redis
 try:
     import valkey
 
-    ClientType = Union[redis.Redis, valkey.Valkey]
-    AsyncClientType = Union[redis.asyncio.Redis, valkey.asyncio.Valkey]
+    ClientType = Union[redis.Redis, valkey.Valkey]  # type: ignore[misc, assignment]
+    AsyncClientType = Union[redis.asyncio.Redis, valkey.asyncio.Valkey]  # type: ignore[misc, assignment]
     RaiseErrorTypes = (redis.ResponseError, redis.AuthenticationError, valkey.ResponseError, valkey.AuthenticationError)
     ResponseErrorType = Union[redis.ResponseError, valkey.ResponseError]  # type: ignore[misc, assignment]
 except ImportError:
