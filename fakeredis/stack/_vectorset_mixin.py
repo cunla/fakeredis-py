@@ -253,14 +253,14 @@ class VectorSetCommandsMixin:
         return [k.name for k in res]
 
     @command(name="VINFO", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vinfo(self, key: CommandItem):
+    def vinfo(self, key: CommandItem) -> Any:
         if key.value is None:
             return None
         info = key.value.info()
         return info
 
     @command(name="VLINKS", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes):
+    def vlinks(self, key: CommandItem, elem: bytes, *args: bytes) -> Any:
         if key.value is None:
             return None
         vset: VectorSet = key.value

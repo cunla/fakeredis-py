@@ -13,7 +13,7 @@ from fakeredis._commands import (
     CommandItem,
 )
 from fakeredis._helpers import SimpleError, casematch
-from fakeredis._typing import VersionType
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
 class BitfieldEncoding:
@@ -32,11 +32,7 @@ class BitfieldEncoding:
             raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
 
 
-class BitmapCommandsMixin:
-    def __init(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.version: VersionType
-
+class BitmapCommandsMixin(CommandsMixinBase):
     @staticmethod
     def _bytes_as_bin_string(value: bytes) -> str:
         return "".join([bin(i).lstrip("0b").rjust(8, "0") for i in value])

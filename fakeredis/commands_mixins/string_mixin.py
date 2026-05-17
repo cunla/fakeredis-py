@@ -14,8 +14,9 @@ from fakeredis._commands import (
     fix_range_string,
     CommandItem,
 )
-from fakeredis._helpers import OK, SimpleError, casematch, Database, SimpleString
+from fakeredis._helpers import OK, SimpleError, casematch, SimpleString
 from fakeredis._typing import VersionType
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
 def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[Any]]:
@@ -72,7 +73,7 @@ def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[Any]]:
     return opt[l1][l2], result.encode(), matches
 
 
-class StringCommandsMixin(ABC):
+class StringCommandsMixin(CommandsMixinBase, ABC):
     _encodeint: Callable[
         [
             int,
@@ -80,10 +81,6 @@ class StringCommandsMixin(ABC):
         bytes,
     ]
     _encodefloat: Callable[[float, bool], bytes]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(StringCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
 
     @property
     @abstractmethod

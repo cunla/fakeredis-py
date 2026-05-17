@@ -71,14 +71,11 @@ def bin_reverse(x: int, bits_count: int) -> int:
     return result
 
 
-_next_file_no = 8
+_file_no_counter = itertools.count(8)
 
 
 def _get_next_file_no() -> int:
-    global _next_file_no
-    result = _next_file_no
-    _next_file_no += 1
-    return result
+    return next(_file_no_counter)
 
 
 class BaseFakeSocket:
@@ -102,6 +99,7 @@ class BaseFakeSocket:
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        info = kwargs.pop("client_info", {})
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
@@ -122,7 +120,6 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        info = kwargs.pop("client_info", {})
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
@@ -194,8 +191,9 @@ class BaseFakeSocket:
         line = buf[:pos]
         buf = buf[pos:]
         if not line.endswith(b"\r\n"):
-            command = line.decode().strip().split(" ")[0]
-            args = " ".join(line.decode().strip().split(" ")[1:])
+            parts = line.decode().strip().split(" ", 1)
+            command = parts[0]
+            args = parts[1] if len(parts) > 1 else ""
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
         return line, buf
 
@@ -232,6 +230,7 @@ class BaseFakeSocket:
             return
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
+        from_run_command = False
         try:
             func, sig = self._name_to_func(cmd)
             # ACL check
@@ -255,11 +254,10 @@ class BaseFakeSocket:
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
+                    from_run_command = True
                     result = self._run_command(func, sig, cmd_arguments, False)
         except SimpleError as exc:
-            if self._transaction is not None:
-                # TODO: should not apply if the exception is from _run_command
-                # e.g. watch inside multi
+            if self._transaction is not None and not from_run_command:
                 self._transaction_failed = True
             if cmd == "exec" and exc.value.startswith("ERR "):
                 exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
@@ -327,7 +325,6 @@ class BaseFakeSocket:
                                 sock.put_response(pmsg)
             except Exception as e:
                 LOGGER.error(f"Error sending keyspace notification for event `{event}` on key {command_item.key}: {e}")
-                pass
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
         if self._client_class.__module__.startswith("valkey"):

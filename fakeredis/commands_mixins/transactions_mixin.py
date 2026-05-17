@@ -2,10 +2,11 @@ from typing import Callable, Set, Any, List, Optional
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, Key, CommandItem
-from fakeredis._helpers import OK, SimpleError, Database, SimpleString
+from fakeredis._helpers import OK, SimpleError, SimpleString
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
-class TransactionsCommandsMixin:
+class TransactionsCommandsMixin(CommandsMixinBase):
     _run_command: Callable  # type: ignore
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
@@ -17,7 +18,6 @@ class TransactionsCommandsMixin:
         # Set when executing the commands from EXEC
         self._in_transaction = False
         self._watch_notified = False
-        self._db: Database
 
     def _clear_watches(self) -> None:
         self._watch_notified = False
