@@ -72,7 +72,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def publish(self, channel: bytes, message: bytes) -> int:
         receivers = 0
         msg = [b"message", channel, message]
-        subs = self._server.subscribers.get(channel, set())
+        subs: Iterable[Any] = self._server.subscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1
@@ -89,7 +89,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def spublish(self, channel: bytes, message: bytes) -> int:
         receivers = 0
         msg = [b"smessage", channel, message]
-        subs = self._server.ssubscribers.get(channel, set())
+        subs: Iterable[Any] = self._server.ssubscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1
