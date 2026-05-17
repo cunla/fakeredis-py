@@ -4,20 +4,14 @@ from typing import List, Union, Optional, Any, Set, Dict
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
-from fakeredis._helpers import Database, SimpleString, OK, SimpleError, casematch
-from fakeredis._typing import VersionType
-from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS, ClientInfo
+from fakeredis._helpers import SimpleString, OK, SimpleError, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
 
 
-class TimeSeriesCommandsMixin:  # TimeSeries commands
+class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     _timeseries_keys: Set[bytes] = set()
     DUPLICATE_POLICIES = [b"BLOCK", b"FIRST", b"LAST", b"MIN", b"MAX", b"SUM"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._db: Database
-        self.version: VersionType
-        self._client_info: ClientInfo
 
     @staticmethod
     def _filter_expression_check(ts: TimeSeries, filter_expression: bytes) -> bool:
@@ -63,7 +57,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             casematch(duplicate_policy, item) for item in TimeSeriesCommandsMixin.DUPLICATE_POLICIES
         )
 
-    def _create_timeseries(self, name: bytes, *args) -> TimeSeries:
+    def _create_timeseries(self, name: bytes, *args: bytes) -> TimeSeries:
         (retention, encoding, chunk_size, duplicate_policy, (ignore_max_time_diff, ignore_max_val_diff)), left_args = (
             extract_args(
                 args,
@@ -471,7 +465,7 @@ class TimeSeriesCommandsMixin:  # TimeSeries commands
             res[name.encode("utf-8")] = [labels, {b"reducers": [reducer]}, {b"sources": sources}, measurements]
         return res
 
-    def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes):
+    def _mrange(self, reverse: bool, from_ts: int, to_ts: int, *args: bytes) -> Any:
         args_lower = [arg.lower() for arg in args]
         arg_words = {
             b"latest",

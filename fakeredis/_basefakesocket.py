@@ -99,6 +99,7 @@ class BaseFakeSocket:
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        info = kwargs.pop("client_info", {})
         super(BaseFakeSocket, self).__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
@@ -119,7 +120,6 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
-        info = kwargs.pop("client_info", {})
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 

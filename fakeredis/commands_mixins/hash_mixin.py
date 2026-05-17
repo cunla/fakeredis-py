@@ -8,10 +8,11 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import command, Key, Int, Float, CommandItem
 from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
 from fakeredis._helpers import current_time
-from fakeredis.model import Hash, ClientInfo
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import Hash
 
 
-class HashCommandsMixin:
+class HashCommandsMixin(CommandsMixinBase):
     _encodeint: Callable[
         [
             int,
@@ -20,10 +21,6 @@ class HashCommandsMixin:
     ]
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(HashCommandsMixin, self).__init__(*args, **kwargs)
-        self._client_info: ClientInfo
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value

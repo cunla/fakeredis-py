@@ -210,7 +210,7 @@ class FakeRedisMixin:
         version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
         lua_modules: Optional[Set[str]] = None,
-        client_class=redis_async.Redis,
+        client_class: Type[redis_async.Redis] = redis_async.Redis,
         connection_class: Type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
         connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,
@@ -279,11 +279,11 @@ class FakeRedis(FakeRedisMixin, redis_async.Redis):
     pass
 
 
-def FakeConnection(*args: Any, **kwargs: Any):
+def FakeConnection(*args: Any, **kwargs: Any) -> FakeAsyncRedisConnection:
     warnings.warn("FakeConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
     return FakeAsyncRedisConnection(*args, **kwargs)
 
 
-def FakeAsyncConnection(*args: Any, **kwargs: Any):
+def FakeAsyncConnection(*args: Any, **kwargs: Any) -> FakeAsyncRedisConnection:
     warnings.warn("FakeAsyncConnection is deprecated. Use FakeAsyncRedisConnection instead", DeprecationWarning, 2)
     return FakeAsyncRedisConnection(*args, **kwargs)

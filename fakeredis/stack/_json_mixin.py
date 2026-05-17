@@ -15,7 +15,8 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import Key, command, delete_keys, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString
 from fakeredis._typing import JsonType
-from fakeredis.model import ZSet, ClientInfo
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import ZSet
 
 
 def _format_path(path: Union[bytes, str]) -> str:
@@ -141,7 +142,7 @@ def _json_read_iterate(
     return res
 
 
-class JSONCommandsMixin:
+class JSONCommandsMixin(CommandsMixinBase):
     """`CommandsMixin` for enabling RedisJSON compatibility in `fakeredis`."""
 
     TYPES_EMPTY_VAL_DICT: Dict[Type[object], Any] = {
@@ -166,7 +167,6 @@ class JSONCommandsMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db: helpers.Database
-        self._client_info: ClientInfo
 
     @staticmethod
     def _get_single(
