@@ -5,9 +5,15 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'fakeredis/**'
+      - 'tests/**'
   pull_request:
     branches:
       - master
+    paths:
+      - 'fakeredis/**'
+      - 'tests/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - Implement keyspace notifications @alexbthundiyil-spec (#463)
+- feat(lua): add server global alias for Valkey @przemub (#480)
 
 ### 🐛 Bug Fixes
 
