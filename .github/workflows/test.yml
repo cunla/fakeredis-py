@@ -35,7 +35,7 @@ jobs:
       matrix:
         redis-image:
           - "redis:8.6.2"
-          - "valkey/valkey:9.0.3"
+          - "valkey/valkey:9.1"
           - "redis:7.4.8"
           - "valkey/valkey:8.1.6"
           - "redis:6.2.17"
