@@ -1,4 +1,4 @@
-# Redis `stream` commands (21/21 implemented)
+# Redis `stream` commands (21/25 implemented)
 
 ## [XACK](https://redis.io/commands/xack/)
 
@@ -83,3 +83,23 @@ Returns the messages from a stream within a range of IDs in reverse order.
 ## [XTRIM](https://redis.io/commands/xtrim/)
 
 Deletes messages from the beginning of a stream.
+
+
+## Unsupported stream commands
+> To implement support for a command, see [here](/guides/implement-command/)
+
+#### [XACKDEL](https://redis.io/commands/xackdel/) <small>(not implemented)</small>
+
+Acknowledges and deletes one or multiple messages for a stream consumer group.
+
+#### [XDELEX](https://redis.io/commands/xdelex/) <small>(not implemented)</small>
+
+Deletes one or multiple entries from the stream.
+
+#### [XIDMPRECORD](https://redis.io/commands/xidmprecord/) <small>(not implemented)</small>
+
+An internal command for setting IDMP metadata on an existing stream message.
+
+#### [XNACK](https://redis.io/commands/xnack/) <small>(not implemented)</small>
+
+Releases claimed messages back to the group's PEL without acknowledging them, making them available for re-delivery.

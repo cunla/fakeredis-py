@@ -1,4 +1,4 @@
-# Redis `hash` commands (28/30 implemented)
+# Redis `hash` commands (28/28 implemented)
 
 ## [HDEL](https://redis.io/commands/hdel/)
 
@@ -111,15 +111,3 @@ Returns the TTL in seconds of a hash field.
 ## [HVALS](https://redis.io/commands/hvals/)
 
 Returns all values in a hash.
-
-
-## Unsupported hash commands
-> To implement support for a command, see [here](/guides/implement-command/)
-
-#### [HGETF](https://redis.io/commands/hgetf/) <small>(not implemented)</small>
-
-For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds
-
-#### [HSETF](https://redis.io/commands/hsetf/) <small>(not implemented)</small>
-
-For each specified field, returns its value and optionally set the field's remaining expiration time in seconds / milliseconds

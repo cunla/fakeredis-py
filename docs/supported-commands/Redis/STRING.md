@@ -1,4 +1,4 @@
-# Redis `string` commands (23/23 implemented)
+# Redis `string` commands (23/26 implemented)
 
 ## [APPEND](https://redis.io/commands/append/)
 
@@ -58,7 +58,7 @@ Atomically creates or modifies the string values of one or more keys.
 
 ## [MSETEX](https://redis.io/commands/msetex/)
 
-Atomically sets multiple string keys with a shared expiration in a single operation.
+Atomically sets multiple string keys with a shared expiration in a single operation. Supports flexible argument parsing where condition and expiration flags can appear in any order.
 
 ## [MSETNX](https://redis.io/commands/msetnx/)
 
@@ -91,3 +91,19 @@ Returns the length of a string value.
 ## [SUBSTR](https://redis.io/commands/substr/)
 
 Returns a substring from a string value.
+
+
+## Unsupported string commands
+> To implement support for a command, see [here](/guides/implement-command/)
+
+#### [DELEX](https://redis.io/commands/delex/) <small>(not implemented)</small>
+
+Conditionally removes the specified key based on value or digest comparison.
+
+#### [DIGEST](https://redis.io/commands/digest/) <small>(not implemented)</small>
+
+Returns the XXH3 hash of a string value.
+
+#### [INCREX](https://redis.io/commands/increx/) <small>(not implemented)</small>
+
+Increments the numeric value of a key by a number and sets its expiration time. Uses 0 as initial value if the key doesn't exist.

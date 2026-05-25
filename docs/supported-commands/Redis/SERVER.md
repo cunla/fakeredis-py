@@ -1,4 +1,4 @@
-# Redis `server` commands (23/70 implemented)
+# Redis `server` commands (23/77 implemented)
 
 ## [ACL CAT](https://redis.io/commands/acl-cat/)
 
@@ -93,8 +93,8 @@ Swaps two Redis databases.
 Returns the server time.
 
 
-## Unsupported server commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported server commands
+> To implement support for a command, see [here](/guides/implement-command/)
 
 #### [ACL](https://redis.io/commands/acl/) <small>(not implemented)</small>
 
@@ -143,6 +143,30 @@ Persists the effective configuration to file.
 #### [FAILOVER](https://redis.io/commands/failover/) <small>(not implemented)</small>
 
 Starts a coordinated failover from a server to one of its replicas.
+
+#### [HOTKEYS](https://redis.io/commands/hotkeys/) <small>(not implemented)</small>
+
+A container for hotkeys tracking commands.
+
+#### [HOTKEYS GET](https://redis.io/commands/hotkeys-get/) <small>(not implemented)</small>
+
+Returns lists of top K hotkeys depending on metrics chosen in HOTKEYS START command.
+
+#### [HOTKEYS HELP](https://redis.io/commands/hotkeys-help/) <small>(not implemented)</small>
+
+Return helpful text about HOTKEYS command parameters.
+
+#### [HOTKEYS RESET](https://redis.io/commands/hotkeys-reset/) <small>(not implemented)</small>
+
+Release the resources used for hotkey tracking.
+
+#### [HOTKEYS START](https://redis.io/commands/hotkeys-start/) <small>(not implemented)</small>
+
+Starts hotkeys tracking.
+
+#### [HOTKEYS STOP](https://redis.io/commands/hotkeys-stop/) <small>(not implemented)</small>
+
+Stops hotkeys tracking.
 
 #### [INFO](https://redis.io/commands/info/) <small>(not implemented)</small>
 
@@ -284,4 +308,6 @@ Clears all entries from the slow log.
 
 An internal command used in replication.
 
+#### [TRIMSLOTS](https://redis.io/commands/trimslots/) <small>(not implemented)</small>
 
+Trim the keys that belong to specified slots.

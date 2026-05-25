@@ -1,6 +1,6 @@
 
-## Unsupported cluster commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported cluster commands
+> To implement support for a command, see [here](/guides/implement-command/)
 
 #### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
 
@@ -74,6 +74,10 @@ Returns a list of all TCP links to and from peer nodes.
 
 Forces a node to handshake with another node.
 
+#### [CLUSTER MIGRATION](https://redis.io/commands/cluster-migration/) <small>(not implemented)</small>
+
+Start, monitor and cancel slot migration.
+
 #### [CLUSTER MYID](https://redis.io/commands/cluster-myid/) <small>(not implemented)</small>
 
 Returns the ID of a node.
@@ -118,9 +122,17 @@ Returns the mapping of cluster slots to shards.
 
 Lists the replica nodes of a master node.
 
+#### [CLUSTER SLOT-STATS](https://redis.io/commands/cluster-slot-stats/) <small>(not implemented)</small>
+
+Return an array of slot usage statistics for slots assigned to the current node.
+
 #### [CLUSTER SLOTS](https://redis.io/commands/cluster-slots/) <small>(not implemented)</small>
 
 Returns the mapping of cluster slots to nodes.
+
+#### [CLUSTER SYNCSLOTS](https://redis.io/commands/cluster-syncslots/) <small>(not implemented)</small>
+
+Internal command for atomic slot migration protocol between cluster nodes.
 
 #### [READONLY](https://redis.io/commands/readonly/) <small>(not implemented)</small>
 
@@ -129,5 +141,3 @@ Enables read-only queries for a connection to a Redis Cluster replica node.
 #### [READWRITE](https://redis.io/commands/readwrite/) <small>(not implemented)</small>
 
 Enables read-write queries for a connection to a Reids Cluster replica node.
-
-

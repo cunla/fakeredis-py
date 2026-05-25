@@ -80,6 +80,7 @@ METADATA = [
             "hsetex",
             "hgetdel",
             "XCFGSET",
+            "XNACK",
         ],
     ),
     CommandsMeta(
