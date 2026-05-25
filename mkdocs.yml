@@ -62,6 +62,7 @@ nav:
   - Supported commands:
       - 'supported-commands/index.md'
       - Redis commands:
+          - Array: supported-commands/Redis/ARRAY.md
           - Bitmap: supported-commands/Redis/BITMAP.md
           - Cluster: supported-commands/Redis/CLUSTER.md
           - Connection: supported-commands/Redis/CONNECTION.md
@@ -71,6 +72,7 @@ nav:
           - Hash: supported-commands/Redis/HASH.md
           - HyperLogLog: supported-commands/Redis/HYPERLOGLOG.md
           - List: supported-commands/Redis/LIST.md
+          - Module: supported-commands/Redis/MODULE.md
           - Pub/Sub: supported-commands/Redis/PUBSUB.md
           - Scripting: supported-commands/Redis/SCRIPTING.md
           - Server: supported-commands/Redis/SERVER.md
