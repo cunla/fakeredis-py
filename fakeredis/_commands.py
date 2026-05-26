@@ -340,14 +340,6 @@ class StringTest(RedisType):
         else:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
 
-    # def to_scoretest(self, zset: ZSet) -> ScoreTest:
-    #     if isinstance(self.value, BeforeAny):
-    #         return ScoreTest(float("-inf"), False)
-    #     if isinstance(self.value, AfterAny):
-    #         return ScoreTest(float("inf"), False)
-    #     val: float = zset.get(self.value, None)
-    #     return ScoreTest(val, self.exclusive)
-
 
 class Signature:
     def __init__(
