@@ -12,7 +12,7 @@ from fakeredis._typing import ClientType
 from test import testtools
 
 pytestmark = [
-    pytest.mark.supported_redis_versions(min_ver="8.7.2"),
+    pytest.mark.supported_redis_versions(min_redis_ver="8.7.2"),
 ]
 
 
