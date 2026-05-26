@@ -125,7 +125,7 @@ class BFCommandsMixin(CommandsMixinBase):
             res = key.value.elements_added
         elif casematch(args[0], b"EXPANSION"):
             res_key = b"Expansion rate"
-            res = key.value.scale if key.value.scale > 0 else 0
+            res = key.value.scale if key.value.scale > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if self._client_info.protocol_version == 2:
