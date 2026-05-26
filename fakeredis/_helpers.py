@@ -5,7 +5,7 @@ import time
 import uuid
 import weakref
 from collections import defaultdict
-from typing import Any, Set, Callable, Dict, Optional, Iterator, AnyStr, Type, MutableMapping
+from typing import Any, AnyStr, Callable, Dict, Iterator, MutableMapping, Optional, Set, Type
 
 
 class SimpleString:
@@ -54,6 +54,13 @@ def null_terminate(s: bytes) -> bytes:
     if ind > -1:
         return s[:ind].lower()
     return s.lower()
+
+
+def casematch_any(a: bytes, *args: bytes) -> bool:
+    for b in args:
+        if casematch(a, b):
+            return True
+    return False
 
 
 def casematch(a: bytes, b: bytes) -> bool:
