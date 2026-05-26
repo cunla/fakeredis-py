@@ -16,11 +16,6 @@ pytestmark = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# XNACK (adapted from redis-py test_commands.py @ ea76084)
-# ---------------------------------------------------------------------------
-
-
 def test_xnack_silent(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -106,11 +101,6 @@ def test_xnack_no_ids_block(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "XNACK", stream, group, "FAIL")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-
-
-# ---------------------------------------------------------------------------
-# XDELEX
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.supported_redis_versions(min_ver="8.2")
@@ -252,11 +242,6 @@ def test_xdelex_acked_one_group_still_pending(r: ClientType):
     assert r.xlen(stream) == 0
 
 
-# ---------------------------------------------------------------------------
-# XACKDEL
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.supported_redis_versions(min_ver="8.2")
 def test_xackdel_basic(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
@@ -387,11 +372,6 @@ def test_xackdel_acked_then_deletable(r: ClientType):
     res = testtools.raw_command(r, "XACKDEL", stream, group1, "ACKED", "IDS", 1, m1)
     assert res == [1]  # group1 ack removes last reference → deleted
     assert r.xlen(stream) == 0
-
-
-# ---------------------------------------------------------------------------
-# XIDMPRECORD
-# ---------------------------------------------------------------------------
 
 
 def test_xidmprecord_basic(r: ClientType):
