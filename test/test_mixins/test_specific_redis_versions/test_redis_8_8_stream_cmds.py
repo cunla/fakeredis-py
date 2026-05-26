@@ -1,9 +1,3 @@
-"""Tests for stream commands introduced in Redis 8.7.2 / 8.8:
-XNACK, XDELEX, XACKDEL, XIDMPRECORD.
-
-XNACK tests are adapted from redis-py test_commands.py @ ea76084.
-"""
-
 import pytest
 import redis
 import valkey
@@ -11,9 +5,12 @@ import valkey
 from fakeredis._typing import ClientType
 from test import testtools
 
-pytestmark = [
-    pytest.mark.supported_redis_versions(min_redis_ver="8.7.2"),
-]
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.supported_server_versions(min_redis_ver="8.7.2"),
+    ]
+)
 
 
 def test_xnack_silent(r: ClientType):
@@ -103,7 +100,7 @@ def test_xnack_no_ids_block(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_keepref(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -124,7 +121,7 @@ def test_xdelex_keepref(r: ClientType):
     assert m3 in pending_ids
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_delref(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -142,7 +139,7 @@ def test_xdelex_delref(r: ClientType):
     assert m2 in pending_ids
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_acked(r: ClientType):
     stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -164,7 +161,7 @@ def test_xdelex_acked(r: ClientType):
     assert r.xlen(stream) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_nonexistent(r: ClientType):
     stream = "stream"
     r.xadd(stream, {"f": "1"})
@@ -178,7 +175,7 @@ def test_xdelex_nonexistent(r: ClientType):
     assert res == [-1, -1]
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_default_mode_is_keepref(r: ClientType):
     """Omitting the mode flag defaults to KEEPREF behaviour."""
     stream, group, consumer = "stream", "group", "consumer"
@@ -193,7 +190,7 @@ def test_xdelex_default_mode_is_keepref(r: ClientType):
     assert r.xpending(stream, group)["pending"] == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_mixed_results(r: ClientType):
     """Per-ID results: 1 deleted, -1 not found, in one call."""
     stream = "stream"
@@ -204,7 +201,7 @@ def test_xdelex_mixed_results(r: ClientType):
     assert r.xlen(stream) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_delref_updates_pending_count(r: ClientType):
     """DELREF removes the PEL entry so the consumer's pending count drops."""
     stream, group, consumer = "stream", "group", "consumer"
@@ -220,7 +217,7 @@ def test_xdelex_delref_updates_pending_count(r: ClientType):
     assert remaining[0]["message_id"] == m2
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xdelex_acked_one_group_still_pending(r: ClientType):
     """ACKED skips deletion when at least one group still holds the entry in PEL."""
     stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
@@ -242,7 +239,7 @@ def test_xdelex_acked_one_group_still_pending(r: ClientType):
     assert r.xlen(stream) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_basic(r: ClientType):
     stream, group, consumer = "stream", "group", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -257,7 +254,7 @@ def test_xackdel_basic(r: ClientType):
     assert r.xpending(stream, group)["pending"] == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_delref(r: ClientType):
     stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -274,7 +271,7 @@ def test_xackdel_delref(r: ClientType):
     assert r.xpending(stream, group2)["pending"] == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_acked_cross_group(r: ClientType):
     stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
     m1 = r.xadd(stream, {"f": "1"})
@@ -291,7 +288,7 @@ def test_xackdel_acked_cross_group(r: ClientType):
     assert r.xpending(stream, group2)["pending"] == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_nonexistent(r: ClientType):
     stream, group = "stream", "group"
     r.xadd(stream, {"f": "1"})
@@ -310,7 +307,7 @@ def test_xackdel_nonexistent(r: ClientType):
     assert res == [-1]
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_default_mode_is_keepref(r: ClientType):
     """Omitting the mode flag defaults to KEEPREF: entry deleted from stream,
     PEL refs to other groups are preserved."""
@@ -329,7 +326,7 @@ def test_xackdel_default_mode_is_keepref(r: ClientType):
     assert r.xpending(stream, group2)["pending"] == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_multiple_ids_mixed(r: ClientType):
     """Per-ID results for a batch: 1 acked+deleted, -1 not found."""
     stream, group, consumer = "stream", "group", "consumer"
@@ -343,7 +340,7 @@ def test_xackdel_multiple_ids_mixed(r: ClientType):
     assert r.xlen(stream) == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_entry_not_in_pel(r: ClientType):
     """XACKDEL on an entry that exists in the stream but not in this group's PEL
     still deletes it from the stream (ack is a no-op)."""
@@ -357,7 +354,7 @@ def test_xackdel_entry_not_in_pel(r: ClientType):
     assert r.xlen(stream) == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="8.2")
 def test_xackdel_acked_then_deletable(r: ClientType):
     """Once all groups have acked, ACKED mode can remove the entry."""
     stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
