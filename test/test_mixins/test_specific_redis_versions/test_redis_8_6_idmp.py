@@ -8,7 +8,7 @@ from test import testtools
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_redis_versions(min_ver="8.6"),
+        pytest.mark.supported_server_versions(min_redis_ver="8.6"),
         testtools.run_test_if_redispy_ver("gte", "7.2"),
     ]
 )

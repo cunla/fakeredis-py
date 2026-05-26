@@ -40,7 +40,7 @@ def test_expireat_should_return_false_for_missing_key(r: ClientType):
     assert r.expireat("missing", int(time() + 1)) is False
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expireat_should_not_expire_when_expire_is_set(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -132,7 +132,7 @@ def test_sort_foo(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sort_ro(r: ClientType):
     r["score:1"] = 8
     r["score:2"] = 3
@@ -144,14 +144,14 @@ def test_sort_ro(r: ClientType):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expiretime(r: ClientType):
     r.set("a", "foo")
     r.expireat("a", 33_177_117_420)
     assert r.expiretime("a") == 33_177_117_420
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expiretime_dragonfly(r: ClientType):
     r.set("a", "foo")
     r.expire("a", 5)
@@ -159,7 +159,7 @@ def test_expiretime_dragonfly(r: ClientType):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_pexpiretime(r: ClientType):
     r.set("a", "foo")
     r.pexpireat("a", 33_177_117_420_000)
@@ -377,7 +377,7 @@ def test_expire_should_throw_error(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(max_ver="6.9")
+@pytest.mark.supported_server_versions(max_redis_ver="6.9")
 def test_expire_extra_params_return_error(r: ClientType):
     with pytest.raises(redis.exceptions.ResponseError) as ctx:
         r.expire("foo", 1, nx=True)
@@ -560,14 +560,14 @@ def test_set_float_value(r: ClientType):
     assert float(r.get("foo")) == x
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expire_should_not_expire__when_no_expire_is_set(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
     assert r.expire("foo", 1, xx=True) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expire_should_not_expire__when_expire_is_set(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -575,7 +575,7 @@ def test_expire_should_not_expire__when_expire_is_set(r: ClientType):
     assert r.expire("foo", 2, nx=True) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expire_should_expire__when_expire_is_greater(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -584,7 +584,7 @@ def test_expire_should_expire__when_expire_is_greater(r: ClientType):
     assert r.expire("foo", 200, gt=True) == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expire_should_expire__when_expire_is_lessthan(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
@@ -722,7 +722,7 @@ def test_key_patterns(r: ClientType):
     assert sorted(r.keys()) == [b"four", b"one", b"three", b"two"]
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_watch_when_setbit_does_not_change_value(r: ClientType):
     r.set("foo", b"0")
 
@@ -743,7 +743,7 @@ def test_from_hypothesis_redis7(r: ClientType):
     assert r.get(b"") == b"\x00"
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_copy_preserves_expiry(r: ClientType):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -762,7 +762,7 @@ def test_copy_replaces(r: ClientType):
     assert r.get("bar") == b"0"
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_copy_replaces_with_expiry(r: ClientType):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
@@ -776,7 +776,7 @@ def test_copy_replaces_with_expiry(r: ClientType):
     assert r.expiretime("bar") == 33177117420
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_copy_db_replaces_with_expire(r: ClientType):
     r.set("foo", "0")
     r.expireat("foo", 33177117420)
