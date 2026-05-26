@@ -12,7 +12,7 @@ from test.testtools import resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_redis_versions(min_ver="7"),
+        pytest.mark.supported_server_versions(min_redis_ver="7"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.unsupported_server_types("dragonfly"),
     ]
@@ -35,14 +35,16 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 }
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.4")
+@pytest.mark.supported_server_versions(min_redis_ver="8.8")
 def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
     fakeredis_categories.add(b"search")
     response_categories = r.acl_cat()
     response_categories = {asbytes(cat) for cat in response_categories}
-    assert len(set(response_categories) - set(fakeredis_categories)) == 0
+    assert len(set(response_categories) - set(fakeredis_categories)) == 0, (
+        f"Unexpected categories in ACL CAT response: {set(response_categories) - set(fakeredis_categories)}"
+    )
     if b"search" in response_categories:
         response_categories.remove(b"search")  # `search` is not supported by fakeredis
     for cat in response_categories:
@@ -99,6 +101,7 @@ def test_auth(r: ClientType):
     r.auth("", "default")
 
 
+@pytest.mark.supported_server_versions(min_redis_ver=(7,), max_valkey_ver=(9,))
 def test_acl_list(r: ClientType):
     username = "fakeredis-user"
     r.acl_deluser(username)

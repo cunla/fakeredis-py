@@ -61,7 +61,7 @@ def test_xadd_redis__green(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xadd_redis7(r: ClientType):  # Using ts-*
     stream = "stream"
     m1 = r.xadd(stream, {"some": "other"})
@@ -116,7 +116,7 @@ def test_xtrim(r: ClientType):
     assert r.xtrim(stream, 3, approximate=False) == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2.4")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2.4")
 def test_xtrim_minlen_and_length_args(r: ClientType):
     stream = "stream"
     add_items(r, stream, 4)
@@ -354,7 +354,7 @@ def test_xgroup_destroy(r: ClientType):
     assert r.xgroup_destroy(stream, group) == 1
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xgroup_create_connection7(r: ClientType):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -373,7 +373,7 @@ def test_xgroup_create_connection7(r: ClientType):
     assert r.xinfo_groups(stream) == expected
 
 
-@pytest.mark.supported_redis_versions(min_ver="7", max_ver="8.2")
+@pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="8.2")
 def test_xgroup_setid_redis7(r: ClientType):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
@@ -581,7 +581,7 @@ def test_xack(r: ClientType):
     assert_consumer_info(r, stream, group, [{"name": b"consumer", "pending": 0}])
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xinfo_stream_redis7(r: ClientType):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -725,7 +725,7 @@ def test_xpending_range_negative(r: ClientType):
     assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "4.4")
 def test_xautoclaim_redis7(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
@@ -755,7 +755,7 @@ def test_xautoclaim_redis7(r: ClientType):
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xclaim_trimmed_redis7(r: ClientType):
     # xclaim should not raise an exception if the item is not there
     stream, group = "stream", "group"

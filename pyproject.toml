@@ -124,7 +124,7 @@ markers = [
     "fake: run tests only with fake redis",
     "real: run tests with a locally running real Redis server",
     "disconnected",
-    "supported_redis_versions",
+    "supported_server_versions",
     "decode_responses",
     "unsupported_server_types",
     "resp2_only: run tests only with RESP2",

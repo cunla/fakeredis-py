@@ -368,7 +368,7 @@ def test_pubsub_no_subcommands(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7.1")
+@pytest.mark.supported_server_versions(min_redis_ver="7.1")
 def test_pubsub_help_redis71(r: ClientType):
     assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
@@ -407,7 +407,7 @@ def test_pubsub_numsub(r: ClientType):
     assert r.pubsub_numsub(a, "non-existing") == [(a.encode(), 2), (b"non-existing", 0)]
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_published_message_to_shard_channel(r: ClientType):
     p = r.pubsub()
@@ -420,7 +420,7 @@ def test_published_message_to_shard_channel(r: ClientType):
     assert message == make_message("smessage", "foo", "test message")
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_subscribe_property_with_shard_channels_cluster(r: ClientType):
     p = r.pubsub()
@@ -466,7 +466,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: ClientType):
     assert p.subscribed is False
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0")
 def test_pubsub_shardnumsub(r: ClientType):
     channels = {b"foo", b"bar", b"baz"}
@@ -486,7 +486,7 @@ def test_pubsub_shardnumsub(r: ClientType):
     assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_pubsub_shardchannels(r: ClientType):
     p = r.pubsub()

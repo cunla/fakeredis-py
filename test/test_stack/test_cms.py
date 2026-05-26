@@ -108,7 +108,7 @@ def test_cms_merge(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_cms_info(r: redis.Redis):
     assert r.cms().initbydim("A", 1000, 5)
     assert r.cms().initbydim("B", 1000, 5)

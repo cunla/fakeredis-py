@@ -40,7 +40,7 @@ def test_time(r, mocker):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_client_list(r: ClientType):
     client_info = r.client_info()
     client_id = client_info["id"]
@@ -60,7 +60,7 @@ def test_client_list(r: ClientType):
     assert len(client_list) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly")
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: ClientType):
