@@ -7,7 +7,6 @@ from typing import cast
 
 import pytest
 import redis
-import redis.client
 import valkey
 
 import fakeredis

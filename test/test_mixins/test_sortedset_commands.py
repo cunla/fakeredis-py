@@ -6,7 +6,6 @@ from typing import Tuple, List, Optional
 import math
 import pytest
 import redis
-import redis.client
 import valkey
 from packaging.version import Version
 

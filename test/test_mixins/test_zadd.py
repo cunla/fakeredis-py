@@ -2,7 +2,6 @@ from typing import Tuple, List, Dict
 
 import pytest
 import redis
-import redis.client
 import valkey
 from packaging.version import Version
 

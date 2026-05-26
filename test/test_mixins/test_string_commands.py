@@ -5,7 +5,6 @@ from datetime import timedelta
 
 import pytest
 import redis
-import redis.client
 import valkey
 
 from fakeredis._helpers import current_time

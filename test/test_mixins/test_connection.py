@@ -1,6 +1,5 @@
 import pytest
 import redis
-import redis.client
 import valkey
 
 from fakeredis import _msgs as msgs
