@@ -535,9 +535,7 @@ class XStream(BaseModel):
         if pid in self._idmp_map and iid in self._idmp_map[pid]:
             existing = self._idmp_map[pid][iid]
             if existing != entry_key:
-                raise SimpleError(
-                    "ERR The specified IDMP producer-id/idempotent-id pair maps to a different stream ID"
-                )
+                raise SimpleError("ERR The specified IDMP producer-id/idempotent-id pair maps to a different stream ID")
             return  # idempotent – already recorded
 
         if pid not in self._idmp_map:
