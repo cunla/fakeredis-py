@@ -371,8 +371,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         num_ids = Int.decode(args[i])
         i += 1
-        if num_ids < 0 or i + num_ids > len(args):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if num_ids < 1 or i + num_ids > len(args):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(cmd_name.lower()))
         ids = list(args[i : i + num_ids])
         return mode, ids
 

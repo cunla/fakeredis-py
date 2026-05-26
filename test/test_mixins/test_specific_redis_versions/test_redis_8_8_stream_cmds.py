@@ -252,15 +252,6 @@ def test_xdelex_acked_one_group_still_pending(r: ClientType):
     assert r.xlen(stream) == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.2")
-def test_xdelex_zero_ids(r: ClientType):
-    """IDS 0 is a valid no-op that returns an empty list."""
-    stream = "stream"
-    r.xadd(stream, {"f": "1"})
-    res = testtools.raw_command(r, "XDELEX", stream, "IDS", 0)
-    assert res == []
-
-
 # ---------------------------------------------------------------------------
 # XACKDEL
 # ---------------------------------------------------------------------------
@@ -371,14 +362,14 @@ def test_xackdel_multiple_ids_mixed(r: ClientType):
 def test_xackdel_entry_not_in_pel(r: ClientType):
     """XACKDEL on an entry that exists in the stream but not in this group's PEL
     still deletes it from the stream (ack is a no-op)."""
-    stream, group, consumer = "stream", "group", "consumer"
+    stream, group = "stream", "group"
     m1 = r.xadd(stream, {"f": "1"})
     r.xgroup_create(stream, group, 0)
     # Do NOT read — m1 is not in PEL
 
     res = testtools.raw_command(r, "XACKDEL", stream, group, "KEEPREF", "IDS", 1, m1)
-    assert res == [1]
-    assert r.xlen(stream) == 0
+    assert res == [-1]
+    assert r.xlen(stream) == 1
 
 
 @pytest.mark.supported_redis_versions(min_ver="8.2")
@@ -394,7 +385,7 @@ def test_xackdel_acked_then_deletable(r: ClientType):
     # group2 acks first, group1 uses XACKDEL ACKED — still blocked
     r.xack(stream, group2, m1)
     res = testtools.raw_command(r, "XACKDEL", stream, group1, "ACKED", "IDS", 1, m1)
-    assert res == [1]   # group1 ack removes last reference → deleted
+    assert res == [1]  # group1 ack removes last reference → deleted
     assert r.xlen(stream) == 0
 
 

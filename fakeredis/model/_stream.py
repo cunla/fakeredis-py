@@ -499,6 +499,9 @@ class XStream(BaseModel):
                 continue
 
             entry_key = self._ids[ind]
+            if entry_key not in group.pel:
+                results.append(-1)
+                continue
             group.ack((id_bytes,))
 
             if mode == b"ACKED":
