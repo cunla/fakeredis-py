@@ -188,6 +188,79 @@ def test_xdelex_nonexistent(r: ClientType):
     assert res == [-1, -1]
 
 
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xdelex_default_mode_is_keepref(r: ClientType):
+    """Omitting the mode flag defaults to KEEPREF behaviour."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    res = testtools.raw_command(r, "XDELEX", stream, "IDS", 1, m1)
+    assert res == [1]
+    assert r.xlen(stream) == 0
+    # PEL entry preserved (KEEPREF default)
+    assert r.xpending(stream, group)["pending"] == 1
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xdelex_mixed_results(r: ClientType):
+    """Per-ID results: 1 deleted, -1 not found, in one call."""
+    stream = "stream"
+    m1 = r.xadd(stream, {"f": "1"})
+
+    res = testtools.raw_command(r, "XDELEX", stream, "IDS", 3, m1, b"99999-0", b"99999-1")
+    assert res == [1, -1, -1]
+    assert r.xlen(stream) == 0
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xdelex_delref_updates_pending_count(r: ClientType):
+    """DELREF removes the PEL entry so the consumer's pending count drops."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    m2 = r.xadd(stream, {"f": "2"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    assert r.xpending(stream, group)["pending"] == 2
+
+    testtools.raw_command(r, "XDELEX", stream, "DELREF", "IDS", 1, m1)
+    assert r.xpending(stream, group)["pending"] == 1
+    remaining = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert remaining[0]["message_id"] == m2
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xdelex_acked_one_group_still_pending(r: ClientType):
+    """ACKED skips deletion when at least one group still holds the entry in PEL."""
+    stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xgroup_create(stream, group1, 0)
+    r.xgroup_create(stream, group2, 0)
+    r.xreadgroup(group1, consumer, streams={stream: ">"})
+    r.xreadgroup(group2, consumer, streams={stream: ">"})
+
+    r.xack(stream, group1, m1)  # group1 done, group2 still pending
+
+    res = testtools.raw_command(r, "XDELEX", stream, "ACKED", "IDS", 1, m1)
+    assert res == [2]  # cannot delete — group2 still has it
+    assert r.xlen(stream) == 1
+
+    r.xack(stream, group2, m1)
+    res = testtools.raw_command(r, "XDELEX", stream, "ACKED", "IDS", 1, m1)
+    assert res == [1]
+    assert r.xlen(stream) == 0
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xdelex_zero_ids(r: ClientType):
+    """IDS 0 is a valid no-op that returns an empty list."""
+    stream = "stream"
+    r.xadd(stream, {"f": "1"})
+    res = testtools.raw_command(r, "XDELEX", stream, "IDS", 0)
+    assert res == []
+
+
 # ---------------------------------------------------------------------------
 # XACKDEL
 # ---------------------------------------------------------------------------
@@ -261,6 +334,70 @@ def test_xackdel_nonexistent(r: ClientType):
     assert res == [-1]
 
 
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xackdel_default_mode_is_keepref(r: ClientType):
+    """Omitting the mode flag defaults to KEEPREF: entry deleted from stream,
+    PEL refs to other groups are preserved."""
+    stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xgroup_create(stream, group1, 0)
+    r.xgroup_create(stream, group2, 0)
+    r.xreadgroup(group1, consumer, streams={stream: ">"})
+    r.xreadgroup(group2, consumer, streams={stream: ">"})
+
+    res = testtools.raw_command(r, "XACKDEL", stream, group1, "IDS", 1, m1)
+    assert res == [1]
+    assert r.xlen(stream) == 0
+    assert r.xpending(stream, group1)["pending"] == 0
+    # group2's PEL reference is still intact (KEEPREF)
+    assert r.xpending(stream, group2)["pending"] == 1
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xackdel_multiple_ids_mixed(r: ClientType):
+    """Per-ID results for a batch: 1 acked+deleted, -1 not found."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xadd(stream, {"f": "2"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    res = testtools.raw_command(r, "XACKDEL", stream, group, "IDS", 2, m1, b"99999-0")
+    assert res == [1, -1]
+    assert r.xlen(stream) == 1
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xackdel_entry_not_in_pel(r: ClientType):
+    """XACKDEL on an entry that exists in the stream but not in this group's PEL
+    still deletes it from the stream (ack is a no-op)."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xgroup_create(stream, group, 0)
+    # Do NOT read — m1 is not in PEL
+
+    res = testtools.raw_command(r, "XACKDEL", stream, group, "KEEPREF", "IDS", 1, m1)
+    assert res == [1]
+    assert r.xlen(stream) == 0
+
+
+@pytest.mark.supported_redis_versions(min_ver="8.2")
+def test_xackdel_acked_then_deletable(r: ClientType):
+    """Once all groups have acked, ACKED mode can remove the entry."""
+    stream, group1, group2, consumer = "stream", "group1", "group2", "consumer"
+    m1 = r.xadd(stream, {"f": "1"})
+    r.xgroup_create(stream, group1, 0)
+    r.xgroup_create(stream, group2, 0)
+    r.xreadgroup(group1, consumer, streams={stream: ">"})
+    r.xreadgroup(group2, consumer, streams={stream: ">"})
+
+    # group2 acks first, group1 uses XACKDEL ACKED — still blocked
+    r.xack(stream, group2, m1)
+    res = testtools.raw_command(r, "XACKDEL", stream, group1, "ACKED", "IDS", 1, m1)
+    assert res == [1]   # group1 ack removes last reference → deleted
+    assert r.xlen(stream) == 0
+
+
 # ---------------------------------------------------------------------------
 # XIDMPRECORD
 # ---------------------------------------------------------------------------
@@ -303,4 +440,42 @@ def test_xidmprecord_deleted_entry(r: ClientType):
 def test_xidmprecord_nonexistent_key(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "XIDMPRECORD", "no-such-key", b"p", b"i", b"1-1")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_xidmprecord_multiple_producers(r: ClientType):
+    """Different producer IDs share the same stream; each gets its own namespace."""
+    stream = "stream"
+    m1 = r.xadd(stream, {"f": "1"})
+    m2 = r.xadd(stream, {"f": "2"})
+
+    res = testtools.raw_command(r, "XIDMPRECORD", stream, b"prod-A", b"iid-1", m1)
+    assert res == b"OK"
+    res = testtools.raw_command(r, "XIDMPRECORD", stream, b"prod-B", b"iid-1", m2)
+    assert res == b"OK"
+
+    # prod-A/iid-1 still maps to m1 (namespace isolation)
+    res = testtools.raw_command(r, "XIDMPRECORD", stream, b"prod-A", b"iid-1", m1)
+    assert res == b"OK"
+
+
+def test_xidmprecord_multiple_iids_same_producer(r: ClientType):
+    """One producer can register several distinct iid→entry mappings."""
+    stream = "stream"
+    m1 = r.xadd(stream, {"f": "1"})
+    m2 = r.xadd(stream, {"f": "2"})
+
+    testtools.raw_command(r, "XIDMPRECORD", stream, b"prod", b"iid-1", m1)
+    testtools.raw_command(r, "XIDMPRECORD", stream, b"prod", b"iid-2", m2)
+
+    # Both idempotent re-registrations succeed
+    assert testtools.raw_command(r, "XIDMPRECORD", stream, b"prod", b"iid-1", m1) == b"OK"
+    assert testtools.raw_command(r, "XIDMPRECORD", stream, b"prod", b"iid-2", m2) == b"OK"
+
+
+def test_xidmprecord_wrong_key_type(r: ClientType):
+    """Calling XIDMPRECORD on a non-stream key raises a type error."""
+    r.set("not-a-stream", "value")
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "XIDMPRECORD", "not-a-stream", b"p", b"i", b"1-1")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
