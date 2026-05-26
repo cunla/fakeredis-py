@@ -138,6 +138,7 @@ def test_acl_list(r: ClientType):
     assert "(%W~app* resetchannels -@all -hset)" in user_rule
 
 
+@pytest.mark.supported_server_versions(min_redis_ver=(7,), max_valkey_ver=(9,))
 def test_acl_getuser_setuser(r: ClientType):
     username = "fakeredis-user"
 

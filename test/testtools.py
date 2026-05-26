@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 import redis
 from packaging.version import Version
+from redis.event import ClientType
 
 from fakeredis._commands import Float
 
@@ -53,7 +54,7 @@ def key_val_dict(size=100):
     return {f"key:{i}".encode(): f"val:{i}".encode() for i in range(size)}
 
 
-def raw_command(r: redis.Redis, *args):
+def raw_command(r: ClientType, *args):
     """Like execute_command, but does not do command-specific response parsing"""
     response_callbacks = r.response_callbacks
     try:
