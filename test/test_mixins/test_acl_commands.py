@@ -35,14 +35,16 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 }
 
 
-@pytest.mark.supported_redis_versions(min_ver="8.4")
+@pytest.mark.supported_redis_versions(min_ver="8.8")
 def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
     fakeredis_categories.add(b"search")
     response_categories = r.acl_cat()
     response_categories = {asbytes(cat) for cat in response_categories}
-    assert len(set(response_categories) - set(fakeredis_categories)) == 0
+    assert len(set(response_categories) - set(fakeredis_categories)) == 0, (
+        f"Unexpected categories in response: {set(response_categories) - set(fakeredis_categories)}"
+    )
     if b"search" in response_categories:
         response_categories.remove(b"search")  # `search` is not supported by fakeredis
     for cat in response_categories:
