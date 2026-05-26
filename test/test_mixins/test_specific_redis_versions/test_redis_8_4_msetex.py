@@ -10,7 +10,7 @@ pytest.importorskip("jsonpath_ng")
 try:
     from redis.commands.core import DataPersistOptions
 except ImportError:
-    pytest.skip()
+    pytest.skip(allow_module_level=True)
 
 from test.testtools import raw_command
 
