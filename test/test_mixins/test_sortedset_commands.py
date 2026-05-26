@@ -6,7 +6,6 @@ from typing import Tuple, List, Optional
 import math
 import pytest
 import redis
-import redis.client
 import valkey
 from packaging.version import Version
 
@@ -244,7 +243,7 @@ def test_zrank(r: ClientType):
     assert r.zrank("foo", "three") == 2
 
 
-@pytest.mark.supported_redis_versions(min_ver="7.2")
+@pytest.mark.supported_server_versions(min_redis_ver="7.2")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gt", "4.6")
 def test_zrank_redis7_2(r: ClientType):
@@ -386,7 +385,7 @@ def test_zrevrank(r: ClientType):
     assert r.zrevrank("foo", "three") == 0
 
 
-@pytest.mark.supported_redis_versions(min_ver="7.2")
+@pytest.mark.supported_server_versions(min_redis_ver="7.2")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 @testtools.run_test_if_redispy_ver("gt", "4.6")
 def test_zrevrank_redis7_2(r: ClientType):
@@ -1229,7 +1228,7 @@ def test_zinter(r: ClientType):
     )
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_zintercard(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
@@ -1257,7 +1256,7 @@ def test_zrangestore(r: ClientType):
     assert r.zrange("b", 0, -1) == [b"a2"]
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_zmpop(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     assert r.zmpop("2", ["b", "a"], min=True, count=2) == resp_conversion(
@@ -1270,7 +1269,7 @@ def test_zmpop(r: ClientType):
     assert r.zmpop("2", ["b", "a"], max=True) == resp_conversion(r, [b"b", [[b"b1", 10.0]]], [b"b", [[b"b1", b"10"]]])
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_bzmpop(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     assert r.bzmpop(1, "2", ["b", "a"], min=True, count=2) == resp_conversion(
@@ -1286,7 +1285,7 @@ def test_bzmpop(r: ClientType):
     assert r.bzmpop(1, "2", ["foo", "bar"], max=True) is None
 
 
-@pytest.mark.supported_redis_versions(min_ver="8")
+@pytest.mark.supported_server_versions(min_redis_ver="8")
 def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     r.zadd("A", {"A": 0.0})
     r.zadd("B", {"A": 0.0})

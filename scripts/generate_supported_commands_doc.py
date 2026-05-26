@@ -59,7 +59,7 @@ class CommandsMeta:
 
 METADATA = [
     CommandsMeta(
-        ".commands.json",
+        ".vset.commands.json",
         "Redis",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
         [
