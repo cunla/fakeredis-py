@@ -8,12 +8,14 @@ on:
     paths:
       - 'fakeredis/**'
       - 'test/**'
+      - '.github/workflows/test.yml'
   pull_request:
     branches:
       - master
     paths:
       - 'fakeredis/**'
       - 'test/**'
+      - '.github/workflows/test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
