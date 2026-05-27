@@ -1,6 +1,7 @@
 from typing import Any
 
 from .acl_mixin import AclCommandsMixin
+from .array_mixin import ArrayCommandsMixin
 from .bitmap_mixin import BitmapCommandsMixin
 from .connection_mixin import ConnectionCommandsMixin
 from .generic_mixin import GenericCommandsMixin
@@ -26,6 +27,7 @@ except ImportError:
 
 
 __all__ = [
+    "ArrayCommandsMixin",
     "BitmapCommandsMixin",
     "ConnectionCommandsMixin",
     "GenericCommandsMixin",
