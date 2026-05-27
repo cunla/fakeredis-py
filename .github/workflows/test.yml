@@ -7,13 +7,13 @@ on:
       - master
     paths:
       - 'fakeredis/**'
-      - 'tests/**'
+      - 'test/**'
   pull_request:
     branches:
       - master
     paths:
       - 'fakeredis/**'
-      - 'tests/**'
+      - 'test/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
