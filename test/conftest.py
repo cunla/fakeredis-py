@@ -140,7 +140,6 @@ def _validate_server_versions(request, real_server_details: ServerDetails) -> No
 
 
 # Map from (server_type is valkey, fake flag, async flag) -> client class
-
 CLIENT_CLASS_MAP: Dict[Tuple[bool, bool, bool], Union[Type[ClientType], Type[AsyncClientType]]] = {
     (True, True, False): fakeredis.FakeValkey,
     (True, False, False): valkey.StrictValkey,

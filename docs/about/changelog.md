@@ -13,6 +13,7 @@ toc_depth: 2
 
 - Implement keyspace notifications @alexbthundiyil-spec (#463)
 - feat(lua): add server global alias for Valkey @przemub (#480)
+- feat(streams): implement `XACKDEL`, `XDELEX`, `XIDMPRECORD`, `XNACK` commands (#484)
 
 ### 🐛 Bug Fixes
 
@@ -20,6 +21,7 @@ toc_depth: 2
 - fix: similarity calculation in vector set `VSIM` command
 - fix: `CF.RESERVE` and `CF.SCANDUMP` should not create keys if they do not exist
 - fix: various issues in vector set commands `VSET`
+- fix(tcp_server): clean up handler threads on shutdown (#479)
 
 ### 🧰 Maintenance
 
@@ -27,6 +29,8 @@ toc_depth: 2
 - Better TDigest implementation
 - Update Redis 8 image used in CI to 8.6.2
 - perf(hash): make HSET O(1) by using len(h) instead of len(h.keys()) @invoker-bot (#473)
+- refactor: introduce `CommandsMixinBase` to centralise shared mixin attributes (#482)
+- refactor: VectorSet improvements (#476)
 
 ## v2.35.1
 
