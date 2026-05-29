@@ -35,7 +35,7 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 }
 
 
-@pytest.mark.supported_server_versions(max_redis_ver="8.7", min_redis_ver="8.6")
+@pytest.mark.supported_server_versions(min_redis_ver="8.8")
 def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
