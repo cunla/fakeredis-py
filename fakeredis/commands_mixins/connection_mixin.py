@@ -84,7 +84,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
-    def hello(self, *args: bytes) -> Dict[str, str]:
+    def hello(self, *args: bytes) -> Dict[str, Any]:
         self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
         i = 1
         while i < len(args):

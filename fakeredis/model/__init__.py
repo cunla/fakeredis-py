@@ -1,4 +1,5 @@
 from ._acl import AccessControlList
+from ._array import Array
 from ._base_type import BaseModel
 from ._client_info import ClientInfo
 
@@ -17,6 +18,7 @@ from ._topk import HeavyKeeper
 from ._zset import ZSet
 
 __all__ = [
+    "Array",
     "BaseModel",
     "XStream",
     "StreamRangeTest",
