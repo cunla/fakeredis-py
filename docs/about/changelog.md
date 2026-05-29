@@ -14,6 +14,9 @@ toc_depth: 2
 - Implement keyspace notifications @alexbthundiyil-spec (#463)
 - feat(lua): add server global alias for Valkey @przemub (#480)
 - feat(streams): implement `XACKDEL`, `XDELEX`, `XIDMPRECORD`, `XNACK` commands (#484)
+- feat: add `VISMEMBER` command to check element existence in vector set
+- feat: implement array commands (`ARSET`, `ARGET`, `ARLEN`, `ARGETRANGE`, `ARINSERT`, `ARDEL`, etc.) for Redis 8.8 (
+  #487)
 
 ### 🐛 Bug Fixes
 
@@ -27,10 +30,12 @@ toc_depth: 2
 
 - Improved `CLIENT INFO` and `CLIENT GETNAME` commands
 - Better TDigest implementation
-- Update Redis 8 image used in CI to 8.6.2
+- Update Redis 8 image used in CI to 8.8
+- Update to redis-py 8.0.0
 - perf(hash): make HSET O(1) by using len(h) instead of len(h.keys()) @invoker-bot (#473)
 - refactor: introduce `CommandsMixinBase` to centralise shared mixin attributes (#482)
 - refactor: VectorSet improvements (#476)
+- refactor: async Redis tests to use `AsyncClientType` for improved type safety
 
 ## v2.35.1
 
