@@ -10,8 +10,10 @@ pytestmark = [
     testtools.run_test_if_redispy_ver("gte", "8.0"),
     pytest.mark.unsupported_server_types("valkey"),
 ]
-
-from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType  # noqa: E402
+try:
+    from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType  # noqa: E402
+except ImportError:
+    pytest.skip("Array commands are not supported in this redis-py version", allow_module_level=True)
 
 # ── ARSET / ARGET ──────────────────────────────────────────────────────────────
 
