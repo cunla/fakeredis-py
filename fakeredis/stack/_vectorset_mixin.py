@@ -154,6 +154,12 @@ class VectorSetCommandsMixin(CommandsMixinBase):
             res = random.sample(sorted(vector_names), count)
         return res[0] if len(args) == 0 else res
 
+    @command(name="VISMEMBER", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
+    def vismember(self, key: CommandItem, member: bytes) -> int:
+        if key.value is None:
+            return 0
+        return 1 if member in key.value else 0
+
     @command(name="VREM", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
     def vrem(self, key: CommandItem, member: bytes) -> int:
         if key.value is None:

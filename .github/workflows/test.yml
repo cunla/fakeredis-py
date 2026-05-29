@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         redis-image:
-          - "redis:8.6.2"
+          - "redis:8.8"
           - "valkey/valkey:9.1"
           - "redis:7.4.8"
           - "valkey/valkey:8.1.6"
@@ -51,18 +51,18 @@ jobs:
           - python-version: "3.9"
             redis-py: "8.0.0"
           - python-version: "3.14"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: false
             coverage: false
         include:
           - python-version: "3.9"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "4.6.0"
             install-extras: false
             coverage: false
           - python-version: "3.9"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "5.3.1"
             install-extras: false
             coverage: false
@@ -75,7 +75,7 @@ jobs:
             redis-py: "7.4.0"
             install-extras: true
           - python-version: "3.14"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: true
             coverage: true

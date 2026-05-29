@@ -59,29 +59,10 @@ class CommandsMeta:
 
 METADATA = [
     CommandsMeta(
-        ".vset.commands.json",
+        ".commands.json",
         "Redis",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
-        [
-            "VADD",
-            "VCARD",
-            "VDIM",
-            "VEMB",
-            "VGETATTR",
-            "VINFO",
-            "VLINKS",
-            "VRANDMEMBER",
-            "VRANGE",
-            "VREM",
-            "VSETATTR",
-            "VSIM",
-            "msetex",
-            "hgetex",
-            "hsetex",
-            "hgetdel",
-            "XCFGSET",
-            "XNACK",
-        ],
+        [],
     ),
     CommandsMeta(
         ".json.commands.json",
@@ -161,6 +142,8 @@ def _commands_groups(commands: dict) -> dict[str, list[str]]:
     groups = {}
     for cmd in commands:
         group = commands[cmd]["group"]
+        if group == "module":
+            group = commands[cmd]["module"]
         groups.setdefault(group, []).append(cmd)
     return groups
 
