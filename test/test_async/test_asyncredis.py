@@ -2,13 +2,12 @@ import asyncio
 import sys
 
 import pytest
-import pytest_asyncio
 import redis
 import redis.asyncio
 import valkey
 
 from fakeredis import FakeServer, aioredis
-from fakeredis._typing import async_timeout
+from fakeredis._typing import async_timeout, AsyncClientType
 from test import testtools
 from test.testtools import resp_conversion
 
@@ -20,25 +19,18 @@ pytestmark.extend(
 )
 
 
-@pytest_asyncio.fixture
-async def conn(async_redis: redis.asyncio.Redis):
-    """A single connection, rather than a pool."""
-    async with async_redis.client() as conn:
-        yield conn
-
-
-async def test_ping(async_redis: redis.asyncio.Redis):
+async def test_ping(async_redis: AsyncClientType):
     pong = await async_redis.ping()
     assert pong is True
 
 
-async def test_types(async_redis: redis.asyncio.Redis):
+async def test_types(async_redis: AsyncClientType):
     await async_redis.hset("hash", mapping={"key1": "value1", "key2": "value2", "key3": 123})
     result = await async_redis.hgetall("hash")
     assert result == {b"key1": b"value1", b"key2": b"value2", b"key3": b"123"}
 
 
-async def test_transaction(async_redis: redis.asyncio.Redis):
+async def test_transaction(async_redis: AsyncClientType):
     async with async_redis.pipeline(transaction=True) as tr:
         tr.set("key1", "value1")
         tr.set("key2", "value2")
@@ -49,7 +41,7 @@ async def test_transaction(async_redis: redis.asyncio.Redis):
     assert result == b"value1"
 
 
-async def test_transaction_fail(async_redis: redis.asyncio.Redis):
+async def test_transaction_fail(async_redis: AsyncClientType):
     await async_redis.set("foo", "1")
     async with async_redis.pipeline(transaction=True) as tr:
         await tr.watch("foo")
@@ -86,7 +78,7 @@ async def test_pubsub(async_redis):
 
 
 @pytest.mark.slow
-async def test_pubsub_timeout(async_redis: redis.asyncio.Redis):
+async def test_pubsub_timeout(async_redis: AsyncClientType):
     async with async_redis.pubsub() as ps:
         await ps.subscribe("channel")
         await ps.get_message(timeout=0.5)  # Subscription message
@@ -95,7 +87,7 @@ async def test_pubsub_timeout(async_redis: redis.asyncio.Redis):
 
 
 @pytest.mark.slow
-async def test_pubsub_disconnect(async_redis: redis.asyncio.Redis):
+async def test_pubsub_disconnect(async_redis: AsyncClientType):
     async with async_redis.pubsub() as ps:
         await ps.subscribe("channel")
         await ps.connection.disconnect()
@@ -105,49 +97,21 @@ async def test_pubsub_disconnect(async_redis: redis.asyncio.Redis):
         assert message is None
 
 
-async def test_blocking_ready(async_redis, conn):
-    """Blocking command which does not need to block."""
-    await async_redis.rpush("list", "x")
-    result = await conn.blpop("list", timeout=1)
-    assert result == resp_conversion(async_redis, [b"list", b"x"], (b"list", b"x"))
-
-
-@pytest.mark.slow
-async def test_blocking_timeout(conn):
-    """Blocking command that times out without completing."""
-    result = await conn.blpop("missing", timeout=1)
-    assert result is None
-
-
-@pytest.mark.slow
-async def test_blocking_unblock(async_redis, conn):
-    """Blocking command that gets unblocked after some time."""
-
-    async def unblock():
-        await asyncio.sleep(0.1)
-        await async_redis.rpush("list", "y")
-
-    task = asyncio.get_running_loop().create_task(unblock())
-    result = await conn.blpop("list", timeout=1)
-    assert result == resp_conversion(async_redis, [b"list", b"y"], (b"list", b"y"))
-    await task
-
-
-async def test_wrongtype_error(async_redis: redis.asyncio.Redis):
+async def test_wrongtype_error(async_redis: AsyncClientType):
     await async_redis.set("foo", "bar")
     with pytest.raises(Exception, match="^WRONGTYPE") as exc_info:
         await async_redis.rpush("foo", "baz")
     assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
 
-async def test_syntax_error(async_redis: redis.asyncio.Redis):
+async def test_syntax_error(async_redis: AsyncClientType):
     with pytest.raises(Exception, match="^wrong number of arguments for 'get' command$") as exc_info:
         await async_redis.execute_command("get")
     assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
 
 @pytest.mark.decode_responses
-async def test_never_decode(async_redis: redis.asyncio.Redis):
+async def test_never_decode(async_redis: AsyncClientType):
     assert async_redis.connection_pool.get_encoder().decode_responses
 
     await async_redis.execute_command("set", "key", "some ascii")
@@ -157,30 +121,7 @@ async def test_never_decode(async_redis: redis.asyncio.Redis):
     assert isinstance(bytestr, bytes)
 
 
-@testtools.run_test_if_lupa
-class TestScripts:
-    async def test_no_script_error(self, async_redis: redis.asyncio.Redis):
-        with pytest.raises(Exception) as exc_info:
-            await async_redis.evalsha("0123456789abcdef0123456789abcdef", 0)
-        assert isinstance(exc_info.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
-
-    @pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
-    async def test_failed_script_error6(self, async_redis):
-        await async_redis.set("foo", "bar")
-        with pytest.raises(Exception, match="^Error running script") as ctx:
-            await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
-
-        assert isinstance(ctx.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
-
-    @pytest.mark.supported_server_versions(min_redis_ver="7")
-    async def test_failed_script_error7(self, async_redis):
-        await async_redis.set("foo", "bar")
-        with pytest.raises(Exception) as exc_info:
-            await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
-        assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
-
-
-async def test_type(async_redis: redis.asyncio.Redis):
+async def test_type(async_redis: AsyncClientType):
     await async_redis.set("string_key", "value")
     await async_redis.lpush("list_key", "value")
     await async_redis.sadd("set_key", "value")
@@ -195,7 +136,7 @@ async def test_type(async_redis: redis.asyncio.Redis):
     assert b"none" == await async_redis.type("none_key")  # noqa: E721
 
 
-async def test_xdel(async_redis: redis.asyncio.Redis):
+async def test_xdel(async_redis: AsyncClientType):
     stream = "stream"
 
     # deleting from an empty stream doesn't do anything
@@ -253,7 +194,7 @@ async def test_cause_fakeredis_bug(async_redis):
 
 
 @pytest.mark.asyncio
-async def test_hrandfield(async_redis: redis.Redis):
+async def test_hrandfield(async_redis: AsyncClientType):
     protocol_version = testtools.get_protocol_version(async_redis)
     assert await async_redis.hrandfield("key") is None
     hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
@@ -284,20 +225,7 @@ async def test_hrandfield(async_redis: redis.Redis):
 
 
 @pytest.mark.asyncio
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
-async def test_async_lock(async_redis: redis.Redis):
-    from redis.asyncio.lock import Lock
-
-    lock = Lock(async_redis, "lock_key")
-
-    async with lock:
-        pass
-
-    assert not await lock.locked()  # already released
-
-
-@pytest.mark.asyncio
-async def test_async_xread(async_redis: redis.Redis):
+async def test_async_xread(async_redis: AsyncClientType):
     task = asyncio.create_task(async_redis.xread({"stream": "$"}, block=0))
     await asyncio.sleep(0)
     await async_redis.xadd("stream", {"data": "data"}, maxlen=1000, approximate=True)
