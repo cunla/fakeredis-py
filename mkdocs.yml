@@ -68,7 +68,6 @@ nav:
           - Connection: supported-commands/Redis/CONNECTION.md
           - Generic: supported-commands/Redis/GENERIC.md
           - Geospatial indices: supported-commands/Redis/GEO.md
-          - Bitmap: supported-commands/Redis/BITMAP.md
           - Hash: supported-commands/Redis/HASH.md
           - HyperLogLog: supported-commands/Redis/HYPERLOGLOG.md
           - List: supported-commands/Redis/LIST.md
@@ -79,8 +78,8 @@ nav:
           - Sorted Set: supported-commands/Redis/SORTEDSET.md
           - Stream: supported-commands/Redis/STREAM.md
           - String: supported-commands/Redis/STRING.md
-          - Vector Set: supported-commands/Redis/VECTOR_SET.md
           - Transactions: supported-commands/Redis/TRANSACTIONS.md
+          - Vector Set: supported-commands/Redis/VECTORSET.md
       - RedisJSON commands: supported-commands/RedisJson/JSON.md
       - Time Series commands: supported-commands/RedisTimeSeries/TIMESERIES.md
       - Probabilistic commands:

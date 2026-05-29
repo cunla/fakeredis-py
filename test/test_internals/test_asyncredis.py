@@ -4,6 +4,7 @@ import redis.asyncio
 import valkey
 
 from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
+from fakeredis._typing import AsyncClientType
 from test import testtools
 
 pytestmark = []
@@ -24,7 +25,7 @@ pytestmark.extend(
 
 @fake_only
 @pytest.mark.disconnected
-async def test_not_connected(async_redis: redis.asyncio.Redis):
+async def test_not_connected(async_redis: AsyncClientType):
     with pytest.raises(Exception) as ctx:
         await async_redis.ping()
 
