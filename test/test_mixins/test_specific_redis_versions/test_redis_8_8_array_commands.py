@@ -1,10 +1,9 @@
 """Tests for Redis Array commands (AR*)."""
 
 import pytest
-from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType
 
-from test import testtools
 from fakeredis._typing import ClientType
+from test import testtools
 
 pytestmark = [
     pytest.mark.supported_server_versions(min_redis_ver="8.8"),
@@ -12,6 +11,7 @@ pytestmark = [
     pytest.mark.unsupported_server_types("valkey"),
 ]
 
+from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType  # noqa: E402
 
 # ── ARSET / ARGET ──────────────────────────────────────────────────────────────
 
