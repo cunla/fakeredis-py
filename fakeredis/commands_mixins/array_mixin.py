@@ -129,15 +129,16 @@ class ArrayCommandsMixin(CommandsMixinBase):
             return None
         return key.value.get(index)
 
-    @command((Key(Array, []), Int, Int))
+    @command((Key(Array), Int, Int))
     def argetrange(self, key: CommandItem, start: int, end: int) -> List[Optional[bytes]]:
-        if not key:
-            return []
-        arr: Array = key.value
         if start <= end:
-            return [arr.get(i) for i in range(start, end + 1)]
+            indices = list(range(start, end + 1))
         else:
-            return [arr.get(i) for i in range(start, end - 1, -1)]
+            indices = list(range(start, end - 1, -1))
+        if not key:
+            return [None] * len(indices)
+        arr: Array = key.value
+        return [arr.get(i) for i in indices]
 
     @command((Key(Array), Int), (Int,))
     def armget(self, key: CommandItem, first_idx: int, *more_idx: int) -> List[Optional[bytes]]:
@@ -198,11 +199,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         pairs = arr.scan_range(start, end, limit)
-        result: List[Any] = []
-        for idx, val in pairs:
-            result.append(idx)
-            result.append(val)
-        return result
+        return [[idx, val] for idx, val in pairs]
 
     @command((Key(Array, []), bytes, bytes), (bytes,))
     def argrep(self, key: CommandItem, start_b: bytes, end_b: bytes, *args: bytes) -> List[Any]:
@@ -256,9 +253,10 @@ class ArrayCommandsMixin(CommandsMixinBase):
         matches = arr.grep_range(start, end, predicates, use_and, limit, nocase)
         result: List[Any] = []
         for idx, val in matches:
-            result.append(idx)
             if withvalues:
-                result.append(val)
+                result.append([idx, val])
+            else:
+                result.append(idx)
         return result
 
     @command((Key(Array, None), bytes, bytes, bytes), (bytes,))
@@ -283,25 +281,39 @@ class ArrayCommandsMixin(CommandsMixinBase):
 
         return arr.op_range(start, end, op, operand)
 
-    @command((Key(Array, None),), (bytes,))
+    @command((Key(Array),), (bytes,))
     def arinfo(self, key: CommandItem, *args: bytes) -> Any:
         if not key:
-            return None
+            raise SimpleError("no such key")
         arr: Array = key.value
         full = any(casematch(a, b"full") for a in args)
         info: List[Any] = [
-            b"length",
-            arr.length(),
             b"count",
             arr.count(),
-            b"cursor",
+            b"len",
+            arr.length(),
+            b"next-insert-index",
             arr._cursor,
+            b"slices",
+            1,
+            b"directory-size",
+            1,
+            b"super-dir-entries",
+            0,
+            b"slice-size",
+            4096,
         ]
         if full:
             info += [
-                b"slices",
+                b"dense-slices",
+                0,
+                b"sparse-slices",
                 1,
-                b"fill_rate",
-                arr.count() * 100 // arr.length() if arr.length() > 0 else 0,
+                b"avg-dense-size",
+                0.0,
+                b"avg-dense-fill",
+                0.0,
+                b"avg-sparse-size",
+                float(arr.count() * 4),
             ]
         return info

@@ -1,6 +1,7 @@
 """Tests for Redis Array commands (AR*)."""
 
 import pytest
+from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType
 
 from test import testtools
 from fakeredis._typing import ClientType
@@ -133,7 +134,7 @@ def test_argetrange_reverse(r: ClientType):
 
 
 def test_argetrange_missing_key(r: ClientType):
-    assert r.argetrange("nokey", 0, 5) == []
+    assert r.argetrange("nokey", 0, 5) == [None, None, None, None, None, None]
 
 
 # ── ARINSERT / ARNEXT / ARSEEK ────────────────────────────────────────────────
@@ -251,31 +252,31 @@ def test_arscan_missing_key(r: ClientType):
 
 def test_argrep_exact(r: ClientType):
     r.armset("log", {0: "boot: ok", 1: "warn: disk", 2: "ERROR: cpu", 3: "info: ready"})
-    result = r.argrep("log", 0, 3, [("EXACT", "info: ready")])
+    result = r.argrep("log", 0, 3, [(ArrayPredicateType.EXACT, "info: ready")])
     assert result == [3]
 
 
 def test_argrep_match(r: ClientType):
     r.armset("log", {0: "boot: ok", 1: "warn: disk", 2: "ERROR: cpu", 3: "info: ready", 4: "error: net"})
-    result = r.argrep("log", 0, 4, [("MATCH", "error")], nocase=True)
+    result = r.argrep("log", 0, 4, [(ArrayPredicateType.MATCH, "error")], nocase=True)
     assert result == [2, 4]
 
 
 def test_argrep_withvalues(r: ClientType):
     r.armset("log", {0: "boot: ok", 1: "warn: disk", 2: "ERROR: cpu"})
-    result = r.argrep("log", 0, 2, [("MATCH", "error")], nocase=True, withvalues=True)
+    result = r.argrep("log", 0, 2, [(ArrayPredicateType.MATCH, "error")], nocase=True, withvalues=True)
     assert result == [[2, b"ERROR: cpu"]]
 
 
 def test_argrep_glob(r: ClientType):
     r.armset("arr", {0: "warn: disk", 1: "error: cpu", 2: "info: ok"})
-    result = r.argrep("arr", 0, 2, [("GLOB", "warn:*")])
+    result = r.argrep("arr", 0, 2, [(ArrayPredicateType.GLOB, "warn:*")])
     assert result == [0]
 
 
 def test_argrep_re(r: ClientType):
     r.armset("arr", {0: "foo123", 1: "bar456", 2: "baz"})
-    result = r.argrep("arr", 0, 2, [("RE", r"[a-z]+\d+")])
+    result = r.argrep("arr", 0, 2, [(ArrayPredicateType.RE, r"[a-z]+\d+")])
     assert 0 in result
     assert 1 in result
     assert 2 not in result
@@ -283,12 +284,12 @@ def test_argrep_re(r: ClientType):
 
 def test_argrep_limit(r: ClientType):
     r.armset("arr", {0: "error: a", 1: "error: b", 2: "error: c"})
-    result = r.argrep("arr", 0, 2, [("MATCH", "error")], limit=2)
+    result = r.argrep("arr", 0, 2, [(ArrayPredicateType.MATCH, "error")], limit=2)
     assert len(result) == 2
 
 
 def test_argrep_missing_key(r: ClientType):
-    assert r.argrep("nokey", 0, 10, [("MATCH", "x")]) == []
+    assert r.argrep("nokey", 0, 10, [(ArrayPredicateType.MATCH, "x")]) == []
 
 
 # ── AROP ──────────────────────────────────────────────────────────────────────
@@ -296,32 +297,32 @@ def test_argrep_missing_key(r: ClientType):
 
 def test_arop_sum(r: ClientType):
     r.armset("arr", {0: "10", 1: "20", 2: "30"})
-    assert r.arop("arr", 0, 2, "SUM") == b"60"
+    assert r.arop("arr", 0, 2, ArrayAggregateOperations.SUM) == b"60"
 
 
 def test_arop_min(r: ClientType):
     r.armset("arr", {0: "10", 1: "5", 2: "30"})
-    assert r.arop("arr", 0, 2, "MIN") == b"5"
+    assert r.arop("arr", 0, 2, ArrayAggregateOperations.MIN) == b"5"
 
 
 def test_arop_max(r: ClientType):
     r.armset("arr", {0: "10", 1: "5", 2: "30"})
-    assert r.arop("arr", 0, 2, "MAX") == b"30"
+    assert r.arop("arr", 0, 2, ArrayAggregateOperations.MAX) == b"30"
 
 
 def test_arop_used(r: ClientType):
     r.arset("arr", 0, "a")
     r.arset("arr", 5, "b")
-    assert r.arop("arr", 0, 9, "USED") == 2
+    assert r.arop("arr", 0, 9, ArrayAggregateOperations.USED) == 2
 
 
 def test_arop_match(r: ClientType):
     r.armset("arr", {0: "foo", 1: "bar", 2: "foo"})
-    assert r.arop("arr", 0, 2, "MATCH", "foo") == 2
+    assert r.arop("arr", 0, 2, ArrayAggregateOperations.MATCH, "foo") == 2
 
 
 def test_arop_missing_key(r: ClientType):
-    assert r.arop("nokey", 0, 5, "SUM") is None
+    assert r.arop("nokey", 0, 5, ArrayAggregateOperations.SUM) is None
 
 
 # ── ARINFO ────────────────────────────────────────────────────────────────────
@@ -330,20 +331,21 @@ def test_arop_missing_key(r: ClientType):
 def test_arinfo_basic(r: ClientType):
     r.armset("arr", {0: "a", 1: "b", 100: "c"})
     result = r.arinfo("arr")
-    assert result["length"] == 101
+    assert result["len"] == 101
     assert result["count"] == 3
-    assert result["cursor"] == 0
+    assert result["next-insert-index"] == 0
 
 
 def test_arinfo_missing_key(r: ClientType):
-    assert r.arinfo("nokey") is None
+    with pytest.raises(Exception, match="no such key"):
+        r.arinfo("nokey")
 
 
 def test_arinfo_full(r: ClientType):
     r.arset("arr", 0, "x")
     result = r.arinfo("arr", full=True)
     assert "slices" in result
-    assert "fill_rate" in result
+    assert "dense-slices" in result
 
 
 # ── WRONGTYPE ─────────────────────────────────────────────────────────────────
