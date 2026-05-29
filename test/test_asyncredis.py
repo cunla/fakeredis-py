@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from asyncio import wait_for, CancelledError
 
 import pytest
 import pytest_asyncio
@@ -308,3 +309,13 @@ async def test_async_xread(async_redis: redis.Redis):
         assert messages[0][0] == b"stream"
     else:
         assert b"stream" in messages
+
+async def test_blocking_operation_cancel(async_redis: redis.asyncio.Redis):
+    event_task = asyncio.create_task(async_redis.brpop("test"))
+    await asyncio.sleep(0.1)
+    event_task.cancel()
+    try:
+        await event_task
+    except CancelledError:
+        pass
+    await wait_for(async_redis.get("test"), timeout=1)
