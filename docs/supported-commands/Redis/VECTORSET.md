@@ -1,4 +1,4 @@
-# Redis `vectorset` commands (12/13 implemented)
+# Redis `vectorset` commands (13/13 implemented)
 
 ## [VADD](https://redis.io/commands/vadd/)
 
@@ -24,6 +24,10 @@ Retrieve the JSON attributes of elements
 
 Return information about a vector set
 
+## [VISMEMBER](https://redis.io/commands/vismember/)
+
+Check if an element exists in a vector set
+
 ## [VLINKS](https://redis.io/commands/vlinks/)
 
 Return the neighbors of an element at each layer in the HNSW graph
@@ -47,11 +51,3 @@ Associate or remove the JSON attributes of elements
 ## [VSIM](https://redis.io/commands/vsim/)
 
 Return elements by vector similarity
-
-
-## Unsupported vectorset commands
-> To implement support for a command, see [here](/guides/implement-command/)
-
-#### [VISMEMBER](https://redis.io/commands/vismember/) <small>(not implemented)</small>
-
-Check if an element exists in a vector set

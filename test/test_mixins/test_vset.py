@@ -1069,6 +1069,24 @@ def test_vcard_nonexistent_key(r: ClientType):
     assert r.vset().vcard("nonexistent") == 0
 
 
+def test_vismember(r: ClientType):
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+
+    assert r.execute_command("VISMEMBER", "myset", "a") == 1
+    assert r.execute_command("VISMEMBER", "myset", "b") == 1
+    assert r.execute_command("VISMEMBER", "myset", "c") == 0
+    assert r.execute_command("VISMEMBER", "nonexistent", "a") == 0
+
+
+def test_vismember_wrongtype(r: ClientType):
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(Exception) as excinfo:
+        r.execute_command("VISMEMBER", "not_a_vset", "member")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
+    assert "WRONGTYPE" in excinfo.value.args[0]
+
+
 def test_vadd_multiple_quant_types(r: ClientType):
     """Test that specifying two quantization flags in one VADD raises an error."""
     res = r.execute_command("VADD", "myset", "VALUES", "3", "1.0", "0.0", "0.0", "a", "BIN", "Q8")
