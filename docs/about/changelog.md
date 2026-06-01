@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.36.1 - 2026-06-01
+
+### 🐛 Bug Fixes
+
+- fix: `TypeError` on import in Python 3.8 due to `list[Any]` annotation in `sort` command (#490)
+
 ## v2.36.0 - 2026-05-29
 
 ### 🚀 Features
