@@ -12,6 +12,11 @@ toc_depth: 2
 ### 🐛 Bug Fixes
 
 - fix: `TypeError` on import in Python 3.8 due to `list[Any]` annotation in `sort` command (#490)
+- fix: Using path in connection
+
+### 🧰 Maintenance
+
+- Update the default server version to 8.
 
 ## v2.36.0 - 2026-05-29
 

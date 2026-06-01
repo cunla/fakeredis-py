@@ -3,12 +3,12 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Dict, Tuple, Any, List, Optional, Union, Set, Type
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import redis
 
 from fakeredis._helpers import Database, FakeSelector
-from fakeredis._typing import VersionType, ServerType
+from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import AccessControlList, ClientInfo
 
 LOGGER = logging.getLogger("fakeredis")
@@ -36,7 +36,7 @@ class FakeServer:
 
     def __init__(
         self,
-        version: VersionType = (7,),
+        version: VersionType = (8,),
         server_type: ServerType = "redis",
         config: Optional[Dict[bytes, bytes]] = None,
     ) -> None:
@@ -94,7 +94,6 @@ class FakeBaseConnectionMixin(object):
         lua_modules: Optional[Set[str]] = None,
         writer: Any = None,
         connected: bool = True,
-        path: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -109,11 +108,10 @@ class FakeBaseConnectionMixin(object):
         self._client_class = client_class
         self._lua_modules = lua_modules
         self._writer = writer
-        path = path
         connected = connected
         if self._server is None:
-            if path:
-                self.server_key = path
+            if "path" in kwargs:
+                self.server_key = kwargs.pop("path")
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"

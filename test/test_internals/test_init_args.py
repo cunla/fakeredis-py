@@ -171,6 +171,16 @@ class TestInitArgs:
         assert r2.get("foo") == b"bar"
         assert not r3.exists("foo")
 
+    def test_same_path_shares_server(self):
+        r1 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis.sock")
+        r2 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis.sock")
+        r3 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis_other.sock")
+
+        r1.set("foo", "bar")
+
+        assert r2.get("foo") == b"bar"
+        assert r3.get("foo") is None
+
     def test_new_server_with_positional_args(self):
         from fakeredis import FakeRedis
 

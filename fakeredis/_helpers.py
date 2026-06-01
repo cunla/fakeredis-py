@@ -286,7 +286,8 @@ def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[
     args_to_warn = _get_args_to_warn(klass.__init__)
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-    kwargs.setdefault("host", uuid.uuid4().hex)
+    if "path" not in kwargs and "host" not in kwargs:
+        kwargs["host"] = uuid.uuid4().hex
     kwds = {
         p.name: kwargs.get(p.name, p.default)
         for ind, p in enumerate(parameters)
