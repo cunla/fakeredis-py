@@ -223,7 +223,7 @@ class GenericCommandsMixin(CommandsMixinBase):
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key: CommandItem, *args: bytes) -> Union[int, list[Any]]:
+    def sort(self, key: CommandItem, *args: bytes) -> Union[int, List[Any]]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (
