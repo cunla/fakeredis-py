@@ -121,6 +121,21 @@ async def test_never_decode(async_redis: AsyncClientType):
     assert isinstance(bytestr, bytes)
 
 
+@pytest.mark.decode_responses
+async def test_hgetall_decodes_under_decode_responses(async_redis: AsyncClientType):
+    """Regression: async HGETALL under decode_responses=True must return
+    str keys/values across both RESP2 and RESP3. On RESP3 the server
+    returns a native ``dict``; the async ``_decode`` previously walked
+    ``list``/``bytes`` only, leaving the dict's contents as raw bytes.
+    """
+    await async_redis.hset("h", mapping={"status": "ok", "token": "tok"})
+    result = await async_redis.hgetall("h")
+    assert result == {"status": "ok", "token": "tok"}
+    for k, v in result.items():
+        assert isinstance(k, str), f"hash key {k!r} should be str"
+        assert isinstance(v, str), f"hash value {v!r} should be str"
+
+
 async def test_type(async_redis: AsyncClientType):
     await async_redis.set("string_key", "value")
     await async_redis.lpush("list_key", "value")
