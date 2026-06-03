@@ -10,7 +10,7 @@ from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket, _helpers
 from . import _msgs as msgs
-from ._helpers import SimpleError, convert_args_kwargs
+from ._helpers import SimpleError, build_client_kwds
 from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
 
@@ -215,51 +215,19 @@ class FakeRedisMixin:
         connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,
     ) -> None:
-        kwds = convert_args_kwargs(client_class, *args, **kwargs)
-        kwds["server"] = server
-        kwds["connected"] = kwargs.get("connected", True)
-        if not kwds.get("connection_pool", None):
-            charset = kwds.get("charset", None)
-            errors = kwds.get("errors", None)
-            # Adapted from redis-py
-            if charset is not None:
-                warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
-                kwds["encoding"] = charset
-            if errors is not None:
-                warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
-                kwds["encoding_errors"] = errors
-            conn_pool_args = {
-                "host",
-                "port",
-                "db",
-                "username",
-                "password",
-                "socket_timeout",
-                "encoding",
-                "encoding_errors",
-                "decode_responses",
-                "retry_on_timeout",
-                "max_connections",
-                "health_check_interval",
-                "client_name",
-                "connected",
-                "server",
-                "protocol",
-            }
-            connection_kwargs = {
-                "connection_class": connection_class,
-                "version": version,
-                "server_type": server_type,
-                "lua_modules": lua_modules,
-                "client_class": client_class,
-            }
-            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
-        kwds.pop("server", None)
-        kwds.pop("connected", None)
-        kwds.pop("version", None)
-        kwds.pop("server_type", None)
-        kwds.pop("lua_modules", None)
+        connected = kwargs.pop("connected", True)
+        kwds = build_client_kwds(
+            *args,
+            client_class=client_class,
+            connection_class=connection_class,
+            connection_pool_class=connection_pool_class,
+            version=version,
+            server_type=server_type,
+            lua_modules=lua_modules,
+            server=server,
+            connected=connected,
+            **kwargs,
+        )
         if "lib_name" in kwds and "lib_version" in kwds:
             kwds["lib_name"] = "fakeredis"
             kwds["lib_version"] = lib_version

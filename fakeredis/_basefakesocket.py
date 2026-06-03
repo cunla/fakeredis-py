@@ -36,8 +36,7 @@ def _convert_to_resp2(val: Any) -> Any:
         result = list(itertools.chain(*val.items()))
         return [_convert_to_resp2(item) for item in result]
     if isinstance(val, (list, tuple)):
-        res = [_convert_to_resp2(item) for item in val]
-        return res
+        return [_convert_to_resp2(item) for item in val]
     return val
 
 
@@ -299,8 +298,6 @@ class BaseFakeSocket:
 
     def _keyspace_notifications(self, command_items: List[CommandItem], event: bytes) -> None:
         """Send keyspace notifications"""
-        if isinstance(event, str):
-            event = event.encode()
         pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }

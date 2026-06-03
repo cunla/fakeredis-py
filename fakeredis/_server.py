@@ -108,7 +108,6 @@ class FakeBaseConnectionMixin(object):
         self._client_class = client_class
         self._lua_modules = lua_modules
         self._writer = writer
-        connected = connected
         if self._server is None:
             if "path" in kwargs:
                 self.server_key = kwargs.pop("path")
