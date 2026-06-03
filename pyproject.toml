@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fakeredis"
-version = "2.36.0"
+version = "2.36.1"
 description = "Python implementation of redis API, can be used for testing purposes."
 authors = [
     { name = "Daniel Moran", email = "daniel@moransoftware.ca" },
@@ -60,7 +60,7 @@ valkey = [
 ]
 vectorset = [
     "numpy>=2.4.0 ; python_version >= '3.11'",
-    "jsonpath_ng>=1.6 ; python_version >= '3.11'",
+    "jsonpath-ng>=1.6 ; python_version >= '3.11'",
 ]
 
 [project.urls]
@@ -124,7 +124,7 @@ markers = [
     "fake: run tests only with fake redis",
     "real: run tests with a locally running real Redis server",
     "disconnected",
-    "supported_redis_versions",
+    "supported_server_versions",
     "decode_responses",
     "unsupported_server_types",
     "resp2_only: run tests only with RESP2",

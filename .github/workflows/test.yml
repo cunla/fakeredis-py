@@ -5,9 +5,17 @@ on:
   push:
     branches:
       - master
-#  pull_request:
-#    branches:
-#      - master
+    paths:
+      - 'fakeredis/**'
+      - 'test/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'fakeredis/**'
+      - 'test/**'
+      - '.github/workflows/test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,33 +36,33 @@ jobs:
       fail-fast: false
       matrix:
         redis-image:
-          - "redis:8.6.2"
-          - "valkey/valkey:9.0.3"
+          - "redis:8.8"
+          - "valkey/valkey:9.1"
           - "redis:7.4.8"
           - "valkey/valkey:8.1.6"
           - "redis:6.2.17"
         python-version: ["3.9", "3.12", "3.13", "3.14"]
-        redis-py: ["6.4.0", "7.4.0", "8.0.0b2"]
+        redis-py: ["6.4.0", "7.4.0", "8.0.0"]
         install-extras: [false]
         coverage: [false]
         exclude:
           - python-version: "3.9"
             redis-py: "7.4.0"
           - python-version: "3.9"
-            redis-py: "8.0.0b2"
+            redis-py: "8.0.0"
           - python-version: "3.14"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: false
             coverage: false
         include:
           - python-version: "3.9"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "4.6.0"
             install-extras: false
             coverage: false
           - python-version: "3.9"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "5.3.1"
             install-extras: false
             coverage: false
@@ -67,7 +75,7 @@ jobs:
             redis-py: "7.4.0"
             install-extras: true
           - python-version: "3.14"
-            redis-image: "redis:8.6.2"
+            redis-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: true
             coverage: true
@@ -116,7 +124,7 @@ jobs:
           VERSION=$(uv version --short)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Test without coverage
-        timeout-minutes: 4
+        timeout-minutes: 5
         if: ${{ !matrix.coverage }}
         run: |
           uv run pytest -v -m "not slow and not tcp_server"

@@ -5,21 +5,23 @@ import itertools
 import json
 import logging
 import os
-from typing import Callable, AnyStr, Set, Any, Tuple, List, Optional
+from typing import Any, AnyStr, Callable, List, Optional, Set, Tuple
 
 import lupa
 
-from fakeredis._commands import command, Int, Signature, Float
+from fakeredis._commands import Float, Int, Signature, command
 from fakeredis._helpers import (
+    OK,
     SimpleError,
     SimpleString,
-    null_terminate,
-    OK,
     decode_command_bytes,
+    null_terminate,
 )
+
 from .. import _msgs as msgs
 from .._server import FakeServer
-from .._typing import VersionType, ServerType
+from .._typing import ServerType, VersionType
+from ._mixin_base import CommandsMixinBase
 
 __LUA_RUNTIMES_MAP = {
     "5.1": "lupa.lua51",
@@ -49,17 +51,15 @@ REDIS_LOG_LEVELS_TO_LOGGING = {
 _lua_cjson_null = object()  # sentinel value
 
 
-class ScriptingCommandsMixin:
+class ScriptingCommandsMixin(CommandsMixinBase):
     _name_to_func: Callable[[str], Tuple[Optional[Callable[..., Any]], Signature]]
     _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        self.version: VersionType
-        self._server: FakeServer
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
         super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
 
-    def _convert_redis_result(self, lua_runtime: LUA_MODULE.LuaRuntime, result: Any) -> Any:
+    def _convert_redis_result(self, lua_runtime: Any, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
             return result
         if isinstance(result, float):
@@ -111,29 +111,28 @@ class ScriptingCommandsMixin:
             return 1 if result else None
         return result
 
-    def _lua_redis_call(
-        self, lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any
-    ) -> Any:
+    def _lua_redis_call(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
+        if func is None:
+            raise SimpleError(msgs.WRONG_ARGS_MSG7)
         new_args = [_convert_redis_arg(arg) for arg in args]
         result = self._run_command(func, sig, new_args, True)
         result = self._convert_redis_result(lua_runtime, result)
         return result
 
-    def _lua_redis_pcall(
-        self, lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], op: bytes, *args: Any
-    ) -> Any:
+    def _lua_redis_pcall(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:
             return lua_runtime.table_from({b"err": str(ex)})
 
-    def _get_server_runtime(self, server: FakeServer) -> LUA_MODULE.LuaRuntime:
-        if not hasattr(server, "_lua_runtime"):
-            server._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
-            lua_runtime = server._lua_runtime
+    def _get_server_runtime(self, server: FakeServer) -> Any:
+        s: Any = server
+        if not hasattr(s, "_lua_runtime"):
+            s._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+            lua_runtime = s._lua_runtime
 
             valid_modules: Set[str] = set()
             for module in self.load_lua_modules:
@@ -148,6 +147,8 @@ class ScriptingCommandsMixin:
             log_levels_str = "\n".join(
                 [f"redis.{level.decode()} = {value}" for level, value in REDIS_LOG_LEVELS.items()]
             )
+            # Valkey exposes a `server` alias for the `redis` global in Lua scripts
+            server_alias_str = "server = redis" if server.server_type == "valkey" else ""
 
             # Create initialization function that sets up callbacks once
             set_globals_init = lua_runtime.eval(
@@ -160,6 +161,7 @@ class ScriptingCommandsMixin:
                     {log_levels_str}
                     redis.error_reply = function(msg) return {{err=msg}} end
                     redis.status_reply = function(msg) return {{ok=msg}} end
+                    {server_alias_str}
 
                     cjson = {{}}
                     cjson.encode = cjson_encode
@@ -174,7 +176,7 @@ class ScriptingCommandsMixin:
             )
 
             # Create function to update just KEYS/ARGV per call
-            server._lua_set_keys_argv = lua_runtime.eval(
+            s._lua_set_keys_argv = lua_runtime.eval(
                 """
                 function(keys, argv)
                     KEYS = keys
@@ -192,45 +194,45 @@ class ScriptingCommandsMixin:
                 lambda *args: None,
                 _lua_cjson_null,
             )
-            server._lua_expected_globals = set(lua_runtime.globals().keys())
-            expected_globals = server._lua_expected_globals
+            s._lua_expected_globals = set(lua_runtime.globals().keys())
+            expected_globals = s._lua_expected_globals
 
             # Container to hold current socket - callbacks will look this up
-            server._lua_current_socket: List[Any] = [None]
+            s._lua_current_socket = [None]
 
             # Create wrapper callbacks that look up the current socket dynamically
             def make_redis_call_wrapper() -> Callable[..., Any]:
                 def wrapper(op: bytes, *args: Any) -> Any:
-                    socket = server._lua_current_socket[0]
+                    socket = s._lua_current_socket[0]
                     return socket._lua_redis_call(lua_runtime, expected_globals, op, *args)
 
                 return wrapper
 
             def make_redis_pcall_wrapper() -> Callable[..., Any]:
                 def wrapper(op: bytes, *args: Any) -> Any:
-                    socket = server._lua_current_socket[0]
+                    socket = s._lua_current_socket[0]
                     return socket._lua_redis_pcall(lua_runtime, expected_globals, op, *args)
 
                 return wrapper
 
             # Cache the callback wrappers and static partials
-            server._lua_redis_call_wrapper = make_redis_call_wrapper()
-            server._lua_redis_pcall_wrapper = make_redis_pcall_wrapper()
-            server._lua_log_partial = functools.partial(_lua_redis_log, lua_runtime, expected_globals)
-            server._lua_cjson_encode_partial = functools.partial(_lua_cjson_encode, lua_runtime, expected_globals)
-            server._lua_cjson_decode_partial = functools.partial(_lua_cjson_decode, lua_runtime, expected_globals)
+            s._lua_redis_call_wrapper = make_redis_call_wrapper()
+            s._lua_redis_pcall_wrapper = make_redis_pcall_wrapper()
+            s._lua_log_partial = functools.partial(_lua_redis_log, lua_runtime, expected_globals)
+            s._lua_cjson_encode_partial = functools.partial(_lua_cjson_encode, lua_runtime, expected_globals)
+            s._lua_cjson_decode_partial = functools.partial(_lua_cjson_decode, lua_runtime, expected_globals)
 
             # Set up all callbacks once
             set_globals_init(
-                server._lua_redis_call_wrapper,
-                server._lua_redis_pcall_wrapper,
-                server._lua_log_partial,
-                server._lua_cjson_encode_partial,
-                server._lua_cjson_decode_partial,
+                s._lua_redis_call_wrapper,
+                s._lua_redis_pcall_wrapper,
+                s._lua_log_partial,
+                s._lua_cjson_encode_partial,
+                s._lua_cjson_decode_partial,
                 _lua_cjson_null,
             )
 
-        return server._lua_runtime
+        return s._lua_runtime
 
     @command((bytes, Int), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def eval(self, script: bytes, numkeys: int, *keys_and_args: bytes) -> Any:
@@ -242,13 +244,14 @@ class ScriptingCommandsMixin:
         self._server.script_cache[sha1] = script
 
         lua_runtime = self._get_server_runtime(self._server)
-        expected_globals = self._server._lua_expected_globals
+        s: Any = self._server
+        expected_globals = s._lua_expected_globals
 
         # Update the current socket so cached callbacks can find it
-        self._server._lua_current_socket[0] = self
+        s._lua_current_socket[0] = self
 
         # Only update KEYS and ARGV per call (callbacks are already set up)
-        self._server._lua_set_keys_argv(
+        s._lua_set_keys_argv(
             lua_runtime.table_from(keys_and_args[:numkeys]),
             lua_runtime.table_from(keys_and_args[numkeys:]),
         )
@@ -257,7 +260,7 @@ class ScriptingCommandsMixin:
             result = lua_runtime.execute(script)
         except SimpleError as ex:
             if ex.value == msgs.LUA_COMMAND_ARG_MSG:
-                raise SimpleError(_get_lua_bad_command_arg_msg(self.server_type, self.version))
+                raise SimpleError(_get_lua_bad_command_arg_msg(self._server.server_type, self.version))
             if self.version < (7,):
                 raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(ex.value)
@@ -348,14 +351,14 @@ def _convert_redis_arg(value: Any) -> bytes:
         raise SimpleError(msgs.LUA_COMMAND_ARG_MSG)
 
 
-def _check_for_lua_globals(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any]) -> None:
+def _check_for_lua_globals(lua_runtime: Any, expected_globals: Set[Any]) -> None:
     unexpected_globals = set(lua_runtime.globals().keys()) - expected_globals
     if len(unexpected_globals) > 0:
         unexpected = [_ensure_str(var, "utf-8", "replace") for var in unexpected_globals]
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
 
-def _lua_redis_log(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
+def _lua_redis_log(lua_runtime: Any, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
@@ -403,13 +406,13 @@ def _cjson_lua_to_python(obj: Any) -> Any:
     return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in d.items()}
 
 
-def _lua_cjson_encode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], value: Any) -> bytes:
+def _lua_cjson_encode(lua_runtime: Any, expected_globals: Set[Any], value: Any) -> bytes:
     _check_for_lua_globals(lua_runtime, expected_globals)
     value = _cjson_lua_to_python(value)
     return json.dumps(value, separators=(",", ":")).encode()
 
 
-def _lua_cjson_decode(lua_runtime: LUA_MODULE.LuaRuntime, expected_globals: Set[Any], json_str: str) -> Any:
+def _lua_cjson_decode(lua_runtime: Any, expected_globals: Set[Any], json_str: str) -> Any:
     _check_for_lua_globals(lua_runtime, expected_globals)
     json_obj = json.loads(json_str)
     json_obj = _cjson_python_to_lua(json_obj)

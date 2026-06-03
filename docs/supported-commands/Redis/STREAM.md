@@ -1,8 +1,12 @@
-# Redis `stream` commands (21/21 implemented)
+# Redis `stream` commands (25/25 implemented)
 
 ## [XACK](https://redis.io/commands/xack/)
 
 Returns the number of messages that were successfully acknowledged by the consumer group member of a stream.
+
+## [XACKDEL](https://redis.io/commands/xackdel/)
+
+Acknowledges and deletes one or multiple messages for a stream consumer group.
 
 ## [XADD](https://redis.io/commands/xadd/)
 
@@ -24,6 +28,10 @@ Changes, or acquires, ownership of a message in a consumer group, as if the mess
 
 Returns the number of messages after removing them from a stream.
 
+## [XDELEX](https://redis.io/commands/xdelex/)
+
+Deletes one or multiple entries from the stream.
+
 ## [XGROUP CREATE](https://redis.io/commands/xgroup-create/)
 
 Creates a consumer group.
@@ -44,6 +52,10 @@ Destroys a consumer group.
 
 Sets the last-delivered ID of a consumer group.
 
+## [XIDMPRECORD](https://redis.io/commands/xidmprecord/)
+
+An internal command for setting IDMP metadata on an existing stream message.
+
 ## [XINFO CONSUMERS](https://redis.io/commands/xinfo-consumers/)
 
 Returns a list of the consumers in a consumer group.
@@ -59,6 +71,10 @@ Returns information about a stream.
 ## [XLEN](https://redis.io/commands/xlen/)
 
 Return the number of messages in a stream.
+
+## [XNACK](https://redis.io/commands/xnack/)
+
+Releases claimed messages back to the group's PEL without acknowledging them, making them available for re-delivery.
 
 ## [XPENDING](https://redis.io/commands/xpending/)
 

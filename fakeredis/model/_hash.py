@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Optional, Any, Dict, AnyStr
+from typing import Iterable, Iterator, Tuple, Optional, Any, Dict, AnyStr
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time, asbytes
@@ -15,14 +15,11 @@ class Hash(BaseModel):
         self._values: Dict[bytes, bytes] = {}
 
     def _expire_keys(self) -> None:
-        removed = []
         now = current_time()
-        for k in self._expirations:
-            if self._expirations[k] < now:
-                self._values.pop(k, None)
-                removed.append(k)
-        for k in removed:
-            self._expirations.pop(k, None)
+        expired = [k for k, exp in self._expirations.items() if exp < now]
+        for k in expired:
+            del self._values[k]
+            del self._expirations[k]
 
     def set_key_expireat(self, key: AnyStr, when_ms: int) -> int:
         now = current_time()
@@ -63,13 +60,9 @@ class Hash(BaseModel):
         self._expire_keys()
         return len(self._values)
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[bytes]:
         self._expire_keys()
-        for k in self._values.keys():
-            if isinstance(k, bytes):
-                yield k.decode("utf-8")
-            else:
-                yield k
+        yield from self._values.keys()
 
     def get(self, key: AnyStr, default: Any = None) -> Any:
         self._expire_keys()

@@ -190,6 +190,51 @@ class StreamGroup(object):
             self.consumers[consumer].last_attempt = new_last_success_map[consumer]
             self.consumers[consumer].last_success = new_last_success_map[consumer]
 
+    def nack_entries(
+        self,
+        ids: List[bytes],
+        mode: bytes,
+        retry_count: Optional[int] = None,
+        force: bool = False,
+    ) -> int:
+        """Release PEL entries back to the group without acknowledging them.
+
+        mode: b'SILENT' (decrement counter), b'FAIL' (keep counter), b'FATAL' (set to max)
+        """
+        res = 0
+        for id_bytes in ids:
+            try:
+                key = StreamEntryKey.parse_str(id_bytes)
+            except Exception:
+                continue
+
+            if key not in self.pel:
+                if force and key in self.stream:
+                    times = retry_count if retry_count is not None else 1
+                    self.pel[key] = PelEntry(b"", 0, times)
+                    res += 1
+                continue
+
+            entry = self.pel[key]
+            old_consumer = entry.consumer_name
+
+            if retry_count is not None:
+                new_times = retry_count
+            elif mode == b"SILENT":
+                new_times = max(0, entry.times_delivered - 1)
+            elif mode == b"FATAL":
+                new_times = sys.maxsize
+            else:  # FAIL
+                new_times = entry.times_delivered
+
+            if old_consumer and old_consumer in self.consumers:
+                self.consumers[old_consumer].pending -= 1
+
+            self.pel[key] = PelEntry(b"", 0, new_times)
+            res += 1
+
+        return res
+
     def ack(self, args: Tuple[bytes]) -> int:
         res = 0
         for k in args:
@@ -403,6 +448,102 @@ class XStream(BaseModel):
                 del self._ids[ind]
                 res += 1
         return res
+
+    def delete_ex(self, ids: List[bytes], mode: bytes) -> List[int]:
+        """Extended delete with consumer-group reference control.
+
+        mode: b'KEEPREF' preserve PEL refs, b'DELREF' remove all PEL refs,
+              b'ACKED' only delete if not in any group's PEL
+        Returns per-ID: -1 not found, 1 deleted, 2 skipped (ACKED mode)
+        """
+        results = []
+        for id_bytes in ids:
+            ind, found = self.find_index_key_as_str(id_bytes)
+            if not found:
+                results.append(-1)
+                continue
+
+            entry_key = self._ids[ind]
+
+            if mode == b"ACKED":
+                if any(entry_key in g.pel for g in self._groups.values()):
+                    results.append(2)
+                    continue
+
+            self._max_deleted_id = max(entry_key, self._max_deleted_id)
+            del self._values_dict[entry_key]
+            del self._ids[ind]
+
+            if mode == b"DELREF":
+                for g in self._groups.values():
+                    if entry_key in g.pel:
+                        cn = g.pel[entry_key].consumer_name
+                        if cn and cn in g.consumers:
+                            g.consumers[cn].pending -= 1
+                        del g.pel[entry_key]
+
+            results.append(1)
+
+        return results
+
+    def ackdel(self, group: "StreamGroup", ids: List[bytes], mode: bytes) -> List[int]:
+        """Atomically acknowledge in group and conditionally delete.
+
+        Returns per-ID: -1 not found, 1 acked+deleted, 2 acked but not deleted (ACKED mode)
+        """
+        results = []
+        for id_bytes in ids:
+            ind, found = self.find_index_key_as_str(id_bytes)
+            if not found:
+                results.append(-1)
+                continue
+
+            entry_key = self._ids[ind]
+            if entry_key not in group.pel:
+                results.append(-1)
+                continue
+            group.ack((id_bytes,))
+
+            if mode == b"ACKED":
+                if any(entry_key in g.pel for g in self._groups.values()):
+                    results.append(2)
+                    continue
+
+            self._max_deleted_id = max(entry_key, self._max_deleted_id)
+            del self._values_dict[entry_key]
+            del self._ids[ind]
+
+            if mode == b"DELREF":
+                for g in self._groups.values():
+                    if entry_key in g.pel:
+                        cn = g.pel[entry_key].consumer_name
+                        if cn and cn in g.consumers:
+                            g.consumers[cn].pending -= 1
+                        del g.pel[entry_key]
+
+            results.append(1)
+
+        return results
+
+    def record_idmp(self, pid: bytes, iid: bytes, stream_id: bytes) -> None:
+        """Record pid/iid -> stream_id mapping for XIDMPRECORD.
+
+        Raises SimpleError if the pid/iid pair already maps to a different stream ID,
+        or if stream_id does not exist in the stream.
+        """
+        entry_key = StreamEntryKey.parse_str(stream_id)
+        if entry_key not in self._values_dict:
+            raise SimpleError("ERR The specified stream ID was deleted or doesn't exist")
+
+        if pid in self._idmp_map and iid in self._idmp_map[pid]:
+            existing = self._idmp_map[pid][iid]
+            if existing != entry_key:
+                raise SimpleError("ERR The specified IDMP producer-id/idempotent-id pair maps to a different stream ID")
+            return  # idempotent – already recorded
+
+        if pid not in self._idmp_map:
+            self._idmp_map[pid] = {}
+        self._idmp_map[pid][iid] = entry_key
 
     def add(
         self,

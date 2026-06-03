@@ -259,7 +259,7 @@ class VectorSet:
             top_idx = np.argsort(scores)[::-1]
         return OrderedDict((candidates[i], float(scores[i])) for i in top_idx)
 
-    def accept_filter(self, filter_expression: Optional[bytes]) -> list[Vector]:
+    def accept_filter(self, filter_expression: Optional[bytes]) -> List[Vector]:
         if filter_expression is None:
             return list(self._vectors.values())
         parsed_expression = _parse_jsonfilter(filter_expression)

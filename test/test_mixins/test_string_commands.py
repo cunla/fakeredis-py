@@ -5,7 +5,6 @@ from datetime import timedelta
 
 import pytest
 import redis
-import redis.client
 import valkey
 
 from fakeredis._helpers import current_time
@@ -240,7 +239,7 @@ def test_setex_using_float(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_setex_overflow(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.setex("foo", 18446744073709561, "bar")  # Overflows longlong in ms
@@ -252,14 +251,14 @@ def test_set_ex(r: ClientType):
     assert r.get("foo") == b"bar"
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_exat(r: ClientType):
     curr_time = int(time.time())
     assert r.set("foo", "bar", exat=curr_time + 100) is True
     assert r.get("foo") == b"bar"
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_pxat(r: ClientType):
     curr_time = current_time()
     assert r.set("foo", "bar", pxat=curr_time + 100) is True
@@ -382,7 +381,7 @@ def test_set_xx(r: ClientType):
     assert r.set("foo", "bar", xx=True) is True
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_get(r: ClientType):
     assert raw_command(r, "set", "foo", "bar", "GET") is None
     assert r.get("foo") == b"bar"
@@ -390,7 +389,7 @@ def test_set_get(r: ClientType):
     assert r.get("foo") == b"baz"
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_get_xx(r: ClientType):
     assert raw_command(r, "set", "foo", "bar", "XX", "GET") is None
     assert r.get("foo") is None
@@ -400,13 +399,13 @@ def test_set_get_xx(r: ClientType):
     assert raw_command(r, "set", "foo", "baz", "GET") == b"baz"
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_set_get_nx_redis7(r: ClientType):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
     assert raw_command(r, "set", "foo", "bar", "NX", "GET") is None
 
 
-@pytest.mark.supported_redis_versions(min_ver="6.2")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def set_get_wrongtype(r: ClientType):
     r.lpush("foo", "bar")
     with pytest.raises(Exception) as ctx:
@@ -556,7 +555,7 @@ def test_getex(r: ClientType):
     assert r.get("foo5") == b"val"
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_lcs(r: ClientType):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     assert r.lcs("key1", "key2") == b"mytext"

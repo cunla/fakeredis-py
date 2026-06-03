@@ -3,17 +3,15 @@ from typing import Any, Dict, Callable, List, Iterable
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
 from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
-from fakeredis._typing import VersionType
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
-class PubSubCommandsMixin:
+class PubSubCommandsMixin(CommandsMixinBase):
     put_response: Callable[[Any], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
-        self._server: Any
-        self.version: VersionType
 
     def _subscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
         for channel in channels:
@@ -74,7 +72,7 @@ class PubSubCommandsMixin:
     def publish(self, channel: bytes, message: bytes) -> int:
         receivers = 0
         msg = [b"message", channel, message]
-        subs = self._server.subscribers.get(channel, set())
+        subs: Iterable[Any] = self._server.subscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1
@@ -91,7 +89,7 @@ class PubSubCommandsMixin:
     def spublish(self, channel: bytes, message: bytes) -> int:
         receivers = 0
         msg = [b"smessage", channel, message]
-        subs = self._server.ssubscribers.get(channel, set())
+        subs: Iterable[Any] = self._server.ssubscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1

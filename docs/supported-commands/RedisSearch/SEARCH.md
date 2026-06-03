@@ -84,7 +84,7 @@ Returns information and statistics on the index
 
 #### [FT.PROFILE](https://redis.io/commands/ft.profile/) <small>(not implemented)</small>
 
-Performs a `FT.SEARCH` or `FT.AGGREGATE` command and collects performance information
+Performs a `FT.SEARCH`, `FT.AGGREGATE`, or `FT.HYBRID` command and collects performance information
 
 #### [FT.SEARCH](https://redis.io/commands/ft.search/) <small>(not implemented)</small>
 

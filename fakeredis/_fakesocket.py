@@ -1,6 +1,7 @@
 from typing import Optional, Set, Any
 
 from fakeredis.commands_mixins import (
+    ArrayCommandsMixin,
     BitmapCommandsMixin,
     ConnectionCommandsMixin,
     GenericCommandsMixin,
@@ -34,6 +35,7 @@ from .server_specific_commands import DragonflyCommandsMixin
 
 class FakeSocket(
     BaseFakeSocket,
+    ArrayCommandsMixin,
     GenericCommandsMixin,
     ScriptingCommandsMixin,
     HashCommandsMixin,

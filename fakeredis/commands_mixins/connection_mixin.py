@@ -3,20 +3,17 @@ from typing import Any, List, Union, Dict
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, Database, casematch
-from fakeredis.model import ClientInfo
+from fakeredis._helpers import SimpleError, OK, SimpleString, casematch
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
 
 
-class ConnectionCommandsMixin:
+class ConnectionCommandsMixin(CommandsMixinBase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
-        self._db: Database
         self._db_num: int
         self._pubsub: int
-        self._client_info: ClientInfo
-        self._server: Any
 
     @command((bytes,))
     def echo(self, message: bytes) -> bytes:
@@ -33,9 +30,9 @@ class ConnectionCommandsMixin:
             return args[0] if args else PONG
 
     @command(name="SELECT", fixed=(DbIndex,))
-    def select(self, index: DbIndex) -> SimpleString:
+    def select(self, index: int) -> SimpleString:
         self._db = self._server.dbs[index]
-        self._db_num = index  # type: ignore
+        self._db_num = index
         return OK
 
     @command(name="CLIENT SETINFO", fixed=(bytes, bytes), repeat=())
@@ -87,7 +84,7 @@ class ConnectionCommandsMixin:
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
-    def hello(self, *args: bytes) -> Dict[str, str]:
+    def hello(self, *args: bytes) -> Dict[str, Any]:
         self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
         i = 1
         while i < len(args):
@@ -97,7 +94,7 @@ class ConnectionCommandsMixin:
             elif args[i] == b"AUTH" and i + 2 < len(args):
                 user = args[i + 1]
                 password = args[i + 2]
-                self._server._acl.get_user_acl(user).check_password(password)
+                self._server.acl.get_user_acl(user).check_password(password)
                 i += 3
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)

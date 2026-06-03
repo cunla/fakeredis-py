@@ -124,6 +124,7 @@ class TestInitArgs:
         db.set("foo", "bar")
         assert db.get("foo") == "bar"
 
+    @run_test_if_redispy_ver("lt", "8")
     def test_can_allow_extra_args(self):
         db = fakeredis.FakeStrictRedis.from_url(
             "redis://localhost:6390/0",
@@ -169,6 +170,16 @@ class TestInitArgs:
         r1.set("foo", "bar")
         assert r2.get("foo") == b"bar"
         assert not r3.exists("foo")
+
+    def test_same_path_shares_server(self):
+        r1 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis.sock")
+        r2 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis.sock")
+        r3 = fakeredis.FakeStrictRedis.from_url("unix:///tmp/fakeredis_other.sock")
+
+        r1.set("foo", "bar")
+
+        assert r2.get("foo") == b"bar"
+        assert r3.get("foo") is None
 
     def test_new_server_with_positional_args(self):
         from fakeredis import FakeRedis

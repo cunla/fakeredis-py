@@ -87,8 +87,8 @@ def _tcp_fake_server() -> Generator[tuple[str, int], Any, None]:
     t.start()
     time.sleep(0.1)
     yield server_address
-    server.server_close()
     server.shutdown()
+    server.server_close()
     t.join()
 
 
@@ -110,18 +110,36 @@ def _validate_server_versions(request, real_server_details: ServerDetails) -> No
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
         pytest.skip(f"Server type {server_type} is not supported")
-    marker = request.node.get_closest_marker("supported_redis_versions")
-    min_redis_ver = _create_version(marker.kwargs["min_ver"]) if marker and "min_ver" in marker.kwargs else (0,)
-    max_redis_ver = _create_version(marker.kwargs["max_ver"]) if marker and "max_ver" in marker.kwargs else (100,)
+    marker = request.node.get_closest_marker("supported_server_versions")
+    min_redis_ver = (
+        _create_version(marker.kwargs["min_redis_ver"]) if marker and "min_redis_ver" in marker.kwargs else (0,)
+    )
+    max_redis_ver = (
+        _create_version(marker.kwargs["max_redis_ver"]) if marker and "max_redis_ver" in marker.kwargs else (100,)
+    )
 
     if redis_version < min_redis_ver:
         pytest.skip(f"Redis server {min_redis_ver} or more required but {redis_version} found")
     if redis_version > max_redis_ver:
         pytest.skip(f"Redis server {max_redis_ver} or less required but {redis_version} found")
 
+    if server_type == "valkey":
+        valkey_version = real_server_details.valkey_version
+        if valkey_version is None:
+            pytest.skip("Valkey server version could not be determined")
+        min_valkey_ver = (
+            _create_version(marker.kwargs["min_valkey_ver"]) if marker and "min_valkey_ver" in marker.kwargs else (0,)
+        )
+        max_valkey_ver = (
+            _create_version(marker.kwargs["max_valkey_ver"]) if marker and "max_valkey_ver" in marker.kwargs else (100,)
+        )
+        if valkey_version < min_valkey_ver:
+            pytest.skip(f"Valkey server {min_valkey_ver} or more required but {valkey_version} found")
+        if valkey_version > max_valkey_ver:
+            pytest.skip(f"Valkey server {max_valkey_ver} or less required but {valkey_version} found")
+
 
 # Map from (server_type is valkey, fake flag, async flag) -> client class
-
 CLIENT_CLASS_MAP: Dict[Tuple[bool, bool, bool], Union[Type[ClientType], Type[AsyncClientType]]] = {
     (True, True, False): fakeredis.FakeValkey,
     (True, False, False): valkey.StrictValkey,

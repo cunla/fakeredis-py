@@ -1,6 +1,5 @@
 import pytest
 import redis
-import redis.client
 import valkey
 
 from fakeredis._typing import ClientType
@@ -32,7 +31,7 @@ def test_getbit_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_redis_versions(min_ver="7.4")
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey")
 def test_bitcount_error(r: ClientType):
     with pytest.raises(Exception) as e:
@@ -41,7 +40,7 @@ def test_bitcount_error(r: ClientType):
     assert str(e.value) == "value is not an integer or out of range"
 
 
-@pytest.mark.supported_redis_versions(min_ver="7.4")
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
 def test_bitcount_does_not_exist(r: ClientType):
     res = raw_command(r, b"BITCOUNT", b"", 0, 0)
     assert res == 0
@@ -137,7 +136,7 @@ def test_bitcount(r: ClientType):
     assert r.bitcount("key", start=1, end=1) == 6
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_bitcount_mode_redis7(r: ClientType):
     r.set("key", "foobar")
     assert r.bitcount("key", start=1, end=1, mode="byte") == 6
@@ -221,7 +220,7 @@ def test_bitpos(r: ClientType):
     assert r.bitpos("nokey:bitpos", 1, 1) == -1
 
 
-@pytest.mark.supported_redis_versions(min_ver="7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_bitops_mode_redis7(r: ClientType):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")

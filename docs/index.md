@@ -3,40 +3,55 @@ toc:
 toc_depth: 3
 ---
 
-fakeredis: A python implementation of Redis Protocol API
-========================================================
+<p align="center">
+  <img src="assets/logo.svg" alt="fakeredis" width="440">
+</p>
 
+# fakeredis
 
-FakeRedis is a pure-Python implementation of the Redis key-value store.
+<p align="center"><em>A fast, pure-Python implementation of the Redis protocol — no server required.</em></p>
 
-It enables running tests requiring redis server without an actual server.
+---
 
-It provides enhanced versions of the redis-py Python bindings for Redis.
+**fakeredis** is a drop-in replacement for [redis-py](https://github.com/redis/redis-py) and
+[valkey-py](https://github.com/valkey-io/valkey-py) that runs entirely in-memory. Write and run tests that depend on
+[Redis](https://redis.io/), [Valkey](https://github.com/valkey-io/valkey),
+[DragonflyDB](https://dragonflydb.io/), or [KeyDB](https://docs.keydb.dev/) — without spinning up a real server, a
+container, or a network connection.
 
-That provides the following added functionality: A built-in Redis server that is automatically installed, configured and
-managed when the Redis bindings are used.
-A single server shared by multiple programs or multiple independent servers.
-All the servers provided by FakeRedis support all Redis functionality, including advanced features such as RedisJson,
-GeoCommands.
+```python
+import fakeredis
 
-For a list of supported/unsupported redis commands, see [Supported commands][supported-commands].
+r = fakeredis.FakeStrictRedis()
+r.set("foo", "bar")
+r.get("foo")  # b'bar'
+```
 
-## Installation
+That's it — no server to install, no port to manage, no teardown.
+For the full list of commands, see [Supported commands][supported-commands].
 
-To install fakeredis-py, simply:
+## ✨ Why fakeredis?
+
+- 🚀 **Zero setup** — no Redis server, Docker, or network required. Pure Python.
+- 🔌 **Drop-in compatible** — same API as `redis.Redis` and `redis.asyncio.Redis`.
+- ⚡ **Fast & isolated** — in-memory, so tests run quickly and start from a clean slate.
+- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, or KeyDB, and pin a specific server version.
+- 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, TimeSeries, and Geo commands.
+- 🤝 **Share or isolate state** — one shared in-memory server across clients, or independent servers per test.
+- 🌐 **Real TCP mode** — expose the fake server over a socket for clients you can't inject.
+
+## 📥 Installation
 
 ```bash
-pip install fakeredis        ## No additional modules support
-
-pip install fakeredis[lua]   ## Support for LUA scripts
-
-pip install fakeredis[json]  ## Support for RedisJSON commands
-
-# Note on mac you need quotes:
-pip install "fakeredis[json]"
-
-pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
+pip install fakeredis                        # core, no extras
+pip install "fakeredis[lua]"                 # EVAL / EVALSHA scripting
+pip install "fakeredis[json]"                # JSON.* commands
+pip install "fakeredis[bf]"                  # Bloom / Cuckoo / Count-Min / Top-K filters
+pip install "fakeredis[probabilistic,json]"  # probabilistic filters + JSON
 ```
+
+!!! tip
+    On macOS / zsh you must quote the extras, e.g. `pip install "fakeredis[json]"`.
 
 ## How to Use
 

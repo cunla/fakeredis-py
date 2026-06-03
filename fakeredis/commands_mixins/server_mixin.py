@@ -3,18 +3,12 @@ from typing import Any, List
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex
-from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, Database, SimpleString
+from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, SimpleString
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import get_command_info, get_all_commands_info
 
 
-class ServerCommandsMixin:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        from fakeredis._server import FakeServer
-
-        self._server: "FakeServer"
-        self._db: Database
-
+class ServerCommandsMixin(CommandsMixinBase):
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bgsave(self, *args: bytes) -> SimpleString:
         if len(args) > 1 or (len(args) == 1 and not casematch(args[0], b"schedule")):

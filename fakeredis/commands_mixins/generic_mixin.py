@@ -15,21 +15,18 @@ from fakeredis._commands import (
     SortFloat,
     delete_keys,
 )
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, Database, SimpleString
-from fakeredis._typing import VersionType
+from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ZSet, Hash, ExpiringMembersSet
 
 
-class GenericCommandsMixin:
+class GenericCommandsMixin(CommandsMixinBase):
     _ttl: Callable[[CommandItem, float], int]
     _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
     _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GenericCommandsMixin, self).__init__(*args, **kwargs)
-        self.version: VersionType
-        self._server: Any
-        self._db: Database
         self._db_num: int
 
     def _lookup_key(self, key: bytes, pattern: bytes) -> Optional[bytes]:
@@ -226,7 +223,7 @@ class GenericCommandsMixin:
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key: CommandItem, *args: bytes) -> Union[int, list[Any]]:
+    def sort(self, key: CommandItem, *args: bytes) -> Union[int, List[Any]]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         (

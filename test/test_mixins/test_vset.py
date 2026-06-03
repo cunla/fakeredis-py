@@ -18,7 +18,7 @@ from redis.commands.vectorset.commands import QuantizationOptions
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_redis_versions(min_ver="8"),
+        pytest.mark.supported_server_versions(min_redis_ver="8"),
     ]
 )
 
@@ -819,7 +819,7 @@ def _validate_quantization(original, quantized, tolerance=0.1):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.supported_redis_versions(min_ver="8.4")
+@pytest.mark.supported_server_versions(min_redis_ver="8.4")
 def test_vrange_basic(r: ClientType):
     """Test basic VRANGE functionality with lexicographical ordering."""
     # Add elements with different names
@@ -842,7 +842,7 @@ def test_vrange_basic(r: ClientType):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.supported_redis_versions(min_ver="8.4")
+@pytest.mark.supported_server_versions(min_redis_ver="8.4")
 def test_vrange_error(r: ClientType):
     r.set("not_a_vset", "some_value")
     with pytest.raises(Exception) as excinfo:
@@ -855,7 +855,7 @@ def test_vrange_error(r: ClientType):
 
 
 @testtools.run_test_if_redispy_ver("gte", "7.2")
-@pytest.mark.supported_redis_versions(min_ver="8.4")
+@pytest.mark.supported_server_versions(min_redis_ver="8.4")
 def test_vrange_with_count(r: ClientType):
     """Test VRANGE with count parameter."""
     # Add elements
@@ -1067,6 +1067,24 @@ def test_vlinks_valid_neighbors(r: ClientType):
 def test_vcard_nonexistent_key(r: ClientType):
     """Test that vcard returns None (nil) for a key that does not exist."""
     assert r.vset().vcard("nonexistent") == 0
+
+
+def test_vismember(r: ClientType):
+    r.vset().vadd("myset", [1.0, 0.0, 0.0], "a")
+    r.vset().vadd("myset", [0.0, 1.0, 0.0], "b")
+
+    assert r.execute_command("VISMEMBER", "myset", "a") == 1
+    assert r.execute_command("VISMEMBER", "myset", "b") == 1
+    assert r.execute_command("VISMEMBER", "myset", "c") == 0
+    assert r.execute_command("VISMEMBER", "nonexistent", "a") == 0
+
+
+def test_vismember_wrongtype(r: ClientType):
+    r.set("not_a_vset", "some_value")
+    with pytest.raises(Exception) as excinfo:
+        r.execute_command("VISMEMBER", "not_a_vset", "member")
+    assert isinstance(excinfo.value, (redis.ResponseError, valkey.ResponseError))
+    assert "WRONGTYPE" in excinfo.value.args[0]
 
 
 def test_vadd_multiple_quant_types(r: ClientType):
