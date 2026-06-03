@@ -102,6 +102,8 @@ nav:
 theme:
   name: material
   custom_dir: docs/overrides
+  logo: assets/logo-icon.svg
+  favicon: assets/logo-icon.svg
   palette:
     - scheme: default
       primary: indigo

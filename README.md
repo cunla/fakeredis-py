@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🟥 fakeredis
+<img src="docs/assets/logo.svg" alt="fakeredis" width="440">
 
 ### A fast, pure-Python implementation of the Redis protocol — no server required.
 
