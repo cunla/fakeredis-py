@@ -7,16 +7,20 @@ tags:
 toc_depth: 2
 ---
 
-## v2.36.1 - 2026-06-01
+## v2.36.1 - 2026-06-05
 
 ### 🐛 Bug Fixes
 
 - fix: `TypeError` on import in Python 3.8 due to `list[Any]` annotation in `sort` command (#490)
 - fix: Using path in connection
+- fix(async): `_decode` recurses into `dict` so RESP3 `HGETALL` responses are decoded (#492)
+- fix: `Database` now uses stable identity-based `__hash__`/`__eq__` (previously returned an unstable hash)
 
 ### 🧰 Maintenance
 
 - Update the default server version to 8.
+- refactor: deduplicate sync and async client construction into a shared `build_client_kwds` helper
+- chore: remove dead code in connection/socket setup
 
 ## v2.36.0 - 2026-05-29
 
