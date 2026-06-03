@@ -3,6 +3,7 @@ import re
 import threading
 import time
 import uuid
+import warnings
 import weakref
 from collections import defaultdict
 from typing import Any, AnyStr, Callable, Dict, Iterator, MutableMapping, Optional, Set, Type
@@ -217,11 +218,13 @@ class Database(MutableMapping):  # type: ignore
         self._remove_expired()
         return len(self._dict)
 
+    # Databases use identity semantics: they are mutable and are keyed by index
+    # on the server, never compared by content.
     def __hash__(self) -> int:
-        return hash(super(object, self))
+        return id(self)
 
     def __eq__(self, other: object) -> bool:
-        return super(object, self) == other
+        return self is other
 
 
 _VALID_RESPONSE_TYPES_RESP2 = (bytes, SimpleString, SimpleError, float, int, list)
@@ -286,10 +289,80 @@ def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[
     args_to_warn = _get_args_to_warn(klass.__init__)
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-    kwargs.setdefault("host", uuid.uuid4().hex)
+    if "path" not in kwargs and "host" not in kwargs:
+        kwargs["host"] = uuid.uuid4().hex
     kwds = {
         p.name: kwargs.get(p.name, p.default)
         for ind, p in enumerate(parameters)
         if p.default != inspect.Parameter.empty and (p.name not in args_to_warn or p.name in kwargs)
     }
+    return kwds
+
+
+# Client kwargs that are forwarded to the connection pool / connection.
+_CONNECTION_POOL_KWARGS = frozenset(
+    {
+        "host",
+        "port",
+        "db",
+        "username",
+        "password",
+        "socket_timeout",
+        "encoding",
+        "encoding_errors",
+        "decode_responses",
+        "retry_on_timeout",
+        "max_connections",
+        "health_check_interval",
+        "client_name",
+        "connected",
+        "server",
+        "protocol",
+    }
+)
+
+
+def build_client_kwds(
+    *args: Any,
+    client_class: Type[Any],
+    connection_class: Type[Any],
+    connection_pool_class: Type[Any],
+    version: Any,
+    server_type: Any,
+    lua_modules: Any,
+    server: Any,
+    connected: Optional[bool] = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """Build the kwargs passed to the underlying redis/valkey client ``__init__``.
+
+    Creates a fakeredis connection pool when one isn't supplied. Shared by the sync
+    and async ``FakeRedisMixin`` classes; the caller still applies any lib_name /
+    driver_info handling specific to its client library.
+    """
+    kwds = convert_args_kwargs(client_class, *args, **kwargs)
+    kwds["server"] = server
+    if connected is not None:
+        kwds["connected"] = connected
+    if not kwds.get("connection_pool", None):
+        # Adapted from redis-py: translate the deprecated charset/errors aliases.
+        charset = kwds.get("charset", None)
+        if charset is not None:
+            warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
+            kwds["encoding"] = charset
+        errors = kwds.get("errors", None)
+        if errors is not None:
+            warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
+            kwds["encoding_errors"] = errors
+        connection_kwargs: Dict[str, Any] = {
+            "connection_class": connection_class,
+            "version": version,
+            "server_type": server_type,
+            "lua_modules": lua_modules,
+            "client_class": client_class,
+        }
+        connection_kwargs.update({arg: kwds[arg] for arg in _CONNECTION_POOL_KWARGS if arg in kwds})
+        kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
+    for key in ("server", "connected", "version", "server_type", "lua_modules"):
+        kwds.pop(key, None)
     return kwds
