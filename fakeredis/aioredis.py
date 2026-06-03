@@ -163,6 +163,8 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
             return [self._decode(item) for item in response]
+        elif isinstance(response, dict):
+            return {self._decode(k): self._decode(v) for k, v in response.items()}
         elif isinstance(response, bytes):
             return self.encoder.decode(response)
         else:
