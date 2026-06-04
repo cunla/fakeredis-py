@@ -2,6 +2,7 @@ import sys
 from typing import Tuple, Union, Dict, Any, List, Type
 
 import redis
+import redis.asyncio  # redis-py < 5 does not import this submodule via ``import redis``
 
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
@@ -29,6 +30,7 @@ ClientType = redis.Redis
 AsyncClientType = redis.asyncio.Redis
 try:
     import valkey
+    import valkey.asyncio  # imported explicitly for the same reason as redis.asyncio
 
     ClientType = Union[redis.Redis, valkey.Valkey]  # type: ignore[misc, assignment]
     AsyncClientType = Union[redis.asyncio.Redis, valkey.asyncio.Valkey]  # type: ignore[misc, assignment]
