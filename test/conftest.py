@@ -232,7 +232,10 @@ async def _req_aioredis2(request, real_server_details: ServerDetails) -> AsyncCl
         fake_server = request.getfixturevalue("fake_server")
         ret = cls(server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses, protocol=protocol)
     else:
-        ret = cls(host="localhost", port=6390, db=2, decode_responses=decode_responses, protocol=protocol)
+        kwds = dict(host="localhost", port=6390, db=2, decode_responses=decode_responses)
+        if REDIS_PY_VERSION.major >= 5:
+            kwds["protocol"] = protocol
+        ret = cls(**kwds)
         fake_server = None
     if not fake_server or fake_server.connected:
         await ret.flushall()

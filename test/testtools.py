@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 import redis
 from packaging.version import Version
-from redis.event import ClientType
 
 from fakeredis._commands import Float
+from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)
 
