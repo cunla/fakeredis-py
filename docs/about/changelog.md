@@ -18,6 +18,7 @@ toc_depth: 2
 
 ### 🧰 Maintenance
 
+- Restored support for redis-py 4.6 #493
 - Update the default server version to 8.
 - refactor: deduplicate sync and async client construction into a shared `build_client_kwds` helper
 - chore: remove dead code in connection/socket setup
