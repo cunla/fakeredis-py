@@ -7,11 +7,12 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   publish_documentation:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     environment:
       name: pypi
       url: https://pypi.org/p/fakeredis
@@ -31,5 +32,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           pip install --group 'documentation'
-          mkdocs gh-deploy --force
+          mkdocs gh-deploy --force --verbose
           mkdocs --version
