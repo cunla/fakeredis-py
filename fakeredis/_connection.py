@@ -5,7 +5,8 @@ from typing import Tuple, Any, List, Optional, Set, Sequence, Union, Type
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector, build_client_kwds
+from fakeredis._client_setup import build_client_kwds
+from fakeredis._helpers import FakeSelector
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
