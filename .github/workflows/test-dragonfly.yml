@@ -16,16 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         tests:
-          - "test_json"
           - "test_mixins"
           - "test_stack"
-          - "test_connection.py"
-          - "test_asyncredis.py"
-          - "test_general.py"
-          - "test_scan.py"
-          - "test_zadd.py"
-          - "test_translations.py"
-          - "test_sortedset_commands.py"
+          - "test_async"
+          - "test_internals"
+          - "test_transactions.py"
+          - "test_keyspace_notifications.py"
     permissions:
       pull-requests: write
     services:
