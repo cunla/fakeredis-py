@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple, Type, Union
+from typing import Any, Callable, Iterable, Optional, Sequence, Set, Type, Union
 
 import redis.asyncio as redis_async
 from redis import ResponseError
@@ -158,19 +158,6 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
     async def _get_from_local_cache(self, command: Sequence[str]) -> None:
         return None
 
-    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
-        return None
-
-    def _decode(self, response: Any) -> Any:
-        if isinstance(response, list):
-            return [self._decode(item) for item in response]
-        elif isinstance(response, dict):
-            return {self._decode(k): self._decode(v) for k, v in response.items()}
-        elif isinstance(response, bytes):
-            return self.encoder.decode(response)
-        else:
-            return response
-
     async def read_response(self, **kwargs: Any) -> Any:
         if not self._sock:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
@@ -190,15 +177,6 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         if kwargs.get("disable_decoding", False):
             return response
         return self._decode(response)
-
-    def repr_pieces(self) -> List[Tuple[str, Any]]:
-        pieces = [("server", self._server), ("db", self.db)]
-        if self.client_name:
-            pieces.append(("client_name", self.client_name))
-        return pieces
-
-    def __str__(self) -> str:
-        return self.server_key
 
 
 class FakeAsyncRedisConnection(FakeBaseAsyncConnection, redis_async.Connection):

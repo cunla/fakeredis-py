@@ -3,7 +3,7 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Type, Union
 
 import redis
 
@@ -148,3 +148,25 @@ class FakeBaseConnectionMixin(object):
         )
         client_info.update(client_info_arg)
         self._client_info = ClientInfo(**client_info)
+
+    def _decode(self, response: Any) -> Any:
+        if isinstance(response, list):
+            return [self._decode(item) for item in response]
+        elif isinstance(response, dict):
+            return {self._decode(k): self._decode(v) for k, v in response.items()}
+        elif isinstance(response, bytes):
+            return self.encoder.decode(response)  # type: ignore[attr-defined]
+        else:
+            return response
+
+    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
+        return None
+
+    def repr_pieces(self) -> List[Tuple[str, Any]]:
+        pieces = [("server", self._server), ("db", self.db)]  # type: ignore[attr-defined]
+        if self.client_name:
+            pieces.append(("client_name", self.client_name))
+        return pieces
+
+    def __str__(self) -> str:
+        return self.server_key
