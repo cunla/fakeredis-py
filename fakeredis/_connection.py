@@ -15,9 +15,6 @@ from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 class FakeBaseConnection(FakeBaseConnectionMixin):
     _connection_error_class = redis.ConnectionError
 
-    def __init__(*args: Any, **kwargs: Any) -> None:
-        FakeBaseConnectionMixin.__init__(*args, **kwargs)
-
     def connect(self) -> None:
         super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called

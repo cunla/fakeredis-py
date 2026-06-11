@@ -55,10 +55,7 @@ def null_terminate(s: bytes) -> bytes:
 
 
 def casematch_any(a: bytes, *args: bytes) -> bool:
-    for b in args:
-        if casematch(a, b):
-            return True
-    return False
+    return any(casematch(a, b) for b in args)
 
 
 def casematch(a: bytes, b: bytes) -> bool:

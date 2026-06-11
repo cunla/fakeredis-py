@@ -205,7 +205,7 @@ class FakeAsyncRedisConnection(FakeBaseAsyncConnection, redis_async.Connection):
     pass
 
 
-class FakeRedisMixin:
+class FakeAsyncRedisMixin:
     def __init__(
         self,
         *args: Any,
@@ -237,7 +237,7 @@ class FakeRedisMixin:
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> FakeRedisMixin:
+    def from_url(cls, url: str, **kwargs: Any) -> "FakeAsyncRedisMixin":
         self: redis_async.Redis = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = kwargs.pop("connection_class", FakeAsyncRedisConnection)
@@ -246,7 +246,13 @@ class FakeRedisMixin:
         return self
 
 
-class FakeRedis(FakeRedisMixin, redis_async.Redis):
+# Deprecated alias: kept so existing imports of aioredis.FakeRedisMixin keep
+# working; it shadowed the (different) sync mixin of the same name in
+# _connection.py.
+FakeRedisMixin = FakeAsyncRedisMixin
+
+
+class FakeRedis(FakeAsyncRedisMixin, redis_async.Redis):
     pass
 
 
