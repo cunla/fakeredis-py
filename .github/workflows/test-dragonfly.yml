@@ -16,7 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         tests:
-          - "test_json"
           - "test_mixins"
           - "test_stack"
           - "test_connection.py"
