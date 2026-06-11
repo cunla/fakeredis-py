@@ -4,7 +4,7 @@ import valkey
 
 from ._connection import FakeRedisMixin, FakeBaseConnection
 from ._typing import Self
-from .aioredis import FakeRedisMixin as FakeAsyncRedisMixin, FakeBaseAsyncConnection
+from .aioredis import FakeAsyncRedisMixin, FakeBaseAsyncConnection
 
 
 def _validate_server_type(args_dict: Dict[str, Any]) -> None:
