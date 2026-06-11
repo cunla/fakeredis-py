@@ -19,4 +19,4 @@ from .test_set import TestSet
 from .test_string import TestString
 from .test_transaction import TestTransaction
 from .test_zset import TestZSet, TestZSetNoScores
-from .test_hypothesis_joint import TestJoint
+from .test_joint import TestJoint
