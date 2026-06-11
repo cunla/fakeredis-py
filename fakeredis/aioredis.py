@@ -230,9 +230,13 @@ class FakeRedisMixin:
             connected=connected,
             **kwargs,
         )
-        if "lib_name" in kwds and "lib_version" in kwds:
+        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
             kwds["lib_name"] = "fakeredis"
             kwds["lib_version"] = lib_version
+        if "driver_info" in kwds:
+            from redis import DriverInfo
+
+            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod
