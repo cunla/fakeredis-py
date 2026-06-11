@@ -5,7 +5,7 @@ import redis
 import redis.client
 import valkey
 
-from . import testtools
+from test import testtools
 
 
 def test_multiple_successful_watch_calls(r: redis.Redis):
