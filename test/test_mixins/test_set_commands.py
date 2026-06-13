@@ -422,6 +422,16 @@ def test_sintercard_bytes_keys(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_negative_limit(r: ClientType):
+    r.sadd("foo", "member1", "member2")
+    r.sadd("bar", "member2", "member3")
+    with pytest.raises(Exception) as ctx:
+        r.sintercard(2, ["foo", "bar"], limit=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "LIMIT can't be negative" in str(ctx.value)
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sintercard_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")

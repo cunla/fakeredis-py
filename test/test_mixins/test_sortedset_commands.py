@@ -1237,6 +1237,16 @@ def test_zintercard(r: ClientType):
     assert r.zintercard(3, ["a", "b", "c"], limit=1) == 1
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zintercard_negative_limit(r: ClientType):
+    r.zadd("a", {"a1": 1, "a2": 2})
+    r.zadd("b", {"a1": 2, "a2": 2})
+    with pytest.raises(Exception) as ctx:
+        r.zintercard(2, ["a", "b"], limit=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "LIMIT can't be negative" in str(ctx.value)
+
+
 def test_zrangestore(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     assert r.zrangestore("b", "a", 0, 1)

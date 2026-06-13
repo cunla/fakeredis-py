@@ -535,6 +535,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
+        if limit < 0:
+            raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
         return min(limit, len(res))  # type: ignore[arg-type]
