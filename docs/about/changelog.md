@@ -7,6 +7,14 @@ tags:
 toc_depth: 2
 ---
 
+## v2.36.2 - 2026-06-14
+
+### 🐛 Bug Fixes
+
+- fix: replace async `can_read` busy-poll with event-based wakeup (#506)
+- fix: enforce `GT`/`LT` conditions in `ZADD` with `INCR` (#507)
+- fix: reject negative `LIMIT` in `SINTERCARD` and `ZINTERCARD` (#508)
+
 ## v2.36.1 - 2026-06-05
 
 ### 🐛 Bug Fixes
