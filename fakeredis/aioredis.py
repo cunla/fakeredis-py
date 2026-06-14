@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import warnings
 from typing import Any, Callable, Iterable, Optional, Sequence, Set, Type, Union
 
@@ -22,6 +23,11 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.responses: asyncio.Queue = asyncio.Queue()  # type:ignore
+        # Set whenever a response is enqueued so can_read() can wait on it
+        # instead of polling the queue (see can_read).
+        self._response_available: asyncio.Event = asyncio.Event()
+        self._event_loop = asyncio.get_running_loop()
+        self._loop_thread_ident = threading.get_ident()
 
     def _decode_error(self, error: SimpleError) -> ResponseError:
         parser = DefaultParser(1)
@@ -31,6 +37,17 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         if not self.responses:
             return
         self.responses.put_nowait(msg)
+        if threading.get_ident() == self._loop_thread_ident:
+            self._response_available.set()
+        else:
+            # Called from another thread, e.g. a sync client publishing to a
+            # channel this socket subscribes to on a shared FakeServer: a plain
+            # set() would not wake this socket's sleeping event loop, so the
+            # wakeup must be marshalled through it.
+            try:
+                self._event_loop.call_soon_threadsafe(self._response_available.set)
+            except RuntimeError:  # the loop is already closed
+                pass
 
     async def _async_blocking(
         self,
@@ -142,17 +159,33 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
             await self.connect()
         if timeout == 0:
             return self._sock is not None and not self._sock.responses.empty()
-        # asyncio.Queue doesn't have a way to wait for the queue to be
-        # non-empty without consuming an item, so kludge it with a sleep/poll
-        # loop.
+        # asyncio.Queue has no "wait until non-empty without consuming" API, so
+        # wait on the socket's _response_available event (set by put_response)
+        # rather than polling. timeout=None waits indefinitely.
+        #
+        # The event is only cleared here, never by the consumers that drain the
+        # queue (responses.get / get_nowait), so "event set" does NOT imply
+        # "queue non-empty" -- it may be left set after the queue was drained.
+        # The recheck of empty() immediately after clear() is therefore
+        # mandatory, not an optimization: it both closes the lost-wakeup race
+        # (an item enqueued between the empty() check and the wait) and absorbs
+        # a stale set. Do not remove it.
         loop = asyncio.get_event_loop()
         start = loop.time()
         while True:
-            if self._sock and not self._sock.responses.empty():
+            if self._sock is None:
+                return False
+            if not self._sock.responses.empty():
                 return True
-            await asyncio.sleep(0.01)
-            now = loop.time()
-            if timeout is not None and now > start + timeout:
+            self._sock._response_available.clear()
+            if not self._sock.responses.empty():  # mandatory recheck, see above
+                return True
+            remaining = None if timeout is None else timeout - (loop.time() - start)
+            if remaining is not None and remaining <= 0:
+                return False
+            try:
+                await asyncio.wait_for(self._sock._response_available.wait(), remaining)
+            except asyncio.TimeoutError:
                 return False
 
     async def _get_from_local_cache(self, command: Sequence[str]) -> None:
