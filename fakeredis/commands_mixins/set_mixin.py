@@ -78,6 +78,8 @@ class SetCommandsMixin(CommandsMixinBase):
         limit = 0
         if casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
+            if limit < 0:
+                raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
             args = args[:-2]
         if numkeys != len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
