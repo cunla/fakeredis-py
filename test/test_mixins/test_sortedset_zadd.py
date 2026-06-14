@@ -188,6 +188,23 @@ def test_zadd_incr(r: ClientType, ch: bool):
     assert r.zadd("foo", {"three": 1.0}, incr=True, xx=True, ch=ch) == 4.0
 
 
+def test_zadd_incr_with_gt_and_lt(r: ClientType):
+    r.zadd("foo", {"m": 5.0})
+    # GT + INCR: a decrement makes the new score not greater -> aborted, returns None, score unchanged
+    assert r.zadd("foo", {"m": -1.0}, incr=True, gt=True) is None
+    assert r.zscore("foo", "m") == 5.0
+    # GT + INCR: an increment makes the new score greater -> applied
+    assert r.zadd("foo", {"m": 3.0}, incr=True, gt=True) == 8.0
+    # LT + INCR: an increment makes the new score not less -> aborted
+    assert r.zadd("foo", {"m": 1.0}, incr=True, lt=True) is None
+    assert r.zscore("foo", "m") == 8.0
+    # LT + INCR: a decrement makes the new score less -> applied
+    assert r.zadd("foo", {"m": -2.0}, incr=True, lt=True) == 6.0
+    # GT/LT do not prevent adding a brand-new member
+    assert r.zadd("foo", {"new": 2.0}, incr=True, gt=True) == 2.0
+    assert r.zscore("foo", "new") == 2.0
+
+
 def test_zadd_with_xx_and_gt_and_ch(r: ClientType):
     r.zadd("test", {"one": 1})
     assert r.zscore("test", "one") == 1.0
