@@ -85,8 +85,11 @@ class GenericCommandsMixin(CommandsMixinBase):
             not key
             or (xx and key.expireat is None)
             or (nx and key.expireat is not None)
-            or (gt and key.expireat is not None and timestamp < key.expireat)
-            or (lt and key.expireat is not None and timestamp > key.expireat)
+            # A key with no expiry is treated as infinity: GT never sets it
+            # (nothing is greater than infinity) while LT always does. GT/LT are
+            # also strict, so an equal timestamp must not set either.
+            or (gt and (key.expireat is None or timestamp <= key.expireat))
+            or (lt and key.expireat is not None and timestamp >= key.expireat)
         ):
             return 0
         key.expireat = timestamp
