@@ -540,6 +540,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
+        limit = limit if limit is not None else 0
         if limit < 0:
             raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize

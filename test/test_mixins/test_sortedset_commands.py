@@ -1247,6 +1247,14 @@ def test_zintercard_negative_limit(r: ClientType):
     assert "LIMIT can't be negative" in str(ctx.value)
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zintercard_no_limit(r: ClientType):
+    # The LIMIT keyword is optional; omitting it returns the full cardinality.
+    r.zadd("a", {"a1": 1, "a2": 2})
+    r.zadd("b", {"a1": 2, "a2": 2})
+    assert r.execute_command("ZINTERCARD", 2, "a", "b") == 2
+
+
 def test_zrangestore(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     assert r.zrangestore("b", "a", 0, 1)
