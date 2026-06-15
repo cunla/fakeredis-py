@@ -555,6 +555,14 @@ def test_getex(r: ClientType):
     assert r.get("foo5") == b"val"
 
 
+def test_getex_no_option_keeps_ttl(r: ClientType):
+    # GETEX with no expiry option behaves like GET and must leave the TTL
+    # untouched; only PERSIST removes it.
+    r.set("foo", "val", ex=100)
+    assert r.getex("foo") == b"val"
+    assert r.ttl("foo") > 0
+
+
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_lcs(r: ClientType):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
