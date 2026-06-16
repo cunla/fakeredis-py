@@ -172,6 +172,8 @@ def _get_class(
 )
 def _create_connection(request, real_server_details: ServerDetails) -> Callable[[Dict[str, Any]], ClientType]:
     cls_type, protocol = request.param[:-1], int(request.param[-1])
+    if request.node.get_closest_marker("fake_only") and not cls_type.startswith("Fake"):
+        pytest.skip("Test is only applicable to fakeredis")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:
         pytest.skip("redis-py 4.x does not support RESP3")
 
@@ -216,6 +218,8 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
 )
 async def _req_aioredis2(request, real_server_details: ServerDetails) -> AsyncClientType:
     param_type, protocol = request.param[0], int(request.param[1])
+    if request.node.get_closest_marker("fake_only") and param_type != "fake":
+        pytest.skip("Test is only applicable to fakeredis")
     if param_type != "fake" and not real_server_details.server_version:
         pytest.skip("Real server is not running")
     if REDIS_PY_VERSION.major < 5 and protocol == 3:

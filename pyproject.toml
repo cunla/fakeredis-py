@@ -121,8 +121,9 @@ LICENSE = "fakeredis/LICENSE"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "fake: run tests only with fake redis",
-    "real: run tests with a locally running real Redis server",
+    "fake: select the fakeredis fixture variants (use '-m fake' to run the suite without a real server)",
+    "fake_only: restrict a single test to the fakeredis fixture variants, skipping its real-server params",
+    "real: select the real-server fixture variants (requires a Redis server on localhost:6390)",
     "disconnected",
     "supported_server_versions",
     "decode_responses",

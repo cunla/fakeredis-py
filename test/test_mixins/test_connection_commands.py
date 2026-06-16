@@ -28,8 +28,8 @@ def test_unknown_command(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@testtools.fake_only
-def test_time(r, mocker):
+@pytest.mark.fake_only
+def test_time(r: ClientType, mocker):
     fake_time = mocker.patch("time.time")
     fake_time.return_value = 1234567890.1234567
     assert r.time() == (1234567890, 123457)
@@ -112,7 +112,7 @@ class TestDecodeResponses:
 
 
 @pytest.mark.disconnected
-@testtools.fake_only
+@pytest.mark.fake_only
 class TestFakeStrictRedisConnectionErrors:
     def test_flushdb(self, r):
         with pytest.raises(Exception):
@@ -538,7 +538,7 @@ class TestFakeStrictRedisConnectionErrors:
 
 
 @pytest.mark.disconnected
-@testtools.fake_only
+@pytest.mark.fake_only
 class TestPubSubConnected:
     @pytest.fixture
     def pubsub(self, r):
