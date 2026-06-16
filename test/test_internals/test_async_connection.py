@@ -7,23 +7,10 @@ from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
 from fakeredis._typing import AsyncClientType
 from test import testtools
 
-pytestmark = []
-fake_only = pytest.mark.parametrize(
-    "async_redis",
-    [
-        pytest.param(("fake", 2), marks=pytest.mark.fake),
-        pytest.param(("fake", 3), marks=pytest.mark.fake),
-    ],
-    indirect=True,
-)
-pytestmark.extend(
-    [
-        pytest.mark.asyncio,
-    ]
-)
+pytestmark = [pytest.mark.asyncio]
 
 
-@fake_only
+@pytest.mark.fake_only
 @pytest.mark.disconnected
 async def test_not_connected(async_redis: AsyncClientType):
     with pytest.raises(Exception) as ctx:
@@ -32,7 +19,7 @@ async def test_not_connected(async_redis: AsyncClientType):
     assert isinstance(ctx.value, (redis.asyncio.ConnectionError, valkey.asyncio.ConnectionError))
 
 
-@fake_only
+@pytest.mark.fake_only
 async def test_disconnect_server(async_redis, fake_server):
     await async_redis.ping()
     fake_server.connected = False
@@ -68,7 +55,7 @@ async def test_from_url_with_version():
     await r1.connection_pool.disconnect()
 
 
-@fake_only
+@pytest.mark.fake_only
 async def test_from_url_with_server(async_redis, fake_server):
     r2 = aioredis.FakeRedis.from_url("redis://localhost", server=fake_server)
     await async_redis.set("foo", "bar")

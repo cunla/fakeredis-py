@@ -663,7 +663,7 @@ def test_blmove(r: ClientType):
 
 
 @pytest.mark.disconnected
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lmove_disconnected_raises_connection_error(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.lmove(1, 2, "LEFT", "RIGHT")

@@ -11,7 +11,6 @@ import valkey
 
 import fakeredis
 from fakeredis._typing import ClientType
-from test import testtools
 from test.testtools import raw_command
 
 _ = pytest.importorskip("lupa")
@@ -542,7 +541,7 @@ def test_script(r: ClientType):
     assert result == b"42"
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lua_log(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """
@@ -577,7 +576,7 @@ def test_lua_log_no_message(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lua_log_different_types(r, caplog):
     logger = logging.getLogger("fakeredis")
     script = "redis.log(redis.LOG_DEBUG, 'string', 1, true, 3.14, 'string')"
@@ -595,7 +594,7 @@ def test_lua_log_wrong_level(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lua_log_defined_vars(r, caplog):
     logger = fakeredis._server.LOGGER
     script = """
@@ -748,7 +747,7 @@ def test_lock(r: ClientType) -> None:
     lock.release()
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lua_runtime_reused_across_eval_calls(r: ClientType) -> None:
     """LuaRuntime should be cached on FakeServer and reused across eval calls."""
     server = r.connection_pool.connection_kwargs["server"]
@@ -781,7 +780,7 @@ def test_lua_runtime_freed_with_server() -> None:
     assert server_ref() is None
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lua_state_isolated_between_eval_calls(r: ClientType) -> None:
     """Lua state should not leak between eval calls when runtime is reused."""
     # First call: set KEYS/ARGV and return them
