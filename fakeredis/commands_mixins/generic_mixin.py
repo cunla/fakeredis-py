@@ -58,24 +58,7 @@ class GenericCommandsMixin(CommandsMixinBase):
             return item.value
 
     def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
-        (
-            (
-                nx,
-                xx,
-                gt,
-                lt,
-            ),
-            _,
-        ) = extract_args(
-            args,
-            (
-                "nx",
-                "xx",
-                "gt",
-                "lt",
-            ),
-            exception=msgs.EXPIRE_UNSUPPORTED_OPTION,
-        )
+        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=msgs.EXPIRE_UNSUPPORTED_OPTION)
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
         counter = (nx, gt, lt).count(True)
@@ -85,9 +68,8 @@ class GenericCommandsMixin(CommandsMixinBase):
             not key
             or (xx and key.expireat is None)
             or (nx and key.expireat is not None)
-            # A key with no expiry is treated as infinity: GT never sets it
-            # (nothing is greater than infinity) while LT always does. GT/LT are
-            # also strict, so an equal timestamp must not set either.
+            # A key with no expiry is treated as infinity: GT never sets it (nothing is greater than infinity) while
+            # LT always does. GT/LT are also strict, so an equal timestamp must not set either.
             or (gt and (key.expireat is None or timestamp <= key.expireat))
             or (lt and key.expireat is not None and timestamp >= key.expireat)
         ):
@@ -229,17 +211,7 @@ class GenericCommandsMixin(CommandsMixinBase):
     def sort(self, key: CommandItem, *args: bytes) -> Union[int, List[Any]]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (
-            (
-                asc,
-                desc,
-                alpha,
-                store,
-                sortby,
-                (limit_start, limit_count),
-            ),
-            left_args,
-        ) = extract_args(
+        ((asc, desc, alpha, store, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
@@ -258,12 +230,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # TODO: force sorting if the object is a set and either in Lua or
-        #  storing to a key, to match redis behaviour.
+        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
-        # These transformations are based on the redis implementation, but
-        # changed to produce a half-open range.
+        # These transformations are based on the redis implementation, but changed to produce a half-open range.
         start = max(limit_start, 0)
         end = len(items) if limit_count < 0 else start + limit_count
         if start >= len(items):
@@ -313,16 +283,7 @@ class GenericCommandsMixin(CommandsMixinBase):
     def sort_ro(self, key: CommandItem, *args: bytes) -> List[bytes]:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (
-            (
-                asc,
-                desc,
-                alpha,
-                sortby,
-                (limit_start, limit_count),
-            ),
-            left_args,
-        ) = extract_args(
+        ((asc, desc, alpha, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*by", "++limit"),
             error_on_unexpected=False,
@@ -341,12 +302,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # TODO: force sorting if the object is a set and either in Lua or
-        #  storing to a key, to match redis behaviour.
+        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
-        # These transformations are based on the redis implementation, but
-        # changed to produce a half-open range.
+        # These transformations are based on the redis implementation, but changed to produce a half-open range.
         start = max(limit_start, 0)
         end = len(items) if limit_count < 0 else start + limit_count
         if start >= len(items):
