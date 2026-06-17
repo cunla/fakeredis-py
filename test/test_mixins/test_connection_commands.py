@@ -50,6 +50,10 @@ def test_client_list(r: ClientType):
     assert isinstance(client_list[0], dict)
     client_ids = [int(client["id"]) for client in client_list]
     assert client_id in client_ids
+    # rq and other libraries rely on the addr field being present (see issue #512)
+    assert all("addr" in client for client in client_list)
+    assert all("age" in client for client in client_list)
+    assert all("_created" not in client for client in client_list)
 
     client_list = r.client_list()
     assert isinstance(client_list, list)

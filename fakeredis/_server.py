@@ -123,6 +123,9 @@ class FakeBaseConnectionMixin(object):
 
         client_info = dict(
             id=self._server.get_next_client_id(),
+            addr="127.0.0.1:0",
+            laddr="127.0.0.1:6379",
+            fd=8,
             name="",
             idle=0,
             flags="N",

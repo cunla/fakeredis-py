@@ -5,15 +5,15 @@ from typing import Any, Dict
 class ClientInfo(Dict[str, Any]):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__()
-        kwargs.setdefault("-created", int(time.time()))
+        kwargs.setdefault("_created", int(time.time()))
         kwargs.setdefault("resp", 2)
         kwargs.setdefault("user", "default")
         for k, v in kwargs.items():
             self[k.replace("-", "_")] = v
 
     def items(self) -> Any:
-        res = {k.replace("_", "-"): v for k, v in super().items() if not k.startswith("-")}
-        res["age"] = int(time.time()) - int(self.get("-created", 0))
+        res = {k: v for k, v in super().items() if not k.startswith("_")}
+        res["age"] = int(time.time()) - int(self.get("_created", 0))
         return res.items()
 
     @property
