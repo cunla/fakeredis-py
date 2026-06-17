@@ -119,6 +119,11 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+        info.update(
+            dict(
+                id=self._server.get_next_client_id(),
+            )
+        )
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
