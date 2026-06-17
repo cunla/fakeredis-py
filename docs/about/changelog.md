@@ -16,6 +16,7 @@ toc_depth: 2
 - fix: reject negative `LIMIT` in `SINTERCARD` and `ZINTERCARD` (#508)
 - fix: EXPIRE GT/LT mishandle keys with no existing TTL (#509)
 - fix: restore missing `addr`/`laddr`/`fd` fields in `CLIENT LIST`/`CLIENT INFO` (#512)
+- fix: SORT/SORT_RO BY <constant> must keep natural order (#510)
 
 ## v2.36.1 - 2026-06-05
 
