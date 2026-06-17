@@ -197,11 +197,15 @@ class HashCommandsMixin(CommandsMixinBase):
 
     @command(name="HEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hexpire(self, key: CommandItem, seconds: int, *args: bytes) -> List[int]:
+        if seconds < 0:
+            raise SimpleError(msgs.INVALID_HASH_EXPIRE_TIME_MSG)
         when_ms = current_time() + seconds * 1000
         return self._hexpire(key, when_ms, *args, command="hexpire")
 
     @command(name="HPEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
     def hpexpire(self, key: CommandItem, milliseconds: int, *args: bytes) -> List[int]:
+        if milliseconds < 0:
+            raise SimpleError(msgs.INVALID_HASH_EXPIRE_TIME_MSG)
         when_ms = current_time() + milliseconds
         return self._hexpire(key, when_ms, *args, command="hpexpire")
 

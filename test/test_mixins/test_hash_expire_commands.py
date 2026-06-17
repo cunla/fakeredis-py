@@ -2,6 +2,7 @@ import time
 from typing import Optional, Dict
 
 import pytest
+import redis
 
 from fakeredis._typing import ClientType
 from test import testtools
@@ -370,3 +371,17 @@ def test_hincrbyfloat_with_hash_key_expiration(r: ClientType):
     assert isinstance(res, list)
     assert len(res) == 1
     assert res[0] >= 0
+
+
+def test_hexpire_negative_ttl_raises(r: ClientType):
+    # HEXPIRE/HPEXPIRE take a relative time, so a negative value is an error
+    # (unlike the *AT variants, which accept a past absolute timestamp). The
+    # field must be left untouched, not deleted.
+    r.delete("redis-key")
+    r.hset("redis-key", mapping={"field1": "value1"})
+    with pytest.raises(redis.ResponseError, match="invalid expire time"):
+        r.hexpire("redis-key", -1, "field1")
+    with pytest.raises(redis.ResponseError, match="invalid expire time"):
+        r.hpexpire("redis-key", -1, "field1")
+    assert r.hget("redis-key", "field1") == b"value1"
+    assert r.httl("redis-key", "field1") == [-1]
