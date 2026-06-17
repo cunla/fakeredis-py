@@ -7,31 +7,28 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   publish_documentation:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     environment:
       name: pypi
       url: https://pypi.org/p/fakeredis
     steps:
       - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - name: Configure Git Credentials
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
       - name: Publish documentation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
         run: |
           pip install --group 'documentation'
-          mkdocs gh-deploy --force
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --verbose
           mkdocs --version

@@ -1,11 +1,15 @@
 import asyncio
 import sys
+import threading
+import time
+from unittest import mock
 
 import pytest
 import redis
 import redis.asyncio
 import valkey
 
+import fakeredis
 from fakeredis import FakeServer, aioredis
 from fakeredis._typing import async_timeout, AsyncClientType
 from test import testtools
@@ -95,6 +99,60 @@ async def test_pubsub_disconnect(async_redis: AsyncClientType):
         assert message is not None
         message = await ps.get_message(timeout=0.5)
         assert message is None
+
+
+async def test_get_message_timeout_does_not_busy_poll(async_redis: AsyncClientType):
+    """Waiting for a response must be event-driven, not a poll loop.
+
+    ``can_read`` used to wait for the response queue to become non-empty by
+    looping over ``asyncio.sleep(0.01)``, waking the event loop 100 times a
+    second for every idle reader. Waiting out a ``get_message`` timeout must
+    not call ``asyncio.sleep`` at all.
+    """
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        message = await ps.get_message(timeout=5)
+        assert message["type"] == "subscribe"
+
+        with mock.patch("asyncio.sleep", wraps=asyncio.sleep) as sleep_spy:
+            message = await ps.get_message(timeout=0.3)
+        assert message is None
+        assert sleep_spy.call_count == 0
+
+
+async def test_pubsub_publish_from_another_thread(async_redis: AsyncClientType, request, real_server_details):
+    """Regression: a sync client publishing from another thread must wake an
+    async subscriber promptly. ``can_read`` waits on an ``asyncio.Event`` set
+    by ``put_response``, which runs on the publisher's thread here, so the
+    wakeup must go through ``call_soon_threadsafe`` -- otherwise the
+    subscriber's event loop is not woken and the message is only seen once
+    the ``get_message`` timeout expires.
+    """
+    is_fake = isinstance(async_redis, (fakeredis.FakeAsyncRedis, fakeredis.FakeAsyncValkey))
+    is_valkey = real_server_details.server_type == "valkey"
+    if is_fake:
+        sync_cls = fakeredis.FakeValkey if is_valkey else fakeredis.FakeStrictRedis
+        publisher = sync_cls(server=request.getfixturevalue("fake_server"))
+    else:
+        sync_cls = valkey.StrictValkey if is_valkey else redis.StrictRedis
+        publisher = sync_cls("localhost", port=6390, db=2)
+
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        message = await ps.get_message(timeout=5)
+        assert message["type"] == "subscribe"
+
+        timer = threading.Timer(0.1, publisher.publish, args=("channel", "hello"))
+        timer.start()
+        start = time.monotonic()
+        message = await ps.get_message(timeout=5)
+        elapsed = time.monotonic() - start
+        timer.join()
+        assert message == {"channel": b"channel", "pattern": None, "type": "message", "data": b"hello"}
+        # Generous bound: delivery should take ~0.1s; the failure mode is
+        # waiting out the full 5s get_message timeout.
+        assert elapsed < 2.5
+    publisher.close()
 
 
 async def test_wrongtype_error(async_redis: AsyncClientType):

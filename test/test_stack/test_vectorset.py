@@ -13,7 +13,11 @@ pytest.importorskip("numpy")
 import numpy as np
 import redis
 import valkey
-from redis.commands.vectorset.commands import QuantizationOptions
+
+try:
+    from redis.commands.vectorset.commands import QuantizationOptions
+except ImportError:
+    pytest.skip("VectorSet commands not available in this Redis-py version", allow_module_level=True)
 
 pytestmark = []
 pytestmark.extend(

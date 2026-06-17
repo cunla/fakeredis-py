@@ -42,7 +42,7 @@ jobs:
           - "valkey/valkey:8.1.6"
           - "redis:6.2.17"
         python-version: ["3.9", "3.12", "3.13", "3.14"]
-        redis-py: ["6.4.0", "7.4.0", "8.0.0"]
+        redis-py: ["4.6.0", "6.4.0", "7.4.0", "8.0.0"]
         install-extras: [false]
         coverage: [false]
         exclude:
@@ -103,7 +103,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v8.2.0
       - uses: actions/setup-python@v6
         with:
           cache-dependency-path: uv.lock

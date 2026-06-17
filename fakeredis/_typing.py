@@ -2,6 +2,7 @@ import sys
 from typing import Tuple, Union, Dict, Any, List, Type
 
 import redis
+import redis.asyncio
 
 if sys.version_info < (3, 8):
     from typing_extensions import Literal

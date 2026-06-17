@@ -147,6 +147,11 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             item_score, item_name = items[0]
             if (nx and item_name in zset) or (xx and item_name not in zset):
                 return None
+            if (gt or lt) and item_name in zset:
+                current_score = zset.get(item_name)
+                new_score = current_score + item_score
+                if (gt and new_score <= current_score) or (lt and new_score >= current_score):
+                    return None
             return self.zincrby(key, item_score, item_name)  # type: ignore[no-any-return]
         count = [nx, gt, lt, xx].count(True)
         for item_score, item_name in items:
@@ -535,6 +540,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
+        limit = limit if limit is not None else 0
+        if limit < 0:
+            raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
         return min(limit, len(res))  # type: ignore[arg-type]

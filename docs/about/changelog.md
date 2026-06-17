@@ -7,6 +7,15 @@ tags:
 toc_depth: 2
 ---
 
+## v2.36.2 -
+
+### 🐛 Bug Fixes
+
+- fix: replace async `can_read` busy-poll with event-based wakeup (#506)
+- fix: enforce `GT`/`LT` conditions in `ZADD` with `INCR` (#507)
+- fix: reject negative `LIMIT` in `SINTERCARD` and `ZINTERCARD` (#508)
+- fix: EXPIRE GT/LT mishandle keys with no existing TTL (#509)
+
 ## v2.36.1 - 2026-06-05
 
 ### 🐛 Bug Fixes
@@ -18,6 +27,7 @@ toc_depth: 2
 
 ### 🧰 Maintenance
 
+- Restored support for redis-py 4.6 #493
 - Update the default server version to 8.
 - refactor: deduplicate sync and async client construction into a shared `build_client_kwds` helper
 - chore: remove dead code in connection/socket setup

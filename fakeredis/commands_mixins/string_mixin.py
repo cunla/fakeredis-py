@@ -284,8 +284,8 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("getex"))
         if count_options > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
-        key.expireat = None if expire_time is None else int(expire_time)
+        if count_options > 0:
+            key.expireat = None if expire_time is None else int(expire_time)
         return key.get(None)
 
     @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,))

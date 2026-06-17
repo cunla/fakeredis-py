@@ -1,11 +1,12 @@
 import queue
 import warnings
-from typing import Tuple, Any, List, Optional, Set, Sequence, Union, Type
+from typing import Any, Optional, Set, Sequence, Union, Type
 
 import redis
 
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector, build_client_kwds
+from fakeredis._client_setup import build_client_kwds
+from fakeredis._helpers import FakeSelector
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
@@ -13,9 +14,6 @@ from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
     _connection_error_class = redis.ConnectionError
-
-    def __init__(*args: Any, **kwargs: Any) -> None:
-        FakeBaseConnectionMixin.__init__(*args, **kwargs)
 
     def connect(self) -> None:
         super().connect()  # type: ignore
@@ -45,16 +43,6 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         # FakeSelector.check_can_read.
         return self._selector is not None and self._selector.check_can_read(timeout)
 
-    def _decode(self, response: Any) -> Any:
-        if isinstance(response, list):
-            return [self._decode(item) for item in response]
-        elif isinstance(response, dict):
-            return {self._decode(k): self._decode(v) for k, v in response.items()}
-        elif isinstance(response, bytes):
-            return self.encoder.decode(response)  # type: ignore
-        else:
-            return response
-
     def read_response(self, **kwargs: Any) -> Any:
         if not self._sock:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
@@ -73,25 +61,13 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         res = response if kwargs.get("disable_decoding", False) else self._decode(response)
         return res
 
-    def repr_pieces(self) -> List[Tuple[str, Any]]:
-        pieces = [("server", self._server), ("db", self.db)]
-        if self.client_name:
-            pieces.append(("client_name", self.client_name))
-        return pieces
-
     def _get_from_local_cache(self, command: Sequence[str]) -> None:
-        return None
-
-    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
         return None
 
     def get_socket(self) -> FakeSocket:
         if not self._sock:
             self.connect()
         return self._sock  # type: ignore
-
-    def __str__(self) -> str:
-        return self.server_key
 
 
 class FakeRedisConnection(FakeBaseConnection, redis.Connection):

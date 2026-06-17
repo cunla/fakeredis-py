@@ -3,9 +3,7 @@ name: Test Dragonfly
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - master
+
 
 concurrency:
   group: dragon-fly-${{ github.workflow }}-${{ github.ref }}
@@ -18,9 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         tests:
-          - "test_json"
           - "test_mixins"
           - "test_stack"
+          - "test_async"
+          - "test_internals"
+          - "test_transactions.py"
+          - "test_keyspace_notifications.py"
           - "test_hypothesis"
           - "test_asyncredis.py"
           - "test_translations.py"

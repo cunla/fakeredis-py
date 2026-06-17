@@ -8,7 +8,6 @@ import valkey
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 from fakeredis._typing import ClientType
-from test import testtools
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -53,7 +52,7 @@ def test_lastsave(r: ClientType):
     assert isinstance(r.lastsave(), datetime)
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_command(r: ClientType):
     commands_dict = r.command()
     one_word_commands = {cmd for cmd in SUPPORTED_COMMANDS if " " not in cmd and SUPPORTED_COMMANDS[cmd].server_types}
@@ -65,7 +64,7 @@ def test_command(r: ClientType):
         )
 
 
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_command_count(r: ClientType):
     assert r.command_count() >= len(
         [cmd for (cmd, cmd_info) in SUPPORTED_COMMANDS.items() if " " not in cmd and "redis" in cmd_info.server_types]

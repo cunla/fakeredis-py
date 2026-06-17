@@ -377,6 +377,25 @@ def test_expire_should_throw_error(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_expire_gt_lt_no_ttl_and_equal(r: ClientType):
+    # A key with no expiry is treated as infinity: GT must not set one
+    # (nothing is greater than infinity) and returns 0, while LT sets it.
+    # GT and LT are strict, so an equal expiry sets neither.
+    r.set("foo", "bar")
+    assert r.expire("foo", 100, gt=True) == 0
+    assert r.ttl("foo") == -1
+    assert r.expire("foo", 100, lt=True) == 1
+    assert 0 < r.ttl("foo") <= 100
+
+    ts = int(time()) + 500
+    r.persist("foo")
+    assert r.expireat("foo", ts) == 1
+    assert r.expireat("foo", ts, gt=True) == 0
+    assert r.expireat("foo", ts, lt=True) == 0
+    assert r.expiretime("foo") == ts
+
+
 @pytest.mark.supported_server_versions(max_redis_ver="6.9")
 def test_expire_extra_params_return_error(r: ClientType):
     with pytest.raises(redis.exceptions.ResponseError) as ctx:

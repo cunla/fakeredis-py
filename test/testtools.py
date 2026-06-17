@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 import redis
 from packaging.version import Version
-from redis.event import ClientType
 
 from fakeredis._commands import Float
+from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)
 
@@ -93,10 +93,6 @@ def run_test_if_redispy_ver(condition: str, ver: str):
 
 _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
-
-fake_only = pytest.mark.parametrize(
-    "create_connection", [pytest.param("FakeStrictRedis2", marks=pytest.mark.fake)], indirect=True
-)
 
 
 def redis_server_time(r: redis.Redis) -> datetime:
