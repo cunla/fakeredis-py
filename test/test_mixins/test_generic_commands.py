@@ -231,9 +231,8 @@ def test_sort_with_by_and_get_option(r: ClientType):
 
 
 def test_sort_by_nosort_keeps_natural_order(r: ClientType):
-    # A `BY` pattern with no `*` disables sorting: redis returns elements in
-    # natural order (insertion order for lists, score order for sorted sets)
-    # and reverses only when DESC is given.
+    # A `BY` pattern with no `*` disables sorting: redis returns elements in natural order (insertion order for lists,
+    # score order for sorted sets) and reverses only when DESC is given.
     r.rpush("mylist", "3", "1", "2", "5", "4")
     assert r.sort("mylist", by="nosort") == [b"3", b"1", b"2", b"5", b"4"]
     assert r.sort("mylist", by="nosort", desc=True) == [b"4", b"5", b"2", b"1", b"3"]
