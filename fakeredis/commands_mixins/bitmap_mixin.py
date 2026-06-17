@@ -227,6 +227,14 @@ class BitmapCommandsMixin(CommandsMixinBase):
             self.setbit(key, offset + i, bit)
         return new_value if value is None else ans
 
+    @staticmethod
+    def _bitfield_offset(offset: bytes, encoding: BitfieldEncoding) -> int:
+        # A leading '#' makes the offset a multiple of the type width, e.g.
+        # `GET u8 #1` reads the second u8 (bit offset 1 * 8 = 8).
+        if offset[:1] == b"#":
+            return BitOffset.decode(offset[1:]) * encoding.size
+        return BitOffset.decode(offset)
+
     @command(fixed=(Key(bytes),), repeat=(bytes,))
     def bitfield(self, key: CommandItem, *args: bytes) -> List[Optional[int]]:
         overflow = b"WRAP"
@@ -240,24 +248,26 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 2
             elif casematch(args[i], b"get") and i + 2 < len(args):
                 encoding = BitfieldEncoding(args[i + 1])
-                offset = BitOffset.decode(args[i + 2])
+                offset = self._bitfield_offset(args[i + 2], encoding)
                 results.append(self._bitfield_get(key, encoding, offset))
                 i += 3
             elif casematch(args[i], b"set") and i + 3 < len(args):
+                encoding = BitfieldEncoding(args[i + 1])
                 old_value = self._bitfield_set(
                     key=key,
-                    encoding=BitfieldEncoding(args[i + 1]),
-                    offset=BitOffset.decode(args[i + 2]),
+                    encoding=encoding,
+                    offset=self._bitfield_offset(args[i + 2], encoding),
                     value=Int.decode(args[i + 3]),
                     overflow=overflow,
                 )
                 results.append(old_value)
                 i += 4
             elif casematch(args[i], b"incrby") and i + 3 < len(args):
+                encoding = BitfieldEncoding(args[i + 1])
                 old_value = self._bitfield_set(
                     key=key,
-                    encoding=BitfieldEncoding(args[i + 1]),
-                    offset=BitOffset.decode(args[i + 2]),
+                    encoding=encoding,
+                    offset=self._bitfield_offset(args[i + 2], encoding),
                     incr=Int.decode(args[i + 3]),
                     overflow=overflow,
                 )

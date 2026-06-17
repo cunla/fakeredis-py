@@ -431,3 +431,20 @@ def test_bitfield_set_wrong_arguments(r: ClientType):
         with pytest.raises(Exception) as ctx:
             raw_command(r, "bitfield", key, "set", encoding, 0, 0)
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_bitfield_hash_offset(r: ClientType):
+    # A '#' prefix multiplies the offset by the type width, so `#1` on a u8
+    # addresses the second byte (bit offset 8), not bit 1.
+    key = "key:bitfield:hash_offset"
+    r.set(key, b"\x00\x22\x00\x00")
+    assert raw_command(r, "bitfield", key, "get", "u8", "#1") == [0x22]
+    assert raw_command(r, "bitfield", key, "get", "u8", "#0", "get", "u8", "#1") == [0, 0x22]
+    assert raw_command(r, "bitfield", key, "set", "u8", "#0", 99) == [0]
+    assert raw_command(r, "bitfield", key, "get", "u8", "#0") == [99]
+    assert raw_command(r, "bitfield", key, "incrby", "u8", "#1", 1) == [0x23]
+    # Malformed '#' offsets are rejected like any other bad offset.
+    for bad in ("#", "#-1", "#abc"):
+        with pytest.raises(Exception) as ctx:
+            raw_command(r, "bitfield", key, "get", "u8", bad)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
