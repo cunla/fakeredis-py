@@ -69,6 +69,9 @@ def test_client_list(r: ClientType):
 @testtools.run_test_if_redispy_ver("gte", "5")
 def test_client_info(r: ClientType):
     client_info = r.client_info()
+    assert "age" in client_info
+    assert "_created" not in client_info
+    assert "addr" in client_info
     assert client_info.get("lib-name", "redis-py") in {"redis-py", "valkey-py"}
     r.client_setinfo(b"lib-name", b"fakeredis")
     r.client_setinfo(b"lib-ver", b"1.0.0")
