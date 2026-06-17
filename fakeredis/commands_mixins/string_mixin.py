@@ -284,10 +284,6 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG.format("getex"))
         if count_options > 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
-        # Only alter the TTL when an expiry option was supplied. With no option
-        # GETEX behaves like GET and must leave any existing TTL untouched; only
-        # PERSIST (expire_time is None *with* an option) clears it.
         if count_options > 0:
             key.expireat = None if expire_time is None else int(expire_time)
         return key.get(None)

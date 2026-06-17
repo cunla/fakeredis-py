@@ -556,8 +556,7 @@ def test_getex(r: ClientType):
 
 
 def test_getex_no_option_keeps_ttl(r: ClientType):
-    # GETEX with no expiry option behaves like GET and must leave the TTL
-    # untouched; only PERSIST removes it.
+    # GETEX with no expiry option behaves like GET and must leave the TTL untouched; only PERSIST removes it.
     r.set("foo", "val", ex=100)
     assert r.getex("foo") == b"val"
     assert r.ttl("foo") > 0
