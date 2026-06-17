@@ -261,9 +261,8 @@ class GenericCommandsMixin(CommandsMixinBase):
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
-        # A `BY` pattern with no `*` means "don't sort": keep natural order
-        # (insertion order for lists, score order for zsets) and only reverse
-        # when DESC is given.
+        # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
+        # zsets) and only reverse when DESC is given.
         elif desc and isinstance(key.value, (list, ZSet)):
             items.reverse()
 
