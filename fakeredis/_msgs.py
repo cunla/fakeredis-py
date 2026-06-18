@@ -77,6 +77,7 @@ XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
     " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
 )
+GEO_INVALID_COORDINATE_MSG = "ERR invalid longitude,latitude pair {},{}"
 GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "

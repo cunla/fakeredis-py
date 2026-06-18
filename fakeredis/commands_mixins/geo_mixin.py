@@ -11,6 +11,8 @@ from fakeredis.geo import distance, geo_encode, geo_decode
 from fakeredis.model import ZSet
 
 UNIT_TO_M = {"km": 0.001, "mi": 0.000621371, "ft": 3.28084, "m": 1}
+GEO_LONG_MIN, GEO_LONG_MAX = -180, 180
+GEO_LAT_MIN, GEO_LAT_MAX = -85.05112878, 85.05112878
 
 
 def translate_meters_to_unit(unit_arg: bytes) -> float:
@@ -132,6 +134,8 @@ class GeoCommandsMixin(CommandsMixinBase):
                 Float.decode(data[i + 1]),
                 data[i + 2],
             )
+            if not GEO_LONG_MIN <= long <= GEO_LONG_MAX or not GEO_LAT_MIN <= lat <= GEO_LAT_MAX:
+                raise SimpleError(msgs.GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
             if (name in zset and not xx) or (name not in zset and not nx):
                 if zset.add(name, geo_encode(lat, long, 10)):
                     changed_items += 1

@@ -40,6 +40,23 @@ def test_geoadd(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.parametrize(
+    "longitude,latitude",
+    [
+        ("-180.0001", "0"),
+        ("180.0001", "0"),
+        ("0", "-85.05112879"),
+        ("0", "85.05112879"),
+    ],
+)
+def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitude: str, latitude: str):
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "geoadd", "geo", longitude, latitude, "member")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "invalid longitude,latitude pair" in str(ctx.value)
+
+
 def test_geoadd_xx(r: ClientType):
     values = (
         2.1909389952632,
