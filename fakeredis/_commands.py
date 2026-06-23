@@ -6,8 +6,6 @@ Unlike _helpers.py, here the methods should be used only in mixins.
 import functools
 import math
 import re
-import sys
-import time
 from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set, Collection
 
 from . import _msgs as msgs
@@ -156,20 +154,6 @@ class DbIndex(Int):
     MAX_VALUE = 15
 
 
-class BitOffset(Int):
-    """Argument converter for unsigned bit positions"""
-
-    DECODE_ERROR = msgs.INVALID_BIT_OFFSET_MSG
-    MIN_VALUE = 0
-    MAX_VALUE = 8 * MAX_STRING_SIZE - 1  # Redis imposes 512MB limit on keys
-
-
-class BitValue(Int):
-    DECODE_ERROR = msgs.INVALID_BIT_VALUE_MSG
-    MIN_VALUE = 0
-    MAX_VALUE = 1
-
-
 class Float(RedisType):
     """Argument converter for floating-point values.
 
@@ -234,22 +218,6 @@ class Timeout(Float):
     MIN_VALUE = 0.0
 
 
-class SortFloat(Float):
-    DECODE_ERROR = msgs.INVALID_SORT_FLOAT_MSG
-
-    @classmethod
-    def decode(
-        cls,
-        value: bytes,
-        allow_leading_whitespace: bool = True,
-        allow_erange: bool = False,
-        allow_empty: bool = True,
-        crop_null: bool = True,
-        decode_error: Optional[str] = None,
-    ) -> float:
-        return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
-
-
 @functools.total_ordering
 class BeforeAny:
     def __gt__(self, other: Any) -> bool:
@@ -272,48 +240,6 @@ class AfterAny:
 
     def __hash__(self) -> int:
         return 1
-
-
-class ScoreTest(RedisType):
-    """Argument converter for sorted set score endpoints."""
-
-    def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
-        self.value = value
-        self.exclusive = exclusive
-        self.bytes_val = bytes_val
-
-    @classmethod
-    def decode(cls, value: bytes) -> "ScoreTest":
-        try:
-            original_value = value
-            exclusive = False
-            if value[:1] == b"(":
-                exclusive = True
-                value = value[1:]
-            fvalue = Float.decode(
-                value,
-                allow_leading_whitespace=True,
-                allow_erange=True,
-                allow_empty=True,
-                crop_null=True,
-            )
-            return cls(fvalue, exclusive, original_value)
-        except SimpleError:
-            raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
-
-    def __str__(self) -> str:
-        if self.exclusive:
-            return "({!r}".format(self.value)
-        else:
-            return repr(self.value)
-
-    @property
-    def lower_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
-        return self.value, AfterAny() if self.exclusive else BeforeAny()
-
-    @property
-    def upper_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
-        return self.value, BeforeAny() if self.exclusive else AfterAny()
 
 
 class StringTest(RedisType):
@@ -350,11 +276,7 @@ class Signature:
         repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
         args: Tuple[str] = (),  # type:ignore
         flags: str = "",
-        server_types: Collection[ServerType] = (
-            "redis",
-            "valkey",
-            "dragonfly",
-        ),  # supported server types: redis, dragonfly, valkey
+        server_types: Collection[ServerType] = ("redis", "valkey", "dragonfly"),
     ):
         self.name = name
         self.func_name = func_name
@@ -472,17 +394,3 @@ def fix_range_string(start: int, end: int, length: int) -> Tuple[int, int]:
         end = max(0, end + length)
     end = min(end, length - 1)
     return start, end + 1
-
-
-class Timestamp(Int):
-    """Argument converter for timestamps"""
-
-    @classmethod
-    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
-        if value == b"*":
-            return int(time.time() * 1000)
-        if value == b"-":
-            return -1
-        if value == b"+":
-            return sys.maxsize
-        return super().decode(value, decode_error=msgs.INVALID_EXPIRE_MSG)

@@ -77,7 +77,8 @@ XGROUP_KEY_NOT_FOUND_MSG = (
     "ERR The XGROUP subcommand requires the key to exist."
     " Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
 )
-GEO_UNSUPPORTED_UNIT = "unsupported unit provided. please use M, KM, FT, MI"
+GEO_UNSUPPORTED_UNIT = "ERR unsupported unit provided. please use M, KM, FT, MI"
+GEO_INVALID_COORDINATE_MSG = "ERR invalid longitude,latitude pair {},{}"
 LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
     "or use negative to start from the end of the list"
@@ -122,6 +123,7 @@ TIMESERIES_DUPLICATE_POLICY_BLOCK = (
 )
 TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
 HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
+HEXPIRE_INVALID_TIME_MSG = "ERR invalid expire time, must be >= 0"
 
 MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an ACL file. You may want to specify users via the ACL SETUSER command and then issue a CONFIG REWRITE (assuming you have a Redis configuration file set) in order to store users in the Redis configuration."
 

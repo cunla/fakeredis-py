@@ -41,14 +41,7 @@ def test_geoadd(r: ClientType):
 
 
 def test_geoadd_xx(r: ClientType):
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        "place1",
-        2.1873744593677,
-        41.406342043777,
-        "place2",
-    )
+    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     assert r.geoadd("a", values) == 2
     values = (
         2.1909389952632,
@@ -145,26 +138,11 @@ def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: Dic
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_with(r: ClientType):
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        "place1",
-        2.1873744593677,
-        41.406342043777,
-        "place2",
-    )
+    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
 
     r.geoadd("barcelona", values)
     # test a bunch of combinations to test the parse response function.
-    res = r.georadius(
-        "barcelona",
-        2.191,
-        41.433,
-        1,
-        unit="km",
-        withdist=True,
-        withcoord=True,
-    )
+    res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
     assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
 
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
@@ -250,3 +228,20 @@ def test_geosearch(r: ClientType):
         b"place3",
         b"place2",
     ]
+
+
+@pytest.mark.parametrize(
+    "longitude,latitude",
+    [
+        ("-180.0001", "0"),
+        ("180.0001", "0"),
+        ("0", "-85.05112879"),
+        ("0", "85.05112879"),
+    ],
+)
+def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitude: str, latitude: str):
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "geoadd", "geo", longitude, latitude, "member")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "invalid longitude,latitude pair" in str(ctx.value)

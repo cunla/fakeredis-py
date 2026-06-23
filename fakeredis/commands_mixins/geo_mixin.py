@@ -10,7 +10,9 @@ from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.geo import distance, geo_encode, geo_decode
 from fakeredis.model import ZSet
 
-UNIT_TO_M = {"km": 0.001, "mi": 0.000621371, "ft": 3.28084, "m": 1}
+_UNIT_TO_M = {b"km": 0.001, b"mi": 0.000621371, b"ft": 3.28084, b"m": 1}
+_GEO_LONGTITUDE_MIN, _GEO_LONGTITUDE_MAX = -180, 180
+_GEO_LATITUDE_MIN, _GEO_LATITUDE_MAX = -85.05112878, 85.05112878
 
 
 def translate_meters_to_unit(unit_arg: bytes) -> float:
@@ -18,7 +20,7 @@ def translate_meters_to_unit(unit_arg: bytes) -> float:
     :param unit_arg: unit name (km, mi, ft, m)
     :returns: number of meters in unit
     """
-    unit = UNIT_TO_M.get(unit_arg.decode().lower())
+    unit = _UNIT_TO_M.get(unit_arg.lower())
     if unit is None:
         raise SimpleError(msgs.GEO_UNSUPPORTED_UNIT)
     return unit
@@ -115,10 +117,7 @@ class GeoCommandsMixin(CommandsMixinBase):
     @command(name="GEOADD", fixed=(Key(ZSet),), repeat=(bytes,))
     def geoadd(self, key: CommandItem, *args: bytes) -> int:
         (xx, nx, ch), data = extract_args(
-            args,
-            ("nx", "xx", "ch"),
-            error_on_unexpected=False,
-            left_from_first_unexpected=True,
+            args, ("nx", "xx", "ch"), error_on_unexpected=False, left_from_first_unexpected=True
         )
         if xx and nx:
             raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
@@ -127,11 +126,11 @@ class GeoCommandsMixin(CommandsMixinBase):
         zset = key.value
         old_len, changed_items = len(zset), 0
         for i in range(0, len(data), 3):
-            long, lat, name = (
-                Float.decode(data[i + 0]),
-                Float.decode(data[i + 1]),
-                data[i + 2],
-            )
+            long, lat, name = (Float.decode(data[i + 0]), Float.decode(data[i + 1]), data[i + 2])
+            if not (
+                _GEO_LONGTITUDE_MIN <= long <= _GEO_LONGTITUDE_MAX and _GEO_LATITUDE_MIN <= lat <= _GEO_LATITUDE_MAX
+            ):
+                raise SimpleError(msgs.GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
             if (name in zset and not xx) or (name not in zset and not nx):
                 if zset.add(name, geo_encode(lat, long, 10)):
                     changed_items += 1
@@ -215,14 +214,7 @@ class GeoCommandsMixin(CommandsMixinBase):
         else:
             return self.georadius_ro(key, long, lat, radius, *left_args)  # type: ignore
 
-    @command(
-        name="GEOSEARCHSTORE",
-        fixed=(
-            bytes,
-            Key(ZSet),
-        ),
-        repeat=(bytes,),
-    )
+    @command(name="GEOSEARCHSTORE", fixed=(bytes, Key(ZSet)), repeat=(bytes,))
     def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> List[Any]:
         (frommember, (long, lat), radius, storedist), left_args = extract_args(
             args,
