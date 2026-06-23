@@ -2,16 +2,7 @@ import re
 from typing import Any, Callable, List, Optional
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (
-    command,
-    Key,
-    Int,
-    BitOffset,
-    BitValue,
-    fix_range_string,
-    fix_range,
-    CommandItem,
-)
+from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -30,6 +21,20 @@ class BitfieldEncoding:
 
         if self.size < 1 or self.size > (64 if self.signed else 63):
             raise SimpleError(msgs.INVALID_BITFIELD_TYPE)
+
+
+class BitOffset(Int):
+    """Argument converter for unsigned bit positions"""
+
+    DECODE_ERROR = msgs.INVALID_BIT_OFFSET_MSG
+    MIN_VALUE = 0
+    MAX_VALUE = 8 * MAX_STRING_SIZE - 1  # Redis imposes 512MB limit on keys
+
+
+class BitValue(Int):
+    DECODE_ERROR = msgs.INVALID_BIT_VALUE_MSG
+    MIN_VALUE = 0
+    MAX_VALUE = 1
 
 
 class BitmapCommandsMixin(CommandsMixinBase):

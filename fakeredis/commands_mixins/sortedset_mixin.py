@@ -16,15 +16,13 @@ from fakeredis._commands import (
     Float,
     CommandItem,
     Timeout,
-    ScoreTest,
     StringTest,
     fix_range,
+    AfterAny,
+    BeforeAny,
+    RedisType,
 )
-from fakeredis._helpers import (
-    SimpleError,
-    casematch,
-    null_terminate,
-)
+from fakeredis._helpers import SimpleError, casematch, null_terminate
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ZSet, ExpiringMembersSet
 
@@ -38,6 +36,48 @@ SORTED_SET_METHODS = {
 }
 
 _T = TypeVar("_T")
+
+
+class ScoreTest(RedisType):
+    """Argument converter for sorted set score endpoints."""
+
+    def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
+        self.value = value
+        self.exclusive = exclusive
+        self.bytes_val = bytes_val
+
+    @classmethod
+    def decode(cls, value: bytes) -> "ScoreTest":
+        try:
+            original_value = value
+            exclusive = False
+            if value[:1] == b"(":
+                exclusive = True
+                value = value[1:]
+            fvalue = Float.decode(
+                value,
+                allow_leading_whitespace=True,
+                allow_erange=True,
+                allow_empty=True,
+                crop_null=True,
+            )
+            return cls(fvalue, exclusive, original_value)
+        except SimpleError:
+            raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
+
+    def __str__(self) -> str:
+        if self.exclusive:
+            return "({!r}".format(self.value)
+        else:
+            return repr(self.value)
+
+    @property
+    def lower_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
+        return self.value, AfterAny() if self.exclusive else BeforeAny()
+
+    @property
+    def upper_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
+        return self.value, BeforeAny() if self.exclusive else AfterAny()
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):

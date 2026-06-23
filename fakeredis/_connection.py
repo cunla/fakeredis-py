@@ -20,6 +20,13 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         # The selector is set in redis.Connection.connect() after _connect() is called
         self._selector: Optional[FakeSelector] = FakeSelector(self._sock)
 
+    def activate_maint_notifications_handling_if_enabled(self, *args: Any, **kwargs: Any) -> None:
+        # redis-py>=8.0 performs a real socket.getaddrinfo() DNS lookup here to determine the
+        # endpoint type for RESP3 maintenance notifications. A fake server never sends those
+        # notifications, so we skip the handshake entirely to avoid any real network calls.
+        # See https://github.com/cunla/fakeredis-py/issues/513
+        return None
+
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)

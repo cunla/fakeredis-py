@@ -1,12 +1,27 @@
+import sys
 import time
 from typing import List, Union, Optional, Any, Set, Dict, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, Key, CommandItem, Int, Float, Timestamp
+from fakeredis._commands import command, Key, CommandItem, Int, Float
 from fakeredis._helpers import SimpleString, OK, SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import TimeSeries, TimeSeriesRule, AGGREGATORS
+
+
+class Timestamp(Int):
+    """Argument converter for timestamps"""
+
+    @classmethod
+    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
+        if value == b"*":
+            return int(time.time() * 1000)
+        if value == b"-":
+            return -1
+        if value == b"+":
+            return sys.maxsize
+        return super().decode(value, decode_error=msgs.INVALID_EXPIRE_MSG)
 
 
 class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands

@@ -64,6 +64,18 @@ class TestInitArgs:
         db.set("foo", "bar")
         assert db.get("foo") == b"bar"
 
+    def test_no_real_dns_lookup_on_connect(self):
+        # redis-py>=8.0 performs a real socket.getaddrinfo() call during the RESP3
+        # maintenance-notifications handshake. FakeRedis must not make any real
+        # network calls. See https://github.com/cunla/fakeredis-py/issues/513
+        def _no_dns(*args, **kwargs):
+            raise AssertionError("FakeRedis attempted a real DNS lookup via socket.getaddrinfo")
+
+        with mock.patch("socket.getaddrinfo", _no_dns):
+            db = fakeredis.FakeStrictRedis(protocol=3)
+            db.set("foo", "bar")
+            assert db.get("foo") == b"bar"
+
     def test_with_user_password(self):
         username = "fakeredis-user"
         password = "fakeredis-password"
