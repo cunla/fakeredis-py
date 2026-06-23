@@ -30,6 +30,16 @@ class BitOffset(Int):
     MIN_VALUE = 0
     MAX_VALUE = 8 * MAX_STRING_SIZE - 1  # Redis imposes 512MB limit on keys
 
+    @classmethod
+    def decode_offset(cls, value: bytes, size: int) -> int:
+        if value[:1] == b"#":
+            result = super().decode(value[1:]) * size
+        else:
+            result = super().decode(value)
+        if result > cls.MAX_VALUE:
+            raise SimpleError(msgs.INVALID_BIT_OFFSET_MSG)
+        return result
+
 
 class BitValue(Int):
     DECODE_ERROR = msgs.INVALID_BIT_VALUE_MSG
@@ -129,7 +139,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
             return 0
         return 1 if (1 << actual_bitoffset) & actual_val else 0
 
-    @command((Key(bytes), BitOffset, BitValue))
+    @command(name="setbit", fixed=(Key(bytes), BitOffset, BitValue))
     def setbit(self, key: CommandItem, offset: int, value: int) -> int:
         val = key.value if key.value is not None else b"\x00"
         byte = offset // 8
@@ -232,7 +242,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
             self.setbit(key, offset + i, bit)
         return new_value if value is None else ans
 
-    @command(fixed=(Key(bytes),), repeat=(bytes,))
+    @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
     def bitfield(self, key: CommandItem, *args: bytes) -> List[Optional[int]]:
         overflow = b"WRAP"
         results: List[Optional[int]] = []
@@ -245,24 +255,26 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 2
             elif casematch(args[i], b"get") and i + 2 < len(args):
                 encoding = BitfieldEncoding(args[i + 1])
-                offset = BitOffset.decode(args[i + 2])
+                offset = BitOffset.decode_offset(args[i + 2], encoding.size)
                 results.append(self._bitfield_get(key, encoding, offset))
                 i += 3
             elif casematch(args[i], b"set") and i + 3 < len(args):
+                encoding = BitfieldEncoding(args[i + 1])
                 old_value = self._bitfield_set(
                     key=key,
-                    encoding=BitfieldEncoding(args[i + 1]),
-                    offset=BitOffset.decode(args[i + 2]),
+                    encoding=encoding,
+                    offset=BitOffset.decode_offset(args[i + 2], encoding.size),
                     value=Int.decode(args[i + 3]),
                     overflow=overflow,
                 )
                 results.append(old_value)
                 i += 4
             elif casematch(args[i], b"incrby") and i + 3 < len(args):
+                encoding = BitfieldEncoding(args[i + 1])
                 old_value = self._bitfield_set(
                     key=key,
-                    encoding=BitfieldEncoding(args[i + 1]),
-                    offset=BitOffset.decode(args[i + 2]),
+                    encoding=encoding,
+                    offset=BitOffset.decode_offset(args[i + 2], encoding.size),
                     incr=Int.decode(args[i + 3]),
                     overflow=overflow,
                 )
