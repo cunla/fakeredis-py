@@ -326,6 +326,7 @@ class BaseTest:
 
     command_strategy: SearchStrategy
     create_command_strategy = st.nothing()
+    command_strategy_dragonfly = st.nothing()
     command_strategy_redis7 = st.nothing()
     command_strategy_redis_only = st.nothing()
 
@@ -334,6 +335,8 @@ class BaseTest:
         class Machine(CommonMachine):
             create_command_strategy = self.create_command_strategy
             command_strategy = self.command_strategy
+            if server_type == "dragonfly":
+                command_strategy = command_strategy | self.command_strategy_dragonfly
             if server_type == "redis":
                 command_strategy = command_strategy | self.command_strategy_redis_only
             if server_type == "redis" and redis_ver >= (7,):

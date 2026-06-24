@@ -91,8 +91,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def bitcount(self, key: CommandItem, *args: bytes) -> int:
-        # Redis checks the argument count before decoding integers. That's why
-        # we can't declare them as Int.
+        # Redis checks the argument count before decoding integers. That's why we can't declare them as Int.
         if len(args) == 0:
             if key.value is None:
                 return 0
@@ -104,11 +103,11 @@ class BitmapCommandsMixin(CommandsMixinBase):
             start = Int.decode(args[0])
             end = Int.decode(args[1])
         except SimpleError as e:
-            if self.version >= (7, 4):
+            if self.version >= (7, 4) or self._server.server_type == "dragonfly":
                 raise e
             return 0
         bit_mode = False
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and (self.version < (7,) and self._server.server_type != "dragonfly"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(args) == 3 and self.version >= (7,):
             bit_mode = casematch(args[2], b"bit")
@@ -247,6 +246,8 @@ class BitmapCommandsMixin(CommandsMixinBase):
         overflow = b"WRAP"
         results: List[Optional[int]] = []
         i = 0
+        if len(args) == 0 and self._server.server_type == "dragonfly":
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitfield"))
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
                 overflow = args[i + 1].upper()
@@ -282,5 +283,6 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 4
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
+        if len(results) == 0 and self._server.server_type == "dragonfly":
+            return None
         return results
