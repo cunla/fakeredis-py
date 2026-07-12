@@ -29,8 +29,8 @@ Returns helpful text about the different subcommands.
 Loads a server-side Lua script to the script cache.
 
 
-## Unsupported scripting commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported scripting commands
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [EVAL_RO](https://redis.io/commands/eval_ro/) <small>(not implemented)</small>
 
@@ -91,5 +91,3 @@ Sets the debug mode of server-side Lua scripts.
 #### [SCRIPT KILL](https://redis.io/commands/script-kill/) <small>(not implemented)</small>
 
 Terminates a server-side Lua script during execution.
-
-
