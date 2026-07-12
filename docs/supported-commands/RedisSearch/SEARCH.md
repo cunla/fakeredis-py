@@ -1,6 +1,6 @@
 
 ## Unsupported search commands
-> To implement support for a command, see [here](/guides/implement-command/)
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [FT._LIST](https://redis.io/commands/ft._list/) <small>(not implemented)</small>
 

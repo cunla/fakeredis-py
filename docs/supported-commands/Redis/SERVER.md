@@ -94,7 +94,7 @@ Returns the server time.
 
 
 ## Unsupported server commands
-> To implement support for a command, see [here](/guides/implement-command/)
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [ACL](https://redis.io/commands/acl/) <small>(not implemented)</small>
 

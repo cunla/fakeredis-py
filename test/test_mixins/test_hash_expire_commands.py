@@ -102,10 +102,7 @@ def test_hexpire_after_hset(r: ClientType):
 @pytest.mark.slow
 def test_hexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     assert r.hexpire("redis-key", 1, "field1", "field2") == [1, 1]
     time.sleep(1.1)
     assert r.hexists("redis-key", "field1") is False
@@ -149,10 +146,7 @@ def test_hpexpire_nonexistent_key_or_field(r: ClientType):
 
 def test_hpexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     assert r.hpexpire("redis-key", 100, "field1", "field2") == [1, 1]
     time.sleep(0.11)
     assert r.hexists("redis-key", "field1") is False
@@ -201,10 +195,7 @@ def test_hexpireat_nonexistent_key_or_field(r: ClientType):
 
 def test_hexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     exp_time = (testtools.current_time() + 1000) // 1000
     assert r.hexpireat("redis-key", exp_time, "field1", "field2") == [1, 1]
     time.sleep(1.1)
@@ -254,10 +245,7 @@ def test_hpexpireat_nonexistent_key_or_field(r: ClientType):
 
 def test_hpexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     exp_time = testtools.current_time() + 100
     assert r.hpexpireat("redis-key", exp_time, "field1", "field2") == [1, 1]
     time.sleep(0.11)

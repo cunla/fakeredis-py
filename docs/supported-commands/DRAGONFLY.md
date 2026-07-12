@@ -1,6 +1,6 @@
 # Dragonfly specific commands
 
-> To implement support for a command, see [here](/guides/implement-command/)
+> To implement support for a command, see [here](../../guides/implement-command/)
 
 These are commands that are not implemented in Redis but supported in Dragonfly and FakeRedis. To use these commands,
 you can call `execute_command` with the command name and arguments as follows:
