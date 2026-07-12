@@ -1,6 +1,6 @@
 
 ## Unsupported cluster commands
-> To implement support for a command, see [here](/guides/implement-command/)
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
 

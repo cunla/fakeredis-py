@@ -172,7 +172,7 @@ def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_comma
 
             if len(unimplemented_in_group) > 0:
                 f.write(f"## Unsupported {group} commands \n")
-                f.write("> To implement support for a command, see [here](/guides/implement-command/) \n\n")
+                f.write("> To implement support for a command, see [here](../../../guides/implement-command/) \n\n")
                 for cmd in unimplemented_in_group:
                     f.write(
                         f"#### [{cmd.upper()}](https://redis.io/commands/{cmd.replace(' ', '-')}/)"

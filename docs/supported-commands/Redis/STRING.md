@@ -94,7 +94,7 @@ Returns a substring from a string value.
 
 
 ## Unsupported string commands
-> To implement support for a command, see [here](/guides/implement-command/)
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [DELEX](https://redis.io/commands/delex/) <small>(not implemented)</small>
 
