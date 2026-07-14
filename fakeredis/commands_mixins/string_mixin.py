@@ -1,4 +1,5 @@
 import math
+import sys
 from abc import abstractmethod, ABC
 from typing import Tuple, Callable, List, Any, Optional, Dict, Union
 
@@ -138,6 +139,87 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     @command(fixed=(Key(bytes),))
     def incr(self, key: CommandItem) -> int:
         return self._incrby(key, 1)
+
+    def _increx_bound(self, raw: Optional[bytes], name: str, float_mode: bool, default: float) -> Union[int, float]:
+        if raw is None:
+            return default
+        if float_mode:
+            return Float.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_FLOAT_MSG.format(name))
+        return Int.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_INTEGER_MSG.format(name))
+
+    @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis",))
+    def increx(self, key: CommandItem, *args: bytes) -> List[Any]:
+        if self.version < (8, 8):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("INCREX"))
+        (byfloat, byint, saturate, lbound, ubound, ex, px, exat, pxat, persist, enx), _ = extract_args(
+            args,
+            ("*byfloat", "*byint", "saturate", "*lbound", "*ubound", "+ex", "+px", "+exat", "+pxat", "persist", "enx"),
+        )
+        if byfloat is not None and byint is not None:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        expirations = [x for x in (ex, px, exat, pxat) if x is not None]
+        if len(expirations) + (1 if persist else 0) > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if enx and persist:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if enx and len(expirations) == 0:
+            raise SimpleError(msgs.INCREX_ENX_REQUIRES_EXPIRATION_MSG)
+        if (ex is not None and ex <= 0) or (px is not None and px <= 0):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("increx"))
+        expire_time: Optional[float] = None
+        if exat is not None:
+            expire_time = exat
+        elif pxat is not None:
+            expire_time = pxat / 1000.0
+        elif ex is not None:
+            expire_time = self._db.time + ex
+        elif px is not None:
+            expire_time = self._db.time + px / 1000.0
+        if expire_time is not None and (expire_time <= 0 or expire_time * 1000 >= 2**63):
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("increx"))
+
+        float_mode = byfloat is not None
+        # Note: real Redis uses long double in BYFLOAT mode; Python only has double.
+        lower = self._increx_bound(lbound, "LBOUND", float_mode, -sys.float_info.max if float_mode else Int.MIN_VALUE)
+        upper = self._increx_bound(ubound, "UBOUND", float_mode, sys.float_info.max if float_mode else Int.MAX_VALUE)
+        if lower > upper:
+            raise SimpleError(msgs.INCREX_LBOUND_GT_UBOUND_MSG)
+
+        current: Union[int, float]
+        amount: Union[int, float]
+        if float_mode:
+            current = Float.decode(key.get(b"0"))
+            amount = Float.decode(byfloat)
+        else:
+            current = Int.decode(key.get(b"0"))
+            amount = Int.decode(byint) if byint is not None else 1
+        result = current + amount
+        if result < lower or result > upper or (float_mode and not math.isfinite(result)):
+            if not saturate:
+                # Out of bounds: skip the operation, leaving the key and its TTL untouched.
+                result, amount = current, 0
+                if self._client_info.protocol_version == 2 and float_mode:
+                    return [self._encodefloat(result, True), self._encodefloat(0.0, True)]
+                return [result, amount]
+            result = min(max(result, lower), upper)
+            amount = result - current
+            if float_mode:
+                if not math.isfinite(amount):
+                    raise SimpleError(msgs.NONFINITE_MSG)
+                # Real redis computes the saturated delta in long double; rounding to 15 significant
+                # digits hides the artifacts of computing it in a 64-bit double (e.g. 7.4-5).
+                amount = float(f"{amount:.15g}")
+            elif not Int.valid(int(amount)):
+                raise SimpleError(msgs.OVERFLOW_MSG)
+
+        key.update(self._encodefloat(result, True) if float_mode else self._encodeint(result))  # type: ignore[arg-type]
+        if persist:
+            key.expireat = None
+        elif expire_time is not None and not (enx and key.expireat is not None):
+            key.expireat = expire_time
+        if float_mode and self._client_info.protocol_version == 2:
+            return [self._encodefloat(result, True), self._encodefloat(amount, True)]
+        return [result, amount]
 
     @command(fixed=(Key(bytes), Float))
     def incrbyfloat(self, key: CommandItem, amount: float) -> bytes:

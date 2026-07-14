@@ -1,4 +1,4 @@
-# Redis `string` commands (23/26 implemented)
+# Redis `string` commands (24/26 implemented)
 
 ## [APPEND](https://redis.io/commands/append/)
 
@@ -43,6 +43,10 @@ Increments the integer value of a key by a number. Uses 0 as initial value if th
 ## [INCRBYFLOAT](https://redis.io/commands/incrbyfloat/)
 
 Increment the floating point value of a key by a number. Uses 0 as initial value if the key doesn't exist.
+
+## [INCREX](https://redis.io/commands/increx/)
+
+Increments the numeric value of a key by a number and sets its expiration time. Uses 0 as initial value if the key doesn't exist.
 
 ## [LCS](https://redis.io/commands/lcs/)
 
@@ -103,7 +107,3 @@ Conditionally removes the specified key based on value or digest comparison.
 #### [DIGEST](https://redis.io/commands/digest/) <small>(not implemented)</small>
 
 Returns the XXH3 hash of a string value.
-
-#### [INCREX](https://redis.io/commands/increx/) <small>(not implemented)</small>
-
-Increments the numeric value of a key by a number and sets its expiration time. Uses 0 as initial value if the key doesn't exist.
