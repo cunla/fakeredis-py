@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fakeredis._typing import VersionType
+from fakeredis._typing import ServerType, VersionType
 
 if TYPE_CHECKING:
     from fakeredis._helpers import Database
@@ -19,4 +19,8 @@ class CommandsMixinBase:
 
     @property
     def version(self) -> VersionType:
+        raise NotImplementedError
+
+    @property
+    def server_type(self) -> ServerType:
         raise NotImplementedError
