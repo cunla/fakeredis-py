@@ -8,6 +8,7 @@ pytestmark.extend(
     [
         pytest.mark.supported_server_versions(min_redis_ver="8.7.2"),
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        testtools.run_test_if_redispy_ver("gt", "7.0.0"),
     ]
 )
 
