@@ -340,25 +340,27 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @command(name="XNACK", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
     def xnack(self, key: CommandItem, group_name: bytes, *args: bytes) -> int:
-        """XNACK key group mode IDS numids id [id ...]"""
+        """XNACK key group <SILENT | FAIL | FATAL> IDS numids id [id ...] [RETRYCOUNT count] [FORCE]"""
+        if self.version < (8, 8):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("XNACK"))
         if len(args) < 3:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XNACK"))
-        if not casematch(args[0], b"SILENT") and not casematch(args[0], b"FAIL") and not casematch(args[0], b"FATAL"):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if not casematch_any(args[0], b"SILENT", b"FAIL", b"FATAL"):
+            raise SimpleError(msgs.XNACK_INVALID_MODE_MSG)
         mode = args[0].upper()
         if not casematch(args[1], b"IDS"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         num_ids = Int.decode(args[2])
         if len(args) < 3 + num_ids:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        ids, remaining = args[3 : 3 + num_ids], args[3 + num_ids :]
+        ids, remaining = list(args[3 : 3 + num_ids]), args[3 + num_ids :]
         (retry_count, force), _ = extract_args(remaining, ("+retrycount", "force"))
 
         if key.value is None:
-            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         return group.nack_entries(ids, mode, retry_count, bool(force))
 
     @command(name="XIDMPRECORD", fixed=(Key(XStream), bytes, bytes, bytes), repeat=(), server_types=("redis",))
