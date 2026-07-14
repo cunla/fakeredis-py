@@ -21,6 +21,7 @@ class HashCommandsMixin(CommandsMixinBase):
     ]
     _encodefloat: Callable[[float, bool], bytes]
     _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    add_subkey_event: Callable[[bytes, bytes, Sequence[bytes]], None]
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
@@ -29,18 +30,20 @@ class HashCommandsMixin(CommandsMixinBase):
         created = len(h) - previous_keys_count
 
         key.updated()
+        self.add_subkey_event(b"hset", key.key, args[::2])
         return created
 
     @command((Key(Hash), bytes), (bytes,))
     def hdel(self, key: CommandItem, *fields: bytes) -> int:
         h = key.value
-        rem = 0
+        deleted = []
         for field in fields:
             if field in h:
                 del h[field]
                 key.updated()
-                rem += 1
-        return rem
+                deleted.append(field)
+        self.add_subkey_event(b"hdel", key.key, deleted)
+        return len(deleted)
 
     @command((Key(Hash), bytes))
     def hexists(self, key: CommandItem, field: bytes) -> int:
@@ -62,6 +65,7 @@ class HashCommandsMixin(CommandsMixinBase):
         c = field_value + amount
         key.value.update({field: self._encodeint(c)}, clear_expiration=False)
         key.updated()
+        self.add_subkey_event(b"hincrby", key.key, (field,))
         return c
 
     @command((Key(Hash), bytes, bytes))
@@ -72,6 +76,7 @@ class HashCommandsMixin(CommandsMixinBase):
         encoded = self._encodefloat(c, True)
         key.value.update({field: encoded}, clear_expiration=False)
         key.updated()
+        self.add_subkey_event(b"hincrbyfloat", key.key, (field,))
         return encoded
 
     @command((Key(Hash),))
@@ -162,6 +167,8 @@ class HashCommandsMixin(CommandsMixinBase):
             return [-2] * len(fields)
         # process command
         res = []
+        expired_fields: List[bytes] = []
+        deleted_fields: List[bytes] = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
@@ -175,7 +182,11 @@ class HashCommandsMixin(CommandsMixinBase):
             ):
                 res.append(0)
                 continue
-            res.append(hash_val.set_key_expireat(field, when_ms))
+            field_res = hash_val.set_key_expireat(field, when_ms)
+            (expired_fields if field_res == 1 else deleted_fields).append(field)
+            res.append(field_res)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
     def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
@@ -223,14 +234,17 @@ class HashCommandsMixin(CommandsMixinBase):
         fields = _get_fields(args, command="hpersist")
         hash_val: Hash = key.value
         res = []
+        persisted_fields = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
                 continue
             if hash_val.clear_key_expireat(field):
+                persisted_fields.append(field)
                 res.append(1)
             else:
                 res.append(-1)
+        self.add_subkey_event(b"hpersist", key.key, persisted_fields)
         return res
 
     @command(
@@ -262,6 +276,10 @@ class HashCommandsMixin(CommandsMixinBase):
         fields = _get_fields(args, command="hgetdel")
         hash_val: Hash = key.value
         res = [hash_val.pop(field) for field in fields]
+        deleted_fields = [field for field, value in zip(fields, res) if value is not None]
+        if deleted_fields:
+            key.updated()
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
     @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
@@ -279,12 +297,22 @@ class HashCommandsMixin(CommandsMixinBase):
 
         when_ms = _get_when_ms(ex, px, exat, pxat)
         res = []
+        persisted_fields: List[bytes] = []
+        expired_fields: List[bytes] = []
+        deleted_fields: List[bytes] = []
         for field in fields:
             res.append(hash_val.get(field))
+            if field not in hash_val:
+                continue
             if persist:
-                hash_val.clear_key_expireat(field)
+                if hash_val.clear_key_expireat(field):
+                    persisted_fields.append(field)
             elif when_ms is not None:
-                hash_val.set_key_expireat(field, when_ms)
+                field_res = hash_val.set_key_expireat(field, when_ms)
+                (expired_fields if field_res == 1 else deleted_fields).append(field)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hpersist", key.key, persisted_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
     @command(name="HSETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
@@ -309,13 +337,21 @@ class HashCommandsMixin(CommandsMixinBase):
         if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
             return 0
         res = 0
+        set_fields: List[bytes] = []
+        expired_fields: List[bytes] = []
+        deleted_fields: List[bytes] = []
         for i in range(0, len(field_vals), 2):
             field, value = field_vals[i], field_vals[i + 1]
             hash_val[field] = value
             res = 1
+            set_fields.append(field)
             if not keepttl and when_ms is not None:
-                hash_val.set_key_expireat(field, when_ms)
+                field_res = hash_val.set_key_expireat(field, when_ms)
+                (expired_fields if field_res == 1 else deleted_fields).append(field)
         key.updated()
+        self.add_subkey_event(b"hset", key.key, set_fields)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
 

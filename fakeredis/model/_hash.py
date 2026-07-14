@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, Tuple, Optional, Any, Dict, AnyStr
+from typing import Iterable, Iterator, List, Tuple, Optional, Any, Dict, AnyStr
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time, asbytes
@@ -13,6 +13,8 @@ class Hash(BaseModel):
         super().__init__(*args, **kwargs)
         self._expirations: Dict[bytes, int] = {}
         self._values: Dict[bytes, bytes] = {}
+        # Fields that expired lazily, pending an `hexpired` subkey notification.
+        self._expired_fields: List[bytes] = []
 
     def _expire_keys(self) -> None:
         now = current_time()
@@ -20,6 +22,12 @@ class Hash(BaseModel):
         for k in expired:
             del self._values[k]
             del self._expirations[k]
+        self._expired_fields.extend(expired)
+
+    def take_expired_fields(self) -> List[bytes]:
+        """Return fields that expired since the last call, clearing the buffer."""
+        res, self._expired_fields = self._expired_fields, []
+        return res
 
     def set_key_expireat(self, key: AnyStr, when_ms: int) -> int:
         now = current_time()
