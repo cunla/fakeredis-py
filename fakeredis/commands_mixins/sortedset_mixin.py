@@ -460,7 +460,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 i += numkeys + 1
             elif casematch(arg, b"aggregate") and i + 1 < len(args):
                 aggregate = null_terminate(args[i + 1]).lower()
-                if aggregate not in (b"sum", b"min", b"max"):
+                # The COUNT aggregator was added in redis 8.8
+                count_supported = self.version >= (8, 8) and self.server_type == "redis"
+                if aggregate not in (b"sum", b"min", b"max") and not (aggregate == b"count" and count_supported):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
             else:
@@ -484,7 +486,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         # so we can't be sure to match it in all cases.
         for s, w in sorted(zip(sets, weights), key=lambda x: len(x[0])):
             for member, score in s.items():
-                score *= w
+                # With COUNT, each set contributes its weight regardless of the member's score.
+                score = w if aggregate == b"count" else score * w
                 # Redis only does this step for ZUNIONSTORE. See
                 # https://github.com/antirez/redis/issues/3954.
                 if func in {"ZUNIONSTORE", "ZUNION"} and math.isnan(score):
@@ -493,7 +496,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                     continue
                 if member in out:
                     old = out[member]
-                    if aggregate == b"sum":
+                    if aggregate in (b"sum", b"count"):
                         score += old
                         if math.isnan(score):
                             score = 0.0
