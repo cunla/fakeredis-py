@@ -39,7 +39,7 @@ jobs:
           - "redis:8.8"
           - "valkey/valkey:9.1"
           - "redis:7.4.8"
-          - "valkey/valkey:8.1.6"
+          - "valkey/valkey:8.1.8"
           - "redis:6.2.17"
         python-version: ["3.9", "3.12", "3.13", "3.14"]
         redis-py: ["4.6.0", "6.4.0", "7.4.0", "8.0.1"]
@@ -127,7 +127,7 @@ jobs:
         timeout-minutes: 5
         if: ${{ !matrix.coverage }}
         run: |
-          uv run pytest -v -m "not slow and not tcp_server"
+          uv run --no-sync pytest -v -m "not slow and not tcp_server"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage
