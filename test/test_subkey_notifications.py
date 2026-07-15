@@ -10,12 +10,15 @@ from typing import List, Tuple
 import pytest
 
 from fakeredis._typing import ClientType
+from test import testtools
 
 pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.supported_server_versions(min_redis_ver="8.7.2"),
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        # The hash field expiration helpers used here were added in redis-py 5
+        testtools.run_test_if_redispy_ver("gte", "5"),
     ]
 )
 
