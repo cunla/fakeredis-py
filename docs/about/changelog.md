@@ -7,7 +7,7 @@ tags:
 toc_depth: 2
 ---
 
-## v2.36.3 -
+## v2.37.0 -
 
 ### 🚀 Features
 
