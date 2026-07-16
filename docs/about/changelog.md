@@ -7,7 +7,33 @@ tags:
 toc_depth: 2
 ---
 
-## v2.36.2 -
+## v2.36.3 -
+
+### 🚀 Features
+
+- feat: support `INCREX` command (redis 8.8) (#520)
+- feat: support `FPHA` argument in `JSON.SET` to force homogeneous numeric arrays to a floating-point type (redis 8.8) (
+  #523)
+- feat: support hash field subkey notifications (redis 8.8) (#525)
+- feat: support multiple aggregators in `TS.RANGE`/`TS.REVRANGE`/`TS.MRANGE`/`TS.MREVRANGE` (redis 8.8) (#524)
+- feat: support `COUNT` aggregator in `ZUNION`/`ZINTER`/`ZUNIONSTORE`/`ZINTERSTORE` (redis 8.8) (#522)
+- feat(bitfield): support `#`-prefixed offsets in `BITFIELD`
+
+### 🐛 Bug Fixes
+
+- fix: align `XNACK` with redis 8.8 semantics (#521)
+- fix: `HEXPIRE`/`HPEXPIRE` now raise an error on negative expiration time
+- fix: `GEOADD` now rejects longitude/latitude pairs outside the valid range
+
+### 🧰 Maintenance
+
+- Update to redis-py 8.0.1
+- Update Valkey version used in CI to 8.1.8
+- refactor: reorganize and clean up command classes in `_commands.py` and related mixins
+- test: skip subkey notification tests on redis-py below 5 (#526)
+- doc: fix link to implement command guide (#519)
+
+## v2.36.2 - 2026-06-17
 
 ### 🐛 Bug Fixes
 
