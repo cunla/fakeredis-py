@@ -11,6 +11,10 @@ toc_depth: 2
 
 ### 🚀 Features
 
+- feat: implement connection commands `RESET`, `CLIENT KILL`, `CLIENT UNBLOCK`, `CLIENT REPLY`, `CLIENT PAUSE`,
+  `CLIENT UNPAUSE`, `CLIENT NO-EVICT` and `CLIENT NO-TOUCH`. `CLIENT PAUSE` validates and records its arguments but does
+  not actually suspend command processing; the client-side caching commands (`CLIENT TRACKING`, `CLIENT TRACKINGINFO`,
+  `CLIENT CACHING`, `CLIENT GETREDIR`) remain unsupported
 - feat: support `INCREX` command (redis 8.8) (#520)
 - feat: support `FPHA` argument in `JSON.SET` to force homogeneous numeric arrays to a floating-point type (redis 8.8) (
   #523)

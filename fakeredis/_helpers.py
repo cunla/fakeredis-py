@@ -158,6 +158,14 @@ class Database(MutableMapping):  # type: ignore
     def notify_watch(self, key: bytes) -> None:
         for sock in self._watches.get(key, set()):
             sock.notify_watch()
+        self.wake_all()
+
+    def wake_all(self) -> None:
+        """Wake every client blocked on this database, without reporting a key change.
+
+        Used by CLIENT UNBLOCK: woken clients re-check their own state and go back to
+        sleep unless they were the target.
+        """
         self.condition.notify_all()
         for callback in self._change_callbacks:
             callback()

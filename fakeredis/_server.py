@@ -69,6 +69,10 @@ class FakeServer:
         self.acl: AccessControlList = AccessControlList()
         self.clients: Dict[str, Dict[str, Any]] = {}
         self._next_client_id = 1
+        # CLIENT PAUSE state. Recorded so CLIENT PAUSE/UNPAUSE validate and round-trip,
+        # but command processing is never actually suspended (see CLIENT PAUSE docs).
+        self.pause_until: float = 0.0
+        self.pause_mode: bytes = b"all"
 
     def get_next_client_id(self) -> int:
         with self.lock:

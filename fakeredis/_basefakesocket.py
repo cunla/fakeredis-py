@@ -87,6 +87,7 @@ class BaseFakeSocket:
         "punsubscribe",
         "ssubscribe",
         "sunsubscribe",
+        "reset",
     }
     _connection_error_class = redis.ConnectionError
 
@@ -112,6 +113,20 @@ class BaseFakeSocket:
         # but set by aioredis module to prevent new commands being processed
         # while handling a blocking command.
         self._paused = False
+        # Set by CLIENT KILL. The owning client only notices when it next writes,
+        # matching a real server closing the connection underneath it.
+        self._killed = False
+        # CLIENT REPLY state, mirroring redis' CLIENT_REPLY_OFF/SKIP/SKIP_NEXT flags.
+        self._reply_off = False
+        self._reply_skip = False
+        self._reply_skip_next = False
+        # CLIENT NO-EVICT / CLIENT NO-TOUCH, reported in the CLIENT INFO flags field.
+        self._no_evict = False
+        self._no_touch = False
+        # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this
+        # client is blocked and, if so, how it should be woken.
+        self._blocked = False
+        self._unblock_reason: Optional[bytes] = None
         # Subkey (hash field) events recorded by the currently running command: (event, key, subkeys)
         self._subkey_events: List[Tuple[bytes, bytes, List[bytes]]] = []
         self._parser = self._parse_commands()
@@ -178,12 +193,30 @@ class BaseFakeSocket:
             subs.discard(self)
         self._clear_watches()
 
+    def kill(self) -> None:
+        """Disconnect this socket on behalf of CLIENT KILL, from any connection.
+
+        The socket is dropped from the server immediately, so it stops showing up in
+        CLIENT LIST and stops receiving published messages, but the queued responses are
+        left intact: a client that killed itself still has to read the reply to the
+        CLIENT KILL itself. Called with the server lock held.
+        """
+        self._killed = True
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already closed by its owner
+            pass
+        self._cleanup(self._server)
+
     def close(self) -> None:
         # Mark ourselves for cleanup. This might be called from
         # redis.Connection.__del__, which the garbage collection could call
         # at any time, and hence we can't safely take the server lock.
         # We rely on list.append being atomic.
-        self._server.sockets.remove(self)
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already removed by CLIENT KILL
+            pass
         self._server.closed_sockets.append(weakref.ref(self))
         self._server = None  # type: ignore
         self._db = None
@@ -272,8 +305,13 @@ class BaseFakeSocket:
                 self._clear_watches()
             result = exc
         result = self._decode_result(result)
-        if not isinstance(result, NoResponse):
-            self.put_response(result)
+        suppressed = self._reply_off or self._reply_skip
+        # Mirror redis' resetClient(): the SKIP armed by CLIENT REPLY SKIP takes effect
+        # on the command *after* it, then clears itself.
+        self._reply_skip, self._reply_skip_next = self._reply_skip_next, False
+        if suppressed or isinstance(result, NoResponse):
+            return
+        self.put_response(result)
 
     def _run_command(
         self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
@@ -427,15 +465,29 @@ class BaseFakeSocket:
         if ret is not None or self._in_transaction:
             return ret
         deadline = time.time() + timeout if timeout else None
-        while True:
-            timeout = (deadline - time.time()) if deadline is not None else None
-            if timeout is not None and timeout <= 0:
-                return None
-            if self._db.condition.wait(timeout=timeout) is False:
-                return None  # Timeout expired
-            ret = func(False)  # Second pass => first_pass=False
-            if ret is not None:
-                return ret
+        self._blocked = True
+        try:
+            while True:
+                timeout = (deadline - time.time()) if deadline is not None else None
+                if timeout is not None and timeout <= 0:
+                    return None
+                if self._db.condition.wait(timeout=timeout) is False:
+                    return None  # Timeout expired
+                if self._unblock_reason is not None:
+                    self._take_unblock_reason()
+                    return None  # Unblocked with TIMEOUT: same empty result as a timeout
+                ret = func(False)  # Second pass => first_pass=False
+                if ret is not None:
+                    return ret
+        finally:
+            self._blocked = False
+            self._unblock_reason = None
+
+    def _take_unblock_reason(self) -> None:
+        """Consume a pending CLIENT UNBLOCK request, raising if it asked for ERROR."""
+        reason, self._unblock_reason = self._unblock_reason, None
+        if reason == b"error":
+            raise SimpleError(msgs.UNBLOCKED_MSG)
 
     def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable[[Any], Any]], Signature]:
         """Get the signature and the method from the command name."""
@@ -452,7 +504,7 @@ class BaseFakeSocket:
         return func, sig
 
     def sendall(self, data: AnyStr) -> None:
-        if not self._server.connected:
+        if not self._server.connected or self._killed:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if isinstance(data, str):
             data = data.encode("ascii")  # type: ignore

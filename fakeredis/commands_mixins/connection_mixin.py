@@ -1,19 +1,36 @@
-from typing import Any, List, Union, Dict
+import time
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Union
 
 import fakeredis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, casematch
+from fakeredis._helpers import SimpleError, OK, SimpleString, NoResponse, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
+RESET = SimpleString(b"RESET")
+# Client types accepted by CLIENT KILL. fakeredis has no replication, so `master`,
+# `replica` and `slave` are valid filters that never match a live connection.
+CLIENT_KILL_TYPES = {b"normal", b"master", b"replica", b"slave", b"pubsub"}
 
 
 class ConnectionCommandsMixin(CommandsMixinBase):
+    _clear_watches: Callable[[], None]
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
         self._db_num: int
         self._pubsub: int
+        self._transaction: Optional[List[Any]]
+        self._transaction_failed: bool
+        self._killed: bool
+        self._blocked: bool
+        self._unblock_reason: Optional[bytes]
+        self._reply_off: bool
+        self._reply_skip: bool
+        self._reply_skip_next: bool
+        self._no_evict: bool
+        self._no_touch: bool
 
     @command((bytes,))
     def echo(self, message: bytes) -> bytes:
@@ -112,3 +129,205 @@ class ConnectionCommandsMixin(CommandsMixinBase):
     @command(name="CLIENT MAINT_NOTIFICATIONS", fixed=(), repeat=(bytes,))
     def client_maint_notifications(self, *args: bytes) -> SimpleString:
         return OK
+
+    @staticmethod
+    def _parse_on_off(value: bytes) -> bool:
+        if casematch(value, b"on"):
+            return True
+        if casematch(value, b"off"):
+            return False
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+    def _update_client_flags(self) -> None:
+        flags = ("e" if self._no_evict else "") + ("T" if self._no_touch else "")
+        self._client_info["flags"] = flags or "N"
+
+    @command(name="CLIENT NO-EVICT", fixed=(bytes,), repeat=())
+    def client_no_evict(self, mode: bytes) -> SimpleString:
+        self._no_evict = self._parse_on_off(mode)
+        self._update_client_flags()
+        return OK
+
+    @command(name="CLIENT NO-TOUCH", fixed=(bytes,), repeat=())
+    def client_no_touch(self, mode: bytes) -> SimpleString:
+        self._no_touch = self._parse_on_off(mode)
+        self._update_client_flags()
+        return OK
+
+    @command(name="CLIENT REPLY", fixed=(bytes,), repeat=())
+    def client_reply(self, mode: bytes) -> Union[SimpleString, NoResponse]:
+        if casematch(mode, b"on"):
+            self._reply_off = self._reply_skip = self._reply_skip_next = False
+            return OK
+        if casematch(mode, b"off"):
+            self._reply_off = True
+            return NoResponse()
+        if casematch(mode, b"skip"):
+            # A pending OFF already suppresses everything, so SKIP is ignored.
+            if not self._reply_off:
+                self._reply_skip_next = True
+            return NoResponse()
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+    @command(name="CLIENT PAUSE", fixed=(bytes,), repeat=(bytes,))
+    def client_pause(self, timeout: bytes, *args: bytes) -> SimpleString:
+        timeout_ms = Int.decode(timeout, msgs.CLIENT_PAUSE_TIMEOUT_NOT_INT_MSG)
+        if timeout_ms < 0:
+            raise SimpleError(msgs.TIMEOUT_NEGATIVE_MSG)
+        mode = b"all"
+        if len(args) > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) == 1:
+            if not casematch(args[0], b"write") and not casematch(args[0], b"all"):
+                raise SimpleError(msgs.CLIENT_PAUSE_MODE_MSG)
+            mode = args[0].lower()
+        self._server.pause_until = time.time() + timeout_ms / 1000.0
+        self._server.pause_mode = mode
+        return OK
+
+    @command(name="CLIENT UNPAUSE", fixed=(), repeat=())
+    def client_unpause(self) -> SimpleString:
+        self._server.pause_until = 0.0
+        self._server.pause_mode = b"all"
+        return OK
+
+    @command(name="CLIENT UNBLOCK", fixed=(Int,), repeat=(bytes,))
+    def client_unblock(self, client_id: int, *args: bytes) -> int:
+        error = False
+        if len(args) > 1:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) == 1:
+            if casematch(args[0], b"error"):
+                error = True
+            elif not casematch(args[0], b"timeout"):
+                raise SimpleError(msgs.CLIENT_UNBLOCK_REASON_MSG)
+        for sock in list(self._server.sockets):
+            if int(sock._client_info.get("id", 0)) != client_id or not sock._blocked:
+                continue
+            sock._unblock_reason = b"error" if error else b"timeout"
+            sock._db.wake_all()
+            return 1
+        return 0
+
+    @staticmethod
+    def _client_type(sock: Any) -> bytes:
+        return b"pubsub" if getattr(sock, "_pubsub", 0) else b"normal"
+
+    @staticmethod
+    def _client_age(sock: Any) -> int:
+        return int(time.time()) - int(sock._client_info.get("-created", 0))
+
+    def _parse_client_kill_filters(self, args: Sequence[bytes]) -> Dict[str, Any]:
+        filters: Dict[str, Any] = {}
+        i = 0
+        while i < len(args):
+            if i + 1 >= len(args):
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            name, value = args[i], args[i + 1]
+            if casematch(name, b"id"):
+                client_id = Int.decode(value, msgs.CLIENT_KILL_INVALID_ID_MSG)
+                if client_id <= 0:
+                    raise SimpleError(msgs.CLIENT_KILL_INVALID_ID_MSG)
+                filters["client_id"] = client_id
+            elif casematch(name, b"addr"):
+                filters["addr"] = value
+            elif casematch(name, b"laddr"):
+                filters["laddr"] = value
+            elif casematch(name, b"type"):
+                if value.lower() not in CLIENT_KILL_TYPES:
+                    raise SimpleError(msgs.CLIENT_KILL_UNKNOWN_TYPE_MSG.format(value.decode()))
+                filters["client_type"] = value.lower()
+            elif casematch(name, b"user"):
+                if value not in self._server.acl.get_users():
+                    raise SimpleError(msgs.CLIENT_KILL_NO_SUCH_USER_MSG.format(value.decode()))
+                filters["user"] = value
+            elif casematch(name, b"maxage"):
+                maxage = Int.decode(value, msgs.CLIENT_KILL_INVALID_MAXAGE_MSG)
+                if maxage <= 0:
+                    raise SimpleError(msgs.CLIENT_KILL_MAXAGE_MSG)
+                filters["maxage"] = maxage
+            elif casematch(name, b"skipme"):
+                filters["skipme"] = self._parse_yes_no(value)
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            i += 2
+        return filters
+
+    @staticmethod
+    def _parse_yes_no(value: bytes) -> bool:
+        if casematch(value, b"yes"):
+            return True
+        if casematch(value, b"no"):
+            return False
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+    def _kill_clients(
+        self,
+        addr: Optional[bytes] = None,
+        laddr: Optional[bytes] = None,
+        client_id: Optional[int] = None,
+        client_type: Optional[bytes] = None,
+        user: Optional[bytes] = None,
+        maxage: Optional[int] = None,
+        skipme: bool = True,
+    ) -> int:
+        killed = 0
+        for sock in list(self._server.sockets):
+            info = sock._client_info
+            if skipme and sock is self:
+                continue
+            if addr is not None and str(info.get("addr", "")).encode() != addr:
+                continue
+            if laddr is not None and str(info.get("laddr", "")).encode() != laddr:
+                continue
+            if client_id is not None and int(info.get("id", 0)) != client_id:
+                continue
+            if client_type is not None and self._client_type(sock) != client_type:
+                continue
+            if user is not None and info.user != user:
+                continue
+            if maxage is not None and self._client_age(sock) < maxage:
+                continue
+            sock.kill()
+            killed += 1
+        return killed
+
+    @command(name="CLIENT KILL", fixed=(bytes,), repeat=(bytes,))
+    def client_kill(self, *args: bytes) -> Union[SimpleString, int]:
+        # The one-argument form is the old `CLIENT KILL addr:port` syntax, which reports
+        # whether it killed anything rather than a count, and may kill the caller.
+        if len(args) == 1:
+            if self._kill_clients(addr=args[0], skipme=False) == 0:
+                raise SimpleError(msgs.CLIENT_KILL_NO_SUCH_CLIENT_MSG)
+            return OK
+        return self._kill_clients(**self._parse_client_kill_filters(args))
+
+    def _discard_subscriptions(self) -> None:
+        """Drop every subscription without sending the usual unsubscribe confirmations."""
+        subscriber_maps: List[Dict[bytes, Any]] = [
+            self._server.subscribers,
+            self._server.psubscribers,
+            self._server.ssubscribers,
+        ]
+        for subscribers in subscriber_maps:
+            for channel in list(subscribers.keys()):
+                subs: Set[Any] = subscribers[channel]
+                subs.discard(self)
+                if not subs:
+                    del subscribers[channel]
+        self._pubsub = 0
+
+    @command(name="RESET", fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
+    def reset(self) -> SimpleString:
+        self._transaction = None
+        self._transaction_failed = False
+        self._clear_watches()
+        self._discard_subscriptions()
+        self._reply_off = self._reply_skip = self._reply_skip_next = False
+        self._no_evict = self._no_touch = False
+        self._update_client_flags()
+        self._client_info["name"] = ""
+        self._client_info["resp"] = 2
+        self._client_info["user"] = "default"
+        self.select(0)
+        return RESET

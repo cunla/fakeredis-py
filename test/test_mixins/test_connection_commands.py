@@ -1,11 +1,51 @@
+import contextlib
+import threading
+import time
+
 import pytest
 import redis
 import valkey
+from packaging.version import Version
 
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
 from test.testtools import raw_command, resp_conversion
+
+RESPONSE_ERRORS = (redis.ResponseError, valkey.ResponseError)
+CONNECTION_ERRORS = (redis.ConnectionError, valkey.ConnectionError)
+
+
+@contextlib.contextmanager
+def raw_connection(r: ClientType):
+    """Yield a dedicated connection, thrown away afterwards.
+
+    CLIENT REPLY and RESET leave per-connection state behind, so the connection must not
+    go back into the pool. Commands are sent without reading a reply, which is the only
+    way to drive CLIENT REPLY OFF/SKIP without hanging.
+    """
+    # redis-py made the command_name argument optional in 5.0 and deprecated it in 5.3.
+    if testtools.REDIS_PY_VERSION >= Version("5.0"):
+        conn = r.connection_pool.get_connection()
+    else:
+        conn = r.connection_pool.get_connection("_")
+    try:
+        yield conn
+    finally:
+        conn.disconnect()
+        r.connection_pool.release(conn)
+
+
+def client_info_field(conn, field: bytes) -> bytes:
+    conn.send_command("CLIENT", "INFO")
+    info = conn.read_response()
+    if isinstance(info, str):
+        info = info.encode()
+    for part in info.split():
+        name, _, value = part.partition(b"=")
+        if name == field:
+            return value
+    raise AssertionError(f"{field!r} missing from CLIENT INFO")
 
 
 def test_ping(r: ClientType):
@@ -90,6 +130,311 @@ def test_client_id(r: ClientType):
 def test_client_setname(r: ClientType):
     assert r.client_setname("test") is True
     assert r.client_getname() == resp_conversion(r, b"test", "test")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_client_no_evict(r: ClientType):
+    assert raw_command(r, "CLIENT", "NO-EVICT", "ON") == b"OK"
+    assert raw_command(r, "CLIENT", "NO-EVICT", "off") == b"OK"
+    with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
+        raw_command(r, "CLIENT", "NO-EVICT", "MAYBE")
+    with pytest.raises(RESPONSE_ERRORS):
+        raw_command(r, "CLIENT", "NO-EVICT")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7.2")
+def test_client_no_touch(r: ClientType):
+    assert raw_command(r, "CLIENT", "NO-TOUCH", "ON") == b"OK"
+    assert raw_command(r, "CLIENT", "NO-TOUCH", "off") == b"OK"
+    with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
+        raw_command(r, "CLIENT", "NO-TOUCH", "MAYBE")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7.2")
+def test_client_no_evict_and_no_touch_show_in_client_info_flags(r: ClientType):
+    with raw_connection(r) as conn:
+        assert client_info_field(conn, b"flags") == b"N"
+        conn.send_command("CLIENT", "NO-TOUCH", "ON")
+        assert conn.read_response() == b"OK"
+        assert client_info_field(conn, b"flags") == b"T"
+        conn.send_command("CLIENT", "NO-EVICT", "ON")
+        assert conn.read_response() == b"OK"
+        assert client_info_field(conn, b"flags") == b"eT"
+        conn.send_command("CLIENT", "NO-TOUCH", "OFF")
+        assert conn.read_response() == b"OK"
+        assert client_info_field(conn, b"flags") == b"e"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_client_pause(r: ClientType):
+    assert raw_command(r, "CLIENT", "PAUSE", "0") == b"OK"
+    assert raw_command(r, "CLIENT", "PAUSE", "0", "WRITE") == b"OK"
+    assert raw_command(r, "CLIENT", "PAUSE", "0", "ALL") == b"OK"
+    with pytest.raises(RESPONSE_ERRORS, match="CLIENT PAUSE mode must be WRITE or ALL"):
+        raw_command(r, "CLIENT", "PAUSE", "0", "BOGUS")
+    with pytest.raises(RESPONSE_ERRORS, match="timeout is negative"):
+        raw_command(r, "CLIENT", "PAUSE", "-1")
+    with pytest.raises(RESPONSE_ERRORS, match="timeout is not an integer or out of range"):
+        raw_command(r, "CLIENT", "PAUSE", "notanumber")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
+def test_client_unpause(r: ClientType):
+    assert raw_command(r, "CLIENT", "PAUSE", "10000") == b"OK"
+    assert raw_command(r, "CLIENT", "UNPAUSE") == b"OK"
+    # CLIENT PAUSE never actually suspends fakeredis, so this only proves the server
+    # still answers; it is UNPAUSE's contract on a real server that matters here.
+    assert r.ping()
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_client_reply_on_is_the_default(r: ClientType):
+    assert raw_command(r, "CLIENT", "REPLY", "ON") == b"OK"
+    with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
+        raw_command(r, "CLIENT", "REPLY", "BOGUS")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_client_reply_off_suppresses_replies_until_on(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("CLIENT", "REPLY", "OFF")
+        conn.send_command("PING")
+        conn.send_command("SET", "reply-off-key", "value")
+        # None of the above replies; CLIENT REPLY ON always does, so its OK is first.
+        conn.send_command("CLIENT", "REPLY", "ON")
+        assert conn.read_response() == b"OK"
+        conn.send_command("PING")
+        assert conn.read_response() == b"PONG"
+        # The suppressed SET still ran.
+        conn.send_command("GET", "reply-off-key")
+        assert conn.read_response() == b"value"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_client_reply_skip_skips_only_the_next_command(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("CLIENT", "REPLY", "SKIP")
+        conn.send_command("PING")  # reply skipped
+        conn.send_command("ECHO", "after-skip")
+        assert conn.read_response() == b"after-skip"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_kill_by_id(r: ClientType, create_connection):
+    victim = create_connection(db=2)
+    victim.ping()
+    victim_id = victim.client_id()
+
+    assert raw_command(r, "CLIENT", "KILL", "ID", str(victim_id)) == 1
+
+    # The killed connection is gone, so the victim can only reach the server over a new
+    # one. Whether the drop first surfaces as an error depends on the client's retry
+    # policy rather than on the server, so accept either.
+    try:
+        new_id = victim.client_id()
+    except CONNECTION_ERRORS:
+        new_id = victim.client_id()
+    assert new_id != victim_id
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_client_kill_removes_client_from_client_list(r: ClientType, create_connection):
+    victim = create_connection(db=2)
+    victim.ping()
+    victim_id = victim.client_id()
+
+    assert victim_id in [int(c["id"]) for c in r.client_list()]
+    assert raw_command(r, "CLIENT", "KILL", "ID", str(victim_id)) == 1
+    assert victim_id not in [int(c["id"]) for c in r.client_list()]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_client_kill_unknown_client_old_form(r: ClientType):
+    with pytest.raises(RESPONSE_ERRORS, match="No such client"):
+        raw_command(r, "CLIENT", "KILL", "1.2.3.4:5")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_kill_no_match_returns_zero(r: ClientType):
+    assert raw_command(r, "CLIENT", "KILL", "ID", "99999999") == 0
+    # fakeredis has no replication, so these never match a live connection.
+    assert raw_command(r, "CLIENT", "KILL", "TYPE", "master") == 0
+    assert raw_command(r, "CLIENT", "KILL", "TYPE", "replica") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_kill_skipme_defaults_to_yes(r: ClientType):
+    # The caller is a normal client, but SKIPME defaults to yes, so it is spared and
+    # stays usable.
+    raw_command(r, "CLIENT", "KILL", "TYPE", "normal")
+    assert r.ping()
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_kill_invalid_filters(r: ClientType):
+    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
+        raw_command(r, "CLIENT", "KILL", "ID", "0")
+    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
+        raw_command(r, "CLIENT", "KILL", "ID", "notanumber")
+    with pytest.raises(RESPONSE_ERRORS, match="Unknown client type 'bogus'"):
+        raw_command(r, "CLIENT", "KILL", "TYPE", "bogus")
+    with pytest.raises(RESPONSE_ERRORS, match="No such user 'nosuchuser'"):
+        raw_command(r, "CLIENT", "KILL", "USER", "nosuchuser")
+    with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
+        raw_command(r, "CLIENT", "KILL", "SKIPME", "bogus")
+    with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
+        raw_command(r, "CLIENT", "KILL", "BOGUSFILTER", "x")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
+def test_client_kill_maxage(r: ClientType):
+    assert raw_command(r, "CLIENT", "KILL", "MAXAGE", "100000") == 0
+    with pytest.raises(RESPONSE_ERRORS, match="maxage should be greater than 0"):
+        raw_command(r, "CLIENT", "KILL", "MAXAGE", "0")
+    with pytest.raises(RESPONSE_ERRORS, match="maxage is not an integer or out of range"):
+        raw_command(r, "CLIENT", "KILL", "MAXAGE", "bogus")
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_unblock_not_blocked(r: ClientType):
+    assert raw_command(r, "CLIENT", "UNBLOCK", str(r.client_id())) == 0
+    assert raw_command(r, "CLIENT", "UNBLOCK", "99999999") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_unblock_invalid_args(r: ClientType):
+    with pytest.raises(RESPONSE_ERRORS, match="value is not an integer or out of range"):
+        raw_command(r, "CLIENT", "UNBLOCK", "notanid")
+    with pytest.raises(RESPONSE_ERRORS, match="CLIENT UNBLOCK reason should be TIMEOUT or ERROR"):
+        raw_command(r, "CLIENT", "UNBLOCK", "1", "BOGUS")
+
+
+def _block_on_blpop(client: ClientType, result: dict) -> threading.Thread:
+    def target() -> None:
+        try:
+            result["value"] = client.blpop("unblock-list", timeout=5)
+        except Exception as e:  # noqa: BLE001 - recorded so the assertion can describe it
+            result["error"] = e
+
+    thread = threading.Thread(target=target)
+    thread.start()
+    # Give the client time to actually park in the blocking command.
+    time.sleep(0.3)
+    return thread
+
+
+@pytest.mark.slow
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_unblock_timeout(r: ClientType, create_connection):
+    victim = create_connection(db=2)
+    victim.ping()
+    victim_id = victim.client_id()
+    result: dict = {}
+    thread = _block_on_blpop(victim, result)
+    try:
+        assert raw_command(r, "CLIENT", "UNBLOCK", str(victim_id)) == 1
+        thread.join(timeout=3)
+        assert not thread.is_alive(), "client was not unblocked"
+        # Unblocking with TIMEOUT looks exactly like the command timing out.
+        assert result == {"value": None}
+    finally:
+        thread.join(timeout=6)
+
+
+@pytest.mark.slow
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6")
+def test_client_unblock_error(r: ClientType, create_connection):
+    victim = create_connection(db=2)
+    victim.ping()
+    victim_id = victim.client_id()
+    result: dict = {}
+    thread = _block_on_blpop(victim, result)
+    try:
+        assert raw_command(r, "CLIENT", "UNBLOCK", str(victim_id), "ERROR") == 1
+        thread.join(timeout=3)
+        assert not thread.is_alive(), "client was not unblocked"
+        assert isinstance(result.get("error"), RESPONSE_ERRORS)
+        assert "UNBLOCKED" in str(result["error"])
+    finally:
+        thread.join(timeout=6)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
+def test_reset_returns_reset(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
+def test_reset_discards_transaction(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("MULTI")
+        assert conn.read_response() == b"OK"
+        conn.send_command("SET", "reset-key", "queued")
+        assert conn.read_response() == b"QUEUED"
+        # RESET runs immediately instead of being queued.
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+        conn.send_command("EXEC")
+        with pytest.raises(RESPONSE_ERRORS, match="EXEC without MULTI"):
+            conn.read_response()
+        assert r.get("reset-key") is None
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
+def test_reset_clears_connection_state(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("CLIENT", "SETNAME", "to-be-reset")
+        assert conn.read_response() == b"OK"
+        conn.send_command("CLIENT", "NO-TOUCH", "ON")
+        assert conn.read_response() == b"OK"
+        assert client_info_field(conn, b"name") == b"to-be-reset"
+
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+
+        assert client_info_field(conn, b"name") == b""
+        assert client_info_field(conn, b"db") == b"0"
+        assert client_info_field(conn, b"resp") == b"2"
+        assert client_info_field(conn, b"flags") == b"N"
+
+
+# RESP2 only: a real server delivers the subscribe confirmation as a RESP3 push message,
+# while fakeredis queues plain Python objects and has no push framing to mirror it with.
+@pytest.mark.resp2_only
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="6.2")
+def test_reset_unsubscribes(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("SUBSCRIBE", "reset-channel")
+        assert conn.read_response() == [b"subscribe", b"reset-channel", 1]
+        assert r.pubsub_channels() == [b"reset-channel"]
+
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+
+        assert r.pubsub_channels() == []
+        # Out of subscribe mode, arbitrary commands are allowed again.
+        conn.send_command("ECHO", "back-to-normal")
+        assert conn.read_response() == b"back-to-normal"
 
 
 @pytest.mark.decode_responses
