@@ -95,7 +95,7 @@ async def test_async():
 async def test_connection_disconnect(nowait: bool):
     server = FakeServer()
     r = aioredis.FakeRedis(server=server)
-    conn = await r.connection_pool.get_connection()
+    conn = await testtools.pool_get_connection(r.connection_pool)
     assert conn is not None
 
     await conn.disconnect(nowait=nowait)

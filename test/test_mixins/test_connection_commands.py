@@ -5,7 +5,6 @@ import time
 import pytest
 import redis
 import valkey
-from packaging.version import Version
 
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
@@ -24,11 +23,7 @@ def raw_connection(r: ClientType):
     go back into the pool. Commands are sent without reading a reply, which is the only
     way to drive CLIENT REPLY OFF/SKIP without hanging.
     """
-    # redis-py made the command_name argument optional in 5.0 and deprecated it in 5.3.
-    if testtools.REDIS_PY_VERSION >= Version("5.0"):
-        conn = r.connection_pool.get_connection()
-    else:
-        conn = r.connection_pool.get_connection("_")
+    conn = testtools.pool_get_connection(r.connection_pool)
     try:
         yield conn
     finally:
@@ -281,10 +276,6 @@ def test_client_kill_skipme_defaults_to_yes(r: ClientType):
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
 def test_client_kill_invalid_filters(r: ClientType):
-    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
-        raw_command(r, "CLIENT", "KILL", "ID", "0")
-    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
-        raw_command(r, "CLIENT", "KILL", "ID", "notanumber")
     with pytest.raises(RESPONSE_ERRORS, match="Unknown client type 'bogus'"):
         raw_command(r, "CLIENT", "KILL", "TYPE", "bogus")
     with pytest.raises(RESPONSE_ERRORS, match="No such user 'nosuchuser'"):
@@ -293,6 +284,21 @@ def test_client_kill_invalid_filters(r: ClientType):
         raw_command(r, "CLIENT", "KILL", "SKIPME", "bogus")
     with pytest.raises(RESPONSE_ERRORS, match="syntax error"):
         raw_command(r, "CLIENT", "KILL", "BOGUSFILTER", "x")
+
+
+# Redis only started rejecting a client-id below 1 in 7.0; 6.2 quietly matches nothing.
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_client_kill_invalid_id(r: ClientType, real_server_details):
+    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
+        raw_command(r, "CLIENT", "KILL", "ID", "0")
+    with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
+        raw_command(r, "CLIENT", "KILL", "ID", "-1")
+    # An unparsable id is a syntax error on valkey, but an out-of-range id on redis.
+    is_valkey = real_server_details.server_type == "valkey"
+    expected = "syntax error" if is_valkey else "client-id should be greater than 0"
+    with pytest.raises(RESPONSE_ERRORS, match=expected):
+        raw_command(r, "CLIENT", "KILL", "ID", "notanumber")
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
@@ -404,8 +410,6 @@ def test_reset_clears_connection_state(r: ClientType):
     with raw_connection(r) as conn:
         conn.send_command("CLIENT", "SETNAME", "to-be-reset")
         assert conn.read_response() == b"OK"
-        conn.send_command("CLIENT", "NO-TOUCH", "ON")
-        assert conn.read_response() == b"OK"
         assert client_info_field(conn, b"name") == b"to-be-reset"
 
         conn.send_command("RESET")
@@ -414,6 +418,20 @@ def test_reset_clears_connection_state(r: ClientType):
         assert client_info_field(conn, b"name") == b""
         assert client_info_field(conn, b"db") == b"0"
         assert client_info_field(conn, b"resp") == b"2"
+
+
+# CLIENT NO-TOUCH, and therefore the flag RESET has to clear, only exists from 7.2.
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7.2")
+def test_reset_clears_client_flags(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("CLIENT", "NO-TOUCH", "ON")
+        assert conn.read_response() == b"OK"
+        assert client_info_field(conn, b"flags") == b"T"
+
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+
         assert client_info_field(conn, b"flags") == b"N"
 
 

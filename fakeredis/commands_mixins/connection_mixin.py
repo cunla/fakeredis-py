@@ -225,7 +225,12 @@ class ConnectionCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             name, value = args[i], args[i + 1]
             if casematch(name, b"id"):
-                client_id = Int.decode(value, msgs.CLIENT_KILL_INVALID_ID_MSG)
+                # valkey rejects an unparsable id as a syntax error, redis reports it as
+                # an out-of-range client-id.
+                decode_error = (
+                    msgs.SYNTAX_ERROR_MSG if self.server_type == "valkey" else msgs.CLIENT_KILL_INVALID_ID_MSG
+                )
+                client_id = Int.decode(value, decode_error)
                 if client_id <= 0:
                     raise SimpleError(msgs.CLIENT_KILL_INVALID_ID_MSG)
                 filters["client_id"] = client_id

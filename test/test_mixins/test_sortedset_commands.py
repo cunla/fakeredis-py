@@ -21,6 +21,12 @@ def round_str(x):
     return round(float(x))
 
 
+def _rank_with_score(result):
+    """Normalize a ZRANK/ZREVRANK WITHSCORE reply to [rank, float_score]."""
+    rank, score = result
+    return [rank, float(score)]
+
+
 def zincrby(r, key, amount, value):
     return r.zincrby(key, amount, value)
 
@@ -253,8 +259,10 @@ def test_zrank_redis7_2(r: ClientType):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    assert r.zrank("foo", "one", withscore=True) == [0, 1.0]
-    assert r.zrank("foo", "two", withscore=True) == [1, 2.0]
+    # redis-py only started decoding the score to a float in 7.x; older versions hand
+    # back the raw bulk string, so normalize rather than pin to a client version.
+    assert _rank_with_score(r.zrank("foo", "one", withscore=True)) == [0, 1.0]
+    assert _rank_with_score(r.zrank("foo", "two", withscore=True)) == [1, 2.0]
 
 
 def test_zrank_non_existent_member(r: ClientType):
@@ -395,8 +403,8 @@ def test_zrevrank_redis7_2(r: ClientType):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
-    assert r.zrevrank("foo", "one", withscore=True) == [2, 1.0]
-    assert r.zrevrank("foo", "two", withscore=True) == [1, 2.0]
+    assert _rank_with_score(r.zrevrank("foo", "one", withscore=True)) == [2, 1.0]
+    assert _rank_with_score(r.zrevrank("foo", "two", withscore=True)) == [1, 2.0]
 
 
 def test_zrevrank_non_existent_member(r: ClientType):
