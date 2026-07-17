@@ -8,7 +8,7 @@ import sys
 from typing import Union, Optional, List, Tuple, Callable, Any, Dict, Sequence, TypeVar
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
+from fakeredis._command_args_parsing import extract_args, parse_mpop_args
 from fakeredis._commands import (
     command,
     Key,
@@ -636,31 +636,13 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(Int,), repeat=(bytes,))
     def zmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        if numkeys == 0:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b"count"):
-            count = Int.decode(args[-1])
-            args = args[:-2]
-        else:
-            count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b"min") and not casematch(args[-1], b"max")):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
-        return self._zmpop(args[:-1], count, casematch(args[-1], b"max"), False)
+        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, (b"max", b"min"))
+        return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        if numkeys == 0:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b"count"):
-            count = Int.decode(args[-1])
-            args = args[:-2]
-        else:
-            count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b"min") and not casematch(args[-1], b"max")):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
+        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, (b"max", b"min"))
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
-            functools.partial(self._zmpop, args[:-1], count, casematch(args[-1], b"max")),
+            functools.partial(self._zmpop, keys, count, reverse),
         )

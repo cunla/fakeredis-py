@@ -370,7 +370,9 @@ class GenericCommandsMixin(CommandsMixinBase):
     @command(name="COPY", fixed=(Key(), Key()), repeat=(bytes,))
     def copy(self, key: CommandItem, newkey: CommandItem, *args: bytes) -> int:
         (db_num, replace), _ = extract_args(args, ("+db", "replace"))
-        db_num = db_num or self._db_num
+        if db_num is not None and not DbIndex.MIN_VALUE <= db_num <= DbIndex.MAX_VALUE:
+            raise SimpleError(msgs.INVALID_DB_MSG)
+        db_num = self._db_num if db_num is None else db_num
         if key.key == newkey.key and db_num == self._db_num:
             raise SimpleError(msgs.SRC_DST_SAME_MSG)
         if (newkey.key in self._server.dbs[db_num] and not replace) or (key.key not in self._server.dbs[self._db_num]):

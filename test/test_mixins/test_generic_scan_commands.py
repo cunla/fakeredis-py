@@ -3,7 +3,7 @@ from time import sleep
 import pytest
 
 from fakeredis._typing import ClientType
-from test.testtools import key_val_dict
+from test.testtools import key_val_dict, raw_command
 
 
 def test_sscan_delete_key_while_scanning_should_not_returns_it_in_scan(r: ClientType):
@@ -200,3 +200,18 @@ def test_scan_stream(r: ClientType):
     assert r.type("mystream") == b"stream"
     for s in r.scan_iter(_type="STRING"):
         print(s)
+
+
+def test_scan_family_count_not_positive(r: ClientType):
+    r.sadd("set", "m")
+    r.hset("hash", "f", "v")
+    r.zadd("zset", {"m": 1})
+    for count in (0, -1):
+        with pytest.raises(Exception, match="syntax error"):
+            raw_command(r, "scan", 0, "COUNT", count)
+        with pytest.raises(Exception, match="syntax error"):
+            raw_command(r, "sscan", "set", 0, "COUNT", count)
+        with pytest.raises(Exception, match="syntax error"):
+            raw_command(r, "hscan", "hash", 0, "COUNT", count)
+        with pytest.raises(Exception, match="syntax error"):
+            raw_command(r, "zscan", "zset", 0, "COUNT", count)

@@ -101,7 +101,10 @@ LPOS_RANK_CAN_NOT_BE_ZERO = (
     "RANK can't be zero: use 1 to start from the first match, 2 from the second ... "
     "or use negative to start from the end of the list"
 )
+LPOS_COUNT_NEGATIVE_MSG = "ERR COUNT can't be negative"
+LPOS_MAXLEN_NEGATIVE_MSG = "ERR MAXLEN can't be negative"
 NUMKEYS_GREATER_THAN_ZERO_MSG = "numkeys should be greater than 0"
+COUNT_GREATER_THAN_ZERO_MSG = "ERR count should be greater than 0"
 FILTER_FULL_MSG = ""
 NONSCALING_FILTERS_CANNOT_EXPAND_MSG = "Nonscaling filters cannot expand"
 ITEM_EXISTS_MSG = "item exists"

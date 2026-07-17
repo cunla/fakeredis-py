@@ -74,13 +74,15 @@ class SetCommandsMixin(CommandsMixinBase):
         if self.version < (7,):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
         if numkeys < 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         limit = 0
-        if casematch(args[-2], b"limit"):
+        if len(args) >= 2 and casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
             if limit < 0:
                 raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
             args = args[:-2]
+        if numkeys > len(args):
+            raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
         if numkeys != len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
@@ -127,7 +129,7 @@ class SetCommandsMixin(CommandsMixinBase):
             return item  # type: ignore
         else:
             if count < 0:
-                raise SimpleError(msgs.INDEX_ERROR_MSG)
+                raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
             items: Union[bytes, List[bytes]] = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)

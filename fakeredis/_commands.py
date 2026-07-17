@@ -217,6 +217,13 @@ class Timeout(Float):
     DECODE_ERROR = msgs.TIMEOUT_NEGATIVE_MSG
     MIN_VALUE = 0.0
 
+    @classmethod
+    def decode(cls, value: bytes, *args: Any, **kwargs: Any) -> float:
+        res = super().decode(value, *args, **kwargs)
+        if res < cls.MIN_VALUE:
+            raise SimpleError(cls.DECODE_ERROR)
+        return res
+
 
 @functools.total_ordering
 class BeforeAny:

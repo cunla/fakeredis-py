@@ -67,6 +67,10 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if key.value is None:
+            if self.version >= (7, 4):
+                # Since 7.4 the range arguments are validated even when the key is missing
+                for arg in args[:2]:
+                    Int.decode(arg)
             # The first clear bit is at 0, the first set bit is not found (-1).
             return -1 if bit == 1 else 0
 
@@ -100,13 +104,11 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
         if not 2 <= len(args) <= 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        try:
-            start = Int.decode(args[0])
-            end = Int.decode(args[1])
-        except SimpleError as e:
-            if self.version >= (7, 4):
-                raise e
+        if key.value is None and self.version < (7, 4):
+            # Before 7.4 a missing key returned 0 without validating the range arguments
             return 0
+        start = Int.decode(args[0])
+        end = Int.decode(args[1])
         bit_mode = False
         if len(args) == 3 and self.version < (7,):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)

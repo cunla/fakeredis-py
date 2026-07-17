@@ -2,7 +2,7 @@ from typing import Tuple, List, Dict, Any, Sequence, Optional
 
 from . import _msgs as msgs
 from ._commands import Int, Float
-from ._helpers import SimpleError, null_terminate
+from ._helpers import SimpleError, casematch, null_terminate
 
 
 def _count_params(s: str) -> int:
@@ -135,3 +135,26 @@ def extract_args(
             left_args.append(actual_args[i])
         i += 1
     return results, left_args
+
+
+def parse_mpop_args(
+    command: str, numkeys: int, args: Sequence[bytes], tokens: Tuple[bytes, bytes]
+) -> Tuple[Sequence[bytes], int, bool]:
+    """Validate the LMPOP/BLMPOP/ZMPOP/BZMPOP tail: keys, direction token, optional COUNT.
+
+    Returns (keys, count, whether the direction is the first of `tokens`).
+    """
+    if len(args) < 2:
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+    if numkeys <= 0:
+        raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+    if casematch(args[-2], b"count"):
+        count = Int.decode(args[-1])
+        args = args[:-2]
+    else:
+        count = 1
+    if len(args) != numkeys + 1 or (not casematch(args[-1], tokens[0]) and not casematch(args[-1], tokens[1])):
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if count <= 0:
+        raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+    return args[:-1], count, casematch(args[-1], tokens[0])
