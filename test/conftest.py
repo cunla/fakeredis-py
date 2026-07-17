@@ -118,9 +118,9 @@ def _validate_server_versions(request, real_server_details: ServerDetails) -> No
         _create_version(marker.kwargs["max_redis_ver"]) if marker and "max_redis_ver" in marker.kwargs else (100,)
     )
 
-    if redis_version < min_redis_ver and server_type == "redis":
+    if redis_version < min_redis_ver and real_server_details.valkey_version is None:
         pytest.skip(f"Redis server {min_redis_ver} or more required but {redis_version} found")
-    if redis_version > max_redis_ver:
+    if redis_version > max_redis_ver and real_server_details.valkey_version is None:
         pytest.skip(f"Redis server {max_redis_ver} or less required but {redis_version} found")
 
     if server_type == "valkey":

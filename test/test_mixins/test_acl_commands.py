@@ -12,30 +12,41 @@ from test.testtools import resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_server_versions(min_redis_ver="7"),
+        pytest.mark.supported_server_versions(min_redis_ver="7", min_valkey_ver="9"),
         testtools.run_test_if_redispy_ver("gte", "5"),
         pytest.mark.unsupported_server_types("dragonfly"),
     ]
 )
 
 _VALKEY_UNSUPPORTED_COMMANDS = {
-    "hexpiretime",
-    "hexpireat",
-    "hpexpireat",
-    "hexpire",
-    "hpttl",
-    "hpexpire",
-    "hpexpiretime",
-    "httl",
-    "hgetdel",
-    "msetex",
+    "ardelrange",
+    "arlastitems",
+    "arscan",
+    "argetrange",
+    "argrep",
+    "arinfo",
+    "arring",
+    "arop",
+    "arinsert",
+    "armset",
+    "ardel",
+    "arseek",
+    "arcount",
+    "arnext",
+    "arlen",
+    "arset",
+    "arget",
     "xcfgset",
-    "hgetex",
-    "hsetex",
+    "xidmprecord",
+    "xdelex",
+    "increx",
+    "xnack",
+    "xackdel",
+    "armget",
 }
 
 
-@pytest.mark.supported_server_versions(min_redis_ver="8.8")
+@pytest.mark.supported_server_versions(min_redis_ver="8.8", min_valkey_ver="9.1")
 def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
     fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}

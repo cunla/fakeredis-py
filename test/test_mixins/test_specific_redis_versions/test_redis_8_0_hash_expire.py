@@ -4,14 +4,14 @@ from datetime import timedelta
 import pytest
 from packaging.version import Version
 from redis import exceptions
-from redis.event import ClientType
 
+from fakeredis._typing import ClientType
 from test import testtools
 
 pytestmark = []
 pytestmark.extend(
     [
-        # Currently valkey-py doesn't support the new hash commands, so we skip these tests for valkey-py
+        # Currently, valkey-py doesn't support the new hash commands, so we skip these tests for valkey-py
         pytest.mark.supported_server_versions(min_redis_ver="7.9", min_valkey_ver="10"),
         testtools.run_test_if_redispy_ver("gte", "5.9"),
     ]
