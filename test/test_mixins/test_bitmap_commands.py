@@ -451,10 +451,18 @@ def test_bitfield_hash_offset(r: ClientType):
 
 def test_bitcount_invalid_range_existing_key(r: ClientType):
     r.set("foo", "foobar")
-    for args in (("foo", "a", "b"), ("foo", "a", "b", "BIT")):
-        with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
-            raw_command(r, "bitcount", *args)
-        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+        raw_command(r, "bitcount", "foo", "a", "b")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+# The BYTE/BIT unit only exists from 7.0; older servers reject it as a syntax error.
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_bitcount_invalid_range_existing_key_bit_unit(r: ClientType):
+    r.set("foo", "foobar")
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+        raw_command(r, "bitcount", "foo", "a", "b", "BIT")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.4")
