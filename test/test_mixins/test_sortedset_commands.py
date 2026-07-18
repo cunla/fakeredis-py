@@ -1312,6 +1312,7 @@ def test_bzmpop(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
+@pytest.mark.unsupported_server_types("valkey")
 def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     r.zadd("A", {"A": 0.0})
     r.zadd("B", {"A": 0.0})

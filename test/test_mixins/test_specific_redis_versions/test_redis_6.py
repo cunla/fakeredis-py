@@ -7,6 +7,9 @@ from test import testtools
 from test.test_mixins.test_streams_commands import get_stream_message
 from test.testtools import raw_command
 
+# Valkey reports its own version scheme (forked from redis 7.2), so redis-6 specific behavior never applies
+pytestmark = [pytest.mark.unsupported_server_types("valkey")]
+
 
 @pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
 def test_bitcount_mode_redis6(r: ClientType):

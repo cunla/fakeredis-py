@@ -23,6 +23,8 @@ def test_sadd(r: ClientType):
     assert set(r.smembers("foo")) == {b"member1", b"member2", b"member3", b"member4"}
 
 
+# valkey-py behaves like redis-py>=5.1 regardless of the installed redis-py version
+@pytest.mark.unsupported_server_types("valkey")
 @testtools.run_test_if_redispy_ver("lt", "5.1")
 def test_sadd_redispy_5(r: ClientType):
     assert r.sadd("foo", "member1") == 1
