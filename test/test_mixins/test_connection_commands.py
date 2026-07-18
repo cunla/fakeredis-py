@@ -417,6 +417,16 @@ def test_reset_clears_connection_state(r: ClientType):
 
         assert client_info_field(conn, b"name") == b""
         assert client_info_field(conn, b"db") == b"0"
+
+
+# The resp field in CLIENT INFO only exists from 7.0.
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_reset_resets_protocol_to_resp2(r: ClientType):
+    with raw_connection(r) as conn:
+        conn.send_command("RESET")
+        assert conn.read_response() == b"RESET"
+
         assert client_info_field(conn, b"resp") == b"2"
 
 
