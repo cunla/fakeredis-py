@@ -21,6 +21,7 @@ toc_depth: 2
 - feat: support hash field subkey notifications (redis 8.8) (#525)
 - feat: support multiple aggregators in `TS.RANGE`/`TS.REVRANGE`/`TS.MRANGE`/`TS.MREVRANGE` (redis 8.8) (#524)
 - feat: support `COUNT` aggregator in `ZUNION`/`ZINTER`/`ZUNIONSTORE`/`ZINTERSTORE` (redis 8.8) (#522)
+- feat: support `CLAIM min-idle-time` option in `XREADGROUP` (redis 8.4) (#527)
 - feat(bitfield): support `#`-prefixed offsets in `BITFIELD`
 
 ### 🐛 Bug Fixes
