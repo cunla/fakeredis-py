@@ -12,26 +12,27 @@ class Bucket(object):
         self.fingerprint = fingerprint
 
     def add(self, fingerprint: int, incr: int, decay: float) -> int:
-        if self.fingerprint == fingerprint:
-            self.counter += incr
-            return self.counter
-        elif self._decay(decay):
-            self.counter += incr
-            self.fingerprint = fingerprint
-            return self.counter
-        return 0
+        # An incr-by-N add is equivalent to N single-unit adds: each unit either
+        # bumps a matching bucket, or gets one chance to decay/evict a colliding one.
+        for _ in range(incr):
+            self._add_one(fingerprint, decay)
+        return self.counter if self.fingerprint == fingerprint else 0
 
     def count(self, fingerprint: int) -> int:
         if self.fingerprint == fingerprint:
             return self.counter
         return 0
 
-    def _decay(self, decay: float) -> bool:
-        if self.counter > 0:
+    def _add_one(self, fingerprint: int, decay: float) -> None:
+        if self.counter == 0:
+            self.fingerprint = fingerprint
+            self.counter = 1
+        elif self.fingerprint == fingerprint:
+            self.counter += 1
+        else:
             probability = decay**self.counter
             if probability >= 1 or random.random() < probability:
                 self.counter -= 1
-        return self.counter == 0
 
 
 class HashArray(object):

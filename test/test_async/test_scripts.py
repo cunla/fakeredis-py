@@ -22,6 +22,7 @@ class TestScripts:
         assert isinstance(exc_info.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
 
     @pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+    @pytest.mark.unsupported_server_types("valkey")
     async def test_failed_script_error6(self, async_redis):
         await async_redis.set("foo", "bar")
         with pytest.raises(Exception, match="^Error running script") as ctx:

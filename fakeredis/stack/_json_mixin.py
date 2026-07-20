@@ -1,7 +1,9 @@
 """Command mixin for emulating `redis-py`'s JSON functionality."""
 
 import copy
+import itertools
 import json
+import struct
 from json import JSONDecodeError
 from typing import Any, Union, Dict, List, Optional, Callable, Tuple, Type
 
@@ -78,6 +80,124 @@ class JSONObject:
         """Serialize the supplied Python object into a valid, JSON-formatted
         byte-encoded string."""
         return json.dumps(value, default=str).encode() if value is not None else None
+
+
+def _quantize_fp16(value: float) -> float:
+    return struct.unpack("<e", struct.pack("<e", value))[0]  # type: ignore[no-any-return]
+
+
+def _quantize_fp32(value: float) -> float:
+    return struct.unpack("<f", struct.pack("<f", value))[0]  # type: ignore[no-any-return]
+
+
+def _quantize_bf16(value: float) -> float:
+    bits: int = struct.unpack("<I", struct.pack("<f", value))[0]
+    # Round float32 to bfloat16 (top 16 bits), using round-to-nearest-even.
+    rounded = (bits + 0x7FFF + ((bits >> 16) & 1)) >> 16
+    if (rounded & 0x7F80) == 0x7F80:  # rounded to infinity => out of bfloat16 range
+        raise OverflowError
+    return struct.unpack("<f", struct.pack("<I", (rounded << 16) & 0xFFFFFFFF))[0]  # type: ignore[no-any-return]
+
+
+def _quantize_fp64(value: float) -> float:
+    return value
+
+
+# FPHA type token -> (name used in error messages, quantizer)
+_FPHA_TYPES: Dict[bytes, Tuple[str, Callable[[float], float]]] = {
+    b"fp16": ("F16", _quantize_fp16),
+    b"bf16": ("BF16", _quantize_bf16),
+    b"fp32": ("F32", _quantize_fp32),
+    b"fp64": ("F64", _quantize_fp64),
+}
+
+
+def _shortest_float_in_type(quantized: float, quantizer: Callable[[float], float]) -> float:
+    """Return the double parsed from the shortest decimal string that round-trips through the FP type.
+
+    This matches how real redis prints FPHA values: the stored FP16/BF16/FP32 value is rendered with
+    the fewest digits that still parse back to the same value in that type (e.g. FP16(0.1) prints as 0.1).
+    """
+    for precision in range(1, 18):
+        candidate = float(f"{quantized:.{precision}g}")
+        try:
+            if quantizer(candidate) == quantized:
+                return candidate
+        except OverflowError:
+            continue
+    return quantized
+
+
+def _number_token_positions(raw: bytes) -> List[Tuple[int, int]]:
+    """Scan a JSON document for number tokens, returning (line, column-after-token) for each.
+
+    Positions are 1-based, matching the `value out of range ... at line L column C` errors of real redis.
+    """
+    positions = []
+    line, col = 1, 1
+    i, n = 0, len(raw)
+    in_string = False
+    while i < n:
+        c = raw[i]
+        if in_string:
+            if c == ord("\\"):
+                i += 1
+                col += 1
+            elif c == ord('"'):
+                in_string = False
+            i += 1
+            col += 1
+        elif c == ord('"'):
+            in_string = True
+            i += 1
+            col += 1
+        elif c == ord("\n"):
+            line += 1
+            col = 1
+            i += 1
+        elif c == ord("-") or ord("0") <= c <= ord("9"):
+            while i < n and raw[i] in b"0123456789+-.eE":
+                i += 1
+                col += 1
+            positions.append((line, col))
+        else:
+            i += 1
+            col += 1
+    return positions
+
+
+def _apply_fpha(value: JsonType, fpha_type: bytes, raw: bytes) -> JsonType:
+    """Convert homogeneous numeric arrays in `value` to the requested floating-point type.
+
+    Every number in an array whose elements are all numbers is quantized to the FP type; an
+    out-of-range number raises the same error as real redis, pointing at its position in `raw`.
+    """
+    type_name, quantizer = _FPHA_TYPES[fpha_type]
+    # Index of the current number in document order, used to locate the offending token on error.
+    number_index = itertools.count()
+
+    def convert(item: Union[int, float]) -> float:
+        index = next(number_index)
+        try:
+            quantized = quantizer(float(item))
+        except OverflowError:
+            line_col = _number_token_positions(raw)[index]
+            raise helpers.SimpleError(msgs.JSON_VALUE_OUT_OF_RANGE_MSG.format(type_name, *line_col))
+        return _shortest_float_in_type(quantized, quantizer)
+
+    def walk(node: JsonType) -> JsonType:
+        if type(node) in (int, float):
+            next(number_index)
+            return node
+        if isinstance(node, list):
+            if len(node) > 0 and all(type(item) in (int, float) for item in node):
+                return [convert(item) for item in node]
+            return [walk(item) for item in node]
+        if isinstance(node, dict):
+            return {k: walk(v) for k, v in node.items()}
+        return node
+
+    return walk(value)
 
 
 def _json_write_iterate(
@@ -230,16 +350,37 @@ class JSONCommandsMixin(CommandsMixinBase):
 
     @command(
         name="JSON.SET",
-        fixed=(Key(), bytes, JSONObject),
+        fixed=(Key(), bytes, bytes),
         repeat=(bytes,),
         flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_DO_NOT_CREATE,
     )
-    def json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: bytes) -> Optional[SimpleString]:
+    def json_set(self, key: CommandItem, path_str: bytes, value_bytes: bytes, *args: bytes) -> Optional[SimpleString]:
         """Set the JSON value at key `name` under the `path` to `obj`.
 
         For more information see `JSON.SET <https://redis.io/commands/json.set>`_.
         """
-        return JSONCommandsMixin._json_set(key, path_str, value, *args)
+        fpha: Optional[bytes] = None
+        left_args: List[bytes] = []
+        i = 0
+        while i < len(args):
+            if helpers.casematch(args[i], b"fpha"):
+                if i + 1 >= len(args):
+                    raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.set"))
+                fpha = args[i + 1].lower()
+                i += 2
+            else:
+                left_args.append(args[i])
+                i += 1
+        if fpha is not None:
+            # The FPHA argument was added in redis 8.8
+            if self.version < (8, 8) or self.server_type != "redis":
+                raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if fpha not in _FPHA_TYPES:
+                raise helpers.SimpleError(msgs.JSON_INVALID_FPHA_TYPE_MSG)
+        value = JSONObject.decode(value_bytes)
+        if fpha is not None:
+            value = _apply_fpha(value, fpha, value_bytes)
+        return JSONCommandsMixin._json_set(key, path_str, value, *left_args)
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key: CommandItem, *args: bytes) -> Optional[bytes]:

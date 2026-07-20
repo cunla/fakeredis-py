@@ -66,6 +66,7 @@ def test_script_no_subcommands(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(max_redis_ver="6.9")
+@pytest.mark.unsupported_server_types("valkey")
 def test_script_help(r: ClientType):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",

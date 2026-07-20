@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 from threading import Thread
-from typing import Callable, Tuple, Optional, Any, Generator, Dict, Type, Union
+from typing import Any, Callable, Dict, Generator, Optional, Tuple, Type, Union
 
 import pytest
 import pytest_asyncio
@@ -11,7 +11,7 @@ import valkey
 import fakeredis
 from fakeredis._server import _create_version
 from fakeredis._tcp_server import TCP_SERVER_TEST_PORT, TcpFakeServer
-from fakeredis._typing import ServerType, VersionType, ClientType, AsyncClientType
+from fakeredis._typing import AsyncClientType, ClientType, ServerType, VersionType
 from test.testtools import REDIS_PY_VERSION
 
 
@@ -118,9 +118,9 @@ def _validate_server_versions(request, real_server_details: ServerDetails) -> No
         _create_version(marker.kwargs["max_redis_ver"]) if marker and "max_redis_ver" in marker.kwargs else (100,)
     )
 
-    if redis_version < min_redis_ver:
+    if redis_version < min_redis_ver and real_server_details.valkey_version is None:
         pytest.skip(f"Redis server {min_redis_ver} or more required but {redis_version} found")
-    if redis_version > max_redis_ver:
+    if redis_version > max_redis_ver and real_server_details.valkey_version is None:
         pytest.skip(f"Redis server {max_redis_ver} or less required but {redis_version} found")
 
     if server_type == "valkey":

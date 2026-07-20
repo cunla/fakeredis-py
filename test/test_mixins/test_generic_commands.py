@@ -410,6 +410,7 @@ def test_expire_gt_lt_no_ttl_and_equal(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(max_redis_ver="6.9")
+@pytest.mark.unsupported_server_types("valkey")
 def test_expire_extra_params_return_error(r: ClientType):
     with pytest.raises(redis.exceptions.ResponseError) as ctx:
         r.expire("foo", 1, nx=True)

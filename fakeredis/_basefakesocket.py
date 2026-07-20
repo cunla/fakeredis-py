@@ -8,7 +8,7 @@ from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, G
 
 import redis
 
-from fakeredis.model import ClientInfo, BaseModel
+from fakeredis.model import ClientInfo, BaseModel, Hash
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
 from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
@@ -87,6 +87,7 @@ class BaseFakeSocket:
         "punsubscribe",
         "ssubscribe",
         "sunsubscribe",
+        "reset",
     }
     _connection_error_class = redis.ConnectionError
 
@@ -112,6 +113,22 @@ class BaseFakeSocket:
         # but set by aioredis module to prevent new commands being processed
         # while handling a blocking command.
         self._paused = False
+        # Set by CLIENT KILL. The owning client only notices when it next writes,
+        # matching a real server closing the connection underneath it.
+        self._killed = False
+        # CLIENT REPLY state, mirroring redis' CLIENT_REPLY_OFF/SKIP/SKIP_NEXT flags.
+        self._reply_off = False
+        self._reply_skip = False
+        self._reply_skip_next = False
+        # CLIENT NO-EVICT / CLIENT NO-TOUCH, reported in the CLIENT INFO flags field.
+        self._no_evict = False
+        self._no_touch = False
+        # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this
+        # client is blocked and, if so, how it should be woken.
+        self._blocked = False
+        self._unblock_reason: Optional[bytes] = None
+        # Subkey (hash field) events recorded by the currently running command: (event, key, subkeys)
+        self._subkey_events: List[Tuple[bytes, bytes, List[bytes]]] = []
         self._parser = self._parse_commands()
         self._parser.send(None)
         # Assigned elsewhere
@@ -176,12 +193,30 @@ class BaseFakeSocket:
             subs.discard(self)
         self._clear_watches()
 
+    def kill(self) -> None:
+        """Disconnect this socket on behalf of CLIENT KILL, from any connection.
+
+        The socket is dropped from the server immediately, so it stops showing up in
+        CLIENT LIST and stops receiving published messages, but the queued responses are
+        left intact: a client that killed itself still has to read the reply to the
+        CLIENT KILL itself. Called with the server lock held.
+        """
+        self._killed = True
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already closed by its owner
+            pass
+        self._cleanup(self._server)
+
     def close(self) -> None:
         # Mark ourselves for cleanup. This might be called from
         # redis.Connection.__del__, which the garbage collection could call
         # at any time, and hence we can't safely take the server lock.
         # We rely on list.append being atomic.
-        self._server.sockets.remove(self)
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already removed by CLIENT KILL
+            pass
         self._server.closed_sockets.append(weakref.ref(self))
         self._server = None  # type: ignore
         self._db = None
@@ -270,13 +305,19 @@ class BaseFakeSocket:
                 self._clear_watches()
             result = exc
         result = self._decode_result(result)
-        if not isinstance(result, NoResponse):
-            self.put_response(result)
+        suppressed = self._reply_off or self._reply_skip
+        # Mirror redis' resetClient(): the SKIP armed by CLIENT REPLY SKIP takes effect
+        # on the command *after* it, then clears itself.
+        self._reply_skip, self._reply_skip_next = self._reply_skip_next, False
+        if suppressed or isinstance(result, NoResponse):
+            return
+        self.put_response(result)
 
     def _run_command(
         self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
     ) -> Any:
         command_items: List[CommandItem] = []
+        self._subkey_events = []
         try:
             ret = sig.apply(args, self._db, self.version)
             if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
@@ -299,7 +340,22 @@ class BaseFakeSocket:
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
         self._keyspace_notifications(command_items, sig.name.encode())
+        self._subkey_notifications(command_items)
         return result
+
+    def _publish_to_channel(
+        self, channel: bytes, message: bytes, pattern_regex: Dict[bytes, "re.Pattern[bytes]"]
+    ) -> None:
+        msg = [b"message", channel, message]
+        subs: Iterable[Any] = self._server.subscribers.get(channel, set())
+        for sock in subs:
+            sock.put_response(msg)
+
+        for pattern, regex in pattern_regex.items():
+            if regex.match(channel):
+                pmsg = [b"pmessage", pattern, channel, message]
+                for sock in self._server.psubscribers[pattern]:
+                    sock.put_response(pmsg)
 
     def _keyspace_notifications(self, command_items: List[CommandItem], event: bytes) -> None:
         """Send keyspace notifications"""
@@ -315,19 +371,62 @@ class BaseFakeSocket:
                 keyspace_channel = keyspace_channel_prefix + command_item.key
 
                 for channel, message in [(keyspace_channel, event), (keyevent_channel, command_item.key)]:
-                    msg = [b"message", channel, message]
-                    subs: Iterable[Any] = self._server.subscribers.get(channel, set())
-                    for sock in subs:
-                        sock.put_response(msg)
-
-                    for pattern, regex in pattern_regex.items():
-                        if regex.match(channel):
-                            pmsg = [b"pmessage", pattern, channel, message]
-                            for sock in self._server.psubscribers[pattern]:
-                                sock.put_response(pmsg)
+                    self._publish_to_channel(channel, message, pattern_regex)
             except Exception as e:
                 LOGGER.error(
                     f"Error sending keyspace notification for event `{event.decode()}` on key {command_item.key.decode()}: {e}"
+                )
+
+    def add_subkey_event(self, event: bytes, key: bytes, subkeys: Sequence[bytes]) -> None:
+        """Record a subkey (e.g. hash field) event, to be published once the current command finishes."""
+        if len(subkeys) > 0:
+            self._subkey_events.append((event, key, list(subkeys)))
+
+    def _subkey_notifications(self, command_items: List[CommandItem]) -> None:
+        """Send subkey notifications (added in redis 8.8), currently emitted for hash fields only.
+
+        Unlike key-level notifications above, these follow the `notify-keyspace-events` config:
+        the `h` class flag must be set, and each of the S/T/I/V flags enables one channel type.
+        """
+        events, self._subkey_events = self._subkey_events, []
+        for command_item in command_items:
+            if isinstance(command_item.value, Hash):
+                expired_fields = command_item.value.take_expired_fields()
+                if expired_fields:
+                    events.insert(0, (b"hexpired", command_item.key, expired_fields))
+        if not events or self.version < (8, 8) or self._server.server_type != "redis":
+            return
+        config_flags = self._server.config.get(b"notify-keyspace-events", b"")
+        if b"h" not in config_flags and b"A" not in config_flags:
+            return
+        if not any(flag in config_flags for flag in (b"S", b"T", b"I", b"V")):
+            return
+        pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
+            pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
+        }
+        db_num = str(self._db_num).encode()
+        for event, key, subkeys in events:
+            try:
+                subkeys_payload = b",".join(b"%d:%s" % (len(subkey), subkey) for subkey in subkeys)
+                # Events containing `|` are skipped for the channels using `|` as a delimiter,
+                # and keys containing `\n` for the channel using `\n` as a delimiter.
+                if b"S" in config_flags and b"|" not in event:
+                    channel = b"__subkeyspace@%s__:%s" % (db_num, key)
+                    self._publish_to_channel(channel, event + b"|" + subkeys_payload, pattern_regex)
+                if b"T" in config_flags:
+                    channel = b"__subkeyevent@%s__:%s" % (db_num, event)
+                    message = b"%d:%s|%s" % (len(key), key, subkeys_payload)
+                    self._publish_to_channel(channel, message, pattern_regex)
+                if b"I" in config_flags and b"\n" not in key:
+                    for subkey in subkeys:
+                        channel = b"__subkeyspaceitem@%s__:%s\n%s" % (db_num, key, subkey)
+                        self._publish_to_channel(channel, event, pattern_regex)
+                if b"V" in config_flags and b"|" not in event:
+                    channel = b"__subkeyspaceevent@%s__:%s|%s" % (db_num, event, key)
+                    self._publish_to_channel(channel, subkeys_payload, pattern_regex)
+            except Exception as e:
+                LOGGER.error(
+                    f"Error sending subkey notification for event `{event.decode()}` on key {key.decode()}: {e}"
                 )
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
@@ -366,15 +465,29 @@ class BaseFakeSocket:
         if ret is not None or self._in_transaction:
             return ret
         deadline = time.time() + timeout if timeout else None
-        while True:
-            timeout = (deadline - time.time()) if deadline is not None else None
-            if timeout is not None and timeout <= 0:
-                return None
-            if self._db.condition.wait(timeout=timeout) is False:
-                return None  # Timeout expired
-            ret = func(False)  # Second pass => first_pass=False
-            if ret is not None:
-                return ret
+        self._blocked = True
+        try:
+            while True:
+                timeout = (deadline - time.time()) if deadline is not None else None
+                if timeout is not None and timeout <= 0:
+                    return None
+                if self._db.condition.wait(timeout=timeout) is False:
+                    return None  # Timeout expired
+                if self._unblock_reason is not None:
+                    self._take_unblock_reason()
+                    return None  # Unblocked with TIMEOUT: same empty result as a timeout
+                ret = func(False)  # Second pass => first_pass=False
+                if ret is not None:
+                    return ret
+        finally:
+            self._blocked = False
+            self._unblock_reason = None
+
+    def _take_unblock_reason(self) -> None:
+        """Consume a pending CLIENT UNBLOCK request, raising if it asked for ERROR."""
+        reason, self._unblock_reason = self._unblock_reason, None
+        if reason == b"error":
+            raise SimpleError(msgs.UNBLOCKED_MSG)
 
     def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable[[Any], Any]], Signature]:
         """Get the signature and the method from the command name."""
@@ -391,7 +504,7 @@ class BaseFakeSocket:
         return func, sig
 
     def sendall(self, data: AnyStr) -> None:
-        if not self._server.connected:
+        if not self._server.connected or self._killed:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if isinstance(data, str):
             data = data.encode("ascii")  # type: ignore

@@ -340,12 +340,18 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
                 align = from_ts
             else:
                 align = int(align)
-        if aggregator is not None and aggregator not in AGGREGATORS:
-            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
         if aggregator is None:
             res = ts.range(from_ts, to_ts, value_min, value_max, count, filter_ts, reverse)
-        else:
-            res = ts.aggregate(
+            return [[x[0], x[1]] for x in res]
+
+        # Since redis 8.8, multiple comma-separated aggregators can be given in a single command.
+        aggregators: List[bytes] = aggregator.lower().split(b",")
+        if any(agg not in AGGREGATORS for agg in aggregators):
+            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
+        if len(aggregators) > 1 and (self.version < (8, 8) or self.server_type != "redis"):
+            raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION_TYPE)
+        aggregated = [
+            ts.aggregate(
                 from_ts,
                 to_ts,
                 latest,
@@ -354,14 +360,18 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
                 count,
                 filter_ts,
                 align,
-                aggregator,
+                agg,
                 bucket_duration,
                 bucket_timestamp,
                 empty,
                 reverse,
             )
-
-        result: List[List[Union[int, float]]] = [[x[0], x[1]] for x in res]
+            for agg in aggregators
+        ]
+        # Each bucket row is (timestamp, value-per-aggregator...); all aggregators share the same buckets.
+        result: List[List[Union[int, float]]] = [
+            [row[0]] + [aggregated[j][i][1] for j in range(len(aggregators))] for i, row in enumerate(aggregated[0])
+        ]
         return result
 
     @command(

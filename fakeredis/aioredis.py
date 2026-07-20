@@ -65,6 +65,12 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
                     # This is a coroutine outside the normal control flow that
                     # locks the server, so we have to take our own lock.
                     with self._server.lock:
+                        if self._unblock_reason is not None:
+                            try:
+                                self._take_unblock_reason()
+                            except SimpleError as exc:
+                                result = self._decode_result(exc)
+                            break
                         ret = func(False)
                         if ret is not None:
                             result = self._decode_result(ret)
@@ -74,6 +80,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         finally:
             with self._server.lock:
                 self._db.remove_change_callback(callback)
+                self._blocked = False
+                self._unblock_reason = None
             self.put_response(result)
             self.resume()
 
@@ -92,6 +100,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
             loop.call_soon_threadsafe(event.set)
 
         self._db.add_change_callback(callback)
+        self._blocked = True
         self.pause()
         loop.create_task(self._async_blocking(timeout, func, event, callback))
         return _helpers.NoResponse()

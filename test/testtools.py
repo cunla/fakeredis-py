@@ -1,4 +1,5 @@
 import importlib.util
+import inspect
 import itertools
 import time
 from datetime import datetime
@@ -12,6 +13,21 @@ from fakeredis._commands import Float
 from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)
+
+
+def pool_get_connection(pool: Any) -> Any:
+    """Get a connection from `pool`, papering over the differing signatures.
+
+    redis-py made `command_name` optional in 5.0 and deprecated it in 5.3, while
+    valkey-py still requires it, so the installed redis-py version says nothing about
+    the pool actually in use. Inspect the pool itself instead.
+
+    Async pools return a coroutine, so the caller awaits the result as usual.
+    """
+    command_name = inspect.signature(pool.get_connection).parameters.get("command_name")
+    if command_name is not None and command_name.default is inspect.Parameter.empty:
+        return pool.get_connection("_")
+    return pool.get_connection()
 
 
 def tuple_to_list(x: Any) -> Any:

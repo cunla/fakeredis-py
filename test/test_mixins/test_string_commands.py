@@ -294,6 +294,8 @@ def test_set_px_using_timedelta(r: ClientType):
     assert r.get("foo") == b"bar"
 
 
+# valkey-py raises DataError client-side for conflicting options regardless of the installed redis-py version
+@pytest.mark.unsupported_server_types("valkey")
 @testtools.run_test_if_redispy_ver("lt", "5.9")  # This will run for redis-py 4.2.0 or above.
 def test_set_conflicting_expire_options(r: ClientType):
     with pytest.raises(Exception) as ctx:

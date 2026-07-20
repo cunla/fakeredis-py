@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Set, Tuple
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, Int, command, CommandItem
@@ -101,7 +101,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
             return 0
         arr: Array = key.value
         # args: start1, end1, start2, end2, ...
-        to_delete = set()
+        to_delete: Set[int] = set()
         for i in range(0, len(args), 2):
             start, end = args[i], args[i + 1]
             lo, hi = (start, end) if start <= end else (end, start)
@@ -127,7 +127,8 @@ class ArrayCommandsMixin(CommandsMixinBase):
     def arget(self, key: CommandItem, index: int) -> Optional[bytes]:
         if not key:
             return None
-        return key.value.get(index)
+        arr: Array = key.value
+        return arr.get(index)
 
     @command((Key(Array), Int, Int))
     def argetrange(self, key: CommandItem, start: int, end: int) -> List[Optional[bytes]]:
@@ -149,26 +150,30 @@ class ArrayCommandsMixin(CommandsMixinBase):
     def arlen(self, key: CommandItem) -> int:
         if not key:
             return 0
-        return key.value.length()
+        arr: Array = key.value
+        return arr.length()
 
     @command((Key(Array, 0),))
     def arcount(self, key: CommandItem) -> int:
         if not key:
             return 0
-        return key.value.count()
+        arr: Array = key.value
+        return arr.count()
 
     @command((Key(Array, 0),))
     def arnext(self, key: CommandItem) -> int:
         if not key:
             return 0
-        return key.value._cursor
+        arr: Array = key.value
+        return arr._cursor
 
     @command((Key(Array, []), Int), (bytes,))
     def arlastitems(self, key: CommandItem, count: int, *args: bytes) -> List[bytes]:
         if not key:
             return []
         rev = any(casematch(a, b"rev") for a in args)
-        items = key.value.lastitems(count)
+        arr: Array = key.value
+        items = arr.lastitems(count)
         if rev:
             items = list(reversed(items))
         return items

@@ -28,8 +28,16 @@ class StreamEntryKey(NamedTuple):
         return StreamEntryKey(timestamp, sequence)
 
 
+# Delivery count assigned by XNACK FATAL to mark a message as permanently failed (LLONG_MAX in redis)
+MAX_DELIVERY_COUNT = 2**63 - 1
+
+
 class PelEntry(NamedTuple):
-    """Pending Entry List entry: tracks consumer ownership and delivery count"""
+    """Pending Entry List entry: tracks consumer ownership and delivery count
+
+    A `time_read` of 0 marks an entry released by XNACK: it is unowned (empty consumer name) and
+    immediately claimable regardless of idle time.
+    """
 
     consumer_name: bytes
     time_read: int
@@ -210,7 +218,12 @@ class StreamGroup(object):
 
             if key not in self.pel:
                 if force and key in self.stream:
-                    times = retry_count if retry_count is not None else 1
+                    if retry_count is not None:
+                        times = retry_count
+                    elif mode == b"FATAL":
+                        times = MAX_DELIVERY_COUNT
+                    else:
+                        times = 0
                     self.pel[key] = PelEntry(b"", 0, times)
                     res += 1
                 continue
@@ -223,7 +236,7 @@ class StreamGroup(object):
             elif mode == b"SILENT":
                 new_times = max(0, entry.times_delivered - 1)
             elif mode == b"FATAL":
-                new_times = sys.maxsize
+                new_times = MAX_DELIVERY_COUNT
             else:  # FAIL
                 new_times = entry.times_delivered
 
@@ -277,13 +290,20 @@ class StreamGroup(object):
             relevant_ids = sorted(relevant_ids)[:count]
 
         # Return all 4 fields: message_id, consumer, time_since_delivered, times_delivered
+        # XNACK-released entries (time_read == 0) report an idle time of -1, as in real redis.
         return [
-            [k.encode(), self.pel[k].consumer_name, _time - self.pel[k].time_read, self.pel[k].times_delivered]
+            [
+                k.encode(),
+                self.pel[k].consumer_name,
+                (_time - self.pel[k].time_read) if self.pel[k].time_read else -1,
+                self.pel[k].times_delivered,
+            ]
             for k in relevant_ids
         ]
 
     def pending_summary(self) -> List[Any]:
-        counter = Counter([self.pel[k].consumer_name for k in self.pel])
+        # XNACK-released entries are unowned and are not counted under any consumer.
+        counter = Counter([self.pel[k].consumer_name for k in self.pel if self.pel[k].consumer_name])
         data = [
             len(self.pel),
             min(self.pel).encode() if len(self.pel) > 0 else None,
@@ -332,6 +352,37 @@ class StreamGroup(object):
                 del self.pel[key]
         self._calc_consumer_last_time()
         return sorted(claimed_msgs), sorted(deleted_msgs)
+
+    def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: Optional[int]) -> List[List[Any]]:
+        """Claim idle pending entries for `XREADGROUP ... CLAIM min-idle-time` (Redis 8.4).
+
+        Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name,
+        longest-idle first (XNACK-released entries have a delivery time of 0, so they come first).
+        Each claimed entry is returned as [id, fields, idle-time, previous-delivery-count].
+        """
+        curr_time = current_time()
+        if consumer_name not in self.consumers:
+            self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
+        candidates = sorted(
+            (k for k, v in self.pel.items() if curr_time - v.time_read >= min_idle_ms),
+            key=lambda k: (self.pel[k].time_read, k),
+        )
+        if count is not None:
+            candidates = candidates[:count]
+        res: List[List[Any]] = []
+        for key in candidates:
+            if key not in self.stream:
+                continue  # Entries deleted from the stream are skipped but remain in the PEL
+            entry = self.pel[key]
+            if entry.consumer_name != consumer_name:
+                if entry.consumer_name in self.consumers:
+                    self.consumers[entry.consumer_name].pending -= 1
+                self.consumers[consumer_name].pending += 1
+            self.pel[key] = PelEntry(consumer_name, curr_time, entry.times_delivered + 1)
+            record: List[Any] = list(self.stream.format_record(key))
+            record.extend([curr_time - entry.time_read, entry.times_delivered])
+            res.append(record)
+        return res
 
     def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int) -> List[StreamEntryKey]:
         start_key = StreamEntryKey.parse_str(start)

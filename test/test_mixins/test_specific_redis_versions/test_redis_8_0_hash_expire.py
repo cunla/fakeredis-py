@@ -5,22 +5,23 @@ import pytest
 from packaging.version import Version
 from redis import exceptions
 
+from fakeredis._typing import ClientType
 from test import testtools
-from test.testtools import redis_server_time, REDIS_PY_VERSION
 
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_server_versions(min_redis_ver="7.9"),
+        # Currently, valkey-py doesn't support the new hash commands, so we skip these tests for valkey-py
+        pytest.mark.supported_server_versions(min_redis_ver="7.9", min_valkey_ver="10"),
         testtools.run_test_if_redispy_ver("gte", "5.9"),
     ]
 )
 
-if REDIS_PY_VERSION >= Version("5.9"):
+if testtools.REDIS_PY_VERSION >= Version("5.9"):
     from redis.commands.core import HashDataPersistOptions
 
 
-def test_hgetdel(r):
+def test_hgetdel(r: ClientType):
     r.delete("test:hash")
     r.hset("test:hash", "foo", "bar", mapping={"1": 1, "2": 2})
     assert r.hgetdel("test:hash", "foo", "1") == [b"bar", b"1"]
@@ -34,7 +35,7 @@ def test_hgetdel(r):
         r.hgetdel("test:hash")
 
 
-def test_hgetex_no_expiration(r):
+def test_hgetex_no_expiration(r: ClientType):
     r.delete("test:hash")
     r.hset("b", "foo", "bar", mapping={"1": 1, "2": 2, "3": "three", "4": b"four"})
 
@@ -42,7 +43,7 @@ def test_hgetex_no_expiration(r):
     assert r.httl("b", "foo", "1", "4") == [-1, -1, -1]
 
 
-def test_hgetex_expiration_configs(r):
+def test_hgetex_expiration_configs(r: ClientType):
     r.delete("test:hash")
     r.hset("test:hash", "foo", "bar", mapping={"1": 1, "3": "three", "4": b"four"})
     test_keys = ["foo", "1", "4"]
@@ -68,17 +69,17 @@ def test_hgetex_expiration_configs(r):
         assert pytest.approx(ttl, 1) == 6
 
     # test get single field with expiration set through 'pxat'
-    expire_at = redis_server_time(r) + timedelta(minutes=1)
+    expire_at = testtools.redis_server_time(r) + timedelta(minutes=1)
     assert r.hgetex("test:hash", "foo", pxat=expire_at) == [b"bar"]
     assert r.httl("test:hash", "foo")[0] <= 61
 
     # test get single field with expiration set through 'exat'
-    expire_at = redis_server_time(r) + timedelta(seconds=10)
+    expire_at = testtools.redis_server_time(r) + timedelta(seconds=10)
     assert r.hgetex("test:hash", "foo", exat=expire_at) == [b"bar"]
     assert r.httl("test:hash", "foo")[0] <= 10
 
 
-def test_hgetex_validate_expired_fields_removed(r):
+def test_hgetex_validate_expired_fields_removed(r: ClientType):
     r.delete("test:hash")
     r.hset("test:hash", "foo", "bar", mapping={"1": 1, "3": "three", "4": b"four"})
 
@@ -92,7 +93,7 @@ def test_hgetex_validate_expired_fields_removed(r):
     assert r.hgetex("test:hash", "4") == [b"four"]
 
 
-def test_hgetex_invalid_inputs(r):
+def test_hgetex_invalid_inputs(r: ClientType):
     with pytest.raises(exceptions.DataError):
         r.hgetex("b", "foo", "1", "3", ex=10, persist=True)
 
@@ -106,7 +107,7 @@ def test_hgetex_invalid_inputs(r):
         r.hgetex("b", ex=10)
 
 
-def test_hsetex_no_expiration(r):
+def test_hsetex_no_expiration(r: ClientType):
     r.delete("test:hash")
 
     # # set items from mapping without expiration
@@ -115,7 +116,7 @@ def test_hsetex_no_expiration(r):
     assert r.hgetex("test:hash", "foo", "1") == [None, b"1"]
 
 
-def test_hsetex_expiration_ex_and_keepttl(r):
+def test_hsetex_expiration_ex_and_keepttl(r: ClientType):
     r.delete("test:hash")
 
     # set items from key/value provided
@@ -142,7 +143,7 @@ def test_hsetex_expiration_ex_and_keepttl(r):
     assert r.httl("test:hash", "foo")[0] < 10
 
 
-def test_hsetex_expiration_px(r):
+def test_hsetex_expiration_px(r: ClientType):
     r.delete("test:hash")
     # set items from key/value provided and mapping
     # with expiration - testing px field
@@ -154,11 +155,11 @@ def test_hsetex_expiration_px(r):
     assert r.hgetex("test:hash", *test_keys) == [b"bar", b"1", b"2"]
 
 
-def test_hsetex_expiration_pxat_and_fnx(r):
+def test_hsetex_expiration_pxat_and_fnx(r: ClientType):
     r.delete("test:hash")
     assert r.hsetex("test:hash", "foo", "bar", mapping={"1": 1, "2": "2"}, ex=30) == 1
 
-    expire_at = redis_server_time(r) + timedelta(minutes=1)
+    expire_at = testtools.redis_server_time(r) + timedelta(minutes=1)
     assert (
         r.hsetex(
             "test:hash",
@@ -192,11 +193,11 @@ def test_hsetex_expiration_pxat_and_fnx(r):
     assert r.hgetex("test:hash", "foo", "foo_new", "new") == [b"bar", b"bar1", b"ok"]
 
 
-def test_hsetex_expiration_exat_and_fxx(r):
+def test_hsetex_expiration_exat_and_fxx(r: ClientType):
     r.delete("test:hash")
     assert r.hsetex("test:hash", "foo", "bar", mapping={"1": 1, "2": "2"}, ex=30) == 1
 
-    expire_at = redis_server_time(r) + timedelta(seconds=10)
+    expire_at = testtools.redis_server_time(r) + timedelta(seconds=10)
     assert (
         r.hsetex(
             "test:hash",
@@ -227,7 +228,7 @@ def test_hsetex_expiration_exat_and_fxx(r):
     assert r.hgetex("test:hash", "foo", "1") == [b"bar1", b"new_value"]
 
 
-def test_hsetex_invalid_inputs(r):
+def test_hsetex_invalid_inputs(r: ClientType):
     with pytest.raises(exceptions.DataError):
         r.hsetex("b", "foo", "bar", ex=10.0)
 

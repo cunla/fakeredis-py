@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from io import BufferedIOBase
 from itertools import count
 from socketserver import ThreadingTCPServer, StreamRequestHandler
-from typing import Dict, Tuple, Any, Union
+from typing import Dict, Tuple, Any, Type, Union
 
 from redis.connection import DefaultParser
 
@@ -40,8 +40,8 @@ def to_bytes(value: Any) -> bytes:
     return str(value).encode()
 
 
-_EXCEPTION_PREFIX_MAP: Dict[Exception, str] = {
-    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if type(v) is not dict
+_EXCEPTION_PREFIX_MAP: Dict[Type[Exception], str] = {
+    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if isinstance(v, type) and issubclass(v, Exception)
 }
 
 
@@ -56,10 +56,10 @@ def _get_exception_prefix(e: Exception) -> str:
 class Writer:
     client_address: Tuple[str, int]
     writer: BufferedIOBase
-    request_handler: StreamRequestHandler
+    request_handler: "TCPFakeRequestHandler"
 
     def write(self, value: bytes) -> None:
-        LOGGER.debug(f"<<< {self.client_address}: {value}")
+        LOGGER.debug(f"<<< {self.client_address}: {value!r}")
         self.writer.write(value)
 
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
@@ -186,7 +186,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
                 break
 
     def finish(self) -> None:
-        self.current_client.disconnect()
+        self.current_client.disconnect()  # type: ignore[no-untyped-call]
         LOGGER.debug(f"--- {self.client_address[0]} disconnected")
         self.rfile.close()
         self.wfile.close()

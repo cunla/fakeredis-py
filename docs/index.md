@@ -378,6 +378,12 @@ commands that do not support all features) which should be filed as bugs in GitH
 - Redis makes guarantees about the order in which clients blocked on blocking commands are woken up. Fakeredis does not
   honor these guarantees.
 
+- `CLIENT PAUSE` validates and records its arguments, and `CLIENT UNPAUSE` clears them, but command processing is never
+  actually suspended. Commands sent while paused are served immediately instead of being delayed.
+
+- Every fakeredis connection reports the same client address (`127.0.0.1:0`), so the `ADDR` filter of `CLIENT KILL`
+  matches every connection at once rather than a single one.
+
 - Where redis contains bugs, fakeredis generally does not try to provide exact bug compatibility. It's not practical for
   fakeredis to try to match the set of bugs in your specific version of redis.
 

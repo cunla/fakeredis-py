@@ -8,6 +8,7 @@ from test import testtools
 pytestmark = []
 pytestmark.extend(
     [
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
         pytest.mark.supported_server_versions(min_redis_ver="8.7.2"),
     ]
 )
@@ -447,3 +448,104 @@ def test_xidmprecord_wrong_key_type(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "XIDMPRECORD", "not-a-stream", b"p", b"i", b"1-1")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_xnack_releases_entry_as_unowned(r: ClientType):
+    """A NACKed entry becomes unowned with idle time -1, and leaves the consumer's pending count."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    m2 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m1) == 1
+
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    by_id = {p["message_id"]: p for p in pending}
+    assert by_id[m1]["consumer"] == b""
+    assert by_id[m1]["time_since_delivered"] == -1
+    assert by_id[m1]["times_delivered"] == 1
+    assert by_id[m2]["consumer"] == consumer.encode()
+
+    # The summary counts the NACKed entry in the total, but not under any consumer
+    summary = r.xpending(stream, group)
+    assert summary["pending"] == 2
+    assert summary["consumers"] == [{"name": consumer.encode(), "pending": 1}]
+
+
+def test_xnack_silent_decrements_counter(r: ClientType):
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "SILENT", "IDS", 1, m1) == 1
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert pending[0]["times_delivered"] == 0
+
+
+def test_xnack_fatal_sets_counter_to_max(r: ClientType):
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "FATAL", "IDS", 1, m1) == 1
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert pending[0]["times_delivered"] == 2**63 - 1
+
+
+def test_xnack_retrycount_sets_counter(r: ClientType):
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m1, "RETRYCOUNT", 42) == 1
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert pending[0]["times_delivered"] == 42
+
+
+def test_xnack_force_creates_unowned_entry(r: ClientType):
+    """FORCE creates a PEL entry with delivery counter 0 for an entry that was never delivered."""
+    stream, group = "stream", "group"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m1, "FORCE") == 1
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert pending[0]["consumer"] == b""
+    assert pending[0]["times_delivered"] == 0
+
+    # FORCE does not create entries for IDs missing from the stream
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, b"999999-0", "FORCE") == 0
+
+
+def test_xnack_released_entry_is_claimable(r: ClientType):
+    """A NACKed entry can be claimed immediately, regardless of min-idle-time."""
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m1) == 1
+    claimed = r.xclaim(stream, group, "other-consumer", min_idle_time=100000, message_ids=[m1])
+    assert [record[0] for record in claimed] == [m1]
+
+
+def test_xnack_invalid_mode_message(r: ClientType):
+    stream, group = "stream", "group"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    with pytest.raises(Exception, match="mode must be SILENT, FAIL, or FATAL"):
+        testtools.raw_command(r, "XNACK", stream, group, "BOGUS", "IDS", 1, m1)
+
+
+def test_xnack_nogroup_errors(r: ClientType):
+    stream, group = "stream", "group"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    with pytest.raises(Exception, match="NOGROUP No such key 'stream' or consumer group 'nogroup'"):
+        testtools.raw_command(r, "XNACK", stream, "nogroup", "FAIL", "IDS", 1, m1)
+    with pytest.raises(Exception, match="NOGROUP No such key 'nokey' or consumer group 'group'"):
+        testtools.raw_command(r, "XNACK", "nokey", group, "FAIL", "IDS", 1, m1)
