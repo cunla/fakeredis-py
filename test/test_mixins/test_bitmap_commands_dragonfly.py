@@ -13,7 +13,6 @@ pytestmark.extend(
 )
 
 
-# TODO fix
 def test_getbit(r: ClientType):
     r.setbit("foo", 3, 1)
     assert r.getbit("foo", 0) == 0
@@ -31,7 +30,7 @@ def test_getbit_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (valkey.ResponseError, redis.ResponseError))
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
 def test_bitcount_error(r: ClientType):
     with pytest.raises(Exception) as e:
         raw_command(r, b"BITCOUNT", b"", b"", b"")
@@ -39,17 +38,10 @@ def test_bitcount_error(r: ClientType):
     assert isinstance(e.value, (valkey.ResponseError, redis.ResponseError))
 
 
-@pytest.mark.min_server("7.4")
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
 def test_bitcount_does_not_exist(r: ClientType):
     res = raw_command(r, b"BITCOUNT", b"", 0, 0)
     assert res == 0
-
-
-@pytest.mark.unsupported_server_types("dragonfly")
-@pytest.mark.max_server("7.2")
-def test_bitcount_error_v6(r: ClientType):
-    r = raw_command(r, b"BITCOUNT", b"", b"", b"")
-    assert r == 0
 
 
 def test_multiple_bits_set(r: ClientType):
@@ -139,7 +131,7 @@ def test_bitcount(r: ClientType):
     assert r.bitcount("key", start=1, end=1) == 6
 
 
-@pytest.mark.max_server("6.2.7")
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
 def test_bitcount_mode_redis6(r: ClientType):
     r.set("key", "foobar")
     with pytest.raises(redis.ResponseError):
@@ -150,7 +142,7 @@ def test_bitcount_mode_redis6(r: ClientType):
         raw_command(r, "bitcount", "key", "1", "2", "dsd", "cd")
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_bitcount_mode_redis7(r: ClientType):
     r.set("key", "foobar")
     assert r.bitcount("key", start=1, end=1, mode="byte") == 6
@@ -224,7 +216,7 @@ def test_bitpos(r: ClientType):
     assert r.bitpos("nokey:bitpos", 1, 1) == -1
 
 
-@pytest.mark.min_server("7")
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_bitops_mode_redis7(r: ClientType):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")
@@ -234,7 +226,7 @@ def test_bitops_mode_redis7(r: ClientType):
         assert r.bitpos(key, 0, 8, -1, "bad_mode") == 12
 
 
-@pytest.mark.max_server("6.2.7")
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
 def test_bitops_mode_redis6(r: ClientType):
     key = "key:bitpos"
     r.set(key, b"\xff\xf0\x00")

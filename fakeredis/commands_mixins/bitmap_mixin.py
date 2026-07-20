@@ -58,10 +58,10 @@ class BitmapCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         bit_mode = False
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -109,7 +109,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         bit_mode = False
         if len(args) == 3 and (self.version < (7,) and self._server.server_type != "dragonfly"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -242,7 +242,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         return new_value if value is None else ans
 
     @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key: CommandItem, *args: bytes) -> List[Optional[int]]:
+    def bitfield(self, key: CommandItem, *args: bytes) -> Optional[List[Optional[int]]]:
         overflow = b"WRAP"
         results: List[Optional[int]] = []
         i = 0
