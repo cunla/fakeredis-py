@@ -96,9 +96,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
     ) -> Optional[Union[Dict[bytes, Any], List[List[Any]]]]:
         if not casematch(b"GROUP", group_const):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        (count, timeout, noack), left_args = extract_args(
-            args, ("+count", "+block", "noack"), error_on_unexpected=False
+        (count, timeout, noack, min_idle_time), left_args = extract_args(
+            args, ("+count", "+block", "noack", "+claim"), error_on_unexpected=False
         )
+        if min_idle_time is not None and min_idle_time < 0:
+            raise SimpleError(msgs.XREADGROUP_CLAIM_NEGATIVE_MSG)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -117,11 +119,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 )
             group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
-            res = self._xreadgroup(consumer_name, group_params, count, noack, False)
+            res = self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
         else:
             res = self._blocking(
                 timeout / 1000.0,
-                functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
+                functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
             )
         if self._client_info.protocol_version == 2:
             return [[k, v] for k, v in res.items()] if res else None
@@ -409,15 +411,29 @@ class StreamsCommandsMixin(CommandsMixinBase):
         self,
         consumer_name: bytes,
         group_params: List[Tuple[StreamGroup, bytes, bytes]],
-        count: int,
+        count: Optional[int],
         noack: bool,
+        min_idle_time: Optional[int],
         first_pass: bool,
     ) -> Optional[Dict[bytes, Any]]:
         res: Dict[bytes, Any] = {}
+        claimed_any = False
         for group, stream_name, start_id in group_params:
-            stream_results = group.group_read(consumer_name, start_id, count, noack)
-            if first_pass and (count is None):
+            claimed: List[Any] = []
+            # CLAIM only applies when reading new entries, not the consumer history
+            claim_active = False
+            if min_idle_time is not None and start_id == b">":
+                claim_active = True
+                claimed = group.claim_for_read(min_idle_time, consumer_name, count)
+                claimed_any = claimed_any or len(claimed) > 0
+            remaining_count = count - len(claimed) if count is not None else None
+            stream_results: List[Any] = group.group_read(consumer_name, start_id, remaining_count, noack)
+            if first_pass and (count is None) and not claimed_any:
                 return None
+            if claim_active:
+                # With CLAIM, claimed entries are reported before new entries, and every
+                # entry carries idle time and delivery count (0 for new entries).
+                stream_results = claimed + [record + [0, 0] for record in stream_results]
             if len(stream_results) > 0 or start_id != b">":
                 res[stream_name] = stream_results
         return res

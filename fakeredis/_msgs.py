@@ -88,6 +88,7 @@ XGROUP_BUSYGROUP = "ERR BUSYGROUP Consumer Group name already exists"
 XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG = (
     "NOGROUP No such key '{0}' or consumer group '{1}' in XREADGROUP with GROUP option"
 )
+XREADGROUP_CLAIM_NEGATIVE_MSG = "ERR min-idle-time must be a positive integer"
 XGROUP_GROUP_NOT_FOUND_MSG = "NOGROUP No such consumer group '{0}' for key name '{1}'"
 XNACK_INVALID_MODE_MSG = "ERR mode must be SILENT, FAIL, or FATAL"
 XNACK_NOGROUP_MSG = "NOGROUP No such key '{0}' or consumer group '{1}'"

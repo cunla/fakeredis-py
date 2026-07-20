@@ -353,6 +353,37 @@ class StreamGroup(object):
         self._calc_consumer_last_time()
         return sorted(claimed_msgs), sorted(deleted_msgs)
 
+    def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: Optional[int]) -> List[List[Any]]:
+        """Claim idle pending entries for `XREADGROUP ... CLAIM min-idle-time` (Redis 8.4).
+
+        Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name,
+        longest-idle first (XNACK-released entries have a delivery time of 0, so they come first).
+        Each claimed entry is returned as [id, fields, idle-time, previous-delivery-count].
+        """
+        curr_time = current_time()
+        if consumer_name not in self.consumers:
+            self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
+        candidates = sorted(
+            (k for k, v in self.pel.items() if curr_time - v.time_read >= min_idle_ms),
+            key=lambda k: (self.pel[k].time_read, k),
+        )
+        if count is not None:
+            candidates = candidates[:count]
+        res: List[List[Any]] = []
+        for key in candidates:
+            if key not in self.stream:
+                continue  # Entries deleted from the stream are skipped but remain in the PEL
+            entry = self.pel[key]
+            if entry.consumer_name != consumer_name:
+                if entry.consumer_name in self.consumers:
+                    self.consumers[entry.consumer_name].pending -= 1
+                self.consumers[consumer_name].pending += 1
+            self.pel[key] = PelEntry(consumer_name, curr_time, entry.times_delivered + 1)
+            record: List[Any] = list(self.stream.format_record(key))
+            record.extend([curr_time - entry.time_read, entry.times_delivered])
+            res.append(record)
+        return res
+
     def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int) -> List[StreamEntryKey]:
         start_key = StreamEntryKey.parse_str(start)
         curr_time = current_time()
