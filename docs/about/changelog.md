@@ -29,6 +29,10 @@ toc_depth: 2
 - fix: align `XNACK` with redis 8.8 semantics (#521)
 - fix: `HEXPIRE`/`HPEXPIRE` now raise an error on negative expiration time
 - fix: `GEOADD` now rejects longitude/latitude pairs outside the valid range
+- fix: validate command option values that real Redis rejects instead of silently acting on them — negative
+  expirations in `HGETEX`/`HSETEX`, non-positive `COUNT`/`numkeys` in `LMPOP`/`BLMPOP`/`ZMPOP`/`BZMPOP` and
+  `SINTERCARD`, negative `LPOS` `COUNT`/`MAXLEN`, out-of-range `COPY` `DB` index, negative blocking timeouts,
+  non-positive `SCAN`/`SSCAN`/`HSCAN`/`ZSCAN` `COUNT`, and invalid `BITCOUNT`/`BITPOS` range arguments (#528)
 
 ### 🧰 Maintenance
 
