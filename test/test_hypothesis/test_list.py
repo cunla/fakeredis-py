@@ -1,15 +1,6 @@
 import pytest
 
-from .base import (
-    BaseMachine,
-    commands,
-    counts,
-    ints,
-    keys,
-    run_machine,
-    st,
-    values,
-)
+from .base import BaseMachine, commands, counts, ints, keys, run_machine, st, values
 
 # TODO: blocking commands
 list_commands = (

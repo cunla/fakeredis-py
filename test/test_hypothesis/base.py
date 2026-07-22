@@ -4,7 +4,7 @@ import operator
 import string
 import sys
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 
 import hypothesis.strategies as st
 import pytest
@@ -58,7 +58,7 @@ class MachineConfig:
         return cls(server=server, db=self.db)
 
 
-_active_config: MachineConfig | None = None
+_active_config: Optional[MachineConfig] = None
 
 
 def _server_version() -> Tuple[int, ...]:
@@ -214,8 +214,7 @@ class Command:
     def testable(self):
         """Whether this command is suitable for a test.
 
-        The fuzzer can create commands with behaviour that is
-        non-deterministic, not supported, or which hits redis bugs.
+        The fuzzer can create commands with behavior that is non-deterministic, not supported, or which hits redis bugs.
         """
         N = len(self.args)
         if N == 0:

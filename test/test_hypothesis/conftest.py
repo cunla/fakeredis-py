@@ -12,14 +12,9 @@ from .base import MachineConfig
 if TYPE_CHECKING:
     from test.conftest import ServerDetails
 
-# The differential machines run many command sequences and are slow, so keep
-# the example count tunable for fast local iteration (set
-# FAKEREDIS_HYPOTHESIS_EXAMPLES) while defaulting to a thorough-but-affordable
-# count for CI.
-settings.register_profile(
-    "fakeredis",
-    max_examples=int(os.environ.get("FAKEREDIS_HYPOTHESIS_EXAMPLES", "250")),
-)
+# The differential machines run many command sequences and are slow, so keep the example count tunable for fast local
+# iteration (set FAKEREDIS_HYPOTHESIS_EXAMPLES) while defaulting to a thorough-but-affordable count for CI.
+settings.register_profile("fakeredis", max_examples=int(os.environ.get("FAKEREDIS_HYPOTHESIS_EXAMPLES", "250")))
 settings.load_profile("fakeredis")
 
 
