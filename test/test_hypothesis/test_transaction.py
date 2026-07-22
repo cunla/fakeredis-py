@@ -1,45 +1,48 @@
+import pytest
+
 from .base import (
-    BaseTest,
+    BaseMachine,
     commands,
-    st,
-    keys,
-    values,
-    common_commands,
-    zero_or_more,
-    expires_seconds,
-    expires_ms,
     counts,
+    expires_ms,
+    expires_seconds,
     ints,
+    keys,
+    run_machine,
+    st,
+    values,
+    zero_or_more,
+)
+
+transaction_commands = (
+    commands(st.sampled_from(["multi", "discard", "exec", "unwatch"]))
+    | commands(st.just("watch"), keys)
+    | commands(st.just("append"), keys, values)
+    | commands(st.just("bitcount"), keys)
+    | commands(st.just("bitcount"), keys, values, values)
+    | commands(st.sampled_from(["incr", "decr"]), keys)
+    | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
+    | commands(st.just("get"), keys)
+    | commands(st.just("getbit"), keys, counts)
+    | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | ints)
+    | commands(st.sampled_from(["substr", "getrange"]), keys, counts, counts)
+    | commands(st.just("getset"), keys, values)
+    | commands(st.just("mget"), st.lists(keys))
+    | commands(st.sampled_from(["mset", "msetnx"]), st.lists(st.tuples(keys, values)))
+    | commands(st.just("set"), keys, values, *zero_or_more("nx", "xx", "keepttl"))
+    | commands(st.just("setex"), keys, expires_seconds, values)
+    | commands(st.just("psetex"), keys, expires_ms, values)
+    | commands(st.just("setnx"), keys, values)
+    | commands(st.just("setrange"), keys, counts, values)
+    | commands(st.just("strlen"), keys)
 )
 
 
-class TestTransaction(BaseTest):
-    transaction_commands = (
-        commands(st.sampled_from(["multi", "discard", "exec", "unwatch"]))
-        | commands(st.just("watch"), keys)
-        | commands(st.just("append"), keys, values)
-        | commands(st.just("bitcount"), keys)
-        | commands(st.just("bitcount"), keys, values, values)
-        | commands(st.sampled_from(["incr", "decr"]), keys)
-        | commands(st.sampled_from(["incrby", "decrby"]), keys, values)
-        | commands(st.just("get"), keys)
-        | commands(st.just("getbit"), keys, counts)
-        | commands(st.just("setbit"), keys, counts, st.integers(min_value=0, max_value=1) | ints)
-        | commands(st.sampled_from(["substr", "getrange"]), keys, counts, counts)
-        | commands(st.just("getset"), keys, values)
-        | commands(st.just("mget"), st.lists(keys))
-        | commands(st.sampled_from(["mset", "msetnx"]), st.lists(st.tuples(keys, values)))
-        | commands(
-            st.just("set"),
-            keys,
-            values,
-            *zero_or_more("nx", "xx", "keepttl"),
-        )
-        | commands(st.just("setex"), keys, expires_seconds, values)
-        | commands(st.just("psetex"), keys, expires_ms, values)
-        | commands(st.just("setnx"), keys, values)
-        | commands(st.just("setrange"), keys, counts, values)
-        | commands(st.just("strlen"), keys)
-    )
-    create_command_strategy = commands(st.just("set"), keys, values)
-    command_strategy = transaction_commands | common_commands
+class TransactionMachine(BaseMachine):
+    base_commands = transaction_commands
+    create_commands = commands(st.just("set"), keys, values)
+
+
+@pytest.mark.slow
+def test_transaction(hypothesis_config):
+    run_machine(TransactionMachine, hypothesis_config)

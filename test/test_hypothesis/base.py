@@ -3,18 +3,74 @@ import math
 import operator
 import string
 import sys
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Tuple
 
-import hypothesis
-import hypothesis.stateful
 import hypothesis.strategies as st
 import pytest
 import redis
-from hypothesis.stateful import rule, initialize, precondition
+import valkey
+from hypothesis import settings
+from hypothesis.stateful import RuleBasedStateMachine, initialize, precondition, rule, run_state_machine_as_test
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from ._server_info import redis_ver, floats_kwargs, server_type
+
+# ---------------------------------------------------------------------------
+# Runtime configuration
+#
+# Hypothesis state machines and strategies cannot receive pytest fixtures, so
+# the ``hypothesis_config`` fixture (see conftest.py) hands the server details
+# to ``run_machine``, which publishes them here for the duration of a single
+# machine run. Strategies read this lazily (at draw time), so importing this
+# module never touches the network.
+# ---------------------------------------------------------------------------
+
+_REAL_CLIENT_CLASSES = {
+    "redis": redis.StrictRedis,
+    "dragonfly": redis.StrictRedis,
+    "valkey": valkey.StrictValkey,
+}
+_FAKE_CLIENT_CLASSES = {
+    "redis": fakeredis.FakeStrictRedis,
+    "dragonfly": fakeredis.FakeStrictRedis,
+    "valkey": fakeredis.FakeValkey,
+}
+
+
+@dataclass
+class MachineConfig:
+    """Everything a state machine needs to talk to both servers."""
+
+    server_type: str
+    version: Tuple[int, ...]
+    host: str = "localhost"
+    port: int = 6390
+    db: int = 2
+
+    def make_real_client(self) -> redis.Redis:
+        cls = _REAL_CLIENT_CLASSES.get(self.server_type, redis.StrictRedis)
+        return cls(self.host, port=self.port, db=self.db)
+
+    def make_fake_client(self) -> redis.Redis:
+        cls = _FAKE_CLIENT_CLASSES.get(self.server_type, fakeredis.FakeStrictRedis)
+        server = fakeredis.FakeServer(server_type=self.server_type, version=self.version)
+        return cls(server=server, db=self.db)
+
+
+_active_config: MachineConfig | None = None
+
+
+def _server_version() -> Tuple[int, ...]:
+    return _active_config.version if _active_config is not None else (7,)
+
+
+def _floats_kwargs() -> dict:
+    # Dragonfly rejects the float edge cases that Redis accepts.
+    if _active_config is not None and _active_config.server_type == "dragonfly":
+        return {"allow_nan": False, "allow_subnormal": False, "allow_infinity": False}
+    return {}
+
 
 self_strategy = st.runner()
 
@@ -36,7 +92,9 @@ scores = sample_attr("scores")
 eng_text = st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1))
 ints = st.integers(min_value=-2_147_483_648, max_value=2_147_483_647)
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), ints)
-floats = st.floats(width=32, **floats_kwargs)
+# ``floats`` is deferred so the dragonfly-specific exclusions resolve at draw
+# time from the active config rather than at import time.
+floats = st.deferred(lambda: st.floats(width=32, **_floats_kwargs()))
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), floats)
 counts = st.integers(min_value=-3, max_value=3) | ints
 # Redis has an integer overflow bug in swapdb, so we confine the numbers to
@@ -65,15 +123,7 @@ class WrappedException:
     def __eq__(self, other):
         if not isinstance(other, WrappedException):
             return NotImplemented
-        if type(self.wrapped) != type(other.wrapped):  # noqa: E721
-            return False
-        return True
-        # return self.wrapped.args == other.wrapped.args
-
-    def __ne__(self, other):
-        if not isinstance(other, WrappedException):
-            return NotImplemented
-        return not self == other
+        return type(self.wrapped) is type(other.wrapped)
 
 
 def wrap_exceptions(obj):
@@ -111,9 +161,8 @@ def flatten(args):
 
 
 def default_normalize(x: Any) -> Any:
-    if redis_ver >= (7,) and (isinstance(x, float) or isinstance(x, int)):
+    if _server_version() >= (7,) and isinstance(x, (int, float)):
         return 0 + x
-
     return x
 
 
@@ -205,21 +254,28 @@ common_commands = (
 )
 
 
-@hypothesis.settings(max_examples=1000)
-class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
-    create_command_strategy = st.nothing()
+class BaseMachine(RuleBasedStateMachine):
+    """Fuzzes command sequences, asserting fake and real servers agree.
+
+    Subclasses provide the strategy building blocks below; ``run_machine``
+    binds a :class:`MachineConfig` and executes the machine as a test.
+    """
+
+    #: Commands exercised against every server.
+    base_commands: SearchStrategy = st.nothing()
+    #: Commands used to populate initial data before the main rules run.
+    create_commands: SearchStrategy = st.nothing()
+    #: Commands only real Redis (not valkey/dragonfly) supports.
+    redis_only_commands: SearchStrategy = st.nothing()
+    #: Commands only Redis 7+ supports.
+    redis7_commands: SearchStrategy = st.nothing()
 
     def __init__(self):
         super().__init__()
-        try:
-            self.real = redis.StrictRedis("localhost", port=6390, db=2)
-            self.real.ping()
-        except redis.ConnectionError:
-            pytest.skip("redis is not running")
-        if self.real.info("server").get("arch_bits") != 64:
-            self.real.connection_pool.disconnect()
-            pytest.skip("redis server is not 64-bit")
-        self.fake = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer(version=redis_ver), port=6390, db=2)
+        config = _active_config
+        assert config is not None, "BaseMachine must be run via run_machine()"
+        self.real = config.make_real_client()
+        self.fake = config.make_fake_client()
         # Disable the response parsing so that we can check the raw values returned
         self.fake.response_callbacks.clear()
         self.real.response_callbacks.clear()
@@ -234,6 +290,15 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         except redis.ResponseError:
             pass
         self.real.flushall()
+
+        # Resolve the command strategies for this server once, up front. The
+        # rules below read these instance attributes at draw time.
+        self.create_command_strategy = self.create_commands
+        self.command_strategy = self.base_commands | common_commands
+        if config.server_type == "redis":
+            self.command_strategy |= self.redis_only_commands
+            if config.version >= (7,):
+                self.command_strategy |= self.redis7_commands
 
     def teardown(self):
         self.real.connection_pool.disconnect()
@@ -321,24 +386,11 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         self._compare(command)
 
 
-class BaseTest:
-    """Base class for test classes."""
-
-    command_strategy: SearchStrategy
-    create_command_strategy = st.nothing()
-    command_strategy_redis7 = st.nothing()
-    command_strategy_redis_only = st.nothing()
-
-    @pytest.mark.slow
-    def test(self):
-        class Machine(CommonMachine):
-            create_command_strategy = self.create_command_strategy
-            command_strategy = self.command_strategy
-            if server_type == "redis":
-                command_strategy = command_strategy | self.command_strategy_redis_only
-            if server_type == "redis" and redis_ver >= (7,):
-                command_strategy = command_strategy | self.command_strategy_redis7
-
-        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        # hypothesis.settings.load_profile("debug")
-        hypothesis.stateful.run_state_machine_as_test(Machine)
+def run_machine(machine_cls: type[BaseMachine], config: MachineConfig) -> None:
+    """Run ``machine_cls`` as a Hypothesis test against ``config``'s servers."""
+    global _active_config
+    _active_config = config
+    try:
+        run_state_machine_as_test(machine_cls, settings=settings())
+    finally:
+        _active_config = None
