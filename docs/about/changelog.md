@@ -7,6 +7,13 @@ tags:
 toc_depth: 2
 ---
 
+## v2.37.1 - 
+
+### 🐛 Bug Fixes
+
+- fix: honor the `FILTER-EF` (max filtering effort) option in `VSIM` — the value was previously parsed but ignored, so a
+  low `FILTER-EF` could return filter matches that real Redis skips
+
 ## v2.37.0 - 2026-07-22
 
 ### 🚀 Features
