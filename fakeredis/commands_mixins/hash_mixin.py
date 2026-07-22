@@ -368,6 +368,8 @@ def _get_fields(args: Sequence[bytes], with_values: bool = False, command: str =
 
 
 def _get_when_ms(ex: Optional[int], px: Optional[int], exat: Optional[int], pxat: Optional[int]) -> Optional[int]:
+    if any(value is not None and value < 0 for value in (ex, px, exat, pxat)):
+        raise SimpleError(msgs.HEXPIRE_INVALID_TIME_MSG)
     if ex is not None:
         when_ms = current_time() + ex * 1000
     elif px is not None:

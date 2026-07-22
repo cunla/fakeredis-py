@@ -541,6 +541,8 @@ class BaseFakeSocket:
         """
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
+        if count is not None and count <= 0:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()

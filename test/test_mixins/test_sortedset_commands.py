@@ -1319,3 +1319,43 @@ def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     with pytest.raises(redis.ResponseError):
         r.sort("B")
     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == []
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_count_not_positive(r: ClientType):
+    r.zadd("foo", {"a": 1, "b": 2})
+    for count in (0, -1):
+        with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+            testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", count)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+        testtools.raw_command(r, "bzmpop", 0.01, 1, "foo", "MIN", "COUNT", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # nothing should have been popped
+    assert r.zcard("foo") == 2
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_numkeys_not_positive(r: ClientType):
+    r.zadd("foo", {"a": 1})
+    for numkeys in (0, -1):
+        with pytest.raises(Exception, match="numkeys should be greater than 0") as ctx:
+            testtools.raw_command(r, "zmpop", numkeys, "foo", "MIN")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_too_few_arguments(r: ClientType):
+    for args in (("zmpop", 1), ("zmpop", 1, "foo"), ("bzmpop", 0.01, 1, "foo")):
+        with pytest.raises(Exception, match="wrong number of arguments") as ctx:
+            testtools.raw_command(r, *args)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_bzpopmin_bzpopmax_negative_timeout(r: ClientType):
+    r.zadd("foo", {"m": 1})
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.bzpopmin("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.bzpopmax("foo", timeout=-1)
+    assert r.zcard("foo") == 1

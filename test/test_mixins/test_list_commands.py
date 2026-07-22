@@ -724,3 +724,59 @@ def test_lmpop(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("bar", "a", "b", "c", "d")
     assert r.lmpop("2", "bar", "foo", direction="LEFT") == [b"bar", [b"a"]]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_count_not_positive(r: ClientType):
+    r.rpush("foo", "a", "b")
+    for count in (0, -1):
+        with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+            testtools.raw_command(r, "lmpop", 1, "foo", "LEFT", "COUNT", count)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+        testtools.raw_command(r, "blmpop", 0.01, 1, "foo", "LEFT", "COUNT", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # nothing should have been popped
+    assert r.lrange("foo", 0, -1) == [b"a", b"b"]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_numkeys_not_positive(r: ClientType):
+    r.rpush("foo", "a")
+    for numkeys in (0, -1):
+        with pytest.raises(Exception, match="numkeys should be greater than 0") as ctx:
+            testtools.raw_command(r, "lmpop", numkeys, "foo", "LEFT")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_too_few_arguments(r: ClientType):
+    for args in (("lmpop", 1), ("lmpop", 1, "foo"), ("lmpop", 0, "LEFT"), ("blmpop", 0.01, 1, "foo")):
+        with pytest.raises(Exception, match="wrong number of arguments") as ctx:
+            testtools.raw_command(r, *args)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_lpos_negative_count_or_maxlen(r: ClientType):
+    r.rpush("foo", "a", "b", "a")
+    with pytest.raises(Exception, match="COUNT can't be negative") as ctx:
+        r.lpos("foo", "a", count=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="MAXLEN can't be negative") as ctx:
+        r.lpos("foo", "a", count=0, maxlen=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_blocking_list_commands_negative_timeout(r: ClientType):
+    r.rpush("foo", "a")
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.blpop("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.brpop("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.brpoplpush("foo", "bar", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.blmove("foo", "bar", timeout=-1)
+    # nothing should have been popped or moved
+    assert r.lrange("foo", 0, -1) == [b"a"]
+    assert r.exists("bar") == 0
