@@ -2,7 +2,7 @@ import functools
 from typing import Callable, List, Optional, Sequence, Union, Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
+from fakeredis._command_args_parsing import extract_args, parse_mpop_args
 from fakeredis._commands import Key, command, Int, CommandItem, Timeout, fix_range
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
@@ -178,33 +178,15 @@ class ListCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(Int,), repeat=(bytes,))
     def lmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        if numkeys <= 0:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b"count"):
-            count = Int.decode(args[-1])
-            args = args[:-2]
-        else:
-            count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b"left") and not casematch(args[-1], b"right")):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
-        return self._lmpop(args[:-1], count, casematch(args[-1], b"left"), False)
+        keys, count, left = parse_mpop_args("lmpop", numkeys, args, ("left", "right"))
+        return self._lmpop(keys, count, left, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def blmpop(self, timeout: float, numkeys: int, *args: bytes) -> Any:
-        if numkeys <= 0:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
-        if casematch(args[-2], b"count"):
-            count = Int.decode(args[-1])
-            args = args[:-2]
-        else:
-            count = 1
-        if len(args) != numkeys + 1 or (not casematch(args[-1], b"left") and not casematch(args[-1], b"right")):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
+        keys, count, left = parse_mpop_args("blmpop", numkeys, args, ("left", "right"))
         return self._blocking(
             timeout,
-            functools.partial(self._lmpop, args[:-1], count, casematch(args[-1], b"left")),
+            functools.partial(self._lmpop, keys, count, left),
         )
 
     @command((Key(list), bytes), (bytes,))
@@ -303,6 +285,10 @@ class ListCommandsMixin(CommandsMixinBase):
         )
         if rank == 0:
             raise SimpleError(msgs.LPOS_RANK_CAN_NOT_BE_ZERO)
+        if count is not None and count < 0:
+            raise SimpleError(msgs.LPOS_COUNT_NEGATIVE_MSG)
+        if maxlen is not None and maxlen < 0:
+            raise SimpleError(msgs.LPOS_MAXLEN_NEGATIVE_MSG)
         rank = rank or 1
         ind, direction = (0, 1) if rank > 0 else (len(key.value) - 1, -1)
         rank = abs(rank)

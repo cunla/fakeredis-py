@@ -135,3 +135,25 @@ def extract_args(
             left_args.append(actual_args[i])
         i += 1
     return results, left_args
+
+
+def parse_mpop_args(
+    command: str, numkeys: int, args: Tuple[bytes, ...], directions: Tuple[str, str]
+) -> Tuple[Sequence[bytes], int, bool]:
+    """Validate the LMPOP/BLMPOP/ZMPOP/BZMPOP tail: keys, a direction token, optional COUNT.
+
+    `args` is ``key [key ...] <directions[0] | directions[1]> [COUNT count]``.
+    Returns (keys, count, whether ``directions[0]`` was the chosen direction).
+    """
+    if len(args) < 2:  # arity (at least one key + a direction) is checked before numkeys, like real redis
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+    if numkeys <= 0:
+        raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+    (count, first, second), keys = extract_args(
+        args, ("+count", *directions), error_on_unexpected=False, left_from_first_unexpected=False
+    )
+    if len(keys) != numkeys or first == second:  # exactly one direction, and it follows exactly `numkeys` keys
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if count is not None and count <= 0:
+        raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+    return keys, 1 if count is None else count, first

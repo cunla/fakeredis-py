@@ -240,3 +240,22 @@ def test_hsetex_invalid_inputs(r: ClientType):
 
     with pytest.raises(exceptions.DataError):
         r.hsetex("b", "foo", "bar", ex=10, keepttl=True)
+
+
+def test_hgetex_negative_expiration_rejected(r: ClientType):
+    r.hset("test:hash", "foo", "bar")
+    r.hexpire("test:hash", 100, "foo")
+    for option, value in (("EX", -1), ("PX", -1), ("EXAT", -1), ("PXAT", -1)):
+        with pytest.raises(exceptions.ResponseError, match="invalid expire time"):
+            r.execute_command("HGETEX", "test:hash", option, value, "FIELDS", "1", "foo")
+    # the field and its TTL must survive
+    assert r.hget("test:hash", "foo") == b"bar"
+    assert r.httl("test:hash", "foo")[0] > 0
+
+
+def test_hsetex_negative_expiration_rejected(r: ClientType):
+    r.hset("test:hash", "foo", "bar")
+    for option, value in (("EX", -1), ("PX", -1), ("EXAT", -1), ("PXAT", -1)):
+        with pytest.raises(exceptions.ResponseError, match="invalid expire time"):
+            r.execute_command("HSETEX", "test:hash", option, value, "FIELDS", "1", "foo", "new")
+    assert r.hget("test:hash", "foo") == b"bar"

@@ -529,3 +529,28 @@ def test_psetex_expire_value_using_timedelta(r: ClientType):
     r.psetex("foo", timedelta(seconds=0.5), "bar")
     sleep(1.5)
     assert r.get("foo") is None
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_numkeys_not_positive(r: ClientType):
+    r.sadd("foo", "member1")
+    for numkeys in (0, -1):
+        with pytest.raises(Exception, match="numkeys should be greater than 0") as ctx:
+            testtools.raw_command(r, "sintercard", numkeys, "foo")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_numkeys_greater_than_keys(r: ClientType):
+    r.sadd("foo", "member1")
+    with pytest.raises(Exception, match="Number of keys can't be greater than number of args") as ctx:
+        testtools.raw_command(r, "sintercard", 9, "foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_spop_negative_count(r: ClientType):
+    r.sadd("foo", "member1")
+    with pytest.raises(Exception, match="value is out of range, must be positive") as ctx:
+        r.spop("foo", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.scard("foo") == 1
