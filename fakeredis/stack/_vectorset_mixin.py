@@ -201,6 +201,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         vector_set: VectorSet = key.value
         vector: Optional[Vector] = None  # The vector to compare against.
         with_scores, with_attributes, count, epsilon, filter_expression = False, False, 10, None, None
+        filter_ef: Optional[int] = None
         i = 0
         while i < len(args):
             if casematch(args[i], b"ele") and i + 1 < len(args):
@@ -246,7 +247,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
                 filter_expression = args[i + 1]
                 i += 2
             elif casematch(args[i], b"filter-ef") and i + 1 < len(args):
-                filter_expression_ef = args[i + 1]  # noqa: F841
+                filter_ef = int(args[i + 1])
                 i += 2
             elif casematch(args[i], b"truth"):
                 i += 1
@@ -257,7 +258,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res = vector_set.top_similar(vector, filter_expression, count, epsilon)
+        res = vector_set.top_similar(vector, filter_expression, count, epsilon, filter_ef)
         if with_scores and with_attributes:
             if self._client_info.protocol_version == 2:
                 return list(itertools.chain.from_iterable([[k.name, v, k.attributes] for k, v in res.items()]))

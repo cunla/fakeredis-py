@@ -233,39 +233,61 @@ class VectorSet:
         filter_expression: Optional[bytes],
         count: int,
         epsilon: Optional[float],
+        filter_ef: Optional[int] = None,
     ) -> "OrderedDict[Vector, float]":
-        """Return top-k most similar vectors using a single batched matrix operation."""
-        candidates = self.accept_filter(filter_expression)
-        if not candidates:
+        """Return the top-``count`` most similar vectors to ``query``.
+
+        Vectors are examined in best-first order (most similar first), mimicking the
+        exploration order of an HNSW search. When a ``filter_expression`` is supplied,
+        ``filter_ef`` bounds the *filtering effort*: at most that many vectors are
+        examined while looking for matches. Redis defaults this to ``count * 100`` and
+        treats ``0`` as unlimited. A small ``filter_ef`` may therefore miss matches
+        that lie far from the query vector, exactly as real Redis does.
+        """
+        all_vectors = list(self._vectors.values())
+        if not all_vectors:
             return OrderedDict()
-        arr_matrix = np.stack([v._arr for v in candidates])  # (n, d) float32
-        norms = np.array([v.l2_norm for v in candidates], dtype=np.float64) * query.l2_norm
+        arr_matrix = np.stack([v._arr for v in all_vectors])  # (n, d) float32
+        norms = np.array([v.l2_norm for v in all_vectors], dtype=np.float64) * query.l2_norm
         dots = (arr_matrix @ query._arr).astype(np.float64)  # one BLAS gemv call
         valid = norms > 0
         cosine = np.where(valid, dots / np.where(valid, norms, 1.0), 0.0)
         scores = (1.0 + cosine) / 2.0
-        if epsilon is not None:
-            mask = scores >= 1.0 - epsilon
-            candidates = [v for v, keep in zip(candidates, mask) if keep]
-            scores = scores[mask]
-        n = len(candidates)
-        if n == 0:
-            return OrderedDict()
-        k = min(count, n)
-        if k < n:
-            top_idx = np.argpartition(scores, -k)[-k:]
-            top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
-        else:
-            top_idx = np.argsort(scores)[::-1]
-        return OrderedDict((candidates[i], float(scores[i])) for i in top_idx)
+        # Best-first exploration order: most similar candidate first.
+        order = np.argsort(scores)[::-1]
 
-    def accept_filter(self, filter_expression: Optional[bytes]) -> List[Vector]:
+        parsed_filter = None if filter_expression is None else _parse_jsonfilter(filter_expression)
         if filter_expression is None:
-            return list(self._vectors.values())
-        parsed_expression = _parse_jsonfilter(filter_expression)
-        res = [
-            i
-            for i in self._vectors.values()
-            if i.attributes is not None and (len(parsed_expression.find([json.loads(i.attributes)])) > 0)
-        ]
-        return res
+            max_effort = len(all_vectors)  # exact search when unfiltered
+        elif filter_ef is None:
+            max_effort = count * 100  # Redis default filtering effort
+        elif filter_ef <= 0:
+            max_effort = len(all_vectors)  # 0 means unlimited effort
+        else:
+            max_effort = filter_ef
+        threshold = None if epsilon is None else 1.0 - epsilon
+
+        results: "OrderedDict[Vector, float]" = OrderedDict()
+        examined = 0
+        for idx in order:
+            if examined >= max_effort:
+                break
+            examined += 1
+            vector = all_vectors[idx]
+            if not self._passes_filter(vector, parsed_filter):
+                continue
+            score = float(scores[idx])
+            if threshold is not None and score < threshold:
+                continue
+            results[vector] = score
+            if len(results) >= count:
+                break
+        return results
+
+    @staticmethod
+    def _passes_filter(vector: Vector, parsed_filter: Optional[JSONPath]) -> bool:
+        if parsed_filter is None:
+            return True
+        if vector.attributes is None:
+            return False
+        return len(parsed_filter.find([json.loads(vector.attributes)])) > 0
