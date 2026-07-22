@@ -636,12 +636,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(Int,), repeat=(bytes,))
     def zmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, (b"max", b"min"))
+        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"))
         return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, (b"max", b"min"))
+        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"))
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
             functools.partial(self._zmpop, keys, count, reverse),

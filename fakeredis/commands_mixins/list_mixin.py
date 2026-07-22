@@ -178,12 +178,12 @@ class ListCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(Int,), repeat=(bytes,))
     def lmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
-        keys, count, left = parse_mpop_args("lmpop", numkeys, args, (b"left", b"right"))
+        keys, count, left = parse_mpop_args("lmpop", numkeys, args, ("left", "right"))
         return self._lmpop(keys, count, left, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def blmpop(self, timeout: float, numkeys: int, *args: bytes) -> Any:
-        keys, count, left = parse_mpop_args("blmpop", numkeys, args, (b"left", b"right"))
+        keys, count, left = parse_mpop_args("blmpop", numkeys, args, ("left", "right"))
         return self._blocking(
             timeout,
             functools.partial(self._lmpop, keys, count, left),

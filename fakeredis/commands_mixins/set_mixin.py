@@ -83,7 +83,7 @@ class SetCommandsMixin(CommandsMixinBase):
             args = args[:-2]
         if numkeys > len(args):
             raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
-        if numkeys != len(args):
+        elif numkeys < len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
 
