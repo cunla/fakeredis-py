@@ -23,7 +23,7 @@ limit_offsets = st.integers(min_value=0, max_value=3) | st.integers(min_value=0,
 limits = st.just(()) | st.tuples(st.just("limit"), limit_offsets, counts)
 score_tests = scores | st.builds(lambda x: b"(" + repr(x).encode(), scores)
 zset_no_score_create_commands = commands(st.just("zadd"), keys, st.lists(st.tuples(st.just(0), fields), min_size=1))
-zset_no_score_commands = (  # TODO: test incr
+zset_no_score_commands = (
     commands(
         st.just("zadd"),
         keys,
