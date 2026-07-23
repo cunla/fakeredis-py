@@ -71,6 +71,7 @@ zset_commands = (
     | commands(st.just("zremrangebyrank"), keys, counts, counts)
     | commands(st.just("zremrangebyscore"), keys, score_tests, score_tests)
     | commands(st.just("zscore"), keys, fields)
+    | commands(st.sampled_from(["zpopmin", "zpopmax"]), keys, st.none() | counts)
     | st.builds(
         build_zstore,
         command=st.sampled_from(["zunionstore", "zinterstore"]),
@@ -83,7 +84,7 @@ zset_commands = (
 
 
 class ZSetMachine(BaseMachine):
-    # TODO: zscan, zpopmin/zpopmax, bzpopmin/bzpopmax, probably more
+    # TODO: zscan, bzpopmin/bzpopmax, probably more
     base_commands = zset_commands
     create_commands = commands(st.just("zadd"), keys, st.lists(st.tuples(scores, fields), min_size=1))
 
