@@ -19,7 +19,7 @@ that is used for the `COMMAND` redis command.
 
 import json
 import os
-from typing import Any, List, Dict
+from typing import Any, Dict, List
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
@@ -81,10 +81,10 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
     first_key = dict_deep_get(cmd_info, "key_specs", 0, "begin_search", "spec", "index", default_value=0)
     last_key = dict_deep_get(cmd_info, "key_specs", -1, "begin_search", "spec", "index", default_value=0)
     step = dict_deep_get(cmd_info, "key_specs", 0, "find_keys", "spec", "keystep", default_value=0)
-    tips = []  # todo
+    tips = []
     subcommands = [
         get_command_info(cmd, all_commands) for cmd in all_commands if cmd_name != cmd and cmd.startswith(cmd_name)
-    ]  # todo
+    ]
     categories = set(cmd_info.get("acl_categories", []))
     for prefix, category in CATEGORIES.items():
         if cmd_name.startswith(prefix.lower()):
