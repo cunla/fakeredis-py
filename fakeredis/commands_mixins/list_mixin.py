@@ -1,9 +1,9 @@
 import functools
-from typing import Callable, List, Optional, Sequence, Union, Any
+from typing import Any, Callable, List, Optional, Sequence, Union
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args, parse_mpop_args
-from fakeredis._commands import Key, command, Int, CommandItem, Timeout, fix_range
+from fakeredis._commands import CommandItem, Int, Key, Timeout, command, fix_range
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -245,8 +245,8 @@ class ListCommandsMixin(CommandsMixinBase):
         if key:
             end: Optional[int] = None if stop == -1 else stop + 1
             new_value = key.value[start:end]
-            # Redis signals the key as modified even for a no-op trim (see
-            # test_watch_when_ltrim_does_not_change_value), so always update.
+            # Redis signals the key as modified even for a no-op trim (see test_watch_when_ltrim_does_not_change_value),
+            # so always update.
             key.update(new_value)
         return OK
 
