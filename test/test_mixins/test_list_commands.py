@@ -294,6 +294,20 @@ def test_ltrim_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+def test_watch_when_ltrim_does_not_change_value(r: ClientType):
+    # Redis signals the key as modified for every LTRIM on an existing key,
+    # even a no-op trim that removes no elements. A WATCH on the key must
+    # therefore be invalidated, aborting the transaction.
+    r.rpush("foo", "one", "two", "three")
+
+    with r.pipeline() as p:
+        p.watch("foo")
+        assert r.ltrim("foo", 0, -1)  # no elements removed, list is unchanged
+        assert p.multi() is None
+        with pytest.raises((redis.WatchError, valkey.WatchError)):
+            p.execute()
+
+
 def test_lindex(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")

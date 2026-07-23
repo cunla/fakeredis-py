@@ -245,9 +245,9 @@ class ListCommandsMixin(CommandsMixinBase):
         if key:
             end: Optional[int] = None if stop == -1 else stop + 1
             new_value = key.value[start:end]
-            # TODO: check if this should actually be conditional
-            if len(new_value) != len(key.value):
-                key.update(new_value)
+            # Redis signals the key as modified even for a no-op trim (see
+            # test_watch_when_ltrim_does_not_change_value), so always update.
+            key.update(new_value)
         return OK
 
     @command(fixed=(Key(),), repeat=(bytes,))
