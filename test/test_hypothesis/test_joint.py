@@ -1,13 +1,13 @@
-import hypothesis.strategies as st
+import pytest
 
-from .test_connection import TestConnection as _TestConnection
-from .test_server import TestServer as _TestServer
-from .test_zset import TestZSet as _TestZSet
-from .test_set import TestSet as _TestSet
-from .test_list import TestList as _TestList
-from .test_hash import TestHash as _TestHash
-from .base import BaseTest, common_commands, commands
-from .test_string import TestString as _TestString, string_commands
+from .base import BaseMachine, commands, run_machine, st
+from .test_connection import connection_commands
+from .test_hash import HashMachine, hash_commands
+from .test_list import ListMachine, list_commands
+from .test_server import server_commands
+from .test_set import SetMachine, set_commands
+from .test_string import StringMachine, string_commands
+from .test_zset import ZSetMachine, zset_commands
 
 bad_commands = (
     # redis-py splits the command on spaces, and hangs if that ends up being an empty list
@@ -15,22 +15,26 @@ bad_commands = (
 )
 
 
-class TestJoint(BaseTest):
-    create_command_strategy = (
-        _TestString.create_command_strategy
-        | _TestHash.create_command_strategy
-        | _TestList.create_command_strategy
-        | _TestSet.create_command_strategy
-        | _TestZSet.create_command_strategy
-    )
-    command_strategy = (
-        _TestServer.server_commands
-        | _TestConnection.connection_commands
+class JointMachine(BaseMachine):
+    base_commands = (
+        server_commands
+        | connection_commands
         | string_commands
-        | _TestHash.hash_commands
-        | _TestList.list_commands
-        | _TestSet.set_commands
-        | _TestZSet.zset_commands
-        | common_commands
+        | hash_commands
+        | list_commands
+        | set_commands
+        | zset_commands
         | bad_commands
     )
+    create_commands = (
+        StringMachine.create_commands
+        | HashMachine.create_commands
+        | ListMachine.create_commands
+        | SetMachine.create_commands
+        | ZSetMachine.create_commands
+    )
+
+
+@pytest.mark.slow
+def test_joint(hypothesis_config):
+    run_machine(JointMachine, hypothesis_config)

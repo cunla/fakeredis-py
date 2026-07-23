@@ -86,16 +86,22 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     _encodefloat: Callable[[float, bool], bytes]
 
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[List[Any]]:
+        if count < 0:
+            raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
         zset = key.value
         members = list(zset)
         if reverse:
             members.reverse()
         members = members[:count]
         res = [[bytes(member), zset.get(member)] for member in members]
-        if flatten_list and self._client_info.protocol_version == 2:
+        if flatten_list:
             res = list(itertools.chain.from_iterable(res))
         for item in members:
             zset.discard(item)
+        if members:
+            # Mark dirty so the key is written back and removed once the set is
+            # empty (real Redis deletes a sorted set when its last member is popped).
+            key.updated()
         return res
 
     def _bzpop(self, keys: List[bytes], reverse: bool, first_pass: bool) -> Optional[List[Union[bytes, List[bytes]]]]:
@@ -103,16 +109,23 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse, flatten_list=False)
             if temp_res:
+                item.writeback()  # remove the key if the set is now empty
                 return [key, temp_res[0][0], temp_res[0][1]]
         return None
 
-    @command((Key(ZSet),), (Int,))
-    def zpopmin(self, key: CommandItem, count: int = 1) -> List[List[bytes]]:
-        return self._zpop(key, count, reverse=False, flatten_list=True)
+    def _zpop_flatten(self, count: Optional[int]) -> bool:
+        # RESP2 always returns a flat list. RESP3 returns a flat member/score pair
+        # only when no count was given; with an explicit count it returns an array
+        # of pairs.
+        return self._client_info.protocol_version == 2 or count is None
 
     @command((Key(ZSet),), (Int,))
-    def zpopmax(self, key: CommandItem, count: int = 1) -> List[List[bytes]]:
-        return self._zpop(key, count, reverse=True, flatten_list=True)
+    def zpopmin(self, key: CommandItem, count: Optional[int] = None) -> List[Any]:
+        return self._zpop(key, 1 if count is None else count, reverse=False, flatten_list=self._zpop_flatten(count))
+
+    @command((Key(ZSet),), (Int,))
+    def zpopmax(self, key: CommandItem, count: Optional[int] = None) -> List[Any]:
+        return self._zpop(key, 1 if count is None else count, reverse=True, flatten_list=self._zpop_flatten(count))
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmin(self, *args: bytes) -> Optional[List[List[bytes]]]:
@@ -631,6 +644,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             res = self._zpop(item, count, reverse, flatten_list=False)
             if res:
+                item.writeback()  # remove the key if the set is now empty
                 return [key, res]
         return None
 

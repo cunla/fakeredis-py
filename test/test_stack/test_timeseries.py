@@ -339,7 +339,7 @@ def test_range(r: redis.Redis):
     assert range_with_count_result[0] == resp_conversion(r, [0, 0], (0, 0))
 
     # last sample isn't returned
-    # assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)) TODO
+    assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10))
 
 
 def test_range_advanced(r: redis.Redis):

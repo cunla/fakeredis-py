@@ -304,16 +304,14 @@ def test_vsim_with_filter(r: ClientType):
     assert len(sim) == 0
     assert isinstance(sim, list)
 
-    # todo filter_ef
-
-    # sim = r.vset().vsim(
-    #     "myset",
-    #     input="elem_1",
-    #     filter=".index > 28 and .elem_name in ['elem_12', 'elem_17', 'elem_special']",
-    #     filter_ef=1,
-    # )
-    # assert len(sim) == 0, f"Expected 0 results, but got {len(sim)} with filter_ef=1, sim: {sim}"
-    # assert isinstance(sim, list)
+    sim = r.vset().vsim(
+        "myset",
+        input="elem_1",
+        filter=".index > 28 and .elem_name in ['elem_12', 'elem_17', 'elem_special']",
+        filter_ef=1,
+    )
+    assert len(sim) == 0, f"Expected 0 results, but got {len(sim)} with filter_ef=1, sim: {sim}"
+    assert isinstance(sim, list)
 
     sim = r.vset().vsim(
         "myset",

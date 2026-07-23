@@ -7,7 +7,19 @@ tags:
 toc_depth: 2
 ---
 
-## v2.37.0 -
+## v2.37.1 - 
+
+### 🐛 Bug Fixes
+
+- fix: honor the `FILTER-EF` (max filtering effort) option in `VSIM` — the value was previously parsed but ignored, so a
+  low `FILTER-EF` could return filter matches that real Redis skips
+- fix: `ZPOPMIN`/`ZPOPMAX` in RESP3 now return a flat `[member, score]` pair when no count is given (an array of pairs is
+  only returned when an explicit count is passed), matching real Redis
+- fix: `ZPOPMIN`/`ZPOPMAX` now reject a negative count with `value is out of range, must be positive`
+- fix: `ZPOPMIN`/`ZPOPMAX`/`BZPOPMIN`/`BZPOPMAX`/`ZMPOP`/`BZMPOP` now delete the sorted set key once its last member is
+  popped
+
+## v2.37.0 - 2026-07-22
 
 ### 🚀 Features
 
