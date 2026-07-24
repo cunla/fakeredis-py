@@ -32,7 +32,6 @@ import redis
 r = redis.Redis(host=server_address[0], port=server_address[1])
 r.set("foo", "bar")
 assert r.get("foo") == b"bar"
-
 ```
 
 To call Dragonfly specific commands, which are not implemented in the redis-py client, you can use the
@@ -45,7 +44,6 @@ client = FakeRedis(server_type="dragonfly")
 client.sadd("key", "value")
 # The SADDEX command is not implemented in redis-py
 client.execute_command("SADDEX", 10, "key", "value")
-
 ```
 
 [1]: https://www.dragonflydb.io/
