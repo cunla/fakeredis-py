@@ -138,7 +138,7 @@ exclude = [".venv", "test", "__pycache__"]
 [tool.ruff]
 line-length = 120
 exclude = ['.venv', '__pycache__']
-target-version = "py311"
+target-version = "py39"
 
 [tool.ruff.format]
 quote-style = "double"
