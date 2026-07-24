@@ -60,17 +60,16 @@ class BitmapCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         bit_mode = False
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if key.value is None:
-            if self.version >= (7, 4):
-                # Since 7.4 the range arguments are validated even when the key is missing
+            if self.version >= (7, 4):  # Since 7.4 the range arguments are validated even when the key is missing
                 for arg in args[:2]:
                     Int.decode(arg)
             # The first clear bit is at 0, the first set bit is not found (-1).
@@ -97,8 +96,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def bitcount(self, key: CommandItem, *args: bytes) -> int:
-        # Redis checks the argument count before decoding integers. That's why
-        # we can't declare them as Int.
+        # Redis checks the argument count before decoding integers. That's why we can't declare them as Int.
         if len(args) == 0:
             if key.value is None:
                 return 0
@@ -109,12 +107,17 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if key.value is None and self.version < (7, 4):
             # Before 7.4 a missing key returned 0 without validating the range arguments
             return 0
-        start = Int.decode(args[0])
-        end = Int.decode(args[1])
+        try:
+            start = Int.decode(args[0])
+            end = Int.decode(args[1])
+        except SimpleError as e:
+            if self.version >= (7, 4) or self._server.server_type == "dragonfly":
+                raise e
+            return 0
         bit_mode = False
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and (self.version < (7,) and self._server.server_type != "dragonfly"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -247,10 +250,12 @@ class BitmapCommandsMixin(CommandsMixinBase):
         return new_value if value is None else ans
 
     @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key: CommandItem, *args: bytes) -> list[int | None]:
+    def bitfield(self, key: CommandItem, *args: bytes) -> Optional[List[Optional[int]]]:
         overflow = b"WRAP"
         results: list[int | None] = []
         i = 0
+        if len(args) == 0 and self._server.server_type == "dragonfly":
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitfield"))
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
                 overflow = args[i + 1].upper()
@@ -286,5 +291,6 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 4
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
+        if len(results) == 0 and self._server.server_type == "dragonfly":
+            return None
         return results

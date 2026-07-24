@@ -342,7 +342,7 @@ def test_eval_call_bool7_redis(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-@pytest.mark.unsupported_server_types("redis")
+@pytest.mark.unsupported_server_types("redis", "dragonfly")
 def test_eval_call_bool7_valkey(r: ClientType):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(Exception) as exc_info:
