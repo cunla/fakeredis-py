@@ -1,11 +1,11 @@
 import time
-from typing import Any, List
+from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex
-from fakeredis._helpers import OK, SimpleError, casematch, BGSAVE_STARTED, SimpleString
+from fakeredis._commands import DbIndex, command
+from fakeredis._helpers import BGSAVE_STARTED, OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import get_command_info, get_all_commands_info
+from fakeredis.model import get_all_commands_info, get_command_info
 
 
 class ServerCommandsMixin(CommandsMixinBase):
@@ -46,7 +46,7 @@ class ServerCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(())
-    def time(self) -> List[bytes]:
+    def time(self) -> list[bytes]:
         now_us = round(time.time() * 1_000_000)
         now_s = now_us // 1_000_000
         now_us %= 1_000_000
@@ -61,7 +61,7 @@ class ServerCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="COMMAND INFO", fixed=(), repeat=(bytes,))
-    def command_info(self, *commands: bytes) -> List[Any]:
+    def command_info(self, *commands: bytes) -> list[Any]:
         res = [get_command_info(cmd) for cmd in commands]
         return res
 
@@ -70,6 +70,6 @@ class ServerCommandsMixin(CommandsMixinBase):
         return len(get_all_commands_info())
 
     @command(name="COMMAND", fixed=(), repeat=())
-    def command_(self) -> List[Any]:
+    def command_(self) -> list[Any]:
         res = [get_command_info(cmd) for cmd in get_all_commands_info()]
         return res

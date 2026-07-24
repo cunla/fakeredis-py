@@ -19,7 +19,7 @@ that is used for the `COMMAND` redis command.
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
@@ -47,7 +47,7 @@ def implemented_commands() -> set:
     return res
 
 
-def dict_deep_get(d: Dict[Any, Any], *keys, default_value: Any = None) -> Any:
+def dict_deep_get(d: dict[Any, Any], *keys, default_value: Any = None) -> Any:
     res = d
     for key in keys:
         if isinstance(res, list) and isinstance(key, int):
@@ -59,11 +59,11 @@ def dict_deep_get(d: Dict[Any, Any], *keys, default_value: Any = None) -> Any:
     return default_value if res is None else res
 
 
-def key_specs_array(cmd_info: Dict[str, Any]) -> List[Any]:
+def key_specs_array(cmd_info: dict[str, Any]) -> list[Any]:
     return []
 
 
-def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
+def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
     """Returns a list
      1 Name //
      2 Arity //
@@ -106,7 +106,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
 
 if __name__ == "__main__":
     implemented = implemented_commands()
-    command_info_dict: Dict[str, List[Any]] = {}
+    command_info_dict: dict[str, list[Any]] = {}
     for cmd_meta in METADATA:
         cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
         for cmd in cmds:

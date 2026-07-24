@@ -102,7 +102,7 @@ def test_extract_args__extract_non_numbers():
 
 def test_extract_args__extract_maxlen():
     args = (b"MAXLEN", b"5")
-    (nomkstream, limit, maxlen, maxid), left_args = extract_args(
+    (nomkstream, limit, maxlen, maxid), _left_args = extract_args(
         args, ("nomkstream", "+limit", "~+maxlen", "~maxid"), error_on_unexpected=False
     )
     assert not nomkstream
@@ -111,7 +111,7 @@ def test_extract_args__extract_maxlen():
     assert maxid is None
 
     args = (b"MAXLEN", b"~", b"5", b"maxid", b"~", b"1")
-    (nomkstream, limit, maxlen, maxid), left_args = extract_args(
+    (nomkstream, limit, maxlen, maxid), _left_args = extract_args(
         args, ("nomkstream", "+limit", "~+maxlen", "~maxid"), error_on_unexpected=False
     )
     assert not nomkstream

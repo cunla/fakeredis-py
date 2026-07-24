@@ -1,28 +1,33 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import queue
 import re
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type, Dict, Iterable
+from collections.abc import Generator, Iterable, Sequence
+from re import Match
+from typing import Any, AnyStr, Callable, ClassVar
 
 import redis
 
-from fakeredis.model import ClientInfo, BaseModel, Hash
+from fakeredis.model import BaseModel, ClientInfo, Hash
+
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
+from ._commands import COMMANDS_WITH_SUB, SUPPORTED_COMMANDS, CommandItem, Float, Int, Signature
 from ._helpers import (
-    SimpleError,
-    valid_response_type,
-    SimpleString,
+    QUEUED,
     NoResponse,
+    SimpleError,
+    SimpleString,
     casematch,
     compile_pattern,
-    QUEUED,
     decode_command_bytes,
+    valid_response_type,
 )
-from ._typing import ResponseErrorType, VersionType, ServerType
+from ._typing import ResponseErrorType, ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -40,7 +45,7 @@ def _convert_to_resp2(val: Any) -> Any:
     return val
 
 
-def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
+def _extract_command(fields: list[bytes]) -> tuple[Any, list[Any]]:
     """Extracts the command and command arguments from a list of `bytes` fields.
 
     :param fields: A list of `bytes` fields containing the command and command arguments.
@@ -79,7 +84,7 @@ def _get_next_file_no() -> int:
 
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
-    ACCEPTED_COMMANDS_WHILE_PUBSUB = {
+    ACCEPTED_COMMANDS_WHILE_PUBSUB: ClassVar[set[str]] = {
         "ping",
         "subscribe",
         "unsubscribe",
@@ -93,14 +98,14 @@ class BaseFakeSocket:
 
     def __init__(
         self,
-        server: "FakeServer",  # type: ignore # noqa: F821
+        server: FakeServer,  # type: ignore # noqa: F821
         db: int,
-        client_class: Type,  # type: ignore
+        client_class: type,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         info = kwargs.pop("client_info", {})
-        super(BaseFakeSocket, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
         self._server: FakeServer = server
@@ -108,7 +113,7 @@ class BaseFakeSocket:
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
-        self.responses: Optional[queue.Queue[bytes]] = queue.Queue()
+        self.responses: queue.Queue[bytes] | None = queue.Queue()
         # Prevents parser from processing commands. Not used in this module,
         # but set by aioredis module to prevent new commands being processed
         # while handling a blocking command.
@@ -126,20 +131,20 @@ class BaseFakeSocket:
         # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this
         # client is blocked and, if so, how it should be woken.
         self._blocked = False
-        self._unblock_reason: Optional[bytes] = None
+        self._unblock_reason: bytes | None = None
         # Subkey (hash field) events recorded by the currently running command: (event, key, subkeys)
-        self._subkey_events: List[Tuple[bytes, bytes, List[bytes]]] = []
+        self._subkey_events: list[tuple[bytes, bytes, list[bytes]]] = []
         self._parser = self._parse_commands()
         self._parser.send(None)
         # Assigned elsewhere
-        self._transaction: Optional[List[Any]]
+        self._transaction: list[Any] | None
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
         info.update(
-            dict(
-                id=self._server.get_next_client_id(),
-            )
+            {
+                "id": self._server.get_next_client_id(),
+            }
         )
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
@@ -181,7 +186,7 @@ class BaseFakeSocket:
     def fileno(self) -> int:
         return self._fileno
 
-    def _cleanup(self, server: Any) -> None:  # noqa: F821
+    def _cleanup(self, server: Any) -> None:
         """Remove all the references to `self` from `server`.
 
         This is called with the server lock held, but it may be some time after
@@ -223,7 +228,7 @@ class BaseFakeSocket:
         self.responses = None
 
     @staticmethod
-    def _extract_line(buf: bytes) -> Tuple[bytes, bytes]:
+    def _extract_line(buf: bytes) -> tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
         if pos <= 0:
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
@@ -264,7 +269,7 @@ class BaseFakeSocket:
                 buf = buf[length + 2 :]  # +2 to skip the CRLF
             self._process_command(fields)
 
-    def _process_command(self, fields: List[bytes]) -> None:
+    def _process_command(self, fields: list[bytes]) -> None:
         if not fields:
             return
         result: Any
@@ -314,9 +319,9 @@ class BaseFakeSocket:
         self.put_response(result)
 
     def _run_command(
-        self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
+        self, func: Callable[[Any], Any] | None, sig: Signature, args: list[Any], from_script: bool
     ) -> Any:
-        command_items: List[CommandItem] = []
+        command_items: list[CommandItem] = []
         self._subkey_events = []
         try:
             ret = sig.apply(args, self._db, self.version)
@@ -344,7 +349,7 @@ class BaseFakeSocket:
         return result
 
     def _publish_to_channel(
-        self, channel: bytes, message: bytes, pattern_regex: Dict[bytes, "re.Pattern[bytes]"]
+        self, channel: bytes, message: bytes, pattern_regex: dict[bytes, re.Pattern[bytes]]
     ) -> None:
         msg = [b"message", channel, message]
         subs: Iterable[Any] = self._server.subscribers.get(channel, set())
@@ -357,9 +362,9 @@ class BaseFakeSocket:
                 for sock in self._server.psubscribers[pattern]:
                     sock.put_response(pmsg)
 
-    def _keyspace_notifications(self, command_items: List[CommandItem], event: bytes) -> None:
+    def _keyspace_notifications(self, command_items: list[CommandItem], event: bytes) -> None:
         """Send keyspace notifications"""
-        pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
+        pattern_regex: dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }
         keyspace_channel_prefix: bytes = f"__keyspace@{self._db_num}__:".encode()
@@ -382,7 +387,7 @@ class BaseFakeSocket:
         if len(subkeys) > 0:
             self._subkey_events.append((event, key, list(subkeys)))
 
-    def _subkey_notifications(self, command_items: List[CommandItem]) -> None:
+    def _subkey_notifications(self, command_items: list[CommandItem]) -> None:
         """Send subkey notifications (added in redis 8.8), currently emitted for hash fields only.
 
         Unlike key-level notifications above, these follow the `notify-keyspace-events` config:
@@ -401,7 +406,7 @@ class BaseFakeSocket:
             return
         if not any(flag in config_flags for flag in (b"S", b"T", b"I", b"V")):
             return
-        pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
+        pattern_regex: dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }
         db_num = str(self._db_num).encode()
@@ -450,7 +455,7 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable[[bool], Any]) -> Any:
+    def _blocking(self, timeout: float | None, func: Callable[[bool], Any]) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -489,7 +494,7 @@ class BaseFakeSocket:
         if reason == b"error":
             raise SimpleError(msgs.UNBLOCKED_MSG)
 
-    def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable[[Any], Any]], Signature]:
+    def _name_to_func(self, cmd_name: str) -> tuple[Callable[[Any], Any] | None, Signature]:
         """Get the signature and the method from the command name."""
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
@@ -510,7 +515,7 @@ class BaseFakeSocket:
             data = data.encode("ascii")  # type: ignore
         self._parser.send(data)
 
-    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> List[Union[bytes, List[bytes]]]:
+    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
         """This is the basis of most of the ``scan`` methods.
 
         This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
@@ -554,7 +559,7 @@ class BaseFakeSocket:
 
         regex = compile_pattern(pattern) if pattern is not None else None
 
-        def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
+        def match_key(key: bytes) -> bool | Match[bytes] | None:
             if isinstance(key, str):
                 key = key.encode("utf-8")
             return regex.match(key) if regex is not None else True
@@ -580,7 +585,7 @@ class BaseFakeSocket:
         elif key.expireat is None:
             return -1
         else:
-            return int(round((key.expireat - self._db.time) * scale))
+            return int(round((key.expireat - self._db.time) * scale))  # noqa: RUF046  # int() satisfies mypy no-any-return
 
     def _encodefloat(self, value: float, humanfriendly: bool) -> bytes:
         if self.version >= (7,):

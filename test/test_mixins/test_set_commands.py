@@ -354,7 +354,7 @@ def test_sscan(r: ClientType):
     # Set up the data
     name = "sscan-test"
     for ix in range(20):
-        k = "sscan-test:%s" % ix
+        k = f"sscan-test:{ix}"
         r.sadd(name, k)
     expected = r.smembers(name)
     assert len(expected) == 20  # Ensure we know what we're testing

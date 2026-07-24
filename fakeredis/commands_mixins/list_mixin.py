@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import functools
-from typing import Any, Callable, List, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args, parse_mpop_args
@@ -8,7 +11,7 @@ from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
-def _list_pop_count(get_slice: Callable[[int], slice], key: CommandItem, count: int) -> Optional[List[bytes]]:
+def _list_pop_count(get_slice: Callable[[int], slice], key: CommandItem, count: int) -> list[bytes] | None:
     if not key:
         return None
     elif type(key.value) is not list:
@@ -20,7 +23,7 @@ def _list_pop_count(get_slice: Callable[[int], slice], key: CommandItem, count: 
     return ret
 
 
-def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
+def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:
     """Implements lpop and rpop.
 
     `get_slice` must take a count and return a slice expression for the range to pop.
@@ -41,11 +44,9 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
 
 
 class ListCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
+    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
 
-    def _bpop_pass(
-        self, keys: List[bytes], op: Callable[[List[bytes]], bytes], first_pass: bool
-    ) -> Optional[List[bytes]]:
+    def _bpop_pass(self, keys: list[bytes], op: Callable[[list[bytes]], bytes], first_pass: bool) -> list[bytes] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             if not isinstance(item.value, list):
@@ -60,7 +61,7 @@ class ListCommandsMixin(CommandsMixinBase):
                 return [key, ret]
         return None
 
-    def _bpop(self, args: Any, op: Callable[[List[bytes]], bytes]) -> Any:
+    def _bpop(self, args: Any, op: Callable[[list[bytes]], bytes]) -> Any:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
@@ -160,14 +161,14 @@ class ListCommandsMixin(CommandsMixinBase):
         return self._blocking(timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
 
     @command(fixed=(Key(),), repeat=(bytes,))
-    def lpop(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
+    def lpop(self, key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:
         return _list_pop(lambda count: slice(None, count), key, *args)
 
-    def _lmpop(self, keys: Sequence[bytes], count: int, direction_left: bool, first_pass: bool) -> Optional[List[Any]]:
+    def _lmpop(self, keys: Sequence[bytes], count: int, direction_left: bool, first_pass: bool) -> list[Any] | None:
         if direction_left:
-            op = lambda count: slice(None, count)  # noqa:E731
+            op = lambda count: slice(None, count)
         else:
-            op = lambda count: slice(None, -count - 1, -1)  # noqa:E731
+            op = lambda count: slice(None, -count - 1, -1)
 
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
@@ -177,7 +178,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
-    def lmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
+    def lmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
         keys, count, left = parse_mpop_args("lmpop", numkeys, args, ("left", "right"))
         return self._lmpop(keys, count, left, False)
 
@@ -243,7 +244,7 @@ class ListCommandsMixin(CommandsMixinBase):
     @command((Key(list), Int, Int))
     def ltrim(self, key: CommandItem, start: int, stop: int) -> SimpleString:
         if key:
-            end: Optional[int] = None if stop == -1 else stop + 1
+            end: int | None = None if stop == -1 else stop + 1
             new_value = key.value[start:end]
             # Redis signals the key as modified even for a no-op trim (see test_watch_when_ltrim_does_not_change_value),
             # so always update.
@@ -251,7 +252,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(fixed=(Key(),), repeat=(bytes,))
-    def rpop(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
+    def rpop(self, key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:
         return _list_pop(lambda count: slice(None, -count - 1, -1), key, *args)
 
     @command((Key(list, None), Key(list)))
@@ -274,7 +275,7 @@ class ListCommandsMixin(CommandsMixinBase):
         return self.rpush(key, *values)
 
     @command(fixed=(Key(list), bytes), repeat=(bytes,))
-    def lpos(self, key: CommandItem, elem: bytes, *args: bytes) -> Union[None, int, List[int]]:
+    def lpos(self, key: CommandItem, elem: bytes, *args: bytes) -> None | int | list[int]:
         (rank, count, maxlen), _ = extract_args(
             args,
             (
@@ -294,7 +295,7 @@ class ListCommandsMixin(CommandsMixinBase):
         rank = abs(rank)
         parse_count = len(key.value) if count == 0 else (count or 1)
         maxlen = maxlen or len(key.value)
-        res: List[int] = []
+        res: list[int] = []
         comparisons = 0
         while 0 <= ind <= len(key.value) - 1 and len(res) < parse_count and comparisons < maxlen:
             comparisons += 1

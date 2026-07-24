@@ -1,10 +1,10 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
 
-from typing import Tuple, List, Any, Dict
+from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import OK, SimpleString, SimpleError, casematch
+from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import CountMinSketch
 
@@ -16,10 +16,10 @@ class CMSCommandsMixin(CommandsMixinBase):
         repeat=(bytes, bytes),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def cms_incrby(self, key: CommandItem, *args: bytes) -> List[Tuple[bytes, int]]:
+    def cms_incrby(self, key: CommandItem, *args: bytes) -> list[tuple[bytes, int]]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
-        pairs: List[Tuple[bytes, int]] = []
+        pairs: list[tuple[bytes, int]] = []
         for i in range(0, len(args), 2):
             try:
                 pairs.append((args[i], int(args[i + 1])))
@@ -30,7 +30,7 @@ class CMSCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="CMS.INFO", fixed=(Key(CountMinSketch),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
-    def cms_info(self, key: CommandItem) -> Dict[bytes, Any]:
+    def cms_info(self, key: CommandItem) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
         return {
@@ -88,7 +88,7 @@ class CMSCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="CMS.QUERY", fixed=(Key(CountMinSketch), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def cms_query(self, key: CommandItem, *items: bytes) -> List[int]:
+    def cms_query(self, key: CommandItem, *items: bytes) -> list[int]:
         if key.value is None:
             raise SimpleError("CMS: key does not exist")
         return [key.value.check(item) for item in items]

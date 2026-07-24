@@ -1,7 +1,9 @@
-from typing import Callable, Set, Any, List, Optional
+from __future__ import annotations
+
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, CommandItem
+from fakeredis._commands import CommandItem, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -10,10 +12,10 @@ class TransactionsCommandsMixin(CommandsMixinBase):
     _run_command: Callable  # type: ignore
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
-        super(TransactionsCommandsMixin, self).__init__(*args, **kwargs)
-        self._watches: Set[Any] = set()
+        super().__init__(*args, **kwargs)
+        self._watches: set[Any] = set()
         # When in a MULTI, set to a list of function calls
-        self._transaction: Optional[List[Any]] = None
+        self._transaction: list[Any] | None = None
         self._transaction_failed = False
         # Set when executing the commands from EXEC
         self._in_transaction = False

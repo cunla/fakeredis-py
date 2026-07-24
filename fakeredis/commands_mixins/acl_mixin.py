@@ -1,23 +1,24 @@
+from __future__ import annotations
+
 import secrets
-from typing import List, Dict, Optional, Union
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Int
-from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
+from fakeredis._commands import Int, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AccessControlList, get_categories, get_commands_by_category
 
 
 class AclCommandsMixin(CommandsMixinBase):
     @property
-    def _server_config(self) -> Dict[bytes, bytes]:
+    def _server_config(self) -> dict[bytes, bytes]:
         return self._server.config
 
     @property
     def _acl(self) -> AccessControlList:
         return self._server.acl
 
-    def _check_user_password(self, username: bytes, password: Optional[bytes]) -> bool:
+    def _check_user_password(self, username: bytes, password: bytes | None) -> bool:
         return self._acl.get_user_acl(username).check_password(password)
 
     def _set_user_acl(self, username: bytes, *args: bytes) -> None:
@@ -94,7 +95,7 @@ class AclCommandsMixin(CommandsMixinBase):
         raise SimpleError(msgs.AUTH_FAILURE)
 
     @command(name="ACL CAT", fixed=(), repeat=(bytes,))
-    def acl_cat(self, *category: bytes) -> List[bytes]:
+    def acl_cat(self, *category: bytes) -> list[bytes]:
         if len(category) == 0:
             res = get_categories()
         else:
@@ -115,7 +116,7 @@ class AclCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="ACL LIST", fixed=(), repeat=())
-    def acl_list(self) -> List[bytes]:
+    def acl_list(self) -> list[bytes]:
         return self._acl.as_rules()
 
     @command(name="ACL DELUSER", fixed=(bytes,), repeat=())
@@ -124,12 +125,12 @@ class AclCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="ACL GETUSER", fixed=(bytes,), repeat=())
-    def acl_getuser(self, username: bytes) -> List[Union[bytes, List[bytes], List[Dict[str, bytes]]]]:
+    def acl_getuser(self, username: bytes) -> list[bytes | list[bytes] | list[dict[str, bytes]]]:
         res = self._acl.get_user_acl(username).as_array()
         return res
 
     @command(name="ACL USERS", fixed=(), repeat=())
-    def acl_users(self) -> List[bytes]:
+    def acl_users(self) -> list[bytes]:
         res = self._acl.get_users()
         return res
 
@@ -172,7 +173,7 @@ class AclCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="ACL LOG", fixed=(), repeat=(bytes,))
-    def acl_log(self, *args: bytes) -> Union[SimpleString, List[Dict[str, bytes]]]:
+    def acl_log(self, *args: bytes) -> SimpleString | list[dict[str, bytes]]:
         if len(args) == 1 and casematch(args[0], b"RESET"):
             self._acl.reset_log()
             return OK

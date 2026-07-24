@@ -1,14 +1,14 @@
 import math
 import time
 from time import sleep
-from typing import Dict, Any, AnyStr
+from typing import Any, AnyStr
 
 import pytest
 import redis
 import valkey
 
 from fakeredis import _msgs as msgs
-from test.testtools import raw_command, get_protocol_version, resp_conversion, resp_conversion_from_resp2
+from test.testtools import get_protocol_version, raw_command, resp_conversion, resp_conversion_from_resp2
 
 timeseries_tests = pytest.importorskip("probables")
 pytestmark = []
@@ -21,7 +21,7 @@ pytestmark.extend(
 
 
 class InfoClass:
-    def __init__(self, r: redis.Redis, response: Dict[AnyStr, Any]):
+    def __init__(self, r: redis.Redis, response: dict[AnyStr, Any]):
         if get_protocol_version(r) == 2:
             self.rules = response.get("rules")
             self.source_key = response.get("source_key")

@@ -1,12 +1,13 @@
+from __future__ import annotations
+
 import heapq
 import random
 import time
-from typing import List, Optional, Tuple
 
 from ._base_type import BaseModel
 
 
-class Bucket(object):
+class Bucket:
     def __init__(self, counter: int, fingerprint: int):
         self.counter = counter
         self.fingerprint = fingerprint
@@ -35,7 +36,7 @@ class Bucket(object):
                 self.counter -= 1
 
 
-class HashArray(object):
+class HashArray:
     def __init__(self, width: int, decay: float):
         self.width = width
         self.decay = decay
@@ -68,7 +69,7 @@ class HeavyKeeper(BaseModel):
         self.depth = depth
         self.decay = decay
         self.hash_arrays = [HashArray(width, decay) for _ in range(depth)]
-        self.min_heap: List[Tuple[int, bytes]] = []
+        self.min_heap: list[tuple[int, bytes]] = []
 
     def _index(self, val: bytes) -> int:
         for ind, item in enumerate(self.min_heap):
@@ -76,7 +77,7 @@ class HeavyKeeper(BaseModel):
                 return ind
         return -1
 
-    def add(self, item: bytes, incr: int) -> Optional[bytes]:
+    def add(self, item: bytes, incr: int) -> bytes | None:
         max_count = 0
         for i in range(self.depth):
             count = self.hash_arrays[i].add(item, incr)
@@ -100,7 +101,7 @@ class HeavyKeeper(BaseModel):
             return self.min_heap[ind][0]
         return max([ha.count(item) for ha in self.hash_arrays])
 
-    def list(self, k: Optional[int] = None) -> List[Tuple[int, bytes]]:
+    def list(self, k: int | None = None) -> list[tuple[int, bytes]]:
         sorted_list = sorted(self.min_heap, key=lambda x: x[0], reverse=True)
         if k is None:
             return sorted_list

@@ -1,16 +1,12 @@
 import sys
-from typing import Tuple, Union, Dict, Any, List, Type
+from typing import Any, Literal, Union
 
 import redis
 import redis.asyncio
 
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
 if sys.version_info >= (3, 11):
-    from typing import Self
     from asyncio import timeout as async_timeout
+    from typing import Self
 else:
     from async_timeout import timeout as async_timeout
     from typing_extensions import Self
@@ -21,10 +17,10 @@ except ImportError:  # for Python < 3.8
     import importlib_metadata as metadata  # type: ignore
 
 lib_version = metadata.version("fakeredis")
-VersionType = Tuple[int, ...]
+VersionType = tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
-JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
-RaiseErrorTypes: Tuple[Type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
+JsonType = Union[str, int, float, bool, None, dict[str, Any], list[Any]]
+RaiseErrorTypes: tuple[type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError
 ClientType = redis.Redis
 AsyncClientType = redis.asyncio.Redis
@@ -39,12 +35,12 @@ except ImportError:
     pass
 
 __all__ = [
-    "Self",
-    "async_timeout",
-    "VersionType",
-    "ServerType",
     "ClientType",
-    "lib_version",
     "RaiseErrorTypes",
     "ResponseErrorType",
+    "Self",
+    "ServerType",
+    "VersionType",
+    "async_timeout",
+    "lib_version",
 ]

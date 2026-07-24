@@ -11,7 +11,7 @@ pytestmark = [
     pytest.mark.unsupported_server_types("valkey"),
 ]
 try:
-    from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType  # noqa: E402
+    from redis.commands.core import ArrayAggregateOperations, ArrayPredicateType
 except ImportError:
     pytest.skip("Array commands are not supported in this redis-py version", allow_module_level=True)
 

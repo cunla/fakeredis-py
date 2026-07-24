@@ -1,7 +1,10 @@
-from typing import Tuple, List, Dict, Any, Sequence, Optional
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any
 
 from . import _msgs as msgs
-from ._commands import Int, Float
+from ._commands import Float, Int
 from ._helpers import SimpleError, null_terminate
 
 
@@ -29,12 +32,12 @@ def _default_value(s: str) -> Any:
 
 
 def extract_args(
-    actual_args: Tuple[bytes, ...],
-    expected: Tuple[str, ...],
+    actual_args: tuple[bytes, ...],
+    expected: tuple[str, ...],
     error_on_unexpected: bool = True,
     left_from_first_unexpected: bool = True,
-    exception: Optional[str] = None,
-) -> Tuple[List[Any], Sequence[Any]]:
+    exception: str | None = None,
+) -> tuple[list[Any], Sequence[Any]]:
     """Parse argument values.
 
     Extract from actual arguments which arguments exist and their value if relevant.
@@ -65,9 +68,9 @@ def extract_args(
         ('~+maxlen', 'nx', 'xx', '+ex', 'keepttl'))
     10, [True, True, 324, False], None
     """
-    args_info: Dict[bytes, Tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
+    args_info: dict[bytes, tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
 
-    def _parse_params(key: bytes, ind: int, _actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
+    def _parse_params(key: bytes, ind: int, _actual_args: tuple[bytes, ...]) -> tuple[Any, int]:
         """Parse an argument from actual args.
         :param key: Argument name to parse
         :param ind: index of argument in actual_args
@@ -110,14 +113,14 @@ def extract_args(
         else:
             return temp_res, expected_following
 
-    results: List[Any] = [_default_value(key) for key in expected]
+    results: list[Any] = [_default_value(key) for key in expected]
     left_args = []
     i = 0
     while i < len(actual_args):
         found = False
-        for key in args_info:
+        for key, arg_info in args_info.items():
             if null_terminate(actual_args[i]) == key:
-                arg_position, _ = args_info[key]
+                arg_position, _ = arg_info
                 results[arg_position], parsed = _parse_params(key, i, actual_args)
                 i += parsed
                 found = True
@@ -138,8 +141,8 @@ def extract_args(
 
 
 def parse_mpop_args(
-    command: str, numkeys: int, args: Tuple[bytes, ...], directions: Tuple[str, str]
-) -> Tuple[Sequence[bytes], int, bool]:
+    command: str, numkeys: int, args: tuple[bytes, ...], directions: tuple[str, str]
+) -> tuple[Sequence[bytes], int, bool]:
     """Validate the LMPOP/BLMPOP/ZMPOP/BZMPOP tail: keys, a direction token, optional COUNT.
 
     `args` is ``key [key ...] <directions[0] | directions[1]> [COUNT count]``.

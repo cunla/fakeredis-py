@@ -1,9 +1,9 @@
-from typing import List, Dict, Any
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, CommandItem, Int, Key, Float
-from fakeredis._helpers import SimpleString, SimpleError, OK
+from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import TDigest
 
@@ -18,7 +18,7 @@ class TDigestCommandsMixin(CommandsMixinBase):
     def tdigest_create(self, key: CommandItem, *args: bytes) -> SimpleString:
         if key.value is not None:
             raise SimpleError(msgs.TDIGEST_KEY_EXISTS)
-        (compression,), left_args = extract_args(args, ("+compression",))
+        (compression,), _left_args = extract_args(args, ("+compression",))
         if compression is None:
             compression = 100
         key.update(TDigest(compression))
@@ -65,7 +65,7 @@ class TDigestCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("tdigest.merge"))
         sources_names = args[:numkeys]
         (compression, override), _ = extract_args(args[numkeys:], ("+compression", "override"))
-        sources: List[TDigest] = [self._db.get(name).value for name in sources_names if name in self._db]  # type:ignore
+        sources: list[TDigest] = [self._db.get(name).value for name in sources_names if name in self._db]  # type:ignore
         if len(sources) != len(sources_names):
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
 
@@ -107,7 +107,7 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_rank(self, key: CommandItem, *values: float) -> List[int]:
+    def tdigest_rank(self, key: CommandItem, *values: float) -> list[int]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
@@ -128,7 +128,7 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_revrank(self, key: CommandItem, *values: float) -> List[int]:
+    def tdigest_revrank(self, key: CommandItem, *values: float) -> list[int]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
@@ -148,12 +148,12 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> List[float]:
+    def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> list[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) <= 1:
             return [float("nan")]
-        res: List[float] = []
+        res: list[float] = []
         for q in quantiles:
             if q < 0 or q > 1:
                 raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
@@ -169,13 +169,13 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Float,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_cdf(self, key: CommandItem, *values: float) -> List[float]:  # Cumulative Distribution Function
+    def tdigest_cdf(self, key: CommandItem, *values: float) -> list[float]:  # Cumulative Distribution Function
         """Returns, for each input value, an estimation of the fraction (floating-point) of
         (observations smaller than the given value + half the observations equal to the given value).
         """
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
-        res: List[float] = []
+        res: list[float] = []
         for v in values:
             left = key.value.bisect_left(v)
             right = key.value.bisect_right(v)
@@ -190,7 +190,7 @@ class TDigestCommandsMixin(CommandsMixinBase):
     @command(
         name="TDIGEST.INFO", fixed=(Key(TDigest),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL
     )
-    def tdigest_info(self, key: CommandItem) -> Dict[bytes, Any]:
+    def tdigest_info(self, key: CommandItem) -> dict[bytes, Any]:
         return {
             b"Compression": key.value.compression,
             b"Capacity": len(key.value),
@@ -229,12 +229,12 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> List[float]:
+    def tdigest_byrank(self, key: CommandItem, *ranks: int) -> list[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
             return [float("nan")]
-        res: List[float] = []
+        res: list[float] = []
         for rank in ranks:
             if rank < 0:
                 raise SimpleError(msgs.TDIGEST_BAD_RANK)
@@ -250,12 +250,12 @@ class TDigestCommandsMixin(CommandsMixinBase):
         repeat=(Int,),
         flags=msgs.FLAG_DO_NOT_CREATE + msgs.FLAG_LEAVE_EMPTY_VAL,
     )
-    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> List[float]:
+    def tdigest_byrevrank(self, key: CommandItem, *ranks: int) -> list[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
         if len(key.value) == 0:
             return [float("nan")]
-        res: List[float] = []
+        res: list[float] = []
         for rank in ranks:
             if rank < 0:
                 raise SimpleError(msgs.TDIGEST_BAD_RANK)

@@ -1,13 +1,12 @@
 #  Note: the alphabet in geohash differs from the common base32
 #  alphabet described in IETF's RFC 4648
 #  (http://tools.ietf.org/html/rfc4648)
-from typing import Tuple
 
 base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 decodemap = {base32[i]: i for i in range(len(base32))}
 
 
-def geo_decode(geohash: str) -> Tuple[float, float, float, float]:
+def geo_decode(geohash: str) -> tuple[float, float, float, float]:
     """
     Decode the geohash to its exact values, including the error margins of the result.  Returns four float values:
     latitude, longitude, the plus/minus error for latitude (as a positive number) and the plus/minus error for longitude
@@ -59,7 +58,7 @@ def geo_encode(latitude: float, longitude: float, precision: int = 12) -> str:
     bit, ch = 0, 0
     is_longitude = True
 
-    def next_interval(curr: float, interval: Tuple[float, float], ch: int) -> Tuple[Tuple[float, float], int]:
+    def next_interval(curr: float, interval: tuple[float, float], ch: int) -> tuple[tuple[float, float], int]:
         mid = (interval[0] + interval[1]) / 2
         if curr > mid:
             ch |= bits[bit]

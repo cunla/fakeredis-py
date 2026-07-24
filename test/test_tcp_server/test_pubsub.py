@@ -1,7 +1,6 @@
 import threading
 import time
 from queue import Queue
-from typing import Tuple
 
 import pytest
 import redis
@@ -14,12 +13,10 @@ pytestmark.extend(
 )
 
 
-def test_pubsub(tcp_server_address: Tuple[str, int]):
+def test_pubsub(tcp_server_address: tuple[str, int]):
     def _listen(pubsub, q):
-        count = 0
-        for message in pubsub.listen():
+        for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
-            count += 1
             if count == 4:
                 pubsub.close()
 

@@ -5,26 +5,27 @@ import itertools
 import math
 import random
 import sys
-from typing import Union, Optional, List, Tuple, Callable, Any, Dict, Sequence, TypeVar
+from collections.abc import Sequence
+from typing import Any, Callable, TypeVar
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args, parse_mpop_args
 from fakeredis._commands import (
-    command,
-    Key,
-    Int,
-    Float,
-    CommandItem,
-    Timeout,
-    StringTest,
-    fix_range,
     AfterAny,
     BeforeAny,
+    CommandItem,
+    Float,
+    Int,
+    Key,
     RedisType,
+    StringTest,
+    Timeout,
+    command,
+    fix_range,
 )
 from fakeredis._helpers import SimpleError, casematch, null_terminate
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import ZSet, ExpiringMembersSet
+from fakeredis.model import ExpiringMembersSet, ZSet
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -41,13 +42,13 @@ _T = TypeVar("_T")
 class ScoreTest(RedisType):
     """Argument converter for sorted set score endpoints."""
 
-    def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
+    def __init__(self, value: float, exclusive: bool = False, bytes_val: bytes | None = None):
         self.value = value
         self.exclusive = exclusive
         self.bytes_val = bytes_val
 
     @classmethod
-    def decode(cls, value: bytes) -> "ScoreTest":
+    def decode(cls, value: bytes) -> ScoreTest:
         try:
             original_value = value
             exclusive = False
@@ -67,25 +68,25 @@ class ScoreTest(RedisType):
 
     def __str__(self) -> str:
         if self.exclusive:
-            return "({!r}".format(self.value)
+            return f"({self.value!r}"
         else:
             return repr(self.value)
 
     @property
-    def lower_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
+    def lower_bound(self) -> tuple[float, AfterAny | BeforeAny]:
         return self.value, AfterAny() if self.exclusive else BeforeAny()
 
     @property
-    def upper_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
+    def upper_bound(self) -> tuple[float, AfterAny | BeforeAny]:
         return self.value, BeforeAny() if self.exclusive else AfterAny()
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
+    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
     _scan: Callable[..., Any]
     _encodefloat: Callable[[float, bool], bytes]
 
-    def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> List[List[Any]]:
+    def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> list[list[Any]]:
         if count < 0:
             raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
         zset = key.value
@@ -104,7 +105,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             key.updated()
         return res
 
-    def _bzpop(self, keys: List[bytes], reverse: bool, first_pass: bool) -> Optional[List[Union[bytes, List[bytes]]]]:
+    def _bzpop(self, keys: list[bytes], reverse: bool, first_pass: bool) -> list[bytes | list[bytes]] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             temp_res = self._zpop(item, 1, reverse, flatten_list=False)
@@ -113,35 +114,35 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 return [key, temp_res[0][0], temp_res[0][1]]
         return None
 
-    def _zpop_flatten(self, count: Optional[int]) -> bool:
+    def _zpop_flatten(self, count: int | None) -> bool:
         # RESP2 always returns a flat list. RESP3 returns a flat member/score pair
         # only when no count was given; with an explicit count it returns an array
         # of pairs.
         return self._client_info.protocol_version == 2 or count is None
 
     @command((Key(ZSet),), (Int,))
-    def zpopmin(self, key: CommandItem, count: Optional[int] = None) -> List[Any]:
+    def zpopmin(self, key: CommandItem, count: int | None = None) -> list[Any]:
         return self._zpop(key, 1 if count is None else count, reverse=False, flatten_list=self._zpop_flatten(count))
 
     @command((Key(ZSet),), (Int,))
-    def zpopmax(self, key: CommandItem, count: Optional[int] = None) -> List[Any]:
+    def zpopmax(self, key: CommandItem, count: int | None = None) -> list[Any]:
         return self._zpop(key, 1 if count is None else count, reverse=True, flatten_list=self._zpop_flatten(count))
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def bzpopmin(self, *args: bytes) -> Optional[List[List[bytes]]]:
+    def bzpopmin(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def bzpopmax(self, *args: bytes) -> Optional[List[List[bytes]]]:
+    def bzpopmax(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
         return self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
 
     @staticmethod
-    def _limit_items(items: List[_T], offset: int, count: int) -> List[_T]:
-        out: List[_T] = []
+    def _limit_items(items: list[_T], offset: int, count: int) -> list[_T]:
+        out: list[_T] = []
         for item in items:
             if offset:  # Note: not offset > 0, to match redis
                 offset -= 1
@@ -152,7 +153,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             out.append(item)
         return out
 
-    def _apply_withscores(self, items: List[Tuple[bytes, bytes]], withscores: bool) -> List[Any]:
+    def _apply_withscores(self, items: list[tuple[bytes, bytes]], withscores: bool) -> list[Any]:
         if withscores:
             if self._client_info.protocol_version == 2:
                 out = []
@@ -165,7 +166,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             return [item[1] for item in items]
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
-    def zadd(self, key: CommandItem, *args: bytes) -> Union[int, float, None]:
+    def zadd(self, key: CommandItem, *args: bytes) -> int | float | None:
         zset = key.value
 
         (nx, xx, ch, incr, gt, lt), left_args = extract_args(
@@ -218,9 +219,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 lt and ((item_name in zset and zset.get(item_name) > item_score) or (not xx and item_name not in zset))
             )
 
-            if update:
-                if zset.add(item_name, item_score):
-                    changed_items += 1
+            if update and zset.add(item_name, item_score):
+                changed_items += 1
 
         if changed_items:
             key.updated()
@@ -265,7 +265,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         withscores: bool,
         offset: int,
         count: int,
-    ) -> List[Any]:
+    ) -> list[Any]:
         zset = key.value
         if reverse:
             _min, _max = _max, _min
@@ -276,7 +276,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     def _zrange(
         self, key: CommandItem, start: ScoreTest, stop: ScoreTest, reverse: bool, withscores: bool, byscore: bool
-    ) -> List[Any]:
+    ) -> list[Any]:
         zset = key.value
         if byscore:
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
@@ -293,7 +293,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     def _zrangebylex(
         self, key: CommandItem, _min: StringTest, _max: StringTest, reverse: bool, offset: int, count: int
-    ) -> List[bytes]:
+    ) -> list[bytes]:
         zset = key.value
         if reverse:
             _min, _max = _max, _min
@@ -306,7 +306,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         items = self._limit_items(items, offset, count)
         return items
 
-    def _zrange_args(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes) -> List[Any]:
+    def _zrange_args(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes) -> list[Any]:
         (bylex, byscore, rev, (offset, count), withscores), _ = extract_args(
             args, ("bylex", "byscore", "rev", "++limit", "withscores")
         )
@@ -329,7 +329,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return res
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
-    def zrange(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes) -> List[Any]:
+    def zrange(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes) -> list[Any]:
         return self._zrange_args(key, start, stop, *args)
 
     @command((Key(ZSet), Key(ZSet), bytes, bytes), (bytes,))
@@ -342,40 +342,40 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return len(res)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrevrange(self, key: CommandItem, start: ScoreTest, stop: ScoreTest, *args: bytes) -> List[Any]:
+    def zrevrange(self, key: CommandItem, start: ScoreTest, stop: ScoreTest, *args: bytes) -> list[Any]:
         (withscores, byscore), _ = extract_args(args, ("withscores", "byscore"))
         return self._zrange(key, start, stop, True, withscores, byscore)
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
-    def zrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> List[bytes]:
+    def zrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> list[bytes]:
         ((offset, count),), _ = extract_args(args, ("++limit",))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebylex(key, _min, _max, False, offset, count)
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
-    def zrevrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> List[bytes]:
+    def zrevrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> list[bytes]:
         ((offset, count),), _ = extract_args(args, ("++limit",))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebylex(key, _min, _max, True, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> List[Any]:
+    def zrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> list[Any]:
         (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, False, withscores, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
-    def zrevrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> List[Any]:
+    def zrevrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> list[Any]:
         (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
         offset = offset or 0
         count = -1 if count is None else count
         return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
 
     @command(name="ZRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, float]]]:
+    def zrank(self, key: CommandItem, member: bytes, *args: bytes) -> None | int | list[int | float]:
         (withscore,), _ = extract_args(args, ("withscore",))
         try:
             rank: int
@@ -388,7 +388,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             return None
 
     @command(name="ZREVRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zrevrank(self, key: CommandItem, member: bytes, *args: bytes) -> Union[None, int, List[Union[int, float]]]:
+    def zrevrank(self, key: CommandItem, member: bytes, *args: bytes) -> None | int | list[int | float]:
         (withscore,), _ = extract_args(args, ("withscore",))
         try:
             rank: int
@@ -429,7 +429,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return self.zrem(key, *[item[1] for item in items])  # type: ignore[no-any-return]
 
     @command((Key(ZSet), Int), (bytes, bytes))
-    def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Any]:
+    def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         new_cursor, ans = self._scan(key.value.items(), cursor, *args)
         flat = []
         for member, score in ans:
@@ -438,7 +438,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return [new_cursor, flat]
 
     @command((Key(ZSet), bytes))
-    def zscore(self, key: CommandItem, member: bytes) -> Optional[float]:
+    def zscore(self, key: CommandItem, member: bytes) -> float | None:
         try:
             score: float = key.value[member]
             return score
@@ -457,7 +457,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
-    def _zunioninterdiff(self, func: str, dest: Optional[CommandItem], numkeys: int, *args: bytes) -> Union[ZSet, int]:
+    def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
             raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
         if numkeys > len(args):
@@ -493,7 +493,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
         # We first build a regular dict and turn it into a ZSet. The reason is subtle: a ZSet won't update a score from
         # -0 to +0 (or vice versa) through assignment, but a regular dict will.
-        out: Dict[bytes, Any] = {}
+        out: dict[bytes, Any] = {}
         # The sort affects the order of floating-point operations.
         # Note that redis uses qsort(1), which has no stability guarantees,
         # so we can't be sure to match it in all cases.
@@ -544,12 +544,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return self._zunioninterdiff("ZDIFFSTORE", dest, numkeys, *args)  # type: ignore[return-value]
 
     @command((Int, bytes), (bytes,))
-    def zdiff(self, numkeys: int, *args: bytes) -> List[Any]:
+    def zdiff(self, numkeys: int, *args: bytes) -> list[Any]:
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: List[Any]
+        out: list[Any]
         if not withscores:
             out = list(zset_res)
         elif self._client_info.protocol_version == 2:
@@ -559,12 +559,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return out
 
     @command((Int, bytes), (bytes,))
-    def zunion(self, numkeys: int, *args: bytes) -> List[Any]:
+    def zunion(self, numkeys: int, *args: bytes) -> list[Any]:
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: List[Any]
+        out: list[Any]
         if not withscores:
             out = list(zset_res)
         elif self._client_info.protocol_version == 2:
@@ -574,12 +574,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return out
 
     @command((Int, bytes), (bytes,))
-    def zinter(self, numkeys: int, *args: bytes) -> List[Any]:
+    def zinter(self, numkeys: int, *args: bytes) -> list[Any]:
         withscores = casematch(b"withscores", args[-1])
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: List[Any]
+        out: list[Any]
         if not withscores:
             out = list(zset_res)
         elif self._client_info.protocol_version == 2:
@@ -604,7 +604,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return min(limit, len(res))  # type: ignore[arg-type]
 
     @command(name="ZMSCORE", fixed=(Key(ZSet), bytes), repeat=(bytes,))
-    def zmscore(self, key: CommandItem, *members: Union[str, bytes]) -> List[Optional[float]]:
+    def zmscore(self, key: CommandItem, *members: str | bytes) -> list[float | None]:
         """Get the scores associated with the specified members in the sorted set stored at the key.
 
         For every member that does not exist in the sorted set, a nil value is returned.
@@ -613,7 +613,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args: bytes) -> Optional[List[Any]]:
+    def zrandmember(self, key: CommandItem, *args: bytes) -> list[Any] | None:
         count, withscores = 1, None
         if len(args) > 0:
             count = Int.decode(args[0])
@@ -639,7 +639,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             res = [list(item) for item in res]
         return res
 
-    def _zmpop(self, keys: Sequence[bytes], count: int, reverse: bool, first_pass: bool) -> Optional[List[Any]]:
+    def _zmpop(self, keys: Sequence[bytes], count: int, reverse: bool, first_pass: bool) -> list[Any] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             res = self._zpop(item, count, reverse, flatten_list=False)
@@ -649,12 +649,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
-    def zmpop(self, numkeys: int, *args: bytes) -> Optional[List[Any]]:
+    def zmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
         keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"))
         return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
-    def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> Optional[List[Any]]:
+    def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> list[Any] | None:
         keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"))
         return self._blocking(  # type: ignore[no-any-return]
             timeout,

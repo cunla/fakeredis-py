@@ -1,8 +1,8 @@
 import time
-from typing import Any, Dict
+from typing import Any
 
 
-class ClientInfo(Dict[str, Any]):
+class ClientInfo(dict[str, Any]):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__()
         kwargs.setdefault("-created", int(time.time()))

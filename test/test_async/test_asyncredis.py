@@ -11,7 +11,7 @@ import valkey
 
 import fakeredis
 from fakeredis import FakeServer, aioredis
-from fakeredis._typing import async_timeout, AsyncClientType
+from fakeredis._typing import AsyncClientType, async_timeout
 from test import testtools
 from test.testtools import resp_conversion
 
@@ -201,12 +201,12 @@ async def test_type(async_redis: AsyncClientType):
     await async_redis.zadd("zset_key", {"value": 1})
     await async_redis.hset("hset_key", "key", "value")
 
-    assert b"string" == await async_redis.type("string_key")  # noqa: E721
-    assert b"list" == await async_redis.type("list_key")  # noqa: E721
-    assert b"set" == await async_redis.type("set_key")  # noqa: E721
-    assert b"zset" == await async_redis.type("zset_key")  # noqa: E721
-    assert b"hash" == await async_redis.type("hset_key")  # noqa: E721
-    assert b"none" == await async_redis.type("none_key")  # noqa: E721
+    assert b"string" == await async_redis.type("string_key")
+    assert b"list" == await async_redis.type("list_key")
+    assert b"set" == await async_redis.type("set_key")
+    assert b"zset" == await async_redis.type("zset_key")
+    assert b"hash" == await async_redis.type("hset_key")
+    assert b"none" == await async_redis.type("none_key")
 
 
 async def test_xdel(async_redis: AsyncClientType):

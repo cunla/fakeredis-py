@@ -6,6 +6,7 @@ import redis
 import valkey
 
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import resp_conversion
 

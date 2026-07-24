@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import bisect
 import itertools
 import sys
 import time
 from collections import Counter
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass
-from typing import List, Union, Tuple, Optional, NamedTuple, Dict, Any, Sequence, Generator, AnyStr
+from typing import Any, AnyStr, NamedTuple
 
-from fakeredis._commands import BeforeAny, AfterAny
-from fakeredis._helpers import current_time, SimpleError
+from fakeredis._commands import AfterAny, BeforeAny
+from fakeredis._helpers import SimpleError, current_time
+
 from ._base_type import BaseModel
 
 
@@ -19,10 +23,10 @@ class StreamEntryKey(NamedTuple):
         return f"{self.ts}-{self.seq}".encode()
 
     @staticmethod
-    def parse_str(entry_key: AnyStr) -> "StreamEntryKey":
+    def parse_str(entry_key: AnyStr) -> StreamEntryKey:
         entry_key_str: str = entry_key.decode() if isinstance(entry_key, bytes) else entry_key
         parts = entry_key_str.split("-")
-        if not all([parts[i].isdigit() for i in range(len(parts))]):
+        if not all(parts[i].isdigit() for i in range(len(parts))):
             raise SimpleError("Invalid stream ID specified as stream command argument")
         (timestamp, sequence) = (int(parts[0]), 0) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
         return StreamEntryKey(timestamp, sequence)
@@ -47,7 +51,7 @@ class PelEntry(NamedTuple):
 class StreamRangeTest:
     """Argument converter for sorted set LEX endpoints."""
 
-    def __init__(self, value: Union[StreamEntryKey, BeforeAny, AfterAny], exclusive: bool):
+    def __init__(self, value: StreamEntryKey | BeforeAny | AfterAny, exclusive: bool):
         self.value = value
         self.exclusive = exclusive
 
@@ -60,7 +64,7 @@ class StreamRangeTest:
             return False
 
     @classmethod
-    def decode(cls, value: bytes, exclusive: bool = False) -> "StreamRangeTest":
+    def decode(cls, value: bytes, exclusive: bool = False) -> StreamRangeTest:
         if value == b"-":
             return cls(BeforeAny(), True)
         elif value == b"+":
@@ -71,7 +75,7 @@ class StreamRangeTest:
 
 
 @dataclass
-class StreamConsumerInfo(object):
+class StreamConsumerInfo:
     name: bytes
     pending: int
     last_attempt: int  # Impacted by XREADGROUP, XCLAIM, XAUTOCLAIM
@@ -84,7 +88,7 @@ class StreamConsumerInfo(object):
         self.last_attempt = _time
         self.last_success = _time
 
-    def info(self, curr_time: int) -> Dict[str, Union[bytes, int]]:
+    def info(self, curr_time: int) -> dict[str, bytes | int]:
         return {
             "name": self.name,
             "pending": self.pending,
@@ -93,27 +97,27 @@ class StreamConsumerInfo(object):
         }
 
 
-class StreamGroup(object):
+class StreamGroup:
     def __init__(
         self,
-        stream: "XStream",
+        stream: XStream,
         name: bytes,
         start_key: StreamEntryKey,
-        entries_read: Optional[int] = None,
+        entries_read: int | None = None,
     ):
         self.stream = stream
         self.name = name
         self.start_key = start_key
         self.entries_read = entries_read
         # consumer_name -> #pending_messages
-        self.consumers: Dict[bytes, StreamConsumerInfo] = {}
+        self.consumers: dict[bytes, StreamConsumerInfo] = {}
         self.last_delivered_key = start_key
         self.last_ack_key = start_key
         # Pending entry List, see https://redis.io/commands/xreadgroup/
         # msg_id -> PelEntry(consumer_name, time_read, times_delivered)
-        self.pel: Dict[StreamEntryKey, PelEntry] = {}
+        self.pel: dict[StreamEntryKey, PelEntry] = {}
 
-    def set_id(self, last_delivered_str: bytes, entries_read: Optional[int]) -> None:
+    def set_id(self, last_delivered_str: bytes, entries_read: int | None) -> None:
         """Set last_delivered_id for the group"""
         self.start_key = self.stream.parse_ts_seq(last_delivered_str)
         (start_index, _) = self.stream.find_index(self.start_key)
@@ -133,13 +137,13 @@ class StreamGroup(object):
         del self.consumers[consumer_name]
         return res
 
-    def consumers_info(self) -> List[Dict[str, Union[bytes, int]]]:
+    def consumers_info(self) -> list[dict[str, bytes | int]]:
         return [self.consumers[k].info(current_time()) for k in self.consumers]
 
-    def group_info(self) -> Dict[bytes, Any]:
+    def group_info(self) -> dict[bytes, Any]:
         start_index, _ = self.stream.find_index(self.start_key)
         last_delivered_index, _ = self.stream.find_index(self.last_delivered_key)
-        last_ack_index, _ = self.stream.find_index(self.last_ack_key)
+        _last_ack_index, _ = self.stream.find_index(self.last_ack_key)
         if start_index + (self.entries_read or 0) > len(self.stream):
             lag = len(self.stream) - start_index - (self.entries_read or 0)
         else:
@@ -155,8 +159,8 @@ class StreamGroup(object):
         return res
 
     def group_read(
-        self, consumer_name: bytes, start_id: bytes, count: Optional[int], noack: bool
-    ) -> List[List[Union[bytes, List[bytes], None]]]:
+        self, consumer_name: bytes, start_id: bytes, count: int | None, noack: bool
+    ) -> list[list[bytes | list[bytes] | None]]:
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
@@ -192,17 +196,17 @@ class StreamGroup(object):
             k: min(v, key=lambda x: x.time_read).time_read
             for k, v in itertools.groupby(self.pel.values(), key=lambda x: x.consumer_name)
         }
-        for consumer in new_last_success_map:
+        for consumer, last_success in new_last_success_map.items():
             if consumer not in self.consumers:
                 self.consumers[consumer] = StreamConsumerInfo(consumer)
-            self.consumers[consumer].last_attempt = new_last_success_map[consumer]
-            self.consumers[consumer].last_success = new_last_success_map[consumer]
+            self.consumers[consumer].last_attempt = last_success
+            self.consumers[consumer].last_success = last_success
 
     def nack_entries(
         self,
-        ids: List[bytes],
+        ids: list[bytes],
         mode: bytes,
-        retry_count: Optional[int] = None,
+        retry_count: int | None = None,
         force: bool = False,
     ) -> int:
         """Release PEL entries back to the group without acknowledging them.
@@ -248,7 +252,7 @@ class StreamGroup(object):
 
         return res
 
-    def ack(self, args: Tuple[bytes]) -> int:
+    def ack(self, args: tuple[bytes]) -> int:
         res = 0
         for k in args:
             try:
@@ -265,12 +269,12 @@ class StreamGroup(object):
 
     def pending(
         self,
-        idle: Optional[int],
-        start: Optional[StreamRangeTest],
-        end: Optional[StreamRangeTest],
-        count: Optional[int],
-        consumer: Optional[bytes],
-    ) -> List[List[Union[bytes, int]]]:
+        idle: int | None,
+        start: StreamRangeTest | None,
+        end: StreamRangeTest | None,
+        count: int | None,
+        consumer: bytes | None,
+    ) -> list[list[bytes | int]]:
         _time = current_time()
         relevant_ids = list(self.pel.keys())
         if consumer is not None:
@@ -301,7 +305,7 @@ class StreamGroup(object):
             for k in relevant_ids
         ]
 
-    def pending_summary(self) -> List[Any]:
+    def pending_summary(self) -> list[Any]:
         # XNACK-released entries are unowned and are not counted under any consumer.
         counter = Counter([self.pel[k].consumer_name for k in self.pel if self.pel[k].consumer_name])
         data = [
@@ -315,11 +319,11 @@ class StreamGroup(object):
     def claim(
         self,
         min_idle_ms: int,
-        msgs: Union[Sequence[bytes], Sequence[StreamEntryKey]],
+        msgs: Sequence[bytes] | Sequence[StreamEntryKey],
         consumer_name: bytes,
-        _time: Optional[int],
+        _time: int | None,
         force: bool,
-    ) -> Tuple[List[StreamEntryKey], List[StreamEntryKey]]:
+    ) -> tuple[list[StreamEntryKey], list[StreamEntryKey]]:
         curr_time = current_time()
         if _time is None:
             _time = curr_time
@@ -353,7 +357,7 @@ class StreamGroup(object):
         self._calc_consumer_last_time()
         return sorted(claimed_msgs), sorted(deleted_msgs)
 
-    def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: Optional[int]) -> List[List[Any]]:
+    def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: int | None) -> list[list[Any]]:
         """Claim idle pending entries for `XREADGROUP ... CLAIM min-idle-time` (Redis 8.4).
 
         Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name,
@@ -369,7 +373,7 @@ class StreamGroup(object):
         )
         if count is not None:
             candidates = candidates[:count]
-        res: List[List[Any]] = []
+        res: list[list[Any]] = []
         for key in candidates:
             if key not in self.stream:
                 continue  # Entries deleted from the stream are skipped but remain in the PEL
@@ -379,12 +383,12 @@ class StreamGroup(object):
                     self.consumers[entry.consumer_name].pending -= 1
                 self.consumers[consumer_name].pending += 1
             self.pel[key] = PelEntry(consumer_name, curr_time, entry.times_delivered + 1)
-            record: List[Any] = list(self.stream.format_record(key))
+            record: list[Any] = list(self.stream.format_record(key))
             record.extend([curr_time - entry.time_read, entry.times_delivered])
             res.append(record)
         return res
 
-    def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int) -> List[StreamEntryKey]:
+    def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int) -> list[StreamEntryKey]:
         start_key = StreamEntryKey.parse_str(start)
         curr_time = current_time()
         msgs = sorted([k for k in self.pel if (curr_time - self.pel[k].time_read >= min_idle_ms) and k >= start_key])
@@ -409,15 +413,15 @@ class XStream(BaseModel):
     _model_type = b"stream"
 
     def __init__(self) -> None:
-        self._ids: List[StreamEntryKey] = []
-        self._values_dict: Dict[StreamEntryKey, List[bytes]] = {}
-        self._groups: Dict[bytes, StreamGroup] = {}
+        self._ids: list[StreamEntryKey] = []
+        self._values_dict: dict[StreamEntryKey, list[bytes]] = {}
+        self._groups: dict[bytes, StreamGroup] = {}
         self._max_deleted_id = StreamEntryKey(0, 0)
         self._entries_added = 0
-        self._last_generated_id: Optional[bytes] = None
+        self._last_generated_id: bytes | None = None
         self._idmp_duration: int = 100
         self._idmp_max_size: int = 100
-        self._idmp_map: Dict[bytes, Dict[bytes, StreamEntryKey]] = dict()  # producer_id -> idempotent_id -> entry_key
+        self._idmp_map: dict[bytes, dict[bytes, StreamEntryKey]] = {}  # producer_id -> idempotent_id -> entry_key
         self._iids_added: int = 0
         self._iids_duplicates: int = 0
 
@@ -429,10 +433,10 @@ class XStream(BaseModel):
         if max_size is not None and 1 <= max_size <= 10000:
             self._idmp_max_size = max_size
 
-    def group_get(self, group_name: bytes) -> Optional[StreamGroup]:
+    def group_get(self, group_name: bytes) -> StreamGroup | None:
         return self._groups.get(group_name, None)
 
-    def group_add(self, name: bytes, start_key_str: bytes, entries_read: Optional[int]) -> None:
+    def group_add(self, name: bytes, start_key_str: bytes, entries_read: int | None) -> None:
         """Add a group listening to stream
 
         :param name: Group name
@@ -451,17 +455,17 @@ class XStream(BaseModel):
             return 1
         return 0
 
-    def groups_info(self) -> List[Dict[bytes, Any]]:
-        res: List[Dict[bytes, Any]] = []
+    def groups_info(self) -> list[dict[bytes, Any]]:
+        res: list[dict[bytes, Any]] = []
         for group in self._groups.values():
             group_res = group.group_info()
             res.append(group_res)
         return res
 
-    def stream_info(self, full: bool) -> List[Any]:
+    def stream_info(self, full: bool) -> list[Any]:
         iids_tracked = sum([len(v) for v in self._idmp_map.values()])
 
-        res: Dict[bytes, Any] = {
+        res: dict[bytes, Any] = {
             b"length": len(self._ids),
             b"groups": len(self._groups),
             b"first-entry": self.format_record(self._ids[0]) if len(self._ids) > 0 else None,
@@ -484,7 +488,7 @@ class XStream(BaseModel):
             res[b"groups"] = [g.group_info() for g in self._groups.values()]
         return list(itertools.chain(*res.items()))
 
-    def delete(self, lst: List[AnyStr]) -> int:
+    def delete(self, lst: list[AnyStr]) -> int:
         """Delete items from stream
 
         :param lst: List of IDs to delete, in the form of `timestamp-sequence`.
@@ -500,7 +504,7 @@ class XStream(BaseModel):
                 res += 1
         return res
 
-    def delete_ex(self, ids: List[bytes], mode: bytes) -> List[int]:
+    def delete_ex(self, ids: list[bytes], mode: bytes) -> list[int]:
         """Extended delete with consumer-group reference control.
 
         mode: b'KEEPREF' preserve PEL refs, b'DELREF' remove all PEL refs,
@@ -516,10 +520,9 @@ class XStream(BaseModel):
 
             entry_key = self._ids[ind]
 
-            if mode == b"ACKED":
-                if any(entry_key in g.pel for g in self._groups.values()):
-                    results.append(2)
-                    continue
+            if mode == b"ACKED" and any(entry_key in g.pel for g in self._groups.values()):
+                results.append(2)
+                continue
 
             self._max_deleted_id = max(entry_key, self._max_deleted_id)
             del self._values_dict[entry_key]
@@ -537,7 +540,7 @@ class XStream(BaseModel):
 
         return results
 
-    def ackdel(self, group: "StreamGroup", ids: List[bytes], mode: bytes) -> List[int]:
+    def ackdel(self, group: StreamGroup, ids: list[bytes], mode: bytes) -> list[int]:
         """Atomically acknowledge in group and conditionally delete.
 
         Returns per-ID: -1 not found, 1 acked+deleted, 2 acked but not deleted (ACKED mode)
@@ -555,10 +558,9 @@ class XStream(BaseModel):
                 continue
             group.ack((id_bytes,))
 
-            if mode == b"ACKED":
-                if any(entry_key in g.pel for g in self._groups.values()):
-                    results.append(2)
-                    continue
+            if mode == b"ACKED" and any(entry_key in g.pel for g in self._groups.values()):
+                results.append(2)
+                continue
 
             self._max_deleted_id = max(entry_key, self._max_deleted_id)
             del self._values_dict[entry_key]
@@ -598,11 +600,11 @@ class XStream(BaseModel):
 
     def add(
         self,
-        fields: Sequence[Union[bytes, int]],
+        fields: Sequence[bytes | int],
         entry_key: str = "*",
-        producer_id: Optional[bytes] = None,
-        idempotent_id: Optional[bytes] = None,
-    ) -> Union[None, bytes]:
+        producer_id: bytes | None = None,
+        idempotent_id: bytes | None = None,
+    ) -> None | bytes:
         """Add entry to a stream.
 
         If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
@@ -664,7 +666,7 @@ class XStream(BaseModel):
         self._last_generated_id = ts_seq.encode()
         if producer_id is not None and idempotent_id is not None:
             if producer_id not in self._idmp_map:
-                self._idmp_map[producer_id] = dict()
+                self._idmp_map[producer_id] = {}
             self._idmp_map[producer_id][idempotent_id] = ts_seq
             self._iids_added += 1
         return ts_seq.encode()
@@ -675,14 +677,14 @@ class XStream(BaseModel):
     def __len__(self) -> int:
         return len(self._ids)
 
-    def __iter__(self) -> Generator[List[Union[bytes, List[bytes]]], Any, None]:
-        def gen() -> Generator[List[Union[bytes, List[bytes]]], Any, None]:
+    def __iter__(self) -> Generator[list[bytes | list[bytes]], Any, None]:
+        def gen() -> Generator[list[bytes | list[bytes]], Any, None]:
             for k in self._ids:
                 yield self.format_record(k)
 
         return gen()
 
-    def __getitem__(self, key: bytes) -> Union[StreamEntryKey, List[bytes]]:
+    def __getitem__(self, key: bytes) -> StreamEntryKey | list[bytes]:
         return self._values_dict[StreamEntryKey.parse_str(key)]
 
     def get_index(self, ind: int) -> StreamEntryKey:
@@ -691,7 +693,7 @@ class XStream(BaseModel):
     def __contains__(self, key: StreamEntryKey) -> bool:
         return key in self._values_dict
 
-    def find_index(self, entry_key: StreamEntryKey, from_left: bool = True) -> Tuple[int, bool]:
+    def find_index(self, entry_key: StreamEntryKey, from_left: bool = True) -> tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
         :param entry_key: Key for the entry.
         :param from_left: If not found exact match, return index of last smaller element
@@ -709,7 +711,7 @@ class XStream(BaseModel):
             check_idx = ind - 1
         return ind, (check_idx < len(self._ids) and self._ids[check_idx] == entry_key)
 
-    def find_index_key_as_str(self, entry_key_str: AnyStr) -> Tuple[int, bool]:
+    def find_index_key_as_str(self, entry_key_str: AnyStr) -> tuple[int, bool]:
         """Find the closest index to entry_key_str in the stream
         :param entry_key_str: key for the entry, formatted as 'timestamp-sequence.'
         :returns: A tuple
@@ -729,9 +731,9 @@ class XStream(BaseModel):
 
     def trim(
         self,
-        max_length: Optional[int] = None,
-        start_entry_key: Optional[str] = None,
-        limit: Optional[int] = None,
+        max_length: int | None = None,
+        start_entry_key: str | None = None,
+        limit: int | None = None,
     ) -> int:
         """Trim a stream
 
@@ -743,11 +745,11 @@ class XStream(BaseModel):
         """
         if max_length is not None and start_entry_key is not None:
             raise ValueError("Can not use both max_length and start_entry_key")
-        start_ind: Optional[int] = None
+        start_ind: int | None = None
         if max_length is not None:
             start_ind = len(self._ids) - max_length
         elif start_entry_key is not None:
-            ind, exact = self.find_index_key_as_str(start_entry_key)
+            ind, _exact = self.find_index_key_as_str(start_entry_key)
             start_ind = ind
         res: int = min(max(start_ind or 0, 0), limit or sys.maxsize)
 
@@ -756,7 +758,7 @@ class XStream(BaseModel):
             del self._values_dict[k]
         return res
 
-    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> List[Any]:
+    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> list[Any]:
         """Returns a range of the stream values from start to stop.
 
         :param start: Start key
@@ -783,9 +785,9 @@ class XStream(BaseModel):
         return matches
 
     def last_item_key(self) -> bytes:
-        return self._ids[-1].encode() if len(self._ids) > 0 else "0-0".encode()
+        return self._ids[-1].encode() if len(self._ids) > 0 else b"0-0"
 
-    def stream_read(self, start_key: StreamEntryKey, count: Union[int, None]) -> List[StreamEntryKey]:
+    def stream_read(self, start_key: StreamEntryKey, count: int | None) -> list[StreamEntryKey]:
         start_ind, found = self.find_index(start_key)
         if found:
             start_ind += 1
@@ -794,7 +796,7 @@ class XStream(BaseModel):
         end_ind = len(self) if count is None or start_ind + count >= len(self) else start_ind + count
         return self._ids[start_ind:end_ind]
 
-    def format_record(self, key: StreamEntryKey) -> List[Union[bytes, List[bytes]]]:
+    def format_record(self, key: StreamEntryKey) -> list[bytes | list[bytes]]:
         # results: Dict[bytes, bytes] = dict(zip(*[iter(self._values_dict[key])] * 2))
         results = self._values_dict[key]
         return [key.encode(), results]

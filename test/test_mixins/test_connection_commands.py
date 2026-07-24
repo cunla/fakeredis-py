@@ -331,7 +331,7 @@ def _block_on_blpop(client: ClientType, result: dict) -> threading.Thread:
     def target() -> None:
         try:
             result["value"] = client.blpop("unblock-list", timeout=5)
-        except Exception as e:  # noqa: BLE001 - recorded so the assertion can describe it
+        except Exception as e:
             result["error"] = e
 
     thread = threading.Thread(target=target)
@@ -876,9 +876,8 @@ class TestFakeStrictRedisConnectionErrors:
             r.transaction(func, 3)
 
     def test_lock(self, r):
-        with pytest.raises(Exception):
-            with r.lock("name"):
-                pass
+        with pytest.raises(Exception), r.lock("name"):
+            pass
 
     def test_pubsub(self, r):
         with pytest.raises(Exception):

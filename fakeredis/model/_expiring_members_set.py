@@ -1,8 +1,12 @@
-from typing import Iterable, Iterator, Optional, Any, Dict, Union, Set
+from __future__ import annotations
+
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import Self
+
 from ._base_type import BaseModel
 
 
@@ -10,9 +14,9 @@ class ExpiringMembersSet(BaseModel):
     DECODE_ERROR = msgs.INVALID_HASH_MSG
     _model_type = b"set"
 
-    def __init__(self, values: Optional[Dict[bytes, Optional[int]]] = None, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, values: dict[bytes, int | None] | None = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._values: Dict[bytes, Optional[int]] = values or {}
+        self._values: dict[bytes, int | None] = values or {}
 
     def _expire_members(self) -> None:
         now = current_time()
@@ -31,7 +35,7 @@ class ExpiringMembersSet(BaseModel):
     def clear_key_expireat(self, key: bytes) -> bool:
         return self._values.pop(key, None) is not None
 
-    def get_key_expireat(self, key: bytes) -> Optional[int]:
+    def get_key_expireat(self, key: bytes) -> int | None:
         self._expire_members()
         return self._values.get(key, None)
 
@@ -51,26 +55,26 @@ class ExpiringMembersSet(BaseModel):
         now = current_time()
         return iter({k for k in self._values if (self._values[k] or (now + 1)) >= now})
 
-    def __get__(self, instance: object, owner: None = None) -> Set[bytes]:
+    def __get__(self, instance: object, owner: None = None) -> set[bytes]:
         self._expire_members()
         return set(self._values.keys())
 
-    def __sub__(self, other: Self) -> "ExpiringMembersSet":
+    def __sub__(self, other: Self) -> ExpiringMembersSet:
         self._expire_members()
         other._expire_members()
         return ExpiringMembersSet({k: v for k, v in self._values.items() if k not in other._values})
 
-    def __and__(self, other: Self) -> "ExpiringMembersSet":
+    def __and__(self, other: Self) -> ExpiringMembersSet:
         self._expire_members()
         other._expire_members()
         return ExpiringMembersSet({k: v for k, v in self._values.items() if k in other._values})
 
-    def __or__(self, other: Self) -> "ExpiringMembersSet":
+    def __or__(self, other: Self) -> ExpiringMembersSet:
         self._expire_members()
         other._expire_members()
         return ExpiringMembersSet(dict(self._values.items())).update(other)
 
-    def update(self, other: Union[Self, Iterable[bytes]]) -> Self:
+    def update(self, other: Self | Iterable[bytes]) -> Self:
         self._expire_members()
         if isinstance(other, ExpiringMembersSet):
             self._values.update(other._values)
@@ -88,5 +92,5 @@ class ExpiringMembersSet(BaseModel):
     def add(self, key: bytes) -> None:
         self._values[key] = None
 
-    def copy(self) -> "ExpiringMembersSet":
+    def copy(self) -> ExpiringMembersSet:
         return ExpiringMembersSet(self._values.copy())
