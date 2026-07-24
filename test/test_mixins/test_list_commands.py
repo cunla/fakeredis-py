@@ -6,6 +6,7 @@ import redis
 import valkey
 
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import resp_conversion
 
@@ -294,6 +295,7 @@ def test_ltrim_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("valkey")
 def test_watch_when_ltrim_does_not_change_value(r: ClientType):
     # Redis signals the key as modified for every LTRIM on an existing key,
     # even a no-op trim that removes no elements. A WATCH on the key must

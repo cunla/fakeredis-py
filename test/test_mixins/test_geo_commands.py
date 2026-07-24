@@ -1,4 +1,6 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any
 
 import pytest
 import redis
@@ -112,7 +114,7 @@ def test_geodist_missing_one_member(r: ClientType):
         (2.191, 41.433, 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: Dict[str, Any], expected):
+def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: dict[str, Any], expected):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     r.geoadd("barcelona", values)
     assert r.georadius("barcelona", long, lat, radius, **extra) == expected
@@ -128,7 +130,7 @@ def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra:
         ("place1", 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: Dict[str, Any], expected):
+def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dict[str, Any], expected):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, b"place2")
     r.geoadd("barcelona", values)
     assert r.georadiusbymember("barcelona", member, radius, **extra) == expected

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import re
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
@@ -200,7 +202,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     def _bitfield_get(self, key: CommandItem, encoding: BitfieldEncoding, offset: int) -> int:
         ans = 0
-        for i in range(0, encoding.size):
+        for i in range(encoding.size):
             ans <<= 1
             if self.getbit(key, offset + i):
                 ans += -1 if encoding.signed and i == 0 else 1
@@ -212,9 +214,9 @@ class BitmapCommandsMixin(CommandsMixinBase):
         encoding: BitfieldEncoding,
         offset: int,
         overflow: bytes,
-        value: Optional[int] = None,
+        value: int | None = None,
         incr: int = 0,
-    ) -> Optional[int]:
+    ) -> int | None:
         if encoding.signed:
             min_value = -(1 << (encoding.size - 1))
             max_value = (1 << (encoding.size - 1)) - 1
@@ -242,7 +244,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if encoding.signed and new_value > max_value:
             new_value -= 1 << encoding.size
 
-        for i in range(0, encoding.size):
+        for i in range(encoding.size):
             bit = (new_value >> (encoding.size - i - 1)) & 1
             self.setbit(key, offset + i, bit)
         return new_value if value is None else ans
@@ -250,7 +252,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
     @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
     def bitfield(self, key: CommandItem, *args: bytes) -> Optional[List[Optional[int]]]:
         overflow = b"WRAP"
-        results: List[Optional[int]] = []
+        results: list[int | None] = []
         i = 0
         if len(args) == 0 and self._server.server_type == "dragonfly":
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitfield"))

@@ -1,6 +1,5 @@
 import threading
 import time
-from typing import List
 
 import pytest
 import redis
@@ -9,7 +8,7 @@ import valkey
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
-from test.testtools import resp_conversion, get_protocol_version
+from test.testtools import get_protocol_version, resp_conversion
 
 
 def get_ids(results):
@@ -546,7 +545,7 @@ def test_xinfo_stream(r: ClientType):
     assert info["last-entry"] == get_stream_message(r, stream, m2)
 
 
-def assert_consumer_info(r: ClientType, stream: str, group: str, equal_keys: List) -> List:
+def assert_consumer_info(r: ClientType, stream: str, group: str, equal_keys: list) -> list:
     res = r.xinfo_consumers(stream, group)
     assert len(res) == len(equal_keys)
     for i in range(len(equal_keys)):
@@ -1000,7 +999,7 @@ def test_xreadgroup_pel_read_deleted_entry(r: ClientType):
 
 def test_xadd_change_time(r: ClientType):
     res = r.xadd("foobar", {"a": "1"})
-    ts, seq = res.decode().split("-")
+    ts, _seq = res.decode().split("-")
     new_ts = int(ts) - 10
     new_id = f"{new_ts}-*"
     with pytest.raises(Exception) as ctx:

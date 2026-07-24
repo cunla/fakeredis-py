@@ -1,7 +1,9 @@
-from typing import Any, List, Optional, Set, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import Key, Int, command, CommandItem
+from fakeredis._commands import CommandItem, Int, Key, command
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model._array import Array
@@ -101,7 +103,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
             return 0
         arr: Array = key.value
         # args: start1, end1, start2, end2, ...
-        to_delete: Set[int] = set()
+        to_delete: set[int] = set()
         for i in range(0, len(args), 2):
             start, end = args[i], args[i + 1]
             lo, hi = (start, end) if start <= end else (end, start)
@@ -124,14 +126,14 @@ class ArrayCommandsMixin(CommandsMixinBase):
     # ── read commands ────────────────────────────────────────────────────────
 
     @command((Key(Array, None), Int))
-    def arget(self, key: CommandItem, index: int) -> Optional[bytes]:
+    def arget(self, key: CommandItem, index: int) -> bytes | None:
         if not key:
             return None
         arr: Array = key.value
         return arr.get(index)
 
     @command((Key(Array), Int, Int))
-    def argetrange(self, key: CommandItem, start: int, end: int) -> List[Optional[bytes]]:
+    def argetrange(self, key: CommandItem, start: int, end: int) -> list[bytes | None]:
         if start <= end:
             indices = list(range(start, end + 1))
         else:
@@ -142,7 +144,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
         return [arr.get(i) for i in indices]
 
     @command((Key(Array), Int), (Int,))
-    def armget(self, key: CommandItem, first_idx: int, *more_idx: int) -> List[Optional[bytes]]:
+    def armget(self, key: CommandItem, first_idx: int, *more_idx: int) -> list[bytes | None]:
         arr: Array = key.value
         return [arr.get(idx) for idx in [first_idx] + list(more_idx)]
 
@@ -168,7 +170,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
         return arr._cursor
 
     @command((Key(Array, []), Int), (bytes,))
-    def arlastitems(self, key: CommandItem, count: int, *args: bytes) -> List[bytes]:
+    def arlastitems(self, key: CommandItem, count: int, *args: bytes) -> list[bytes]:
         if not key:
             return []
         rev = any(casematch(a, b"rev") for a in args)
@@ -179,7 +181,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
         return items
 
     @command((Key(Array, []), bytes, bytes), (bytes,))
-    def arscan(self, key: CommandItem, start_b: bytes, end_b: bytes, *args: bytes) -> List[Any]:
+    def arscan(self, key: CommandItem, start_b: bytes, end_b: bytes, *args: bytes) -> list[Any]:
         if not key:
             return []
         arr: Array = key.value
@@ -189,7 +191,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
         except ValueError:
             raise SimpleError(msgs.INVALID_INT_MSG)
 
-        limit: Optional[int] = None
+        limit: int | None = None
         i = 0
         while i < len(args):
             if casematch(args[i], b"limit"):
@@ -207,16 +209,16 @@ class ArrayCommandsMixin(CommandsMixinBase):
         return [[idx, val] for idx, val in pairs]
 
     @command((Key(Array, []), bytes, bytes), (bytes,))
-    def argrep(self, key: CommandItem, start_b: bytes, end_b: bytes, *args: bytes) -> List[Any]:
+    def argrep(self, key: CommandItem, start_b: bytes, end_b: bytes, *args: bytes) -> list[Any]:
         if not key:
             return []
         arr: Array = key.value
         start = _parse_range_end(start_b, arr, is_start=True)
         end = _parse_range_end(end_b, arr, is_start=False)
 
-        predicates: List[Tuple[str, str]] = []
+        predicates: list[tuple[str, str]] = []
         use_and = False
-        limit: Optional[int] = None
+        limit: int | None = None
         withvalues = False
         nocase = False
 
@@ -256,7 +258,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         matches = arr.grep_range(start, end, predicates, use_and, limit, nocase)
-        result: List[Any] = []
+        result: list[Any] = []
         for idx, val in matches:
             if withvalues:
                 result.append([idx, val])
@@ -276,7 +278,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.INVALID_INT_MSG)
 
         op = op_b.lower().decode()
-        operand: Optional[bytes] = None
+        operand: bytes | None = None
         if op == "match":
             if not args:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -292,7 +294,7 @@ class ArrayCommandsMixin(CommandsMixinBase):
             raise SimpleError("no such key")
         arr: Array = key.value
         full = any(casematch(a, b"full") for a in args)
-        info: List[Any] = [
+        info: list[Any] = [
             b"count",
             arr.count(),
             b"len",

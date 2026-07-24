@@ -1,19 +1,21 @@
+from __future__ import annotations
+
 import functools
-from typing import List, Union, Tuple, Callable, Optional, Any, Dict
+from typing import Any, Callable
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, CommandItem, Int
-from fakeredis._helpers import SimpleError, casematch, OK, current_time, SimpleString, casematch_any
-from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
+from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
+    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
 
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
-    def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
+    def xadd(self, key: CommandItem, *args: bytes) -> bytes | None:
         (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
             args, ("nomkstream", "+limit", "~+maxlen", "~minid", "*idmpauto", "**idmp"), error_on_unexpected=False
         )
@@ -31,7 +33,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             producer_id, idempotent_id = idmp
         if idmpauto is not None:
             producer_id = idmpauto
-        res: Optional[bytes] = stream.add(
+        res: bytes | None = stream.add(
             elements, entry_key=entry_key, producer_id=producer_id, idempotent_id=idempotent_id
         )
         if res is None:
@@ -60,24 +62,24 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return len(key.value)
 
     @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
+    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
     @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
+    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
-    def xread(self, *args: bytes) -> Union[None, Dict[bytes, Any], List[List[Any]]]:
+    def xread(self, *args: bytes) -> None | dict[bytes, Any] | list[list[Any]]:
         ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
-        stream_start_id_list: List[Tuple[bytes, StreamRangeTest]] = []  # (name, start_id)
+        stream_start_id_list: list[tuple[bytes, StreamRangeTest]] = []  # (name, start_id)
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             start_id = self._parse_start_id(item, left_args[i + num_streams])
@@ -93,7 +95,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
         self, group_const: bytes, group_name: bytes, consumer_name: bytes, *args: bytes
-    ) -> Optional[Union[Dict[bytes, Any], List[List[Any]]]]:
+    ) -> dict[bytes, Any] | list[list[Any]] | None:
         if not casematch(b"GROUP", group_const):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         (count, timeout, noack, min_idle_time), left_args = extract_args(
@@ -107,7 +109,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         num_streams = int(len(left_args) / 2)
 
         # List of (group, stream_name, stream start-id)
-        group_params: List[Tuple[StreamGroup, bytes, bytes]] = []
+        group_params: list[tuple[StreamGroup, bytes, bytes]] = []
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             if item.value is None:
@@ -148,7 +150,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return group.ack(args)  # type: ignore
 
     @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
-    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[Any]]:
+    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
         if key.value is None:
             return 0
         idle, start, end, count, consumer = None, None, None, None, None
@@ -223,34 +225,34 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
-    def xinfo_groups(self, key: CommandItem) -> Dict[bytes, Any]:
+    def xinfo_groups(self, key: CommandItem) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: Dict[bytes, Any] = key.value.groups_info()
+        res: dict[bytes, Any] = key.value.groups_info()
         return res
 
     @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def xinfo_stream(self, key: CommandItem, *args: bytes) -> List[bytes]:
+    def xinfo_stream(self, key: CommandItem, *args: bytes) -> list[bytes]:
         (full,), _ = extract_args(args, ("full",))
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: List[bytes] = key.value.stream_info(full)
+        res: list[bytes] = key.value.stream_info(full)
         return res
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
-    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> List[Dict[str, Union[bytes, int]]]:
+    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> list[dict[str, bytes | int]]:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
-        res: List[Dict[str, Union[bytes, int]]] = group.consumers_info()
+        res: list[dict[str, bytes | int]] = group.consumers_info()
         return res
 
     @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
     def xclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, *args: bytes
-    ) -> Union[List[bytes], List[List[Union[bytes, List[bytes]]]]]:
+    ) -> list[bytes] | list[list[bytes | list[bytes]]]:
         stream = key.value
         if stream is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
@@ -258,7 +260,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        (idle, _time, retry, force, justid), msg_ids = extract_args(
+        (idle, _time, _retry, force, justid), msg_ids = extract_args(
             args,
             ("+idle", "+time", "+retrycount", "force", "justid"),
             error_on_unexpected=False,
@@ -276,7 +278,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
     @command(name="XAUTOCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
     def xautoclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, start: bytes, *args: bytes
-    ) -> List[Union[bytes, List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+    ) -> list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]]:
         (count, justid), _ = extract_args(args, ("+count", "justid"))
         count = count or 100
         stream = key.value
@@ -286,10 +288,10 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        keys: List[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
+        keys: list[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
 
-        res: List[Union[bytes, List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]] = [
+        res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
             max(msgs_claimed).encode() if len(msgs_claimed) > 0 else start,
             [msg.encode() for msg in msgs_claimed] if justid else [stream.format_record(msg) for msg in msgs_claimed],
         ]
@@ -298,7 +300,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis",))
-    def xdelex(self, key: CommandItem, *args: bytes) -> List[int]:
+    def xdelex(self, key: CommandItem, *args: bytes) -> list[int]:
         """XDELEX key [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
         mode, ids = self._parse_xdelex_args(args, "XDELEX")
         if key.value is None:
@@ -308,7 +310,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="XACKDEL", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
-    def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> List[int]:
+    def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> list[int]:
         """XACKDEL key group [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
         mode, ids = self._parse_xdelex_args(args, "XACKDEL")
         if key.value is None:
@@ -398,8 +400,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
         _min: StreamRangeTest,
         _max: StreamRangeTest,
         reverse: bool,
-        count: Union[int, None],
-    ) -> List[bytes]:
+        count: int | None,
+    ) -> list[bytes]:
         if stream is None:
             return []
         if count is None:
@@ -410,16 +412,16 @@ class StreamsCommandsMixin(CommandsMixinBase):
     def _xreadgroup(
         self,
         consumer_name: bytes,
-        group_params: List[Tuple[StreamGroup, bytes, bytes]],
-        count: Optional[int],
+        group_params: list[tuple[StreamGroup, bytes, bytes]],
+        count: int | None,
         noack: bool,
-        min_idle_time: Optional[int],
+        min_idle_time: int | None,
         first_pass: bool,
-    ) -> Optional[Dict[bytes, Any]]:
-        res: Dict[bytes, Any] = {}
+    ) -> dict[bytes, Any] | None:
+        res: dict[bytes, Any] = {}
         claimed_any = False
         for group, stream_name, start_id in group_params:
-            claimed: List[Any] = []
+            claimed: list[Any] = []
             # CLAIM only applies when reading new entries, not the consumer history
             claim_active = False
             if min_idle_time is not None and start_id == b">":
@@ -427,7 +429,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 claimed = group.claim_for_read(min_idle_time, consumer_name, count)
                 claimed_any = claimed_any or len(claimed) > 0
             remaining_count = count - len(claimed) if count is not None else None
-            stream_results: List[Any] = group.group_read(consumer_name, start_id, remaining_count, noack)
+            stream_results: list[Any] = group.group_read(consumer_name, start_id, remaining_count, noack)
             if first_pass and (count is None) and not claimed_any:
                 return None
             if claim_active:
@@ -439,10 +441,10 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return res
 
     def _xread(
-        self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
-    ) -> Union[None, Dict[bytes, Any], List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+        self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
+    ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
-        res: Dict[bytes, Any] = {}
+        res: dict[bytes, Any] = {}
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)

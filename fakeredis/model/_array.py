@@ -1,6 +1,6 @@
-import re
-from typing import Dict, List, Optional, Tuple
+from __future__ import annotations
 
+import re
 
 from fakeredis.model._base_type import BaseModel
 
@@ -9,10 +9,10 @@ class Array(BaseModel):
     _model_type = b"array"
 
     def __init__(self) -> None:
-        self._data: Dict[int, bytes] = {}
+        self._data: dict[int, bytes] = {}
         self._cursor: int = 0
         # ordered dict used as ordered set: index -> None, keyed by last-insert time
-        self._insertion_order: Dict[int, None] = {}
+        self._insertion_order: dict[int, None] = {}
 
     def __len__(self) -> int:
         return len(self._data)
@@ -27,7 +27,7 @@ class Array(BaseModel):
         """ARCOUNT: number of non-empty (set) elements."""
         return len(self._data)
 
-    def get(self, index: int) -> Optional[bytes]:
+    def get(self, index: int) -> bytes | None:
         return self._data.get(index)
 
     def set(self, index: int, value: bytes) -> bool:
@@ -54,13 +54,13 @@ class Array(BaseModel):
         self._insertion_order.pop(index, None)
         self._insertion_order[index] = None
 
-    def lastitems(self, count: int) -> List[bytes]:
+    def lastitems(self, count: int) -> list[bytes]:
         """Return the last `count` inserted values (oldest-first)."""
         existing = [i for i in self._insertion_order if i in self._data]
         recent = existing[-count:] if count < len(existing) else existing
         return [self._data[i] for i in recent]
 
-    def scan_range(self, start: int, end: int, limit: Optional[int] = None) -> List[Tuple[int, bytes]]:
+    def scan_range(self, start: int, end: int, limit: int | None = None) -> list[tuple[int, bytes]]:
         """Return existing index-value pairs in [start, end] (inclusive).
 
         If start > end the range is traversed in descending order.
@@ -78,18 +78,18 @@ class Array(BaseModel):
         self,
         start: int,
         end: int,
-        predicates: List[Tuple[str, str]],
+        predicates: list[tuple[str, str]],
         use_and: bool,
-        limit: Optional[int],
+        limit: int | None,
         nocase: bool,
-    ) -> List[Tuple[int, bytes]]:
+    ) -> list[tuple[int, bytes]]:
         """Return (index, value) pairs in range matching the textual predicates."""
         if start <= end:
             indices = sorted(k for k in self._data if start <= k <= end)
         else:
             indices = sorted((k for k in self._data if end <= k <= start), reverse=True)
 
-        results: List[Tuple[int, bytes]] = []
+        results: list[tuple[int, bytes]] = []
         for idx in indices:
             val = self._data[idx]
             text = val.decode(errors="replace")
@@ -118,7 +118,7 @@ class Array(BaseModel):
                     break
         return results
 
-    def op_range(self, start: int, end: int, operation: str, operand: Optional[bytes] = None):
+    def op_range(self, start: int, end: int, operation: str, operand: bytes | None = None):
         """Perform an aggregate operation on elements in [start, end]."""
         if start > end:
             start, end = end, start

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import re
 import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import Any, AnyStr, Callable, Dict, Iterator, MutableMapping, Optional, Set
+from collections.abc import Iterator, MutableMapping
+from typing import Any, AnyStr, Callable
 
 
 class SimpleString:
@@ -31,8 +34,6 @@ class SimpleError(Exception):
 
 class NoResponse:
     """Returned by pub/sub commands to indicate that no response should be returned"""
-
-    pass
 
 
 OK = SimpleString(b"OK")
@@ -139,19 +140,19 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
             parts.append(re.escape(c))
     parts.append("\\Z")
     regex: bytes = "".join(parts).encode("latin-1")
-    return re.compile(regex, flags=re.S)
+    return re.compile(regex, flags=re.DOTALL)
 
 
 class Database(MutableMapping):  # type: ignore
-    def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
-        self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
+    def __init__(self, lock: threading.Lock | None, *args: Any, **kwargs: Any) -> None:
+        self._dict: dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
         # key to the set of connections
-        self._watches: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
+        self._watches: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.condition = threading.Condition(lock)
-        self._change_callbacks: Set[Callable[[], None]] = set()
+        self._change_callbacks: set[Callable[[], None]] = set()
 
-    def swap(self, other: "Database") -> None:
+    def swap(self, other: Database) -> None:
         self._dict, other._dict = other._dict, self._dict
         self.time, other.time = other.time, self.time
 
@@ -239,17 +240,16 @@ def valid_response_type(value: Any, protocol_version: int, nested: bool = False)
     allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
     if value is not None and not isinstance(value, allowed_types):
         return False
-    if isinstance(value, list):
-        if any(not valid_response_type(item, protocol_version, True) for item in value):
-            return False
-    return True
+    return not (
+        isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
+    )
 
 
-class FakeSelector(object):
+class FakeSelector:
     def __init__(self, sock: Any):
         self.sock = sock
 
-    def check_can_read(self, timeout: Optional[float]) -> bool:
+    def check_can_read(self, timeout: float | None) -> bool:
         if self.sock.responses.qsize():
             return True
         if timeout is not None and timeout <= 0:

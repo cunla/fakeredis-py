@@ -41,13 +41,13 @@ def test_script_exists_redis7(r: ClientType):
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
 def test_script_flush_errors_with_args(r, args):
     with pytest.raises(Exception) as ctx:
-        raw_command(r, "SCRIPT FLUSH %s" % " ".join(args))
+        raw_command(r, "SCRIPT FLUSH {}".format(" ".join(args)))
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 def test_script_flush(r: ClientType):
     # generate/load six unique scripts and store their sha1 hash values
-    sha1_values = [r.script_load("return '%s'" % char) for char in "abcdef"]
+    sha1_values = [r.script_load(f"return '{char}'") for char in "abcdef"]
 
     # assert the scripts all exist prior to flushing
     assert r.script_exists(*sha1_values) == [1] * len(sha1_values)

@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import random
-from typing import Callable, Any, Optional, List, Union, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, CommandItem
-from fakeredis._helpers import OK, SimpleError, casematch, SimpleString
-from fakeredis.model import ExpiringMembersSet
+from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import ExpiringMembersSet
 
 
 def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
@@ -26,7 +29,7 @@ def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem,
 
 
 def _setop(
-    op: Callable[..., Any], stop_if_missing: bool, dst: Optional[CommandItem], key: CommandItem, *keys: CommandItem
+    op: Callable[..., Any], stop_if_missing: bool, dst: CommandItem | None, key: CommandItem, *keys: CommandItem
 ) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
@@ -43,7 +46,7 @@ def _setop(
 
 
 class SetCommandsMixin(CommandsMixinBase):
-    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:
@@ -99,11 +102,11 @@ class SetCommandsMixin(CommandsMixinBase):
         return int(member in key.value)
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
-    def smismember(self, key: CommandItem, *members: bytes) -> List[int]:
+    def smismember(self, key: CommandItem, *members: bytes) -> list[int]:
         return [self.sismember(key, member) for member in members]
 
     @command((Key(ExpiringMembersSet),))
-    def smembers(self, key: CommandItem) -> List[bytes]:
+    def smembers(self, key: CommandItem) -> list[bytes]:
         return list(key.value)
 
     @command((Key(ExpiringMembersSet, 0), Key(ExpiringMembersSet), bytes))
@@ -119,7 +122,7 @@ class SetCommandsMixin(CommandsMixinBase):
             return 1
 
     @command((Key(ExpiringMembersSet),), (Int,))
-    def spop(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
+    def spop(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
         if count is None:
             if not key.value:
                 return None
@@ -130,14 +133,14 @@ class SetCommandsMixin(CommandsMixinBase):
         else:
             if count < 0:
                 raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
-            items: Union[bytes, List[bytes]] = self.srandmember(key, count)
+            items: bytes | list[bytes] = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
     @command((Key(ExpiringMembersSet),), (Int,))
-    def srandmember(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
+    def srandmember(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
         if count is None:
             if not key.value:
                 return None

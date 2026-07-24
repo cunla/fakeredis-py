@@ -19,14 +19,15 @@ try:
     from .scripting_mixin import ScriptingCommandsMixin
 except ImportError:
 
-    class ScriptingCommandsMixin:  # type: ignore  # noqa: E303
+    class ScriptingCommandsMixin:  # type: ignore
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             kwargs.pop("lua_modules", None)
             self.server_supports_lua_scripts = False
-            super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)  # type: ignore
+            super().__init__(*args, **kwargs)
 
 
 __all__ = [
+    "AclCommandsMixin",
     "ArrayCommandsMixin",
     "BitmapCommandsMixin",
     "ConnectionCommandsMixin",
@@ -36,10 +37,9 @@ __all__ = [
     "ListCommandsMixin",
     "PubSubCommandsMixin",
     "ScriptingCommandsMixin",
-    "TransactionsCommandsMixin",
     "ServerCommandsMixin",
     "SetCommandsMixin",
     "StreamsCommandsMixin",
     "StringCommandsMixin",
-    "AclCommandsMixin",
+    "TransactionsCommandsMixin",
 ]

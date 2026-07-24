@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import math
-from typing import Tuple
 
 
-def distance(origin: Tuple[float, float], destination: Tuple[float, float]) -> float:
+def distance(origin: tuple[float, float], destination: tuple[float, float]) -> float:
     """Calculate the Haversine distance in meters."""
     radius = 6372797.560856  # Earth's quatratic mean radius for WGS-84
 

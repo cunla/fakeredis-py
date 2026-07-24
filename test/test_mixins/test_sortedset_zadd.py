@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict
+from __future__ import annotations
 
 import pytest
 import redis
@@ -69,9 +69,9 @@ def test_zadd_multiple(r: ClientType):
 @pytest.mark.parametrize("ch", [False, True])
 def test_zadd_with_nx(
     r: ClientType,
-    map_to_add: Dict[str, float],
+    map_to_add: dict[str, float],
     expected_ret: int,
-    expected_zrange_state: List[Tuple[bytes, float]],
+    expected_zrange_state: list[tuple[bytes, float]],
     ch: bool,
 ):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
@@ -99,7 +99,7 @@ def test_zadd_with_nx(
     ids=["no_additions", "partial_additions", "new_additions"],
 )
 def test_zadd_with_gt_and_ch(
-    r: ClientType, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+    r: ClientType, map_to_add: dict[str, float], expected_ret: int, expected_zrange_state: list[tuple[bytes, float]]
 ):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, gt=True, ch=True) == expected_ret
@@ -118,7 +118,7 @@ def test_zadd_with_gt_and_ch(
     ids=["no_additions", "partial_additions", "new_additions"],
 )
 def test_zadd_with_gt(
-    r: ClientType, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+    r: ClientType, map_to_add: dict[str, float], expected_ret: int, expected_zrange_state: list[tuple[bytes, float]]
 ):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, gt=True) == expected_ret
@@ -137,7 +137,7 @@ def test_zadd_with_gt(
     ids=["no_additions", "partial_additions", "new_additions"],
 )
 def test_zadd_with_ch(
-    r: ClientType, map_to_add: Dict[str, float], expected_ret: int, expected_zrange_state: List[Tuple[bytes, float]]
+    r: ClientType, map_to_add: dict[str, float], expected_ret: int, expected_zrange_state: list[tuple[bytes, float]]
 ):
     r.zadd("foo", {"four": 4.0, "three": 3.0})
     assert r.zadd("foo", map_to_add, ch=True) == expected_ret
@@ -158,9 +158,9 @@ def test_zadd_with_ch(
 @pytest.mark.parametrize("ch", [False, True])
 def test_zadd_with_xx(
     r: ClientType,
-    map_to_add: Dict[str, float],
+    map_to_add: dict[str, float],
     expected_ret: int,
-    expected_zrange_state: List[Tuple[bytes, float]],
+    expected_zrange_state: list[tuple[bytes, float]],
     ch: bool,
 ):
     r.zadd("foo", {"four": 4.0, "three": 3.0})

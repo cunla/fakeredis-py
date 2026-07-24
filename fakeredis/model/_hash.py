@@ -1,7 +1,11 @@
-from typing import Iterable, Iterator, List, Tuple, Optional, Any, Dict, AnyStr
+from __future__ import annotations
+
+from collections.abc import Iterable, Iterator
+from typing import Any, AnyStr
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import current_time, asbytes
+from fakeredis._helpers import asbytes, current_time
+
 from ._base_type import BaseModel
 
 
@@ -11,10 +15,10 @@ class Hash(BaseModel):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._expirations: Dict[bytes, int] = {}
-        self._values: Dict[bytes, bytes] = {}
+        self._expirations: dict[bytes, int] = {}
+        self._values: dict[bytes, bytes] = {}
         # Fields that expired lazily, pending an `hexpired` subkey notification.
-        self._expired_fields: List[bytes] = []
+        self._expired_fields: list[bytes] = []
 
     def _expire_keys(self) -> None:
         now = current_time()
@@ -24,7 +28,7 @@ class Hash(BaseModel):
             del self._expirations[k]
         self._expired_fields.extend(expired)
 
-    def take_expired_fields(self) -> List[bytes]:
+    def take_expired_fields(self) -> list[bytes]:
         """Return fields that expired since the last call, clearing the buffer."""
         res, self._expired_fields = self._expired_fields, []
         return res
@@ -42,7 +46,7 @@ class Hash(BaseModel):
     def clear_key_expireat(self, key: AnyStr) -> bool:
         return self._expirations.pop(asbytes(key), None) is not None
 
-    def get_key_expireat(self, key: AnyStr) -> Optional[int]:
+    def get_key_expireat(self, key: AnyStr) -> int | None:
         self._expire_keys()
         return self._expirations.get(asbytes(key), None)
 
@@ -78,16 +82,16 @@ class Hash(BaseModel):
 
     def keys(self) -> Iterable[bytes]:
         self._expire_keys()
-        return [asbytes(k) for k in self._values.keys()]
+        return [asbytes(k) for k in self._values]
 
     def values(self) -> Iterable[Any]:
         return [v for k, v in self.items()]
 
-    def items(self) -> Iterable[Tuple[bytes, Any]]:
+    def items(self) -> Iterable[tuple[bytes, Any]]:
         self._expire_keys()
         return [(asbytes(k), asbytes(v)) for k, v in self._values.items()]
 
-    def update(self, values: Dict[bytes, Any], clear_expiration: bool) -> None:
+    def update(self, values: dict[bytes, Any], clear_expiration: bool) -> None:
         self._expire_keys()
         if clear_expiration:
             for k, v in values.items():
@@ -95,7 +99,7 @@ class Hash(BaseModel):
         for k, v in values.items():
             self._values[asbytes(k)] = v
 
-    def getall(self) -> Dict[bytes, bytes]:
+    def getall(self) -> dict[bytes, bytes]:
         self._expire_keys()
         res = self._values.copy()
         return {asbytes(k): asbytes(v) for k, v in res.items()}

@@ -85,6 +85,7 @@ r2.get("greeting")  # b'hello' — same underlying data
 ```python
 import fakeredis
 
+
 async def main():
     r = fakeredis.FakeAsyncRedis()
     await r.set("foo", "bar")
@@ -106,9 +107,11 @@ r = fakeredis.FakeStrictRedis(server_type="valkey")
 import pytest
 import fakeredis
 
+
 @pytest.fixture
 def redis_client():
     return fakeredis.FakeStrictRedis()
+
 
 def test_cache_set(redis_client):
     redis_client.set("user:1", "alice")

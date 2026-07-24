@@ -274,13 +274,13 @@ def test_bitfield_wrong_arguments(r: ClientType):
 def test_bitfield_get(r: ClientType):
     key = "key:bitfield_get"
     r.set(key, b"\xff\xf0\x00")
-    for i in range(0, 12):
+    for i in range(12):
         assert r.bitfield(key).get("u1", i).get("i1", i).execute() == [1, -1]
     for i in range(12, 25):
         for j in range(1, 63):
             assert r.bitfield(key).get(f"u{j}", i).get(f"i{j}", i).execute() == [0, 0]
 
-    for i in range(0, 11):
+    for i in range(11):
         assert r.bitfield(key).get("u2", i).get("i2", i).execute() == [3, -1]
     assert r.bitfield(key).get("u2", 11).get("i2", 11).execute() == [2, -2]
     assert r.bitfield(key).get("u8", 0).get("u8", 8).get("u8", 16).execute() == [0xFF, 0xF0, 0]

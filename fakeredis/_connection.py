@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import queue
 import warnings
-from typing import Any, Optional, Set, Sequence, Union, Type
+from collections.abc import Sequence
+from typing import Any
 
 import redis
 
-from fakeredis._fakesocket import FakeSocket
 from fakeredis._client_setup import build_client_kwds
+from fakeredis._fakesocket import FakeSocket
 from fakeredis._helpers import FakeSelector
+
 from . import _msgs as msgs
 from ._server import FakeBaseConnectionMixin, FakeServer
-from ._typing import Self, lib_version, RaiseErrorTypes, VersionType, ServerType
+from ._typing import RaiseErrorTypes, Self, ServerType, VersionType, lib_version
 
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
@@ -18,7 +22,7 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
     def connect(self) -> None:
         super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called
-        self._selector: Optional[FakeSelector] = FakeSelector(self._sock)
+        self._selector: FakeSelector | None = FakeSelector(self._sock)
 
     def activate_maint_notifications_handling_if_enabled(self, *args: Any, **kwargs: Any) -> None:
         # redis-py>=8.0 performs a real socket.getaddrinfo() DNS lookup here to determine the
@@ -38,7 +42,7 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
             client_info=self._client_info,
         )
 
-    def can_read(self, timeout: Optional[float] = 0) -> bool:
+    def can_read(self, timeout: float | None = 0) -> bool:
         if not self._server.connected:
             return True
         if not self._sock:
@@ -90,13 +94,13 @@ class FakeRedisMixin:
     def __init__(
         self,
         *args: Any,
-        server: Optional[FakeServer] = None,
-        version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
+        server: FakeServer | None = None,
+        version: VersionType | str | int = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
-        lua_modules: Optional[Set[str]] = None,
-        client_class: Type[redis.Redis] = redis.Redis,
-        connection_class: Type[FakeBaseConnection] = FakeRedisConnection,
-        connection_pool_class: Type[redis.ConnectionPool] = redis.ConnectionPool,
+        lua_modules: set[str] | None = None,
+        client_class: type[redis.Redis] = redis.Redis,
+        connection_class: type[FakeBaseConnection] = FakeRedisConnection,
+        connection_pool_class: type[redis.ConnectionPool] = redis.ConnectionPool,
         **kwargs: Any,
     ) -> None:
         """
@@ -136,7 +140,7 @@ class FakeRedisMixin:
         pool = connection_pool_class.from_url(*args, **kwargs)
         # Now override how it creates connections
         pool.connection_class = kwargs.get("connection_class", FakeRedisConnection)
-        return cls(connection_pool=pool, *args, **kwargs)
+        return cls(*args, connection_pool=pool, **kwargs)
 
 
 class FakeStrictRedis(FakeRedisMixin, redis.StrictRedis):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import hashlib
 import importlib
@@ -5,7 +7,7 @@ import itertools
 import json
 import logging
 import os
-from typing import Any, AnyStr, Callable, List, Optional, Set, Tuple
+from typing import Any, AnyStr, Callable
 
 import lupa
 
@@ -52,12 +54,12 @@ _lua_cjson_null = object()  # sentinel value
 
 
 class ScriptingCommandsMixin(CommandsMixinBase):
-    _name_to_func: Callable[[str], Tuple[Optional[Callable[..., Any]], Signature]]
-    _run_command: Callable[[Callable[..., Any], Signature, List[Any], bool], Any]
+    _name_to_func: Callable[[str], tuple[Callable[..., Any] | None, Signature]]
+    _run_command: Callable[[Callable[..., Any], Signature, list[Any], bool], Any]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.load_lua_modules: Set[str] = kwargs.pop("lua_modules", None) or set()
-        super(ScriptingCommandsMixin, self).__init__(*args, **kwargs)
+        self.load_lua_modules: set[str] = kwargs.pop("lua_modules", None) or set()
+        super().__init__(*args, **kwargs)
 
     def _convert_redis_result(self, lua_runtime: Any, result: Any) -> Any:
         if isinstance(result, (bytes, int)):
@@ -80,7 +82,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.WRONG_ARGS_MSG7)
             raise result
         else:
-            raise RuntimeError(f"Unexpected return type from redis: {type(result)}")
+            raise TypeError(f"Unexpected return type from redis: {type(result)}")
 
     def _convert_lua_result(self, result: Any, nested: bool = True) -> Any:
         if LUA_MODULE.lua_type(result) == "table":
@@ -111,7 +113,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             return 1 if result else None
         return result
 
-    def _lua_redis_call(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
+    def _lua_redis_call(self, lua_runtime: Any, expected_globals: set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
         func, sig = self._name_to_func(decode_command_bytes(op))
@@ -122,7 +124,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         result = self._convert_redis_result(lua_runtime, result)
         return result
 
-    def _lua_redis_pcall(self, lua_runtime: Any, expected_globals: Set[Any], op: bytes, *args: Any) -> Any:
+    def _lua_redis_pcall(self, lua_runtime: Any, expected_globals: set[Any], op: bytes, *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
         except Exception as ex:
@@ -134,7 +136,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             s._lua_runtime = LUA_MODULE.LuaRuntime(encoding=None, unpack_returned_tuples=True)
             lua_runtime = s._lua_runtime
 
-            valid_modules: Set[str] = set()
+            valid_modules: set[str] = set()
             for module in self.load_lua_modules:
                 try:
                     lua_runtime.require(module.encode())
@@ -292,7 +294,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         return sha1
 
     @command(name="SCRIPT EXISTS", fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
-    def script_exists(self, *args: bytes) -> List[int]:
+    def script_exists(self, *args: bytes) -> list[int]:
         if self.version >= (7,) and len(args) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         return [int(sha1 in self._server.script_cache) for sha1 in args]
@@ -309,7 +311,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         raise SimpleError(msgs.BAD_SUBCOMMAND_MSG.format("SCRIPT"))
 
     @command(name="SCRIPT HELP", fixed=())
-    def script_help(self, *args: bytes) -> List[bytes]:
+    def script_help(self, *args: bytes) -> list[bytes]:
         help_strings = [
             "SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
             "DEBUG (YES|SYNC|NO)",
@@ -346,23 +348,23 @@ def _convert_redis_arg(value: Any) -> bytes:
     if type(value) is bytes:
         return value
     elif type(value) in {int, float}:
-        return "{:.17g}".format(value).encode()
+        return f"{value:.17g}".encode()
     else:
         raise SimpleError(msgs.LUA_COMMAND_ARG_MSG)
 
 
-def _check_for_lua_globals(lua_runtime: Any, expected_globals: Set[Any]) -> None:
+def _check_for_lua_globals(lua_runtime: Any, expected_globals: set[Any]) -> None:
     unexpected_globals = set(lua_runtime.globals().keys()) - expected_globals
     if len(unexpected_globals) > 0:
         unexpected = [_ensure_str(var, "utf-8", "replace") for var in unexpected_globals]
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 
 
-def _lua_redis_log(lua_runtime: Any, expected_globals: Set[Any], lvl: int, *args: Any) -> None:
+def _lua_redis_log(lua_runtime: Any, expected_globals: set[Any], lvl: int, *args: Any) -> None:
     _check_for_lua_globals(lua_runtime, expected_globals)
     if len(args) < 1:
         raise SimpleError(msgs.REQUIRES_MORE_ARGS_MSG.format("redis.log()", "two"))
-    if lvl not in REDIS_LOG_LEVELS_TO_LOGGING.keys():
+    if lvl not in REDIS_LOG_LEVELS_TO_LOGGING:
         raise SimpleError(msgs.LOG_INVALID_DEBUG_LEVEL_MSG)
     msg = " ".join([x.decode("utf-8") if isinstance(x, bytes) else str(x) for x in args if not isinstance(x, bool)])
     LOGGER.log(REDIS_LOG_LEVELS_TO_LOGGING[lvl], msg)
@@ -406,13 +408,13 @@ def _cjson_lua_to_python(obj: Any) -> Any:
     return {_cjson_lua_to_python(key): _cjson_lua_to_python(value) for key, value in d.items()}
 
 
-def _lua_cjson_encode(lua_runtime: Any, expected_globals: Set[Any], value: Any) -> bytes:
+def _lua_cjson_encode(lua_runtime: Any, expected_globals: set[Any], value: Any) -> bytes:
     _check_for_lua_globals(lua_runtime, expected_globals)
     value = _cjson_lua_to_python(value)
     return json.dumps(value, separators=(",", ":")).encode()
 
 
-def _lua_cjson_decode(lua_runtime: Any, expected_globals: Set[Any], json_str: str) -> Any:
+def _lua_cjson_decode(lua_runtime: Any, expected_globals: set[Any], json_str: str) -> Any:
     _check_for_lua_globals(lua_runtime, expected_globals)
     json_obj = json.loads(json_str)
     json_obj = _cjson_python_to_lua(json_obj)

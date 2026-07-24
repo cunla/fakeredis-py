@@ -70,7 +70,7 @@ Client (redis-py/valkey-py)
 Commands are methods on mixins in `commands_mixins/` (or `stack/`). The `@command` decorator registers them in `SUPPORTED_COMMANDS`:
 
 ```python
-@command((Key(bytes), bytes))   # signature: key argument, then bytes value
+@command((Key(bytes), bytes))  # signature: key argument, then bytes value
 def append(self, key: CommandItem, value: bytes) -> int:
     old = key.get(b"")
     if len(old) + len(value) > MAX_STRING_SIZE:

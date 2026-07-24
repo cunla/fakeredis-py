@@ -109,8 +109,8 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: ClientType):
 def test_scan(r: ClientType):
     # Set up the data
     for ix in range(20):
-        k = "scan-test:%s" % ix
-        v = "result:%s" % ix
+        k = f"scan-test:{ix}"
+        v = f"result:{ix}"
         r.set(k, v)
     expected = r.keys()
     assert len(expected) == 20  # Ensure we know what we're testing

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import math
 import re
 import struct
 from collections import OrderedDict
+from collections.abc import Iterator
 from functools import lru_cache
-from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union, Set
+from typing import Any, Literal
 
 import numpy as np
 from jsonpath_ng import JSONPath
@@ -13,11 +16,12 @@ from jsonpath_ng.ext import parse
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import SimpleError
+from fakeredis._typing import Self
 
 QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 
-def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
+def _update_to_jsonpath_format(path: bytes | str) -> str:
     path_str = path.decode() if isinstance(path, bytes) else path
     path_str = re.sub(r"\band\b", "&", path_str)
     path_str = re.sub(r"\bor\b", "|", path_str)
@@ -36,7 +40,7 @@ def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
 
 
 @lru_cache(maxsize=64)
-def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
+def _parse_jsonfilter(path: str | bytes) -> JSONPath:
     path_str: str = _update_to_jsonpath_format(path)
     try:
         return parse(path_str)
@@ -46,7 +50,7 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
 
 class Vector:
     def __init__(
-        self, name: bytes, values: List[float], attributes: Optional[bytes], quantization: QUANTIZATION_TYPE, ef: int
+        self, name: bytes, values: list[float], attributes: bytes | None, quantization: QUANTIZATION_TYPE, ef: int
     ) -> None:
         self.name = name
         self.values = values
@@ -67,10 +71,10 @@ class Vector:
         return hash(self.name)
 
     @classmethod
-    def from_vector_values(cls, values: List[float]) -> Self:
+    def from_vector_values(cls, values: list[float]) -> Self:
         return cls(b"", values, b"", "int8", 0)
 
-    def raw(self) -> List[Any]:
+    def raw(self) -> list[Any]:
         raw_bytes = struct.pack(f"{len(self.values)}f", *self.values)
         if self.quantization == "int8":
             norm_values = np.array(self.values) / self.l2_norm if self.l2_norm != 0 else np.array(self.values)
@@ -92,13 +96,13 @@ class Vector:
 class VectorSet:
     def __init__(self, dimensions: int):
         self._dimensions = dimensions
-        self._vectors: Dict[bytes, Vector] = dict()
-        self._links: Dict[bytes, int] = dict()
-        self._quant_type: Optional[str] = None
+        self._vectors: dict[bytes, Vector] = {}
+        self._links: dict[bytes, int] = {}
+        self._quant_type: str | None = None
         self._node_uid_counter: int = 0
         self._max_level: int = 0
-        self._node_levels: Dict[bytes, int] = dict()
-        self._node_links: Dict[bytes, Dict[int, Set[bytes]]] = dict()
+        self._node_levels: dict[bytes, int] = {}
+        self._node_links: dict[bytes, dict[int, set[bytes]]] = {}
 
     @staticmethod
     def _compute_level(node_index: int, m: int) -> int:
@@ -114,7 +118,7 @@ class VectorSet:
     def card(self) -> int:
         return len(self._vectors)
 
-    def vector_names(self) -> List[bytes]:
+    def vector_names(self) -> list[bytes]:
         return list(self._vectors.keys())
 
     def exists(self, name: bytes) -> bool:
@@ -129,8 +133,7 @@ class VectorSet:
 
         level = self._compute_level(node_index, numlinks)
         self._node_levels[vector.name] = level
-        if level > self._max_level:
-            self._max_level = level
+        self._max_level = max(self._max_level, level)
 
         # Build links for this node at each of its levels
         self._node_links[vector.name] = {}
@@ -171,7 +174,7 @@ class VectorSet:
                 neighbors.discard(name)
         return 1
 
-    def info(self) -> Dict[bytes, Any]:
+    def info(self) -> dict[bytes, Any]:
         quant = self._quant_type or b"fp32"
         # Normalize quantization type name for the info response
         if quant == "noquant":
@@ -185,7 +188,7 @@ class VectorSet:
             b"hnsw-max-node-uid": self._node_uid_counter,
         }
 
-    def links(self, name: bytes) -> Optional[Dict[int, List[bytes]]]:
+    def links(self, name: bytes) -> dict[int, list[bytes]] | None:
         if name not in self._vectors:
             return None
         node_links = self._node_links.get(name, {0: set()})
@@ -193,16 +196,16 @@ class VectorSet:
 
     def range(
         self,
-        min_value: Optional[bytes],
+        min_value: bytes | None,
         include_min: bool,
-        max_value: Optional[bytes],
+        max_value: bytes | None,
         include_max: bool,
-        count: Optional[int],
-    ) -> List[bytes]:
+        count: int | None,
+    ) -> list[bytes]:
         if count is not None and count < 0:
             count = None
-        res: List[bytes] = []
-        for name in self._vectors.keys():
+        res: list[bytes] = []
+        for name in self._vectors:
             if (min_value is None or name > min_value or (include_min and name == min_value)) and (
                 max_value is None or name < max_value or (include_max and name == max_value)
             ):
@@ -222,7 +225,7 @@ class VectorSet:
     def __iter__(self) -> Iterator[Vector]:
         return iter(self._vectors.values())
 
-    def get(self, k: bytes) -> Optional[Vector]:
+    def get(self, k: bytes) -> Vector | None:
         if k in self._vectors:
             return self._vectors[k]
         return None
@@ -230,11 +233,11 @@ class VectorSet:
     def top_similar(
         self,
         query: Vector,
-        filter_expression: Optional[bytes],
+        filter_expression: bytes | None,
         count: int,
-        epsilon: Optional[float],
-        filter_ef: Optional[int] = None,
-    ) -> "OrderedDict[Vector, float]":
+        epsilon: float | None,
+        filter_ef: int | None = None,
+    ) -> OrderedDict[Vector, float]:
         """Return the top-``count`` most similar vectors to ``query``.
 
         Vectors are examined in best-first order (most similar first), mimicking the
@@ -267,7 +270,7 @@ class VectorSet:
             max_effort = filter_ef
         threshold = None if epsilon is None else 1.0 - epsilon
 
-        results: "OrderedDict[Vector, float]" = OrderedDict()
+        results: OrderedDict[Vector, float] = OrderedDict()
         examined = 0
         for idx in order:
             if examined >= max_effort:
@@ -285,7 +288,7 @@ class VectorSet:
         return results
 
     @staticmethod
-    def _passes_filter(vector: Vector, parsed_filter: Optional[JSONPath]) -> bool:
+    def _passes_filter(vector: Vector, parsed_filter: JSONPath | None) -> bool:
         if parsed_filter is None:
             return True
         if vector.attributes is None:
