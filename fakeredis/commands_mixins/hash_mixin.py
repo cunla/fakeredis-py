@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import Any, Callable, cast
+from typing import Any, Callable, List, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -103,7 +103,7 @@ class HashCommandsMixin(CommandsMixinBase):
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
         scan_result = self._scan(key.value, cursor, *scan_args)
         result_cursor = scan_result[0]
-        keys: list[bytes] = cast(list[bytes], scan_result[1])
+        keys: list[bytes] = cast(List[bytes], scan_result[1])
         if no_values:
             return [result_cursor, keys]
         items = []

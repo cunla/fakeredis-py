@@ -1,5 +1,7 @@
 """Command mixin for emulating `redis-py`'s Count-min sketch functionality."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from fakeredis import _msgs as msgs

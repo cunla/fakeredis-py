@@ -17,6 +17,8 @@ Generates a JSON file with the following structure:
 that is used for the `COMMAND` redis command.
 """
 
+from __future__ import annotations
+
 import json
 import os
 from typing import Any

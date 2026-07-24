@@ -2,6 +2,8 @@
 This script generates the markdown files for the supported commands documentation.
 """
 
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass

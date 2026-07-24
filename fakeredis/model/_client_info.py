@@ -1,8 +1,10 @@
 import time
-from typing import Any
+from typing import Any, Dict
 
 
-class ClientInfo(dict[str, Any]):
+# Subclassing a parameterized generic is evaluated at runtime, so use typing.Dict
+# (not the PEP 585 builtin) to keep this importable on Python 3.8.
+class ClientInfo(Dict[str, Any]):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__()
         kwargs.setdefault("-created", int(time.time()))

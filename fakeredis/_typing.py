@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import sys
-from typing import Any, Literal, Union
+from typing import Any, Dict, List, Literal, Tuple, Union
 
 import redis
 import redis.asyncio
@@ -17,9 +19,11 @@ except ImportError:  # for Python < 3.8
     import importlib_metadata as metadata  # type: ignore
 
 lib_version = metadata.version("fakeredis")
-VersionType = tuple[int, ...]
+# These are evaluated at runtime (not annotations), so they must use typing
+# aliases rather than PEP 585 builtins to remain importable on Python 3.8.
+VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
-JsonType = Union[str, int, float, bool, None, dict[str, Any], list[Any]]
+JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 RaiseErrorTypes: tuple[type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError
 ClientType = redis.Redis

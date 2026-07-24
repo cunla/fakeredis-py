@@ -4,6 +4,8 @@ Subkey notifications are controlled by the `notify-keyspace-events` config: the 
 enables hash-command events, and each of the S/T/I/V flags enables one subkey channel type.
 """
 
+from __future__ import annotations
+
 import time
 
 import pytest

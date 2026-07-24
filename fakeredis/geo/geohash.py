@@ -2,6 +2,8 @@
 #  alphabet described in IETF's RFC 4648
 #  (http://tools.ietf.org/html/rfc4648)
 
+from __future__ import annotations
+
 base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 decodemap = {base32[i]: i for i in range(len(base32))}
 
