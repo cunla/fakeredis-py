@@ -147,10 +147,15 @@ class StreamsCommandsMixin(CommandsMixinBase):
             return 0
         return group.ack(args)  # type: ignore
 
-    @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
+    @command(
+        name="XPENDING",
+        fixed=(Key(XStream), bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[Any]]:
         if key.value is None:
-            return 0
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
 
         if len(args) > 4 and casematch(b"idle", args[0]):  # Idle
@@ -168,7 +173,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            return 0 if start is not None else []
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         if start is not None:
             return group.pending(idle, start, end, count, consumer)
@@ -222,7 +227,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
         return group.del_consumer(consumer_name)
 
-    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
+    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xinfo_groups(self, key: CommandItem) -> Dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)

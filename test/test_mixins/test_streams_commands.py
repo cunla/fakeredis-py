@@ -624,6 +624,40 @@ def test_xinfo_stream_full(r: ClientType):
     assert len(info["groups"]) == 1
 
 
+def test_xinfo_groups_missing_stream(r: ClientType):
+    stream = "missing"
+
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="no such key"):
+        r.xinfo_groups(stream)
+
+    assert not r.exists(stream)
+
+
+def test_xpending_missing_stream_or_group(r: ClientType):
+    stream, group = "stream", "group"
+
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NOGROUP"):
+        r.xpending(stream, group)
+
+    assert not r.exists(stream)
+
+    r.xadd(stream, {"foo": "bar"})
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NOGROUP"):
+        r.xpending(stream, group)
+
+
+def test_xpending_pipeline_missing_stream_or_group(r: ClientType):
+    stream, group = "stream", "group"
+    with r.pipeline() as pipe:
+        pipe.xinfo_groups(stream)
+        pipe.xpending(stream, group)
+
+        result = pipe.execute(raise_on_error=False)
+
+    assert all(isinstance(item, (redis.ResponseError, valkey.ResponseError)) for item in result)
+    assert not r.exists(stream)
+
+
 def test_xpending(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
