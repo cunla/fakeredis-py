@@ -3,8 +3,8 @@ import redis
 import valkey
 from redis.commands.bf import BFInfo
 
-from test import testtools
 from fakeredis import _msgs as msgs
+from test import testtools
 
 bloom_tests = pytest.importorskip("probables")
 

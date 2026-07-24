@@ -1,6 +1,9 @@
-from typing import Optional, Set, Any
+from __future__ import annotations
+
+from typing import Any
 
 from fakeredis.commands_mixins import (
+    AclCommandsMixin,
     ArrayCommandsMixin,
     BitmapCommandsMixin,
     ConnectionCommandsMixin,
@@ -11,22 +14,22 @@ from fakeredis.commands_mixins import (
     PubSubCommandsMixin,
     ScriptingCommandsMixin,
     ServerCommandsMixin,
-    StringCommandsMixin,
-    TransactionsCommandsMixin,
     SetCommandsMixin,
     StreamsCommandsMixin,
-    AclCommandsMixin,
+    StringCommandsMixin,
+    TransactionsCommandsMixin,
 )
 from fakeredis.stack import (
-    JSONCommandsMixin,
     BFCommandsMixin,
     CFCommandsMixin,
     CMSCommandsMixin,
-    TopkCommandsMixin,
+    JSONCommandsMixin,
     TDigestCommandsMixin,
     TimeSeriesCommandsMixin,
+    TopkCommandsMixin,
     VectorSetCommandsMixin,
 )
+
 from ._basefakesocket import BaseFakeSocket
 from ._server import FakeServer
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
@@ -65,8 +68,8 @@ class FakeSocket(
         self,
         server: FakeServer,
         db: int,
-        lua_modules: Optional[Set[str]] = None,  # noqa: F821
+        lua_modules: set[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super(FakeSocket, self).__init__(server, db, *args, lua_modules=lua_modules, **kwargs)
+        super().__init__(server, db, *args, lua_modules=lua_modules, **kwargs)

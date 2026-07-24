@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import threading
 import time
 import uuid
 from queue import Queue
 from time import sleep
-from typing import Optional, Dict, Any
+from typing import Any
 
 import pytest
 import redis
@@ -12,11 +14,12 @@ from redis.client import PubSub
 
 import fakeredis
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import resp_conversion
 
 
-def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> Optional[Dict[str, Any]]:
+def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> dict[str, Any] | None:
     now = time.time()
     timeout = now + timeout
     while now < timeout:
@@ -144,10 +147,8 @@ def test_pubsub_punsubscribe(r: ClientType):
 @pytest.mark.slow
 def test_pubsub_listen(r: ClientType):
     def _listen(pubsub, q):
-        count = 0
-        for message in pubsub.listen():
+        for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
-            count += 1
             if count == 4:
                 pubsub.close()
 
@@ -213,10 +214,8 @@ def test_pubsub_listen_handler(r: ClientType):
 @pytest.mark.slow
 def test_pubsub_ignore_sub_messages_listen(r: ClientType):
     def _listen(pubsub, q):
-        count = 0
-        for message in pubsub.listen():
+        for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
-            count += 1
             if count == 4:
                 pubsub.close()
 

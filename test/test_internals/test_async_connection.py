@@ -3,7 +3,7 @@ import redis
 import redis.asyncio
 import valkey
 
-from fakeredis import FakeServer, aioredis, FakeAsyncRedis, FakeStrictRedis
+from fakeredis import FakeAsyncRedis, FakeServer, FakeStrictRedis, aioredis
 from fakeredis._typing import AsyncClientType
 from test import testtools
 

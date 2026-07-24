@@ -9,6 +9,7 @@ import valkey
 
 from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import raw_command, resp_conversion
 
@@ -500,13 +501,13 @@ def test_saving_unicode_type_as_key(r: ClientType):
 
 def test_future_newbytes(r: ClientType):
     # bytes = pytest.importorskip('builtins', reason='future.types not available').bytes
-    r.set(bytes(b"\xc3\x91andu"), "foo")
+    r.set(b"\xc3\x91andu", "foo")
     assert r.get("Ñandu") == b"foo"
 
 
 def test_future_newstr(r: ClientType):
     # str = pytest.importorskip('builtins', reason='future.types not available').str
-    r.set(str("Ñandu"), "foo")
+    r.set("Ñandu", "foo")
     assert r.get("Ñandu") == b"foo"
 
 
@@ -518,7 +519,7 @@ def test_setitem_getitem(r: ClientType):
 
 def test_getitem_non_existent_key(r: ClientType):
     assert r.keys() == []
-    assert "noexists" not in r.keys()
+    assert "noexists" not in r
 
 
 @pytest.mark.slow

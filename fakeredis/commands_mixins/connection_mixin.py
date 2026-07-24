@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import time
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Union
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import fakeredis
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, DbIndex, Int
-from fakeredis._helpers import SimpleError, OK, SimpleString, NoResponse, casematch
+from fakeredis._commands import DbIndex, Int, command
+from fakeredis._helpers import OK, NoResponse, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
@@ -18,14 +21,14 @@ class ConnectionCommandsMixin(CommandsMixinBase):
     _clear_watches: Callable[[], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(ConnectionCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._db_num: int
         self._pubsub: int
-        self._transaction: Optional[List[Any]]
+        self._transaction: list[Any] | None
         self._transaction_failed: bool
         self._killed: bool
         self._blocked: bool
-        self._unblock_reason: Optional[bytes]
+        self._unblock_reason: bytes | None
         self._reply_off: bool
         self._reply_skip: bool
         self._reply_skip_next: bool
@@ -37,7 +40,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return message
 
     @command((), (bytes,))
-    def ping(self, *args: bytes) -> Union[List[bytes], bytes, SimpleString]:
+    def ping(self, *args: bytes) -> list[bytes] | bytes | SimpleString:
         if len(args) > 1:
             msg = msgs.WRONG_ARGS_MSG6.format("ping")
             raise SimpleError(msg)
@@ -101,7 +104,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return b"\n".join(res)
 
     @command(name="HELLO", fixed=(), repeat=(bytes,))
-    def hello(self, *args: bytes) -> Dict[str, Any]:
+    def hello(self, *args: bytes) -> dict[str, Any]:
         self._client_info["resp"] = 2 if len(args) == 0 else Int.decode(args[0])
         i = 1
         while i < len(args):
@@ -155,7 +158,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="CLIENT REPLY", fixed=(bytes,), repeat=())
-    def client_reply(self, mode: bytes) -> Union[SimpleString, NoResponse]:
+    def client_reply(self, mode: bytes) -> SimpleString | NoResponse:
         if casematch(mode, b"on"):
             self._reply_off = self._reply_skip = self._reply_skip_next = False
             return OK
@@ -217,8 +220,8 @@ class ConnectionCommandsMixin(CommandsMixinBase):
     def _client_age(sock: Any) -> int:
         return int(time.time()) - int(sock._client_info.get("-created", 0))
 
-    def _parse_client_kill_filters(self, args: Sequence[bytes]) -> Dict[str, Any]:
-        filters: Dict[str, Any] = {}
+    def _parse_client_kill_filters(self, args: Sequence[bytes]) -> dict[str, Any]:
+        filters: dict[str, Any] = {}
         i = 0
         while i < len(args):
             if i + 1 >= len(args):
@@ -268,12 +271,12 @@ class ConnectionCommandsMixin(CommandsMixinBase):
 
     def _kill_clients(
         self,
-        addr: Optional[bytes] = None,
-        laddr: Optional[bytes] = None,
-        client_id: Optional[int] = None,
-        client_type: Optional[bytes] = None,
-        user: Optional[bytes] = None,
-        maxage: Optional[int] = None,
+        addr: bytes | None = None,
+        laddr: bytes | None = None,
+        client_id: int | None = None,
+        client_type: bytes | None = None,
+        user: bytes | None = None,
+        maxage: int | None = None,
         skipme: bool = True,
     ) -> int:
         killed = 0
@@ -298,7 +301,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return killed
 
     @command(name="CLIENT KILL", fixed=(bytes,), repeat=(bytes,))
-    def client_kill(self, *args: bytes) -> Union[SimpleString, int]:
+    def client_kill(self, *args: bytes) -> SimpleString | int:
         # The one-argument form is the old `CLIENT KILL addr:port` syntax, which reports
         # whether it killed anything rather than a count, and may kill the caller.
         if len(args) == 1:
@@ -309,14 +312,14 @@ class ConnectionCommandsMixin(CommandsMixinBase):
 
     def _discard_subscriptions(self) -> None:
         """Drop every subscription without sending the usual unsubscribe confirmations."""
-        subscriber_maps: List[Dict[bytes, Any]] = [
+        subscriber_maps: list[dict[bytes, Any]] = [
             self._server.subscribers,
             self._server.psubscribers,
             self._server.ssubscribers,
         ]
         for subscribers in subscriber_maps:
             for channel in list(subscribers.keys()):
-                subs: Set[Any] = subscribers[channel]
+                subs: set[Any] = subscribers[channel]
                 subs.discard(self)
                 if not subs:
                     del subscribers[channel]

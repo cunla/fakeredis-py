@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import (
     Any,
-    Dict,
-    List,
-    Tuple,
 )
 
 import pytest
@@ -21,7 +18,7 @@ SAMPLE_DATA = {
 
 
 @pytest.fixture(scope="function")
-def json_data() -> Dict[str, Any]:
+def json_data() -> dict[str, Any]:
     """A module-scoped "blob" of JSON-encodable data."""
     return {
         "L1": {
@@ -65,7 +62,7 @@ def json_data() -> Dict[str, Any]:
     }
 
 
-def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[bytes]]:
+def load_types_data(nested_key_name: str) -> tuple[dict[str, Any], list[bytes]]:
     """Generate a structure with sample of all types"""
     type_samples = {
         "object": {},
@@ -81,4 +78,4 @@ def load_types_data(nested_key_name: str) -> Tuple[Dict[str, Any], List[bytes]]:
     for k, v in type_samples.items():
         jdata[f"nested_{k}"] = {nested_key_name: v}
 
-    return jdata, [k.encode() for k in type_samples.keys()]
+    return jdata, [k.encode() for k in type_samples]

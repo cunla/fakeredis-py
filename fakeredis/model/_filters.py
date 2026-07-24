@@ -1,10 +1,11 @@
-from typing import Any, ByteString
+from typing import Any
 
 from probables import CountingCuckooFilter, CuckooFilterFullError, ExpandingBloomFilter
 
 from fakeredis import _msgs as msgs
-from ._base_type import BaseModel
+
 from .._helpers import SimpleError
+from ._base_type import BaseModel
 
 
 class ScalableBloomFilter(ExpandingBloomFilter, BaseModel):
@@ -20,7 +21,7 @@ class ScalableBloomFilter(ExpandingBloomFilter, BaseModel):
             return True
         if self.scale == self.NO_GROWTH and self.elements_added >= self.estimated_elements:
             raise SimpleError(msgs.FILTER_FULL_MSG)
-        super(ScalableBloomFilter, self).add(key)
+        super().add(key)
         return False
 
     @classmethod
@@ -59,7 +60,7 @@ class ScalableCuckooFilter(CountingCuckooFilter, BaseModel):
         return False
 
     @classmethod
-    def frombytes(cls, b: ByteString, **kwargs: Any) -> "ScalableCuckooFilter":  # type: ignore[override]
+    def frombytes(cls, b: bytes, **kwargs: Any) -> "ScalableCuckooFilter":  # type: ignore[override]
         base = CountingCuckooFilter.frombytes(b, **kwargs)
         obj = cls.__new__(cls)
         for c in CountingCuckooFilter.__mro__:

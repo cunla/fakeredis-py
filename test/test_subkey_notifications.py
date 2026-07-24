@@ -4,8 +4,9 @@ Subkey notifications are controlled by the `notify-keyspace-events` config: the 
 enables hash-command events, and each of the S/T/I/V flags enables one subkey channel type.
 """
 
+from __future__ import annotations
+
 import time
-from typing import List, Tuple
 
 import pytest
 
@@ -23,7 +24,7 @@ pytestmark.extend(
 )
 
 
-def collect_messages(pubsub, timeout=1.0) -> List[Tuple[bytes, bytes]]:
+def collect_messages(pubsub, timeout=1.0) -> list[tuple[bytes, bytes]]:
     """Collect (channel, data) of pmessages until no message arrives within a short poll window."""
     deadline = time.time() + timeout
     messages = []

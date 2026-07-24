@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fakeredis._helpers import SimpleError
 
 try:
@@ -13,13 +15,13 @@ import time
 from dataclasses import dataclass
 from io import BufferedIOBase
 from itertools import count
-from socketserver import ThreadingTCPServer, StreamRequestHandler
-from typing import Dict, Tuple, Any, Type, Union
+from socketserver import StreamRequestHandler, ThreadingTCPServer
+from typing import Any
 
 from redis.connection import DefaultParser
 
-from fakeredis import FakeServer, FakeRedisConnection
-from fakeredis._typing import VersionType, ServerType
+from fakeredis import FakeRedisConnection, FakeServer
+from fakeredis._typing import ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
 # LOGGER.setLevel(logging.DEBUG)
@@ -40,7 +42,7 @@ def to_bytes(value: Any) -> bytes:
     return str(value).encode()
 
 
-_EXCEPTION_PREFIX_MAP: Dict[Type[Exception], str] = {
+_EXCEPTION_PREFIX_MAP: dict[type[Exception], str] = {
     v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if isinstance(v, type) and issubclass(v, Exception)
 }
 
@@ -54,9 +56,9 @@ def _get_exception_prefix(e: Exception) -> str:
 
 @dataclass
 class Writer:
-    client_address: Tuple[str, int]
+    client_address: tuple[str, int]
     writer: BufferedIOBase
-    request_handler: "TCPFakeRequestHandler"
+    request_handler: TCPFakeRequestHandler
 
     def write(self, value: bytes) -> None:
         LOGGER.debug(f"<<< {self.client_address}: {value!r}")
@@ -83,7 +85,7 @@ class Resp2Writer(Writer):
             for item in value:
                 self.dump(item, dump_bulk=True)
         elif value is None:
-            self.write("$-1\r\n".encode())
+            self.write(b"$-1\r\n")
         elif isinstance(value, Exception):
             if isinstance(value, SimpleError):
                 self.write(f"-{value.args[0]}\r\n".encode())
@@ -97,7 +99,7 @@ class Resp3Writer(Writer):
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
         value_type = type(value)
         if value is None:
-            self.write("_\r\n".encode())
+            self.write(b"_\r\n")
         elif value_type is str or value_type is bytes:
             value = to_bytes(value)
             if value.upper() == b"SHUTDOWN":
@@ -138,7 +140,7 @@ class Resp3Writer(Writer):
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-    server: "TcpFakeServer"
+    server: TcpFakeServer
     shutdown_request: bool = False
 
     def setup(self) -> None:
@@ -197,7 +199,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 class TcpFakeServer(ThreadingTCPServer):
     def __init__(
         self,
-        server_address: Tuple[Union[str, bytes, bytearray], int],
+        server_address: tuple[str | bytes | bytearray, int],
         bind_and_activate: bool = True,
         server_type: ServerType = "redis",
         server_version: VersionType = (8, 0),
@@ -208,7 +210,7 @@ class TcpFakeServer(ThreadingTCPServer):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
-        self.clients: Dict[int, FakeRedisConnection] = {}
+        self.clients: dict[int, FakeRedisConnection] = {}
 
     def shutdown(self) -> None:
         self._shutdown_event.set()

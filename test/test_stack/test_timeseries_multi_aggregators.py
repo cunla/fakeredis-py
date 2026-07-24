@@ -3,7 +3,7 @@
 import pytest
 
 from fakeredis._typing import ClientType
-from test.testtools import raw_command, get_protocol_version
+from test.testtools import get_protocol_version, raw_command
 
 timeseries_tests = pytest.importorskip("probables")
 

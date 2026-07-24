@@ -286,8 +286,8 @@ def test_hset_removing_last_field_delete_key(r: ClientType):
 def test_hscan_no_values(r: ClientType):
     name = "hscan-test"
     for ix in range(20):
-        k = "key:%s" % ix
-        v = "result:%s" % ix
+        k = f"key:{ix}"
+        v = f"result:{ix}"
         r.hset(name, k, v)
     expected = r.hgetall(name)
     assert len(expected) == 20  # Ensure we know what we're testing
@@ -305,8 +305,8 @@ def test_hscan(r: ClientType):
     # Set up the data
     name = "hscan-test"
     for ix in range(20):
-        k = "key:%s" % ix
-        v = "result:%s" % ix
+        k = f"key:{ix}"
+        v = f"result:{ix}"
         r.hset(name, k, v)
     expected = r.hgetall(name)
     assert len(expected) == 20  # Ensure we know what we're testing

@@ -2,6 +2,8 @@
 This script generates the markdown files for the supported commands documentation.
 """
 
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass
@@ -96,13 +98,14 @@ def download_command_markdown(command: str) -> dict:
     filename = os.path.join(THIS_DIR, f"{command}.md")
     if not os.path.exists(filename):
         contents = requests.get(url).content
-        open(filename, "wb").write(contents)
+        with open(filename, "wb") as f:
+            f.write(contents)
     # Read markdown file and extract metadata from the top of the file, which is in the format:
     # ---
     # summary: "summary of the command"
     # group: "group of the command"
     # ---
-    with open(filename, "r") as f:
+    with open(filename) as f:
         lines = f.readlines()
     metadata = {}
     if lines[0].strip() == "---":
@@ -117,8 +120,10 @@ def download_single_stack_commands(filename, url, markdown_commands: list[str]) 
     full_filename = os.path.join(THIS_DIR, filename)
     if not os.path.exists(full_filename):
         contents = requests.get(url).content
-        open(full_filename, "wb").write(contents)
-    curr_cmds = json.load(open(full_filename))
+        with open(full_filename, "wb") as f:
+            f.write(contents)
+    with open(full_filename) as f:
+        curr_cmds = json.load(f)
     cmds = {k.lower(): v for k, v in curr_cmds.items()}
     for cmd in markdown_commands:
         if cmd.lower() not in cmds:

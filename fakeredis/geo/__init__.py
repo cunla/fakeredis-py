@@ -1,8 +1,8 @@
-from .geohash import geo_encode, geo_decode
+from .geohash import geo_decode, geo_encode
 from .haversine import distance
 
 __all__ = [
-    "geo_encode",
-    "geo_decode",
     "distance",
+    "geo_decode",
+    "geo_encode",
 ]
