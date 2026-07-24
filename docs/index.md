@@ -109,6 +109,7 @@ import pytest
 @pytest.fixture
 def redis_client(request):
     import fakeredis
+
     redis_client = fakeredis.FakeRedis()
     return redis_client
 ```
@@ -124,15 +125,15 @@ It does this by storing the state internally. For example:
 ```pycon
 >>> import fakeredis
 >>> r = fakeredis.FakeStrictRedis(server_type="redis")
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 True
->>> r.get('foo')
+>>> r.get("foo")
 'bar'
->>> r.lpush('bar', 1)
+>>> r.lpush("bar", 1)
 1
->>> r.lpush('bar', 2)
+>>> r.lpush("bar", 2)
 2
->>> r.lrange('bar', 0, -1)
+>>> r.lrange("bar", 0, -1)
 [2, 1]
 ```
 
@@ -144,16 +145,16 @@ explicitly create one to share state:
 >>> import fakeredis
 >>> server = fakeredis.FakeServer()
 >>> r1 = fakeredis.FakeStrictRedis(server=server)
->>> r1.set('foo', 'bar')
+>>> r1.set("foo", "bar")
 True
 >>> r2 = fakeredis.FakeStrictRedis(server=server)
->>> r2.get('foo')
+>>> r2.get("foo")
 'bar'
->>> r2.set('bar', 'baz')
+>>> r2.set("bar", "baz")
 True
->>> r1.get('bar')
+>>> r1.get("bar")
 'baz'
->>> r2.get('bar')
+>>> r2.get("bar")
 'baz'
 ```
 
@@ -165,10 +166,10 @@ Set the connected attribute of the server to `False` after initialization.
 >>> server = fakeredis.FakeServer()
 >>> server.connected = False
 >>> r = fakeredis.FakeStrictRedis(server=server)
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 ConnectionError: FakeRedis is emulating a connection error.
 >>> server.connected = True
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 True
 ```
 
@@ -182,9 +183,9 @@ Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fa
 ```pycon
 >>> from fakeredis import FakeAsyncRedis
 >>> r1 = FakeAsyncRedis()
->>> await r1.set('foo', 'bar')
+>>> await r1.set("foo", "bar")
 True
->>> await r1.get('foo')
+>>> await r1.get("foo")
 'bar'
 ```
 
@@ -196,12 +197,10 @@ Update your cache settings:
 from fakeredis import FakeConnection
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': '...',
-        'OPTIONS': {
-            'connection_class': FakeConnection
-        }
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "...",
+        "OPTIONS": {"connection_class": FakeConnection},
     }
 }
 ```
@@ -232,6 +231,7 @@ import django_rq
 # do not share the state. Therefore, we define a singleton object to reuse it.
 def get_fake_connection(config: Dict[str, Any], strict: bool):
     from fakeredis import FakeRedis, FakeStrictRedis
+
     redis_cls = FakeStrictRedis if strict else FakeRedis
     if "URL" in config:
         return redis_cls.from_url(

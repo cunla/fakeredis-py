@@ -22,7 +22,7 @@ Add the new method to the appropriate mixin file and annotate it with `@command`
 
 ```python
 # fakeredis/commands_mixins/sortedset_mixin.py
-@command(name='zscore', fixed=(Key(ZSet), bytes), repeat=(), flags=[])
+@command(name="zscore", fixed=(Key(ZSet), bytes), repeat=(), flags=[])
 def zscore(self, key, member):
     try:
         return self._encodefloat(key.value[member], False)
@@ -105,11 +105,11 @@ to the real server output.
   decorator `@testtools.run_test_if_redispy_ver` on your tests. example:
 
 ```python
-@testtools.run_test_if_redispy_ver('gte', '4.2.0')  # This will run for redis-py 4.2.0 or above.
+@testtools.run_test_if_redispy_ver("gte", "4.2.0")  # This will run for redis-py 4.2.0 or above.
 def test_expire_should_not_expire__when_no_expire_is_set(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    assert r.expire('foo', 1, xx=True) == 0
+    r.set("foo", "bar")
+    assert r.get("foo") == b"bar"
+    assert r.expire("foo", 1, xx=True) == 0
 ```
 
 ## Updating documentation
