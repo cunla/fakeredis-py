@@ -32,6 +32,7 @@ classifiers = [
   "License :: OSI Approved :: BSD License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -145,3 +146,23 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.ruff.lint]
+# The project uses Ruff's default rule set. A few opinionated rules are disabled
+# where the flagged pattern is deliberate.
+ignore = [
+  "BLE001", # blind-except: intentional broad `except Exception` for robustness (pub/sub delivery, stream parsing, harnesses)
+  "S112",   # try-except-continue: intentional skipping of malformed stream entries
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**" = [
+  "DTZ005",
+  "DTZ006",
+] # tests use naive local datetimes for expiry/time checks on purpose
+"test/test_mixins/test_connection_commands.py" = [
+  "B017",
+] # broad pytest.raises across redis + valkey disconnected clients
+"test/test_stack/test_json.py" = [
+  "SIM115",
+] # NamedTemporaryFile handles kept open across the test on purpose

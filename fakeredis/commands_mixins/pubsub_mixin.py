@@ -1,8 +1,11 @@
-from typing import Any, Dict, Callable, List, Iterable
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
-from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
+from fakeredis._helpers import NoResponse, SimpleError, compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
@@ -10,10 +13,10 @@ class PubSubCommandsMixin(CommandsMixinBase):
     put_response: Callable[[Any], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
 
-    def _subscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
+    def _subscribe(self, channels: Iterable[bytes], subscribers: dict[bytes, Any], mtype: bytes) -> NoResponse:
         for channel in channels:
             subs = subscribers[channel]
             if self not in subs:
@@ -23,7 +26,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
             self.put_response(msg)
         return NoResponse()
 
-    def _unsubscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
+    def _unsubscribe(self, channels: Iterable[bytes], subscribers: dict[bytes, Any], mtype: bytes) -> NoResponse:
         if not channels:
             channels = []
             for channel, subs in subscribers.items():
@@ -40,7 +43,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
             self.put_response(msg)
         return NoResponse()
 
-    def _numsub(self, subscribers: Dict[bytes, Any], *channels: bytes) -> List[Any]:
+    def _numsub(self, subscribers: dict[bytes, Any], *channels: bytes) -> list[Any]:
         tuples_list = [(ch, len(subscribers.get(ch, []))) for ch in channels]
         return [item for sublist in tuples_list for item in sublist]
 
@@ -106,7 +109,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def pubsub_numpat(self, *_: Any) -> int:
         return len(self._server.psubscribers)
 
-    def _channels(self, subscribers_dict: Dict[bytes, Any], *patterns: bytes) -> List[bytes]:
+    def _channels(self, subscribers_dict: dict[bytes, Any], *patterns: bytes) -> list[bytes]:
         channels = list(subscribers_dict.keys())
         if len(patterns) > 0:
             regex = compile_pattern(patterns[0])
@@ -114,19 +117,19 @@ class PubSubCommandsMixin(CommandsMixinBase):
         return channels
 
     @command(name="PUBSUB CHANNELS", fixed=(), repeat=(bytes,))
-    def pubsub_channels(self, *args: bytes) -> List[bytes]:
+    def pubsub_channels(self, *args: bytes) -> list[bytes]:
         return self._channels(self._server.subscribers, *args)
 
     @command(name="PUBSUB SHARDCHANNELS", fixed=(), repeat=(bytes,))
-    def pubsub_shardchannels(self, *args: bytes) -> List[bytes]:
+    def pubsub_shardchannels(self, *args: bytes) -> list[bytes]:
         return self._channels(self._server.ssubscribers, *args)
 
     @command(name="PUBSUB NUMSUB", fixed=(), repeat=(bytes,))
-    def pubsub_numsub(self, *args: bytes) -> List[Any]:
+    def pubsub_numsub(self, *args: bytes) -> list[Any]:
         return self._numsub(self._server.subscribers, *args)
 
     @command(name="PUBSUB SHARDNUMSUB", fixed=(), repeat=(bytes,))
-    def pubsub_shardnumsub(self, *args: bytes) -> List[Any]:
+    def pubsub_shardnumsub(self, *args: bytes) -> list[Any]:
         return self._numsub(self._server.ssubscribers, *args)
 
     @command(name="PUBSUB", fixed=())
@@ -134,7 +137,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format("pubsub"))
 
     @command(name="PUBSUB HELP", fixed=())
-    def pubsub_help(self, *args: Any) -> List[bytes]:
+    def pubsub_help(self, *args: Any) -> list[bytes]:
         if self.version >= (7,):
             help_strings = [
                 "PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",

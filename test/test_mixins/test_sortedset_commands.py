@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections import OrderedDict
-from typing import Tuple, List, Optional
-
 import math
+from collections import OrderedDict
+
 import pytest
 import redis
 import valkey
@@ -334,11 +333,11 @@ def test_zmscore(r: ClientType):
     The order of the returned scores should always match the order in which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
-    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     r.zadd(cache_key, dict(zip(members, scores)))
-    cached_scores: List[Optional[float]] = r.zmscore(
+    cached_scores: list[float | None] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -350,10 +349,10 @@ def test_zmscore_missing_members(r: ClientType):
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
 
     r.zadd(cache_key, {"eight": 8.8})
-    cached_scores: List[Optional[float]] = r.zmscore(
+    cached_scores: list[float | None] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -370,15 +369,15 @@ def test_zmscore_mixed_membership(r: ClientType):
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
-    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     r.zadd(
         cache_key,
         {member: scores[idx] for (idx, member) in enumerate(members) if idx % 2 != 0},
     )
 
-    cached_scores: List[Optional[float]] = r.zmscore(cache_key, list(members))
+    cached_scores: list[float | None] = r.zmscore(cache_key, list(members))
 
     assert all(cached_scores[idx] is None for (idx, score) in enumerate(scores) if idx % 2 == 0)
     assert all(cached_scores[idx] == score for (idx, score) in enumerate(scores) if idx % 2 != 0)
@@ -1139,7 +1138,7 @@ def test_zscan(r: ClientType):
     # Set up the data
     name = "zscan-test"
     for ix in range(20):
-        r.zadd(name, {"key:%s" % ix: ix})
+        r.zadd(name, {f"key:{ix}": ix})
     expected = dict(r.zrange(name, 0, -1, withscores=True))
 
     # Test the basic version

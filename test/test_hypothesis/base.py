@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import functools
 import math
 import operator
 import string
 import sys
 from dataclasses import dataclass
-from typing import Any, Tuple, Optional
+from typing import Any
 
 import hypothesis.strategies as st
 import pytest
@@ -43,7 +45,7 @@ class MachineConfig:
     """Everything a state machine needs to talk to both servers."""
 
     server_type: str
-    version: Tuple[int, ...]
+    version: tuple[int, ...]
     host: str = "localhost"
     port: int = 6390
     db: int = 2
@@ -58,10 +60,10 @@ class MachineConfig:
         return cls(server=server, db=self.db)
 
 
-_active_config: Optional[MachineConfig] = None
+_active_config: MachineConfig | None = None
 
 
-def _server_version() -> Tuple[int, ...]:
+def _server_version() -> tuple[int, ...]:
     return _active_config.version if _active_config is not None else (7,)
 
 
@@ -118,7 +120,7 @@ class WrappedException:
         return str(self.wrapped)
 
     def __repr__(self):
-        return "WrappedException({!r})".format(self.wrapped)
+        return f"WrappedException({self.wrapped!r})"
 
     def __eq__(self, other):
         if not isinstance(other, WrappedException):
@@ -227,9 +229,7 @@ class Command:
         # Redis will ignore a NULL character in some commands but not others,
         # e.g., it recognizes EXEC\0 but not MULTI\00.
         # Rather than try to reproduce this quirky behavior, just skip these tests.
-        if b"\0" in command:
-            return False
-        return True
+        return b"\x00" not in command
 
 
 def commands(*args, **kwargs):

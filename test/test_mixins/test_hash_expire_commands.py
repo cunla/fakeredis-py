@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import time
-from typing import Optional, Dict
 
 import pytest
 
@@ -43,8 +44,8 @@ pytestmark.extend(
 def test_hexpire(
     r: ClientType,
     expiration_seconds: int,
-    preset_expiration: Optional[int],
-    flags: Dict[str, bool],
+    preset_expiration: int | None,
+    flags: dict[str, bool],
     expected_result: int,
 ) -> None:
     key, field = "redis-key", "hash-key"

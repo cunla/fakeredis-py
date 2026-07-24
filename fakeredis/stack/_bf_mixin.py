@@ -1,18 +1,20 @@
 """Command mixin for emulating `redis-py`'s BF functionality."""
 
-from typing import Any, List, Union, Dict
+from __future__ import annotations
+
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, Key, CommandItem, Float, Int
-from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
+from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ScalableBloomFilter
 
 
 class BFCommandsMixin(CommandsMixinBase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(BFCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def _bf_add(key: CommandItem, item: bytes) -> int:
@@ -33,7 +35,7 @@ class BFCommandsMixin(CommandsMixinBase):
         return key.value.elements_added  # type:ignore
 
     @command(name="BF.MADD", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
-    def bf_madd(self, key: CommandItem, *values: bytes) -> List[int]:
+    def bf_madd(self, key: CommandItem, *values: bytes) -> list[int]:
         res = [BFCommandsMixin._bf_add(key, value) for value in values]
         return res
 
@@ -42,7 +44,7 @@ class BFCommandsMixin(CommandsMixinBase):
         return BFCommandsMixin._bf_exist(key, value)
 
     @command(name="BF.MEXISTS", fixed=(Key(ScalableBloomFilter), bytes), repeat=(bytes,))
-    def bf_mexists(self, key: CommandItem, *values: bytes) -> List[int]:
+    def bf_mexists(self, key: CommandItem, *values: bytes) -> list[int]:
         res = [BFCommandsMixin._bf_exist(key, value) for value in values]
         return res
 
@@ -69,7 +71,7 @@ class BFCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="BF.INSERT", fixed=(Key(),), repeat=(bytes,))
-    def bf_insert(self, key: CommandItem, *args: bytes) -> List[int]:
+    def bf_insert(self, key: CommandItem, *args: bytes) -> list[int]:
         (capacity, error_rate, expansion, non_scaling, no_create), left_args = extract_args(
             args,
             ("+capacity", ".error", "+expansion", "nonscaling", "nocreate"),
@@ -98,7 +100,7 @@ class BFCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="BF.INFO", fixed=(Key(),), repeat=(bytes,))
-    def bf_info(self, key: CommandItem, *args: bytes) -> Union[Any, Dict[bytes, Any]]:
+    def bf_info(self, key: CommandItem, *args: bytes) -> Any | dict[bytes, Any]:
         if key.value is None or type(key.value) is not ScalableBloomFilter:
             raise SimpleError("...")
         if len(args) > 1:
@@ -133,7 +135,7 @@ class BFCommandsMixin(CommandsMixinBase):
         return {res_key: res}
 
     @command(name="BF.SCANDUMP", fixed=(Key(), Int), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def bf_scandump(self, key: CommandItem, iterator: int) -> List[Any]:
+    def bf_scandump(self, key: CommandItem, iterator: int) -> list[Any]:
         if key.value is None:
             raise SimpleError(msgs.NOT_FOUND_MSG)
 

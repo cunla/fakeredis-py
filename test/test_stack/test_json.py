@@ -423,7 +423,7 @@ def test_type(r: redis.Redis):
     r.json().set("1", Path.root_path(), 1)
 
     assert r.json().type("1", Path.root_path()) == testtools.resp_conversion(r, [b"integer"], b"integer")
-    assert r.json().type("1") == testtools.resp_conversion(r, [b"integer"], b"integer")  # noqa: E721
+    assert r.json().type("1") == testtools.resp_conversion(r, [b"integer"], b"integer")
 
     meta_data = {
         "object": {},
@@ -444,7 +444,7 @@ def test_type(r: redis.Redis):
             if v == val:
                 expected.append(k.encode())
                 break
-    assert r.json().type("doc1", "$..a") == testtools.resp_conversion(r, [expected], expected)  # noqa: E721
+    assert r.json().type("doc1", "$..a") == testtools.resp_conversion(r, [expected], expected)
 
     # Test single
     assert r.json().type("doc1", "$.integer.a") == testtools.resp_conversion(r, [[b"integer"]], [b"integer"])
@@ -501,14 +501,12 @@ def test_objkeys(r: redis.Redis):
     r.json().set("obj", Path.root_path(), obj)
     keys = r.json().objkeys("obj", Path.root_path())
     keys.sort()
-    exp = [k.encode() for k in obj.keys()]
+    exp = [k.encode() for k in obj]
     exp.sort()
-    assert set(keys) == testtools.resp_conversion(r, {k.encode() for k in obj.keys()}, set(obj.keys()))
+    assert set(keys) == testtools.resp_conversion(r, {k.encode() for k in obj}, set(obj.keys()))
 
     r.json().set("obj", Path.root_path(), obj)
-    assert set(r.json().objkeys("obj")) == testtools.resp_conversion(
-        r, {k.encode() for k in obj.keys()}, set(obj.keys())
-    )
+    assert set(r.json().objkeys("obj")) == testtools.resp_conversion(r, {k.encode() for k in obj}, set(obj.keys()))
 
     assert r.json().objkeys("fakekey") is None
 

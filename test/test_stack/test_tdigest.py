@@ -111,7 +111,7 @@ def test_tdigest_trimmed_mean(r: redis.Redis):
 
 def test_tdigest_rank(r: redis.Redis):
     assert r.tdigest().create("t-digest", 500)
-    assert r.tdigest().add("t-digest", list(range(0, 20)))
+    assert r.tdigest().add("t-digest", list(range(20)))
     assert -1 == r.tdigest().rank("t-digest", -1)[0]
     assert 0 == r.tdigest().rank("t-digest", 0)[0]
     assert 10 == r.tdigest().rank("t-digest", 10)[0]
@@ -120,7 +120,7 @@ def test_tdigest_rank(r: redis.Redis):
 
 def test_tdigest_revrank(r: redis.Redis):
     assert r.tdigest().create("t-digest", 500)
-    assert r.tdigest().add("t-digest", list(range(0, 20)))
+    assert r.tdigest().add("t-digest", list(range(20)))
     assert -1 == r.tdigest().revrank("t-digest", 20)[0]
     assert 19 == r.tdigest().revrank("t-digest", 0)[0]
     assert [-1, 19, 9] == r.tdigest().revrank("t-digest", 21, 0, 10)

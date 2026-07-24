@@ -22,7 +22,7 @@ def test_acl_save_load():
     r.acl_save()
 
     # assert acl file contains all data
-    with open(acl_filename, "r") as f:
+    with open(acl_filename) as f:
         lines = f.readlines()
         assert len(lines) == 2
         user_rule = lines[1]

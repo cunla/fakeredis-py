@@ -1,34 +1,36 @@
+from __future__ import annotations
+
 import math
 import sys
-from abc import abstractmethod, ABC
-from typing import Tuple, Callable, List, Any, Optional, Dict, Union
+from abc import ABC, abstractmethod
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
-    command,
-    Key,
-    Int,
-    Float,
     MAX_STRING_SIZE,
+    CommandItem,
+    Float,
+    Int,
+    Key,
+    command,
     delete_keys,
     fix_range_string,
-    CommandItem,
 )
-from fakeredis._helpers import OK, SimpleError, casematch, SimpleString
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis._typing import VersionType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
-def _lcs(s1: bytes, s2: bytes) -> Tuple[int, bytes, List[Any]]:
+def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
     l1 = len(s1)
     l2 = len(s2)
 
     # Opt array to store the optimal solution value till ith and jth position for 2 strings
-    opt: List[List[int]] = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+    opt: list[list[int]] = [[0] * (l2 + 1) for _ in range(l1 + 1)]
 
     # Pi array to store the direction when calculating the actual sequence
-    pi: List[List[int]] = [[0] * (l2 + 1) for _ in range(0, l1 + 1)]
+    pi: list[list[int]] = [[0] * (l2 + 1) for _ in range(l1 + 1)]
 
     # Algorithm to calculate the length of the longest common subsequence
     for r in range(1, l1 + 1):
@@ -140,7 +142,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     def incr(self, key: CommandItem) -> int:
         return self._incrby(key, 1)
 
-    def _increx_bound(self, raw: Optional[bytes], name: str, float_mode: bool, default: float) -> Union[int, float]:
+    def _increx_bound(self, raw: bytes | None, name: str, float_mode: bool, default: float) -> int | float:
         if raw is None:
             return default
         if float_mode:
@@ -148,7 +150,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         return Int.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_INTEGER_MSG.format(name))
 
     @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis",))
-    def increx(self, key: CommandItem, *args: bytes) -> List[Any]:
+    def increx(self, key: CommandItem, *args: bytes) -> list[Any]:
         if self.version < (8, 8):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("INCREX"))
         (byfloat, byint, saturate, lbound, ubound, ex, px, exat, pxat, persist, enx), _ = extract_args(
@@ -166,7 +168,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             raise SimpleError(msgs.INCREX_ENX_REQUIRES_EXPIRATION_MSG)
         if (ex is not None and ex <= 0) or (px is not None and px <= 0):
             raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format("increx"))
-        expire_time: Optional[float] = None
+        expire_time: float | None = None
         if exat is not None:
             expire_time = exat
         elif pxat is not None:
@@ -185,8 +187,8 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         if lower > upper:
             raise SimpleError(msgs.INCREX_LBOUND_GT_UBOUND_MSG)
 
-        current: Union[int, float]
-        amount: Union[int, float]
+        current: int | float
+        amount: int | float
         if float_mode:
             current = Float.decode(key.get(b"0"))
             amount = Float.decode(byfloat)
@@ -231,7 +233,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         return encoded
 
     @command(fixed=(Key(),), repeat=(Key(),))
-    def mget(self, *keys: CommandItem) -> List[Optional[bytes]]:
+    def mget(self, *keys: CommandItem) -> list[bytes | None]:
         return [key.value if isinstance(key.value, bytes) else None for key in keys]
 
     @command((Key(), bytes), (Key(), bytes))
@@ -371,7 +373,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         return key.get(None)
 
     @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,))
-    def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> Union[bytes, int, Dict[bytes, Any]]:
+    def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> bytes | int | dict[bytes, Any]:
         s1 = k1.value or b""
         s2 = k2.value or b""
 
@@ -386,7 +388,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         if arg_len:
             return lcs_len
         arg_minmatchlen = arg_minmatchlen if arg_minmatchlen else 0
-        results: List[Any] = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
+        results: list[Any] = list(filter(lambda x: x[2] >= arg_minmatchlen, matches))
         if not arg_withmatchlen:
             results = [[x[0], x[1]] for x in results]
         return {b"matches": results, b"len": lcs_len}

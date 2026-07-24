@@ -2,57 +2,58 @@ from ._acl import AccessControlList
 from ._array import Array
 from ._base_type import BaseModel
 from ._client_info import ClientInfo
-
 from ._command_info import (
     get_all_commands_info,
-    get_command_info,
     get_categories,
+    get_command_info,
     get_commands_by_category,
 )
 from ._expiring_members_set import ExpiringMembersSet
 from ._hash import Hash
-from ._stream import XStream, StreamEntryKey, StreamGroup, StreamRangeTest
+from ._stream import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
 from ._tdigest import TDigest
-from ._timeseries_model import TimeSeries, TimeSeriesRule, AGGREGATORS
+from ._timeseries_model import AGGREGATORS, TimeSeries, TimeSeriesRule
 from ._topk import HeavyKeeper
 from ._zset import ZSet
 
 __all__ = [
+    "AGGREGATORS",
+    "AccessControlList",
     "Array",
     "BaseModel",
-    "XStream",
-    "StreamRangeTest",
-    "StreamGroup",
+    "ClientInfo",
+    "ExpiringMembersSet",
+    "Hash",
+    "HeavyKeeper",
     "StreamEntryKey",
-    "ZSet",
+    "StreamGroup",
+    "StreamRangeTest",
+    "TDigest",
     "TimeSeries",
     "TimeSeriesRule",
-    "AGGREGATORS",
-    "HeavyKeeper",
-    "Hash",
-    "ExpiringMembersSet",
+    "XStream",
+    "ZSet",
     "get_all_commands_info",
-    "get_command_info",
     "get_categories",
+    "get_command_info",
     "get_commands_by_category",
-    "AccessControlList",
-    "ClientInfo",
-    "TDigest",
 ]
 
 try:
     import numpy as np  # noqa: F401
-    from ._vectorset import VectorSet, Vector  # noqa: F401
 
-    __all__.extend(["VectorSet", "Vector"])
+    from ._vectorset import Vector, VectorSet  # noqa: F401
+
+    __all__.extend(["Vector", "VectorSet"])
 except ImportError:
     pass
 
 try:
     import probables  # noqa: F401
-    from ._filters import ScalableCuckooFilter, ScalableBloomFilter  # noqa: F401
-    from ._cms import CountMinSketch  # noqa: F401
 
-    __all__.extend(["CountMinSketch", "ScalableCuckooFilter", "ScalableBloomFilter"])
+    from ._cms import CountMinSketch  # noqa: F401
+    from ._filters import ScalableBloomFilter, ScalableCuckooFilter  # noqa: F401
+
+    __all__.extend(["CountMinSketch", "ScalableBloomFilter", "ScalableCuckooFilter"])
 except ImportError:
     pass

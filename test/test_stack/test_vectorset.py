@@ -1,7 +1,6 @@
 import json
 import math
 import random
-from typing import List
 
 import pytest
 
@@ -647,7 +646,7 @@ def test_vrandmember(r: ClientType):
     random_member = r.vset().vrandmember("myset")
     assert random_member.decode() in elements
 
-    members_list: List[bytes] = r.vset().vrandmember("myset", count=2)
+    members_list: list[bytes] = r.vset().vrandmember("myset", count=2)
     assert len(members_list) == 2
     assert all(member.decode() in elements for member in members_list)
 
@@ -715,7 +714,7 @@ def test_vset_commands_without_decoding_responses(r: ClientType):
     # test vadd
     elements = ["elem1", "elem2", "elem3"]
     for elem in elements:
-        float_array = [random.uniform(0.5, 10) for x in range(0, 8)]
+        float_array = [random.uniform(0.5, 10) for x in range(8)]
         resp = r.vset().vadd("myset", float_array, element=elem)
         assert resp == 1
 

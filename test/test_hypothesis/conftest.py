@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import pytest
 import redis
@@ -19,7 +19,7 @@ settings.load_profile("fakeredis")
 
 
 @pytest.fixture
-def hypothesis_config(real_server_details: ServerDetails, real_server_address: Tuple[str, int]) -> MachineConfig:
+def hypothesis_config(real_server_details: ServerDetails, real_server_address: tuple[str, int]) -> MachineConfig:
     """Server details for a differential Hypothesis machine.
 
     Reuses the session-scoped ``real_server_details``/``real_server_address``

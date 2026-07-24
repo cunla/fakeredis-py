@@ -1,13 +1,13 @@
+from __future__ import annotations
+
 import threading
 import time
 from threading import Thread
-from typing import Tuple
 
 import pytest
 import redis
 
 from fakeredis._tcp_server import TcpFakeServer
-
 
 pytestmark = []
 pytestmark.extend(
@@ -17,13 +17,13 @@ pytestmark.extend(
 )
 
 
-def test_tcp_server_started(tcp_server_address: Tuple[str, int]):
+def test_tcp_server_started(tcp_server_address: tuple[str, int]):
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         r.set("foo", "bar")
         assert r.get("foo") == b"bar"
 
 
-def test_tcp_server_connection_reset_error(tcp_server_address: Tuple[str, int]):
+def test_tcp_server_connection_reset_error(tcp_server_address: tuple[str, int]):
     with redis.Redis(*tcp_server_address) as r:
         r.rpush("test", b"foo")
 
@@ -31,10 +31,10 @@ def test_tcp_server_connection_reset_error(tcp_server_address: Tuple[str, int]):
         assert r.rpop("test") == b"foo"
 
 
-def test_bulk_string_length(real_server_address: Tuple[str, int], tcp_server_address: Tuple[str, int]):
+def test_bulk_string_length(real_server_address: tuple[str, int], tcp_server_address: tuple[str, int]):
     """Test that malformed bulk string input is handled correctly."""
-    from contextlib import closing
     import socket
+    from contextlib import closing
 
     connections = [real_server_address, tcp_server_address]
     for conn in connections:
@@ -48,7 +48,7 @@ def test_bulk_string_length(real_server_address: Tuple[str, int], tcp_server_add
             )
 
 
-def test_tcp_server_started_protocol_3(tcp_server_address: Tuple[str, int]):
+def test_tcp_server_started_protocol_3(tcp_server_address: tuple[str, int]):
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1], protocol=3) as r:
         r.set("foo", "bar")
         assert r.get("foo") == b"bar"

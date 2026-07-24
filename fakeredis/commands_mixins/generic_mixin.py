@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any, Callable, List, Optional, Union, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, Key, Int, DbIndex, BeforeAny, CommandItem, delete_keys, Float
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
+from fakeredis._commands import BeforeAny, CommandItem, DbIndex, Float, Int, Key, command, delete_keys
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import ZSet, Hash, ExpiringMembersSet
+from fakeredis.model import ExpiringMembersSet, Hash, ZSet
 
 
 class SortFloat(Float):
@@ -22,21 +25,21 @@ class SortFloat(Float):
         allow_erange: bool = False,
         allow_empty: bool = True,
         crop_null: bool = True,
-        decode_error: Optional[str] = None,
+        decode_error: str | None = None,
     ) -> float:
         return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
 
 class GenericCommandsMixin(CommandsMixinBase):
     _ttl: Callable[[CommandItem, float], int]
-    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
     _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(GenericCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._db_num: int
 
-    def _lookup_key(self, key: bytes, pattern: bytes) -> Optional[bytes]:
+    def _lookup_key(self, key: bytes, pattern: bytes) -> bytes | None:
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b"#":
             return key
@@ -89,7 +92,7 @@ class GenericCommandsMixin(CommandsMixinBase):
         return delete_keys(*keys)
 
     @command(name="DUMP", fixed=(Key(missing_return=None),))
-    def dump(self, key: CommandItem) -> Optional[bytes]:
+    def dump(self, key: CommandItem) -> bytes | None:
         value = pickle.dumps(key.value)
         checksum = hashlib.sha1(value).digest()
         return checksum + value
@@ -112,7 +115,7 @@ class GenericCommandsMixin(CommandsMixinBase):
         return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
-    def keys(self, pattern: bytes) -> List[bytes]:
+    def keys(self, pattern: bytes) -> list[bytes]:
         if pattern == b"*":
             return list(self._db)
         else:
@@ -166,8 +169,8 @@ class GenericCommandsMixin(CommandsMixinBase):
         return int(key.expireat * 1000)
 
     @command(name="RANDOMKEY", fixed=())
-    def randomkey(self) -> Optional[bytes]:
-        keys: List[bytes] = list(self._db.keys())
+    def randomkey(self) -> bytes | None:
+        keys: list[bytes] = list(self._db.keys())
         if not keys:
             return None
         return random.choice(keys)
@@ -211,14 +214,14 @@ class GenericCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
-    def scan(self, cursor: int, *args: bytes) -> List[Union[bytes, List[bytes]]]:
+    def scan(self, cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key: CommandItem, *args: bytes) -> Union[int, List[Any]]:
+    def sort(self, key: CommandItem, *args: bytes) -> int | list[Any]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        ((asc, desc, alpha, store, sortby, (limit_start, limit_count)), left_args) = extract_args(
+        ((_asc, desc, alpha, store, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
@@ -254,14 +257,14 @@ class GenericCommandsMixin(CommandsMixinBase):
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
+            def sort_key(val: bytes) -> bytes | BeforeAny:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:
                     return BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
                 return score, val
@@ -289,10 +292,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             return out
 
     @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
-    def sort_ro(self, key: CommandItem, *args: bytes) -> List[bytes]:
+    def sort_ro(self, key: CommandItem, *args: bytes) -> list[bytes]:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        ((asc, desc, alpha, sortby, (limit_start, limit_count)), left_args) = extract_args(
+        ((_asc, desc, alpha, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*by", "++limit"),
             error_on_unexpected=False,
@@ -328,14 +331,14 @@ class GenericCommandsMixin(CommandsMixinBase):
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
+            def sort_key(val: bytes) -> bytes | BeforeAny:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:
                     return BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
                 return score, val
@@ -348,7 +351,7 @@ class GenericCommandsMixin(CommandsMixinBase):
         elif desc and isinstance(key.value, (list, ZSet)):
             items.reverse()
 
-        out: List[bytes] = []
+        out: list[bytes] = []
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
