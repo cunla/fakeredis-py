@@ -11,7 +11,7 @@ authors = [
   { name = "Bruce Merry", email = "bmerry@ska.ac.za" },
   { name = "James Saryerwinnie", email = "js@jamesls.com" },
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 readme = "README.md"
 license = "BSD-3-Clause"
 maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
@@ -32,8 +32,6 @@ classifiers = [
   "License :: OSI Approved :: BSD License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -43,8 +41,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "redis<7.2 ; python_version < '3.10'",
-  "redis>=4.3; python_version > '3.8'",
+  "redis>=4.3",
   "sortedcontainers>=2",
   "typing-extensions>=4.7 ; python_version < '3.11'",
 ]
@@ -55,7 +52,7 @@ json = ["jsonpath-ng>=1.6"]
 bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
-valkey = ["valkey>=6 ; python_version >= '3.8'"]
+valkey = ["valkey>=6"]
 vectorset = [
   "numpy>=2.4.0 ; python_version >= '3.11'",
   "jsonpath-ng>=1.6 ; python_version >= '3.11'",
@@ -71,27 +68,27 @@ Funding = "https://github.com/sponsors/cunla"
 [dependency-groups]
 dev = [
   "ruff>=0.15",
-  "mypy>=1.15 ; python_version >= '3.10'",
-  "pre-commit>=4.2 ; python_version >= '3.10'",
-  "pyyaml>=6 ; python_version >= '3.10'",
+  "mypy>=1.15",
+  "pre-commit>=4.2",
+  "pyyaml>=6",
 ]
 test = [
-  "coverage>=7.10 ; python_version >= '3.9' and python_version < '3.14'",
-  "pytest>=8.4 ; python_version >= '3.9'",
-  "hypothesis>=6.138 ; python_version >= '3.9'",
-  "pytest-timeout>=2.4 ; python_version >= '3.9'",
-  "pytest-asyncio>=1.1 ; python_version >= '3.9'",
-  "pytest-cov>=6.3 ; python_version >= '3.9'",
-  "pytest-mock>=3.15 ; python_version >= '3.9'",
-  "pytest-html>=4.1 ; python_version >= '3.9'",
+  "coverage>=7.10 ; python_version < '3.14'",
+  "pytest>=9.0.3",
+  "hypothesis>=6.138",
+  "pytest-timeout>=2.4",
+  "pytest-asyncio>=1.1",
+  "pytest-cov>=6.3",
+  "pytest-mock>=3.15",
+  "pytest-html>=4.1",
 ]
 scripts = [
-  "python-dotenv>=1.1 ; python_version >= '3.10'",
-  "pygithub>=2.8 ; python_version >= '3.10'",
+  "python-dotenv>=1.1",
+  "pygithub>=2.8",
 ]
 documentation = [
-  "mkdocs>=1.6.1; python_version >= '3.10'",
-  "mkdocs-material>=9.6.14; python_version >= '3.10'",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
 ]
 
 [tool.uv]
