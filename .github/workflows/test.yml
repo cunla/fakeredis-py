@@ -9,6 +9,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - 'pyproject.toml'
   pull_request:
     branches:
       - master
@@ -16,6 +17,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - 'pyproject.toml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
