@@ -9,6 +9,10 @@ toc_depth: 2
 
 ## v2.37.1 - 
 
+### 🚀 Features
+
+- feat: implement the Dragonfly `CL.THROTTLE` rate-limiting command
+
 ### 🐛 Bug Fixes
 
 - fix: honor the `FILTER-EF` (max filtering effort) option in `VSIM` — the value was previously parsed but ignored, so a
