@@ -13,6 +13,9 @@ _NS_PER_SECOND = 1_000_000_000
 _NS_PER_MS = 1_000_000
 _MS_PER_SECOND = 1_000
 
+# Dragonfly specific error messages
+THROTTLE_ZERO_RATES_MSG = "ERR zero rates are not supported"
+
 
 def _trunc_div(numerator: int, denominator: int) -> int:
     """Integer division truncating towards zero, as C does (Python floors instead)."""
@@ -59,7 +62,7 @@ class DragonflyCommandsMixin:
             raise SimpleError(msgs.INVALID_INT_MSG)
         emission_interval_ns = period * _NS_PER_SECOND // count
         if emission_interval_ns == 0:
-            raise SimpleError(msgs.THROTTLE_ZERO_RATES_MSG)
+            raise SimpleError(THROTTLE_ZERO_RATES_MSG)
         if emission_interval_ns > _INT64_MAX // limit or (
             quantity != 0 and emission_interval_ns > _INT64_MAX // quantity
         ):
