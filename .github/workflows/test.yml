@@ -43,14 +43,14 @@ jobs:
           - "redis:7.4.8"
           - "valkey/valkey:8.1.8"
           - "redis:6.2.17"
-        python-version: ["3.9", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.12", "3.13", "3.14"]
         redis-py: ["4.6.0", "6.4.0", "7.4.0", "8.0.1"]
         install-extras: [false]
         coverage: [false]
         exclude:
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-py: "7.4.0"
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-py: "8.0.1"
           - python-version: "3.14"
             redis-image: "redis:8.8"
@@ -58,12 +58,12 @@ jobs:
             install-extras: false
             coverage: false
         include:
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-image: "redis:8.8"
             redis-py: "4.6.0"
             install-extras: false
             coverage: false
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-image: "redis:8.8"
             redis-py: "5.3.1"
             install-extras: false
