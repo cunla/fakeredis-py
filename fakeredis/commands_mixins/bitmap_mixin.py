@@ -110,9 +110,9 @@ class BitmapCommandsMixin(CommandsMixinBase):
         try:
             start = Int.decode(args[0])
             end = Int.decode(args[1])
-        except SimpleError as e:
+        except SimpleError:
             if self.version >= (7, 4) or self._server.server_type == "dragonfly":
-                raise e
+                raise
             return 0
         bit_mode = False
         if len(args) == 3 and (self.version < (7,) and self._server.server_type != "dragonfly"):
@@ -250,7 +250,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         return new_value if value is None else ans
 
     @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key: CommandItem, *args: bytes) -> Optional[List[Optional[int]]]:
+    def bitfield(self, key: CommandItem, *args: bytes) -> list[int | None] | None:
         overflow = b"WRAP"
         results: list[int | None] = []
         i = 0
