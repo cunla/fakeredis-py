@@ -11,7 +11,7 @@ authors = [
   { name = "Bruce Merry", email = "bmerry@ska.ac.za" },
   { name = "James Saryerwinnie", email = "js@jamesls.com" },
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 readme = "README.md"
 license = "BSD-3-Clause"
 maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
@@ -43,7 +43,6 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "redis>=4 ; python_version < '3.8'",
   "redis<7.2 ; python_version < '3.10'",
   "redis>=4.3; python_version > '3.8'",
   "sortedcontainers>=2",
