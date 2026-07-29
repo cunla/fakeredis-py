@@ -20,11 +20,10 @@ jobs:
           - "test_stack"
           - "test_async"
           - "test_internals"
-          - "test_transactions.py"
+          - "test_dragonfly"
+          - "test_tcp_server"
           - "test_keyspace_notifications.py"
           - "test_hypothesis"
-          - "test_asyncredis.py"
-          - "test_translations.py"
     permissions:
       pull-requests: write
     services:

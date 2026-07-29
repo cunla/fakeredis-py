@@ -107,17 +107,14 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if key.value is None and self.version < (7, 4):
             # Before 7.4 a missing key returned 0 without validating the range arguments
             return 0
-        try:
-            start = Int.decode(args[0])
-            end = Int.decode(args[1])
-        except SimpleError:
-            if self.version >= (7, 4) or self._server.server_type == "dragonfly":
-                raise
-            return 0
-        bit_mode = False
-        if len(args) == 3 and (self.version < (7,) and self._server.server_type != "dragonfly"):
+        # The BYTE/BIT unit only exists from 7.0; older servers reject the extra argument
+        # before looking at the range, so this check comes first.
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
+        start = Int.decode(args[0])
+        end = Int.decode(args[1])
+        bit_mode = False
+        if len(args) == 3:
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
