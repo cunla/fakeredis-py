@@ -246,12 +246,13 @@ def test_bitpos_wrong_arguments(r: ClientType):
 
 
 def test_bitfield_empty(r: ClientType):
+    # A BITFIELD with no operations is accepted and yields no results, whether or not
+    # an OVERFLOW is given (OVERFLOW on its own only sets the mode for later operations).
     key = "key:bitfield"
-    with pytest.raises(redis.ResponseError):
-        r.bitfield(key).execute()
+    assert r.bitfield(key).execute() == []
 
     for overflow in ("wrap", "sat", "fail"):
-        assert raw_command(r, "bitfield", key, "overflow", overflow) is None
+        assert raw_command(r, "bitfield", key, "overflow", overflow) == []
 
 
 def test_bitfield_wrong_arguments(r: ClientType):

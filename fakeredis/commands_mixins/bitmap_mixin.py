@@ -162,7 +162,13 @@ class BitmapCommandsMixin(CommandsMixinBase):
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        if bytes(reconstructed) != key.value or (self.version == (6,) and old_byte != new_byte):
+        # Dragonfly dirties the key for any SETBIT, so a no-op still invalidates a WATCH,
+        # whereas redis only does so when the stored value actually changes.
+        if (
+            bytes(reconstructed) != key.value
+            or (self.version == (6,) and old_byte != new_byte)
+            or self._server.server_type == "dragonfly"
+        ):
             key.update(bytes(reconstructed))
         return old_value
 
@@ -251,8 +257,6 @@ class BitmapCommandsMixin(CommandsMixinBase):
         overflow = b"WRAP"
         results: list[int | None] = []
         i = 0
-        if len(args) == 0 and self._server.server_type == "dragonfly":
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitfield"))
         while i < len(args):
             if casematch(args[i], b"overflow") and i + 1 < len(args):
                 overflow = args[i + 1].upper()
@@ -288,6 +292,4 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 4
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(results) == 0 and self._server.server_type == "dragonfly":
-            return None
         return results
