@@ -59,6 +59,7 @@ def _find_near(
     count: int,
     count_any: bool,
     desc: bool,
+    sort: bool = True,
 ) -> list[GeoResult]:
     """Find items within area (lat,long)+radius
     :param zset: list of items to check
@@ -69,17 +70,24 @@ def _find_near(
     :param count: number of results to give
     :param count_any: should we return any results that match? (vs. sorted)
     :param desc: should results be sorted descending order?
+    :param sort: should results be ordered by distance at all? Dragonfly only orders them
+        when ASC/DESC is given explicitly, otherwise it answers in geohash (score) order.
     :returns: List of GeoResults
     """
     results = []
-    for name, _hash in zset.items():
+    # Iterating the sorted set itself walks it in score (geohash) order, which is the order
+    # an unsorted reply has to come back in. `items()` would give insertion order instead.
+    scores = dict(zset.items())
+    for name in zset:
+        _hash = scores[name]
         p_lat, p_long, _, _ = geo_decode(_hash)
         dist = distance((p_lat, p_long), (lat, long)) * conv
         if dist < radius:
             results.append(GeoResult(name, p_long, p_lat, _hash, dist))
             if count_any and len(results) >= count:
                 break
-    results = sorted(results, key=lambda x: x.distance, reverse=desc)
+    if sort:
+        results = sorted(results, key=lambda x: x.distance, reverse=desc)
     if count:
         results = results[:count]
     return results
@@ -96,15 +104,26 @@ class GeoCommandsMixin(CommandsMixinBase):
         return len(geo_results)
 
     def _georadius(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[bytes] | int:
-        (withcoord, withdist, _withhash, count, count_any, desc, store, storedist), _left_args = extract_args(
+        (withcoord, withdist, _withhash, count, count_any, asc, desc, store, storedist), _left_args = extract_args(
             args,
-            ("withcoord", "withdist", "withhash", "+count", "any", "desc", "*store", "*storedist"),
+            ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc", "*store", "*storedist"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
         count = count or sys.maxsize
         conv = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1
-        geo_results: list[GeoResult] = _find_near(key.value, lat, long, radius, conv, count, count_any, desc)
+        geo_results: list[GeoResult] = _find_near(
+            key.value,
+            lat,
+            long,
+            radius,
+            conv,
+            count,
+            count_any,
+            desc,
+            # Dragonfly only orders by distance when ASC/DESC is explicit.
+            sort=self.server_type != "dragonfly" or asc or desc,
+        )
 
         if store:
             self._store_geo_results(store, geo_results, scoredist=False)
@@ -164,15 +183,26 @@ class GeoCommandsMixin(CommandsMixinBase):
 
     @command(name="GEORADIUS_RO", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
     def georadius_ro(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[Any]:
-        (withcoord, withdist, _withhash, count, count_any, desc), _left_args = extract_args(
+        (withcoord, withdist, _withhash, count, count_any, asc, desc), _left_args = extract_args(
             args,
-            ("withcoord", "withdist", "withhash", "+count", "any", "desc"),
+            ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
         count = count or sys.maxsize
         conv: float = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1.0
-        geo_results = _find_near(key.value, lat, long, radius, conv, count, count_any, desc)
+        geo_results = _find_near(
+            key.value,
+            lat,
+            long,
+            radius,
+            conv,
+            count,
+            count_any,
+            desc,
+            # Dragonfly only orders by distance when ASC/DESC is explicit.
+            sort=self.server_type != "dragonfly" or asc or desc,
+        )
 
         ret = _parse_results(geo_results, withcoord, withdist)
         return ret
