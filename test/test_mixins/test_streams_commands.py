@@ -258,7 +258,7 @@ def test_xread_blocking_no_count(r: ClientType):
     assert m1[0][1] == {b"value": b"1234"}
 
 
-def test_xread(r: ClientType):
+def test_xread(r: ClientType, real_server_details):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
@@ -286,7 +286,7 @@ def test_xread(r: ClientType):
     )
 
     # xread starting at the last message returns an empty list
-    assert r.xread(streams={stream: m2}) == resp_conversion(r, {}, [])
+    testtools.assert_empty_stream_read(r, real_server_details.server_type, "XREAD", "STREAMS", stream, m2)
 
 
 def test_xread_count(r: ClientType):
@@ -449,7 +449,7 @@ def test_xinfo_consumers(r: ClientType):
     assert info == expected
 
 
-def test_xreadgroup(r: ClientType):
+def test_xreadgroup(r: ClientType, real_server_details):
     stream, group, consumer = "stream", "group", "consumer1"
     with pytest.raises(Exception) as ctx:
         r.xreadgroup(group, consumer, streams={stream: ">"})
@@ -490,7 +490,9 @@ def test_xreadgroup(r: ClientType):
     r.xgroup_create(stream, group, "$")
 
     # xread starting after the last message returns an empty message list
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, {}, [])
+    testtools.assert_empty_stream_read(
+        r, real_server_details.server_type, "XREADGROUP", "GROUP", group, consumer, "STREAMS", stream, ">"
+    )
 
     # xreadgroup with noack does not have any items in the PEL
     r.xgroup_destroy(stream, group)
@@ -521,7 +523,23 @@ def test_xreadgroup(r: ClientType):
     # TODO groups keep ids of deleted messages
     # expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
     # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
-    r.xreadgroup(group, consumer, streams={stream: ">"}, count=10, block=500)
+    # A blocking read that finds nothing: on dragonfly under RESP3 the empty-array reply
+    # is not something redis-py can parse, so issue it raw there.
+    testtools.assert_empty_stream_read(
+        r,
+        real_server_details.server_type,
+        "XREADGROUP",
+        "GROUP",
+        group,
+        consumer,
+        "COUNT",
+        10,
+        "BLOCK",
+        500,
+        "STREAMS",
+        stream,
+        ">",
+    )
 
 
 def test_xinfo_stream(r: ClientType):
@@ -869,7 +887,7 @@ def test_xreadgroup_read_2(r: ClientType):
     assert len(messages) == len(streams)
 
 
-def test_xreadgroup_pel_read(r: ClientType):
+def test_xreadgroup_pel_read(r: ClientType, real_server_details):
     stream, group, consumer = "stream", "group", "consumer1"
     c1 = {b"foo": b"bar"}
     c2 = {b"bing": b"baz"}
@@ -890,7 +908,9 @@ def test_xreadgroup_pel_read(r: ClientType):
     assert r.xreadgroup(group, consumer, streams={stream: m1}) == resp_conversion(r, expected_resp3, expected_resp2)
 
     # PEL read does not advance last_delivered_id
-    assert r.xreadgroup(group, consumer, streams={stream: ">"}) == resp_conversion(r, {}, [])
+    testtools.assert_empty_stream_read(
+        r, real_server_details.server_type, "XREADGROUP", "GROUP", group, consumer, "STREAMS", stream, ">"
+    )
 
     # other consumer has empty PEL
     tmp = r.xreadgroup(group, "consumer2", streams={stream: "0"})

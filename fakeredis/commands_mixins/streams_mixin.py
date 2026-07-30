@@ -129,7 +129,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             )
         if self._client_info.protocol_version == 2:
             return [[k, v] for k, v in res.items()] if res else None
-        return res
+        return self._empty_stream_read_reply(res)
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
@@ -440,6 +440,16 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 res[stream_name] = stream_results
         return res
 
+    def _empty_stream_read_reply(self, res: dict[bytes, Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Shape an XREAD/XREADGROUP reply that matched nothing, under RESP3.
+
+        Redis answers with an empty map; dragonfly answers with an empty array. Note that
+        redis-py's RESP3 parser assumes the map and cannot consume dragonfly's reply.
+        """
+        if not res and self.server_type == "dragonfly":
+            return []
+        return res
+
     def _xread(
         self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
     ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
@@ -451,11 +461,16 @@ class StreamsCommandsMixin(CommandsMixinBase):
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
-        # On blocking read, and there are no results, return None (instead of an empty list)
-        if blocking and len(res) == 0:
-            return None
         if self._client_info.protocol_version == 2:
+            # On blocking read, and there are no results, return None (instead of an empty list)
+            if blocking and len(res) == 0:
+                return None
             return [[k, v] for k, v in res.items()]
+        if not res:
+            # Dragonfly answers an empty read with an empty array, blocking or not.
+            if self.server_type == "dragonfly":
+                return []
+            return None if blocking else res
         return res
 
     @staticmethod
