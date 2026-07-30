@@ -566,6 +566,7 @@ def test_getex_no_option_keeps_ttl(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly has no LCS, see test_dragonfly
 def test_lcs(r: ClientType):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     assert r.lcs("key1", "key2") == b"mytext"
