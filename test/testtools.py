@@ -120,3 +120,39 @@ def redis_server_time(r: redis.Redis) -> datetime:
 def current_time() -> int:
     """Return current_time in ms"""
     return int(time.time() * 1000)
+
+
+def far_future_expiry(server_type: str) -> int:
+    """An absolute expiry timestamp (seconds) that the server under test will accept.
+
+    Dragonfly refuses to store a deadline more than 2**28-1 seconds away, so it gets a
+    nearer -- but still far future -- timestamp instead of the year-3021 one.
+    """
+    if server_type == "dragonfly":
+        return int(time.time()) + 10_000_000
+    return 33177117420
+
+
+def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test.
+
+    Redis sends a null array, which RESP3 renders as nil. Dragonfly sends an empty array,
+    so a RESP3 client sees `[]`. Under RESP2 both encode to `*-1` and read back as None.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return []
+    return None
+
+
+def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:
+    """Assert that an XREAD/XREADGROUP matched nothing.
+
+    Redis answers with an empty map under RESP3 and an empty array under RESP2. Dragonfly
+    answers with an empty array in both, and redis-py's RESP3 parser cannot consume that,
+    so on dragonfly the raw reply is checked instead of the parsed one.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        assert raw_command(r, *raw_args) == []
+        return
+    method, args = raw_args[0], raw_args[1:]
+    assert r.execute_command(method, *args) == resp_conversion(r, {}, [])

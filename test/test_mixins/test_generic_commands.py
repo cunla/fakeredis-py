@@ -8,6 +8,7 @@ import valkey
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
+from test import testtools
 from test.testtools import raw_command
 
 
@@ -188,7 +189,7 @@ def test_sort_with_store_option(r: ClientType):
     assert r.lrange("bar", 0, -1) == [b"1", b"2", b"3", b"4"]
 
 
-def test_sort_with_by_and_get_option(r: ClientType):
+def test_sort_with_by_and_get_option(r: ClientType, real_server_details):
     r.rpush("foo", "2")
     r.rpush("foo", "1")
     r.rpush("foo", "4")
@@ -216,7 +217,11 @@ def test_sort_with_by_and_get_option(r: ClientType):
         b"one",
         b"1",
     ]
-    assert r.sort("foo", by="weight_*", get="data_1") == [None, None, None, None]
+    # A GET pattern with no `*` yields nil on redis, but dragonfly looks the literal key up.
+    if real_server_details.server_type == "dragonfly":
+        assert r.sort("foo", by="weight_*", get="data_1") == [b"one"] * 4
+    else:
+        assert r.sort("foo", by="weight_*", get="data_1") == [None, None, None, None]
     # Test sort with different parameters order
     assert raw_command(r, "sort", "foo", "get", "data_*", "by", "weight_*", "get", "#") == [
         b"four",
@@ -230,12 +235,14 @@ def test_sort_with_by_and_get_option(r: ClientType):
     ]
 
 
-def test_sort_by_nosort_keeps_natural_order(r: ClientType):
+def test_sort_by_nosort_keeps_natural_order(r: ClientType, real_server_details):
     # A `BY` pattern with no `*` disables sorting: redis returns elements in natural order (insertion order for lists,
-    # score order for sorted sets) and reverses only when DESC is given.
-    r.rpush("mylist", "3", "1", "2", "5", "4")
-    assert r.sort("mylist", by="nosort") == [b"3", b"1", b"2", b"5", b"4"]
-    assert r.sort("mylist", by="nosort", desc=True) == [b"4", b"5", b"2", b"1", b"3"]
+    # score order for sorted sets) and reverses only when DESC is given. Dragonfly ignores DESC here.
+    natural = [b"3", b"1", b"2", b"5", b"4"]
+    r.rpush("mylist", *natural)
+    assert r.sort("mylist", by="nosort") == natural
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    assert r.sort("mylist", by="nosort", desc=True) == (natural if is_dragonfly else natural[::-1])
     # LIMIT must apply to the natural-order list, not a reversed one.
     assert r.sort("mylist", by="nosort", start=1, num=2) == [b"1", b"2"]
 
@@ -243,7 +250,7 @@ def test_sort_by_nosort_keeps_natural_order(r: ClientType):
     assert r.sort("myzset", by="nosort") == [b"b", b"c", b"a"]
 
 
-def test_sort_with_hash(r: ClientType):
+def test_sort_with_hash(r: ClientType, real_server_details):
     r.rpush("foo", "middle")
     r.rpush("foo", "eldest")
     r.rpush("foo", "youngest")
@@ -256,8 +263,14 @@ def test_sort_with_hash(r: ClientType):
     r.hset("record_eldest", "age", 20)
     r.hset("record_eldest", "name", "adult")
 
-    assert r.sort("foo", by="record_*->age") == [b"youngest", b"middle", b"eldest"]
-    assert r.sort("foo", by="record_*->age", get="record_*->name") == [b"baby", b"teen", b"adult"]
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly has no `->` hash-field syntax: "record_*->age" is taken as a literal key
+        # name, so no weight resolves, the list keeps its natural order and GET yields "".
+        assert r.sort("foo", by="record_*->age") == [b"middle", b"eldest", b"youngest"]
+        assert r.sort("foo", by="record_*->age", get="record_*->name") == [b"", b"", b""]
+    else:
+        assert r.sort("foo", by="record_*->age") == [b"youngest", b"middle", b"eldest"]
+        assert r.sort("foo", by="record_*->age", get="record_*->name") == [b"baby", b"teen", b"adult"]
 
 
 def test_sort_with_set(r: ClientType):
@@ -373,21 +386,17 @@ def test_expire_should_expire_key(r: ClientType):
     assert r.expire("bar", 1) is False
 
 
-def test_expire_should_throw_error(r: ClientType):
+def test_expire_should_throw_error(r: ClientType, real_server_details):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, xx=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, gt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, lt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, gt=True, lt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # Dragonfly only rejects the directly contradictory pairs; NX with GT or LT is accepted.
+    incompatible = [{"nx": True, "xx": True}, {"gt": True, "lt": True}]
+    if real_server_details.server_type != "dragonfly":
+        incompatible += [{"nx": True, "gt": True}, {"nx": True, "lt": True}]
+    for kwargs in incompatible:
+        with pytest.raises(Exception) as ctx:
+            r.expire("foo", 1, **kwargs)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
@@ -756,14 +765,20 @@ def test_key_patterns(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_watch_when_setbit_does_not_change_value(r: ClientType):
+def test_watch_when_setbit_does_not_change_value(r: ClientType, real_server_details):
     r.set("foo", b"0")
 
     with r.pipeline() as p:
         p.watch("foo")
         assert r.setbit("foo", 0, 0) == 0
         assert p.multi() is None
-        assert p.execute() == []
+        if real_server_details.server_type == "dragonfly":
+            # Dragonfly dirties a watched key on any SETBIT, even one that writes back
+            # the value it already held.
+            with pytest.raises((redis.WatchError, valkey.WatchError)):
+                p.execute()
+        else:
+            assert p.execute() == []
 
 
 def test_from_hypothesis_redis7(r: ClientType):
@@ -777,11 +792,12 @@ def test_from_hypothesis_redis7(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_preserves_expiry(r: ClientType):
+def test_copy_preserves_expiry(r: ClientType, real_server_details):
+    expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
-    r.expireat("foo", 33177117420)
+    r.expireat("foo", expire_at)
     assert r.copy("foo", "bar") == 1
-    assert r.expiretime("bar") == 33177117420
+    assert r.expiretime("bar") == expire_at
     assert r.get("bar") == b"0"
 
 
@@ -796,9 +812,10 @@ def test_copy_replaces(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_replaces_with_expiry(r: ClientType):
+def test_copy_replaces_with_expiry(r: ClientType, real_server_details):
+    expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
-    r.expireat("foo", 33177117420)
+    r.expireat("foo", expire_at)
     r.set("bar", "1")
     assert r.copy("foo", "bar") == 0
     assert r.get("bar") == b"1"
@@ -806,9 +823,10 @@ def test_copy_replaces_with_expiry(r: ClientType):
     assert r.copy("foo", "bar", replace=True) == 1
     assert r.get("bar") == b"0"
 
-    assert r.expiretime("bar") == 33177117420
+    assert r.expiretime("bar") == expire_at
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_copy_db_replaces_with_expire(r: ClientType):
     r.set("foo", "0")
@@ -831,6 +849,7 @@ def test_copy_db_replaces_with_expire(r: ClientType):
     assert r.expiretime("bar") == 33177117420
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 def test_copy_invalid_db(r: ClientType):
     r.set("foo", "0")
     assert r.copy("foo", "bar", destination_db="1") == 1
@@ -842,6 +861,7 @@ def test_copy_invalid_db(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 def test_copy_non_existing_key(r: ClientType):
     r.set("foo", "0")
     assert r.copy("bar", "baz", destination_db="1") == 0
@@ -853,6 +873,7 @@ def test_copy_non_existing_key(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 def test_copy_same_db(r: ClientType):
     r.select(1)
     r.set("foo", "0")
@@ -861,6 +882,7 @@ def test_copy_same_db(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_copy_db_index_out_of_range(r: ClientType):
     r.set("foo", "0")
@@ -871,6 +893,7 @@ def test_copy_db_index_out_of_range(r: ClientType):
     assert r.exists("bar") == 0
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_copy_to_db_0(r: ClientType):
     # the test connection uses db 2; an explicit DB 0 must not fall back to the current db
