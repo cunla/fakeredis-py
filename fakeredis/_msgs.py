@@ -39,6 +39,20 @@ ZUNIONSTORE_KEYS_MSG = "ERR at least 1 input key is needed for {}"
 WRONG_ARGS_MSG7 = "ERR Wrong number of args calling Redis command from script"
 WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
+# Dragonfly reports unknown commands in its own format, without echoing the arguments back.
+DRAGONFLY_UNKNOWN_COMMAND_MSG = "ERR unknown command `{}`"
+# Dragonfly only serves the sharded pub/sub introspection subcommands in cluster mode.
+DRAGONFLY_NON_CLUSTER_MSG = "ERR PUBSUB {} is not supported in non cluster mode"
+# Raised by dragonfly for an absolute expiry deadline beyond DRAGONFLY_MAX_EXPIRE_SECONDS.
+EXPIRY_OUT_OF_RANGE_MSG = "ERR expiry is out of range"
+# Dragonfly checks the expiry option pairs separately, and accepts NX together with GT/LT.
+DRAGONFLY_NX_XX_ERROR_MSG = "ERR NX and XX options at the same time are not compatible"
+DRAGONFLY_GT_LT_ERROR_MSG = "ERR GT and LT options at the same time are not compatible"
+DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION = "ERR Unsupported option: {}"
+# Dragonfly's wording for the SINTERCARD/ZINTERCARD LIMIT and numkeys checks.
+DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
+DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"
+DRAGONFLY_AT_LEAST_ONE_KEY_MSG = "ERR at least 1 input key is needed for this command"
 EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors."
 MULTI_NESTED_MSG = "ERR MULTI calls can not be nested"
 WITHOUT_MULTI_MSG = "ERR {0} without MULTI"
