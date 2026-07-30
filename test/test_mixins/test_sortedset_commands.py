@@ -1245,13 +1245,19 @@ def test_zintercard(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zintercard_negative_limit(r: ClientType):
+def test_zintercard_negative_limit(r: ClientType, real_server_details):
     r.zadd("a", {"a1": 1, "a2": 2})
     r.zadd("b", {"a1": 2, "a2": 2})
     with pytest.raises(Exception) as ctx:
         r.zintercard(2, ["a", "b"], limit=-1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    assert "LIMIT can't be negative" in str(ctx.value)
+    # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
+    expected = (
+        "limit value is not a positive integer"
+        if real_server_details.server_type == "dragonfly"
+        else "LIMIT can't be negative"
+    )
+    assert expected in str(ctx.value)
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
@@ -1321,8 +1327,19 @@ def test_zrangebyscore_negative_start_after_sort(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zmpop_count_not_positive(r: ClientType):
+def test_zmpop_count_not_positive(r: ClientType, real_server_details):
     r.zadd("foo", {"a": 1, "b": 2})
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly accepts both: COUNT 0 pops nothing, and a negative count is read as
+        # unsigned and so pops the whole sorted set.
+        assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", 0) == [b"foo", []]
+        assert r.zcard("foo") == 2
+        assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", -1) == [
+            b"foo",
+            resp_conversion(r, [[b"a", 1.0], [b"b", 2.0]], [[b"a", b"1"], [b"b", b"2"]]),
+        ]
+        assert r.zcard("foo") == 0
+        return
     for count in (0, -1):
         with pytest.raises(Exception, match="count should be greater than 0") as ctx:
             testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", count)
@@ -1335,10 +1352,16 @@ def test_zmpop_count_not_positive(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zmpop_numkeys_not_positive(r: ClientType):
+def test_zmpop_numkeys_not_positive(r: ClientType, real_server_details):
     r.zadd("foo", {"a": 1})
+    is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):
-        with pytest.raises(Exception, match="numkeys should be greater than 0") as ctx:
+        # Dragonfly reads numkeys as unsigned, so -1 fails to decode before the key check.
+        if is_dragonfly:
+            expected = "at least 1 input key is needed" if numkeys == 0 else "value is not an integer or out of range"
+        else:
+            expected = "numkeys should be greater than 0"
+        with pytest.raises(Exception, match=expected) as ctx:
             testtools.raw_command(r, "zmpop", numkeys, "foo", "MIN")
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 

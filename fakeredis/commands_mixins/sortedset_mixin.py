@@ -132,13 +132,15 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def bzpopmin(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
+        return self._empty_blocking_reply(res)  # type:ignore
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmax(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
+        return self._empty_blocking_reply(res)  # type:ignore
 
     @staticmethod
     def _limit_items(items: list[_T], offset: int, count: int) -> list[_T]:
@@ -598,6 +600,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         )
         limit = limit if limit is not None else 0
         if limit < 0:
+            # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
+            if self.server_type == "dragonfly":
+                raise SimpleError(msgs.DRAGONFLY_LIMIT_NOT_POSITIVE_MSG)
             raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
@@ -646,16 +651,19 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             if res:
                 item.writeback()  # remove the key if the set is now empty
                 return [key, res]
+            # Dragonfly allows COUNT 0, which names the first existing key but pops nothing.
+            if count == 0 and item.value and self.server_type == "dragonfly":
+                return [key, []]
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
     def zmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
             functools.partial(self._zmpop, keys, count, reverse),

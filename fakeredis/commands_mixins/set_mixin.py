@@ -76,16 +76,23 @@ class SetCommandsMixin(CommandsMixinBase):
     def sintercard(self, numkeys: int, *args: bytes) -> int:
         if self.version < (7,):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
+        # Dragonfly reports a numkeys that does not match the key list as a plain syntax
+        # error, and lower-cases the LIMIT complaint.
+        is_dragonfly = self.server_type == "dragonfly"
         if numkeys < 1:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+            if not is_dragonfly:
+                raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+            # Dragonfly reads numkeys as unsigned, so a negative one fails to decode while
+            # a zero gets as far as the (then empty) key list and reads as a syntax error.
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.SYNTAX_ERROR_MSG)
         limit = 0
         if len(args) >= 2 and casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
             if limit < 0:
-                raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
+                raise SimpleError(msgs.DRAGONFLY_LIMIT_NEGATIVE_MSG if is_dragonfly else msgs.LIMIT_NEGATIVE_MSG)
             args = args[:-2]
         if numkeys > len(args):
-            raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG if is_dragonfly else msgs.TOO_MANY_KEYS_MSG)
         elif numkeys < len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
@@ -132,6 +139,10 @@ class SetCommandsMixin(CommandsMixinBase):
             return item  # type: ignore
         else:
             if count < 0:
+                # Dragonfly rejects the negative count while decoding it, so it reports the
+                # generic integer error rather than redis' "must be positive".
+                if self.server_type == "dragonfly":
+                    raise SimpleError(msgs.INVALID_INT_MSG)
                 raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
             items: bytes | list[bytes] = self.srandmember(key, count)
             for item in items:

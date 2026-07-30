@@ -424,13 +424,17 @@ def test_sintercard_bytes_keys(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_negative_limit(r: ClientType):
+def test_sintercard_negative_limit(r: ClientType, real_server_details):
     r.sadd("foo", "member1", "member2")
     r.sadd("bar", "member2", "member3")
     with pytest.raises(Exception) as ctx:
         r.sintercard(2, ["foo", "bar"], limit=-1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    assert "LIMIT can't be negative" in str(ctx.value)
+    # Dragonfly lower-cases the same complaint.
+    expected = (
+        "limit can't be negative" if real_server_details.server_type == "dragonfly" else "LIMIT can't be negative"
+    )
+    assert expected in str(ctx.value)
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
@@ -532,25 +536,43 @@ def test_psetex_expire_value_using_timedelta(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_numkeys_not_positive(r: ClientType):
+def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details):
     r.sadd("foo", "member1")
+    is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):
-        with pytest.raises(Exception, match="numkeys should be greater than 0") as ctx:
+        # Dragonfly rejects 0 as a syntax error, and -1 while decoding the integer.
+        if is_dragonfly:
+            expected = "syntax error" if numkeys == 0 else "value is not an integer or out of range"
+        else:
+            expected = "numkeys should be greater than 0"
+        with pytest.raises(Exception, match=expected) as ctx:
             testtools.raw_command(r, "sintercard", numkeys, "foo")
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_numkeys_greater_than_keys(r: ClientType):
+def test_sintercard_numkeys_greater_than_keys(r: ClientType, real_server_details):
     r.sadd("foo", "member1")
-    with pytest.raises(Exception, match="Number of keys can't be greater than number of args") as ctx:
+    # Dragonfly reports a numkeys that overruns the key list as a plain syntax error.
+    expected = (
+        "syntax error"
+        if real_server_details.server_type == "dragonfly"
+        else "Number of keys can't be greater than number of args"
+    )
+    with pytest.raises(Exception, match=expected) as ctx:
         testtools.raw_command(r, "sintercard", 9, "foo")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_spop_negative_count(r: ClientType):
+def test_spop_negative_count(r: ClientType, real_server_details):
     r.sadd("foo", "member1")
-    with pytest.raises(Exception, match="value is out of range, must be positive") as ctx:
+    # Dragonfly fails while decoding the count, so it gives the generic integer error.
+    expected = (
+        "value is not an integer or out of range"
+        if real_server_details.server_type == "dragonfly"
+        else "value is out of range, must be positive"
+    )
+    with pytest.raises(Exception, match=expected) as ctx:
         r.spop("foo", -1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.scard("foo") == 1
