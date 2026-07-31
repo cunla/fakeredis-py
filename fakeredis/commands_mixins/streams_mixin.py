@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Union, List
+from typing import Any, Callable, Union, List, Dict
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
