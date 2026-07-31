@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Union, List, Dict
+from typing import Any, Callable
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -155,7 +155,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         repeat=(bytes,),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[Any]]:
+    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
         if key.value is None:
             raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
@@ -230,7 +230,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
-    def xinfo_groups(self, key: CommandItem) -> Dict[bytes, Any]:
+    def xinfo_groups(self, key: CommandItem) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         res: dict[bytes, Any] = key.value.groups_info()
