@@ -10,11 +10,11 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.asyncio,
+        testtools.run_test_if_lupa,
     ]
 )
 
 
-@testtools.run_test_if_lupa
 class TestScripts:
     async def test_no_script_error(self, async_redis: AsyncClientType):
         with pytest.raises(Exception) as exc_info:
