@@ -6,6 +6,7 @@ import copy
 import itertools
 import json
 import struct
+from functools import lru_cache
 from json import JSONDecodeError
 from typing import Any, Callable, ClassVar
 
@@ -35,6 +36,7 @@ def _format_path(path: bytes | str) -> str:
         return "$." + path_str
 
 
+@lru_cache(maxsize=64)
 def _parse_jsonpath(path: str | bytes) -> JSONPath:
     path_str: str = _format_path(path)
     try:
