@@ -1,0 +1,57 @@
+schema: spec-driven
+
+context: |
+  Project: fakeredis — drop-in in-memory replacements for redis.Redis / redis.asyncio.Redis
+  (and valkey.Valkey) that operate entirely without a real Redis server.
+
+  Tech stack: Python, uv, pytest, ruff, mypy
+  Client libraries: redis-py, valkey-py (sync and async paths)
+  Optional deps: Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo, TopK, T-Digest, VectorSet), Lua scripting
+  Package extras: json, bf, probabilistic, vectorset, lua
+
+  Architecture:
+    - commands_mixins/ — one file per Redis data type/feature area, mixed into FakeSocket
+    - stack/ — optional Redis Stack module implementations
+    - model/ — data structure implementations (ZSet, Hash, Stream, TimeSeries, etc.)
+    - _commands.py — SUPPORTED_COMMANDS registry with @command decorator
+    - _helpers.py — Database (in-memory dict with expiration), SimpleString, SimpleError
+
+  Conventions:
+    - Conventional Commits (fix:, feat:, docs:, chore:, …)
+    - Semantic versioning
+    - Error responses use SimpleError with message constants from _msgs.py
+    - New commands follow the @command(...) decorator pattern on mixins
+    - commands.json and docs/ are generated, never hand-edited
+    - Both RESP2 and RESP3 protocol encodings must be supported
+    - All four client paths (sync/async × redis-py/valkey-py) must work identically
+    - Tests run against both fakeredis and a real server (localhost:6390)
+
+  Core principles:
+    1. Real-Server Parity — the real Redis/Valkey server is the spec; fakeredis must match it
+    2. Drop-In Client Compatibility — substitutable without caller changes
+    3. Differential Testing — every command pinned by tests that run against both fake and real
+    4. Optional Dependencies Stay Optional — base install is pure Python
+    5. Generated Metadata Is Never Hand-Edited — commands.json and docs/ are build products
+
+rules:
+  proposal:
+    - Always consider impact on all four client paths (sync/async × redis-py/valkey-py)
+    - Include a "Non-goals" section to keep scope tight
+  design:
+    - Reference the existing command implementation pattern (@command decorator, mixins, CommandItem)
+    - Identify which mixin file the change belongs in
+  tasks:
+    - Include regenerating commands.json and docs/ when adding or changing commands
+    - Include tests in the matching test/test_mixins/ or test/test_stack/ file
+    - Include running linters (ruff check, ruff format, mypy) as a verification step
+
+operations:
+  apply:
+    guidance:
+      - Run tests with "uv run pytest -v -m fake" after implementation
+      - Run linters with "uv run ruff check --fix fakeredis/" and "uv run mypy fakeredis/"
+      - Regenerate commands.json if commands changed
+  archive:
+    guidance:
+      - Verify all four client paths are covered in tests
+      - Confirm generated files (commands.json, docs/) are up to date
