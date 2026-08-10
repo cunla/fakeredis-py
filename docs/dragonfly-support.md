@@ -113,7 +113,7 @@ away. Which way it fails depends on how the deadline was expressed:
 - **Absolute** (`EXPIREAT`, `PEXPIREAT`) — rejected with `ERR expiry is out of range`.
 
 ```python
-client.expire("key", 2 ** 28 + 10_000)  # accepted, TTL clamped to 2**28 - 1
+client.expire("key", 2**28 + 10_000)  # accepted, TTL clamped to 2**28 - 1
 client.expireat("key", 33_177_117_420)  # ERR expiry is out of range
 ```
 
