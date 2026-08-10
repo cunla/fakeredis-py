@@ -32,16 +32,26 @@ from ._typing import ResponseErrorType, ServerType, VersionType
 LOGGER = logging.getLogger("fakeredis")
 
 
-def _convert_to_resp2(val: Any) -> Any:
+# Commands Dragonfly refuses to run from inside a Lua script but Redis is happy to run.
+# The rest of Dragonfly's no-script set (SAVE, BGSAVE, SCRIPT, EVAL, MULTI/EXEC, the
+# (P)SUBSCRIBE family and the blocking pops) already carries `FLAG_NO_SCRIPT` here.
+DRAGONFLY_NO_SCRIPT_COMMANDS = frozenset({"flushdb", "flushall", "shutdown", "debug", "config", "client"})
+
+
+def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, float):
+        if keep_doubles:
+            return val
+        if server_type == "dragonfly":
+            return Float.encode_shortest(val)
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [_convert_to_resp2(item) for item in result]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in result]
     if isinstance(val, (list, tuple)):
-        return [_convert_to_resp2(item) for item in val]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in val]
     return val
 
 
@@ -337,8 +347,11 @@ class BaseFakeSocket:
         self._subkey_events = []
         try:
             ret = sig.apply(args, self._db, self.version)
-            if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
-                raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
+            is_dragonfly = self.server_type == "dragonfly"
+            if from_script and (
+                msgs.FLAG_NO_SCRIPT in sig.flags or (is_dragonfly and sig.name in DRAGONFLY_NO_SCRIPT_COMMANDS)
+            ):
+                raise SimpleError(msgs.DRAGONFLY_COMMAND_IN_SCRIPT_MSG if is_dragonfly else msgs.COMMAND_IN_SCRIPT_MSG)
             if self._pubsub and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB:
                 raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
             if len(ret) == 1:
@@ -347,7 +360,13 @@ class BaseFakeSocket:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    result = _convert_to_resp2(result)
+                    result = _convert_to_resp2(
+                        result,
+                        self.server_type,
+                        # Dragonfly gives a script's `redis.call` a double as a Lua number
+                        # whatever protocol the client that invoked the script speaks.
+                        keep_doubles=from_script and is_dragonfly,
+                    )
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
                     result, self._client_info.protocol_version
                 ):

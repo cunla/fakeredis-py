@@ -183,15 +183,51 @@ array. Under RESP2 both encode identically and clients see no difference.
     `AttributeError: 'list' object has no attribute 'items'` on Dragonfly's reply. Use
     `execute_command` with the response callbacks disabled if you need to read it.
 
+### Lua scripting
+
+Dragonfly's interpreter is Lua 5.4, where Redis' is Lua 5.1, and it treats numbers as
+numbers throughout instead of routing them through strings:
+
+| Expression                                  | Redis      | Dragonfly |
+|---------------------------------------------|------------|-----------|
+| `return 3.2`                                | `3`        | `3.2`     |
+| `type(redis.call("INCRBYFLOAT", k, 2.0))`   | `"string"` | `"number"` |
+| `type(redis.call("ZSCORE", k, m))`          | `"string"` | `"number"` |
+
+The same goes for the replies themselves: `INCRBYFLOAT` and `HINCRBYFLOAT` answer with a
+double rather than a bulk string, which a RESP3 client sees as a float. Dragonfly renders a
+double under RESP2 as the shortest string that round-trips, where Redis pads it out to 17
+significant digits — a `ZSCORE` of `3.2` reads back as `3.2`, not `3.2000000000000002`.
+
+`FLUSHDB` and `FLUSHALL` join the set of commands a script may not call, alongside `SAVE`,
+`BGSAVE`, `SHUTDOWN`, `DEBUG`, `CONFIG`, `CLIENT`, `SCRIPT`, `EVAL`, `MULTI`/`EXEC`, the
+`(P)SUBSCRIBE` family and the blocking pops:
+
+```
+Error running script (call to <sha>): @user_script:2: -ERR This Redis command is not allowed from script
+```
+
+`redis.log` accepts any level and silently drops a message logged at one it does not know,
+where Redis answers `ERR Invalid debug level.`. It still requires two arguments or more.
+
+Bad arguments to `redis.call` keep the pre-7 wording, `Lua redis() command arguments must
+be strings or integers` rather than `Lua redis lib command arguments ...`, and every script
+error is wrapped in the Redis 6 style `Error running script (call to <sha>): ...` even
+though Dragonfly reports `redis_version` 7.
+
+`SCRIPT FLUSH` has no `ASYNC`/`SYNC` mode and ignores whatever follows it instead of
+rejecting it, and `SCRIPT HELP` prints Dragonfly's own text.
+
 ### Known differences that are not emulated yet
 
 fakeredis still answers these the way Redis does, so a `server_type="dragonfly"` server
 will not match a real one here:
 
-- **Scripting.** `FLUSHALL` and `FLUSHDB` are rejected from inside a script. Lua numbers
-  are not truncated to integers (`return 3.2` yields `3.2`, not `3`). `redis.log` accepts
-  any log level. `SCRIPT FLUSH` accepts any argument instead of rejecting it. `SCRIPT
-  HELP` prints its own text.
+- **Whole Lua numbers.** Dragonfly's Lua 5.4 tells `return 3` (an integer reply) from
+  `return 3.0` and `return 1e300` (doubles). The Lua 5.1 runtime fakeredis uses has no
+  integer subtype, so any Lua number without a fractional part comes back as an integer.
+- **Script error detail.** The wrapper carries `@user_script:?:` rather than the real line
+  number, and the error it wraps is not prefixed with `-` the way Dragonfly's is.
 - **JSON.** Dragonfly returns single-element arrays where RedisJSON returns scalars — for
   example `JSON.STRLEN j $.a` gives `[5]` rather than `5` — and reports a missing key as
   `no such key`.

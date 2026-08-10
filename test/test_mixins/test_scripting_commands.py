@@ -38,6 +38,7 @@ def test_script_exists_redis7(r: ClientType):
     assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
 def test_script_flush_errors_with_args(r, args):
     with pytest.raises(Exception) as ctx:
@@ -90,7 +91,7 @@ def test_script_help(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.1")
-@pytest.mark.unsupported_server_types("valkey")
+@pytest.mark.unsupported_server_types("valkey", "dragonfly")
 def test_script_help73(r: ClientType):
     assert raw_command(r, "SCRIPT HELP") == [
         b"SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
@@ -313,6 +314,7 @@ def test_eval_global_and_return_ok(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_convert_number(r: ClientType):
     # Redis forces all Lua numbers to integer
     val = r.eval("return 3.2", 0)
@@ -332,7 +334,7 @@ def test_eval_convert_bool(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-@pytest.mark.unsupported_server_types("valkey")
+@pytest.mark.unsupported_server_types("valkey", "dragonfly")
 def test_eval_call_bool7_redis(r: ClientType):
     # Redis doesn't allow Lua bools to be passed to [p]call
     with pytest.raises(Exception) as exc_info:
@@ -427,6 +429,7 @@ def test_eval_exists(r: ClientType):
     assert val == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_flushdb(r: ClientType):
     r.set("foo", "bar")
     val = r.eval(
@@ -439,6 +442,7 @@ def test_eval_flushdb(r: ClientType):
     assert val == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_flushall(r, create_connection):
     r1 = create_connection(db=2)
     r2 = create_connection(db=3)
@@ -459,6 +463,7 @@ def test_eval_flushall(r, create_connection):
     assert "r2" not in r2
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_incrbyfloat(r: ClientType):
     r.set("foo", 0.5)
     val = r.eval(
@@ -587,6 +592,7 @@ def test_lua_log_different_types(r, caplog):
     assert len(set(caplog.record_tuples).intersection({(logger.name, logging.DEBUG, "string 1 3.14 string")})) == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_lua_log_wrong_level(r: ClientType):
     script = "redis.log(10, 'string')"
     script = r.register_script(script)

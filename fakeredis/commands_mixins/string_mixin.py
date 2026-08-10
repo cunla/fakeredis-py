@@ -224,13 +224,14 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         return [result, amount]
 
     @command(fixed=(Key(bytes), Float))
-    def incrbyfloat(self, key: CommandItem, amount: float) -> bytes:
+    def incrbyfloat(self, key: CommandItem, amount: float) -> bytes | float:
         c = Float.decode(key.get(b"0")) + amount
         if not math.isfinite(amount):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
         key.update(encoded)
-        return encoded
+        # Redis replies with a bulk string, Dragonfly with a double.
+        return c if self.server_type == "dragonfly" else encoded
 
     @command(fixed=(Key(),), repeat=(Key(),))
     def mget(self, *keys: CommandItem) -> list[bytes | None]:
