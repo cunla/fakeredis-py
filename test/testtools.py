@@ -144,6 +144,19 @@ def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
     return None
 
 
+def disable_xread_parsing(r: ClientType, server_type: str) -> bool:
+    """Drop redis-py's XREAD callback when it cannot parse the reply of the server under test.
+
+    A blocking XREAD woken by a new entry is answered by dragonfly with the RESP2-style
+    array, where Redis sends a map; redis-py's RESP3 parser assumes the map. Returns whether
+    the callback was dropped, i.e. whether XREAD now answers in the RESP2 shape.
+    """
+    if server_type != "dragonfly" or get_protocol_version(r) != 3:
+        return False
+    r.response_callbacks.pop("XREAD", None)
+    return True
+
+
 def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:
     """Assert that an XREAD/XREADGROUP matched nothing.
 

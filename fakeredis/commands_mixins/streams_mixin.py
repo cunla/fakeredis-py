@@ -85,12 +85,15 @@ class StreamsCommandsMixin(CommandsMixinBase):
             start_id = self._parse_start_id(item, left_args[i + num_streams])
             stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
-            return self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
+            res = self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
         else:
-            return self._blocking(  # type: ignore
+            res = self._blocking(
                 timeout / 1000.0,
                 functools.partial(self._xread, stream_start_id_list, count, True),
             )
+        if self._client_info.protocol_version == 2:
+            return res
+        return self._empty_stream_read_reply(res)
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
@@ -445,7 +448,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 res[stream_name] = stream_results
         return res
 
-    def _empty_stream_read_reply(self, res: dict[bytes, Any] | None) -> dict[bytes, Any] | list[Any] | None:
+    def _empty_stream_read_reply(self, res: dict[bytes, Any] | list[Any] | None) -> dict[bytes, Any] | list[Any] | None:
         """Shape an XREAD/XREADGROUP reply that matched nothing, under RESP3.
 
         Redis answers with an empty map; dragonfly answers with an empty array. Note that
@@ -472,10 +475,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 return None
             return [[k, v] for k, v in res.items()]
         if not res:
-            # Dragonfly answers an empty read with an empty array, blocking or not.
-            if self.server_type == "dragonfly":
-                return []
+            # None keeps `_blocking` waiting; the caller shapes the reply once it gives up.
             return None if blocking else res
+        if blocking and not first_pass and self.server_type == "dragonfly":
+            # A blocking read that was woken by a new entry is answered by dragonfly with the
+            # RESP2-style array, not the map it sends when the entry was already there.
+            return [[k, v] for k, v in res.items()]
         return res
 
     @staticmethod

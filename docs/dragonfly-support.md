@@ -173,10 +173,15 @@ changes.
 Two replies that Redis sends as a null or empty map are sent by Dragonfly as an empty
 array. Under RESP2 both encode identically and clients see no difference.
 
-| Reply                                       | Redis (RESP3) | Dragonfly (RESP3) |
-|---------------------------------------------|---------------|-------------------|
-| `BLPOP` / `BRPOP` / `BZPOPMIN` timeout      | nil           | `[]`              |
-| `XREAD` / `XREADGROUP` matching nothing     | `{}`          | `[]`              |
+| Reply                                       | Redis (RESP3)      | Dragonfly (RESP3)   |
+|---------------------------------------------|--------------------|---------------------|
+| `BLPOP` / `BRPOP` / `BZPOPMIN` timeout      | nil                | `[]`                |
+| `XREAD` / `XREADGROUP` matching nothing     | `{}`               | `[]`                |
+| `XREAD BLOCK` woken by a new entry          | `{name: entries}`  | `[[name, entries]]` |
+
+A blocking `XREAD` that is served straight away — the entry was already there — answers
+with the map, like Redis. Only the reply built when the read actually waited comes back in
+the RESP2 array shape. `XREADGROUP` sends the map on both paths.
 
 !!! warning
     redis-py's RESP3 `XREAD` parser assumes the map and raises
