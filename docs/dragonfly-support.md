@@ -232,9 +232,18 @@ will not match a real one here:
   example `JSON.STRLEN j $.a` gives `[5]` rather than `5` — and reports a missing key as
   `no such key`.
 - **Streams.** The `XINFO STREAM` and `XGROUP SETID` replies differ.
-- **Keyspace notifications.** `notify-keyspace-events` cannot be set: `CONFIG SET` fails
-  with `argument can not be set`. `CONFIG GET` reports it under the underscored name
-  `notify_keyspace_events`.
+- **Keyspace notifications.** Dragonfly implements only the `Ex` event class — `expired`
+  events on the `__keyevent@<db>__:` channel. The `__keyspace@<db>__:` channel does not
+  exist, and no other event is ever published. It is enabled at startup with
+  `--notify_keyspace_events=Ex`, and that value must be exactly `Ex`: `E`, `x`, `KEx`,
+  `Ax` and `KEA` all abort the server on boot with `Only Ex is currently supported`.
+  `CONFIG SET notify-keyspace-events` always fails with `argument can not be set`, and
+  `CONFIG GET` reports the setting under the underscored name `notify_keyspace_events`.
+
+    !!! warning
+        A failed `CONFIG SET` still changes what `CONFIG GET` reports, while the effective
+        setting stays as it was at startup. Reading the value back is therefore no way to
+        tell whether notifications are on.
 
 [1]: https://www.dragonflydb.io/
 
