@@ -86,9 +86,13 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 
 
 @pytest_asyncio.fixture(name="tcp_server_address")
-def _tcp_fake_server() -> Generator[tuple[str, int], Any, None]:
+def _tcp_fake_server(real_server_details: ServerDetails) -> Generator[tuple[str, int], Any, None]:
     server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
-    server = TcpFakeServer(server_address)
+    server = TcpFakeServer(
+        server_address,
+        server_type=real_server_details.server_type,
+        server_version=real_server_details.server_version,
+    )
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
     time.sleep(0.1)
