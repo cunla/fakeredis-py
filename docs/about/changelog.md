@@ -22,6 +22,9 @@ toc_depth: 2
   the following transaction, matching real Redis
 - fix: align stream group errors with Redis — `XPENDING` on a missing key or unknown group now raises `NOGROUP` instead
   of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
+- fix: `TcpFakeServer` now reaps a connection's handler thread when the client disconnects. On the non-blocking socket
+  an empty read was treated as "no data yet" even at EOF, so every client that ever connected left behind a
+  busy-spinning thread and a stale `server.clients` entry
 
 ### 🧰 Maintenance
 
