@@ -63,6 +63,36 @@ def test_tcp_server_started_protocol_3(tcp_server_address: tuple[str, int]):
         assert r.get("foo") == b"bar"
 
 
+def test_handler_threads_are_reaped_when_clients_disconnect():
+    """Each disconnecting client's handler thread must exit, not park in the read loop."""
+    server = TcpFakeServer(("127.0.0.1", 0))
+    port = server.server_address[1]
+    t = Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    try:
+        time.sleep(0.1)
+        threads_before = threading.active_count()
+
+        for _ in range(10):
+            client = redis.Redis(host="127.0.0.1", port=port)
+            client.ping()
+            client.close()
+            client.connection_pool.disconnect()
+
+        deadline = time.time() + 5.0
+        while time.time() < deadline and threading.active_count() > threads_before:
+            time.sleep(0.05)
+
+        assert threading.active_count() == threads_before, (
+            f"{threading.active_count() - threads_before} handler threads leaked"
+        )
+        assert server.clients == {}
+    finally:
+        server.shutdown()
+        server.server_close()
+        t.join()
+
+
 def test_tcp_server_clean_shutdown():
     """Verify that shutdown() + server_close() leaves no lingering handler threads."""
     port = 19100
