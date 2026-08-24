@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from typing import Any
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -12,8 +12,6 @@ from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStrea
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
-
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> bytes | None:
         (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
@@ -85,15 +83,14 @@ class StreamsCommandsMixin(CommandsMixinBase):
             start_id = self._parse_start_id(item, left_args[i + num_streams])
             stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
-            res = self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
-        else:
-            res = self._blocking(
-                timeout / 1000.0,
-                functools.partial(self._xread, stream_start_id_list, count, True),
+            return self._empty_stream_read_reply(
+                self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
             )
-        if self._client_info.protocol_version == 2:
-            return res
-        return self._empty_stream_read_reply(res)
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xread, stream_start_id_list, count, True),
+            self._empty_stream_read_reply,
+        )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
@@ -124,15 +121,14 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 )
             group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
-            res = self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
-        else:
-            res = self._blocking(
-                timeout / 1000.0,
-                functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
+            return self._xreadgroup_reply(
+                self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
             )
-        if self._client_info.protocol_version == 2:
-            return [[k, v] for k, v in res.items()] if res else None
-        return self._empty_stream_read_reply(res)
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
+            self._xreadgroup_reply,
+        )
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
@@ -453,10 +449,17 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
         Redis answers with an empty map; dragonfly answers with an empty array. Note that
         redis-py's RESP3 parser assumes the map and cannot consume dragonfly's reply.
+        Under RESP2 both send a null array, so the reply is left as it is.
         """
-        if not res and self.server_type == "dragonfly":
+        if not res and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
             return []
         return res
+
+    def _xreadgroup_reply(self, res: dict[bytes, Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Turn the streams XREADGROUP matched into the reply for the protocol in use."""
+        if self._client_info.protocol_version == 2:
+            return [[k, v] for k, v in res.items()] if res else None
+        return self._empty_stream_read_reply(res)
 
     def _xread(
         self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool

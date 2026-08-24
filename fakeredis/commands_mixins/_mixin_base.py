@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import SimpleError
@@ -32,6 +32,12 @@ class CommandsMixinBase:
 
     @property
     def server_type(self) -> ServerType:
+        raise NotImplementedError
+
+    def _blocking(
+        self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
+    ) -> Any:
+        """Implemented by the socket, sync and async alike; see `FakeSocket._blocking`."""
         raise NotImplementedError
 
     def _empty_blocking_reply(self, result: Any) -> Any:

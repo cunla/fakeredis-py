@@ -486,7 +486,9 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: float | None, func: Callable[[bool], Any]) -> Any:
+    def _blocking(
+        self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
+    ) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -495,26 +497,32 @@ class BaseFakeSocket:
         each time the condition variable is notified, until the timeout is
         reached.
 
+        `shape` turns the outcome into the reply the command sends, the timed-out None
+        included. It belongs here rather than around the call because the async socket
+        answers a command that blocks outside the command's own control flow, so anything
+        the command does with the return value would be skipped there.
+
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
+        empty = None if shape is None else shape(None)
         deadline = time.time() + timeout if timeout else None
         self._blocked = True
         try:
             while True:
                 timeout = (deadline - time.time()) if deadline is not None else None
                 if timeout is not None and timeout <= 0:
-                    return None
+                    return empty
                 if self._db.condition.wait(timeout=timeout) is False:
-                    return None  # Timeout expired
+                    return empty  # Timeout expired
                 if self._unblock_reason is not None:
                     self._take_unblock_reason()
-                    return None  # Unblocked with TIMEOUT: same empty result as a timeout
+                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
                 ret = func(False)  # Second pass => first_pass=False
                 if ret is not None:
-                    return ret
+                    return ret if shape is None else shape(ret)
         finally:
             self._blocked = False
             self._unblock_reason = None

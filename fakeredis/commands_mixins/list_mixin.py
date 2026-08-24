@@ -44,8 +44,6 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
 
 
 class ListCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
-
     def _bpop_pass(self, keys: list[bytes], op: Callable[[list[bytes]], bytes], first_pass: bool) -> list[bytes] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
@@ -64,15 +62,15 @@ class ListCommandsMixin(CommandsMixinBase):
     def _bpop(self, args: Any, op: Callable[[list[bytes]], bytes]) -> Any:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
+        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op), self._empty_blocking_reply)
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def blpop(self, *args: bytes) -> Any:
-        return self._empty_blocking_reply(self._bpop(args, lambda lst: lst.pop(0)))
+        return self._bpop(args, lambda lst: lst.pop(0))
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def brpop(self, *args: bytes) -> Any:
-        return self._empty_blocking_reply(self._bpop(args, lambda lst: lst.pop()))
+        return self._bpop(args, lambda lst: lst.pop())
 
     def _brpoplpush_pass(self, source: bytes, destination: bytes, first_pass: bool) -> Any:
         src = CommandItem(source, self._db, item=self._db.get(source), default=[])

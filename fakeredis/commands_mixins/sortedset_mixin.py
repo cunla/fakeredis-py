@@ -82,7 +82,6 @@ class ScoreTest(RedisType):
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
     _scan: Callable[..., Any]
     _encodefloat: Callable[[float, bool], bytes]
 
@@ -132,15 +131,15 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def bzpopmin(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        res = self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
-        return self._empty_blocking_reply(res)  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, False), self._empty_blocking_reply)  # type:ignore
+        return res  # type:ignore
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmax(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        res = self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
-        return self._empty_blocking_reply(res)  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, True), self._empty_blocking_reply)  # type:ignore
+        return res  # type:ignore
 
     @staticmethod
     def _limit_items(items: list[_T], offset: int, count: int) -> list[_T]:

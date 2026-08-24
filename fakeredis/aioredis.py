@@ -56,8 +56,10 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         func: Callable[[bool], Any],
         event: asyncio.Event,
         callback: Callable[[], None],
+        shape: Callable[[Any], Any] | None = None,
     ) -> None:
-        result = None
+        # The reply for an empty outcome -- a timeout, or an unblock with TIMEOUT.
+        result = None if shape is None else self._decode_result(shape(None))
         try:
             async with async_timeout(timeout if timeout else None):
                 while True:
@@ -74,7 +76,7 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
                             break
                         ret = func(False)
                         if ret is not None:
-                            result = self._decode_result(ret)
+                            result = self._decode_result(ret if shape is None else shape(ret))
                             break
         except asyncio.TimeoutError:
             pass
@@ -90,11 +92,12 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self,
         timeout: float | None,
         func: Callable[[bool], None],
+        shape: Callable[[Any], Any] | None = None,
     ) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
         event = asyncio.Event()
 
         def callback() -> None:
@@ -103,7 +106,9 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self._db.add_change_callback(callback)
         self._blocked = True
         self.pause()
-        loop.create_task(self._async_blocking(timeout, func, event, callback))
+        # `shape` travels with the task: the reply is put on the queue from there, past
+        # the point where the command that blocked could still touch it.
+        loop.create_task(self._async_blocking(timeout, func, event, callback, shape))
         return _helpers.NoResponse()
 
 
