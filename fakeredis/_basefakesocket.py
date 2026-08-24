@@ -161,6 +161,10 @@ class BaseFakeSocket:
     def server_type(self) -> ServerType:
         return self._server.server_type
 
+    @property
+    def _resp_version(self) -> int:
+        return getattr(self, "_script_resp", None) or self._client_info.protocol_version
+
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.
 
