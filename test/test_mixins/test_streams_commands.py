@@ -1160,7 +1160,10 @@ def test_xclaim_force_credits_the_claiming_consumer(r: ClientType):
     assert r.xpending(stream, group)["pending"] == 1
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xclaim_of_an_entry_deleted_from_the_stream_releases_the_owner(r: ClientType):
+    # Redis 7.0 made XCLAIM drop a PEL entry whose stream record is gone; 6.2 keeps it and
+    # hands it to the claimer instead.
     stream, group = "stream", "group"
     ids = _deliver(r, stream, group, 2)
     r.xdel(stream, ids[0])
