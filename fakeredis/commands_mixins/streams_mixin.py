@@ -295,7 +295,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        keys: list[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
+        keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False, justid=bool(justid))
 
         res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
