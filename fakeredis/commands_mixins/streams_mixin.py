@@ -8,7 +8,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
+from fakeredis.model import StreamGroup, StreamRangeTest, XStream
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
@@ -293,11 +293,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        keys: list[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
+        keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
 
         res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
-            max(msgs_claimed).encode() if len(msgs_claimed) > 0 else start,
+            next_key.encode() if next_key is not None else b"0-0",
             [msg.encode() for msg in msgs_claimed] if justid else [stream.format_record(msg) for msg in msgs_claimed],
         ]
         if self.version >= (7,):
