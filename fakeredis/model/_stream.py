@@ -398,12 +398,18 @@ class StreamGroup:
             res.append(record)
         return res
 
-    def read_pel_msgs(self, min_idle_ms: int, start: bytes, count: int) -> list[StreamEntryKey]:
+    def read_pel_msgs(
+        self, min_idle_ms: int, start: bytes, count: int
+    ) -> tuple[list[StreamEntryKey], StreamEntryKey | None]:
+        """Claimable PEL entries from `start`, plus the entry XAUTOCLAIM should resume its scan at.
+
+        The second element is None once the scan has reached the end of the PEL. XAUTOCLAIM reports
+        that as the 0-0 cursor, which is what ends a caller's `while cursor != "0-0"` loop.
+        """
         start_key = StreamEntryKey.parse_str(start)
         curr_time = current_time()
         msgs = sorted([k for k in self.pel if (curr_time - self.pel[k].time_read >= min_idle_ms) and k >= start_key])
-        count = min(count, len(msgs))
-        return msgs[:count]
+        return msgs[:count], msgs[count] if len(msgs) > count else None
 
 
 class XStream(BaseModel):
