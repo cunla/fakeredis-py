@@ -1055,3 +1055,49 @@ def test_xinfo_groups_pending(r: ClientType):
     r.xreadgroup(group_name, consumer_name, {stream_name: ">"}, count=1)
     assert r.xpending(stream_name, group_name)["pending"] == 1
     assert r.xinfo_groups(stream_name)[0]["pending"] == 1
+
+
+def test_xgroup_delconsumer_removes_the_consumers_pending_entries(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    add_items(r, stream, 2)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+
+    assert r.xgroup_delconsumer(stream, group, "consumer1") == 2
+    assert r.xpending_range(stream, group, min="-", max="+", count=10) == []
+    assert r.xpending(stream, group)["pending"] == 0
+    assert r.xinfo_groups(stream)[0]["pending"] == 0
+
+
+def test_xgroup_delconsumer_ignores_entries_the_consumer_no_longer_owns(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    ids = add_items(r, stream, 2)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=ids)
+
+    assert r.xgroup_delconsumer(stream, group, "consumer1") == 0
+    pending = r.xpending_range(stream, group, min="-", max="+", count=10)
+    assert [entry["message_id"] for entry in pending] == ids
+    assert r.xpending(stream, group)["pending"] == 2
+
+
+def test_xgroup_delconsumer_unknown_consumer(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    add_items(r, stream, 1)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+
+    assert r.xgroup_delconsumer(stream, group, "never-existed") == 0
+    assert r.xpending(stream, group)["pending"] == 1
+
+
+def test_xack_after_xgroup_delconsumer(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    message_id = add_items(r, stream, 1)[0]
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+    r.xgroup_delconsumer(stream, group, "consumer1")
+
+    # The entry is gone with its consumer, so acking it is a no-op rather than an error.
+    assert r.xack(stream, group, message_id) == 0

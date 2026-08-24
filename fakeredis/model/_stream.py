@@ -131,11 +131,18 @@ class StreamGroup:
         return 1
 
     def del_consumer(self, consumer_name: bytes) -> int:
+        """Drop a consumer and the entries it still owns, returning how many were dropped.
+
+        The count comes from the PEL rather than the cached `pending` counter: entries move between
+        consumers, so the counter can disagree with who actually owns what.
+        """
         if consumer_name not in self.consumers:
             return 0
-        res = self.consumers[consumer_name].pending
+        owned = [key for key, entry in self.pel.items() if entry.consumer_name == consumer_name]
+        for key in owned:
+            del self.pel[key]
         del self.consumers[consumer_name]
-        return res
+        return len(owned)
 
     def consumers_info(self) -> list[dict[str, bytes | int]]:
         return [self.consumers[k].info(current_time()) for k in self.consumers]
@@ -260,8 +267,11 @@ class StreamGroup:
             except Exception:
                 continue
             if parsed in self.pel:
-                consumer_name = self.pel[parsed].consumer_name
-                self.consumers[consumer_name].pending -= 1
+                # An XNACK-released entry is pending but unowned, so there is nobody to charge the
+                # acknowledgement back to.
+                consumer = self.consumers.get(self.pel[parsed].consumer_name)
+                if consumer is not None:
+                    consumer.pending -= 1
                 del self.pel[parsed]
                 res += 1
         self._calc_consumer_last_time()
