@@ -16,7 +16,7 @@ class CommandsMixinBase:
     _server: FakeServer
     _client_info: ClientInfo
     _db: Database
-    _script_resp: int | None
+    _script_resp: int | None = None
 
     @property
     def version(self) -> VersionType:
@@ -28,4 +28,9 @@ class CommandsMixinBase:
 
     @property
     def _resp_version(self) -> int:
-        raise NotImplementedError
+        """RESP version the reply being built should be shaped for.
+
+        That is the client's negotiated protocol, except inside a script, where replies to
+        `redis.call` follow the script's own RESP mode instead.
+        """
+        return self._script_resp if self._script_resp is not None else self._client_info.protocol_version
