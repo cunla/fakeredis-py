@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import importlib.util
 import inspect
 import itertools
+import json
 import time
 from datetime import datetime
 from typing import Any
@@ -155,6 +158,73 @@ def disable_xread_parsing(r: ClientType, server_type: str) -> bool:
         return False
     r.response_callbacks.pop("XREAD", None)
     return True
+
+
+def json_legacy_reply(r: ClientType, server_type: str, value: Any) -> Any:
+    """What a JSON command answers with for a legacy path (`.a`) on the server under test.
+
+    RedisJSON sends the value itself. Dragonfly sends the one-element array it sends for the
+    equivalent JSONPath, but only under RESP3; under RESP2 the two agree.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return [value]
+    return value
+
+
+def json_legacy_value(r: ClientType, server_type: str, reply: Any) -> Any:
+    """The value inside a legacy-path JSON reply, for tests that post-process it.
+
+    The inverse of `json_legacy_reply`: it unwraps the one-element array dragonfly answers a
+    legacy path with under RESP3, and leaves every other reply alone.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        assert isinstance(reply, list) and len(reply) == 1, reply
+        return reply[0]
+    return reply
+
+
+def json_arrpop_reply(r: ClientType, server_type: str, value: Any) -> Any:
+    """What JSON.ARRPOP answers with for a legacy path on the server under test.
+
+    The reply is the JSON text of the popped element, which redis-py parses back into a value
+    -- but not through the array dragonfly wraps it in under RESP3, where it stays text.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return [json.dumps(value)]
+    return value
+
+
+def json_toggle_reply(r: ClientType, server_type: str, value: bool) -> Any:
+    """What JSON.TOGGLE answers with for a legacy path on the server under test.
+
+    Dragonfly answers with the JSON text of the new value, wrapped under RESP3 the way every
+    legacy path is; redis-py parses the bare text back into a boolean, so only the wrapped
+    reply differs from the boolean RedisJSON sends.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return ["true" if value else "false"]
+    return value
+
+
+def json_type_reply(r: ClientType, server_type: str, types: list[Any]) -> Any:
+    """What JSON.TYPE answers with for a JSONPath on the server under test.
+
+    Under RESP3 RedisJSON wraps the whole list of matched types in one array, where dragonfly
+    wraps each match in an array of its own. Under RESP2 neither wraps.
+    """
+    if get_protocol_version(r) == 2:
+        return types
+    return [[item] for item in types] if server_type == "dragonfly" else [types]
+
+
+def json_number_reply(r: ClientType, server_type: str, value: float) -> Any:
+    """What JSON.NUMINCRBY / JSON.NUMMULTBY answers with for a legacy path.
+
+    RedisJSON wraps the new value in an array under RESP3; dragonfly never does.
+    """
+    if server_type == "dragonfly":
+        return value
+    return resp_conversion(r, [value], value)
 
 
 def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:

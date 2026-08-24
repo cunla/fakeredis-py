@@ -188,6 +188,30 @@ the RESP2 array shape. `XREADGROUP` sends the map on both paths.
     `AttributeError: 'list' object has no attribute 'items'` on Dragonfly's reply. Use
     `execute_command` with the response callbacks disabled if you need to read it.
 
+### JSON
+
+Dragonfly ships its own JSON implementation rather than RedisJSON, and it differs in three
+ways that a client will notice.
+
+**A legacy path answers like a JSONPath under RESP3.** `JSON.STRLEN j .a` is `[5]` on
+Dragonfly and `5` on RedisJSON; the same goes for `ARRLEN`, `OBJLEN`, `OBJKEYS`,
+`STRAPPEND`, `ARRAPPEND`, `ARRINSERT`, `ARRINDEX`, `ARRTRIM`, `ARRPOP` and `TOGGLE`, and
+for an omitted path. A path that matched nothing still answers with a plain null, and under
+RESP2 nothing is wrapped at all.
+
+**The exceptions run the other way.** `JSON.NUMINCRBY` and `JSON.NUMMULTBY` are never
+wrapped — `[2]` on RedisJSON under RESP3 is `2` on Dragonfly — and under RESP2 they answer
+with the JSON text of the new value rather than the number. `JSON.TOGGLE` likewise answers
+with JSON text (`true`/`false`) for a legacy path and with `0`/`1` for a JSONPath, where
+RedisJSON answers with booleans throughout. `JSON.TYPE` wraps *each* match of a JSONPath in
+an array of its own — `[[t1], [t2]]` against RedisJSON's `[[t1, t2]]`.
+
+**JSONPath has no filter expressions.** Anything containing `[?(...)]` is rejected with
+`ERR syntax error`, whatever the command; wildcards and recursive descent parse as usual.
+
+A missing key is reported as `no such key` rather than RedisJSON's `could not perform this
+operation on a key that doesn't exist`.
+
 ### Lua scripting
 
 Dragonfly's interpreter is Lua 5.4, where Redis' is Lua 5.1, and it treats numbers as
@@ -233,9 +257,13 @@ will not match a real one here:
   integer subtype, so any Lua number without a fractional part comes back as an integer.
 - **Script error detail.** The wrapper carries `@user_script:?:` rather than the real line
   number, and the error it wraps is not prefixed with `-` the way Dragonfly's is.
-- **JSON.** Dragonfly returns single-element arrays where RedisJSON returns scalars — for
-  example `JSON.STRLEN j $.a` gives `[5]` rather than `5` — and reports a missing key as
-  `no such key`.
+- **JSON error reporting.** Where RedisJSON names what went wrong — `Path '.a' does not
+  exist or not a string` — Dragonfly answers most type and path mismatches with the single
+  `WRONGTYPE wrong JSON type of path value`, and `JSON.TYPE key $.a` on a missing key with a
+  null instead of an error. The reply *shapes* are emulated (see [JSON](#json) above); only
+  these errors are not.
+- **JSON numbers.** `JSON.NUMINCRBY` keeps a whole result whole — `1` incremented by `1` is
+  `2`, where fakeredis renders `2.0`. Both parse to the same number.
 - **Streams.** The `XINFO STREAM` and `XGROUP SETID` replies differ.
 - **Keyspace notifications.** Dragonfly implements only the `Ex` event class — `expired`
   events on the `__keyevent@<db>__:` channel. The `__keyspace@<db>__:` channel does not
