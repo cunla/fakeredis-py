@@ -127,7 +127,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 timeout / 1000.0,
                 functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
             )
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             return [[k, v] for k, v in res.items()] if res else None
         return res
 
@@ -459,7 +459,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         # On blocking read, and there are no results, return None (instead of an empty list)
         if blocking and len(res) == 0:
             return None
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             return [[k, v] for k, v in res.items()]
         return res
 

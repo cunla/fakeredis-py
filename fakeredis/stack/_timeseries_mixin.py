@@ -118,7 +118,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     def ts_info(self, key: CommandItem, *args: bytes) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             labels = [[k, v] for k, v in key.value.labels.items()]
             rules: Any = [
                 [rule.dest_key.name, rule.bucket_duration, rule.aggregator.upper(), rule.align_timestamp]
@@ -168,7 +168,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
         res = key.value.get()
-        if res is None and self._client_info.protocol_version == 3:
+        if res is None and self._resp_version == 3:
             res = []
         return res  # type: ignore[no-any-return]
 
@@ -424,7 +424,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
 
         timeseries = self._get_timeseries(filter_expression)
         res: Any
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             if with_labels:
                 return [[ts.name, [[k, v] for (k, v) in ts.labels.items()], ts.get()] for ts in timeseries]
             if selected_labels is not None:
@@ -574,7 +574,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             }
         if group_by is not None and reducer is not None:
             res = self._group_by_label(reverse, res, group_by, reducer)
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             res = [[ts_name, [[k, v] for k, v in ts_data[0].items()], ts_data[-1]] for ts_name, ts_data in res.items()]
         return res
 

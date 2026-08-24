@@ -147,7 +147,7 @@ class HashCommandsMixin(CommandsMixinBase):
             res = random.sample(sorted(key.value.items()), count)
 
         if withvalues:
-            if self._client_info.protocol_version == 2:
+            if self._resp_version == 2:
                 res = [item for t in res for item in t]
             else:
                 res = [list(t) for t in res]

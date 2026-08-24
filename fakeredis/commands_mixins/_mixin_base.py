@@ -16,6 +16,7 @@ class CommandsMixinBase:
     _server: FakeServer
     _client_info: ClientInfo
     _db: Database
+    _script_resp: int | None
 
     @property
     def version(self) -> VersionType:
@@ -23,4 +24,8 @@ class CommandsMixinBase:
 
     @property
     def server_type(self) -> ServerType:
+        raise NotImplementedError
+
+    @property
+    def _resp_version(self) -> int:
         raise NotImplementedError

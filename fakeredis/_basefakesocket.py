@@ -128,6 +128,10 @@ class BaseFakeSocket:
         # CLIENT NO-EVICT / CLIENT NO-TOUCH, reported in the CLIENT INFO flags field.
         self._no_evict = False
         self._no_touch = False
+        # RESP version a running script's `redis.call` sees, or None when no script is
+        # running. Redis gives Lua RESP2 shapes regardless of the protocol the calling
+        # client negotiated, until the script asks for RESP3 with `redis.setresp(3)`.
+        self._script_resp: int | None = None
         # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this
         # client is blocked and, if so, how it should be woken.
         self._blocked = False
@@ -160,6 +164,15 @@ class BaseFakeSocket:
     @property
     def server_type(self) -> ServerType:
         return self._server.server_type
+
+    @property
+    def _resp_version(self) -> int:
+        """RESP version the reply being built should be shaped for.
+
+        That is the client's negotiated protocol, except inside a script, where replies to
+        `redis.call` follow the script's own RESP mode instead.
+        """
+        return self._script_resp if self._script_resp is not None else self._client_info.protocol_version
 
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.
@@ -334,11 +347,10 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                resp_version = self._resp_version
+                if resp_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(result)
-                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
-                    result, self._client_info.protocol_version
-                ):
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(result, resp_version):
                     raise AssertionError(f"Invalid response type for {result}")
         except SimpleError as exc:
             result = exc

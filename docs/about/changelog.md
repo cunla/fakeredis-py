@@ -22,6 +22,9 @@ toc_depth: 2
   the following transaction, matching real Redis
 - fix: align stream group errors with Redis — `XPENDING` on a missing key or unknown group now raises `NOGROUP` instead
   of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
+- fix: `redis.call` in a Lua script now returns RESP2 shapes whatever protocol the calling client negotiated, matching
+  real Redis, where a script must opt into RESP3 explicitly; `redis.setresp(2)`/`redis.setresp(3)` are now supported and
+  select the script's response mode, which resets to RESP2 for each script run (#543)
 
 ### 🧰 Maintenance
 
