@@ -1055,3 +1055,81 @@ def test_xinfo_groups_pending(r: ClientType):
     r.xreadgroup(group_name, consumer_name, {stream_name: ">"}, count=1)
     assert r.xpending(stream_name, group_name)["pending"] == 1
     assert r.xinfo_groups(stream_name)[0]["pending"] == 1
+
+
+def _consumer_pending(r: ClientType, stream: str, group: str) -> dict:
+    return {consumer["name"]: consumer["pending"] for consumer in r.xinfo_consumers(stream, group)}
+
+
+def _deliver(r: ClientType, stream: str, group: str, n: int, consumer: str = "consumer1") -> list:
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    ids = add_items(r, stream, n)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    return ids
+
+
+def test_xclaim_moves_the_pending_count_to_the_new_consumer(r: ClientType):
+    stream, group = "stream", "group"
+    ids = _deliver(r, stream, group, 1)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1}
+
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=ids)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 0, b"consumer2": 1}
+
+
+def test_xautoclaim_moves_the_pending_count_to_the_new_consumer(r: ClientType):
+    stream, group = "stream", "group"
+    _deliver(r, stream, group, 3)
+
+    r.xautoclaim(stream, group, "consumer2", min_idle_time=0, count=2)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1, b"consumer2": 2}
+
+
+def test_xclaim_by_the_current_owner_does_not_double_count(r: ClientType):
+    stream, group = "stream", "group"
+    ids = _deliver(r, stream, group, 1)
+
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=ids)
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=ids)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1}
+
+
+def test_xack_after_a_claim_does_not_drive_pending_negative(r: ClientType):
+    stream, group = "stream", "group"
+    ids = _deliver(r, stream, group, 3)
+
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=ids[:2])
+    r.xack(stream, group, ids[0])
+    r.xack(stream, group, ids[1])
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1, b"consumer2": 0}
+    assert r.xpending(stream, group)["pending"] == 1
+
+
+def test_xclaim_force_credits_the_claiming_consumer(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    message_id = add_items(r, stream, 1)[0]  # never delivered, so not in the PEL
+
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=[message_id], force=True)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1}
+    assert r.xpending(stream, group)["pending"] == 1
+
+
+def test_xclaim_of_an_entry_deleted_from_the_stream_releases_the_owner(r: ClientType):
+    stream, group = "stream", "group"
+    ids = _deliver(r, stream, group, 2)
+    r.xdel(stream, ids[0])
+
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=[ids[0]])
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 1, b"consumer2": 0}
+    assert r.xpending(stream, group)["pending"] == 1
+
+
+def test_xreadgroup_noack_leaves_the_pending_count_at_zero(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    add_items(r, stream, 2)
+
+    r.xreadgroup(group, "consumer1", streams={stream: ">"}, noack=True)
+    assert _consumer_pending(r, stream, group) == {b"consumer1": 0}
+    assert r.xpending(stream, group)["pending"] == 0
