@@ -55,6 +55,17 @@ def test_spublish_and_ssubscribe_still_work(r: ClientType):
     assert raw_command(r, "SPUBLISH", "chan", "msg") == 0
 
 
+def test_copy_has_no_db_option(r: ClientType):
+    r.set("src", "val")
+    for db in ("0", "1", "-1", "not-a-db"):
+        _raises(r, "syntax error", "COPY", "src", "dst", "DB", db)
+    # ...but a plain COPY works, and carries the TTL over.
+    r.expire("src", 100)
+    assert r.copy("src", "dst") is True
+    assert r.get("dst") == b"val"
+    assert 0 < r.ttl("dst") <= 100
+
+
 def test_absolute_expiry_beyond_horizon_is_rejected(r: ClientType):
     # Dragonfly refuses a deadline more than 2**28-1 seconds away.
     horizon = 2**28 - 1
@@ -80,6 +91,38 @@ def test_expire_accepts_nx_with_gt_or_lt(r: ClientType):
     _raises(r, "NX and XX options at the same time are not compatible", "EXPIRE", "foo", 100, "NX", "XX")
     _raises(r, "GT and LT options at the same time are not compatible", "EXPIRE", "foo", 100, "GT", "LT")
     _raises(r, "Unsupported option: BOGUS", "EXPIRE", "foo", 100, "BOGUS")
+
+
+def test_sort_has_no_hash_field_patterns(r: ClientType):
+    # "record_*->age" is taken as a literal key name rather than a hash field reference.
+    r.rpush("foo", "middle", "eldest", "youngest")
+    for name, age in (("youngest", 1), ("middle", 10), ("eldest", 20)):
+        r.hset(f"record_{name}", "age", age)
+    assert r.sort("foo", by="record_*->age") == [b"middle", b"eldest", b"youngest"]
+    assert r.sort("foo", by="record_*->age", get="record_*->name") == [b"", b"", b""]
+
+
+def test_sort_by_nosort_ignores_desc(r: ClientType):
+    natural = [b"3", b"1", b"2", b"5", b"4"]
+    r.rpush("mylist", *natural)
+    assert r.sort("mylist", by="nosort") == natural
+    assert r.sort("mylist", by="nosort", desc=True) == natural
+
+
+def test_sort_get_pattern_without_star_is_a_literal_key(r: ClientType):
+    r.rpush("mylist", "a", "b")
+    r.set("lit", "LITVAL")
+    assert r.sort("mylist", by="nosort", get="lit") == [b"LITVAL", b"LITVAL"]
+    # An unresolvable GET yields an empty string rather than nil.
+    assert r.sort("mylist", by="nosort", get="missing_*") == [b"", b""]
+
+
+def test_sort_leaves_equal_weights_in_place(r: ClientType):
+    # Redis breaks ties on the element itself; dragonfly sorts on the weight alone.
+    r.rpush("l", "zebra", "apple", "mango")
+    for element in ("zebra", "apple", "mango"):
+        r.set(f"w_{element}", "5")
+    assert r.sort("l", by="w_*") == [b"zebra", b"apple", b"mango"]
 
 
 def test_sunsubscribe_is_confirmed_as_unsubscribe(r: ClientType):
