@@ -17,6 +17,8 @@ INVALID_DB_MSG = "ERR DB index is out of range"
 INVALID_MIN_MAX_FLOAT_MSG = "ERR min or max is not a float"
 INVALID_MIN_MAX_STR_MSG = "ERR min or max not a valid string range item"
 STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size (proto-max-bulk-len)"
+# Dragonfly caps a string at 256MB, and words the refusal without the parenthetical.
+DRAGONFLY_STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size"
 OVERFLOW_MSG = "ERR increment or decrement would overflow"
 NONFINITE_MSG = "ERR increment would produce NaN or Infinity"
 INCREX_LBOUND_GT_UBOUND_MSG = "ERR LBOUND can't be greater than UBOUND"

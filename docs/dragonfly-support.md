@@ -100,9 +100,17 @@ Most numeric options are validated while being decoded, so Dragonfly reports the
 | `LPOS key e MAXLEN -1`         | `MAXLEN can't be negative`                        | `value is not an integer or out of range`      |
 | `LPOS key e RANK 0`            | `RANK can't be zero`                             | `value is not an integer or out of range`       |
 | `EXPIRE key 1 BOGUS`           | `Unsupported option BOGUS`                       | `Unsupported option: BOGUS`                     |
+| `SETRANGE`/`APPEND` past the size cap | `string exceeds maximum allowed size (proto-max-bulk-len)` | `string exceeds maximum allowed size` |
+| `SETBIT key <2**32> 1`         | `bit offset is not an integer or out of range`   | `value is not an integer or out of range`       |
 
 A `numkeys` or `COUNT` argument is read as **unsigned**, so a negative value fails to
 decode before any other check runs.
+
+### Strings
+
+Dragonfly stores at most **256MB** in one string, where Redis allows 512MB, so `APPEND` and
+`SETRANGE` refuse a shorter value than they would on Redis and `SETBIT`'s offset stops at
+`8 * 2**28 - 1`.
 
 ### Key and field expiry
 

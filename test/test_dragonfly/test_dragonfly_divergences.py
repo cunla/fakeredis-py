@@ -286,3 +286,14 @@ def test_smove_checks_the_destination_type_even_when_the_source_is_missing(r: Cl
     _raises(r, "WRONGTYPE", "smove", "nosuchkey", "str", "m")
     # With both keys missing there is nothing to check, and the answer is 0.
     assert r.smove("nosuchkey", "alsomissing", "m") is False
+
+
+def test_a_string_is_capped_at_256mb(r: ClientType):
+    # Redis allows 512MB, and words the refusal with a "(proto-max-bulk-len)" suffix.
+    max_size = 2**28
+    _raises(r, "string exceeds maximum allowed size", "setrange", "foo", max_size - 1, "ab")
+    assert raw_command(r, "setrange", "foo", max_size - 2, "ab") == max_size
+    r.delete("foo")
+    # The same cap bounds SETBIT's offset.
+    _raises(r, "bit offset is not an integer or out of range", "setbit", "foo", 8 * max_size, 1)
+    assert raw_command(r, "setbit", "foo", 8 * max_size - 1, 1) == 0

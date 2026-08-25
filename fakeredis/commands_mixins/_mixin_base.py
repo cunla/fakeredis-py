@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable
 
 from fakeredis import _msgs as msgs
+from fakeredis._commands import MAX_STRING_SIZE
 from fakeredis._helpers import SimpleError
 from fakeredis._typing import ServerType, VersionType
 
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
 DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
 # A hash field's TTL is capped more tightly still, and overshooting it is an error.
 DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
 
 
 class CommandsMixinBase:
@@ -50,6 +53,18 @@ class CommandsMixinBase:
         if result is None and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
             return []
         return result
+
+    def _check_string_size(self, size: int) -> None:
+        """Refuse a string the server under test would not store.
+
+        Dragonfly caps a value at 256MB where redis allows 512MB, and words the refusal
+        without redis' `(proto-max-bulk-len)`.
+        """
+        if self.server_type == "dragonfly":
+            if size > DRAGONFLY_MAX_STRING_SIZE:
+                raise SimpleError(msgs.DRAGONFLY_STRING_OVERFLOW_MSG)
+        elif size > MAX_STRING_SIZE:
+            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
 
     def _expiry_horizon(self) -> float:
         return self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS

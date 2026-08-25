@@ -6,7 +6,7 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
 from fakeredis._helpers import SimpleError, casematch
-from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.commands_mixins._mixin_base import DRAGONFLY_MAX_STRING_SIZE, CommandsMixinBase
 
 
 class BitfieldEncoding:
@@ -145,6 +145,9 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @command(name="setbit", fixed=(Key(bytes), BitOffset, BitValue))
     def setbit(self, key: CommandItem, offset: int, value: int) -> int:
+        # Dragonfly's 256MB cap on a value bounds the bit offset with it.
+        if self.server_type == "dragonfly" and offset >= 8 * DRAGONFLY_MAX_STRING_SIZE:
+            raise SimpleError(msgs.INVALID_BIT_OFFSET_MSG)
         val = key.value if key.value is not None else b"\x00"
         byte = offset // 8
         remaining = offset % 8

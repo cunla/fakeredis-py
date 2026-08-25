@@ -8,7 +8,6 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
-    MAX_STRING_SIZE,
     CommandItem,
     Float,
     Int,
@@ -98,8 +97,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     @command((Key(bytes), bytes))
     def append(self, key: CommandItem, value: bytes) -> int:
         old = key.get(b"")
-        if len(old) + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
+        self._check_string_size(len(old) + len(value))
         key.update(key.get(b"") + value)
         return len(key.value)
 
@@ -325,8 +323,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             raise SimpleError(msgs.INVALID_OFFSET_MSG)
         elif not value:
             return len(key.get(b""))
-        elif offset + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
+        self._check_string_size(offset + len(value))
         out = key.get(b"")
         if len(out) < offset:
             out += b"\x00" * (offset - len(out))
