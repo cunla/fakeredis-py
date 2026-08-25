@@ -54,6 +54,10 @@ DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
 DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"
 DRAGONFLY_AT_LEAST_ONE_KEY_MSG = "ERR at least 1 input key is needed for this command"
 EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors."
+# Dragonfly leaves off the full stop, refuses WATCH/SUBSCRIBE inside MULTI by name, and
+# ends the transaction as soon as a command fails to queue.
+DRAGONFLY_EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors"
+DRAGONFLY_NOT_IN_TRANSACTION_MSG = "ERR '{0}' not allowed inside a transaction"
 MULTI_NESTED_MSG = "ERR MULTI calls can not be nested"
 WITHOUT_MULTI_MSG = "ERR {0} without MULTI"
 WATCH_INSIDE_MULTI_MSG = "ERR WATCH inside MULTI is not allowed"

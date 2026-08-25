@@ -17,6 +17,9 @@ class TransactionsCommandsMixin(CommandsMixinBase):
         # When in a MULTI, set to a list of function calls
         self._transaction: list[Any] | None = None
         self._transaction_failed = False
+        # Dragonfly only: queueing stopped after a command failed to queue, but the queue
+        # itself is kept until the next MULTI resumes it (or DISCARD/EXEC throws it away).
+        self._transaction_paused = False
         # Set when executing the commands from EXEC
         self._in_transaction = False
         self._watch_notified = False
@@ -27,27 +30,61 @@ class TransactionsCommandsMixin(CommandsMixinBase):
             (key, db) = self._watches.pop()
             db.remove_watch(key, self)
 
+    def _forget_watches_without_multi(self) -> None:
+        """Drop the watches a DISCARD/EXEC outside a MULTI clears on dragonfly.
+
+        Redis leaves them armed and answers the error alone.
+        """
+        if self.server_type == "dragonfly":
+            self._clear_watches()
+
+    @property
+    def _queueing(self) -> bool:
+        """Whether a command sent now would be queued rather than run."""
+        return self._transaction is not None and not self._transaction_paused
+
+    def abort_transaction(self) -> None:
+        """Stop queueing the way dragonfly does when a command fails to queue.
+
+        Later commands run immediately and DISCARD reports there is no MULTI, but the queue
+        built so far is kept: the next MULTI picks it up again, and only DISCARD or the
+        EXEC that reports the failure throws it away.
+        """
+        self._transaction_paused = True
+        self._transaction_failed = True
+
+    def _forget_transaction(self) -> None:
+        self._transaction = None
+        self._transaction_paused = False
+        self._transaction_failed = False
+
     # Transaction commands
     @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def discard(self) -> SimpleString:
-        if self._transaction is None:
+        if not self._queueing:
+            # A transaction dragonfly stopped queueing is thrown away here, unreported.
+            self._forget_transaction()
+            self._forget_watches_without_multi()
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("DISCARD"))
-        self._transaction = None
-        self._transaction_failed = False
+        self._forget_transaction()
         self._clear_watches()
         return OK
 
     @command(name="exec", fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def exec_(self) -> Any:
-        if self._transaction is None:
+        if not self._queueing:
+            if self._transaction_failed:  # a transaction dragonfly stopped queueing
+                self._forget_transaction()
+                self._clear_watches()
+                raise SimpleError(msgs.DRAGONFLY_EXECABORT_MSG)
+            self._forget_watches_without_multi()
             raise SimpleError(msgs.WITHOUT_MULTI_MSG.format("EXEC"))
         if self._transaction_failed:
-            self._transaction = None
+            self._forget_transaction()
             self._clear_watches()
-            raise SimpleError(msgs.EXECABORT_MSG)
-        transaction = self._transaction
-        self._transaction = None
-        self._transaction_failed = False
+            raise SimpleError(msgs.DRAGONFLY_EXECABORT_MSG if self.server_type == "dragonfly" else msgs.EXECABORT_MSG)
+        transaction = self._transaction or []
+        self._forget_transaction()
         watch_notified = self._watch_notified
         self._clear_watches()
         if watch_notified:
@@ -66,9 +103,13 @@ class TransactionsCommandsMixin(CommandsMixinBase):
 
     @command((), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def multi(self) -> SimpleString:
-        if self._transaction is not None:
+        if self._queueing:
             raise SimpleError(msgs.MULTI_NESTED_MSG)
-        self._transaction = []
+        if self._transaction_paused:
+            # Dragonfly picks the kept queue back up rather than starting a new one.
+            self._transaction_paused = False
+        else:
+            self._transaction = []
         self._transaction_failed = False
         return OK
 
@@ -79,7 +120,10 @@ class TransactionsCommandsMixin(CommandsMixinBase):
 
     @command((Key(),), (Key(),), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
     def watch(self, *keys: CommandItem) -> SimpleString:
-        if self._transaction is not None:
+        if self._queueing:
+            if self.server_type == "dragonfly":
+                self.abort_transaction()
+                raise SimpleError(msgs.DRAGONFLY_NOT_IN_TRANSACTION_MSG.format("WATCH"))
             raise SimpleError(msgs.WATCH_INSIDE_MULTI_MSG)
         for key in keys:
             if key not in self._watches:

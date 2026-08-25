@@ -168,6 +168,10 @@ class Database(MutableMapping):  # type: ignore
         for callback in self._change_callbacks:
             callback()
 
+    def has_watch(self, key: bytes) -> bool:
+        """Whether any client is watching `key`."""
+        return bool(self._watches.get(key))
+
     def add_watch(self, key: bytes, sock: Any) -> None:
         self._watches[key].add(sock)
 

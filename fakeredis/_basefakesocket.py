@@ -12,7 +12,7 @@ from typing import Any, AnyStr, Callable, ClassVar
 
 import redis
 
-from fakeredis.model import BaseModel, ClientInfo, Hash
+from fakeredis.model import BaseModel, ClientInfo, Hash, is_write_command
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
@@ -30,6 +30,33 @@ from ._helpers import (
 from ._typing import ResponseErrorType, ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
+
+# Dragonfly refuses to queue the (un)subscribe family inside a MULTI, where redis queues it.
+DRAGONFLY_NO_TRANSACTION_COMMANDS = frozenset(
+    {"subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ssubscribe", "sunsubscribe"}
+)
+# Write commands whose keys dragonfly leaves clean unless it really wrote them: the ones that
+# only read the keys beside their destination, and the two that bow out before touching the
+# key at all -- a rejected MSETNX and a SETRANGE with an empty value. See `_dirty_watched_keys`.
+DRAGONFLY_UNDIRTIED_COMMANDS = frozenset(
+    {
+        "bitop",
+        "copy",
+        "georadius",
+        "georadiusbymember",
+        "geosearchstore",
+        "msetnx",
+        "sdiffstore",
+        "setrange",
+        "sinterstore",
+        "sort",
+        "sunionstore",
+        "zdiffstore",
+        "zinterstore",
+        "zrangestore",
+        "zunionstore",
+    }
+)
 
 
 def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
@@ -88,6 +115,9 @@ def _get_next_file_no() -> int:
 
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
+    abort_transaction: Callable[[], None]
+    _forget_transaction: Callable[[], None]
+    _queueing: bool
     ACCEPTED_COMMANDS_WHILE_PUBSUB: ClassVar[set[str]] = {
         "ping",
         "subscribe",
@@ -144,6 +174,7 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+        self._transaction_paused: bool
         info.update(
             {
                 "id": self._server.get_next_client_id(),
@@ -285,8 +316,13 @@ class BaseFakeSocket:
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         from_run_command = False
+        unknown_command = False
         try:
-            func, sig = self._name_to_func(cmd)
+            try:
+                func, sig = self._name_to_func(cmd)
+            except SimpleError:
+                unknown_command = True
+                raise
             # ACL check
             self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
             with self._server.lock:
@@ -304,19 +340,26 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(cmd_arguments, self.version)
-                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                if self._queueing and self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                    if self.server_type == "dragonfly" and cmd in DRAGONFLY_NO_TRANSACTION_COMMANDS:
+                        raise SimpleError(msgs.DRAGONFLY_NOT_IN_TRANSACTION_MSG.format(cmd.upper()))
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
                     from_run_command = True
                     result = self._run_command(func, sig, cmd_arguments, False)
         except SimpleError as exc:
-            if self._transaction is not None and not from_run_command:
-                self._transaction_failed = True
+            if self._queueing and not from_run_command:
+                if self.server_type != "dragonfly":
+                    self._transaction_failed = True
+                elif not unknown_command:
+                    # Dragonfly stops queueing as soon as a command fails to queue, rather
+                    # than queueing on and refusing the EXEC. An unknown command is the one
+                    # exception: there the transaction carries on unharmed.
+                    self.abort_transaction()
             if cmd == "exec" and exc.value.startswith("ERR "):
                 exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
-                self._transaction = None
-                self._transaction_failed = False
+                self._forget_transaction()
                 self._clear_watches()
             result = exc
         result = self._decode_result(result)
@@ -333,6 +376,7 @@ class BaseFakeSocket:
     ) -> Any:
         command_items: list[CommandItem] = []
         self._subkey_events = []
+        is_dragonfly = self.server_type == "dragonfly"
         try:
             ret = sig.apply(args, self._db, self.version)
             if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
@@ -354,6 +398,8 @@ class BaseFakeSocket:
             result = exc
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+        if is_dragonfly:
+            self._dirty_watched_keys(sig, command_items)
         self._keyspace_notifications(command_items, sig.name.encode())
         self._subkey_notifications(command_items)
         return result
@@ -509,6 +555,21 @@ class BaseFakeSocket:
         reason, self._unblock_reason = self._unblock_reason, None
         if reason == b"error":
             raise SimpleError(msgs.UNBLOCKED_MSG)
+
+    def _dirty_watched_keys(self, sig: Signature, command_items: list[CommandItem]) -> None:
+        """Invalidate the watches dragonfly invalidates and redis does not.
+
+        Dragonfly dirties every key a write command runs against, so a `SET NX` that was
+        rejected, or a `SREM` that removed nothing, still breaks a `WATCH` on the key. A
+        key that does not exist stays clean, as do the keys of the commands listed in
+        `DRAGONFLY_UNDIRTIED_COMMANDS`.
+        """
+        name = sig.name.split(" ")[0]
+        if name in DRAGONFLY_UNDIRTIED_COMMANDS or not is_write_command(name.encode()):
+            return
+        for item in command_items:
+            if not item.is_modified and self._db.has_watch(item.key) and item.key in self._db:
+                self._db.notify_watch(item.key)
 
     def _name_to_func(self, cmd_name: str) -> tuple[Callable[[Any], Any] | None, Signature]:
         """Get the signature and the method from the command name."""
