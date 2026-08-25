@@ -150,6 +150,10 @@ score) order unless `ASC` or `DESC` is given explicitly.
 
 ### Sets and sorted sets
 
+`SMOVE` checks the destination's type before it looks at the source, so moving a member out
+of a key that does not exist into a string is a `WRONGTYPE` error. Redis answers 0 there,
+and only complains about the destination once the source key exists.
+
 `ZDIFF` and `ZDIFFSTORE` accept sorted sets only. Redis — and Dragonfly's own `ZUNION*`,
 `ZINTER*` and `ZINTERCARD` — read a plain set as a sorted set scoring every member 1.
 

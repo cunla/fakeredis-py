@@ -279,3 +279,10 @@ def test_zdiff_only_accepts_sorted_sets(r: ClientType):
     assert raw_command(r, "zinterstore", "dst", 2, "s", "z") == 1
     assert raw_command(r, "zunionstore", "dst", 2, "s", "z") == 1
     assert raw_command(r, "zintercard", 2, "s", "z") == 1
+
+
+def test_smove_checks_the_destination_type_even_when_the_source_is_missing(r: ClientType):
+    r.set("str", "x")
+    _raises(r, "WRONGTYPE", "smove", "nosuchkey", "str", "m")
+    # With both keys missing there is nothing to check, and the answer is 0.
+    assert r.smove("nosuchkey", "alsomissing", "m") is False

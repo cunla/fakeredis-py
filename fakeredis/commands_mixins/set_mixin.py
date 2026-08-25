@@ -116,17 +116,24 @@ class SetCommandsMixin(CommandsMixinBase):
     def smembers(self, key: CommandItem) -> list[bytes]:
         return list(key.value)
 
-    @command((Key(ExpiringMembersSet, 0), Key(ExpiringMembersSet), bytes))
+    @command((Key(ExpiringMembersSet), Key(), bytes))
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
-        try:
-            src.value.remove(member)
-            src.updated()
-        except KeyError:
+        src_exists = src.key in self._db
+        dst_wrong_type = dst.value is not None and not isinstance(dst.value, ExpiringMembersSet)
+        # Redis only looks at the destination once the source key exists, while dragonfly
+        # checks its type up front -- so moving out of a missing set into a string fails
+        # there and answers 0 on redis.
+        if dst_wrong_type and (src_exists or self.server_type == "dragonfly"):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        if not src_exists or member not in src.value:
             return 0
-        else:
-            dst.value.add(member)
-            dst.updated()  # TODO: is it updated if member was already present?
-            return 1
+        src.value.remove(member)
+        src.updated()
+        if dst.value is None:
+            dst.update(ExpiringMembersSet())
+        dst.value.add(member)
+        dst.updated()  # TODO: is it updated if member was already present?
+        return 1
 
     @command((Key(ExpiringMembersSet),), (Int,))
     def spop(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
