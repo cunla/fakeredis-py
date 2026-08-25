@@ -131,7 +131,8 @@ def extract_args(
                 raise (
                     SimpleError(msgs.SYNTAX_ERROR_MSG)
                     if exception is None
-                    else SimpleError(exception.format(actual_args[i]))
+                    # The offending argument is echoed as text, not as a bytes repr.
+                    else SimpleError(exception.format(actual_args[i].decode(errors="replace")))
                 )
             if left_from_first_unexpected:
                 return results, actual_args[i:]
