@@ -305,6 +305,27 @@ rejecting it, and `SCRIPT HELP` prints Dragonfly's own text.
 fakeredis still answers these the way Redis does, so a `server_type="dragonfly"` server
 will not match a real one here:
 
+- **Wrongly typed inputs to a set operation that is already empty.** `SDIFF`,
+  `SDIFFSTORE`, `ZINTER`, `ZINTERSTORE` and `ZINTERCARD` run shard by shard and stop as
+  soon as one input key is missing — the answer is empty either way — so whether Dragonfly
+  gets as far as a wrongly typed key depends on which shard each key landed on, and so on
+  the server's thread count. fakeredis checks every key, like Redis, and always reports the
+  `WRONGTYPE`.
+
+- **`ZADD` on a sorted set past its listpack encoding.** Once a sorted set holds more than
+  128 members, or any member longer than 32 bytes, Dragonfly stops honouring `GT`/`LT` —
+  the score is overwritten either way — and `CH` starts counting every member the command
+  mentions rather than the ones it actually changed. fakeredis keeps Redis' semantics at
+  every size. The Hypothesis machines keep their generated member names under 32 bytes to
+  stay out of it.
+
+- **The order a `ZUNIONSTORE`/`ZINTERSTORE` adds its inputs up in.** Dragonfly aggregates
+  the input sets in its own (hash-derived) order, grouping a repeated key's contributions
+  together, where Redis works through them smallest set first. The two only disagree when
+  the weights or scores cancel catastrophically — `3e16` added to `-3e16` and then to `1`
+  is `1`, the other way round it is `0` — so fakeredis keeps Redis' order. The Hypothesis
+  machines keep their generated weights small enough not to run into it.
+
 - **Whole Lua numbers.** Dragonfly's Lua 5.4 tells `return 3` (an integer reply) from
   `return 3.0` and `return 1e300` (doubles). The Lua 5.1 runtime fakeredis uses has no
   integer subtype, so any Lua number without a fractional part comes back as an integer.
