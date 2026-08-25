@@ -132,14 +132,39 @@ def test_sort_leaves_equal_weights_in_place(r: ClientType):
     assert r.sort("l", by="w_*") == [b"zebra", b"apple", b"mango"]
 
 
-def test_setbit_dirties_a_watched_key_even_when_unchanged(r: ClientType):
-    r.set("foo", b"0")
+@pytest.mark.parametrize(
+    "setup,unchanging_write",
+    [
+        (("set", "foo", b"0"), ("setbit", "foo", 0, 0)),
+        (("set", "foo", b"bar"), ("set", "foo", b"other", "nx")),
+        (("set", "foo", b"bar"), ("persist", "foo")),
+        (("sadd", "foo", "member"), ("srem", "foo", "absent")),
+        (("zadd", "foo", 1.0, "member"), ("zadd", "foo", "nx", 2.0, "member")),
+        (("hset", "foo", "field", "v"), ("hdel", "foo", "absent")),
+    ],
+)
+def test_a_write_dirties_a_watched_key_even_when_it_changes_nothing(r: ClientType, setup, unchanging_write):
+    # Redis only invalidates the watch when the stored value actually changes.
+    raw_command(r, *setup)
     with r.pipeline() as p:
         p.watch("foo")
-        assert r.setbit("foo", 0, 0) == 0
+        raw_command(r, *unchanging_write)
         p.multi()
         with pytest.raises(redis.WatchError):
             p.execute()
+
+
+def test_a_write_leaves_a_watched_key_it_only_reads_alone(r: ClientType):
+    r.sadd("foo", "member")
+    with r.pipeline() as p:
+        p.watch("foo")
+        # SDIFFSTORE only reads the keys after its destination, and a rejected MSETNX
+        # never touches one at all.
+        assert raw_command(r, "sdiffstore", "dst", "foo", "other") == 1
+        assert raw_command(r, "msetnx", "foo", "x") == 0
+        p.multi()
+        p.dbsize()
+        assert p.execute() == [2]  # the watch survived, so the transaction ran
 
 
 def test_sunsubscribe_is_confirmed_as_unsubscribe(r: ClientType):

@@ -12,7 +12,7 @@ from typing import Any, AnyStr, Callable, ClassVar
 
 import redis
 
-from fakeredis.model import BaseModel, ClientInfo, Hash
+from fakeredis.model import BaseModel, ClientInfo, Hash, is_write_command
 
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
@@ -39,6 +39,28 @@ DRAGONFLY_NO_SCRIPT_COMMANDS = frozenset({"flushdb", "flushall", "shutdown", "de
 # Dragonfly refuses to queue the (un)subscribe family inside a MULTI, where redis queues it.
 DRAGONFLY_NO_TRANSACTION_COMMANDS = frozenset(
     {"subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ssubscribe", "sunsubscribe"}
+)
+# Write commands whose keys dragonfly leaves clean unless it really wrote them: the ones that
+# only read the keys beside their destination, and the two that bow out before touching the
+# key at all -- a rejected MSETNX and a SETRANGE with an empty value. See `_dirty_watched_keys`.
+DRAGONFLY_UNDIRTIED_COMMANDS = frozenset(
+    {
+        "bitop",
+        "copy",
+        "georadius",
+        "georadiusbymember",
+        "geosearchstore",
+        "msetnx",
+        "sdiffstore",
+        "setrange",
+        "sinterstore",
+        "sort",
+        "sunionstore",
+        "zdiffstore",
+        "zinterstore",
+        "zrangestore",
+        "zunionstore",
+    }
 )
 
 
@@ -365,9 +387,9 @@ class BaseFakeSocket:
     ) -> Any:
         command_items: list[CommandItem] = []
         self._subkey_events = []
+        is_dragonfly = self.server_type == "dragonfly"
         try:
             ret = sig.apply(args, self._db, self.version)
-            is_dragonfly = self.server_type == "dragonfly"
             if from_script and (
                 msgs.FLAG_NO_SCRIPT in sig.flags or (is_dragonfly and sig.name in DRAGONFLY_NO_SCRIPT_COMMANDS)
             ):
@@ -395,6 +417,8 @@ class BaseFakeSocket:
             result = exc
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+        if is_dragonfly:
+            self._dirty_watched_keys(sig, command_items)
         self._keyspace_notifications(command_items, sig.name.encode())
         self._subkey_notifications(command_items)
         return result
@@ -552,6 +576,21 @@ class BaseFakeSocket:
         reason, self._unblock_reason = self._unblock_reason, None
         if reason == b"error":
             raise SimpleError(msgs.UNBLOCKED_MSG)
+
+    def _dirty_watched_keys(self, sig: Signature, command_items: list[CommandItem]) -> None:
+        """Invalidate the watches dragonfly invalidates and redis does not.
+
+        Dragonfly dirties every key a write command runs against, so a `SET NX` that was
+        rejected, or a `SREM` that removed nothing, still breaks a `WATCH` on the key. A
+        key that does not exist stays clean, as do the keys of the commands listed in
+        `DRAGONFLY_UNDIRTIED_COMMANDS`.
+        """
+        name = sig.name.split(" ")[0]
+        if name in DRAGONFLY_UNDIRTIED_COMMANDS or not is_write_command(name.encode()):
+            return
+        for item in command_items:
+            if not item.is_modified and self._db.has_watch(item.key) and item.key in self._db:
+                self._db.notify_watch(item.key)
 
     def _name_to_func(self, cmd_name: str) -> tuple[Callable[[Any], Any] | None, Signature]:
         """Get the signature and the method from the command name."""

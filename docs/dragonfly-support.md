@@ -190,9 +190,13 @@ decided by the publishing command.
 
 ### Transactions
 
-Any `SETBIT` dirties the key, so a `SETBIT` that writes back the value already stored
-still invalidates a `WATCH`. Redis only invalidates when the stored value actually
-changes.
+**Any write command dirties the key it runs against**, whether or not it changed anything,
+so a rejected `SET NX`, a `SREM` that removed nothing, a `SETBIT` that wrote back the bit
+already stored, or a `PERSIST` on a key with no TTL all invalidate a `WATCH` on that key.
+Redis only invalidates when the stored value actually changes. A key that does not exist
+stays clean, as do the keys a command only reads beside its destination (`SDIFFSTORE` and
+friends, `COPY`, `SORT ... STORE`) and the two commands that bow out before touching the
+key at all -- a rejected `MSETNX` and a `SETRANGE` with an empty value.
 
 A command that cannot be queued **stops the queueing there and then**, where Redis keeps
 queueing and refuses the `EXEC`. Afterwards later commands run immediately and a `DISCARD`
