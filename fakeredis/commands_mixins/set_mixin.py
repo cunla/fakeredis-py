@@ -120,8 +120,9 @@ class SetCommandsMixin(CommandsMixinBase):
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
         src_exists = src.key in self._db
         dst_wrong_type = dst.value is not None and not isinstance(dst.value, ExpiringMembersSet)
-        # Redis only looks at the destination once the source key exists, while dragonfly checks its type up front --
-        # so moving out of a missing set into a string fails there and answers 0 on redis.
+        # Redis only looks at the destination once the source key exists, while dragonfly
+        # checks its type up front -- so moving out of a missing set into a string fails
+        # there and answers 0 on redis.
         if dst_wrong_type and (src_exists or self.server_type == "dragonfly"):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if not src_exists or member not in src.value:
