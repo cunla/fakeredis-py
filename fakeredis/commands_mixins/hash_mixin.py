@@ -73,7 +73,7 @@ class HashCommandsMixin(CommandsMixinBase):
         return c
 
     @command((Key(Hash), bytes, bytes))
-    def hincrbyfloat(self, key: CommandItem, field: bytes, amount: bytes) -> bytes:
+    def hincrbyfloat(self, key: CommandItem, field: bytes, amount: bytes) -> bytes | float:
         c = Float.decode(key.value.get(field, b"0")) + Float.decode(amount)
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
@@ -81,7 +81,8 @@ class HashCommandsMixin(CommandsMixinBase):
         key.value.update({field: encoded}, clear_expiration=False)
         key.updated()
         self.add_subkey_event(b"hincrbyfloat", key.key, (field,))
-        return encoded
+        # Redis replies with a bulk string, Dragonfly with a double.
+        return c if self.server_type == "dragonfly" else encoded
 
     @command((Key(Hash),))
     def hkeys(self, key: CommandItem) -> list[bytes]:

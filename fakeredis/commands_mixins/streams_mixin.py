@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from typing import Any
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -12,8 +12,6 @@ from fakeredis.model import StreamGroup, StreamRangeTest, XStream
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
-
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> bytes | None:
         (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(

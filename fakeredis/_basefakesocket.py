@@ -32,16 +32,20 @@ from ._typing import ResponseErrorType, ServerType, VersionType
 LOGGER = logging.getLogger("fakeredis")
 
 
-def _convert_to_resp2(val: Any) -> Any:
+def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, float):
+        if keep_doubles:
+            return val
+        if server_type == "dragonfly":
+            return Float.encode_shortest(val)
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [_convert_to_resp2(item) for item in result]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in result]
     if isinstance(val, (list, tuple)):
-        return [_convert_to_resp2(item) for item in val]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in val]
     return val
 
 
@@ -347,7 +351,7 @@ class BaseFakeSocket:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    result = _convert_to_resp2(result)
+                    result = _convert_to_resp2(result, self.server_type)
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
                     result, self._client_info.protocol_version
                 ):
@@ -467,7 +471,9 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: float | None, func: Callable[[bool], Any]) -> Any:
+    def _blocking(
+        self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
+    ) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -476,26 +482,32 @@ class BaseFakeSocket:
         each time the condition variable is notified, until the timeout is
         reached.
 
+        `shape` turns the outcome into the reply the command sends, the timed-out None
+        included. It belongs here rather than around the call because the async socket
+        answers a command that blocks outside the command's own control flow, so anything
+        the command does with the return value would be skipped there.
+
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
+        empty = None if shape is None else shape(None)
         deadline = time.time() + timeout if timeout else None
         self._blocked = True
         try:
             while True:
                 timeout = (deadline - time.time()) if deadline is not None else None
                 if timeout is not None and timeout <= 0:
-                    return None
+                    return empty
                 if self._db.condition.wait(timeout=timeout) is False:
-                    return None  # Timeout expired
+                    return empty  # Timeout expired
                 if self._unblock_reason is not None:
                     self._take_unblock_reason()
-                    return None  # Unblocked with TIMEOUT: same empty result as a timeout
+                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
                 ret = func(False)  # Second pass => first_pass=False
                 if ret is not None:
-                    return ret
+                    return ret if shape is None else shape(ret)
         finally:
             self._blocked = False
             self._unblock_reason = None
