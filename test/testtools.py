@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib.util
 import inspect
 import itertools
@@ -120,3 +122,14 @@ def redis_server_time(r: redis.Redis) -> datetime:
 def current_time() -> int:
     """Return current_time in ms"""
     return int(time.time() * 1000)
+
+
+def far_future_expiry(server_type: str) -> int:
+    """An absolute expiry timestamp (seconds) that the server under test will accept.
+
+    Dragonfly refuses to store a deadline more than 2**28-1 seconds away, so it gets a
+    nearer -- but still far future -- timestamp instead of the year-3021 one.
+    """
+    if server_type == "dragonfly":
+        return int(time.time()) + 10_000_000
+    return 33177117420

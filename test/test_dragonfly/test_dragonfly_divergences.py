@@ -7,6 +7,8 @@ Dragonfly counterparts, so both sides of each divergence stay covered.
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from fakeredis._typing import ClientType
@@ -41,6 +43,33 @@ def test_lcs_is_not_supported(r: ClientType):
     assert str(err) == "unknown command `LCS`"
 
 
+def test_absolute_expiry_beyond_horizon_is_rejected(r: ClientType):
+    # Dragonfly refuses a deadline more than 2**28-1 seconds away.
+    horizon = 2**28 - 1
+    r.set("foo", "bar")
+    _raises(r, "expiry is out of range", "EXPIREAT", "foo", int(time.time()) + horizon + 60)
+    _raises(r, "expiry is out of range", "PEXPIREAT", "foo", (int(time.time()) + horizon + 60) * 1000)
+    assert r.expireat("foo", int(time.time()) + horizon - 60) is True
+
+
+def test_relative_expiry_is_clamped_to_horizon(r: ClientType):
+    # A relative expiry past the horizon is accepted and silently clamped instead.
+    horizon = 2**28 - 1
+    r.set("foo", "bar")
+    assert r.expire("foo", horizon + 10_000) is True
+    assert r.ttl("foo") == horizon
+
+
+def test_expire_accepts_nx_with_gt_or_lt(r: ClientType):
+    # Redis rejects these combinations; dragonfly only refuses NX+XX and GT+LT.
+    r.set("foo", "bar")
+    raw_command(r, "EXPIRE", "foo", 100, "NX", "GT")
+    raw_command(r, "EXPIRE", "foo", 100, "NX", "LT")
+    _raises(r, "NX and XX options at the same time are not compatible", "EXPIRE", "foo", 100, "NX", "XX")
+    _raises(r, "GT and LT options at the same time are not compatible", "EXPIRE", "foo", 100, "GT", "LT")
+    _raises(r, "Unsupported option: BOGUS", "EXPIRE", "foo", 100, "BOGUS")
+
+
 def test_at_least_one_key_is_needed_for_numkeys_commands(r: ClientType):
     r.sadd("s", "m")
     r.zadd("z", {"m": 1.0})
@@ -61,3 +90,14 @@ def test_smove_checks_the_destination_type_even_when_the_source_is_missing(r: Cl
     _raises(r, "WRONGTYPE", "smove", "nosuchkey", "str", "m")
     # With both keys missing there is nothing to check, and the answer is 0.
     assert r.smove("nosuchkey", "alsomissing", "m") is False
+
+
+def test_a_string_is_capped_at_256mb(r: ClientType):
+    # Redis allows 512MB, and words the refusal with a "(proto-max-bulk-len)" suffix.
+    max_size = 2**28
+    _raises(r, "string exceeds maximum allowed size", "setrange", "foo", max_size - 1, "ab")
+    assert raw_command(r, "setrange", "foo", max_size - 2, "ab") == max_size
+    r.delete("foo")
+    # The same cap bounds SETBIT's offset.
+    _raises(r, "bit offset is not an integer or out of range", "setbit", "foo", 8 * max_size, 1)
+    assert raw_command(r, "setbit", "foo", 8 * max_size - 1, 1) == 0

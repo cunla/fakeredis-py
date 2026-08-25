@@ -68,12 +68,24 @@ class GenericCommandsMixin(CommandsMixinBase):
             return item.value
 
     def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
-        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=msgs.EXPIRE_UNSUPPORTED_OPTION)
+        is_dragonfly = self.server_type == "dragonfly"
+        unsupported_option = (
+            msgs.DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION if is_dragonfly else msgs.EXPIRE_UNSUPPORTED_OPTION
+        )
+        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=unsupported_option)
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
-        counter = (nx, gt, lt).count(True)
-        if (counter > 1) or (nx and xx):
-            raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
+        if is_dragonfly:
+            # Dragonfly rejects only the two directly contradictory pairs; unlike redis it
+            # accepts NX alongside GT or LT and then applies both conditions.
+            if nx and xx:
+                raise SimpleError(msgs.DRAGONFLY_NX_XX_ERROR_MSG)
+            if gt and lt:
+                raise SimpleError(msgs.DRAGONFLY_GT_LT_ERROR_MSG)
+        else:
+            counter = (nx, gt, lt).count(True)
+            if (counter > 1) or (nx and xx):
+                raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
         if (
             not key
             or (xx and key.expireat is None)
@@ -107,11 +119,12 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
-        res = self._expireat(key, self._db.time + seconds, *args)
+        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args)
         return res
 
     @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(float(timestamp))
         return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
@@ -142,10 +155,11 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
-        return self._expireat(key, self._db.time + ms / 1000.0, *args)
+        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args)
 
     @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(ms_timestamp / 1000.0)
         return self._expireat(key, ms_timestamp / 1000.0, *args)
 
     @command(name="PTTL", fixed=(Key(),))

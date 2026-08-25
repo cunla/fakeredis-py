@@ -17,6 +17,8 @@ INVALID_DB_MSG = "ERR DB index is out of range"
 INVALID_MIN_MAX_FLOAT_MSG = "ERR min or max is not a float"
 INVALID_MIN_MAX_STR_MSG = "ERR min or max not a valid string range item"
 STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size (proto-max-bulk-len)"
+# Dragonfly caps a string at 256MB, and words the refusal without the parenthetical.
+DRAGONFLY_STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size"
 OVERFLOW_MSG = "ERR increment or decrement would overflow"
 NONFINITE_MSG = "ERR increment would produce NaN or Infinity"
 INCREX_LBOUND_GT_UBOUND_MSG = "ERR LBOUND can't be greater than UBOUND"
@@ -41,6 +43,12 @@ WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
 # Dragonfly reports unknown commands in its own format, without echoing the arguments back.
 DRAGONFLY_UNKNOWN_COMMAND_MSG = "ERR unknown command `{}`"
+# Raised by dragonfly for an absolute expiry deadline beyond DRAGONFLY_MAX_EXPIRE_SECONDS.
+EXPIRY_OUT_OF_RANGE_MSG = "ERR expiry is out of range"
+# Dragonfly checks the expiry option pairs separately, and accepts NX together with GT/LT.
+DRAGONFLY_NX_XX_ERROR_MSG = "ERR NX and XX options at the same time are not compatible"
+DRAGONFLY_GT_LT_ERROR_MSG = "ERR GT and LT options at the same time are not compatible"
+DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION = "ERR Unsupported option: {}"
 # Dragonfly's wording for the SINTERCARD/ZINTERCARD LIMIT and numkeys checks.
 DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
 DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"

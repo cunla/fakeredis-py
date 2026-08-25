@@ -9,7 +9,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Float, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, current_time
-from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.commands_mixins._mixin_base import DRAGONFLY_MAX_HASH_EXPIRE_SECONDS, CommandsMixinBase
 from fakeredis.model import Hash
 
 
@@ -211,6 +211,10 @@ class HashCommandsMixin(CommandsMixinBase):
     def hexpire(self, key: CommandItem, seconds: int, *args: bytes) -> list[int]:
         if seconds < 0:
             raise SimpleError(msgs.HEXPIRE_INVALID_TIME_MSG)
+        # Dragonfly caps a hash field's TTL at 2**26 seconds -- a tighter limit than the
+        # one it applies to whole keys -- and rejects anything past it while decoding.
+        if self.server_type == "dragonfly" and seconds > DRAGONFLY_MAX_HASH_EXPIRE_SECONDS:
+            raise SimpleError(msgs.INVALID_INT_MSG)
         when_ms = current_time() + seconds * 1000
         return self._hexpire(key, when_ms, *args, command="hexpire")
 
