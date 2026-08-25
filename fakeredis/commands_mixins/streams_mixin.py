@@ -83,12 +83,14 @@ class StreamsCommandsMixin(CommandsMixinBase):
             start_id = self._parse_start_id(item, left_args[i + num_streams])
             stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
-            return self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
-        else:
-            return self._blocking(  # type: ignore
-                timeout / 1000.0,
-                functools.partial(self._xread, stream_start_id_list, count, True),
+            return self._empty_stream_read_reply(
+                self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
             )
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xread, stream_start_id_list, count, True),
+            self._empty_stream_read_reply,
+        )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
@@ -119,15 +121,14 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 )
             group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
-            res = self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
-        else:
-            res = self._blocking(
-                timeout / 1000.0,
-                functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
+            return self._xreadgroup_reply(
+                self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
             )
-        if self._client_info.protocol_version == 2:
-            return [[k, v] for k, v in res.items()] if res else None
-        return res
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
+            self._xreadgroup_reply,
+        )
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
@@ -154,7 +155,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
+        # Dragonfly looks the key up before the group, so a missing stream is "no such key"
+        # and a missing group names only the group it could not find.
+        is_dragonfly = self.server_type == "dragonfly"
         if key.value is None:
+            if is_dragonfly:
+                raise SimpleError(msgs.NO_KEY_MSG)
             raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
 
@@ -173,6 +179,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
+            if is_dragonfly:
+                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
             raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         if start is not None:
@@ -228,10 +236,15 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
-    def xinfo_groups(self, key: CommandItem) -> dict[bytes, Any]:
+    def xinfo_groups(self, key: CommandItem) -> list[dict[bytes, Any]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: dict[bytes, Any] = key.value.groups_info()
+        res: list[dict[bytes, Any]] = key.value.groups_info()
+        if self.server_type == "dragonfly":
+            # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
+            for group in res:
+                if group.get(b"lag") == -1:
+                    group[b"lag"] = None
         return res
 
     @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -240,6 +253,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         res: list[bytes] = key.value.stream_info(full)
+        if self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+            # An empty stream's first/last entry is a null array on dragonfly, where redis
+            # sends nil; under RESP3 a client reads that back as an empty array.
+            for i in range(0, len(res) - 1, 2):
+                if res[i] in (b"first-entry", b"last-entry") and res[i + 1] is None:
+                    res[i + 1] = []  # type: ignore[call-overload]
         return res
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
@@ -443,6 +462,23 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 res[stream_name] = stream_results
         return res
 
+    def _empty_stream_read_reply(self, res: dict[bytes, Any] | list[Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Shape an XREAD/XREADGROUP reply that matched nothing, under RESP3.
+
+        Redis answers with an empty map; dragonfly answers with an empty array. Note that
+        redis-py's RESP3 parser assumes the map and cannot consume dragonfly's reply.
+        Under RESP2 both send a null array, so the reply is left as it is.
+        """
+        if not res and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+            return []
+        return res
+
+    def _xreadgroup_reply(self, res: dict[bytes, Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Turn the streams XREADGROUP matched into the reply for the protocol in use."""
+        if self._client_info.protocol_version == 2:
+            return [[k, v] for k, v in res.items()] if res else None
+        return self._empty_stream_read_reply(res)
+
     def _xread(
         self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
     ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
@@ -454,10 +490,17 @@ class StreamsCommandsMixin(CommandsMixinBase):
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
-        # On blocking read, and there are no results, return None (instead of an empty list)
-        if blocking and len(res) == 0:
-            return None
         if self._client_info.protocol_version == 2:
+            # On blocking read, and there are no results, return None (instead of an empty list)
+            if blocking and len(res) == 0:
+                return None
+            return [[k, v] for k, v in res.items()]
+        if not res:
+            # None keeps `_blocking` waiting; the caller shapes the reply once it gives up.
+            return None if blocking else res
+        if blocking and not first_pass and self.server_type == "dragonfly":
+            # A blocking read that was woken by a new entry is answered by dragonfly with the
+            # RESP2-style array, not the map it sends when the entry was already there.
             return [[k, v] for k, v in res.items()]
         return res
 
