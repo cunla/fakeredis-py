@@ -194,6 +194,26 @@ Any `SETBIT` dirties the key, so a `SETBIT` that writes back the value already s
 still invalidates a `WATCH`. Redis only invalidates when the stored value actually
 changes.
 
+A command that cannot be queued **stops the queueing there and then**, where Redis keeps
+queueing and refuses the `EXEC`. Afterwards later commands run immediately and a `DISCARD`
+answers `ERR DISCARD without MULTI` — but the queue built so far is not thrown away. The
+next `MULTI` picks it back up, so its `EXEC` runs those commands along with anything queued
+after it. `DISCARD`, or the `EXEC` that reports the failure with
+`EXECABORT Transaction discarded because of previous errors` (no full stop, unlike Redis),
+is what finally throws the queue away.
+
+| Inside `MULTI`                     | Redis                                | Dragonfly                                            |
+|------------------------------------|--------------------------------------|------------------------------------------------------|
+| `WATCH key`                        | `ERR WATCH inside MULTI is not allowed`, transaction survives | `ERR 'WATCH' not allowed inside a transaction`, transaction ends |
+| `SUBSCRIBE` and its family         | queued, and run by `EXEC`            | `ERR '<COMMAND>' not allowed inside a transaction`, transaction ends |
+| A command with the wrong arity     | queued on, `EXEC` answers `EXECABORT` | transaction ends immediately                        |
+| An unknown command                 | `EXEC` answers `EXECABORT`           | the transaction carries on unharmed                  |
+| `MULTI`                            | `ERR MULTI calls can not be nested`  | the same, and the transaction survives               |
+
+A `DISCARD` or `EXEC` sent outside a `MULTI` clears the watched keys on its way out, so a
+`WATCH` armed before it no longer aborts the next transaction. Redis answers the
+`ERR ... without MULTI` and leaves the watch alone.
+
 ### RESP3 reply shapes
 
 Replies that Redis sends as a null, an empty map or a member/score pair are sent by

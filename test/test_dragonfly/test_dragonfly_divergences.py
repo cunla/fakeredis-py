@@ -34,6 +34,12 @@ def _raises(r: ClientType, match: str, *args):
     return ctx.value
 
 
+def _raises_execabort(r: ClientType):
+    """EXEC of a transaction dragonfly gave up on; redis-py has its own error for EXECABORT."""
+    with pytest.raises(redis.exceptions.ExecAbortError, match="Transaction discarded because of previous errors"):
+        raw_command(r, "exec")
+
+
 def test_unknown_command_message_format(r: ClientType):
     # Dragonfly names the command in backticks and uppercase, and does not echo the args.
     err = _raises(r, "unknown command", "nosuchcmd", "a", "b")
@@ -297,3 +303,80 @@ def test_a_string_is_capped_at_256mb(r: ClientType):
     # The same cap bounds SETBIT's offset.
     _raises(r, "bit offset is not an integer or out of range", "setbit", "foo", 8 * max_size, 1)
     assert raw_command(r, "setbit", "foo", 8 * max_size - 1, 1) == 0
+
+
+def test_watch_inside_multi_ends_the_transaction(r: ClientType):
+    assert raw_command(r, "multi") == b"OK"
+    _raises(r, "'WATCH' not allowed inside a transaction", "watch", "foo")
+    # The queue is gone: commands run immediately and DISCARD reports there is no MULTI.
+    assert raw_command(r, "set", "foo", "bar") == b"OK"
+    assert r.get("foo") == b"bar"
+    _raises(r, "DISCARD without MULTI", "discard")
+    # ...and DISCARD is the end of it, so EXEC no longer remembers the failure.
+    _raises(r, "EXEC without MULTI", "exec")
+
+
+def test_exec_after_an_aborted_transaction_reports_execabort(r: ClientType):
+    assert raw_command(r, "multi") == b"OK"
+    _raises(r, "'WATCH' not allowed inside a transaction", "watch", "foo")
+    _raises_execabort(r)
+    _raises(r, "EXEC without MULTI", "exec")
+
+
+def test_a_command_that_cannot_be_queued_ends_the_transaction(r: ClientType):
+    assert raw_command(r, "multi") == b"OK"
+    _raises(r, "wrong number of arguments", "get")
+    # Redis would queue this and refuse the EXEC; dragonfly has already run it.
+    assert raw_command(r, "set", "foo", "bar") == b"OK"
+    assert r.get("foo") == b"bar"
+    _raises_execabort(r)
+
+
+def test_an_unknown_command_leaves_the_transaction_alone(r: ClientType):
+    assert raw_command(r, "multi") == b"OK"
+    _raises(r, "unknown command", "nosuchcmd")
+    assert raw_command(r, "set", "foo", "bar") == b"QUEUED"
+    assert raw_command(r, "exec") == [b"OK"]
+    assert r.get("foo") == b"bar"
+
+
+@pytest.mark.parametrize("subscribe_command", ["subscribe", "psubscribe", "ssubscribe"])
+def test_subscribing_is_not_allowed_inside_a_transaction(r: ClientType, subscribe_command: str):
+    # Redis queues these and runs them at EXEC; dragonfly refuses them outright.
+    assert raw_command(r, "multi") == b"OK"
+    _raises(r, f"'{subscribe_command.upper()}' not allowed inside a transaction", subscribe_command, "chan")
+    _raises_execabort(r)
+
+
+def test_a_stopped_transaction_keeps_its_queue_for_the_next_multi(r: ClientType):
+    # Redis would have queued the WATCH's neighbours and refused the EXEC; dragonfly stops
+    # queueing but hangs on to what it has, and the next MULTI carries on where it left off.
+    assert raw_command(r, "multi") == b"OK"
+    assert raw_command(r, "set", "first", "1") == b"QUEUED"
+    _raises(r, "'WATCH' not allowed inside a transaction", "watch", "foo")
+    assert raw_command(r, "multi") == b"OK"
+    assert raw_command(r, "set", "second", "2") == b"QUEUED"
+    assert raw_command(r, "exec") == [b"OK", b"OK"]
+    assert r.mget("first", "second") == [b"1", b"2"]
+
+
+def test_discard_throws_the_kept_queue_away(r: ClientType):
+    assert raw_command(r, "multi") == b"OK"
+    assert raw_command(r, "set", "first", "1") == b"QUEUED"
+    _raises(r, "'WATCH' not allowed inside a transaction", "watch", "foo")
+    _raises(r, "DISCARD without MULTI", "discard")
+    assert raw_command(r, "multi") == b"OK"
+    assert raw_command(r, "exec") == []
+    assert r.exists("first") == 0
+
+
+def test_a_discard_without_multi_still_clears_the_watches(r: ClientType):
+    # Redis leaves the watch armed and answers the error alone, so its EXEC would abort.
+    for failing_command in ("discard", "exec"):
+        r.delete("foo")
+        assert raw_command(r, "watch", "foo") == b"OK"
+        _raises(r, f"{failing_command.upper()} without MULTI", failing_command)
+        r.set("foo", "bar")  # would break the watch
+        assert raw_command(r, "multi") == b"OK"
+        assert raw_command(r, "get", "foo") == b"QUEUED"
+        assert raw_command(r, "exec") == [b"bar"]

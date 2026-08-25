@@ -36,6 +36,10 @@ LOGGER = logging.getLogger("fakeredis")
 # The rest of Dragonfly's no-script set (SAVE, BGSAVE, SCRIPT, EVAL, MULTI/EXEC, the
 # (P)SUBSCRIBE family and the blocking pops) already carries `FLAG_NO_SCRIPT` here.
 DRAGONFLY_NO_SCRIPT_COMMANDS = frozenset({"flushdb", "flushall", "shutdown", "debug", "config", "client"})
+# Dragonfly refuses to queue the (un)subscribe family inside a MULTI, where redis queues it.
+DRAGONFLY_NO_TRANSACTION_COMMANDS = frozenset(
+    {"subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ssubscribe", "sunsubscribe"}
+)
 
 
 def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
@@ -94,6 +98,9 @@ def _get_next_file_no() -> int:
 
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
+    abort_transaction: Callable[[], None]
+    _forget_transaction: Callable[[], None]
+    _queueing: bool
     ACCEPTED_COMMANDS_WHILE_PUBSUB: ClassVar[set[str]] = {
         "ping",
         "subscribe",
@@ -151,6 +158,7 @@ class BaseFakeSocket:
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+        self._transaction_paused: bool
         info.update(
             {
                 "id": self._server.get_next_client_id(),
@@ -297,8 +305,13 @@ class BaseFakeSocket:
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         from_run_command = False
+        unknown_command = False
         try:
-            func, sig = self._name_to_func(cmd)
+            try:
+                func, sig = self._name_to_func(cmd)
+            except SimpleError:
+                unknown_command = True
+                raise
             # ACL check
             self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
             with self._server.lock:
@@ -316,19 +329,26 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(cmd_arguments, self.version)
-                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                if self._queueing and self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                    if self.server_type == "dragonfly" and cmd in DRAGONFLY_NO_TRANSACTION_COMMANDS:
+                        raise SimpleError(msgs.DRAGONFLY_NOT_IN_TRANSACTION_MSG.format(cmd.upper()))
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
                     from_run_command = True
                     result = self._run_command(func, sig, cmd_arguments, False)
         except SimpleError as exc:
-            if self._transaction is not None and not from_run_command:
-                self._transaction_failed = True
+            if self._queueing and not from_run_command:
+                if self.server_type != "dragonfly":
+                    self._transaction_failed = True
+                elif not unknown_command:
+                    # Dragonfly stops queueing as soon as a command fails to queue, rather
+                    # than queueing on and refusing the EXEC. An unknown command is the one
+                    # exception: there the transaction carries on unharmed.
+                    self.abort_transaction()
             if cmd == "exec" and exc.value.startswith("ERR "):
                 exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
-                self._transaction = None
-                self._transaction_failed = False
+                self._forget_transaction()
                 self._clear_watches()
             result = exc
         result = self._decode_result(result)
