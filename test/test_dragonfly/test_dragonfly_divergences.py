@@ -14,6 +14,7 @@ import pytest
 import redis
 
 from fakeredis._typing import ClientType
+from test import testtools
 from test.testtools import raw_command
 
 pytestmark = []
@@ -210,3 +211,34 @@ def test_at_least_one_key_is_needed_for_numkeys_commands(r: ClientType):
     # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
     for args in (("sintercard", -1, "s"), ("zintercard", -1, "z")):
         _raises(r, "value is not an integer or out of range", *args)
+
+
+def test_xinfo_groups_reports_unknown_lag_as_nil(r: ClientType):
+    # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
+    message_id = r.xadd("stream", {"foo": "bar"})
+    r.xgroup_create("stream", "group", 0)
+    r.xgroup_setid("stream", "group", message_id, entries_read=2)
+    assert r.xinfo_groups("stream")[0]["lag"] is None
+    # A lag it can work out is reported as usual, negative ones included.
+    r.xgroup_setid("stream", "group", message_id, entries_read=5)
+    assert r.xinfo_groups("stream")[0]["lag"] == -4
+
+
+def test_xinfo_stream_reports_the_entries_of_an_empty_stream_as_a_null_array(r: ClientType):
+    # Redis sends nil, which RESP3 renders as nil; dragonfly keeps sending the RESP2 null
+    # array, so a RESP3 client reads it back as an empty array.
+    r.xadd("stream", {"foo": "bar"})
+    r.xtrim("stream", maxlen=0)
+    info = testtools.xinfo_stream_raw(r, "stream")
+    empty = testtools.null_array_reply(r, "dragonfly")
+    assert info["first-entry"] == empty
+    assert info["last-entry"] == empty
+
+
+def test_xpending_looks_the_key_up_before_the_group(r: ClientType):
+    # Redis reports both possibilities in one NOGROUP error; dragonfly checks the key
+    # first, and only names the group once the key exists.
+    _raises(r, "no such key", "xpending", "nosuchstream", "group")
+    r.xadd("stream", {"foo": "bar"})
+    err = _raises(r, "NOGROUP", "xpending", "stream", "group")
+    assert str(err) == "NOGROUP No such consumer group 'group' for key name 'stream'"

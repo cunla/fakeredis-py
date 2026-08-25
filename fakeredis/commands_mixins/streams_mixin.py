@@ -155,7 +155,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
+        # Dragonfly looks the key up before the group, so a missing stream is "no such key"
+        # and a missing group names only the group it could not find.
+        is_dragonfly = self.server_type == "dragonfly"
         if key.value is None:
+            if is_dragonfly:
+                raise SimpleError(msgs.NO_KEY_MSG)
             raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
 
@@ -174,6 +179,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
+            if is_dragonfly:
+                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
             raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         if start is not None:
@@ -229,10 +236,15 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
-    def xinfo_groups(self, key: CommandItem) -> dict[bytes, Any]:
+    def xinfo_groups(self, key: CommandItem) -> list[dict[bytes, Any]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: dict[bytes, Any] = key.value.groups_info()
+        res: list[dict[bytes, Any]] = key.value.groups_info()
+        if self.server_type == "dragonfly":
+            # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
+            for group in res:
+                if group.get(b"lag") == -1:
+                    group[b"lag"] = None
         return res
 
     @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -241,6 +253,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
         res: list[bytes] = key.value.stream_info(full)
+        if self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+            # An empty stream's first/last entry is a null array on dragonfly, where redis
+            # sends nil; under RESP3 a client reads that back as an empty array.
+            for i in range(0, len(res) - 1, 2):
+                if res[i] in (b"first-entry", b"last-entry") and res[i + 1] is None:
+                    res[i + 1] = []  # type: ignore[call-overload]
         return res
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())

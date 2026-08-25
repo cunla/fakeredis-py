@@ -373,13 +373,14 @@ def test_xgroup_create_connection7(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="8.2")
-def test_xgroup_setid_redis7(r: ClientType):
+def test_xgroup_setid_redis7(r: ClientType, real_server_details):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
 
     r.xgroup_create(stream, group, 0)
     # advance the last_delivered_id to the message_id
     r.xgroup_setid(stream, group, message_id, entries_read=2)
+    # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
     expected = [
         {
             "name": group.encode(),
@@ -387,7 +388,7 @@ def test_xgroup_setid_redis7(r: ClientType):
             "pending": 0,
             "last-delivered-id": message_id,
             "entries-read": 2,
-            "lag": -1,
+            "lag": None if real_server_details.server_type == "dragonfly" else -1,
         }
     ]
     assert r.xinfo_groups(stream) == expected
@@ -599,7 +600,7 @@ def test_xack(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_xinfo_stream_redis7(r: ClientType):
+def test_xinfo_stream_redis7(r: ClientType, real_server_details):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -614,12 +615,17 @@ def test_xinfo_stream_redis7(r: ClientType):
     assert "last-generated-id" in info
 
     r.xtrim(stream, 0)
-    # Info about empty stream
-    info = r.xinfo_stream(stream)
+    # Info about empty stream. Dragonfly answers the missing entries with a null array
+    # where redis sends nil, which redis-py's parser cannot read, so bypass it.
+    empty_entry = testtools.null_array_reply(r, real_server_details.server_type)
+    if real_server_details.server_type == "dragonfly":
+        info = testtools.xinfo_stream_raw(r, stream)
+    else:
+        info = r.xinfo_stream(stream)
 
     assert info["length"] == 0
-    assert info["first-entry"] is None
-    assert info["last-entry"] is None
+    assert info["first-entry"] == empty_entry
+    assert info["last-entry"] == empty_entry
     assert info["max-deleted-entry-id"] == b"0-0"
     assert info["entries-added"] == 2
     assert info["recorded-first-entry-id"] == b"0-0"
@@ -650,10 +656,12 @@ def test_xinfo_groups_missing_stream(r: ClientType):
     assert not r.exists(stream)
 
 
-def test_xpending_missing_stream_or_group(r: ClientType):
+def test_xpending_missing_stream_or_group(r: ClientType, real_server_details):
     stream, group = "stream", "group"
+    # Dragonfly looks the key up before the group, so a missing stream is "no such key".
+    missing_stream_error = "no such key" if real_server_details.server_type == "dragonfly" else "NOGROUP"
 
-    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NOGROUP"):
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match=missing_stream_error):
         r.xpending(stream, group)
 
     assert not r.exists(stream)
@@ -897,7 +905,7 @@ def test_xclaim(r: ClientType):
     assert r.xclaim(stream, group, consumer1, min_idle_time=0, message_ids=(message_id,), justid=True) == [message_id]
 
 
-def test_xread_blocking(create_connection):
+def test_xread_blocking(create_connection, real_server_details):
     # thread with xread block 0 should hang
     # putting data in the stream should unblock it
     event = threading.Event()
@@ -913,11 +921,17 @@ def test_xread_blocking(create_connection):
     t = threading.Thread(target=thread_func)
     t.start()
     r1 = create_connection(db=1)
+    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array,
+    # which redis-py's RESP3 parser cannot consume, so the reply is read unparsed there.
+    resp2_shape = testtools.disable_xread_parsing(r1, real_server_details.server_type)
     event.set()
     result = r1.xread({"stream": "$"}, block=0, count=1)
     event.clear()
     t.join()
-    if get_protocol_version(r1) == 2:
+    if resp2_shape:  # read unparsed, so the entry's fields come back as a flat array
+        assert result[0][0] == b"stream"
+        assert result[0][1][0][1] == [b"x", b"1"]
+    elif get_protocol_version(r1) == 2:
         assert result[0][0] == b"stream"
         assert result[0][1][0][1] == {b"x": b"1"}
     else:

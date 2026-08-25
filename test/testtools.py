@@ -136,15 +136,32 @@ def far_future_expiry(server_type: str) -> int:
     return 33177117420
 
 
-def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
-    """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test.
+def null_array_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a reply redis sends as a null array reads back as on the server under test.
 
-    Redis sends a null array, which RESP3 renders as nil. Dragonfly sends an empty array,
-    so a RESP3 client sees `[]`. Under RESP2 both encode to `*-1` and read back as None.
+    Dragonfly keeps sending the RESP2 null array (`*-1`) under RESP3, where redis sends
+    nil, so a RESP3 client reads it back as `[]`. Under RESP2 both read back as None.
     """
     if server_type == "dragonfly" and get_protocol_version(r) == 3:
         return []
     return None
+
+
+def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test."""
+    return null_array_reply(r, server_type)
+
+
+def xinfo_stream_raw(r: ClientType, name: str) -> dict[str, Any]:
+    """XINFO STREAM as a str-keyed dict, bypassing redis-py's parser.
+
+    That parser assumes an empty stream's `first-entry` is nil; dragonfly answers with a
+    null array, which reads back as `[]` under RESP3 and trips the parser up.
+    """
+    reply = raw_command(r, "xinfo", "stream", name)
+    if isinstance(reply, dict):  # a RESP3 map
+        return {k.decode(): v for k, v in reply.items()}
+    return {reply[i].decode(): reply[i + 1] for i in range(0, len(reply), 2)}
 
 
 def disable_xread_parsing(r: ClientType, server_type: str) -> bool:

@@ -148,6 +148,15 @@ Dragonfly's `SORT` diverges in four ways:
 `COUNT` alone does not imply an ascending sort. Results come back in geohash (sorted-set
 score) order unless `ASC` or `DESC` is given explicitly.
 
+### Streams
+
+`XINFO GROUPS` uses -1 as its "lag unknown" sentinel and reports that as nil. Any other
+lag, negative ones included, is reported as the number it worked out.
+
+`XPENDING` looks the key up before the group, so a missing stream is `ERR no such key`
+rather than Redis' `NOGROUP No such key '<key>' or consumer group '<group>'`. Once the key
+exists, a missing group is `NOGROUP No such consumer group '<group>' for key name '<key>'`.
+
 ### Pub/Sub
 
 Outside cluster mode Dragonfly keeps a **single channel namespace**. A sharded
@@ -170,14 +179,16 @@ changes.
 
 ### RESP3 reply shapes
 
-Two replies that Redis sends as a null or empty map are sent by Dragonfly as an empty
-array. Under RESP2 both encode identically and clients see no difference.
+Replies that Redis sends as a null, an empty map or a member/score pair are sent by
+Dragonfly in the RESP2 shape it would have used anyway. Under RESP2 both servers encode
+identically and clients see no difference.
 
 | Reply                                       | Redis (RESP3)      | Dragonfly (RESP3)   |
 |---------------------------------------------|--------------------|---------------------|
 | `BLPOP` / `BRPOP` / `BZPOPMIN` timeout      | nil                | `[]`                |
 | `XREAD` / `XREADGROUP` matching nothing     | `{}`               | `[]`                |
 | `XREAD BLOCK` woken by a new entry          | `{name: entries}`  | `[[name, entries]]` |
+| `XINFO STREAM` on an empty stream, `first-entry` / `last-entry` | nil | `[]`     |
 
 A blocking `XREAD` that is served straight away — the entry was already there — answers
 with the map, like Redis. Only the reply built when the read actually waited comes back in
@@ -264,7 +275,6 @@ will not match a real one here:
   these errors are not.
 - **JSON numbers.** `JSON.NUMINCRBY` keeps a whole result whole — `1` incremented by `1` is
   `2`, where fakeredis renders `2.0`. Both parse to the same number.
-- **Streams.** The `XINFO STREAM` and `XGROUP SETID` replies differ.
 - **Keyspace notifications.** Dragonfly implements only the `Ex` event class — `expired`
   events on the `__keyevent@<db>__:` channel. The `__keyspace@<db>__:` channel does not
   exist, and no other event is ever published. It is enabled at startup with
