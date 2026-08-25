@@ -50,7 +50,7 @@ client.execute_command("SADDEX", 10, "key", "value")
 
 Dragonfly is a drop-in replacement, but it is not bug-for-bug identical to Redis. The
 differences below were established by running the fakeredis test suite against a real
-`dragonflydb/dragonfly` container (`df-v1.39.0`, which reports `redis_version:7.4.0`) and
+`dragonflydb/dragonfly` container (`df-v1.40.1`, which reports `redis_version:7.4.0`) and
 comparing every reply with the one Redis gives.
 
 Unless a note says otherwise, `FakeRedis(server_type="dragonfly")` reproduces the
@@ -92,9 +92,9 @@ Most numeric options are validated while being decoded, so Dragonfly reports the
 |--------------------------------|--------------------------------------------------|-------------------------------------------------|
 | `SINTERCARD ... LIMIT -1`      | `LIMIT can't be negative`                        | `limit can't be negative`                       |
 | `ZINTERCARD ... LIMIT -1`      | `LIMIT can't be negative`                        | `limit value is not a positive integer`         |
-| `SINTERCARD 0 key`             | `numkeys should be greater than 0`               | `syntax error`                                  |
 | `SINTERCARD 9 key`             | `Number of keys can't be greater than number of args` | `syntax error`                             |
-| `LMPOP 0 ...` / `ZMPOP 0 ...`  | `numkeys should be greater than 0`               | `at least 1 input key is needed for this command` |
+| `SINTERCARD 0 ...` / `LMPOP 0 ...` / `ZMPOP 0 ...` | `numkeys should be greater than 0`  | `at least 1 input key is needed for this command` |
+| `ZINTERCARD 0 ...` / `ZUNION 0 ...` / `ZUNIONSTORE dst 0 ...` | `at least 1 input key is needed for <command>` | `at least 1 input key is needed for this command` |
 | `SPOP key -1`                  | `value is out of range, must be positive`        | `value is not an integer or out of range`       |
 | `LPOS key e COUNT -1`          | `COUNT can't be negative`                        | `value is not an integer or out of range`       |
 | `LPOS key e MAXLEN -1`         | `MAXLEN can't be negative`                        | `value is not an integer or out of range`      |

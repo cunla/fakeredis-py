@@ -83,8 +83,8 @@ class SetCommandsMixin(CommandsMixinBase):
             if not is_dragonfly:
                 raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
             # Dragonfly reads numkeys as unsigned, so a negative one fails to decode while
-            # a zero gets as far as the (then empty) key list and reads as a syntax error.
-            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.SYNTAX_ERROR_MSG)
+            # a zero is rejected by the shared "needs at least one key" check.
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         limit = 0
         if len(args) >= 2 and casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])

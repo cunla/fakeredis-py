@@ -460,7 +460,11 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
-            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            if self.server_type != "dragonfly":
+                raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            # Dragonfly reads numkeys as unsigned, so a negative one never decodes, and it
+            # words the zero case without naming the command.
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b"sum"

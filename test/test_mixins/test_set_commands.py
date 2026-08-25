@@ -540,9 +540,9 @@ def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details):
     r.sadd("foo", "member1")
     is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):
-        # Dragonfly rejects 0 as a syntax error, and -1 while decoding the integer.
+        # Dragonfly reads numkeys as unsigned, so -1 fails to decode before the key check.
         if is_dragonfly:
-            expected = "syntax error" if numkeys == 0 else "value is not an integer or out of range"
+            expected = "at least 1 input key is needed" if numkeys == 0 else "value is not an integer or out of range"
         else:
             expected = "numkeys should be greater than 0"
         with pytest.raises(Exception, match=expected) as ctx:

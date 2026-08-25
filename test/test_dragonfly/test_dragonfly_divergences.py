@@ -195,3 +195,18 @@ def test_shard_and_plain_channels_share_one_namespace(r: ClientType):
     finally:
         plain.close()
         shard.close()
+
+
+def test_at_least_one_key_is_needed_for_numkeys_commands(r: ClientType):
+    r.sadd("s", "m")
+    r.zadd("z", {"m": 1.0})
+    for args in (
+        ("sintercard", 0, "s"),
+        ("zintercard", 0, "z"),
+        ("zunion", 0, "z"),
+        ("zunionstore", "dst", 0, "z"),
+    ):
+        _raises(r, "at least 1 input key is needed for this command", *args)
+    # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
+    for args in (("sintercard", -1, "s"), ("zintercard", -1, "z")):
+        _raises(r, "value is not an integer or out of range", *args)
