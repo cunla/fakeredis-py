@@ -6,7 +6,6 @@ from .base import (
     commands,
     counts,
     fields,
-    float_as_bytes,
     keys,
     optional,
     run_machine,
@@ -14,6 +13,7 @@ from .base import (
     st,
     string_tests,
     zero_or_more,
+    zstore_weights,
 )
 
 # A negative LIMIT offset is undefined behaviour in Redis (it reads out of
@@ -76,7 +76,7 @@ zset_commands = (
         build_zstore,
         command=st.sampled_from(["zunionstore", "zinterstore"]),
         dest=keys,
-        sources=st.lists(st.tuples(keys, float_as_bytes)),
+        sources=st.lists(st.tuples(keys, zstore_weights)),
         weights=st.booleans(),
         aggregate=st.sampled_from([None, "sum", "min", "max"]),
     )
