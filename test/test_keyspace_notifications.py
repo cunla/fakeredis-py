@@ -1,7 +1,12 @@
 import time
 
+import pytest
 import redis
 from redis.client import PubSub
+
+# Dragonfly implements only the `Ex` event class (expired keyevents), enabled with the
+# `--notify_keyspace_events=Ex` startup flag; `CONFIG SET notify-keyspace-events` always fails there.
+pytestmark = pytest.mark.unsupported_server_types("dragonfly")
 
 
 def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False):
