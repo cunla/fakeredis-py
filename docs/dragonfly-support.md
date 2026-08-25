@@ -148,6 +148,11 @@ Dragonfly's `SORT` diverges in four ways:
 `COUNT` alone does not imply an ascending sort. Results come back in geohash (sorted-set
 score) order unless `ASC` or `DESC` is given explicitly.
 
+### Sets and sorted sets
+
+`ZDIFF` and `ZDIFFSTORE` accept sorted sets only. Redis — and Dragonfly's own `ZUNION*`,
+`ZINTER*` and `ZINTERCARD` — read a plain set as a sorted set scoring every member 1.
+
 ### Streams
 
 `XINFO GROUPS` uses -1 as its "lag unknown" sentinel and reports that as nil. Any other
@@ -189,6 +194,7 @@ identically and clients see no difference.
 | `XREAD` / `XREADGROUP` matching nothing     | `{}`               | `[]`                |
 | `XREAD BLOCK` woken by a new entry          | `{name: entries}`  | `[[name, entries]]` |
 | `XINFO STREAM` on an empty stream, `first-entry` / `last-entry` | nil | `[]`     |
+| `ZPOPMIN` / `ZPOPMAX` without a count       | `[member, score]`  | `[[member, score]]` |
 
 A blocking `XREAD` that is served straight away — the entry was already there — answers
 with the map, like Redis. Only the reply built when the read actually waited comes back in

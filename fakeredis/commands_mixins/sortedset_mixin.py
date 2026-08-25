@@ -116,7 +116,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def _zpop_flatten(self, count: int | None) -> bool:
         # RESP2 always returns a flat list. RESP3 returns a flat member/score pair
         # only when no count was given; with an explicit count it returns an array
-        # of pairs.
+        # of pairs. Dragonfly answers RESP3 with an array of pairs either way.
+        if self.server_type == "dragonfly":
+            return self._client_info.protocol_version == 2
         return self._client_info.protocol_version == 2 or count is None
 
     @command((Key(ZSet),), (Int,))
@@ -458,6 +460,17 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
+    def _zset_scores_reply(self, zset: ZSet, withscores: bool, flat_on_dragonfly: bool = False) -> list[Any]:
+        """Shape the reply of a ZDIFF/ZUNION/ZINTER, which RESP3 pairs up member and score.
+
+        Dragonfly keeps the flat RESP2 shape for ZUNION and ZINTER, but not for ZDIFF.
+        """
+        if not withscores:
+            return list(zset)
+        if self._client_info.protocol_version == 2 or (flat_on_dragonfly and self.server_type == "dragonfly"):
+            return [item for member in zset for item in (member, zset[member])]
+        return [[member, zset[member]] for member in zset]
+
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
             if self.server_type != "dragonfly":
@@ -486,9 +499,14 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
+        # Redis reads a plain set as a sorted set scoring every member 1. Dragonfly does
+        # that too, except in ZDIFF/ZDIFFSTORE, which only accept sorted sets.
+        zsets_only = self.server_type == "dragonfly" and func in {"ZDIFF", "ZDIFFSTORE"}
         sets = []
         for i in range(numkeys):
             item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
+            if zsets_only and isinstance(item.value, ExpiringMembersSet):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
@@ -554,14 +572,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores)
 
     @command((Int, bytes), (bytes,))
     def zunion(self, numkeys: int, *args: bytes) -> list[Any]:
@@ -569,14 +580,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores, flat_on_dragonfly=True)
 
     @command((Int, bytes), (bytes,))
     def zinter(self, numkeys: int, *args: bytes) -> list[Any]:
@@ -584,14 +588,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores, flat_on_dragonfly=True)
 
     @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
     def zintercard(self, numkeys: int, *args: bytes) -> int:
