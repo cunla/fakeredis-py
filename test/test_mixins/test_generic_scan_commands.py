@@ -202,16 +202,20 @@ def test_scan_stream(r: ClientType):
         print(s)
 
 
-def test_scan_family_count_not_positive(r: ClientType):
+def test_scan_family_count_not_positive(r: ClientType, real_server_details):
     r.sadd("set", "m")
     r.hset("hash", "f", "v")
     r.zadd("zset", {"m": 1})
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    commands = (("scan", 0), ("sscan", "set", 0), ("hscan", "hash", 0), ("zscan", "zset", 0))
     for count in (0, -1):
-        with pytest.raises(Exception, match="syntax error"):
-            raw_command(r, "scan", 0, "COUNT", count)
-        with pytest.raises(Exception, match="syntax error"):
-            raw_command(r, "sscan", "set", 0, "COUNT", count)
-        with pytest.raises(Exception, match="syntax error"):
-            raw_command(r, "hscan", "hash", 0, "COUNT", count)
-        with pytest.raises(Exception, match="syntax error"):
-            raw_command(r, "zscan", "zset", 0, "COUNT", count)
+        # Dragonfly reads COUNT as unsigned: 0 is accepted and uses the default batch size,
+        # while a negative value fails to decode.
+        if is_dragonfly and count == 0:
+            for args in commands:
+                raw_command(r, *args, "COUNT", count)
+            continue
+        expected = "value is not an integer or out of range" if is_dragonfly else "syntax error"
+        for args in commands:
+            with pytest.raises(Exception, match=expected):
+                raw_command(r, *args, "COUNT", count)
