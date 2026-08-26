@@ -112,8 +112,8 @@ class SetCommandsMixin(CommandsMixinBase):
     @command((Key(ExpiringMembersSet), Key(), bytes))
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
         src_exists = src.key in self._db
-        # The destination is only looked at once the source key exists, so moving out of a
-        # missing set into a wrongly typed key answers 0 rather than failing.
+        # The destination is only looked at once the source key exists, so moving out of a missing set into a wrongly
+        # typed key answers 0 rather than failing.
         if src_exists and dst.value is not None and not isinstance(dst.value, ExpiringMembersSet):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if not src_exists or member not in src.value:

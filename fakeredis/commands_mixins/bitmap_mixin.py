@@ -72,8 +72,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
             if self.version >= (7, 4):  # Since 7.4 the range arguments are validated even when the key is missing
                 for arg in args[:2]:
                     Int.decode(arg)
-            # The first clear bit is at 0, the first set bit is not found (-1).
-            return -1 if bit == 1 else 0
+            return -1 if bit == 1 else 0  # The first clear bit is at 0, the first set bit is not found (-1).
 
         start = 0 if len(args) == 0 else Int.decode(args[0])
         value_bytes: bytes = key.value
