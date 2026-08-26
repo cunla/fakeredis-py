@@ -7,7 +7,7 @@ tags:
 toc_depth: 2
 ---
 
-## v2.37.1 - 
+## v2.37.1 -
 
 ### 🚀 Features
 
@@ -22,6 +22,20 @@ toc_depth: 2
 - fix: `ZPOPMIN`/`ZPOPMAX` now reject a negative count with `value is out of range, must be positive`
 - fix: `ZPOPMIN`/`ZPOPMAX`/`BZPOPMIN`/`BZPOPMAX`/`ZMPOP`/`BZMPOP` now delete the sorted set key once its last member is
   popped
+- fix: `LTRIM` now signals the key as modified even when the trim is a no-op, so a `WATCH` on that key correctly aborts
+  the following transaction, matching real Redis
+- fix: align stream group errors with Redis — `XPENDING` on a missing key or unknown group now raises `NOGROUP` instead
+  of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
+
+### 🧰 Maintenance
+
+- perf: `VADD`/`VSIM` keep a row-oriented matrix of the vector set resident and reuse it, instead of restacking every
+  stored vector on each call; re-adding an existing member now replaces its row rather than leaving a stale one
+- perf: cache compiled `JSONPath` objects in the JSON stack mixin (#538)
+- build: drop Python 3.9, target Python 3.10+ (#534)
+- Update to redis-py 8.1
+- refactor: modernize typing for Ruff 0.16 defaults (#533)
+- test: refactor hypothesis tests
 
 ## v2.37.0 - 2026-07-22
 

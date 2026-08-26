@@ -72,7 +72,11 @@ def _find_near(
     :returns: List of GeoResults
     """
     results = []
-    for name, _hash in zset.items():
+    # Iterating the sorted set itself walks it in score (geohash) order, which is the order
+    # an unsorted reply has to come back in. `items()` would give insertion order instead.
+    scores = dict(zset.items())
+    for name in zset:
+        _hash = scores[name]
         p_lat, p_long, _, _ = geo_decode(_hash)
         dist = distance((p_lat, p_long), (lat, long)) * conv
         if dist < radius:

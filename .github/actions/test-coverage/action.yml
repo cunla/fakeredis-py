@@ -35,7 +35,7 @@ runs:
         echo 'REPORT<<EOF' >> $GITHUB_ENV
         uv run coverage report >> $GITHUB_ENV
         echo 'EOF' >> $GITHUB_ENV
-    - uses: mshick/add-pr-comment@dd126dd8c253650d181ad9538d8b4fa218fc31e8
+    - uses: mshick/add-pr-comment@ec328af66588ab8f77cdeb2c264f14aba45bbf59
       if: ${{ github.event_name == 'pull_request' }}
       with:
         message: |

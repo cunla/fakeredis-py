@@ -8,7 +8,7 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
+from fakeredis.model import StreamGroup, StreamRangeTest, XStream
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
@@ -149,10 +149,15 @@ class StreamsCommandsMixin(CommandsMixinBase):
             return 0
         return group.ack(args)  # type: ignore
 
-    @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
+    @command(
+        name="XPENDING",
+        fixed=(Key(XStream), bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
         if key.value is None:
-            return 0
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
 
         if len(args) > 4 and casematch(b"idle", args[0]):  # Idle
@@ -170,7 +175,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            return 0 if start is not None else []
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         if start is not None:
             return group.pending(idle, start, end, count, consumer)
@@ -224,7 +229,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
         return group.del_consumer(consumer_name)
 
-    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
+    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xinfo_groups(self, key: CommandItem) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
@@ -288,11 +293,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        keys: list[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
+        keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
 
         res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
-            max(msgs_claimed).encode() if len(msgs_claimed) > 0 else start,
+            next_key.encode() if next_key is not None else b"0-0",
             [msg.encode() for msg in msgs_claimed] if justid else [stream.format_record(msg) for msg in msgs_claimed],
         ]
         if self.version >= (7,):

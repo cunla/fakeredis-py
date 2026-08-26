@@ -6,12 +6,11 @@ pytestmark = []
 pytestmark.extend(
     [
         pytest.mark.asyncio,
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
     ]
 )
 
 
-@pytest.mark.asyncio
-@pytest.mark.unsupported_server_types("dragonfly", "valkey")
 async def test_async_lock(async_redis: AsyncClientType):
     from redis.asyncio.lock import Lock
 

@@ -623,6 +623,40 @@ def test_xinfo_stream_full(r: ClientType):
     assert len(info["groups"]) == 1
 
 
+def test_xinfo_groups_missing_stream(r: ClientType):
+    stream = "missing"
+
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="no such key"):
+        r.xinfo_groups(stream)
+
+    assert not r.exists(stream)
+
+
+def test_xpending_missing_stream_or_group(r: ClientType):
+    stream, group = "stream", "group"
+
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NOGROUP"):
+        r.xpending(stream, group)
+
+    assert not r.exists(stream)
+
+    r.xadd(stream, {"foo": "bar"})
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NOGROUP"):
+        r.xpending(stream, group)
+
+
+def test_xpending_pipeline_missing_stream_or_group(r: ClientType):
+    stream, group = "stream", "group"
+    with r.pipeline() as pipe:
+        pipe.xinfo_groups(stream)
+        pipe.xpending(stream, group)
+
+        result = pipe.execute(raise_on_error=False)
+
+    assert all(isinstance(item, (redis.ResponseError, valkey.ResponseError)) for item in result)
+    assert not r.exists(stream)
+
+
 def test_xpending(r: ClientType):
     stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
     m1 = r.xadd(stream, {"foo": "bar"})
@@ -752,6 +786,51 @@ def test_xautoclaim_redis7(r: ClientType):
         message_id2,
     ]
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
+
+
+@testtools.run_test_if_redispy_ver("gte", "4.4")
+def test_xautoclaim_cursor_is_zero_when_scan_completes(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    add_items(r, stream, 3)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+
+    assert r.xautoclaim(stream, group, "consumer2", min_idle_time=0)[0] == b"0-0"
+
+    # Nothing idle enough to claim still means the scan reached the end of the PEL.
+    assert r.xautoclaim(stream, group, "consumer3", min_idle_time=999999, count=1)[0] == b"0-0"
+
+
+@testtools.run_test_if_redispy_ver("gte", "4.4")
+def test_xautoclaim_cursor_resumes_after_the_returned_window(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    ids = add_items(r, stream, 3)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+
+    # COUNT stopped the scan early, so the cursor is the next entry to scan, not the last claimed.
+    cursor, entries = r.xautoclaim(stream, group, "consumer2", min_idle_time=0, count=1)[:2]
+    assert get_ids(entries) == [ids[0]]
+    assert cursor == ids[1]
+
+
+@testtools.run_test_if_redispy_ver("gte", "4.4")
+def test_xautoclaim_pagination_terminates(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    ids = add_items(r, stream, 5)
+    r.xreadgroup(group, "consumer1", streams={stream: ">"})
+
+    cursor, claimed, rounds = b"0-0", [], 0
+    while rounds < 10:
+        cursor, entries = r.xautoclaim(stream, group, "consumer2", min_idle_time=0, start_id=cursor, count=2)[:2]
+        claimed.extend(get_ids(entries))
+        rounds += 1
+        if cursor == b"0-0":
+            break
+
+    assert cursor == b"0-0"
+    assert claimed == ids
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")

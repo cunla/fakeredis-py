@@ -28,6 +28,8 @@ def test_saddex_expire_members(r: ClientType):
     set_name = "foo"
     assert testtools.raw_command(r, "saddex", set_name, 1, "m1", "m2") == 2
     assert r.sadd(set_name, "m3", "m4") == 2
+    # SADDEX returns only the number of newly added members, but it still applies the
+    # expiry to members that were already in the set, so m3 expires along with m1/m2.
     assert testtools.raw_command(r, "saddex", set_name, 1, "m3") == 0
     sleep(1.1)
-    assert set(r.smembers("foo")) == {b"m3", b"m4"}
+    assert set(r.smembers("foo")) == {b"m4"}

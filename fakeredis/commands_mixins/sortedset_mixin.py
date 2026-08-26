@@ -457,6 +457,14 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
+    def _zset_scores_reply(self, zset: ZSet, withscores: bool) -> list[Any]:
+        """Shape the reply of a ZDIFF/ZUNION/ZINTER, which RESP3 pairs up member and score."""
+        if not withscores:
+            return list(zset)
+        if self._client_info.protocol_version == 2:
+            return [item for member in zset for item in (member, zset[member])]
+        return [[member, zset[member]] for member in zset]
+
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
             raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
@@ -549,14 +557,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZDIFF", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores)
 
     @command((Int, bytes), (bytes,))
     def zunion(self, numkeys: int, *args: bytes) -> list[Any]:
@@ -564,14 +565,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores)
 
     @command((Int, bytes), (bytes,))
     def zinter(self, numkeys: int, *args: bytes) -> list[Any]:
@@ -579,14 +573,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        out: list[Any]
-        if not withscores:
-            out = list(zset_res)
-        elif self._client_info.protocol_version == 2:
-            out = [item for t in zset_res for item in [t, zset_res[t]]]
-        else:
-            out = [[i, zset_res[i]] for i in zset_res]
-        return out
+        return self._zset_scores_reply(zset_res, withscores)
 
     @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
     def zintercard(self, numkeys: int, *args: bytes) -> int:
