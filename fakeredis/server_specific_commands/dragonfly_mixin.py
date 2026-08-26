@@ -16,9 +16,10 @@ class DragonflyCommandsMixin:
     def saddex(self, key: CommandItem, seconds: int, *members: bytes) -> int:
         val = key.value
         old_size = len(val)
-        new_members = set(members) - set(val)
         expire_at_ms = current_time() + seconds * 1000
-        for member in new_members:
+        # The expiry is applied to every listed member, including ones already in the set
+        # (their existing TTL is refreshed), but only newly added members are counted.
+        for member in members:
             val.set_member_expireat(member, expire_at_ms)
         key.updated()
         return len(val) - old_size
