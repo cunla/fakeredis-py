@@ -9,8 +9,11 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Float, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, current_time
-from fakeredis.commands_mixins._mixin_base import DRAGONFLY_MAX_HASH_EXPIRE_SECONDS, CommandsMixinBase
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import Hash
+
+# A hash field's TTL is capped more tightly still, and overshooting it is an error.
+DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class HashCommandsMixin(CommandsMixinBase):

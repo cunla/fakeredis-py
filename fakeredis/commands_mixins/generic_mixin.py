@@ -34,8 +34,6 @@ class SortFloat(Float):
 # (EXPIRE, PEXPIRE, SET EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond
 # it is rejected outright.
 DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
-# A hash field's TTL is capped more tightly still, and overshooting it is an error.
-DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class GenericCommandsMixin(CommandsMixinBase):
