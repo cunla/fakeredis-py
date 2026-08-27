@@ -15,6 +15,8 @@ from . import _msgs as msgs
 from ._helpers import Database, SimpleError, null_terminate
 from ._typing import ServerType, VersionType
 
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: dict[str, Signature] = {}  # Dictionary of supported commands name => Signature
 COMMANDS_WITH_SUB: set[str] = set()  # Commands with sub-commands

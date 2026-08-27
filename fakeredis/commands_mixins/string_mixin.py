@@ -8,6 +8,7 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
+    DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,
     CommandItem,
     Float,
@@ -74,10 +75,6 @@ def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
         matches.append([[s1ind, r], [s2ind, c], curr_length])
 
     return opt[l1][l2], result.encode(), matches
-
-
-# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
-DRAGONFLY_MAX_STRING_SIZE = 2**28
 
 
 class StringCommandsMixin(CommandsMixinBase, ABC):

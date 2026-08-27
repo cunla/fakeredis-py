@@ -4,9 +4,18 @@ import re
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
+from fakeredis._commands import (
+    DRAGONFLY_MAX_STRING_SIZE,
+    MAX_STRING_SIZE,
+    CommandItem,
+    Int,
+    Key,
+    command,
+    fix_range,
+    fix_range_string,
+)
 from fakeredis._helpers import SimpleError, casematch
-from fakeredis.commands_mixins._mixin_base import DRAGONFLY_MAX_STRING_SIZE, CommandsMixinBase
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
 class BitfieldEncoding:
