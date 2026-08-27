@@ -467,7 +467,11 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
-            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            if self.server_type != "dragonfly":
+                raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            # Dragonfly reads numkeys as unsigned, so a negative one never decodes, and it words the zero case without
+            # naming the command.
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b"sum"
@@ -585,6 +589,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         )
         limit = limit if limit is not None else 0
         if limit < 0:
+            # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
+            if self.server_type == "dragonfly":
+                raise SimpleError(msgs.DRAGONFLY_LIMIT_NOT_POSITIVE_MSG)
             raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
@@ -633,16 +640,19 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             if res:
                 item.writeback()  # remove the key if the set is now empty
                 return [key, res]
+            # Dragonfly allows COUNT 0, which names the first existing key but pops nothing.
+            if count == 0 and item.value and self.server_type == "dragonfly":
+                return [key, []]
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
     def zmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
             functools.partial(self._zmpop, keys, count, reverse),

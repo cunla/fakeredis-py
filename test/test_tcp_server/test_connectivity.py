@@ -8,6 +8,7 @@ import pytest
 import redis
 
 from fakeredis._tcp_server import TcpFakeServer
+from test.conftest import ServerDetails
 
 pytestmark = []
 pytestmark.extend(
@@ -31,10 +32,20 @@ def test_tcp_server_connection_reset_error(tcp_server_address: tuple[str, int]):
         assert r.rpop("test") == b"foo"
 
 
-def test_bulk_string_length(real_server_address: tuple[str, int], tcp_server_address: tuple[str, int]):
+def test_bulk_string_length(
+    real_server_address: tuple[str, int],
+    tcp_server_address: tuple[str, int],
+    real_server_details: ServerDetails,
+):
     """Test that malformed bulk string input is handled correctly."""
     import socket
     from contextlib import closing
+
+    # Dragonfly reports unknown commands in its own wording, without echoing the arguments back.
+    if real_server_details.server_type == "dragonfly":
+        expected = "-ERR unknown command `$`\r\n"
+    else:
+        expected = "-ERR unknown command '$', with args beginning with: '1' \r\n"
 
     connections = [real_server_address, tcp_server_address]
     for conn in connections:
@@ -43,9 +54,7 @@ def test_bulk_string_length(real_server_address: tuple[str, int], tcp_server_add
             s.connect((host, port))
             s.sendall(b"$ 1\ntest")
             data = s.recv(1024).decode()
-            assert data == "-ERR unknown command '$', with args beginning with: '1' \r\n", (
-                f"Failed for server at {host}:{port}"
-            )
+            assert data == expected, f"Failed for server at {host}:{port}"
 
 
 def test_tcp_server_started_protocol_3(tcp_server_address: tuple[str, int]):

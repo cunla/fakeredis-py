@@ -39,6 +39,12 @@ ZUNIONSTORE_KEYS_MSG = "ERR at least 1 input key is needed for {}"
 WRONG_ARGS_MSG7 = "ERR Wrong number of args calling Redis command from script"
 WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
+# Dragonfly reports unknown commands in its own format, without echoing the arguments back.
+DRAGONFLY_UNKNOWN_COMMAND_MSG = "ERR unknown command `{}`"
+# Dragonfly's wording for the SINTERCARD/ZINTERCARD LIMIT and numkeys checks.
+DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
+DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"
+DRAGONFLY_AT_LEAST_ONE_KEY_MSG = "ERR at least 1 input key is needed for this command"
 EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors."
 MULTI_NESTED_MSG = "ERR MULTI calls can not be nested"
 WITHOUT_MULTI_MSG = "ERR {0} without MULTI"

@@ -372,7 +372,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             key.expireat = None if expire_time is None else int(expire_time)
         return key.get(None)
 
-    @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,))
+    @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,), server_types=("redis", "valkey"))
     def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> bytes | int | dict[bytes, Any]:
         s1 = k1.value or b""
         s2 = k2.value or b""

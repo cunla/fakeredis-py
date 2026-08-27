@@ -227,18 +227,30 @@ class BaseFakeSocket:
         self._db = None
         self.responses = None
 
-    @staticmethod
-    def _extract_line(buf: bytes) -> tuple[bytes, bytes]:
+    def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
+        """Build the server's "unknown command" error.
+
+        Dragonfly uses its own wording and never echoes the arguments back, so `args` is
+        only appended for the Redis/Valkey format.
+        """
+        if self._server.server_type == "dragonfly":
+            return SimpleError(msgs.DRAGONFLY_UNKNOWN_COMMAND_MSG.format(command.upper()))
+        msg = msgs.UNKNOWN_COMMAND_MSG.format(command)
+        if args is not None:
+            msg += f"'{args}' "
+        return SimpleError(msg)
+
+    def _extract_line(self, buf: bytes) -> tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
         if pos <= 0:
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+            raise self._unknown_command(buf.decode().strip())
         line = buf[:pos]
         buf = buf[pos:]
         if not line.endswith(b"\r\n"):
             parts = line.decode().strip().split(" ", 1)
             command = parts[0]
             args = parts[1] if len(parts) > 1 else ""
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
+            raise self._unknown_command(command, args)
         return line, buf
 
     def _parse_commands(self) -> Generator[None, Any, None]:
@@ -253,7 +265,7 @@ class BaseFakeSocket:
                 buf += yield
             line, buf = self._extract_line(buf)
             if not line[:1] == b"*":  # array
-                raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                raise self._unknown_command(buf.decode().strip())
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):
@@ -261,7 +273,7 @@ class BaseFakeSocket:
                     buf += yield
                 line, buf = self._extract_line(buf)
                 if line[:1] != b"$":
-                    raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                    raise self._unknown_command(buf.decode().strip())
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -499,12 +511,12 @@ class BaseFakeSocket:
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         sig = SUPPORTED_COMMANDS[cmd_name]
         if self._server.server_type not in sig.server_types:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         func = getattr(self, sig.func_name, None)
         return func, sig
 
@@ -547,7 +559,13 @@ class BaseFakeSocket:
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
         if count is not None and count <= 0:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero
+            # is accepted and simply falls back to the default batch size.
+            if self._server.server_type != "dragonfly":
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if count < 0:
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = None
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()
