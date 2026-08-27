@@ -32,16 +32,20 @@ from ._typing import ResponseErrorType, ServerType, VersionType
 LOGGER = logging.getLogger("fakeredis")
 
 
-def _convert_to_resp2(val: Any) -> Any:
+def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, float):
+        if keep_doubles:
+            return val
+        if server_type == "dragonfly":
+            return Float.encode_shortest(val)
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [_convert_to_resp2(item) for item in result]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in result]
     if isinstance(val, (list, tuple)):
-        return [_convert_to_resp2(item) for item in val]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in val]
     return val
 
 
@@ -227,18 +231,30 @@ class BaseFakeSocket:
         self._db = None
         self.responses = None
 
-    @staticmethod
-    def _extract_line(buf: bytes) -> tuple[bytes, bytes]:
+    def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
+        """Build the server's "unknown command" error.
+
+        Dragonfly uses its own wording and never echoes the arguments back, so `args` is
+        only appended for the Redis/Valkey format.
+        """
+        if self._server.server_type == "dragonfly":
+            return SimpleError(msgs.DRAGONFLY_UNKNOWN_COMMAND_MSG.format(command.upper()))
+        msg = msgs.UNKNOWN_COMMAND_MSG.format(command)
+        if args is not None:
+            msg += f"'{args}' "
+        return SimpleError(msg)
+
+    def _extract_line(self, buf: bytes) -> tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
         if pos <= 0:
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+            raise self._unknown_command(buf.decode().strip())
         line = buf[:pos]
         buf = buf[pos:]
         if not line.endswith(b"\r\n"):
             parts = line.decode().strip().split(" ", 1)
             command = parts[0]
             args = parts[1] if len(parts) > 1 else ""
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
+            raise self._unknown_command(command, args)
         return line, buf
 
     def _parse_commands(self) -> Generator[None, Any, None]:
@@ -253,7 +269,7 @@ class BaseFakeSocket:
                 buf += yield
             line, buf = self._extract_line(buf)
             if not line[:1] == b"*":  # array
-                raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                raise self._unknown_command(buf.decode().strip())
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):
@@ -261,7 +277,7 @@ class BaseFakeSocket:
                     buf += yield
                 line, buf = self._extract_line(buf)
                 if line[:1] != b"$":
-                    raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                    raise self._unknown_command(buf.decode().strip())
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -335,7 +351,7 @@ class BaseFakeSocket:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    result = _convert_to_resp2(result)
+                    result = _convert_to_resp2(result, self.server_type)
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
                     result, self._client_info.protocol_version
                 ):
@@ -455,7 +471,9 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: float | None, func: Callable[[bool], Any]) -> Any:
+    def _blocking(
+        self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
+    ) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
         The timeout is in seconds, and 0 means infinite. The function
@@ -464,26 +482,32 @@ class BaseFakeSocket:
         each time the condition variable is notified, until the timeout is
         reached.
 
+        `shape` turns the outcome into the reply the command sends, the timed-out None
+        included. It belongs here rather than around the call because the async socket
+        answers a command that blocks outside the command's own control flow, so anything
+        the command does with the return value would be skipped there.
+
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
+        empty = None if shape is None else shape(None)
         deadline = time.time() + timeout if timeout else None
         self._blocked = True
         try:
             while True:
                 timeout = (deadline - time.time()) if deadline is not None else None
                 if timeout is not None and timeout <= 0:
-                    return None
+                    return empty
                 if self._db.condition.wait(timeout=timeout) is False:
-                    return None  # Timeout expired
+                    return empty  # Timeout expired
                 if self._unblock_reason is not None:
                     self._take_unblock_reason()
-                    return None  # Unblocked with TIMEOUT: same empty result as a timeout
+                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
                 ret = func(False)  # Second pass => first_pass=False
                 if ret is not None:
-                    return ret
+                    return ret if shape is None else shape(ret)
         finally:
             self._blocked = False
             self._unblock_reason = None
@@ -499,12 +523,12 @@ class BaseFakeSocket:
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         sig = SUPPORTED_COMMANDS[cmd_name]
         if self._server.server_type not in sig.server_types:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         func = getattr(self, sig.func_name, None)
         return func, sig
 
@@ -547,7 +571,13 @@ class BaseFakeSocket:
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
         if count is not None and count <= 0:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero
+            # is accepted and simply falls back to the default batch size.
+            if self._server.server_type != "dragonfly":
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if count < 0:
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = None
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()

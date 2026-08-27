@@ -72,8 +72,8 @@ def _find_near(
     :returns: List of GeoResults
     """
     results = []
-    # Iterating the sorted set itself walks it in score (geohash) order, which is the order
-    # an unsorted reply has to come back in. `items()` would give insertion order instead.
+    # Iterating the sorted set itself walks it in score (geohash) order, which is the order an unsorted reply has to
+    # come back in. `items()` would give insertion order instead.
     scores = dict(zset.items())
     for name in zset:
         _hash = scores[name]

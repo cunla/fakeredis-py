@@ -30,6 +30,12 @@ class SortFloat(Float):
         return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
 
+# Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry
+# (EXPIRE, PEXPIRE, SET EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond
+# it is rejected outright.
+DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
+
+
 class GenericCommandsMixin(CommandsMixinBase):
     _ttl: Callable[[CommandItem, float], int]
     _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
@@ -68,12 +74,24 @@ class GenericCommandsMixin(CommandsMixinBase):
             return item.value
 
     def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
-        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=msgs.EXPIRE_UNSUPPORTED_OPTION)
+        is_dragonfly = self.server_type == "dragonfly"
+        unsupported_option = (
+            msgs.DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION if is_dragonfly else msgs.EXPIRE_UNSUPPORTED_OPTION
+        )
+        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=unsupported_option)
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
-        counter = (nx, gt, lt).count(True)
-        if (counter > 1) or (nx and xx):
-            raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
+        if is_dragonfly:
+            # Dragonfly rejects only the two directly contradictory pairs; unlike redis it
+            # accepts NX alongside GT or LT and then applies both conditions.
+            if nx and xx:
+                raise SimpleError(msgs.DRAGONFLY_NX_XX_ERROR_MSG)
+            if gt and lt:
+                raise SimpleError(msgs.DRAGONFLY_GT_LT_ERROR_MSG)
+        else:
+            counter = (nx, gt, lt).count(True)
+            if (counter > 1) or (nx and xx):
+                raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
         if (
             not key
             or (xx and key.expireat is None)
@@ -105,13 +123,25 @@ class GenericCommandsMixin(CommandsMixinBase):
                 ret += 1
         return ret
 
+    def _clamp_relative_expiry(self, timestamp: float) -> float:
+        """Clamp a relative expiry deadline to what the server is willing to store."""
+        if self.server_type != "dragonfly":
+            return timestamp
+        return min(timestamp, self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS)
+
+    def _check_absolute_expiry(self, timestamp: float) -> None:
+        """Reject an absolute expiry deadline the server considers too far in the future."""
+        if self.server_type == "dragonfly" and timestamp > self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS:
+            raise SimpleError(msgs.EXPIRY_OUT_OF_RANGE_MSG)
+
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
-        res = self._expireat(key, self._db.time + seconds, *args)
+        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args)
         return res
 
     @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(float(timestamp))
         return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
@@ -142,10 +172,11 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
-        return self._expireat(key, self._db.time + ms / 1000.0, *args)
+        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args)
 
     @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(ms_timestamp / 1000.0)
         return self._expireat(key, ms_timestamp / 1000.0, *args)
 
     @command(name="PTTL", fixed=(Key(),))

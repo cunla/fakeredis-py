@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib.util
 import inspect
 import itertools
@@ -120,3 +122,30 @@ def redis_server_time(r: redis.Redis) -> datetime:
 def current_time() -> int:
     """Return current_time in ms"""
     return int(time.time() * 1000)
+
+
+def far_future_expiry(server_type: str) -> int:
+    """An absolute expiry timestamp (seconds) that the server under test will accept.
+
+    Dragonfly refuses to store a deadline more than 2**28-1 seconds away, so it gets a
+    nearer -- but still far future -- timestamp instead of the year-3021 one.
+    """
+    if server_type == "dragonfly":
+        return int(time.time()) + 10_000_000
+    return 33177117420
+
+
+def null_array_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a reply redis sends as a null array reads back as on the server under test.
+
+    Dragonfly keeps sending the RESP2 null array (`*-1`) under RESP3, where redis sends
+    nil, so a RESP3 client reads it back as `[]`. Under RESP2 both read back as None.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return []
+    return None
+
+
+def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test."""
+    return null_array_reply(r, server_type)

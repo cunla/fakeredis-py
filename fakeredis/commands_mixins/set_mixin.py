@@ -77,15 +77,19 @@ class SetCommandsMixin(CommandsMixinBase):
         if self.version < (7,):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
         if numkeys < 1:
-            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+            if self.server_type != "dragonfly":
+                raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         limit = 0
         if len(args) >= 2 and casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
             if limit < 0:
-                raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
+                raise SimpleError(
+                    msgs.DRAGONFLY_LIMIT_NEGATIVE_MSG if self.server_type == "dragonfly" else msgs.LIMIT_NEGATIVE_MSG
+                )
             args = args[:-2]
         if numkeys > len(args):
-            raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG if self.server_type == "dragonfly" else msgs.TOO_MANY_KEYS_MSG)
         elif numkeys < len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
@@ -112,9 +116,11 @@ class SetCommandsMixin(CommandsMixinBase):
     @command((Key(ExpiringMembersSet), Key(), bytes))
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
         src_exists = src.key in self._db
-        # The destination is only looked at once the source key exists, so moving out of a
-        # missing set into a wrongly typed key answers 0 rather than failing.
-        if src_exists and dst.value is not None and not isinstance(dst.value, ExpiringMembersSet):
+        dst_wrong_type = dst.value is not None and not isinstance(dst.value, ExpiringMembersSet)
+        # Redis only looks at the destination once the source key exists, while dragonfly
+        # checks its type up front -- so moving out of a missing set into a string fails
+        # there and answers 0 on redis.
+        if dst_wrong_type and (src_exists or self.server_type == "dragonfly"):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if not src_exists or member not in src.value:
             return 0
@@ -137,6 +143,10 @@ class SetCommandsMixin(CommandsMixinBase):
             return item  # type: ignore
         else:
             if count < 0:
+                # Dragonfly rejects the negative count while decoding it, so it reports the
+                # generic integer error rather than redis' "must be positive".
+                if self.server_type == "dragonfly":
+                    raise SimpleError(msgs.INVALID_INT_MSG)
                 raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
             items: bytes | list[bytes] = self.srandmember(key, count)
             for item in items:

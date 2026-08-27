@@ -82,7 +82,6 @@ class ScoreTest(RedisType):
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
     _scan: Callable[..., Any]
     _encodefloat: Callable[[float, bool], bytes]
 
@@ -117,7 +116,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def _zpop_flatten(self, count: int | None) -> bool:
         # RESP2 always returns a flat list. RESP3 returns a flat member/score pair
         # only when no count was given; with an explicit count it returns an array
-        # of pairs.
+        # of pairs. Dragonfly answers RESP3 with an array of pairs either way.
+        if self.server_type == "dragonfly":
+            return self._client_info.protocol_version == 2
         return self._client_info.protocol_version == 2 or count is None
 
     @command((Key(ZSet),), (Int,))
@@ -132,13 +133,15 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def bzpopmin(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, False))  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, False), self._empty_blocking_reply)  # type:ignore
+        return res  # type:ignore
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def bzpopmax(self, *args: bytes) -> list[list[bytes]] | None:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bzpop, keys, True))  # type:ignore
+        res = self._blocking(timeout, functools.partial(self._bzpop, keys, True), self._empty_blocking_reply)  # type:ignore
+        return res  # type:ignore
 
     @staticmethod
     def _limit_items(items: list[_T], offset: int, count: int) -> list[_T]:
@@ -457,17 +460,24 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         else:
             raise SimpleError(msgs.WRONGTYPE_MSG)
 
-    def _zset_scores_reply(self, zset: ZSet, withscores: bool) -> list[Any]:
-        """Shape the reply of a ZDIFF/ZUNION/ZINTER, which RESP3 pairs up member and score."""
+    def _zset_scores_reply(self, zset: ZSet, withscores: bool, flat_on_dragonfly: bool = False) -> list[Any]:
+        """Shape the reply of a ZDIFF/ZUNION/ZINTER, which RESP3 pairs up member and score.
+
+        Dragonfly keeps the flat RESP2 shape for ZUNION and ZINTER, but not for ZDIFF.
+        """
         if not withscores:
             return list(zset)
-        if self._client_info.protocol_version == 2:
+        if self._client_info.protocol_version == 2 or (flat_on_dragonfly and self.server_type == "dragonfly"):
             return [item for member in zset for item in (member, zset[member])]
         return [[member, zset[member]] for member in zset]
 
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
         if numkeys < 1:
-            raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            if self.server_type != "dragonfly":
+                raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
+            # Dragonfly reads numkeys as unsigned, so a negative one never decodes, and it words the zero case without
+            # naming the command.
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         if numkeys > len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b"sum"
@@ -489,9 +499,14 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
+        # Redis reads a plain set as a sorted set scoring every member 1. Dragonfly does
+        # that too, except in ZDIFF/ZDIFFSTORE, which only accept sorted sets.
+        zsets_only = self.server_type == "dragonfly" and func in {"ZDIFF", "ZDIFFSTORE"}
         sets = []
         for i in range(numkeys):
             item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
+            if zsets_only and isinstance(item.value, ExpiringMembersSet):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             sets.append(self._get_zset(item.value))
 
         out_members = set(sets[0])
@@ -565,7 +580,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZUNION", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        return self._zset_scores_reply(zset_res, withscores)
+        return self._zset_scores_reply(zset_res, withscores, flat_on_dragonfly=True)
 
     @command((Int, bytes), (bytes,))
     def zinter(self, numkeys: int, *args: bytes) -> list[Any]:
@@ -573,7 +588,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         sets = args[:-1] if withscores else args
         zset_res = self._zunioninterdiff("ZINTER", None, numkeys, *sets)
         assert isinstance(zset_res, ZSet)
-        return self._zset_scores_reply(zset_res, withscores)
+        return self._zset_scores_reply(zset_res, withscores, flat_on_dragonfly=True)
 
     @command(name="ZINTERCARD", fixed=(Int, bytes), repeat=(bytes,))
     def zintercard(self, numkeys: int, *args: bytes) -> int:
@@ -585,6 +600,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         )
         limit = limit if limit is not None else 0
         if limit < 0:
+            # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
+            if self.server_type == "dragonfly":
+                raise SimpleError(msgs.DRAGONFLY_LIMIT_NOT_POSITIVE_MSG)
             raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
@@ -633,16 +651,19 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             if res:
                 item.writeback()  # remove the key if the set is now empty
                 return [key, res]
+            # Dragonfly allows COUNT 0, which names the first existing key but pops nothing.
+            if count == 0 and item.value and self.server_type == "dragonfly":
+                return [key, []]
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
     def zmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("zmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._zmpop(keys, count, reverse, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def bzmpop(self, timeout: float, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"))
+        keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
             functools.partial(self._zmpop, keys, count, reverse),

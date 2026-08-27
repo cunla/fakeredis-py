@@ -44,8 +44,6 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
 
 
 class ListCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[float | int | None, Callable[[bool], Any]], Any]
-
     def _bpop_pass(self, keys: list[bytes], op: Callable[[list[bytes]], bytes], first_pass: bool) -> list[bytes] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
@@ -64,7 +62,7 @@ class ListCommandsMixin(CommandsMixinBase):
     def _bpop(self, args: Any, op: Callable[[list[bytes]], bytes]) -> Any:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op))
+        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op), self._empty_blocking_reply)
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def blpop(self, *args: bytes) -> Any:
@@ -175,16 +173,19 @@ class ListCommandsMixin(CommandsMixinBase):
             res = _list_pop_count(op, item, count)
             if res:
                 return [key, res]
+            # Dragonfly allows COUNT 0, which names the first existing key but pops nothing.
+            if count == 0 and item.value and self.server_type == "dragonfly":
+                return [key, []]
         return None
 
     @command(fixed=(Int,), repeat=(bytes,))
     def lmpop(self, numkeys: int, *args: bytes) -> list[Any] | None:
-        keys, count, left = parse_mpop_args("lmpop", numkeys, args, ("left", "right"))
+        keys, count, left = parse_mpop_args("lmpop", numkeys, args, ("left", "right"), self.server_type)
         return self._lmpop(keys, count, left, False)
 
     @command(fixed=(Timeout, Int), repeat=(bytes,))
     def blmpop(self, timeout: float, numkeys: int, *args: bytes) -> Any:
-        keys, count, left = parse_mpop_args("blmpop", numkeys, args, ("left", "right"))
+        keys, count, left = parse_mpop_args("blmpop", numkeys, args, ("left", "right"), self.server_type)
         return self._blocking(
             timeout,
             functools.partial(self._lmpop, keys, count, left),
@@ -284,12 +285,15 @@ class ListCommandsMixin(CommandsMixinBase):
                 "+maxlen",
             ),
         )
+        # Dragonfly validates these while decoding them, so all three report the generic
+        # integer error rather than naming the offending option.
+        is_dragonfly = self.server_type == "dragonfly"
         if rank == 0:
-            raise SimpleError(msgs.LPOS_RANK_CAN_NOT_BE_ZERO)
+            raise SimpleError(msgs.INVALID_INT_MSG if is_dragonfly else msgs.LPOS_RANK_CAN_NOT_BE_ZERO)
         if count is not None and count < 0:
-            raise SimpleError(msgs.LPOS_COUNT_NEGATIVE_MSG)
+            raise SimpleError(msgs.INVALID_INT_MSG if is_dragonfly else msgs.LPOS_COUNT_NEGATIVE_MSG)
         if maxlen is not None and maxlen < 0:
-            raise SimpleError(msgs.LPOS_MAXLEN_NEGATIVE_MSG)
+            raise SimpleError(msgs.INVALID_INT_MSG if is_dragonfly else msgs.LPOS_MAXLEN_NEGATIVE_MSG)
         rank = rank or 1
         ind, direction = (0, 1) if rank > 0 else (len(key.value) - 1, -1)
         rank = abs(rank)

@@ -465,7 +465,7 @@ def test_setrange(r: ClientType):
     assert r.setrange("bar", 2, "test") == 6
     assert r.get("bar") == b"\x00\x00test"
 
-    assert r.setrange("bar", 501970112, "test") == 501970116
+    assert r.setrange("bar", 50197112, "test") == 50197116
 
 
 def test_setrange_expiry(r: ClientType):
@@ -566,6 +566,7 @@ def test_getex_no_option_keeps_ttl(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly has no LCS, see test_dragonfly
 def test_lcs(r: ClientType):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     assert r.lcs("key1", "key2") == b"mytext"

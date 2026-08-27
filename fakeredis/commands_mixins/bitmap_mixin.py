@@ -4,7 +4,16 @@ import re
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
+from fakeredis._commands import (
+    DRAGONFLY_MAX_STRING_SIZE,
+    MAX_STRING_SIZE,
+    CommandItem,
+    Int,
+    Key,
+    command,
+    fix_range,
+    fix_range_string,
+)
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -60,10 +69,10 @@ class BitmapCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         bit_mode = False
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -72,8 +81,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
             if self.version >= (7, 4):  # Since 7.4 the range arguments are validated even when the key is missing
                 for arg in args[:2]:
                     Int.decode(arg)
-            # The first clear bit is at 0, the first set bit is not found (-1).
-            return -1 if bit == 1 else 0
+            return -1 if bit == 1 else 0  # The first clear bit is at 0, the first set bit is not found (-1).
 
         start = 0 if len(args) == 0 else Int.decode(args[0])
         value_bytes: bytes = key.value
@@ -109,7 +117,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
             return 0
         # The BYTE/BIT unit only exists from 7.0; older servers reject the extra argument
         # before looking at the range, so this check comes first.
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         start = Int.decode(args[0])
         end = Int.decode(args[1])
@@ -145,6 +153,9 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @command(name="setbit", fixed=(Key(bytes), BitOffset, BitValue))
     def setbit(self, key: CommandItem, offset: int, value: int) -> int:
+        # Dragonfly's 256MB cap on a value bounds the bit offset with it.
+        if self.server_type == "dragonfly" and offset >= 8 * DRAGONFLY_MAX_STRING_SIZE:
+            raise SimpleError(msgs.INVALID_BIT_OFFSET_MSG)
         val = key.value if key.value is not None else b"\x00"
         byte = offset // 8
         remaining = offset % 8

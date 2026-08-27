@@ -15,6 +15,8 @@ from . import _msgs as msgs
 from ._helpers import Database, SimpleError, null_terminate
 from ._typing import ServerType, VersionType
 
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
 MAX_STRING_SIZE = 512 * 1024 * 1024
 SUPPORTED_COMMANDS: dict[str, Signature] = {}  # Dictionary of supported commands name => Signature
 COMMANDS_WITH_SUB: set[str] = set()  # Commands with sub-commands
@@ -199,6 +201,21 @@ class Float(RedisType):
             return out
         except ValueError:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
+
+    @classmethod
+    def encode_shortest(cls, value: float) -> bytes:
+        """Render a double the way Dragonfly does, as the shortest string that round-trips.
+
+        Redis pads doubles out to 17 significant digits, so a score of 3.2 comes back as
+        ``3.2000000000000002``; Dragonfly prints ``3.2``, and drops the fractional part
+        altogether for whole numbers.
+        """
+        if math.isinf(value):
+            return str(value).encode()
+        out = repr(value)
+        if out.endswith(".0"):
+            out = out[:-2]
+        return out.encode()
 
     @classmethod
     def encode(cls, value: float, humanfriendly: bool) -> bytes:
