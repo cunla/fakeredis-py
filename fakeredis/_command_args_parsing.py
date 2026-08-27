@@ -150,11 +150,10 @@ def parse_mpop_args(
     `args` is ``key [key ...] <directions[0] | directions[1]> [COUNT count]``.
     Returns (keys, count, whether ``directions[0]`` was the chosen direction).
     """
-    is_dragonfly = server_type == "dragonfly"
     if len(args) < 2:  # arity (at least one key + a direction) is checked before numkeys, like real redis
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
     if numkeys <= 0:
-        if not is_dragonfly:
+        if server_type != "dragonfly":
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
         raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
@@ -164,10 +163,10 @@ def parse_mpop_args(
     if len(keys) != numkeys or first == second:  # exactly one direction, and it follows exactly `numkeys` keys
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     if count is not None and count <= 0:
-        if not is_dragonfly:
+        if server_type != "dragonfly":
             raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
-        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as
-        # unsigned by ZMPOP -- popping everything -- but rejected outright by LMPOP.
+        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP --
+        # popping everything -- but rejected outright by LMPOP.
         if count < 0:
             if command.lower().endswith("lmpop"):
                 raise SimpleError(msgs.INVALID_INT_MSG)
