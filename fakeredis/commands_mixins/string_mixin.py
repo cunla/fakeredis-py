@@ -8,6 +8,7 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
+    DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,
     CommandItem,
     Float,
@@ -98,8 +99,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     @command((Key(bytes), bytes))
     def append(self, key: CommandItem, value: bytes) -> int:
         old = key.get(b"")
-        if len(old) + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
+        self._check_string_size(len(old) + len(value))
         key.update(key.get(b"") + value)
         return len(key.value)
 
@@ -318,14 +318,25 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         key.value = value
         return 1
 
+    def _check_string_size(self, size: int) -> None:
+        """Refuse a string the server under test would not store.
+
+        Dragonfly caps a value at 256MB where redis allows 512MB, and words the refusal
+        without redis' `(proto-max-bulk-len)`.
+        """
+        if self.server_type == "dragonfly":
+            if size > DRAGONFLY_MAX_STRING_SIZE:
+                raise SimpleError(msgs.DRAGONFLY_STRING_OVERFLOW_MSG)
+        elif size > MAX_STRING_SIZE:
+            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
+
     @command((Key(bytes), Int, bytes))
     def setrange(self, key: CommandItem, offset: int, value: bytes) -> int:
         if offset < 0:
             raise SimpleError(msgs.INVALID_OFFSET_MSG)
         elif not value:
             return len(key.get(b""))
-        elif offset + len(value) > MAX_STRING_SIZE:
-            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
+        self._check_string_size(offset + len(value))
         out = key.get(b"")
         if len(out) < offset:
             out += b"\x00" * (offset - len(out))

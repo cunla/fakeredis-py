@@ -8,6 +8,7 @@ import valkey
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
+from test import testtools
 from test.testtools import raw_command
 
 
@@ -373,21 +374,17 @@ def test_expire_should_expire_key(r: ClientType):
     assert r.expire("bar", 1) is False
 
 
-def test_expire_should_throw_error(r: ClientType):
+def test_expire_should_throw_error(r: ClientType, real_server_details):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, xx=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, gt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, nx=True, lt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    with pytest.raises(Exception) as ctx:
-        r.expire("foo", 1, gt=True, lt=True)
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # Dragonfly only rejects the directly contradictory pairs; NX with GT or LT is accepted.
+    incompatible = [{"nx": True, "xx": True}, {"gt": True, "lt": True}]
+    if real_server_details.server_type != "dragonfly":
+        incompatible += [{"nx": True, "gt": True}, {"nx": True, "lt": True}]
+    for kwargs in incompatible:
+        with pytest.raises(Exception) as ctx:
+            r.expire("foo", 1, **kwargs)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
@@ -777,11 +774,12 @@ def test_from_hypothesis_redis7(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_preserves_expiry(r: ClientType):
+def test_copy_preserves_expiry(r: ClientType, real_server_details):
+    expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
-    r.expireat("foo", 33177117420)
+    r.expireat("foo", expire_at)
     assert r.copy("foo", "bar") == 1
-    assert r.expiretime("bar") == 33177117420
+    assert r.expiretime("bar") == expire_at
     assert r.get("bar") == b"0"
 
 
@@ -796,9 +794,10 @@ def test_copy_replaces(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_replaces_with_expiry(r: ClientType):
+def test_copy_replaces_with_expiry(r: ClientType, real_server_details):
+    expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
-    r.expireat("foo", 33177117420)
+    r.expireat("foo", expire_at)
     r.set("bar", "1")
     assert r.copy("foo", "bar") == 0
     assert r.get("bar") == b"1"
@@ -806,7 +805,7 @@ def test_copy_replaces_with_expiry(r: ClientType):
     assert r.copy("foo", "bar", replace=True) == 1
     assert r.get("bar") == b"0"
 
-    assert r.expiretime("bar") == 33177117420
+    assert r.expiretime("bar") == expire_at
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
