@@ -30,6 +30,14 @@ class SortFloat(Float):
         return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
 
+# Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry
+# (EXPIRE, PEXPIRE, SET EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond
+# it is rejected outright.
+DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
+# A hash field's TTL is capped more tightly still, and overshooting it is an error.
+DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
+
+
 class GenericCommandsMixin(CommandsMixinBase):
     _ttl: Callable[[CommandItem, float], int]
     _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
@@ -116,6 +124,17 @@ class GenericCommandsMixin(CommandsMixinBase):
             if key:
                 ret += 1
         return ret
+
+    def _clamp_relative_expiry(self, timestamp: float) -> float:
+        """Clamp a relative expiry deadline to what the server is willing to store."""
+        if self.server_type != "dragonfly":
+            return timestamp
+        return min(timestamp, self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS)
+
+    def _check_absolute_expiry(self, timestamp: float) -> None:
+        """Reject an absolute expiry deadline the server considers too far in the future."""
+        if self.server_type == "dragonfly" and timestamp > self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS:
+            raise SimpleError(msgs.EXPIRY_OUT_OF_RANGE_MSG)
 
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:

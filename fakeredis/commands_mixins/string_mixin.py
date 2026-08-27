@@ -8,6 +8,7 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import (
+    MAX_STRING_SIZE,
     CommandItem,
     Float,
     Int,
@@ -73,6 +74,10 @@ def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
         matches.append([[s1ind, r], [s2ind, c], curr_length])
 
     return opt[l1][l2], result.encode(), matches
+
+
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
 
 
 class StringCommandsMixin(CommandsMixinBase, ABC):
@@ -315,6 +320,18 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             return 0
         key.value = value
         return 1
+
+    def _check_string_size(self, size: int) -> None:
+        """Refuse a string the server under test would not store.
+
+        Dragonfly caps a value at 256MB where redis allows 512MB, and words the refusal
+        without redis' `(proto-max-bulk-len)`.
+        """
+        if self.server_type == "dragonfly":
+            if size > DRAGONFLY_MAX_STRING_SIZE:
+                raise SimpleError(msgs.DRAGONFLY_STRING_OVERFLOW_MSG)
+        elif size > MAX_STRING_SIZE:
+            raise SimpleError(msgs.STRING_OVERFLOW_MSG)
 
     @command((Key(bytes), Int, bytes))
     def setrange(self, key: CommandItem, offset: int, value: bytes) -> int:
