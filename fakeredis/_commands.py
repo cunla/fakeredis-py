@@ -203,6 +203,21 @@ class Float(RedisType):
             raise SimpleError(decode_error or cls.DECODE_ERROR)
 
     @classmethod
+    def encode_shortest(cls, value: float) -> bytes:
+        """Render a double the way Dragonfly does, as the shortest string that round-trips.
+
+        Redis pads doubles out to 17 significant digits, so a score of 3.2 comes back as
+        ``3.2000000000000002``; Dragonfly prints ``3.2``, and drops the fractional part
+        altogether for whole numbers.
+        """
+        if math.isinf(value):
+            return str(value).encode()
+        out = repr(value)
+        if out.endswith(".0"):
+            out = out[:-2]
+        return out.encode()
+
+    @classmethod
     def encode(cls, value: float, humanfriendly: bool) -> bytes:
         if math.isinf(value):
             return str(value).encode()

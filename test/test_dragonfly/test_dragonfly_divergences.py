@@ -12,7 +12,7 @@ import time
 import pytest
 
 from fakeredis._typing import ClientType
-from test.testtools import raw_command
+from test.testtools import raw_command, resp_conversion
 
 pytestmark = []
 pytestmark.extend(
@@ -83,6 +83,43 @@ def test_at_least_one_key_is_needed_for_numkeys_commands(r: ClientType):
     # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
     for args in (("sintercard", -1, "s"), ("zintercard", -1, "z")):
         _raises(r, "value is not an integer or out of range", *args)
+
+
+def test_zpopmin_returns_an_array_of_pairs_under_resp3(r: ClientType):
+    # Redis answers a countless ZPOPMIN/ZPOPMAX with a flat member/score pair under RESP3;
+    # dragonfly wraps it in an array, exactly as it does for the counted form.
+    r.zadd("z", {"a": 1.0, "b": 2.0})
+    expected = resp_conversion(r, [[b"a", 1.0]], [b"a", b"1"])
+    assert raw_command(r, "zpopmin", "z") == expected
+    assert raw_command(r, "zpopmax", "z") == resp_conversion(r, [[b"b", 2.0]], [b"b", b"2"])
+
+
+def test_zpopmin_on_a_missing_key_is_still_an_empty_array(r: ClientType):
+    assert raw_command(r, "zpopmin", "nosuchkey") == []
+
+
+def test_zunion_and_zinter_keep_the_flat_withscores_shape(r: ClientType):
+    # Under RESP3 redis pairs each member with its score; dragonfly keeps the RESP2 shape
+    # for these two, though not for ZDIFF.
+    r.zadd("a", {"m": 1.0})
+    r.zadd("b", {"m": 2.0})
+    for command in ("zunion", "zinter"):
+        assert raw_command(r, command, 2, "a", "b", "withscores") == resp_conversion(r, [b"m", 3.0], [b"m", b"3"])
+    assert raw_command(r, "zdiff", 2, "a", "nosuchkey", "withscores") == resp_conversion(r, [[b"m", 1.0]], [b"m", b"1"])
+
+
+def test_zdiff_only_accepts_sorted_sets(r: ClientType):
+    # Redis reads a plain set as a sorted set scoring every member 1; so does dragonfly,
+    # except here.
+    r.sadd("s", "m")
+    r.zadd("z", {"m": 1.0})
+    _raises(r, "WRONGTYPE", "zdiff", 2, "s", "z")
+    _raises(r, "WRONGTYPE", "zdiff", 2, "z", "s")
+    _raises(r, "WRONGTYPE", "zdiffstore", "dst", 2, "z", "s")
+    # The other set operations do take it.
+    assert raw_command(r, "zinterstore", "dst", 2, "s", "z") == 1
+    assert raw_command(r, "zunionstore", "dst", 2, "s", "z") == 1
+    assert raw_command(r, "zintercard", 2, "s", "z") == 1
 
 
 def test_smove_checks_the_destination_type_even_when_the_source_is_missing(r: ClientType):

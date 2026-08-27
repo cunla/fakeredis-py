@@ -534,13 +534,13 @@ def test_blpop_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_blpop_transaction(r: ClientType):
+def test_blpop_transaction(r: ClientType, real_server_details):
     p = r.pipeline()
     p.multi()
     p.blpop("missing", timeout=1000)
     result = p.execute()
     # Blocking commands behave like non-blocking versions in transactions
-    assert result == [None]
+    assert result == [testtools.empty_blocking_reply(r, real_server_details.server_type)]
 
 
 def test_brpop_test_multiple_lists(r: ClientType):
@@ -595,10 +595,12 @@ def test_brpoplpush_wrong_type(r: ClientType):
 
 
 @pytest.mark.slow
-def test_blocking_operations_when_empty(r: ClientType):
-    assert r.blpop(["foo"], timeout=1) is None
-    assert r.blpop(["bar", "foo"], timeout=1) is None
-    assert r.brpop("foo", timeout=1) is None
+def test_blocking_operations_when_empty(r: ClientType, real_server_details):
+    empty = testtools.empty_blocking_reply(r, real_server_details.server_type)
+    assert r.blpop(["foo"], timeout=1) == empty
+    assert r.blpop(["bar", "foo"], timeout=1) == empty
+    assert r.brpop("foo", timeout=1) == empty
+    # BRPOPLPUSH replies with a bulk string, which is nil on every server.
     assert r.brpoplpush("foo", "bar", timeout=1) is None
 
 
