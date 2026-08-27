@@ -149,3 +149,42 @@ def null_array_reply(r: redis.Redis, server_type: str) -> Any:
 def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
     """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test."""
     return null_array_reply(r, server_type)
+
+
+def xinfo_stream_raw(r: ClientType, name: str) -> dict[str, Any]:
+    """XINFO STREAM as a str-keyed dict, bypassing redis-py's parser.
+
+    That parser assumes an empty stream's `first-entry` is nil; dragonfly answers with a
+    null array, which reads back as `[]` under RESP3 and trips the parser up.
+    """
+    reply = raw_command(r, "xinfo", "stream", name)
+    if isinstance(reply, dict):  # a RESP3 map
+        return {k.decode(): v for k, v in reply.items()}
+    return {reply[i].decode(): reply[i + 1] for i in range(0, len(reply), 2)}
+
+
+def disable_xread_parsing(r: ClientType, server_type: str) -> bool:
+    """Drop redis-py's XREAD callback when it cannot parse the reply of the server under test.
+
+    A blocking XREAD woken by a new entry is answered by dragonfly with the RESP2-style
+    array, where Redis sends a map; redis-py's RESP3 parser assumes the map. Returns whether
+    the callback was dropped, i.e. whether XREAD now answers in the RESP2 shape.
+    """
+    if server_type != "dragonfly" or get_protocol_version(r) != 3:
+        return False
+    r.response_callbacks.pop("XREAD", None)
+    return True
+
+
+def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:
+    """Assert that an XREAD/XREADGROUP matched nothing.
+
+    Redis answers with an empty map under RESP3 and an empty array under RESP2. Dragonfly
+    answers with an empty array in both, and redis-py's RESP3 parser cannot consume that,
+    so on dragonfly the raw reply is checked instead of the parsed one.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        assert raw_command(r, *raw_args) == []
+        return
+    method, args = raw_args[0], raw_args[1:]
+    assert r.execute_command(method, *args) == resp_conversion(r, {}, [])
