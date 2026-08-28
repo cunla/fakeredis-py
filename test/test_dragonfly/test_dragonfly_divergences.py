@@ -8,6 +8,7 @@ Dragonfly counterparts, so both sides of each divergence stay covered.
 from __future__ import annotations
 
 import time
+import uuid
 
 import pytest
 
@@ -44,6 +45,16 @@ def test_lcs_is_not_supported(r: ClientType):
     assert str(err) == "unknown command `LCS`"
 
 
+@pytest.mark.parametrize("subcommand", ["SHARDCHANNELS", "SHARDNUMSUB"])
+def test_pubsub_shard_introspection_needs_cluster_mode(r: ClientType, subcommand: str):
+    _raises(r, f"PUBSUB {subcommand} is not supported in non cluster mode", "PUBSUB", subcommand)
+
+
+def test_spublish_and_ssubscribe_still_work(r: ClientType):
+    # Only the introspection subcommands are refused; sharded publishing itself works.
+    assert raw_command(r, "SPUBLISH", "chan", "msg") == 0
+
+
 def test_absolute_expiry_beyond_horizon_is_rejected(r: ClientType):
     # Dragonfly refuses a deadline more than 2**28-1 seconds away.
     horizon = 2**28 - 1
@@ -69,6 +80,68 @@ def test_expire_accepts_nx_with_gt_or_lt(r: ClientType):
     _raises(r, "NX and XX options at the same time are not compatible", "EXPIRE", "foo", 100, "NX", "XX")
     _raises(r, "GT and LT options at the same time are not compatible", "EXPIRE", "foo", 100, "GT", "LT")
     _raises(r, "Unsupported option: BOGUS", "EXPIRE", "foo", 100, "BOGUS")
+
+
+def test_sunsubscribe_is_confirmed_as_unsubscribe(r: ClientType):
+    # A unique channel: dragonfly's "unsubscribe" reply leaves redis-py's shard_channels
+    # set populated, so closing the pubsub does not reliably drop the server-side
+    # subscription and a shared name would leak into other tests.
+    channel = f"shard-{uuid.uuid4().hex}"
+    p = r.pubsub()
+    try:
+        p.ssubscribe(channel)
+        assert p.get_message(timeout=2)["type"] == "ssubscribe"
+        p.sunsubscribe()
+        # Dragonfly answers with "unsubscribe", not "sunsubscribe".
+        assert p.get_message(timeout=2)["type"] == "unsubscribe"
+    finally:
+        p.close()
+
+
+def test_pubsub_help_text(r: ClientType):
+    assert raw_command(r, "PUBSUB", "HELP") == [
+        b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
+        b"CHANNELS [<pattern>]",
+        b"\tReturn the currently active channels matching a <pattern> (default: '*').",
+        b"NUMPAT",
+        b"\tReturn number of subscriptions to patterns.",
+        b"NUMSUB [<channel> <channel...>]",
+        b"\tReturns the number of subscribers for the specified channels, excluding",
+        b"\tpattern subscriptions.",
+        b"SHARDCHANNELS [pattern]",
+        b"\tReturns a list of active shard channels, optionally matching the specified pattern ",
+        b"(default: '*').",
+        b"SHARDNUMSUB [<channel> <channel...>]",
+        b"\tReturns the number of subscribers for the specified shard channels, excluding",
+        b"\tpattern subscriptions.",
+        b"HELP",
+        b"\tPrints this help.",
+    ]
+
+
+def test_shard_and_plain_channels_share_one_namespace(r: ClientType):
+    # Outside cluster mode dragonfly has a single channel namespace: SPUBLISH reaches a
+    # plain subscriber and PUBLISH reaches a sharded one. Only the message type differs.
+    channel = f"chan-{uuid.uuid4().hex}"
+    plain, shard = r.pubsub(), r.pubsub()
+    try:
+        plain.subscribe(channel)
+        assert plain.get_message(timeout=2)["type"] == "subscribe"
+        shard.ssubscribe(channel)
+        assert shard.get_message(timeout=2)["type"] == "ssubscribe"
+
+        assert r.spublish(channel, "via-spublish") == 2
+        for p in (plain, shard):
+            msg = p.get_message(timeout=2)
+            assert (msg["type"], msg["data"]) == ("smessage", b"via-spublish")
+
+        assert r.publish(channel, "via-publish") == 2
+        for p in (plain, shard):
+            msg = p.get_message(timeout=2)
+            assert (msg["type"], msg["data"]) == ("message", b"via-publish")
+    finally:
+        plain.close()
+        shard.close()
 
 
 def test_at_least_one_key_is_needed_for_numkeys_commands(r: ClientType):
