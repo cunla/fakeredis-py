@@ -8,6 +8,9 @@ from fakeredis._commands import command
 from fakeredis._helpers import NoResponse, SimpleError, compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
+# Dragonfly only serves the sharded pub/sub introspection subcommands in cluster mode.
+DRAGONFLY_NON_CLUSTER_MSG = "ERR PUBSUB {} is not supported in non cluster mode"
+
 
 class PubSubCommandsMixin(CommandsMixinBase):
     put_response: Callable[[Any], None]
@@ -131,7 +134,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
         SSUBSCRIBE/SPUBLISH themselves work, only PUBSUB SHARDCHANNELS/SHARDNUMSUB are refused.
         """
         if self._server.server_type == "dragonfly":
-            raise SimpleError(msgs.DRAGONFLY_NON_CLUSTER_MSG.format(subcommand))
+            raise SimpleError(DRAGONFLY_NON_CLUSTER_MSG.format(subcommand))
 
     def _channels(self, subscribers_dict: dict[bytes, Any], *patterns: bytes) -> list[bytes]:
         channels = list(subscribers_dict.keys())

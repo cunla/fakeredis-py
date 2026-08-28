@@ -43,8 +43,6 @@ WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
 # Dragonfly reports unknown commands in its own format, without echoing the arguments back.
 DRAGONFLY_UNKNOWN_COMMAND_MSG = "ERR unknown command `{}`"
-# Dragonfly only serves the sharded pub/sub introspection subcommands in cluster mode.
-DRAGONFLY_NON_CLUSTER_MSG = "ERR PUBSUB {} is not supported in non cluster mode"
 # Raised by dragonfly for an absolute expiry deadline beyond DRAGONFLY_MAX_EXPIRE_SECONDS.
 EXPIRY_OUT_OF_RANGE_MSG = "ERR expiry is out of range"
 # Dragonfly checks the expiry option pairs separately, and accepts NX together with GT/LT.
