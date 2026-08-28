@@ -12,8 +12,8 @@ from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
 RESET = SimpleString(b"RESET")
-# Client types accepted by CLIENT KILL. fakeredis has no replication, so `master`,
-# `replica` and `slave` are valid filters that never match a live connection.
+# Client types accepted by CLIENT KILL. fakeredis has no replication, so `master`, `replica` and `slave` are valid
+# filters that never match a live connection.
 CLIENT_KILL_TYPES = {b"normal", b"master", b"replica", b"slave", b"pubsub"}
 
 
@@ -228,8 +228,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             name, value = args[i], args[i + 1]
             if casematch(name, b"id"):
-                # valkey rejects an unparsable id as a syntax error, redis reports it as
-                # an out-of-range client-id.
+                # valkey rejects an unparsable id as a syntax error, redis reports it as an out-of-range client-id.
                 decode_error = (
                     msgs.SYNTAX_ERROR_MSG if self.server_type == "valkey" else msgs.CLIENT_KILL_INVALID_ID_MSG
                 )
@@ -302,8 +301,8 @@ class ConnectionCommandsMixin(CommandsMixinBase):
 
     @command(name="CLIENT KILL", fixed=(bytes,), repeat=(bytes,))
     def client_kill(self, *args: bytes) -> SimpleString | int:
-        # The one-argument form is the old `CLIENT KILL addr:port` syntax, which reports
-        # whether it killed anything rather than a count, and may kill the caller.
+        # The one-argument form is the old `CLIENT KILL addr:port` syntax, which reports whether it killed anything
+        # rather than a count, and may kill the caller.
         if len(args) == 1:
             if self._kill_clients(addr=args[0], skipme=False) == 0:
                 raise SimpleError(msgs.CLIENT_KILL_NO_SUCH_CLIENT_MSG)

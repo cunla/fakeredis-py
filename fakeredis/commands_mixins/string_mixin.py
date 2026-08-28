@@ -208,8 +208,8 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             if float_mode:
                 if not math.isfinite(amount):
                     raise SimpleError(msgs.NONFINITE_MSG)
-                # Real redis computes the saturated delta in long double; rounding to 15 significant
-                # digits hides the artifacts of computing it in a 64-bit double (e.g. 7.4-5).
+                # Real redis computes the saturated delta in long double; rounding to 15 significant digits hides the
+                # artifacts of computing it in a 64-bit double (e.g. 7.4-5).
                 amount = float(f"{amount:.15g}")
             elif not Int.valid(int(amount)):
                 raise SimpleError(msgs.OVERFLOW_MSG)
@@ -322,8 +322,8 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     def _check_string_size(self, size: int) -> None:
         """Refuse a string the server under test would not store.
 
-        Dragonfly caps a value at 256MB where redis allows 512MB, and words the refusal
-        without redis' `(proto-max-bulk-len)`.
+        Dragonfly caps a value at 256MB where redis allows 512MB, and words the refusal without redis'
+        `(proto-max-bulk-len)`.
         """
         if self.server_type == "dragonfly":
             if size > DRAGONFLY_MAX_STRING_SIZE:

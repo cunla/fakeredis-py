@@ -1,6 +1,6 @@
 """
-Helper classes and methods used in mixins implementing various commands.
-Unlike _helpers.py, here the methods should be used only in mixins.
+Helper classes and methods used in mixins implementing various commands. Unlike _helpers.py, here the methods should be
+used only in mixins.
 """
 
 from __future__ import annotations
@@ -162,8 +162,8 @@ class DbIndex(Int):
 class Float(RedisType):
     """Argument converter for floating-point values.
 
-    Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT)
-    and double for others (zset scores), but Python doesn't support
+    Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT) and double for others (zset scores), but Python
+    doesn't support
     `long double`.
     """
 
@@ -193,9 +193,8 @@ class Float(RedisType):
             out = float(value)
             if math.isnan(out):
                 raise ValueError
-            # Values that over- or under-flow are explicitly rejected by
-            # redis. This is a crude hack to determine whether the input
-            # may have been such a value.
+            # Values that over- or under-flow are explicitly rejected by redis. This is a crude hack to determine
+            # whether the input may have been such a value.
             if not allow_erange and out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
                 raise ValueError
             return out

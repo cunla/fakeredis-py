@@ -54,10 +54,9 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def _shard_subscribers(self) -> dict[bytes, Any]:
         """The registry SSUBSCRIBE/SPUBLISH work against.
 
-        Outside cluster mode dragonfly keeps a single channel namespace, so a sharded
-        subscription lands in the same place as a plain one: SPUBLISH then reaches plain
-        subscribers and PUBLISH reaches sharded ones. Only the message type differs, and
-        that is decided by the publishing command.
+        Outside cluster mode dragonfly keeps a single channel namespace, so a sharded subscription lands in the same
+        place as a plain one: SPUBLISH then reaches plain subscribers and PUBLISH reaches sharded ones. Only the message
+        type differs, and that is decided by the publishing command.
         """
         if self._server.server_type == "dragonfly":
             return self._server.subscribers
@@ -85,8 +84,8 @@ class PubSubCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def sunsubscribe(self, *channels: bytes) -> NoResponse:
-        # Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe" message, even though
-        # it answers SSUBSCRIBE with "ssubscribe".
+        # Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe" message, even though it answers SSUBSCRIBE with
+        # "ssubscribe".
         reply = b"unsubscribe" if self._server.server_type == "dragonfly" else b"sunsubscribe"
         return self._unsubscribe(channels, self._shard_subscribers, reply)
 

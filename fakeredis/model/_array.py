@@ -63,8 +63,7 @@ class Array(BaseModel):
     def scan_range(self, start: int, end: int, limit: int | None = None) -> list[tuple[int, bytes]]:
         """Return existing index-value pairs in [start, end] (inclusive).
 
-        If start > end the range is traversed in descending order.
-        Stops after `limit` pairs if given.
+        If start > end the range is traversed in descending order. Stops after `limit` pairs if given.
         """
         if start <= end:
             indices = sorted(k for k in self._data if start <= k <= end)

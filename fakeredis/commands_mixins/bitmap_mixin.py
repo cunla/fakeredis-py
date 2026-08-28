@@ -97,8 +97,8 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if result != -1:
             result += start if bit_mode else (start * 8)
         elif bit == 0 and len(args) <= 1:
-            # Redis treats the value as padded with zero bytes to an infinity
-            # if the user is looking for the first clear bit and no end is set.
+            # Redis treats the value as padded with zero bytes to an infinity if the user is looking for the first clear
+            # bit and no end is set.
             result = len(key.value) * 8
         return result
 
@@ -115,8 +115,8 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if key.value is None and self.version < (7, 4):
             # Before 7.4 a missing key returned 0 without validating the range arguments
             return 0
-        # The BYTE/BIT unit only exists from 7.0; older servers reject the extra argument
-        # before looking at the range, so this check comes first.
+        # The BYTE/BIT unit only exists from 7.0; older servers reject the extra argument before looking at the range,
+        # so this check comes first.
         if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         start = Int.decode(args[0])
@@ -161,8 +161,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         remaining = offset % 8
         actual_bitoffset = 7 - remaining
         if len(val) - 1 < byte:
-            # We need to expand val so that we can set the appropriate
-            # bit.
+            # We need to expand val so that we can set the appropriate bit.
             needed = byte - (len(val) - 1)
             val += b"\x00" * needed
         old_byte = val[byte]

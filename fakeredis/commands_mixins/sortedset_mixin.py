@@ -99,8 +99,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         for item in members:
             zset.discard(item)
         if members:
-            # Mark dirty so the key is written back and removed once the set is
-            # empty (real Redis deletes a sorted set when its last member is popped).
+            # Mark dirty so the key is written back and removed once the set is empty (real Redis deletes a sorted set
+            # when its last member is popped).
             key.updated()
         return res
 
@@ -114,9 +114,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return None
 
     def _zpop_flatten(self, count: int | None) -> bool:
-        # RESP2 always returns a flat list. RESP3 returns a flat member/score pair
-        # only when no count was given; with an explicit count it returns an array
-        # of pairs. Dragonfly answers RESP3 with an array of pairs either way.
+        # RESP2 always returns a flat list. RESP3 returns a flat member/score pair only when no count was given; with an
+        # explicit count it returns an array of pairs. Dragonfly answers RESP3 with an array of pairs either way.
         if self.server_type == "dragonfly":
             return self._client_info.protocol_version == 2
         return self._client_info.protocol_version == 2 or count is None
@@ -242,8 +241,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), Float, bytes))
     def zincrby(self, key: CommandItem, increment: float, member: bytes) -> float:
-        # Can't just default the old score to 0.0, because in IEEE754, adding
-        # 0.0 to something isn't a nop (e.g., 0.0 + -0.0 == 0.0).
+        # Can't just default the old score to 0.0, because in IEEE754, adding 0.0 to something isn't a nop (e.g., 0.0 +
+        # -0.0 == 0.0).
         score: float
         try:
             score = key.value.get(member, None) + increment
@@ -499,8 +498,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # Redis reads a plain set as a sorted set scoring every member 1. Dragonfly does
-        # that too, except in ZDIFF/ZDIFFSTORE, which only accept sorted sets.
+        # Redis reads a plain set as a sorted set scoring every member 1. Dragonfly does that too, except in
+        # ZDIFF/ZDIFFSTORE, which only accept sorted sets.
         zsets_only = self.server_type == "dragonfly" and func in {"ZDIFF", "ZDIFFSTORE"}
         sets = []
         for i in range(numkeys):
@@ -517,9 +516,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         # We first build a regular dict and turn it into a ZSet. The reason is subtle: a ZSet won't update a score from
         # -0 to +0 (or vice versa) through assignment, but a regular dict will.
         out: dict[bytes, Any] = {}
-        # The sort affects the order of floating-point operations.
-        # Note that redis uses qsort(1), which has no stability guarantees,
-        # so we can't be sure to match it in all cases.
+        # The sort affects the order of floating-point operations. Note that redis uses qsort(1), which has no stability
+        # guarantees, so we can't be sure to match it in all cases.
         for s, w in sorted(zip(sets, weights), key=lambda x: len(x[0])):
             for member, score in s.items():
                 # With COUNT, each set contributes its weight regardless of the member's score.

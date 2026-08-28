@@ -33,9 +33,8 @@ def _setop(
 ) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
-    If `stop_if_missing`, the output will be made an empty set as soon as
-    an empty input set is encountered (use for SINTER[STORE]). May assume
-    that `key` is a set (or empty), but `keys` could be anything.
+    If `stop_if_missing`, the output will be made an empty set as soon as an empty input set is encountered (use for
+    SINTER[STORE]). May assume that `key` is a set (or empty), but `keys` could be anything.
     """
     ans = _calc_setop(op, stop_if_missing, key, *keys)
     if dst is None:
@@ -117,9 +116,8 @@ class SetCommandsMixin(CommandsMixinBase):
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
         src_exists = src.key in self._db
         dst_wrong_type = dst.value is not None and not isinstance(dst.value, ExpiringMembersSet)
-        # Redis only looks at the destination once the source key exists, while dragonfly
-        # checks its type up front -- so moving out of a missing set into a string fails
-        # there and answers 0 on redis.
+        # Redis only looks at the destination once the source key exists, while dragonfly checks its type up front -- so
+        # moving out of a missing set into a string fails there and answers 0 on redis.
         if dst_wrong_type and (src_exists or self.server_type == "dragonfly"):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         if not src_exists or member not in src.value:
@@ -143,8 +141,8 @@ class SetCommandsMixin(CommandsMixinBase):
             return item  # type: ignore
         else:
             if count < 0:
-                # Dragonfly rejects the negative count while decoding it, so it reports the
-                # generic integer error rather than redis' "must be positive".
+                # Dragonfly rejects the negative count while decoding it, so it reports the generic integer error rather
+                # than redis' "must be positive".
                 if self.server_type == "dragonfly":
                     raise SimpleError(msgs.INVALID_INT_MSG)
                 raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
@@ -191,9 +189,8 @@ class SetCommandsMixin(CommandsMixinBase):
         return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
-    # These are not quite the same as the real redis ones, which are
-    # approximate and store the results in a string. Instead, it is implemented
-    # on top of sets.
+    # These are not quite the same as the real redis ones, which are approximate and store the results in a string.
+    # Instead, it is implemented on top of sets.
 
     @command((Key(ExpiringMembersSet),), (bytes,))
     def pfadd(self, key: CommandItem, *elements: bytes) -> int:

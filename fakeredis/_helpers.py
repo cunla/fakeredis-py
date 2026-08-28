@@ -47,8 +47,7 @@ def current_time() -> int:
 
 
 def null_terminate(s: bytes) -> bytes:
-    # Redis uses C functions on some strings, which means they stop at the
-    # first NULL.
+    # Redis uses C functions on some strings, which means they stop at the first NULL.
     ind = s.find(b"\0")
     if ind > -1:
         return s[:ind].lower()
@@ -77,12 +76,11 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
-    escaping rules to redis, uses ! instead of ^ to negate a character set,
-    and handles invalid cases (such as a [ without a ]) differently. This
-    implementation was written by studying the redis implementation.
+    escaping rules to redis, uses ! instead of ^ to negate a character set, and handles invalid cases (such as a [
+    without a ]) differently. This implementation was written by studying the redis implementation.
     """
-    # It's easier to work with text than bytes, because indexing bytes
-    # doesn't behave the same in Python 3. Latin-1 will round-trip safely.
+    # It's easier to work with text than bytes, because indexing bytes doesn't behave the same in Python 3. Latin-1 will
+    # round-trip safely.
     pattern: str = pattern_bytes.decode(
         "latin-1",
     )
@@ -164,8 +162,7 @@ class Database(MutableMapping):  # type: ignore
     def wake_all(self) -> None:
         """Wake every client blocked on this database, without reporting a key change.
 
-        Used by CLIENT UNBLOCK: woken clients re-check their own state and go back to
-        sleep unless they were the target.
+        Used by CLIENT UNBLOCK: woken clients re-check their own state and go back to sleep unless they were the target.
         """
         self.condition.notify_all()
         for callback in self._change_callbacks:
@@ -221,8 +218,8 @@ class Database(MutableMapping):  # type: ignore
         self._remove_expired()
         return len(self._dict)
 
-    # Databases use identity semantics: they are mutable and are keyed by index
-    # on the server, never compared by content.
+    # Databases use identity semantics: they are mutable and are keyed by index on the server, never compared by
+    # content.
     def __hash__(self) -> int:
         return id(self)
 
@@ -255,8 +252,7 @@ class FakeSelector:
         if timeout is not None and timeout <= 0:
             return False
 
-        # A sleep/poll loop is easier to mock out than messing with condition
-        # variables.
+        # A sleep/poll loop is easier to mock out than messing with condition variables.
         start = time.time()
         while True:
             if self.sock.responses.qsize():

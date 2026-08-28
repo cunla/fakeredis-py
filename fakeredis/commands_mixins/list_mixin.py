@@ -222,8 +222,7 @@ class ListCommandsMixin(CommandsMixinBase):
             indices_to_remove = found[count:]
         else:
             indices_to_remove = found
-        # Iterating in reverse order to ensure the indices
-        # remain valid during deletion.
+        # Iterating in reverse order to ensure the indices remain valid during deletion.
         for index in reversed(indices_to_remove):
             del a_list[index]
         if indices_to_remove:
@@ -285,8 +284,8 @@ class ListCommandsMixin(CommandsMixinBase):
                 "+maxlen",
             ),
         )
-        # Dragonfly validates these while decoding them, so all three report the generic
-        # integer error rather than naming the offending option.
+        # Dragonfly validates these while decoding them, so all three report the generic integer error rather than
+        # naming the offending option.
         is_dragonfly = self.server_type == "dragonfly"
         if rank == 0:
             raise SimpleError(msgs.INVALID_INT_MSG if is_dragonfly else msgs.LPOS_RANK_CAN_NOT_BE_ZERO)

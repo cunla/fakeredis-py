@@ -118,8 +118,8 @@ _FPHA_TYPES: dict[bytes, tuple[str, Callable[[float], float]]] = {
 def _shortest_float_in_type(quantized: float, quantizer: Callable[[float], float]) -> float:
     """Return the double parsed from the shortest decimal string that round-trips through the FP type.
 
-    This matches how real redis prints FPHA values: the stored FP16/BF16/FP32 value is rendered with
-    the fewest digits that still parse back to the same value in that type (e.g. FP16(0.1) prints as 0.1).
+    This matches how real redis prints FPHA values: the stored FP16/BF16/FP32 value is rendered with the fewest digits
+    that still parse back to the same value in that type (e.g. FP16(0.1) prints as 0.1).
     """
     for precision in range(1, 18):
         candidate = float(f"{quantized:.{precision}g}")
@@ -172,8 +172,8 @@ def _number_token_positions(raw: bytes) -> list[tuple[int, int]]:
 def _apply_fpha(value: JsonType, fpha_type: bytes, raw: bytes) -> JsonType:
     """Convert homogeneous numeric arrays in `value` to the requested floating-point type.
 
-    Every number in an array whose elements are all numbers is quantized to the FP type; an
-    out-of-range number raises the same error as real redis, pointing at its position in `raw`.
+    Every number in an array whose elements are all numbers is quantized to the FP type; an out-of-range number raises
+    the same error as real redis, pointing at its position in `raw`.
     """
     type_name, quantizer = _FPHA_TYPES[fpha_type]
     # Index of the current number in document order, used to locate the offending token on error.

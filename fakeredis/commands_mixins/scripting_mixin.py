@@ -394,9 +394,8 @@ def _cjson_lua_to_python(obj: Any) -> Any:
     if lua_type != "table":
         return obj
 
-    # Check for array-like structure: integer keys from 1 to len(items)
-    # (this check matches what cjson does, e.g. tables like {"a", "b", c=3} are treated as dicts
-    # with int keys for the array-like parts)
+    # Check for array-like structure: integer keys from 1 to len(items) (this check matches what cjson does, e.g. tables
+    # like {"a", "b", c=3} are treated as dicts with int keys for the array-like parts)
     keys = list(obj.keys())
     is_array = all(isinstance(k, int) for k in keys) and sorted(keys) == list(range(1, len(keys) + 1))
 

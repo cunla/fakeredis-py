@@ -118,12 +118,11 @@ class BaseFakeSocket:
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
         self.responses: queue.Queue[bytes] | None = queue.Queue()
-        # Prevents parser from processing commands. Not used in this module,
-        # but set by aioredis module to prevent new commands being processed
-        # while handling a blocking command.
+        # Prevents parser from processing commands. Not used in this module, but set by aioredis module to prevent new
+        # commands being processed while handling a blocking command.
         self._paused = False
-        # Set by CLIENT KILL. The owning client only notices when it next writes,
-        # matching a real server closing the connection underneath it.
+        # Set by CLIENT KILL. The owning client only notices when it next writes, matching a real server closing the
+        # connection underneath it.
         self._killed = False
         # CLIENT REPLY state, mirroring redis' CLIENT_REPLY_OFF/SKIP/SKIP_NEXT flags.
         self._reply_off = False
@@ -132,8 +131,8 @@ class BaseFakeSocket:
         # CLIENT NO-EVICT / CLIENT NO-TOUCH, reported in the CLIENT INFO flags field.
         self._no_evict = False
         self._no_touch = False
-        # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this
-        # client is blocked and, if so, how it should be woken.
+        # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this client is blocked and, if so, how it
+        # should be woken.
         self._blocked = False
         self._unblock_reason: bytes | None = None
         # Subkey (hash field) events recorded by the currently running command: (event, key, subkeys)
@@ -170,9 +169,8 @@ class BaseFakeSocket:
 
         :param msg: The response message.
         """
-        # redis.Connection.__del__ might call self.close at any time, which
-        # will set self.responses to None. We assume this will happen
-        # atomically, and the code below then protects us against this.
+        # redis.Connection.__del__ might call self.close at any time, which will set self.responses to None. We assume
+        # this will happen atomically, and the code below then protects us against this.
         responses = self.responses
         if responses:
             responses.put(msg)
@@ -193,8 +191,7 @@ class BaseFakeSocket:
     def _cleanup(self, server: Any) -> None:
         """Remove all the references to `self` from `server`.
 
-        This is called with the server lock held, but it may be some time after
-        self.close.
+        This is called with the server lock held, but it may be some time after self.close.
         """
         for subs in server.subscribers.values():
             subs.discard(self)
@@ -205,10 +202,9 @@ class BaseFakeSocket:
     def kill(self) -> None:
         """Disconnect this socket on behalf of CLIENT KILL, from any connection.
 
-        The socket is dropped from the server immediately, so it stops showing up in
-        CLIENT LIST and stops receiving published messages, but the queued responses are
-        left intact: a client that killed itself still has to read the reply to the
-        CLIENT KILL itself. Called with the server lock held.
+        The socket is dropped from the server immediately, so it stops showing up in CLIENT LIST and stops receiving
+        published messages, but the queued responses are left intact: a client that killed itself still has to read the
+        reply to the CLIENT KILL itself. Called with the server lock held.
         """
         self._killed = True
         try:
@@ -218,10 +214,8 @@ class BaseFakeSocket:
         self._cleanup(self._server)
 
     def close(self) -> None:
-        # Mark ourselves for cleanup. This might be called from
-        # redis.Connection.__del__, which the garbage collection could call
-        # at any time, and hence we can't safely take the server lock.
-        # We rely on list.append being atomic.
+        # Mark ourselves for cleanup. This might be called from redis.Connection.__del__, which the garbage collection
+        # could call at any time, and hence we can't safely take the server lock. We rely on list.append being atomic.
         try:
             self._server.sockets.remove(self)
         except ValueError:  # already removed by CLIENT KILL
@@ -234,8 +228,8 @@ class BaseFakeSocket:
     def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
         """Build the server's "unknown command" error.
 
-        Dragonfly uses its own wording and never echoes the arguments back, so `args` is
-        only appended for the Redis/Valkey format.
+        Dragonfly uses its own wording and never echoes the arguments back, so `args` is only appended for the
+        Redis/Valkey format.
         """
         if self._server.server_type == "dragonfly":
             return SimpleError(msgs.DRAGONFLY_UNKNOWN_COMMAND_MSG.format(command.upper()))
@@ -327,8 +321,8 @@ class BaseFakeSocket:
             result = exc
         result = self._decode_result(result)
         suppressed = self._reply_off or self._reply_skip
-        # Mirror redis' resetClient(): the SKIP armed by CLIENT REPLY SKIP takes effect
-        # on the command *after* it, then clears itself.
+        # Mirror redis' resetClient(): the SKIP armed by CLIENT REPLY SKIP takes effect on the command *after* it, then
+        # clears itself.
         self._reply_skip, self._reply_skip_next = self._reply_skip_next, False
         if suppressed or isinstance(result, NoResponse):
             return
@@ -406,8 +400,8 @@ class BaseFakeSocket:
     def _subkey_notifications(self, command_items: list[CommandItem]) -> None:
         """Send subkey notifications (added in redis 8.8), currently emitted for hash fields only.
 
-        Unlike key-level notifications above, these follow the `notify-keyspace-events` config:
-        the `h` class flag must be set, and each of the S/T/I/V flags enables one channel type.
+        Unlike key-level notifications above, these follow the `notify-keyspace-events` config: the `h` class flag must
+        be set, and each of the S/T/I/V flags enables one channel type.
         """
         events, self._subkey_events = self._subkey_events, []
         for command_item in command_items:
@@ -476,16 +470,14 @@ class BaseFakeSocket:
     ) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
-        The timeout is in seconds, and 0 means infinite. The function
-        is called with a boolean to indicate whether this is the first call.
-        If it returns None, it is considered to have "failed" and is retried
-        each time the condition variable is notified, until the timeout is
-        reached.
+        The timeout is in seconds, and 0 means infinite. The function is called with a boolean to indicate whether this
+        is the first call. If it returns None, it is considered to have "failed" and is retried each time the condition
+        variable is notified, until the timeout is reached.
 
         `shape` turns the outcome into the reply the command sends, the timed-out None
-        included. It belongs here rather than around the call because the async socket
-        answers a command that blocks outside the command's own control flow, so anything
-        the command does with the return value would be skipped there.
+        included. It belongs here rather than around the call because the async socket answers a command that blocks
+        outside the command's own control flow, so anything the command does with the return value would be skipped
+        there.
 
         Returns the function return value, or None if the timeout has passed.
         """
@@ -542,11 +534,11 @@ class BaseFakeSocket:
     def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
         """This is the basis of most of the ``scan`` methods.
 
-        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
-        we are investigating subsets.
+        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which we are
+        investigating subsets.
 
-        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of
-        guarantees associated with full iterations.
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
+        associated with full iterations.
 
         - A full iteration always retrieves all the elements that were present in the collection from the start to the
           end of a full iteration. This means that if a given element is inside the collection when an iteration is
@@ -558,8 +550,8 @@ class BaseFakeSocket:
           to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
           be returned.
 
-        However, because the SCAN command has very little state associated (just the cursor),
-        it has the following drawbacks:
+        However, because the SCAN command has very little state associated (just the cursor), it has the following
+        drawbacks:
 
         - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
           elements, for example, only using the returned elements to perform operations that are safe when re-applied
@@ -571,8 +563,8 @@ class BaseFakeSocket:
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
         if count is not None and count <= 0:
-            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero
-            # is accepted and simply falls back to the default batch size.
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero is accepted and simply falls
+            # back to the default batch size.
             if self._server.server_type != "dragonfly":
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             if count < 0:

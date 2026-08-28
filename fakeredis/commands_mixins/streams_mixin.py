@@ -155,8 +155,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
     def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
-        # Dragonfly looks the key up before the group, so a missing stream is "no such key"
-        # and a missing group names only the group it could not find.
+        # Dragonfly looks the key up before the group, so a missing stream is "no such key" and a missing group names
+        # only the group it could not find.
         is_dragonfly = self.server_type == "dragonfly"
         if key.value is None:
             if is_dragonfly:
@@ -254,8 +254,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.NO_KEY_MSG)
         res: list[bytes] = key.value.stream_info(full)
         if self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
-            # An empty stream's first/last entry is a null array on dragonfly, where redis
-            # sends nil; under RESP3 a client reads that back as an empty array.
+            # An empty stream's first/last entry is a null array on dragonfly, where redis sends nil; under RESP3 a
+            # client reads that back as an empty array.
             for i in range(0, len(res) - 1, 2):
                 if res[i] in (b"first-entry", b"last-entry") and res[i + 1] is None:
                     res[i + 1] = []  # type: ignore[call-overload]
@@ -455,8 +455,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
             if first_pass and (count is None) and not claimed_any:
                 return None
             if claim_active:
-                # With CLAIM, claimed entries are reported before new entries, and every
-                # entry carries idle time and delivery count (0 for new entries).
+                # With CLAIM, claimed entries are reported before new entries, and every entry carries idle time and
+                # delivery count (0 for new entries).
                 stream_results = claimed + [record + [0, 0] for record in stream_results]
             if len(stream_results) > 0 or start_id != b">":
                 res[stream_name] = stream_results
@@ -465,9 +465,9 @@ class StreamsCommandsMixin(CommandsMixinBase):
     def _empty_stream_read_reply(self, res: dict[bytes, Any] | list[Any] | None) -> dict[bytes, Any] | list[Any] | None:
         """Shape an XREAD/XREADGROUP reply that matched nothing, under RESP3.
 
-        Redis answers with an empty map; dragonfly answers with an empty array. Note that
-        redis-py's RESP3 parser assumes the map and cannot consume dragonfly's reply.
-        Under RESP2 both send a null array, so the reply is left as it is.
+        Redis answers with an empty map; dragonfly answers with an empty array. Note that redis-py's RESP3 parser
+        assumes the map and cannot consume dragonfly's reply. Under RESP2 both send a null array, so the reply is left
+        as it is.
         """
         if not res and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
             return []
@@ -499,8 +499,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
             # None keeps `_blocking` waiting; the caller shapes the reply once it gives up.
             return None if blocking else res
         if blocking and not first_pass and self.server_type == "dragonfly":
-            # A blocking read that was woken by a new entry is answered by dragonfly with the
-            # RESP2-style array, not the map it sends when the entry was already there.
+            # A blocking read that was woken by a new entry is answered by dragonfly with the RESP2-style array, not the
+            # map it sends when the entry was already there.
             return [[k, v] for k, v in res.items()]
         return res
 

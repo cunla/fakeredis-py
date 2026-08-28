@@ -165,8 +165,8 @@ def parse_mpop_args(
     if count is not None and count <= 0:
         if server_type != "dragonfly":
             raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
-        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP --
-        # popping everything -- but rejected outright by LMPOP.
+        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP -- popping
+        # everything -- but rejected outright by LMPOP.
         if count < 0:
             if command.lower().endswith("lmpop"):
                 raise SimpleError(msgs.INVALID_INT_MSG)

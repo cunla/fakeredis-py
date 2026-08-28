@@ -30,9 +30,8 @@ class SortFloat(Float):
         return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
 
 
-# Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry
-# (EXPIRE, PEXPIRE, SET EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond
-# it is rejected outright.
+# Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry (EXPIRE, PEXPIRE, SET
+# EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond it is rejected outright.
 DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
 
 
@@ -82,8 +81,8 @@ class GenericCommandsMixin(CommandsMixinBase):
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
         if is_dragonfly:
-            # Dragonfly rejects only the two directly contradictory pairs; unlike redis it
-            # accepts NX alongside GT or LT and then applies both conditions.
+            # Dragonfly rejects only the two directly contradictory pairs; unlike redis it accepts NX alongside GT or LT
+            # and then applies both conditions.
             if nx and xx:
                 raise SimpleError(msgs.DRAGONFLY_NX_XX_ERROR_MSG)
             if gt and lt:
@@ -96,8 +95,8 @@ class GenericCommandsMixin(CommandsMixinBase):
             not key
             or (xx and key.expireat is None)
             or (nx and key.expireat is not None)
-            # A key with no expiry is treated as infinity: GT never sets it (nothing is greater than infinity) while
-            # LT always does. GT/LT are also strict, so an equal timestamp must not set either.
+            # A key with no expiry is treated as infinity: GT never sets it (nothing is greater than infinity) while LT
+            # always does. GT/LT are also strict, so an equal timestamp must not set either.
             or (gt and (key.expireat is None or timestamp <= key.expireat))
             or (lt and key.expireat is not None and timestamp >= key.expireat)
         ):
@@ -376,9 +375,8 @@ class GenericCommandsMixin(CommandsMixinBase):
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
-        # A `BY` pattern with no `*` means "don't sort": keep natural order
-        # (insertion order for lists, score order for zsets) and only reverse
-        # when DESC is given.
+        # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
+        # zsets) and only reverse when DESC is given.
         elif desc and isinstance(key.value, (list, ZSet)):
             items.reverse()
 

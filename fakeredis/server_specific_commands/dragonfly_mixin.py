@@ -44,8 +44,8 @@ class DragonflyCommandsMixin:
         val = key.value
         old_size = len(val)
         expire_at_ms = current_time() + seconds * 1000
-        # The expiry is applied to every listed member, including ones already in the set
-        # (their existing TTL is refreshed), but only newly added members are counted.
+        # The expiry is applied to every listed member, including ones already in the set (their existing TTL is
+        # refreshed), but only newly added members are counted.
         for member in members:
             val.set_member_expireat(member, expire_at_ms)
         key.updated()
@@ -53,8 +53,8 @@ class DragonflyCommandsMixin:
 
     @command(name="CL.THROTTLE", fixed=(Key(bytes), Int, Int, Int), repeat=(Int,), server_types=("dragonfly",))
     def cl_throttle(self, key: CommandItem, max_burst: int, count: int, period: int, *args: int) -> list[int]:
-        # Dragonfly reads the numeric arguments as unsigned 64-bit integers and ignores anything
-        # given after the optional `quantity`.
+        # Dragonfly reads the numeric arguments as unsigned 64-bit integers and ignores anything given after the
+        # optional `quantity`.
         quantity = args[0] if args else 1
         if min(max_burst, count, period, quantity) < 0 or max_burst > _INT64_MAX - 1:
             raise SimpleError(msgs.INVALID_INT_MSG)
@@ -69,8 +69,8 @@ class DragonflyCommandsMixin:
         ):
             raise SimpleError(msgs.INVALID_INT_MSG)
 
-        # Generic cell rate algorithm (GCRA), a leaky bucket over a rolling time window: the key
-        # holds `tat`, the theoretical arrival time of the next conforming request, in nanoseconds.
+        # Generic cell rate algorithm (GCRA), a leaky bucket over a rolling time window: the key holds `tat`, the
+        # theoretical arrival time of the next conforming request, in nanoseconds.
         delay_variation_tolerance_ns = emission_interval_ns * limit  # total size of the bucket
         increment_ns = emission_interval_ns * quantity  # cost of this request
         now_ns = int(self._db.time * _NS_PER_SECOND)
@@ -78,8 +78,7 @@ class DragonflyCommandsMixin:
         new_tat_ns = max(tat_ns, now_ns) + increment_ns
         if new_tat_ns > _INT64_MAX:
             raise SimpleError(msgs.INVALID_INT_MSG)
-        # The cutoff point before which a request is rejected (throttled) and at or after which a
-        # request is accepted.
+        # The cutoff point before which a request is rejected (throttled) and at or after which a request is accepted.
         allow_at_ns = new_tat_ns - delay_variation_tolerance_ns
         limited = now_ns < allow_at_ns
 
@@ -91,8 +90,8 @@ class DragonflyCommandsMixin:
         else:
             ttl_ns = new_tat_ns - now_ns
             key.update(Int.encode(new_tat_ns))
-            # The key holds nanoseconds but expires on a millisecond granularity, so its expiry is
-            # rounded up to avoid dropping `tat` while it is still relevant.
+            # The key holds nanoseconds but expires on a millisecond granularity, so its expiry is rounded up to avoid
+            # dropping `tat` while it is still relevant.
             key.expireat = _ns_to_ms(new_tat_ns) / _MS_PER_SECOND
 
         next_ns = delay_variation_tolerance_ns - ttl_ns
