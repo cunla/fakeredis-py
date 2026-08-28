@@ -206,7 +206,7 @@ def test_georadius_errors(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_geosearch(r: ClientType):
+def test_geosearch(r: ClientType, real_server_details):
     values = (
         2.1909389952632,
         41.433791470673,
@@ -224,7 +224,16 @@ def test_geosearch(r: ClientType):
     # assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, height=1000, width=1000) == [b"place1"]
     assert set(r.geosearch("barcelona", member="place3", radius=100, unit="km")) == {b"place2", b"place1", b"place3"}
     # test count
-    assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place3", b"place2"]
+    if real_server_details.server_type == "dragonfly":
+        # COUNT alone does not imply an ascending sort on dragonfly: results come back in
+        # geohash (sorted-set score) order unless ASC/DESC is asked for explicitly.
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place2", b"place1"]
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2, sort="ASC") == [
+            b"place3",
+            b"place2",
+        ]
+    else:
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place3", b"place2"]
     assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=1, any=True)[0] in [
         b"place1",
         b"place3",

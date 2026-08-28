@@ -48,6 +48,13 @@ class GenericCommandsMixin(CommandsMixinBase):
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b"#":
             return key
+        if self.server_type == "dragonfly":
+            # Dragonfly substitutes the '*' into a plain key name. It neither requires the
+            # pattern to contain a '*' nor understands redis' '->' hash-field syntax, so
+            # "w_*->f" resolves to the literal key "w_<element>->f".
+            new_key = pattern.replace(b"*", key, 1)
+            value = CommandItem(new_key, self._db, item=self._db.get(new_key)).value
+            return value if isinstance(value, bytes) else None
         p = pattern.find(b"*")
         if p == -1:
             return None
@@ -297,20 +304,24 @@ class GenericCommandsMixin(CommandsMixinBase):
             def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
-                return score, val
+                # Redis breaks ties on the element itself, while dragonfly sorts on the weight alone and so leaves
+                # equally weighted elements in their order.
+                return (score, b"") if self.server_type == "dragonfly" else (score, val)
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
         # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
-        # zsets) and only reverse when DESC is given.
-        elif desc and isinstance(key.value, (list, ZSet)):
+        # zsets) and only reverse when DESC is given. Dragonfly ignores DESC in this case.
+        elif desc and isinstance(key.value, (list, ZSet)) and self.server_type != "dragonfly":
             items.reverse()
 
         out = []
+        # Dragonfly reports an unresolvable GET pattern as an empty string rather than nil.
+        empty_get = store is not None or self.server_type == "dragonfly"
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
-                if store is not None and v is None:
+                if v is None and empty_get:
                     v = b""
                 out.append(v)
         if store is not None:
@@ -371,20 +382,24 @@ class GenericCommandsMixin(CommandsMixinBase):
             def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
-                return score, val
+                # Redis breaks ties on the element itself, while dragonfly sorts on the weight alone and so leaves
+                # equally weighted elements in their order.
+                return (score, b"") if self.server_type == "dragonfly" else (score, val)
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
         # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
-        # zsets) and only reverse when DESC is given.
-        elif desc and isinstance(key.value, (list, ZSet)):
+        # zsets) and only reverse when DESC is given. Dragonfly ignores DESC in this case.
+        elif desc and isinstance(key.value, (list, ZSet)) and self.server_type != "dragonfly":
             items.reverse()
 
         out: list[bytes] = []
+        is_dragonfly = self.server_type == "dragonfly"
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
-                out.append(v)  # type:ignore
+                # Dragonfly reports an unresolvable GET pattern as an empty string, not nil.
+                out.append(b"" if v is None and is_dragonfly else v)  # type:ignore
         return out
 
     @command(name="TTL", fixed=(Key(),))
@@ -401,6 +416,9 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="COPY", fixed=(Key(), Key()), repeat=(bytes,))
     def copy(self, key: CommandItem, newkey: CommandItem, *args: bytes) -> int:
+        if self._server.server_type == "dragonfly" and any(casematch(arg, b"db") for arg in args):
+            # Dragonfly's COPY has no DB option at all, so it never even parses the index.
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         (db_num, replace), _ = extract_args(args, ("+db", "replace"))
         if db_num is not None and not DbIndex.MIN_VALUE <= db_num <= DbIndex.MAX_VALUE:
             raise SimpleError(msgs.INVALID_DB_MSG)
