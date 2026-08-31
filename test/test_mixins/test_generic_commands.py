@@ -765,14 +765,20 @@ def test_key_patterns(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_watch_when_setbit_does_not_change_value(r: ClientType):
+def test_watch_when_setbit_does_not_change_value(r: ClientType, real_server_details):
     r.set("foo", b"0")
 
     with r.pipeline() as p:
         p.watch("foo")
         assert r.setbit("foo", 0, 0) == 0
         assert p.multi() is None
-        assert p.execute() == []
+        if real_server_details.server_type == "dragonfly":
+            # Dragonfly dirties a watched key on any SETBIT, even one that writes back
+            # the value it already held.
+            with pytest.raises((redis.WatchError, valkey.WatchError)):
+                p.execute()
+        else:
+            assert p.execute() == []
 
 
 def test_from_hypothesis_redis7(r: ClientType):

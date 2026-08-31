@@ -172,7 +172,13 @@ class BitmapCommandsMixin(CommandsMixinBase):
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        if bytes(reconstructed) != key.value or (self.version == (6,) and old_byte != new_byte):
+        # Dragonfly dirties the key for any SETBIT, so a no-op still invalidates a WATCH,
+        # whereas redis only does so when the stored value actually changes.
+        if (
+            bytes(reconstructed) != key.value
+            or (self.version == (6,) and old_byte != new_byte)
+            or self._server.server_type == "dragonfly"
+        ):
             key.update(bytes(reconstructed))
         return old_value
 
