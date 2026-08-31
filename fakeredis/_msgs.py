@@ -78,6 +78,7 @@ UNBLOCKED_MSG = "UNBLOCKED client unblocked via CLIENT UNBLOCK"
 NO_MATCHING_SCRIPT_MSG = "NOSCRIPT No matching script. Please use EVAL."
 GLOBAL_VARIABLE_MSG = "ERR Script attempted to set global variables: {}"
 COMMAND_IN_SCRIPT_MSG = "ERR This Redis command is not allowed from scripts"
+DRAGONFLY_COMMAND_IN_SCRIPT_MSG = "ERR This Redis command is not allowed from script"
 BAD_SUBCOMMAND_MSG = "ERR Unknown {} subcommand or wrong # of args."
 BAD_COMMAND_IN_PUBSUB_MSG = "ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT allowed in this context"
 CONNECTION_ERROR_MSG = "FakeRedis is emulating a connection error."
@@ -88,6 +89,9 @@ LUA_COMMAND_ARG_MSG = "ERR Lua redis lib command arguments must be strings or in
 VALKEY_LUA_COMMAND_ARG_MSG = "Command arguments must be strings or integers script: {}"
 LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
+# Dragonfly reports redis_version 7.x but still wraps script errors the way Redis 6 did,
+# minus the `f_` prefix on the sha.
+DRAGONFLY_SCRIPT_ERROR_MSG = "ERR Error running script (call to {}): @user_script:?: {}"
 RESTORE_KEY_EXISTS = "BUSYKEY Target key name already exists."
 RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
 
