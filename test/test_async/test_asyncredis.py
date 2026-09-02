@@ -13,6 +13,7 @@ import fakeredis
 from fakeredis import FakeServer, aioredis
 from fakeredis._typing import AsyncClientType, async_timeout
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import resp_conversion
 
 pytestmark = []
@@ -298,14 +299,17 @@ async def test_hrandfield(async_redis: AsyncClientType):
 
 
 @pytest.mark.asyncio
-async def test_async_xread(async_redis: AsyncClientType):
+async def test_async_xread(async_redis: AsyncClientType, real_server_details: ServerDetails):
+    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array,
+    # which redis-py's RESP3 parser cannot consume, so the reply is read unparsed there.
+    resp2_shape = testtools.disable_xread_parsing(async_redis, real_server_details.server_type)
     task = asyncio.create_task(async_redis.xread({"stream": "$"}, block=0))
     await asyncio.sleep(0)
     await async_redis.xadd("stream", {"data": "data"}, maxlen=1000, approximate=True)
     messages = await task
     assert len(messages) == 1
     protocol_version = testtools.get_protocol_version(async_redis)
-    if protocol_version == 2:
+    if protocol_version == 2 or resp2_shape:
         assert messages[0][0] == b"stream"
     else:
         assert b"stream" in messages

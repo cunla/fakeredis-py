@@ -38,6 +38,12 @@ def get_command_info(cmd: bytes) -> list[Any] | None:
     return _COMMAND_INFO.get(cmd, None)
 
 
+def is_write_command(cmd: bytes) -> bool:
+    """Whether the command is flagged as writing to its keys."""
+    info = get_command_info(cmd)
+    return info is not None and b"write" in info[2]
+
+
 def get_categories() -> list[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
