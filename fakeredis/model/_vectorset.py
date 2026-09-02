@@ -102,10 +102,9 @@ class VectorSet:
         self._node_uid_counter: int = 0
         self._max_level: int = 0
         self._node_links: dict[bytes, dict[int, set[bytes]]] = {}
-        # Row-oriented cache of the set, kept in sync with ``_vectors``: row ``i`` of
-        # each array describes ``_row_vectors[i]``, in insertion order. Keeping the
-        # matrix resident lets VADD and VSIM issue a single gemv instead of restacking
-        # every stored vector on each call.
+        # Row-oriented cache of the set, kept in sync with ``_vectors``: row ``i`` of each array describes
+        # ``_row_vectors[i]``, in insertion order. Keeping the matrix resident lets VADD and VSIM issue a single gemv
+        # instead of restacking every stored vector on each call.
         self._row_vectors: list[Vector] = []
         self._matrix: np.ndarray = np.zeros((0, dimensions), dtype=np.float32)
         self._norms: np.ndarray = np.zeros(0, dtype=np.float64)
@@ -174,8 +173,7 @@ class VectorSet:
         if self._quant_type is None:
             self._quant_type = vector.quantization
 
-        # Re-adding an existing name replaces it; drop the stale row first so the cache
-        # keeps one row per member.
+        # Re-adding an existing name replaces it; drop the stale row first so the cache keeps one row per member.
         if vector.name in self._vectors:
             self._drop_row(vector.name)
             del self._vectors[vector.name]
@@ -186,8 +184,8 @@ class VectorSet:
         level = self._compute_level(node_index, numlinks)
         self._max_level = max(self._max_level, level)
 
-        # Build links for this node at each of its levels. Similarities do not depend on
-        # the level, so they are computed once and each level just narrows the candidates.
+        # Build links for this node at each of its levels. Similarities do not depend on the level, so they are computed
+        # once and each level just narrows the candidates.
         self._node_links[vector.name] = {}
         candidate_levels = self._row_levels[: len(self._row_vectors)]
         sims = self._similarities(vector)
@@ -288,12 +286,11 @@ class VectorSet:
     ) -> OrderedDict[Vector, float]:
         """Return the top-``count`` most similar vectors to ``query``.
 
-        Vectors are examined in best-first order (most similar first), mimicking the
-        exploration order of an HNSW search. When a ``filter_expression`` is supplied,
+        Vectors are examined in best-first order (most similar first), mimicking the exploration order of an HNSW
+        search. When a ``filter_expression`` is supplied,
         ``filter_ef`` bounds the *filtering effort*: at most that many vectors are
-        examined while looking for matches. Redis defaults this to ``count * 100`` and
-        treats ``0`` as unlimited. A small ``filter_ef`` may therefore miss matches
-        that lie far from the query vector, exactly as real Redis does.
+        examined while looking for matches. Redis defaults this to ``count * 100`` and treats ``0`` as unlimited. A
+        small ``filter_ef`` may therefore miss matches that lie far from the query vector, exactly as real Redis does.
         """
         all_vectors = self._row_vectors
         if not all_vectors:

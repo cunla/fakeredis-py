@@ -19,8 +19,8 @@ except ImportError:  # for Python < 3.8
     import importlib_metadata as metadata  # type: ignore
 
 lib_version = metadata.version("fakeredis")
-# These are evaluated at runtime (not annotations), so they must use typing
-# aliases rather than PEP 585 builtins to remain importable on Python 3.8.
+# These are evaluated at runtime (not annotations), so they must use typing aliases rather than PEP 585 builtins to
+# remain importable on Python 3.8.
 VersionType = Tuple[int, ...]
 ServerType = Literal["redis", "dragonfly", "valkey"]
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]

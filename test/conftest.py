@@ -28,7 +28,10 @@ class ServerDetails:
     @property
     def server_version(self) -> VersionType:
         if self.server_type == "dragonfly":
-            return self.dragonfly_version or self.redis_version
+            # Dragonfly's own release numbering (e.g. 1.x) is unrelated to the
+            # Redis version it emulates, so FakeServer must be built with the
+            # Redis-compatible version rather than dragonfly_version.
+            return self.redis_version
         elif self.server_type == "valkey":
             return self.valkey_version or self.redis_version
         return self.redis_version
@@ -83,9 +86,13 @@ def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeS
 
 
 @pytest_asyncio.fixture(name="tcp_server_address")
-def _tcp_fake_server() -> Generator[tuple[str, int], Any, None]:
+def _tcp_fake_server(real_server_details: ServerDetails) -> Generator[tuple[str, int], Any, None]:
     server_address = ("127.0.0.1", TCP_SERVER_TEST_PORT)
-    server = TcpFakeServer(server_address)
+    server = TcpFakeServer(
+        server_address,
+        server_type=real_server_details.server_type,
+        server_version=real_server_details.server_version,
+    )
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
     time.sleep(0.1)

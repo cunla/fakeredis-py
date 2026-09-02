@@ -9,8 +9,14 @@ from test.testtools import raw_command, resp_conversion
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.4")
 @pytest.mark.unsupported_server_types("valkey")
-def test_hexpire_empty_key(r: ClientType):
-    raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
+def test_hexpire_empty_key(r: ClientType, real_server_details):
+    args = ("hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly caps a field TTL at 2**26 seconds, well below the one used here.
+        with pytest.raises(Exception, match="value is not an integer or out of range"):
+            raw_command(r, *args)
+        return
+    raw_command(r, *args)
 
 
 def test_hstrlen_missing(r: ClientType):

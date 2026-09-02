@@ -78,8 +78,7 @@ class BFCommandsMixin(CommandsMixinBase):
             error_on_unexpected=False,
             left_from_first_unexpected=True,
         )
-        # if no_create and (capacity is not None or error_rate is not None):
-        #     raise SimpleError("...")
+        # if no_create and (capacity is not None or error_rate is not None): raise SimpleError("...")
         if len(left_args) < 2 or not casematch(left_args[0], b"items"):
             raise SimpleError("...")
         items = left_args[1:]

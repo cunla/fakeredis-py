@@ -13,8 +13,8 @@ class Bucket:
         self.fingerprint = fingerprint
 
     def add(self, fingerprint: int, incr: int, decay: float) -> int:
-        # An incr-by-N add is equivalent to N single-unit adds: each unit either
-        # bumps a matching bucket, or gets one chance to decay/evict a colliding one.
+        # An incr-by-N add is equivalent to N single-unit adds: each unit either bumps a matching bucket, or gets one
+        # chance to decay/evict a colliding one.
         for _ in range(incr):
             self._add_one(fingerprint, decay)
         return self.counter if self.fingerprint == fingerprint else 0

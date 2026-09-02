@@ -36,10 +36,9 @@ except ImportError:
     lua_scripts_supported = False
 
 
-# The handler loop interleaves two event sources: inbound data on the TCP socket and
-# replies the server pushes without a client request (pub/sub messages, blocking-command
-# wakeups). This is the socket poll timeout, so it also bounds how long a pushed reply
-# waits before being written out.
+# The handler loop interleaves two event sources: inbound data on the TCP socket and replies the server pushes without a
+# client request (pub/sub messages, blocking-command wakeups). This is the socket poll timeout, so it also bounds how
+# long a pushed reply waits before being written out.
 _POLL_INTERVAL = 0.01
 
 
@@ -185,18 +184,16 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 
                 data = self.rfile.readline()
                 if data == b"":
-                    # The socket is non-blocking, so an empty read means either "nothing
-                    # available yet" or "the peer closed". readline() only touches the
-                    # socket once its buffer is drained, so select() on the raw socket is
-                    # authoritative at this point: readable yet yielding no bytes is EOF.
-                    # For the same reason readline() must not be gated behind select():
-                    # an earlier read can leave whole commands sitting in the buffer while
-                    # the socket itself has nothing further to report.
+                    # The socket is non-blocking, so an empty read means either "nothing available yet" or "the peer
+                    # closed". readline() only touches the socket once its buffer is drained, so select() on the raw
+                    # socket is authoritative at this point: readable yet yielding no bytes is EOF. For the same reason
+                    # readline() must not be gated behind select(): an earlier read can leave whole commands sitting in
+                    # the buffer while the socket itself has nothing further to report.
                     readable, _, _ = select.select([self.connection], [], [], _POLL_INTERVAL)
                     if not readable:
                         continue
-                    # Data may have arrived between the empty read and select(): either
-                    # this read produces it, or it confirms the peer is gone.
+                    # Data may have arrived between the empty read and select(): either this read produces it, or it
+                    # confirms the peer is gone.
                     data = self.rfile.readline()
                     if data == b"":
                         break
