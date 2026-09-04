@@ -189,11 +189,11 @@ class StreamGroup:
             for k in ids_read:
                 # Initialize with times_delivered=1 for new messages
                 self.pel[k] = PelEntry(consumer_name, _time, 1)
+            self.consumers[consumer_name].pending += len(ids_read)
         if len(ids_read) > 0:
             self.last_delivered_key = max(self.last_delivered_key, ids_read[-1])
             self.entries_read = (self.entries_read or 0) + len(ids_read)
         self.consumers[consumer_name].last_success = _time
-        self.consumers[consumer_name].pending += len(ids_read)
         return [self.stream.format_record(x) for x in ids_read]  # type: ignore[misc]
 
     def _calc_consumer_last_time(self) -> None:
@@ -326,6 +326,16 @@ class StreamGroup:
         ]
         return data
 
+    def _release_pending(self, consumer_name: bytes) -> None:
+        """Drop one entry from a consumer's pending count, if it is still charged to one.
+
+        An XNACK-released entry is unowned (empty consumer name), and XGROUP DELCONSUMER can remove
+        a consumer that still owns entries, so the previous owner is not always a live consumer.
+        """
+        consumer = self.consumers.get(consumer_name)
+        if consumer is not None:
+            consumer.pending -= 1
+
     def claim(
         self,
         min_idle_ms: int,
@@ -337,7 +347,9 @@ class StreamGroup:
         curr_time = current_time()
         if _time is None:
             _time = curr_time
-        self.consumers.get(consumer_name, StreamConsumerInfo(consumer_name)).last_attempt = curr_time
+        if consumer_name not in self.consumers:
+            self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
+        self.consumers[consumer_name].last_attempt = curr_time
         claimed_msgs, deleted_msgs = [], []
         for msg in msgs:
             try:
@@ -349,6 +361,7 @@ class StreamGroup:
                     # Force claim msg - initialize with times_delivered=1
                     self.pel[key] = PelEntry(consumer_name, _time, 1)
                     if key in self.stream:
+                        self.consumers[consumer_name].pending += 1
                         claimed_msgs.append(key)
                     else:
                         deleted_msgs.append(key)
@@ -357,11 +370,17 @@ class StreamGroup:
             if curr_time - self.pel[key].time_read < min_idle_ms:
                 continue  # Not idle enough time to be claimed
             # Increment times_delivered when claiming
+            previous_owner = self.pel[key].consumer_name
             old_times_delivered = self.pel[key].times_delivered
             self.pel[key] = PelEntry(consumer_name, _time, old_times_delivered + 1)
             if key in self.stream:
+                if previous_owner != consumer_name:
+                    self._release_pending(previous_owner)
+                    self.consumers[consumer_name].pending += 1
                 claimed_msgs.append(key)
             else:
+                # The entry leaves the PEL altogether, so it is charged to nobody afterwards.
+                self._release_pending(previous_owner)
                 deleted_msgs.append(key)
                 del self.pel[key]
         self._calc_consumer_last_time()
