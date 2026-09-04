@@ -807,15 +807,17 @@ def test_lua_state_isolated_between_eval_calls(r: ClientType) -> None:
     assert result4 == 1  # true in Lua = 1
 
 
-def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType) -> None:
+def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType, real_server_details) -> None:
     """A script sees RESP2 replies even on a RESP3 connection, until it asks for RESP3."""
     r.zadd("z", {"member": 42})
     script = """
     local candidate = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
     return {#candidate, candidate[1], candidate[2]}
     """
-    # Flat member/score, not a nested pair — identical under both protocols.
-    assert r.eval(script, 1, "z") == [2, b"member", b"42"]
+    # Flat member/score, not a nested pair — identical under both protocols. Dragonfly hands the score
+    # to Lua as a number, where redis sends the RESP2 bulk string.
+    score = 42 if real_server_details.server_type == "dragonfly" else b"42"
+    assert r.eval(script, 1, "z") == [2, b"member", score]
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
