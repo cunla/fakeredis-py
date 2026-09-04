@@ -818,6 +818,7 @@ def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType) -
     assert r.eval(script, 1, "z") == [2, b"member", b"42"]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_setresp_3_selects_resp3_shapes(r: ClientType) -> None:
     r.hset("h", mapping={"field": "value"})
     script = """
@@ -829,6 +830,7 @@ def test_eval_setresp_3_selects_resp3_shapes(r: ClientType) -> None:
     assert r.eval(script, 1, "h") == b"value"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_setresp_2_matches_the_default(r: ClientType) -> None:
     r.hset("h", mapping={"field": "value"})
     script = """
@@ -841,6 +843,7 @@ def test_eval_setresp_2_matches_the_default(r: ClientType) -> None:
     assert r.eval(script.format(setresp=""), 1, "h") == [b"field", b"value"]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_setresp_does_not_leak_into_the_next_script(r: ClientType) -> None:
     r.hset("h", mapping={"field": "value"})
     assert r.eval("redis.setresp(3) return 'ok'", 0) == b"ok"
@@ -854,6 +857,7 @@ def test_eval_setresp_does_not_leak_into_the_next_script(r: ClientType) -> None:
     assert r.eval(script, 1, "h") == b"field"
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("script", ["redis.setresp(1)", "redis.setresp(4)", "redis.setresp(nil)"])
 def test_eval_setresp_rejects_other_versions(r: ClientType, script: str) -> None:
     with pytest.raises(Exception) as ctx:
@@ -862,6 +866,7 @@ def test_eval_setresp_rejects_other_versions(r: ClientType, script: str) -> None
     assert "RESP version must be 2 or 3" in str(ctx.value)
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("script", ["redis.setresp()", "redis.setresp(2, 3)"])
 def test_eval_setresp_requires_exactly_one_argument(r: ClientType, script: str) -> None:
     with pytest.raises(Exception) as ctx:
