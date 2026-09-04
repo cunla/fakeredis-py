@@ -201,24 +201,37 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         return None
 
     async def read_response(self, **kwargs: Any) -> Any:
-        if not self._sock:
-            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
-        if not self._server.connected:
-            try:
-                response = self._sock.responses.get_nowait()
-            except asyncio.QueueEmpty:
-                if kwargs.get("disconnect_on_error", True):
-                    await self.disconnect()
-                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
-        else:
-            timeout: float | None = kwargs.pop("timeout", None)
-            can_read = await self.can_read(timeout)
-            response = await self._reader.read(0) if can_read and self._reader else None
+        try:
+            response = await self._read_response(**kwargs)
+        except BaseException:
+            # redis-py's own read_response closes the connection on any BaseException, cancellation included, so that
+            # a half-consumed command/reply pair never goes back to the pool. Without it, cancelling a blocking
+            # command hands the socket back still paused and mid-block, and every later command on it hangs.
+            #
+            # Like redis-py, this covers only the read itself: an error *reply* is raised below, outside the guard, so
+            # a WRONGTYPE or the like propagates without tearing the connection down.
+            if kwargs.get("disconnect_on_error", True):
+                await self.disconnect(nowait=True)
+            raise
         if isinstance(response, RaiseErrorTypes):
             raise response
         if kwargs.get("disable_decoding", False):
             return response
         return self._decode(response)
+
+    async def _read_response(self, **kwargs: Any) -> Any:
+        if not self._sock:
+            raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
+        if not self._server.connected:
+            try:
+                return self._sock.responses.get_nowait()
+            except asyncio.QueueEmpty:
+                if kwargs.get("disconnect_on_error", True):
+                    await self.disconnect()
+                raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
+        timeout: float | None = kwargs.pop("timeout", None)
+        can_read = await self.can_read(timeout)
+        return await self._reader.read(0) if can_read and self._reader else None
 
 
 class FakeAsyncRedisConnection(FakeBaseAsyncConnection, redis_async.Connection):
