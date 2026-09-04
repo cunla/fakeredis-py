@@ -905,6 +905,89 @@ def test_xclaim(r: ClientType):
     assert r.xclaim(stream, group, consumer1, min_idle_time=0, message_ids=(message_id,), justid=True) == [message_id]
 
 
+def _times_delivered(r: ClientType, stream: str, group: str) -> int:
+    return r.xpending_range(stream, group, min="-", max="+", count=10)[0]["times_delivered"]
+
+
+def _deliver_one(r: ClientType, stream: str, group: str, consumer: str = "consumer1") -> bytes:
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    message_id = r.xadd(stream, {"john": "wick"})
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+    return message_id
+
+
+def test_xclaim_justid_does_not_increment_delivery_count(r: ClientType):
+    stream, group = "stream", "group"
+    message_id = _deliver_one(r, stream, group)
+    assert _times_delivered(r, stream, group) == 1
+
+    assert r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=(message_id,), justid=True) == [message_id]
+    assert _times_delivered(r, stream, group) == 1
+
+    # Control: without JUSTID the same claim does advance the counter.
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=(message_id,))
+    assert _times_delivered(r, stream, group) == 2
+
+
+def test_xautoclaim_justid_does_not_increment_delivery_count(r: ClientType):
+    stream, group = "stream", "group"
+    _deliver_one(r, stream, group)
+    assert _times_delivered(r, stream, group) == 1
+
+    r.xautoclaim(stream, group, "consumer2", min_idle_time=0, justid=True)
+    assert _times_delivered(r, stream, group) == 1
+
+    # Control: without JUSTID the same claim does advance the counter.
+    r.xautoclaim(stream, group, "consumer1", min_idle_time=0)
+    assert _times_delivered(r, stream, group) == 2
+
+
+def test_xclaim_retrycount_sets_delivery_count(r: ClientType):
+    stream, group = "stream", "group"
+    message_id = _deliver_one(r, stream, group)
+
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=(message_id,), retrycount=42)
+    assert _times_delivered(r, stream, group) == 42
+
+    # 0 is a value, not "no RETRYCOUNT given".
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=(message_id,), retrycount=0)
+    assert _times_delivered(r, stream, group) == 0
+
+    # RETRYCOUNT wins over JUSTID.
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=(message_id,), retrycount=7, justid=True)
+    assert _times_delivered(r, stream, group) == 7
+
+    # A negative RETRYCOUNT means "not given" and falls through to the auto-increment.
+    r.xclaim(stream, group, "consumer2", min_idle_time=0, message_ids=(message_id,), retrycount=-1)
+    assert _times_delivered(r, stream, group) == 8
+
+
+def test_xclaim_force_delivery_count(r: ClientType):
+    stream, group = "stream", "group"
+    r.xgroup_create(stream, group, id="0", mkstream=True)
+    message_id = r.xadd(stream, {"john": "wick"})  # never delivered, so not in the PEL
+
+    # FORCE creates the entry with a delivery count of 1, then applies the usual rule.
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=(message_id,), force=True)
+    assert _times_delivered(r, stream, group) == 2
+
+    r.xack(stream, group, message_id)
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=(message_id,), force=True, justid=True)
+    assert _times_delivered(r, stream, group) == 1
+
+    r.xack(stream, group, message_id)
+    r.xclaim(stream, group, "consumer1", min_idle_time=0, message_ids=(message_id,), force=True, retrycount=7)
+    assert _times_delivered(r, stream, group) == 7
+
+
+def test_xclaim_min_idle_time_not_met_leaves_delivery_count(r: ClientType):
+    stream, group = "stream", "group"
+    message_id = _deliver_one(r, stream, group)
+
+    assert r.xclaim(stream, group, "consumer2", min_idle_time=999999, message_ids=(message_id,)) == []
+    assert _times_delivered(r, stream, group) == 1
+
+
 def test_xread_blocking(create_connection, real_server_details):
     # thread with xread block 0 should hang
     # putting data in the stream should unblock it

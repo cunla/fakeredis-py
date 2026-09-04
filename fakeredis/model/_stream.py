@@ -336,6 +336,18 @@ class StreamGroup:
         if consumer is not None:
             consumer.pending -= 1
 
+    @staticmethod
+    def _claimed_delivery_count(previous: int, justid: bool, retrycount: int | None) -> int:
+        """Delivery counter a claim leaves behind, matching XCLAIM's option precedence.
+
+        RETRYCOUNT wins over JUSTID, and redis reads a negative RETRYCOUNT as "not given"
+        (`if (retrycount >= 0) ... else if (!justid)` in t_stream.c), so `XCLAIM ... RETRYCOUNT -1`
+        must still auto-increment. A plain truthiness test would break RETRYCOUNT 0 instead.
+        """
+        if retrycount is not None and retrycount >= 0:
+            return retrycount
+        return previous if justid else previous + 1
+
     def claim(
         self,
         min_idle_ms: int,
@@ -343,6 +355,8 @@ class StreamGroup:
         consumer_name: bytes,
         _time: int | None,
         force: bool,
+        justid: bool = False,
+        retrycount: int | None = None,
     ) -> tuple[list[StreamEntryKey], list[StreamEntryKey]]:
         curr_time = current_time()
         if _time is None:
@@ -358,8 +372,9 @@ class StreamGroup:
                 continue
             if key not in self.pel:
                 if force:
-                    # Force claim msg - initialize with times_delivered=1
-                    self.pel[key] = PelEntry(consumer_name, _time, 1)
+                    # FORCE creates the entry with a delivery count of 1, then claims it as usual.
+                    times_delivered = self._claimed_delivery_count(1, justid, retrycount)
+                    self.pel[key] = PelEntry(consumer_name, _time, times_delivered)
                     if key in self.stream:
                         self.consumers[consumer_name].pending += 1
                         claimed_msgs.append(key)
@@ -369,10 +384,10 @@ class StreamGroup:
                 continue
             if curr_time - self.pel[key].time_read < min_idle_ms:
                 continue  # Not idle enough time to be claimed
-            # Increment times_delivered when claiming
             previous_owner = self.pel[key].consumer_name
             old_times_delivered = self.pel[key].times_delivered
-            self.pel[key] = PelEntry(consumer_name, _time, old_times_delivered + 1)
+            times_delivered = self._claimed_delivery_count(old_times_delivered, justid, retrycount)
+            self.pel[key] = PelEntry(consumer_name, _time, times_delivered)
             if key in self.stream:
                 if previous_owner != consumer_name:
                     self._release_pending(previous_owner)

@@ -282,7 +282,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        (idle, _time, _retry, force, justid), msg_ids = extract_args(
+        (idle, _time, retrycount, force, justid), msg_ids = extract_args(
             args,
             ("+idle", "+time", "+retrycount", "force", "justid"),
             error_on_unexpected=False,
@@ -291,7 +291,9 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
         if idle is not None and idle > 0 and _time is None:
             _time = current_time() - idle
-        msgs_claimed, _ = group.claim(min_idle_ms, msg_ids, consumer_name, _time, force)
+        msgs_claimed, _ = group.claim(
+            min_idle_ms, msg_ids, consumer_name, _time, force, justid=bool(justid), retrycount=retrycount
+        )
 
         if justid:
             return [msg.encode() for msg in msgs_claimed]
@@ -311,7 +313,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
         keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
-        msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
+        msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False, justid=bool(justid))
 
         res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
             next_key.encode() if next_key is not None else b"0-0",
