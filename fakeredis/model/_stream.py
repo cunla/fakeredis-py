@@ -39,8 +39,8 @@ MAX_DELIVERY_COUNT = 2**63 - 1
 class PelEntry(NamedTuple):
     """Pending Entry List entry: tracks consumer ownership and delivery count
 
-    A `time_read` of 0 marks an entry released by XNACK: it is unowned (empty consumer name) and
-    immediately claimable regardless of idle time.
+    A `time_read` of 0 marks an entry released by XNACK: it is unowned (empty consumer name) and immediately claimable
+    regardless of idle time.
     """
 
     consumer_name: bytes
@@ -375,9 +375,9 @@ class StreamGroup:
     def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: int | None) -> list[list[Any]]:
         """Claim idle pending entries for `XREADGROUP ... CLAIM min-idle-time` (Redis 8.4).
 
-        Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name,
-        longest-idle first (XNACK-released entries have a delivery time of 0, so they come first).
-        Each claimed entry is returned as [id, fields, idle-time, previous-delivery-count].
+        Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name, longest-idle first
+        (XNACK-released entries have a delivery time of 0, so they come first). Each claimed entry is returned as [id,
+        fields, idle-time, previous-delivery-count].
         """
         curr_time = current_time()
         if consumer_name not in self.consumers:
@@ -408,8 +408,8 @@ class StreamGroup:
     ) -> tuple[list[StreamEntryKey], StreamEntryKey | None]:
         """Claimable PEL entries from `start`, plus the entry XAUTOCLAIM should resume its scan at.
 
-        The second element is None once the scan has reached the end of the PEL. XAUTOCLAIM reports
-        that as the 0-0 cursor, which is what ends a caller's `while cursor != "0-0"` loop.
+        The second element is None once the scan has reached the end of the PEL. XAUTOCLAIM reports that as the 0-0
+        cursor, which is what ends a caller's `while cursor != "0-0"` loop.
         """
         start_key = StreamEntryKey.parse_str(start)
         curr_time = current_time()
@@ -421,11 +421,10 @@ class XStream(BaseModel):
     """Class representing stream.
 
     The stream contains entries with keys (timestamp, sequence) and field->value pairs.
-    This implementation has them as a sorted list of tuples, the first value in the tuple
-    is the key (timestamp, sequence).
+    This implementation has them as a sorted list of tuples, the first value in the tuple is the key (timestamp,
+    sequence).
 
-    The structure of _values list is:
-    [
+    The structure of _values list is: [
        ((timestamp, sequence), [field1, value1, field2, value2, ...]),
        ((timestamp, sequence), [field1, value1, field2, value2, ...]),
     ]
@@ -602,8 +601,8 @@ class XStream(BaseModel):
     def record_idmp(self, pid: bytes, iid: bytes, stream_id: bytes) -> None:
         """Record pid/iid -> stream_id mapping for XIDMPRECORD.
 
-        Raises SimpleError if the pid/iid pair already maps to a different stream ID,
-        or if stream_id does not exist in the stream.
+        Raises SimpleError if the pid/iid pair already maps to a different stream ID, or if stream_id does not exist in
+        the stream.
         """
         entry_key = StreamEntryKey.parse_str(stream_id)
         if entry_key not in self._values_dict:
@@ -628,8 +627,7 @@ class XStream(BaseModel):
     ) -> None | bytes:
         """Add entry to a stream.
 
-        If the entry_key cannot be added (because its timestamp is before the last entry, etc.),
-        nothing is added.
+        If the entry_key cannot be added (because its timestamp is before the last entry, etc.), nothing is added.
 
         :param fields: List of fields to add, must [key1, value1, key2, value2, ... ]
         :param entry_key:

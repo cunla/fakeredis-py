@@ -6,7 +6,8 @@ import redis
 import valkey
 
 from fakeredis._typing import AsyncClientType
-from test.testtools import resp_conversion
+from test.conftest import ServerDetails
+from test.testtools import empty_blocking_reply, resp_conversion
 
 pytestmark = []
 pytestmark.extend(
@@ -31,10 +32,10 @@ async def test_blocking_ready(async_redis, conn):
 
 
 @pytest.mark.slow
-async def test_blocking_timeout(conn):
+async def test_blocking_timeout(conn, real_server_details: ServerDetails):
     """Blocking command that times out without completing."""
     result = await conn.blpop("missing", timeout=1)
-    assert result is None
+    assert result == empty_blocking_reply(conn, real_server_details.server_type)
 
 
 @pytest.mark.slow

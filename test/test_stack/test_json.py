@@ -10,6 +10,7 @@ import valkey
 from redis.commands.json.path import Path
 
 from test import testtools
+from test.conftest import ServerDetails
 
 json_tests = pytest.importorskip("jsonpath_ng")
 
@@ -218,14 +219,15 @@ def test_jsonclear_no_doc(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_jsonstrlen(r: redis.Redis):
+def test_jsonstrlen(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     data = {"x": "bar", "y": {"x": 33}}
     r.json().set("foo", Path.root_path(), data)
     assert r.json().strlen("foo", Path("$..x")) == [3, None]
 
     r.json().set("foo2", Path.root_path(), "data2")
-    assert r.json().strlen("foo2") == 5
-    assert r.json().strlen("foo2", Path.root_path()) == 5
+    assert r.json().strlen("foo2") == testtools.json_legacy_reply(r, server_type, 5)
+    assert r.json().strlen("foo2", Path.root_path()) == testtools.json_legacy_reply(r, server_type, 5)
 
     r.json().set("foo3", Path.root_path(), {"x": "string"})
     assert r.json().strlen("foo3", Path("$.x")) == [6]
@@ -233,7 +235,7 @@ def test_jsonstrlen(r: redis.Redis):
     assert r.json().strlen("non-existing") is None
 
     r.json().set("str", Path.root_path(), "foo")
-    assert r.json().strlen("str", Path.root_path()) == 3
+    assert r.json().strlen("str", Path.root_path()) == testtools.json_legacy_reply(r, server_type, 3)
     # Test multi
     r.json().set("doc1", "$", {"a": "foo", "nested1": {"a": "hello"}, "nested2": {"a": 31}})
     assert r.json().strlen("doc1", "$..a") == [3, 5, None]
@@ -250,13 +252,18 @@ def test_jsonstrlen(r: redis.Redis):
     with pytest.raises(Exception) as ctx:
         r.json().strlen("non_existing_doc", "$..a")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
+    # Dragonfly reports a missing key in its own, shorter wording.
+    if server_type == "dragonfly":
+        assert str(ctx.value) == "no such key"
+    else:
+        assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
 
 
-def test_toggle(r: redis.Redis):
+def test_toggle(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     r.json().set("bool", Path.root_path(), False)
-    assert r.json().toggle("bool", Path.root_path())
-    assert r.json().toggle("bool", Path.root_path()) is False
+    assert r.json().toggle("bool", Path.root_path()) == testtools.json_toggle_reply(r, server_type, True)
+    assert r.json().toggle("bool", Path.root_path()) == testtools.json_toggle_reply(r, server_type, False)
 
     r.json().set("num", Path.root_path(), 1)
 
@@ -311,10 +318,10 @@ def test_json_commands_in_pipeline(r: redis.Redis):
     assert r.get("foo") is None
 
 
-def test_strappend(r: redis.Redis):
+def test_strappend(r: redis.Redis, real_server_details: ServerDetails):
     # Test single
     r.json().set("json-key", Path.root_path(), "foo")
-    assert r.json().strappend("json-key", "bar") == 6
+    assert r.json().strappend("json-key", "bar") == testtools.json_legacy_reply(r, real_server_details.server_type, 6)
     assert "foobar" == r.json().get("json-key", Path.root_path())
 
     # Test multi
@@ -419,7 +426,8 @@ def test_set_path(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_type(r: redis.Redis):
+def test_type(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     r.json().set("1", Path.root_path(), 1)
 
     assert r.json().type("1", Path.root_path()) == testtools.resp_conversion(r, [b"integer"], b"integer")
@@ -444,20 +452,21 @@ def test_type(r: redis.Redis):
             if v == val:
                 expected.append(k.encode())
                 break
-    assert r.json().type("doc1", "$..a") == testtools.resp_conversion(r, [expected], expected)
+    assert r.json().type("doc1", "$..a") == testtools.json_type_reply(r, server_type, expected)
 
     # Test single
     assert r.json().type("doc1", "$.integer.a") == testtools.resp_conversion(r, [[b"integer"]], [b"integer"])
     assert r.json().type("doc1") == testtools.resp_conversion(r, [b"object"], b"object")
 
-    # Test missing key
-    if testtools.get_protocol_version(r) == 2:
+    # Test missing key. Dragonfly answers a legacy path with a plain null under RESP3 too.
+    if testtools.get_protocol_version(r) == 2 or server_type == "dragonfly":
         assert r.json().type("non_existing_doc", "..a") is None
     else:
         assert r.json().type("non_existing_doc", "..a") == [None]
 
 
-def test_objlen(r: redis.Redis):
+def test_objlen(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     # Test missing key, and path
     with pytest.raises(Exception) as ctx:
         r.json().objlen("non_existing_doc", "$..a")
@@ -466,10 +475,10 @@ def test_objlen(r: redis.Redis):
     obj = {"foo": "bar", "baz": "qaz"}
 
     r.json().set("obj", Path.root_path(), obj)
-    assert len(obj) == r.json().objlen("obj", Path.root_path())
+    assert r.json().objlen("obj", Path.root_path()) == testtools.json_legacy_reply(r, server_type, len(obj))
 
     r.json().set("obj", Path.root_path(), obj)
-    assert len(obj) == r.json().objlen("obj")
+    assert r.json().objlen("obj") == testtools.json_legacy_reply(r, server_type, len(obj))
     r.json().set(
         "doc1",
         "$",
@@ -483,10 +492,10 @@ def test_objlen(r: redis.Redis):
     assert r.json().objlen("doc1", "$.nowhere") == []
 
     # Test legacy
-    assert r.json().objlen("doc1", ".*.a") == 2
+    assert r.json().objlen("doc1", ".*.a") == testtools.json_legacy_reply(r, server_type, 2)
 
     # Test single
-    assert r.json().objlen("doc1", ".nested2.a") == 1
+    assert r.json().objlen("doc1", ".nested2.a") == testtools.json_legacy_reply(r, server_type, 1)
 
     # Test missing key
     assert r.json().objlen("non_existing_doc", "..a") is None
@@ -496,17 +505,20 @@ def test_objlen(r: redis.Redis):
     r.json().objlen("doc1", ".nowhere")
 
 
-def test_objkeys(r: redis.Redis):
+def test_objkeys(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     obj = {"foo": "bar", "baz": "qaz"}
     r.json().set("obj", Path.root_path(), obj)
-    keys = r.json().objkeys("obj", Path.root_path())
+    keys = testtools.json_legacy_value(r, server_type, r.json().objkeys("obj", Path.root_path()))
     keys.sort()
     exp = [k.encode() for k in obj]
     exp.sort()
     assert set(keys) == testtools.resp_conversion(r, {k.encode() for k in obj}, set(obj.keys()))
 
     r.json().set("obj", Path.root_path(), obj)
-    assert set(r.json().objkeys("obj")) == testtools.resp_conversion(r, {k.encode() for k in obj}, set(obj.keys()))
+    assert set(testtools.json_legacy_value(r, server_type, r.json().objkeys("obj"))) == testtools.resp_conversion(
+        r, {k.encode() for k in obj}, set(obj.keys())
+    )
 
     assert r.json().objkeys("fakekey") is None
 
@@ -519,9 +531,13 @@ def test_objkeys(r: redis.Redis):
     assert set(keys[0]) == {b"foo", b"bar"}
 
     # Test legacy
-    assert set(r.json().objkeys("doc1", ".*.a")) == testtools.resp_conversion(r, {b"foo", b"bar"}, {"foo", "bar"})
+    assert set(
+        testtools.json_legacy_value(r, server_type, r.json().objkeys("doc1", ".*.a"))
+    ) == testtools.resp_conversion(r, {b"foo", b"bar"}, {"foo", "bar"})
     # Test single
-    assert r.json().objkeys("doc1", ".nested2.a") == testtools.resp_conversion(r, [b"baz"], ["baz"])
+    assert r.json().objkeys("doc1", ".nested2.a") == testtools.json_legacy_reply(
+        r, server_type, testtools.resp_conversion(r, [b"baz"], ["baz"])
+    )
 
     # Test missing key
     assert r.json().objkeys("non_existing_doc", "..a") is None
@@ -535,12 +551,13 @@ def test_objkeys(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_numincrby(r: redis.Redis):
+def test_numincrby(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     r.json().set("num", Path.root_path(), 1)
 
-    assert r.json().numincrby("num", Path.root_path(), 1) == testtools.resp_conversion(r, [2], 2)
-    assert r.json().numincrby("num", Path.root_path(), 0.5) == testtools.resp_conversion(r, [2.5], 2.5)
-    assert r.json().numincrby("num", Path.root_path(), -1.25) == testtools.resp_conversion(r, [1.25], 1.25)
+    assert r.json().numincrby("num", Path.root_path(), 1) == testtools.json_number_reply(r, server_type, 2)
+    assert r.json().numincrby("num", Path.root_path(), 0.5) == testtools.json_number_reply(r, server_type, 2.5)
+    assert r.json().numincrby("num", Path.root_path(), -1.25) == testtools.json_number_reply(r, server_type, 1.25)
     # Test NUMINCRBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
     # Test multi
@@ -555,13 +572,14 @@ def test_numincrby(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_nummultby(r: redis.Redis):
+def test_nummultby(r: redis.Redis, real_server_details: ServerDetails):
+    server_type = real_server_details.server_type
     r.json().set("num", Path.root_path(), 1)
 
     with pytest.deprecated_call():
-        assert r.json().nummultby("num", Path.root_path(), 2) == testtools.resp_conversion(r, [2], 2)
-        assert r.json().nummultby("num", Path.root_path(), 2.5) == testtools.resp_conversion(r, [5], 5)
-        assert r.json().nummultby("num", Path.root_path(), 0.5) == testtools.resp_conversion(r, [2.5], 2.5)
+        assert r.json().nummultby("num", Path.root_path(), 2) == testtools.json_number_reply(r, server_type, 2)
+        assert r.json().nummultby("num", Path.root_path(), 2.5) == testtools.json_number_reply(r, server_type, 5)
+        assert r.json().nummultby("num", Path.root_path(), 0.5) == testtools.json_number_reply(r, server_type, 2.5)
 
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
@@ -584,13 +602,13 @@ def test_nummultby(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     # Test legacy NUMINCRBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
-    assert r.json().numincrby("doc1", ".b[0].a", 3) == testtools.resp_conversion(r, [5], 5)
+    assert r.json().numincrby("doc1", ".b[0].a", 3) == testtools.json_number_reply(r, server_type, 5)
 
     # Test legacy NUMMULTBY
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
     with pytest.deprecated_call():
-        assert r.json().nummultby("doc1", ".b[0].a", 3) == testtools.resp_conversion(r, [6], 6)
+        assert r.json().nummultby("doc1", ".b[0].a", 3) == testtools.json_number_reply(r, server_type, 6)
 
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")

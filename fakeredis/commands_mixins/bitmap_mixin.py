@@ -4,7 +4,16 @@ import re
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import MAX_STRING_SIZE, CommandItem, Int, Key, command, fix_range, fix_range_string
+from fakeredis._commands import (
+    DRAGONFLY_MAX_STRING_SIZE,
+    MAX_STRING_SIZE,
+    CommandItem,
+    Int,
+    Key,
+    command,
+    fix_range,
+    fix_range_string,
+)
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -60,21 +69,19 @@ class BitmapCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.BIT_ARG_MUST_BE_ZERO_OR_ONE)
         if len(args) > 3:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version < (7,):
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         bit_mode = False
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3 and (self.version >= (7,) or self._server.server_type == "dragonfly"):
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if key.value is None:
-            if self.version >= (7, 4):
-                # Since 7.4 the range arguments are validated even when the key is missing
+            if self.version >= (7, 4):  # Since 7.4 the range arguments are validated even when the key is missing
                 for arg in args[:2]:
                     Int.decode(arg)
-            # The first clear bit is at 0, the first set bit is not found (-1).
-            return -1 if bit == 1 else 0
+            return -1 if bit == 1 else 0  # The first clear bit is at 0, the first set bit is not found (-1).
 
         start = 0 if len(args) == 0 else Int.decode(args[0])
         value_bytes: bytes = key.value
@@ -90,15 +97,14 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if result != -1:
             result += start if bit_mode else (start * 8)
         elif bit == 0 and len(args) <= 1:
-            # Redis treats the value as padded with zero bytes to an infinity
-            # if the user is looking for the first clear bit and no end is set.
+            # Redis treats the value as padded with zero bytes to an infinity if the user is looking for the first clear
+            # bit and no end is set.
             result = len(key.value) * 8
         return result
 
     @command(name="BITCOUNT", fixed=(Key(bytes),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def bitcount(self, key: CommandItem, *args: bytes) -> int:
-        # Redis checks the argument count before decoding integers. That's why
-        # we can't declare them as Int.
+        # Redis checks the argument count before decoding integers. That's why we can't declare them as Int.
         if len(args) == 0:
             if key.value is None:
                 return 0
@@ -109,12 +115,14 @@ class BitmapCommandsMixin(CommandsMixinBase):
         if key.value is None and self.version < (7, 4):
             # Before 7.4 a missing key returned 0 without validating the range arguments
             return 0
+        # The BYTE/BIT unit only exists from 7.0; older servers reject the extra argument before looking at the range,
+        # so this check comes first.
+        if len(args) == 3 and self.version < (7,) and self._server.server_type != "dragonfly":
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         start = Int.decode(args[0])
         end = Int.decode(args[1])
         bit_mode = False
-        if len(args) == 3 and self.version < (7,):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) == 3 and self.version >= (7,):
+        if len(args) == 3:
             bit_mode = casematch(args[2], b"bit")
             if not bit_mode and not casematch(args[2], b"byte"):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
@@ -145,13 +153,15 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @command(name="setbit", fixed=(Key(bytes), BitOffset, BitValue))
     def setbit(self, key: CommandItem, offset: int, value: int) -> int:
+        # Dragonfly's 256MB cap on a value bounds the bit offset with it.
+        if self.server_type == "dragonfly" and offset >= 8 * DRAGONFLY_MAX_STRING_SIZE:
+            raise SimpleError(msgs.INVALID_BIT_OFFSET_MSG)
         val = key.value if key.value is not None else b"\x00"
         byte = offset // 8
         remaining = offset % 8
         actual_bitoffset = 7 - remaining
         if len(val) - 1 < byte:
-            # We need to expand val so that we can set the appropriate
-            # bit.
+            # We need to expand val so that we can set the appropriate bit.
             needed = byte - (len(val) - 1)
             val += b"\x00" * needed
         old_byte = val[byte]
@@ -162,7 +172,13 @@ class BitmapCommandsMixin(CommandsMixinBase):
         old_value = value if old_byte == new_byte else 1 - value
         reconstructed = bytearray(val)
         reconstructed[byte] = new_byte
-        if bytes(reconstructed) != key.value or (self.version == (6,) and old_byte != new_byte):
+        # Dragonfly dirties the key for any SETBIT, so a no-op still invalidates a WATCH,
+        # whereas redis only does so when the stored value actually changes.
+        if (
+            bytes(reconstructed) != key.value
+            or (self.version == (6,) and old_byte != new_byte)
+            or self._server.server_type == "dragonfly"
+        ):
             key.update(bytes(reconstructed))
         return old_value
 
@@ -247,7 +263,7 @@ class BitmapCommandsMixin(CommandsMixinBase):
         return new_value if value is None else ans
 
     @command(name="bitfield", fixed=(Key(bytes),), repeat=(bytes,))
-    def bitfield(self, key: CommandItem, *args: bytes) -> list[int | None]:
+    def bitfield(self, key: CommandItem, *args: bytes) -> list[int | None] | None:
         overflow = b"WRAP"
         results: list[int | None] = []
         i = 0
@@ -286,5 +302,4 @@ class BitmapCommandsMixin(CommandsMixinBase):
                 i += 4
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
         return results
