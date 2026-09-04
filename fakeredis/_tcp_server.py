@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fakeredis._helpers import SimpleError
 
 try:
@@ -8,18 +10,18 @@ except ImportError:
     HAS_FCNTL = False
 import logging
 import os
+import select
 import threading
-import time
 from dataclasses import dataclass
 from io import BufferedIOBase
 from itertools import count
-from socketserver import ThreadingTCPServer, StreamRequestHandler
-from typing import Dict, Tuple, Any, Union
+from socketserver import StreamRequestHandler, ThreadingTCPServer
+from typing import Any
 
 from redis.connection import DefaultParser
 
-from fakeredis import FakeServer, FakeRedisConnection
-from fakeredis._typing import VersionType, ServerType
+from fakeredis import FakeRedisConnection, FakeServer
+from fakeredis._typing import ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
 # LOGGER.setLevel(logging.DEBUG)
@@ -34,14 +36,20 @@ except ImportError:
     lua_scripts_supported = False
 
 
+# The handler loop interleaves two event sources: inbound data on the TCP socket and replies the server pushes without a
+# client request (pub/sub messages, blocking-command wakeups). This is the socket poll timeout, so it also bounds how
+# long a pushed reply waits before being written out.
+_POLL_INTERVAL = 0.01
+
+
 def to_bytes(value: Any) -> bytes:
     if isinstance(value, bytes):
         return value
     return str(value).encode()
 
 
-_EXCEPTION_PREFIX_MAP: Dict[Exception, str] = {
-    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if type(v) is not dict
+_EXCEPTION_PREFIX_MAP: dict[type[Exception], str] = {
+    v: k for k, v in DefaultParser.EXCEPTION_CLASSES.items() if isinstance(v, type) and issubclass(v, Exception)
 }
 
 
@@ -54,12 +62,12 @@ def _get_exception_prefix(e: Exception) -> str:
 
 @dataclass
 class Writer:
-    client_address: Tuple[str, int]
+    client_address: tuple[str, int]
     writer: BufferedIOBase
-    request_handler: StreamRequestHandler
+    request_handler: TCPFakeRequestHandler
 
     def write(self, value: bytes) -> None:
-        LOGGER.debug(f"<<< {self.client_address}: {value}")
+        LOGGER.debug(f"<<< {self.client_address}: {value!r}")
         self.writer.write(value)
 
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
@@ -83,7 +91,7 @@ class Resp2Writer(Writer):
             for item in value:
                 self.dump(item, dump_bulk=True)
         elif value is None:
-            self.write("$-1\r\n".encode())
+            self.write(b"$-1\r\n")
         elif isinstance(value, Exception):
             if isinstance(value, SimpleError):
                 self.write(f"-{value.args[0]}\r\n".encode())
@@ -97,7 +105,7 @@ class Resp3Writer(Writer):
     def dump(self, value: Any, dump_bulk: bool = False) -> None:
         value_type = type(value)
         if value is None:
-            self.write("_\r\n".encode())
+            self.write(b"_\r\n")
         elif value_type is str or value_type is bytes:
             value = to_bytes(value)
             if value.upper() == b"SHUTDOWN":
@@ -138,7 +146,7 @@ class Resp3Writer(Writer):
 
 
 class TCPFakeRequestHandler(StreamRequestHandler):
-    server: "TcpFakeServer"
+    server: TcpFakeServer
     shutdown_request: bool = False
 
     def setup(self) -> None:
@@ -176,17 +184,32 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 
                 data = self.rfile.readline()
                 if data == b"":
-                    time.sleep(0)
-                else:
-                    self.current_client.get_socket().sendall(data)
+                    # The socket is non-blocking, so an empty read means either "nothing available yet" or "the peer
+                    # closed". readline() only touches the socket once its buffer is drained, so select() on the raw
+                    # socket is authoritative at this point: readable yet yielding no bytes is EOF. For the same reason
+                    # readline() must not be gated behind select(): an earlier read can leave whole commands sitting in
+                    # the buffer while the socket itself has nothing further to report.
+                    readable, _, _ = select.select([self.connection], [], [], _POLL_INTERVAL)
+                    if not readable:
+                        continue
+                    # Data may have arrived between the empty read and select(): either this read produces it, or it
+                    # confirms the peer is gone.
+                    data = self.rfile.readline()
+                    if data == b"":
+                        break
+                self.current_client.get_socket().sendall(data)
 
+            except ConnectionError as e:
+                # The peer reset the connection; there is no socket left to report to.
+                LOGGER.debug(f"!!! {self.client_address[0]} reset: {e}")
+                break
             except Exception as e:
                 LOGGER.debug(f"!!! {self.client_address[0]}: {e}")
                 self.writer.dump(e)
                 break
 
     def finish(self) -> None:
-        self.current_client.disconnect()
+        self.current_client.disconnect()  # type: ignore[no-untyped-call]
         LOGGER.debug(f"--- {self.client_address[0]} disconnected")
         self.rfile.close()
         self.wfile.close()
@@ -197,7 +220,7 @@ class TCPFakeRequestHandler(StreamRequestHandler):
 class TcpFakeServer(ThreadingTCPServer):
     def __init__(
         self,
-        server_address: Tuple[Union[str, bytes, bytearray], int],
+        server_address: tuple[str | bytes | bytearray, int],
         bind_and_activate: bool = True,
         server_type: ServerType = "redis",
         server_version: VersionType = (8, 0),
@@ -208,7 +231,7 @@ class TcpFakeServer(ThreadingTCPServer):
         super().__init__(server_address, TCPFakeRequestHandler, bind_and_activate)
         self.fake_server = FakeServer(server_type=server_type, version=server_version)
         self.client_ids = count(0)
-        self.clients: Dict[int, FakeRedisConnection] = {}
+        self.clients: dict[int, FakeRedisConnection] = {}
 
     def shutdown(self) -> None:
         self._shutdown_event.set()

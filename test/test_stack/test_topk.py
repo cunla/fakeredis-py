@@ -2,7 +2,7 @@ import pytest
 import redis
 import valkey
 
-from test.testtools import resp_conversion, get_protocol_version
+from test.testtools import get_protocol_version, resp_conversion
 
 topk_tests = pytest.importorskip("probables")
 

@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import importlib.util
+import inspect
 import itertools
+import json
 import time
 from datetime import datetime
 from typing import Any
@@ -7,11 +11,26 @@ from typing import Any
 import pytest
 import redis
 from packaging.version import Version
-from redis.event import ClientType
 
 from fakeredis._commands import Float
+from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)
+
+
+def pool_get_connection(pool: Any) -> Any:
+    """Get a connection from `pool`, papering over the differing signatures.
+
+    redis-py made `command_name` optional in 5.0 and deprecated it in 5.3, while
+    valkey-py still requires it, so the installed redis-py version says nothing about
+    the pool actually in use. Inspect the pool itself instead.
+
+    Async pools return a coroutine, so the caller awaits the result as usual.
+    """
+    command_name = inspect.signature(pool.get_connection).parameters.get("command_name")
+    if command_name is not None and command_name.default is inspect.Parameter.empty:
+        return pool.get_connection("_")
+    return pool.get_connection()
 
 
 def tuple_to_list(x: Any) -> Any:
@@ -94,10 +113,6 @@ def run_test_if_redispy_ver(condition: str, ver: str):
 _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
 
-fake_only = pytest.mark.parametrize(
-    "create_connection", [pytest.param("FakeStrictRedis2", marks=pytest.mark.fake)], indirect=True
-)
-
 
 def redis_server_time(r: redis.Redis) -> datetime:
     seconds, milliseconds = r.time()
@@ -108,3 +123,136 @@ def redis_server_time(r: redis.Redis) -> datetime:
 def current_time() -> int:
     """Return current_time in ms"""
     return int(time.time() * 1000)
+
+
+def far_future_expiry(server_type: str) -> int:
+    """An absolute expiry timestamp (seconds) that the server under test will accept.
+
+    Dragonfly refuses to store a deadline more than 2**28-1 seconds away, so it gets a
+    nearer -- but still far future -- timestamp instead of the year-3021 one.
+    """
+    if server_type == "dragonfly":
+        return int(time.time()) + 10_000_000
+    return 33177117420
+
+
+def null_array_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a reply redis sends as a null array reads back as on the server under test.
+
+    Dragonfly keeps sending the RESP2 null array (`*-1`) under RESP3, where redis sends
+    nil, so a RESP3 client reads it back as `[]`. Under RESP2 both read back as None.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return []
+    return None
+
+
+def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
+    """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test."""
+    return null_array_reply(r, server_type)
+
+
+def xinfo_stream_raw(r: ClientType, name: str) -> dict[str, Any]:
+    """XINFO STREAM as a str-keyed dict, bypassing redis-py's parser.
+
+    That parser assumes an empty stream's `first-entry` is nil; dragonfly answers with a
+    null array, which reads back as `[]` under RESP3 and trips the parser up.
+    """
+    reply = raw_command(r, "xinfo", "stream", name)
+    if isinstance(reply, dict):  # a RESP3 map
+        return {k.decode(): v for k, v in reply.items()}
+    return {reply[i].decode(): reply[i + 1] for i in range(0, len(reply), 2)}
+
+
+def disable_xread_parsing(r: ClientType, server_type: str) -> bool:
+    """Drop redis-py's XREAD callback when it cannot parse the reply of the server under test.
+
+    A blocking XREAD woken by a new entry is answered by dragonfly with the RESP2-style
+    array, where Redis sends a map; redis-py's RESP3 parser assumes the map. Returns whether
+    the callback was dropped, i.e. whether XREAD now answers in the RESP2 shape.
+    """
+    if server_type != "dragonfly" or get_protocol_version(r) != 3:
+        return False
+    r.response_callbacks.pop("XREAD", None)
+    return True
+
+
+def json_legacy_reply(r: ClientType, server_type: str, value: Any) -> Any:
+    """What a JSON command answers with for a legacy path (`.a`) on the server under test.
+
+    RedisJSON sends the value itself. Dragonfly sends the one-element array it sends for the
+    equivalent JSONPath, but only under RESP3; under RESP2 the two agree.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return [value]
+    return value
+
+
+def json_legacy_value(r: ClientType, server_type: str, reply: Any) -> Any:
+    """The value inside a legacy-path JSON reply, for tests that post-process it.
+
+    The inverse of `json_legacy_reply`: it unwraps the one-element array dragonfly answers a
+    legacy path with under RESP3, and leaves every other reply alone.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        assert isinstance(reply, list) and len(reply) == 1, reply
+        return reply[0]
+    return reply
+
+
+def json_arrpop_reply(r: ClientType, server_type: str, value: Any) -> Any:
+    """What JSON.ARRPOP answers with for a legacy path on the server under test.
+
+    The reply is the JSON text of the popped element, which redis-py parses back into a value
+    -- but not through the array dragonfly wraps it in under RESP3, where it stays text.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return [json.dumps(value)]
+    return value
+
+
+def json_toggle_reply(r: ClientType, server_type: str, value: bool) -> Any:
+    """What JSON.TOGGLE answers with for a legacy path on the server under test.
+
+    Dragonfly answers with the JSON text of the new value, wrapped under RESP3 the way every
+    legacy path is; redis-py parses the bare text back into a boolean, so only the wrapped
+    reply differs from the boolean RedisJSON sends.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        return ["true" if value else "false"]
+    return value
+
+
+def json_type_reply(r: ClientType, server_type: str, types: list[Any]) -> Any:
+    """What JSON.TYPE answers with for a JSONPath on the server under test.
+
+    Under RESP3 RedisJSON wraps the whole list of matched types in one array, where dragonfly
+    wraps each match in an array of its own. Under RESP2 neither wraps.
+    """
+    if get_protocol_version(r) == 2:
+        return types
+    return [[item] for item in types] if server_type == "dragonfly" else [types]
+
+
+def json_number_reply(r: ClientType, server_type: str, value: float) -> Any:
+    """What JSON.NUMINCRBY / JSON.NUMMULTBY answers with for a legacy path.
+
+    RedisJSON wraps the new value in an array under RESP3; dragonfly never does.
+    """
+    if server_type == "dragonfly":
+        return value
+    return resp_conversion(r, [value], value)
+
+
+def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:
+    """Assert that an XREAD/XREADGROUP matched nothing.
+
+    Redis answers with an empty map under RESP3 and an empty array under RESP2. Dragonfly
+    answers with an empty array in both, and redis-py's RESP3 parser cannot consume that,
+    so on dragonfly the raw reply is checked instead of the parsed one.
+    """
+    if server_type == "dragonfly" and get_protocol_version(r) == 3:
+        assert raw_command(r, *raw_args) == []
+        return
+    method, args = raw_args[0], raw_args[1:]
+    assert r.execute_command(method, *args) == resp_conversion(r, {}, [])

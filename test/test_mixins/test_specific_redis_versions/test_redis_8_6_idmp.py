@@ -8,6 +8,7 @@ from test import testtools
 pytestmark = []
 pytestmark.extend(
     [
+        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
         pytest.mark.supported_server_versions(min_redis_ver="8.6"),
         testtools.run_test_if_redispy_ver("gte", "7.2"),
     ]

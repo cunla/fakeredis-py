@@ -22,4 +22,5 @@ scratch*
 .python-version
 .env
 scripts/*.md
-CLAUDE.md
+notes.md
+

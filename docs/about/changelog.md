@@ -7,13 +7,108 @@ tags:
 toc_depth: 2
 ---
 
-## v2.36.0
+## v2.37.1 -
+
+### 🚀 Features
+
+- feat: implement the Dragonfly `CL.THROTTLE` rate-limiting command
+
+### 🐛 Bug Fixes
+
+- fix: honor the `FILTER-EF` (max filtering effort) option in `VSIM` — the value was previously parsed but ignored, so a
+  low `FILTER-EF` could return filter matches that real Redis skips
+- fix: `ZPOPMIN`/`ZPOPMAX` in RESP3 now return a flat `[member, score]` pair when no count is given (an array of pairs is
+  only returned when an explicit count is passed), matching real Redis
+- fix: `ZPOPMIN`/`ZPOPMAX` now reject a negative count with `value is out of range, must be positive`
+- fix: `ZPOPMIN`/`ZPOPMAX`/`BZPOPMIN`/`BZPOPMAX`/`ZMPOP`/`BZMPOP` now delete the sorted set key once its last member is
+  popped
+- fix: `LTRIM` now signals the key as modified even when the trim is a no-op, so a `WATCH` on that key correctly aborts
+  the following transaction, matching real Redis
+- fix: align stream group errors with Redis — `XPENDING` on a missing key or unknown group now raises `NOGROUP` instead
+  of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
+
+### 🧰 Maintenance
+
+- perf: `VADD`/`VSIM` keep a row-oriented matrix of the vector set resident and reuse it, instead of restacking every
+  stored vector on each call; re-adding an existing member now replaces its row rather than leaving a stale one
+- perf: cache compiled `JSONPath` objects in the JSON stack mixin (#538)
+- build: drop Python 3.9, target Python 3.10+ (#534)
+- Update to redis-py 8.1
+- refactor: modernize typing for Ruff 0.16 defaults (#533)
+- test: refactor hypothesis tests
+
+## v2.37.0 - 2026-07-22
+
+### 🚀 Features
+
+- feat: implement connection commands `RESET`, `CLIENT KILL`, `CLIENT UNBLOCK`, `CLIENT REPLY`, `CLIENT PAUSE`,
+  `CLIENT UNPAUSE`, `CLIENT NO-EVICT` and `CLIENT NO-TOUCH`. `CLIENT PAUSE` validates and records its arguments but does
+  not actually suspend command processing; the client-side caching commands (`CLIENT TRACKING`, `CLIENT TRACKINGINFO`,
+  `CLIENT CACHING`, `CLIENT GETREDIR`) remain unsupported
+- feat: support `INCREX` command (redis 8.8) (#520)
+- feat: support `FPHA` argument in `JSON.SET` to force homogeneous numeric arrays to a floating-point type (redis 8.8) (
+  #523)
+- feat: support hash field subkey notifications (redis 8.8) (#525)
+- feat: support multiple aggregators in `TS.RANGE`/`TS.REVRANGE`/`TS.MRANGE`/`TS.MREVRANGE` (redis 8.8) (#524)
+- feat: support `COUNT` aggregator in `ZUNION`/`ZINTER`/`ZUNIONSTORE`/`ZINTERSTORE` (redis 8.8) (#522)
+- feat: support `CLAIM min-idle-time` option in `XREADGROUP` (redis 8.4) (#527)
+- feat(bitfield): support `#`-prefixed offsets in `BITFIELD`
+
+### 🐛 Bug Fixes
+
+- fix: align `XNACK` with redis 8.8 semantics (#521)
+- fix: `HEXPIRE`/`HPEXPIRE` now raise an error on negative expiration time
+- fix: `GEOADD` now rejects longitude/latitude pairs outside the valid range
+- fix: validate command option values that real Redis rejects instead of silently acting on them — negative
+  expirations in `HGETEX`/`HSETEX`, non-positive `COUNT`/`numkeys` in `LMPOP`/`BLMPOP`/`ZMPOP`/`BZMPOP` and
+  `SINTERCARD`, negative `LPOS` `COUNT`/`MAXLEN`, out-of-range `COPY` `DB` index, negative blocking timeouts,
+  non-positive `SCAN`/`SSCAN`/`HSCAN`/`ZSCAN` `COUNT`, and invalid `BITCOUNT`/`BITPOS` range arguments (#528)
+
+### 🧰 Maintenance
+
+- Update to redis-py 8.0.1
+- Update Valkey version used in CI to 8.1.8
+- refactor: reorganize and clean up command classes in `_commands.py` and related mixins
+- test: skip subkey notification tests on redis-py below 5 (#526)
+- doc: fix link to implement command guide (#519)
+
+## v2.36.2 - 2026-06-17
+
+### 🐛 Bug Fixes
+
+- fix: replace async `can_read` busy-poll with event-based wakeup (#506)
+- fix: enforce `GT`/`LT` conditions in `ZADD` with `INCR` (#507)
+- fix: reject negative `LIMIT` in `SINTERCARD` and `ZINTERCARD` (#508)
+- fix: EXPIRE GT/LT mishandle keys with no existing TTL (#509)
+- fix: restore missing `addr`/`laddr`/`fd` fields in `CLIENT LIST`/`CLIENT INFO` (#512)
+- fix: SORT/SORT_RO BY <constant> must keep natural order (#510)
+
+## v2.36.1 - 2026-06-05
+
+### 🐛 Bug Fixes
+
+- fix: `TypeError` on import in Python 3.8 due to `list[Any]` annotation in `sort` command (#490)
+- fix: Using path in connection
+- fix(async): `_decode` recurses into `dict` so RESP3 `HGETALL` responses are decoded (#492)
+- fix: `Database` now uses stable identity-based `__hash__`/`__eq__` (previously returned an unstable hash)
+
+### 🧰 Maintenance
+
+- Restored support for redis-py 4.6 #493
+- Update the default server version to 8.
+- refactor: deduplicate sync and async client construction into a shared `build_client_kwds` helper
+- chore: remove dead code in connection/socket setup
+
+## v2.36.0 - 2026-05-29
 
 ### 🚀 Features
 
 - Implement keyspace notifications @alexbthundiyil-spec (#463)
 - feat(lua): add server global alias for Valkey @przemub (#480)
 - feat(streams): implement `XACKDEL`, `XDELEX`, `XIDMPRECORD`, `XNACK` commands (#484)
+- feat: add `VISMEMBER` command to check element existence in vector set
+- feat: implement array commands (`ARSET`, `ARGET`, `ARLEN`, `ARGETRANGE`, `ARINSERT`, `ARDEL`, etc.) for Redis 8.8 (
+  #487)
 
 ### 🐛 Bug Fixes
 
@@ -27,18 +122,20 @@ toc_depth: 2
 
 - Improved `CLIENT INFO` and `CLIENT GETNAME` commands
 - Better TDigest implementation
-- Update Redis 8 image used in CI to 8.6.2
+- Update Redis 8 image used in CI to 8.8
+- Update to redis-py 8.0.0
 - perf(hash): make HSET O(1) by using len(h) instead of len(h.keys()) @invoker-bot (#473)
 - refactor: introduce `CommandsMixinBase` to centralise shared mixin attributes (#482)
 - refactor: VectorSet improvements (#476)
+- refactor: async Redis tests to use `AsyncClientType` for improved type safety
 
-## v2.35.1
+## v2.35.1 - 2026-04-09
 
 ### 🐛 Bug Fixes
 
 - fix: Breaking change in 2.35.0: FakeConnection renamed without backward-compatible alias #468
 
-## v2.35.0
+## v2.35.0 - 2026-04-09
 
 ### 🚀 Features
 
@@ -59,14 +156,14 @@ toc_depth: 2
 - Improved documentation with mermaidjs diagrams #467
 - Move documentation dependencies to pyproject.toml
 
-## v2.34.1
+## v2.34.1 - 2026-02-24
 
 ### 🐛 Bug Fixes
 
 - Fix handling of deprecated arguments in `FakeRedis` to support redis-py 7.2.0 #457
 - Blocking `XREAD` with `block=0` works as expected #453
 
-## v2.34.0
+## v2.34.0 - 2026-02-16
 
 ### 🚀 Features
 
@@ -98,7 +195,7 @@ toc_depth: 2
 - Update tests to support redis-py 7.1.0 and Redis 8.4
 - Async tests run on resp3 and resp2
 
-## v2.32.1 - 2025-11-05
+## v2.32.1 - 2025-11-03
 
 ### 🐛 Bug Fixes
 
@@ -111,7 +208,7 @@ toc_depth: 2
 - Update tests to support redis-py 7.0.1
 - Update tests to support valkey 9.0.0
 
-## v2.32.0 -
+## v2.32.0 - 2025-10-02
 
 ### 🚀 Features
 
@@ -122,7 +219,7 @@ toc_depth: 2
 - fix:removing use of self.protocol to support redis-py < 5 #419
 - fix:race condition due to closing socket in TCPFakeRequestHandler:finish #420
 
-## v2.31.3 -
+## v2.31.3 - 2025-09-21
 
 ### 🐛 Bug Fixes
 
@@ -136,7 +233,7 @@ toc_depth: 2
 
 - `TcpFakeServer` does not require lupa to be installed (only if Lock is used) #413
 
-## v2.31.1 - 2025-09-01
+## v2.31.1 - 2025-08-31
 
 ### 🐛 Bug Fixes
 
@@ -162,14 +259,14 @@ toc_depth: 2
 - when using `FakeValkey`, raise `valkey.ResponseError` instead of `redis.ResponseError` #402
 - fix issue with pytest-asyncio #404 @seifertm
 
-## v2.30.3 - 2025-08-01
+## v2.30.3 - 2025-07-29
 
 ### 🐛 Bug Fixes
 
 - Import `Callable` from `typing` to support python 3.8 #398
 - FakeValkey init arguments #400
 
-## v2.30.2 - 2025-08-01
+## v2.30.2 - 2025-07-28
 
 ### 🐛 Bug Fixes
 
@@ -180,7 +277,7 @@ toc_depth: 2
 - Refactor tests
 - `FakeValkey` uses valkey-py instead of redis-py
 
-## v2.30.1 - 2025-06-20
+## v2.30.1 - 2025-06-19
 
 ### 🐛 Bug Fixes
 
@@ -191,7 +288,7 @@ toc_depth: 2
 
 - Replace deprecated event_loop fixture @mgorny #396
 
-## v2.30.0 - 2025-06-11
+## v2.30.0 - 2025-06-16
 
 ### 🚀 Features
 
@@ -203,7 +300,7 @@ toc_depth: 2
 - aio.FakeRedis: Using `inspect` to get `__init__` parameters #384
 - Discrepancy when using xread with resp3 #393
 
-## v2.29.0 - 2025-05-01
+## v2.29.0 - 2025-05-06
 
 ### 🚀 Features
 
@@ -229,7 +326,7 @@ toc_depth: 2
 - Open commands.json with encoding specified #367
 - Fix `xadd` to use last timestamp if the current system timestamp is lower than the last timestamp #368
 
-## v2.28.0 - 2025-03-29
+## v2.28.0 - 2025-03-25
 
 ### 🚀 Features
 
@@ -247,7 +344,7 @@ toc_depth: 2
 
 - Refactor hypothesis tests (#366)
 
-## v2.27.0 - 2025-02-11
+## v2.27.0 - 2025-02-10
 
 ### 🚀 Features
 
@@ -275,7 +372,7 @@ toc_depth: 2
 - Implement test for `SADDEX` (Dragonfly specific command) #348
 - Update dependencies
 
-## v2.26.1 - 2024-10-26
+## v2.26.1 - 2024-10-25
 
 ### 🐛 Bug Fixes
 
@@ -298,7 +395,7 @@ toc_depth: 2
 
 - Fix missing default values for version/server_type in `FakeBaseConnectionMixin` #334
 
-## v2.25.0 - 2024-09-28
+## v2.25.0 - 2024-09-27
 
 ### 🚀 Features
 
@@ -342,7 +439,7 @@ toc_depth: 2
 
 - fix:issue with async connection and blocking operations writing responses twice to socket #316
 
-## v2.23.4- 2024-08-26
+## v2.23.4 - 2024-07-30
 
 ### 🐛 Bug Fixes
 
@@ -353,7 +450,7 @@ toc_depth: 2
 - Documented how to use fakeredis with FastAPI. @ sjjessop #292
 - Using black for linting python code.
 
-## v2.23.3- 2024-06-29
+## v2.23.3 - 2024-06-29
 
 ### 🧰 Maintenance
 
@@ -363,19 +460,19 @@ toc_depth: 2
 
 - Fix ttl for empty stream #313
 
-## v2.23.2- 2024-05-18
+## v2.23.2 - 2024-05-14
 
 ### 🐛 Bug Fixes
 
 - Fix reading multiple streams with blocking #309
 
-## v2.23.1- 2024-05-12
+## v2.23.1 - 2024-05-10
 
 ### 🐛 Bug Fixes
 
 - Fix `XREAD` behavior when `COUNT` is not provided but `BLOCKING` is provided #308
 
-## v2.23.0 - 2024-05-07
+## v2.23.0 - 2024-05-05
 
 ### 🚀 Features
 
@@ -414,7 +511,7 @@ toc_depth: 2
 - Revert behavior of defaulting to share the same server data structure between connections @howamith #303
 - Fix type hint for version #302
 
-## v2.21.2 - 2024-03-12
+## v2.21.2 - 2024-03-10
 
 > Note: Since connection params are defaulted to be the same between async and sync connections, different FakeRedis
 > connections with the same connection params (or without connection parameters) will share the same server data
@@ -474,7 +571,7 @@ toc_depth: 2
 - Implement `BITFIELD` command #247
 - Implement `COMMAND`, `COMMAND INFO`, `COMMAND COUNT` #248
 
-## v2.19.0
+## v2.19.0 - 2023-09-25
 
 ### 🚀 Features
 
@@ -484,7 +581,7 @@ toc_depth: 2
 
 - Fix error on blocking XREADGROUP #237
 
-## v2.18.1
+## v2.18.1 - 2023-09-08
 
 ### 🐛 Bug Fixes
 
@@ -495,7 +592,7 @@ toc_depth: 2
 - Add mypy hints to everything
 - Officially for redis-py 5.0.0, redis 7.2
 
-## v2.18.0
+## v2.18.0 - 2023-08-14
 
 ### 🚀 Features
 
@@ -506,7 +603,7 @@ toc_depth: 2
 
 - Fix All aio.FakeRedis instances share the same server #218
 
-## v2.17.0
+## v2.17.0 - 2023-07-18
 
 ### 🚀 Features
 
@@ -525,7 +622,7 @@ We'd like to thank all the contributors who worked on this release!
 
 @OlegZv, @sjjessop
 
-## v2.16.0
+## v2.16.0 - 2023-07-04
 
 ### 🚀 Features
 
@@ -539,7 +636,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - Updated how to test django_rq #204
 
-## v2.15.0
+## v2.15.0 - 2023-06-19
 
 ### 🚀 Features
 
@@ -563,13 +660,13 @@ We'd like to thank all the contributors who worked on this release!
 
 - Fix documentation link
 
-## v2.14.1
+## v2.14.1 - 2023-06-06
 
 ### 🐛 Bug Fixes
 
 - Fix requirement for packaging.Version #177
 
-## v2.14.0
+## v2.14.0 - 2023-06-05
 
 ### 🚀 Features
 
@@ -580,7 +677,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - Improve streams code
 
-## v2.13.0
+## v2.13.0 - 2023-05-21
 
 ### 🐛 Bug Fixes
 
@@ -592,7 +689,7 @@ We'd like to thank all the contributors who worked on this release!
 - Improve test code
 - Fix reported security issue
 
-## v2.12.1
+## v2.12.1 - 2023-05-09
 
 ### 🐛 Bug Fixes
 
@@ -604,26 +701,26 @@ We'd like to thank all the contributors who worked on this release!
 - Improved documentation (added async sample, etc.)
 - Add redis-py 5.0.0b3 to GitHub workflow
 
-## v2.12.0
+## v2.12.0 - 2023-05-07
 
 ### 🚀 Features
 
 - Implement `XREAD` #147
 
-## v2.11.2
+## v2.11.2 - 2023-04-27
 
 ### 🐛 Bug Fixes
 
 - Unique FakeServer when no connection params are provided (#142)
 
-## v2.11.1
+## v2.11.1 - 2023-04-25
 
 ### 🧰 Maintenance
 
 - Minor fixes supporting multiple connections
 - Update documentation
 
-## v2.11.0
+## v2.11.0 - 2023-04-22
 
 ### 🚀 Features
 
@@ -635,7 +732,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - Fix creating fakeredis.aioredis using url with user/password (#139)
 
-## v2.10.3
+## v2.10.3 - 2023-04-03
 
 ### 🧰 Maintenance
 
@@ -646,37 +743,37 @@ We'd like to thank all the contributors who worked on this release!
 
 - Fix import used in GenericCommandsMixin.randomkey (#135)
 
-## v2.10.2
+## v2.10.2 - 2023-03-21
 
 ### 🐛 Bug Fixes
 
 - Fix async_timeout usage on py3.11 (#132)
 
-## v2.10.1
+## v2.10.1 - 2023-03-15
 
 ### 🐛 Bug Fixes
 
 - Enable testing django-cache using `FakeConnection`.
 
-## v2.10.0
+## v2.10.0 - 2023-02-28
 
 ### 🚀 Features
 
 - All geo commands implemented
 
-## v2.9.2
+## v2.9.2 - 2023-02-20
 
 ### 🐛 Bug Fixes
 
 - Fix bug for `xrange`
 
-## v2.9.1
+## v2.9.1 - 2023-02-19
 
 ### 🐛 Bug Fixes
 
 - Fix bug for `xrevrange`
 
-## v2.9.0
+## v2.9.0 - 2023-02-14
 
 ### 🚀 Features
 
@@ -688,7 +785,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - Relax python version requirement #128
 
-## v2.8.0
+## v2.8.0 - 2023-02-10
 
 ### 🚀 Features
 
@@ -698,13 +795,13 @@ We'd like to thank all the contributors who worked on this release!
 
 - Fix import error for redis-py v3+ [#121](https://github.com/cunla/fakeredis-py/issues/121)
 
-## v2.7.1
+## v2.7.1 - 2023-02-04
 
 ### 🐛 Bug Fixes
 
 - Fix import error for NoneType #527
 
-## v2.7.0
+## v2.7.0 - 2023-02-03
 
 ### 🚀 Features
 
@@ -717,7 +814,7 @@ We'd like to thank all the contributors who worked on this release!
 - Improve json commands implementation.
 - Improve commands documentation.
 
-## v2.6.0
+## v2.6.0 - 2023-01-27
 
 ### 🚀 Features
 
@@ -734,7 +831,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.5.0...v2.6.0
 
-## v2.5.0
+## v2.5.0 - 2023-01-21
 
 #### 🚀 Features
 
@@ -757,7 +854,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.4.0...v2.5.0
 
-## v2.4.0
+## v2.4.0 - 2022-12-24
 
 #### 🚀 Features
 
@@ -769,7 +866,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.3.0...v2.4.0
 
-## v2.3.0
+## v2.3.0 - 2022-12-15
 
 #### 🚀 Features
 
@@ -784,7 +881,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.2.0...v2.3.0
 
-## v2.2.0
+## v2.2.0 - 2022-12-04
 
 #### 🚀 Features
 
@@ -798,7 +895,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.1.0...v2.2.0
 
-## v2.1.0
+## v2.1.0 - 2022-11-28
 
 #### 🚀 Features
 
@@ -822,7 +919,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v2.0.0...v2.1.0
 
-## v2.0.0
+## v2.0.0 - 2022-11-18
 
 #### 🚀 Breaking changes
 
@@ -841,7 +938,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.10.1...v2.0.0
 
-## v1.10.1
+## v1.10.1 - 2022-11-08
 
 #### What's Changed
 
@@ -853,7 +950,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.10.0...v1.10.1
 
-## v1.10.0
+## v1.10.0 - 2022-10-24
 
 #### What's Changed
 
@@ -863,14 +960,14 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.4...v1.10.0
 
-## v1.9.4
+## v1.9.4 - 2022-10-15
 
 ### What's Changed
 
 * Separate LUA support to a different file in [#55](https://github.com/cunla/fakeredis-py/pull/55)
   **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.3...v1.9.4
 
-## v1.9.3
+## v1.9.3 - 2022-09-27
 
 ### Changed
 
@@ -878,7 +975,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.2...v1.9.3
 
-## v1.9.2
+## v1.9.2 - 2022-09-27
 
 #### What's Changed
 
@@ -888,7 +985,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.1...v1.9.2
 
-## v1.9.1
+## v1.9.1 - 2022-09-04
 
 #### What's Changed
 
@@ -897,7 +994,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.9.0...v1.9.1
 
-## v1.9.0
+## v1.9.0 - 2022-07-30
 
 #### What's Changed
 
@@ -905,7 +1002,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/cunla/fakeredis-py/compare/v1.8.2...v1.9.0
 
-## v1.8.2
+## v1.8.2 - 2022-07-23
 
 #### What's Changed
 
@@ -922,7 +1019,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.8.1...v1.8.2
 
-## v1.8.1
+## v1.8.1 - 2022-06-06
 
 #### What's Changed
 
@@ -934,7 +1031,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.8...v1.8.1
 
-## v1.8
+## v1.8 - 2022-05-27
 
 #### What's Changed
 
@@ -945,7 +1042,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.7.6.1...v1.8
 
-## v1.7.6
+## v1.7.6 - 2022-05-24
 
 #### Added
 
@@ -979,7 +1076,7 @@ We'd like to thank all the contributors who worked on this release!
 
 - @beatgeek
 
-## v1.7.5
+## v1.7.5 - 2022-05-14
 
 #### What's Changed
 
@@ -987,7 +1084,7 @@ We'd like to thank all the contributors who worked on this release!
 
 **Full Changelog**: https://github.com/dsoftwareinc/fakeredis-py/compare/v1.7.4...v1.7.5
 
-## v1.7.4
+## v1.7.4 - 2022-05-07
 
 #### What's Changed
 

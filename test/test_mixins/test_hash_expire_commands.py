@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import time
-from typing import Optional, Dict
 
 import pytest
 
@@ -11,6 +12,7 @@ pytestmark.extend(
     [
         pytest.mark.unsupported_server_types("dragonfly", "valkey"),
         pytest.mark.supported_server_versions(min_redis_ver="7.1"),
+        testtools.run_test_if_redispy_ver("gte", "5"),
     ]
 )
 
@@ -42,8 +44,8 @@ pytestmark.extend(
 def test_hexpire(
     r: ClientType,
     expiration_seconds: int,
-    preset_expiration: Optional[int],
-    flags: Dict[str, bool],
+    preset_expiration: int | None,
+    flags: dict[str, bool],
     expected_result: int,
 ) -> None:
     key, field = "redis-key", "hash-key"
@@ -101,10 +103,7 @@ def test_hexpire_after_hset(r: ClientType):
 @pytest.mark.slow
 def test_hexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     assert r.hexpire("redis-key", 1, "field1", "field2") == [1, 1]
     time.sleep(1.1)
     assert r.hexists("redis-key", "field1") is False
@@ -148,10 +147,7 @@ def test_hpexpire_nonexistent_key_or_field(r: ClientType):
 
 def test_hpexpire_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     assert r.hpexpire("redis-key", 100, "field1", "field2") == [1, 1]
     time.sleep(0.11)
     assert r.hexists("redis-key", "field1") is False
@@ -200,10 +196,7 @@ def test_hexpireat_nonexistent_key_or_field(r: ClientType):
 
 def test_hexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     exp_time = (testtools.current_time() + 1000) // 1000
     assert r.hexpireat("redis-key", exp_time, "field1", "field2") == [1, 1]
     time.sleep(1.1)
@@ -253,10 +246,7 @@ def test_hpexpireat_nonexistent_key_or_field(r: ClientType):
 
 def test_hpexpireat_multiple_fields(r: ClientType):
     r.delete("redis-key")
-    r.hset(
-        "redis-key",
-        mapping={"field1": "value1", "field2": "value2", "field3": "value3"},
-    )
+    r.hset("redis-key", mapping={"field1": "value1", "field2": "value2", "field3": "value3"})
     exp_time = testtools.current_time() + 100
     assert r.hpexpireat("redis-key", exp_time, "field1", "field2") == [1, 1]
     time.sleep(0.11)
@@ -369,3 +359,16 @@ def test_hincrbyfloat_with_hash_key_expiration(r: ClientType):
     assert isinstance(res, list)
     assert len(res) == 1
     assert res[0] >= 0
+
+
+def test_hexpire_negative_ttl_raises(r: ClientType):
+    # HEXPIRE/HPEXPIRE take a relative time, so a negative value is an error (unlike the *AT variants, which accept a
+    # past absolute timestamp). The field must be left untouched, not deleted.
+    r.delete("redis-key")
+    r.hset("redis-key", mapping={"field1": "value1"})
+    with pytest.raises(Exception, match="invalid expire time"):
+        r.hexpire("redis-key", -1, "field1")
+    with pytest.raises(Exception, match="invalid expire time"):
+        r.hpexpire("redis-key", -1, "field1")
+    assert r.hget("redis-key", "field1") == b"value1"
+    assert r.httl("redis-key", "field1") == [-1]

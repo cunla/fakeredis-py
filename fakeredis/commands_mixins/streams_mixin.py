@@ -1,19 +1,19 @@
+from __future__ import annotations
+
 import functools
-from typing import List, Union, Tuple, Callable, Optional, Any, Dict
+from typing import Any
 
 import fakeredis._msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, command, CommandItem, Int
-from fakeredis._helpers import SimpleError, casematch, OK, current_time, SimpleString, casematch_any
-from fakeredis.model import XStream, StreamRangeTest, StreamGroup, StreamEntryKey
+from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import StreamGroup, StreamRangeTest, XStream
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
-    _blocking: Callable[[Optional[Union[float, int]], Callable[[bool], Any]], Any]
-
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
-    def xadd(self, key: CommandItem, *args: bytes) -> Optional[bytes]:
+    def xadd(self, key: CommandItem, *args: bytes) -> bytes | None:
         (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
             args, ("nomkstream", "+limit", "~+maxlen", "~minid", "*idmpauto", "**idmp"), error_on_unexpected=False
         )
@@ -31,7 +31,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             producer_id, idempotent_id = idmp
         if idmpauto is not None:
             producer_id = idmpauto
-        res: Optional[bytes] = stream.add(
+        res: bytes | None = stream.add(
             elements, entry_key=entry_key, producer_id=producer_id, idempotent_id=idempotent_id
         )
         if res is None:
@@ -60,52 +60,56 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return len(key.value)
 
     @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
+    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _min, _max, False, count)
 
     @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> List[bytes]:
+    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
         (count,), _ = extract_args(args, ("+count",))
         return self._xrange(key.value, _max, _min, True, count)
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
-    def xread(self, *args: bytes) -> Union[None, Dict[bytes, Any], List[List[Any]]]:
+    def xread(self, *args: bytes) -> None | dict[bytes, Any] | list[list[Any]]:
         ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
-        stream_start_id_list: List[Tuple[bytes, StreamRangeTest]] = []  # (name, start_id)
+        stream_start_id_list: list[tuple[bytes, StreamRangeTest]] = []  # (name, start_id)
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             start_id = self._parse_start_id(item, left_args[i + num_streams])
             stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
-            return self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
-        else:
-            return self._blocking(  # type: ignore
-                timeout / 1000.0,
-                functools.partial(self._xread, stream_start_id_list, count, True),
+            return self._empty_stream_read_reply(
+                self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
             )
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xread, stream_start_id_list, count, True),
+            self._empty_stream_read_reply,
+        )
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
         self, group_const: bytes, group_name: bytes, consumer_name: bytes, *args: bytes
-    ) -> Optional[Union[Dict[bytes, Any], List[List[Any]]]]:
+    ) -> dict[bytes, Any] | list[list[Any]] | None:
         if not casematch(b"GROUP", group_const):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        (count, timeout, noack), left_args = extract_args(
-            args, ("+count", "+block", "noack"), error_on_unexpected=False
+        (count, timeout, noack, min_idle_time), left_args = extract_args(
+            args, ("+count", "+block", "noack", "+claim"), error_on_unexpected=False
         )
+        if min_idle_time is not None and min_idle_time < 0:
+            raise SimpleError(msgs.XREADGROUP_CLAIM_NEGATIVE_MSG)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
         num_streams = int(len(left_args) / 2)
 
         # List of (group, stream_name, stream start-id)
-        group_params: List[Tuple[StreamGroup, bytes, bytes]] = []
+        group_params: list[tuple[StreamGroup, bytes, bytes]] = []
         for i in range(num_streams):
             item = CommandItem(left_args[i], self._db, item=self._db.get(left_args[i]), default=None)
             if item.value is None:
@@ -117,15 +121,14 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 )
             group_params.append((group, left_args[i], left_args[i + num_streams]))
         if timeout is None:
-            res = self._xreadgroup(consumer_name, group_params, count, noack, False)
-        else:
-            res = self._blocking(
-                timeout / 1000.0,
-                functools.partial(self._xreadgroup, consumer_name, group_params, count, noack),
+            return self._xreadgroup_reply(
+                self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
             )
-        if self._client_info.protocol_version == 2:
-            return [[k, v] for k, v in res.items()] if res else None
-        return res
+        return self._blocking(  # type: ignore[no-any-return]
+            timeout / 1000.0,
+            functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
+            self._xreadgroup_reply,
+        )
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
     def xdel(self, key: CommandItem, *args: bytes) -> int:
@@ -145,10 +148,20 @@ class StreamsCommandsMixin(CommandsMixinBase):
             return 0
         return group.ack(args)  # type: ignore
 
-    @command(name="XPENDING", fixed=(Key(XStream), bytes), repeat=(bytes,))
-    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> Union[int, List[Any]]:
+    @command(
+        name="XPENDING",
+        fixed=(Key(XStream), bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
+    def xpending(self, key: CommandItem, group_name: bytes, *args: bytes) -> int | list[Any]:
+        # Dragonfly looks the key up before the group, so a missing stream is "no such key" and a missing group names
+        # only the group it could not find.
+        is_dragonfly = self.server_type == "dragonfly"
         if key.value is None:
-            return 0
+            if is_dragonfly:
+                raise SimpleError(msgs.NO_KEY_MSG)
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         idle, start, end, count, consumer = None, None, None, None, None
 
         if len(args) > 4 and casematch(b"idle", args[0]):  # Idle
@@ -166,7 +179,9 @@ class StreamsCommandsMixin(CommandsMixinBase):
                 consumer = args[3]
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            return 0 if start is not None else []
+            if is_dragonfly:
+                raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         if start is not None:
             return group.pending(idle, start, end, count, consumer)
@@ -220,35 +235,46 @@ class StreamsCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
         return group.del_consumer(consumer_name)
 
-    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=())
-    def xinfo_groups(self, key: CommandItem) -> Dict[bytes, Any]:
+    @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
+    def xinfo_groups(self, key: CommandItem) -> list[dict[bytes, Any]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: Dict[bytes, Any] = key.value.groups_info()
+        res: list[dict[bytes, Any]] = key.value.groups_info()
+        if self.server_type == "dragonfly":
+            # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
+            for group in res:
+                if group.get(b"lag") == -1:
+                    group[b"lag"] = None
         return res
 
     @command(name="XINFO STREAM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def xinfo_stream(self, key: CommandItem, *args: bytes) -> List[bytes]:
+    def xinfo_stream(self, key: CommandItem, *args: bytes) -> list[bytes]:
         (full,), _ = extract_args(args, ("full",))
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: List[bytes] = key.value.stream_info(full)
+        res: list[bytes] = key.value.stream_info(full)
+        if self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+            # An empty stream's first/last entry is a null array on dragonfly, where redis sends nil; under RESP3 a
+            # client reads that back as an empty array.
+            for i in range(0, len(res) - 1, 2):
+                if res[i] in (b"first-entry", b"last-entry") and res[i + 1] is None:
+                    res[i + 1] = []  # type: ignore[call-overload]
         return res
 
     @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
-    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> List[Dict[str, Union[bytes, int]]]:
+    def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> list[dict[str, bytes | int]]:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
-        res: List[Dict[str, Union[bytes, int]]] = group.consumers_info()
+        res: list[dict[str, bytes | int]] = group.consumers_info()
         return res
 
     @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
     def xclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, *args: bytes
-    ) -> Union[List[bytes], List[List[Union[bytes, List[bytes]]]]]:
+    ) -> list[bytes] | list[list[bytes | list[bytes]]]:
         stream = key.value
         if stream is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
@@ -256,7 +282,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        (idle, _time, retry, force, justid), msg_ids = extract_args(
+        (idle, _time, _retry, force, justid), msg_ids = extract_args(
             args,
             ("+idle", "+time", "+retrycount", "force", "justid"),
             error_on_unexpected=False,
@@ -274,7 +300,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
     @command(name="XAUTOCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
     def xautoclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, start: bytes, *args: bytes
-    ) -> List[Union[bytes, List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+    ) -> list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]]:
         (count, justid), _ = extract_args(args, ("+count", "justid"))
         count = count or 100
         stream = key.value
@@ -284,11 +310,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
 
-        keys: List[StreamEntryKey] = group.read_pel_msgs(min_idle_ms, start, count)
+        keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False)
 
-        res: List[Union[bytes, List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]] = [
-            max(msgs_claimed).encode() if len(msgs_claimed) > 0 else start,
+        res: list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]] = [
+            next_key.encode() if next_key is not None else b"0-0",
             [msg.encode() for msg in msgs_claimed] if justid else [stream.format_record(msg) for msg in msgs_claimed],
         ]
         if self.version >= (7,):
@@ -296,7 +322,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis",))
-    def xdelex(self, key: CommandItem, *args: bytes) -> List[int]:
+    def xdelex(self, key: CommandItem, *args: bytes) -> list[int]:
         """XDELEX key [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
         mode, ids = self._parse_xdelex_args(args, "XDELEX")
         if key.value is None:
@@ -306,7 +332,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="XACKDEL", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
-    def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> List[int]:
+    def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> list[int]:
         """XACKDEL key group [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
         mode, ids = self._parse_xdelex_args(args, "XACKDEL")
         if key.value is None:
@@ -340,25 +366,27 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @command(name="XNACK", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
     def xnack(self, key: CommandItem, group_name: bytes, *args: bytes) -> int:
-        """XNACK key group mode IDS numids id [id ...]"""
+        """XNACK key group <SILENT | FAIL | FATAL> IDS numids id [id ...] [RETRYCOUNT count] [FORCE]"""
+        if self.version < (8, 8):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("XNACK"))
         if len(args) < 3:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XNACK"))
-        if not casematch(args[0], b"SILENT") and not casematch(args[0], b"FAIL") and not casematch(args[0], b"FATAL"):
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if not casematch_any(args[0], b"SILENT", b"FAIL", b"FATAL"):
+            raise SimpleError(msgs.XNACK_INVALID_MODE_MSG)
         mode = args[0].upper()
         if not casematch(args[1], b"IDS"):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         num_ids = Int.decode(args[2])
         if len(args) < 3 + num_ids:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        ids, remaining = args[3 : 3 + num_ids], args[3 + num_ids :]
+        ids, remaining = list(args[3 : 3 + num_ids]), args[3 + num_ids :]
         (retry_count, force), _ = extract_args(remaining, ("+retrycount", "force"))
 
         if key.value is None:
-            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
         return group.nack_entries(ids, mode, retry_count, bool(force))
 
     @command(name="XIDMPRECORD", fixed=(Key(XStream), bytes, bytes, bytes), repeat=(), server_types=("redis",))
@@ -394,8 +422,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
         _min: StreamRangeTest,
         _max: StreamRangeTest,
         reverse: bool,
-        count: Union[int, None],
-    ) -> List[bytes]:
+        count: int | None,
+    ) -> list[bytes]:
         if stream is None:
             return []
         if count is None:
@@ -406,35 +434,73 @@ class StreamsCommandsMixin(CommandsMixinBase):
     def _xreadgroup(
         self,
         consumer_name: bytes,
-        group_params: List[Tuple[StreamGroup, bytes, bytes]],
-        count: int,
+        group_params: list[tuple[StreamGroup, bytes, bytes]],
+        count: int | None,
         noack: bool,
+        min_idle_time: int | None,
         first_pass: bool,
-    ) -> Optional[Dict[bytes, Any]]:
-        res: Dict[bytes, Any] = {}
+    ) -> dict[bytes, Any] | None:
+        res: dict[bytes, Any] = {}
+        claimed_any = False
         for group, stream_name, start_id in group_params:
-            stream_results = group.group_read(consumer_name, start_id, count, noack)
-            if first_pass and (count is None):
+            claimed: list[Any] = []
+            # CLAIM only applies when reading new entries, not the consumer history
+            claim_active = False
+            if min_idle_time is not None and start_id == b">":
+                claim_active = True
+                claimed = group.claim_for_read(min_idle_time, consumer_name, count)
+                claimed_any = claimed_any or len(claimed) > 0
+            remaining_count = count - len(claimed) if count is not None else None
+            stream_results: list[Any] = group.group_read(consumer_name, start_id, remaining_count, noack)
+            if first_pass and (count is None) and not claimed_any:
                 return None
+            if claim_active:
+                # With CLAIM, claimed entries are reported before new entries, and every entry carries idle time and
+                # delivery count (0 for new entries).
+                stream_results = claimed + [record + [0, 0] for record in stream_results]
             if len(stream_results) > 0 or start_id != b">":
                 res[stream_name] = stream_results
         return res
 
+    def _empty_stream_read_reply(self, res: dict[bytes, Any] | list[Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Shape an XREAD/XREADGROUP reply that matched nothing, under RESP3.
+
+        Redis answers with an empty map; dragonfly answers with an empty array. Note that redis-py's RESP3 parser
+        assumes the map and cannot consume dragonfly's reply. Under RESP2 both send a null array, so the reply is left
+        as it is.
+        """
+        if not res and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+            return []
+        return res
+
+    def _xreadgroup_reply(self, res: dict[bytes, Any] | None) -> dict[bytes, Any] | list[Any] | None:
+        """Turn the streams XREADGROUP matched into the reply for the protocol in use."""
+        if self._client_info.protocol_version == 2:
+            return [[k, v] for k, v in res.items()] if res else None
+        return self._empty_stream_read_reply(res)
+
     def _xread(
-        self, stream_start_id_list: List[Tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
-    ) -> Union[None, Dict[bytes, Any], List[List[Union[bytes, List[Tuple[bytes, List[bytes]]]]]]]:
+        self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
+    ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
-        res: Dict[bytes, Any] = {}
+        res: dict[bytes, Any] = {}
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             stream_results = self._xrange(item.value, start_id, max_inf, False, count)
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
-        # On blocking read, and there are no results, return None (instead of an empty list)
-        if blocking and len(res) == 0:
-            return None
         if self._client_info.protocol_version == 2:
+            # On blocking read, and there are no results, return None (instead of an empty list)
+            if blocking and len(res) == 0:
+                return None
+            return [[k, v] for k, v in res.items()]
+        if not res:
+            # None keeps `_blocking` waiting; the caller shapes the reply once it gives up.
+            return None if blocking else res
+        if blocking and not first_pass and self.server_type == "dragonfly":
+            # A blocking read that was woken by a new entry is answered by dragonfly with the RESP2-style array, not the
+            # map it sends when the entry was already there.
             return [[k, v] for k, v in res.items()]
         return res
 

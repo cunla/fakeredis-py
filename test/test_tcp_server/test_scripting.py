@@ -1,4 +1,4 @@
-from typing import Tuple
+from __future__ import annotations
 
 import pytest
 import redis
@@ -15,7 +15,7 @@ pytestmark.extend(
 )
 
 
-def test_evalsha_missing_script(tcp_server_address: Tuple[str, int]):
+def test_evalsha_missing_script(tcp_server_address: tuple[str, int]):
     """Test that EVALSHA with a non-existent script returns NOSCRIPT error."""
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         fake_sha = "0" * 40
@@ -25,7 +25,7 @@ def test_evalsha_missing_script(tcp_server_address: Tuple[str, int]):
         assert isinstance(ctx.value, (redis.exceptions.NoScriptError, valkey.exceptions.NoScriptError))
 
 
-def test_tcp_server_lock(tcp_server_address: Tuple[str, int]):
+def test_tcp_server_lock(tcp_server_address: tuple[str, int]):
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         lock = Lock(r, "my-lock")
         lock.acquire()
@@ -33,7 +33,7 @@ def test_tcp_server_lock(tcp_server_address: Tuple[str, int]):
         lock.release()
 
 
-def test_eval_multiline_script(tcp_server_address: Tuple[str, int]):
+def test_eval_multiline_script(tcp_server_address: tuple[str, int]):
     """Test that EVAL works with multi-line Lua scripts."""
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         # Multi-line script with trailing newline
@@ -47,7 +47,7 @@ return redis.call('GET', key)
         assert result == b"testvalue"
 
 
-def test_script_load_multiline(tcp_server_address: Tuple[str, int]):
+def test_script_load_multiline(tcp_server_address: tuple[str, int]):
     """Test that SCRIPT LOAD works with multi-line Lua scripts."""
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         # Multi-line script
@@ -59,7 +59,7 @@ return x + y"""
         assert result == 3
 
 
-def test_eval_script_with_trailing_newline(tcp_server_address: Tuple[str, int]):
+def test_eval_script_with_trailing_newline(tcp_server_address: tuple[str, int]):
     """Test that scripts with trailing newlines are preserved."""
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
         # Script with explicit trailing newline

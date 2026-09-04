@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using the metadata from this file.
+title: fakeredis
+version: 2.36.1
+date-released: 2026-06-07
+url: https://github.com/cunla/fakeredis-py
+repository-code: https://github.com/cunla/fakeredis-py
+license: BSD-3-Clause
+keywords:
+  - python
+  - redis
+  - redis-stack
+  - valkey
+  - dragonfly
+  - testing
+abstract: Implementation of Redis API in python without having a server running. Fully compatible with using redis-py.
+authors:
+  - family-names: Moran
+    given-names: Daniel

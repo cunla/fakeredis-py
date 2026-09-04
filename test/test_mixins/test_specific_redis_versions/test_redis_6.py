@@ -1,0 +1,150 @@
+import pytest
+import redis
+import valkey
+
+from fakeredis._typing import ClientType
+from test import testtools
+from test.test_mixins.test_streams_commands import get_stream_message
+from test.testtools import raw_command
+
+# Valkey reports its own version scheme (forked from redis 7.2), so redis-6 specific behavior never applies
+pytestmark = [pytest.mark.unsupported_server_types("valkey")]
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_bitcount_mode_redis6(r: ClientType):
+    r.set("key", "foobar")
+    with pytest.raises(Exception) as ctx:
+        r.bitcount("key", start=1, end=1, mode="byte")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
+        r.bitcount("key", start=1, end=1, mode="bit")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
+        raw_command(r, "bitcount", "key", "1", "2", "dsd", "cd")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_bitops_mode_redis6(r: ClientType):
+    key = "key:bitpos"
+    r.set(key, b"\xff\xf0\x00")
+    with pytest.raises(Exception) as ctx:
+        assert r.bitpos(key, 0, 8, -1, "bit") == 12
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="7.2")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+def test_bitcount_error_v6(r: ClientType):
+    r = raw_command(r, b"BITCOUNT", b"", b"", b"")
+    assert r == 0
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_pubsub_help_redis6(r: ClientType):
+    assert testtools.raw_command(r, "PUBSUB HELP") == [
+        b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
+        b"CHANNELS [<pattern>]",
+        b"    Return the currently active channels matching a <pattern> (default: '*').",
+        b"NUMPAT",
+        b"    Return number of subscriptions to patterns.",
+        b"NUMSUB [<channel> ...]",
+        b"    Return the number of subscribers for the specified channels, excluding",
+        b"    pattern subscriptions(default: no channels).",
+        b"HELP",
+        b"    Prints this help.",
+    ]
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_script_exists_redis6(r: ClientType):
+    # test response for no arguments by bypassing the py-redis command
+    # as it requires at least one argument
+    assert raw_command(r, "SCRIPT EXISTS") == []
+
+    # use single character characters for non-existing scripts, as those
+    # will never be equal to an actual sha1 hash digest
+    assert r.script_exists("a") == [0]
+    assert r.script_exists("a", "b", "c", "d", "e", "f") == [0, 0, 0, 0, 0, 0]
+
+    sha1_one = r.script_load("return 'a'")
+    assert r.script_exists(sha1_one) == [1]
+    assert r.script_exists(sha1_one, "a") == [1, 0]
+    assert r.script_exists("a", "b", "c", sha1_one, "e") == [0, 0, 0, 1, 0]
+
+    sha1_two = r.script_load("return 'b'")
+    assert r.script_exists(sha1_one, sha1_two) == [1, 1]
+    assert r.script_exists("a", sha1_one, "c", sha1_two, "e", "f") == [0, 1, 0, 1, 0, 0]
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.3")
+@testtools.run_test_if_redispy_ver("gte", "4.4")
+def test_xautoclaim_redis6(r: ClientType):
+    stream, group, consumer1, consumer2 = "stream", "group", "consumer1", "consumer2"
+
+    message_id1 = r.xadd(stream, {"john": "wick"})
+    message_id2 = r.xadd(stream, {"johny": "deff"})
+    message = get_stream_message(r, stream, message_id1)
+    r.xgroup_create(stream, group, 0)
+
+    # trying to claim a message that isn't already pending doesn't
+    # do anything
+    assert r.xautoclaim(stream, group, consumer2, min_idle_time=0) == [b"0-0", []]
+
+    # read the group as consumer1 to initially claim the messages
+    r.xreadgroup(group, consumer1, streams={stream: ">"})
+
+    # claim one message as consumer2
+    response = r.xautoclaim(stream, group, consumer2, min_idle_time=0, count=1)
+    assert response[1] == [message]
+
+    # reclaim the messages as consumer1, but use the justid argument
+    # which only returns message ids
+    assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
+        message_id1,
+        message_id2,
+    ]
+    assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=message_id2, justid=True) == [message_id2]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="6.2", max_redis_ver="6.2.7")
+def test_set_get_nx_redis6(r: ClientType):
+    # Note: this will most likely fail on a 7.0 server, based on the docs for SET
+    with pytest.raises(Exception) as ctx:
+        raw_command(r, "set", "foo", "bar", "NX", "GET")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_zadd_minus_zero_redis6(r: ClientType):
+    # Changing -0 to +0 is ignored
+    r.zadd("foo", {"a": -0.0})
+    r.zadd("foo", {"a": 0.0})
+    assert raw_command(r, "zscore", "foo", "a") == b"-0"
+
+
+@pytest.mark.supported_server_versions(max_redis_ver="6.3")
+def test_xgroup_create_connection6(r: ClientType):
+    stream, group = "stream", "group"
+    message_id = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, message_id)
+    r.xadd(stream, {"foo": "bar"})
+    res = r.xinfo_groups(stream)
+    assert len(res) == 1
+    assert res[0]["name"] == group.encode()
+    assert res[0]["consumers"] == 0
+    assert res[0]["pending"] == 0
+    assert res[0]["last-delivered-id"] == message_id
+
+
+@testtools.run_test_if_lupa_installed()
+@pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
+def test_eval_call_bool6(r: ClientType):
+    # Redis doesn't allow Lua bools to be passed to [p]call
+    with pytest.raises(Exception, match=r"Lua redis\(\) command arguments must be strings or integers") as ctx:
+        r.eval('return redis.call("SET", KEYS[1], true)', 1, "testkey")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

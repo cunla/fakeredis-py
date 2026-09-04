@@ -1,47 +1,87 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import queue
 import re
 import time
 import weakref
-from typing import List, Any, Tuple, Optional, Callable, Union, Match, AnyStr, Generator, Sequence, Type, Dict, Iterable
+from collections.abc import Generator, Iterable, Sequence
+from re import Match
+from typing import Any, AnyStr, Callable, ClassVar
 
 import redis
 
-from fakeredis.model import ClientInfo, BaseModel
+from fakeredis.model import BaseModel, ClientInfo, Hash, is_write_command
+
 from . import _msgs as msgs
 from ._command_args_parsing import extract_args
-from ._commands import Int, Float, SUPPORTED_COMMANDS, COMMANDS_WITH_SUB, Signature, CommandItem
+from ._commands import COMMANDS_WITH_SUB, SUPPORTED_COMMANDS, CommandItem, Float, Int, Signature
 from ._helpers import (
-    SimpleError,
-    valid_response_type,
-    SimpleString,
+    QUEUED,
     NoResponse,
+    SimpleError,
+    SimpleString,
     casematch,
     compile_pattern,
-    QUEUED,
     decode_command_bytes,
+    valid_response_type,
 )
-from ._typing import ResponseErrorType, VersionType, ServerType
+from ._typing import ResponseErrorType, ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
 
 
-def _convert_to_resp2(val: Any) -> Any:
+# Commands Dragonfly refuses to run from inside a Lua script but Redis is happy to run.
+# The rest of Dragonfly's no-script set (SAVE, BGSAVE, SCRIPT, EVAL, MULTI/EXEC, the
+# (P)SUBSCRIBE family and the blocking pops) already carries `FLAG_NO_SCRIPT` here.
+DRAGONFLY_NO_SCRIPT_COMMANDS = frozenset({"flushdb", "flushall", "shutdown", "debug", "config", "client"})
+# Dragonfly refuses to queue the (un)subscribe family inside a MULTI, where redis queues it.
+DRAGONFLY_NO_TRANSACTION_COMMANDS = frozenset(
+    {"subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ssubscribe", "sunsubscribe"}
+)
+# Write commands whose keys dragonfly leaves clean unless it really wrote them: the ones that
+# only read the keys beside their destination, and the two that bow out before touching the
+# key at all -- a rejected MSETNX and a SETRANGE with an empty value. See `_dirty_watched_keys`.
+DRAGONFLY_UNDIRTIED_COMMANDS = frozenset(
+    {
+        "bitop",
+        "copy",
+        "georadius",
+        "georadiusbymember",
+        "geosearchstore",
+        "msetnx",
+        "sdiffstore",
+        "setrange",
+        "sinterstore",
+        "sort",
+        "sunionstore",
+        "zdiffstore",
+        "zinterstore",
+        "zrangestore",
+        "zunionstore",
+    }
+)
+
+
+def _convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
     if isinstance(val, str):
         return val.encode()
     if isinstance(val, float):
+        if keep_doubles:
+            return val
+        if server_type == "dragonfly":
+            return Float.encode_shortest(val)
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
         result = list(itertools.chain(*val.items()))
-        return [_convert_to_resp2(item) for item in result]
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in result]
     if isinstance(val, (list, tuple)):
-        res = [_convert_to_resp2(item) for item in val]
-        return res
+        return [_convert_to_resp2(item, server_type, keep_doubles) for item in val]
     return val
 
 
-def _extract_command(fields: List[bytes]) -> Tuple[Any, List[Any]]:
+def _extract_command(fields: list[bytes]) -> tuple[Any, list[Any]]:
     """Extracts the command and command arguments from a list of `bytes` fields.
 
     :param fields: A list of `bytes` fields containing the command and command arguments.
@@ -80,7 +120,10 @@ def _get_next_file_no() -> int:
 
 class BaseFakeSocket:
     _clear_watches: Callable[[], None]
-    ACCEPTED_COMMANDS_WHILE_PUBSUB = {
+    abort_transaction: Callable[[], None]
+    _forget_transaction: Callable[[], None]
+    _queueing: bool
+    ACCEPTED_COMMANDS_WHILE_PUBSUB: ClassVar[set[str]] = {
         "ping",
         "subscribe",
         "unsubscribe",
@@ -88,19 +131,20 @@ class BaseFakeSocket:
         "punsubscribe",
         "ssubscribe",
         "sunsubscribe",
+        "reset",
     }
     _connection_error_class = redis.ConnectionError
 
     def __init__(
         self,
-        server: "FakeServer",  # type: ignore # noqa: F821
+        server: FakeServer,  # type: ignore # noqa: F821
         db: int,
-        client_class: Type,  # type: ignore
+        client_class: type,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         info = kwargs.pop("client_info", {})
-        super(BaseFakeSocket, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         from fakeredis import FakeServer
 
         self._server: FakeServer = server
@@ -108,18 +152,39 @@ class BaseFakeSocket:
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
-        self.responses: Optional[queue.Queue[bytes]] = queue.Queue()
-        # Prevents parser from processing commands. Not used in this module,
-        # but set by aioredis module to prevent new commands being processed
-        # while handling a blocking command.
+        self.responses: queue.Queue[bytes] | None = queue.Queue()
+        # Prevents parser from processing commands. Not used in this module, but set by aioredis module to prevent new
+        # commands being processed while handling a blocking command.
         self._paused = False
+        # Set by CLIENT KILL. The owning client only notices when it next writes, matching a real server closing the
+        # connection underneath it.
+        self._killed = False
+        # CLIENT REPLY state, mirroring redis' CLIENT_REPLY_OFF/SKIP/SKIP_NEXT flags.
+        self._reply_off = False
+        self._reply_skip = False
+        self._reply_skip_next = False
+        # CLIENT NO-EVICT / CLIENT NO-TOUCH, reported in the CLIENT INFO flags field.
+        self._no_evict = False
+        self._no_touch = False
+        # Set while parked in _blocking, so CLIENT UNBLOCK can tell whether this client is blocked and, if so, how it
+        # should be woken.
+        self._blocked = False
+        self._unblock_reason: bytes | None = None
+        # Subkey (hash field) events recorded by the currently running command: (event, key, subkeys)
+        self._subkey_events: list[tuple[bytes, bytes, list[bytes]]] = []
         self._parser = self._parse_commands()
         self._parser.send(None)
         # Assigned elsewhere
-        self._transaction: Optional[List[Any]]
+        self._transaction: list[Any] | None
         self._in_transaction: bool
         self._pubsub: int
         self._transaction_failed: bool
+        self._transaction_paused: bool
+        info.update(
+            {
+                "id": self._server.get_next_client_id(),
+            }
+        )
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
@@ -140,9 +205,8 @@ class BaseFakeSocket:
 
         :param msg: The response message.
         """
-        # redis.Connection.__del__ might call self.close at any time, which
-        # will set self.responses to None. We assume this will happen
-        # atomically, and the code below then protects us against this.
+        # redis.Connection.__del__ might call self.close at any time, which will set self.responses to None. We assume
+        # this will happen atomically, and the code below then protects us against this.
         responses = self.responses
         if responses:
             responses.put(msg)
@@ -160,11 +224,10 @@ class BaseFakeSocket:
     def fileno(self) -> int:
         return self._fileno
 
-    def _cleanup(self, server: Any) -> None:  # noqa: F821
+    def _cleanup(self, server: Any) -> None:
         """Remove all the references to `self` from `server`.
 
-        This is called with the server lock held, but it may be some time after
-        self.close.
+        This is called with the server lock held, but it may be some time after self.close.
         """
         for subs in server.subscribers.values():
             subs.discard(self)
@@ -172,29 +235,56 @@ class BaseFakeSocket:
             subs.discard(self)
         self._clear_watches()
 
+    def kill(self) -> None:
+        """Disconnect this socket on behalf of CLIENT KILL, from any connection.
+
+        The socket is dropped from the server immediately, so it stops showing up in CLIENT LIST and stops receiving
+        published messages, but the queued responses are left intact: a client that killed itself still has to read the
+        reply to the CLIENT KILL itself. Called with the server lock held.
+        """
+        self._killed = True
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already closed by its owner
+            pass
+        self._cleanup(self._server)
+
     def close(self) -> None:
-        # Mark ourselves for cleanup. This might be called from
-        # redis.Connection.__del__, which the garbage collection could call
-        # at any time, and hence we can't safely take the server lock.
-        # We rely on list.append being atomic.
-        self._server.sockets.remove(self)
+        # Mark ourselves for cleanup. This might be called from redis.Connection.__del__, which the garbage collection
+        # could call at any time, and hence we can't safely take the server lock. We rely on list.append being atomic.
+        try:
+            self._server.sockets.remove(self)
+        except ValueError:  # already removed by CLIENT KILL
+            pass
         self._server.closed_sockets.append(weakref.ref(self))
         self._server = None  # type: ignore
         self._db = None
         self.responses = None
 
-    @staticmethod
-    def _extract_line(buf: bytes) -> Tuple[bytes, bytes]:
+    def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
+        """Build the server's "unknown command" error.
+
+        Dragonfly uses its own wording and never echoes the arguments back, so `args` is only appended for the
+        Redis/Valkey format.
+        """
+        if self._server.server_type == "dragonfly":
+            return SimpleError(msgs.DRAGONFLY_UNKNOWN_COMMAND_MSG.format(command.upper()))
+        msg = msgs.UNKNOWN_COMMAND_MSG.format(command)
+        if args is not None:
+            msg += f"'{args}' "
+        return SimpleError(msg)
+
+    def _extract_line(self, buf: bytes) -> tuple[bytes, bytes]:
         pos = buf.find(b"\n") + 1
         if pos <= 0:
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+            raise self._unknown_command(buf.decode().strip())
         line = buf[:pos]
         buf = buf[pos:]
         if not line.endswith(b"\r\n"):
             parts = line.decode().strip().split(" ", 1)
             command = parts[0]
             args = parts[1] if len(parts) > 1 else ""
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command) + f"'{args}' ")
+            raise self._unknown_command(command, args)
         return line, buf
 
     def _parse_commands(self) -> Generator[None, Any, None]:
@@ -209,7 +299,7 @@ class BaseFakeSocket:
                 buf += yield
             line, buf = self._extract_line(buf)
             if not line[:1] == b"*":  # array
-                raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                raise self._unknown_command(buf.decode().strip())
             n_fields = int(line[1:-2])
             fields = []
             for i in range(n_fields):
@@ -217,7 +307,7 @@ class BaseFakeSocket:
                     buf += yield
                 line, buf = self._extract_line(buf)
                 if line[:1] != b"$":
-                    raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(buf.decode().strip()))
+                    raise self._unknown_command(buf.decode().strip())
                 length = int(line[1:-2])
                 while len(buf) < length + 2:
                     buf += yield
@@ -225,14 +315,19 @@ class BaseFakeSocket:
                 buf = buf[length + 2 :]  # +2 to skip the CRLF
             self._process_command(fields)
 
-    def _process_command(self, fields: List[bytes]) -> None:
+    def _process_command(self, fields: list[bytes]) -> None:
         if not fields:
             return
         result: Any
         cmd, cmd_arguments = _extract_command(fields)
         from_run_command = False
+        unknown_command = False
         try:
-            func, sig = self._name_to_func(cmd)
+            try:
+                func, sig = self._name_to_func(cmd)
+            except SimpleError:
+                unknown_command = True
+                raise
             # ACL check
             self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
             with self._server.lock:
@@ -250,33 +345,49 @@ class BaseFakeSocket:
                 for db in self._server.dbs.values():
                     db.time = now
                 sig.check_arity(cmd_arguments, self.version)
-                if self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                if self._queueing and self._transaction is not None and msgs.FLAG_TRANSACTION not in sig.flags:
+                    if self.server_type == "dragonfly" and cmd in DRAGONFLY_NO_TRANSACTION_COMMANDS:
+                        raise SimpleError(msgs.DRAGONFLY_NOT_IN_TRANSACTION_MSG.format(cmd.upper()))
                     self._transaction.append((func, sig, cmd_arguments))
                     result = QUEUED
                 else:
                     from_run_command = True
                     result = self._run_command(func, sig, cmd_arguments, False)
         except SimpleError as exc:
-            if self._transaction is not None and not from_run_command:
-                self._transaction_failed = True
+            if self._queueing and not from_run_command:
+                if self.server_type != "dragonfly":
+                    self._transaction_failed = True
+                elif not unknown_command:
+                    # Dragonfly stops queueing as soon as a command fails to queue, rather
+                    # than queueing on and refusing the EXEC. An unknown command is the one
+                    # exception: there the transaction carries on unharmed.
+                    self.abort_transaction()
             if cmd == "exec" and exc.value.startswith("ERR "):
                 exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
-                self._transaction = None
-                self._transaction_failed = False
+                self._forget_transaction()
                 self._clear_watches()
             result = exc
         result = self._decode_result(result)
-        if not isinstance(result, NoResponse):
-            self.put_response(result)
+        suppressed = self._reply_off or self._reply_skip
+        # Mirror redis' resetClient(): the SKIP armed by CLIENT REPLY SKIP takes effect on the command *after* it, then
+        # clears itself.
+        self._reply_skip, self._reply_skip_next = self._reply_skip_next, False
+        if suppressed or isinstance(result, NoResponse):
+            return
+        self.put_response(result)
 
     def _run_command(
-        self, func: Optional[Callable[[Any], Any]], sig: Signature, args: List[Any], from_script: bool
+        self, func: Callable[[Any], Any] | None, sig: Signature, args: list[Any], from_script: bool
     ) -> Any:
-        command_items: List[CommandItem] = []
+        command_items: list[CommandItem] = []
+        self._subkey_events = []
+        is_dragonfly = self.server_type == "dragonfly"
         try:
             ret = sig.apply(args, self._db, self.version)
-            if from_script and msgs.FLAG_NO_SCRIPT in sig.flags:
-                raise SimpleError(msgs.COMMAND_IN_SCRIPT_MSG)
+            if from_script and (
+                msgs.FLAG_NO_SCRIPT in sig.flags or (is_dragonfly and sig.name in DRAGONFLY_NO_SCRIPT_COMMANDS)
+            ):
+                raise SimpleError(msgs.DRAGONFLY_COMMAND_IN_SCRIPT_MSG if is_dragonfly else msgs.COMMAND_IN_SCRIPT_MSG)
             if self._pubsub and sig.name not in BaseFakeSocket.ACCEPTED_COMMANDS_WHILE_PUBSUB:
                 raise SimpleError(msgs.BAD_COMMAND_IN_PUBSUB_MSG)
             if len(ret) == 1:
@@ -285,7 +396,13 @@ class BaseFakeSocket:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
                 if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
-                    result = _convert_to_resp2(result)
+                    result = _convert_to_resp2(
+                        result,
+                        self.server_type,
+                        # Dragonfly gives a script's `redis.call` a double as a Lua number
+                        # whatever protocol the client that invoked the script speaks.
+                        keep_doubles=from_script and is_dragonfly,
+                    )
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
                     result, self._client_info.protocol_version
                 ):
@@ -294,14 +411,29 @@ class BaseFakeSocket:
             result = exc
         for command_item in command_items:
             command_item.writeback(remove_empty_val=msgs.FLAG_LEAVE_EMPTY_VAL not in sig.flags)
+        if is_dragonfly:
+            self._dirty_watched_keys(sig, command_items)
         self._keyspace_notifications(command_items, sig.name.encode())
+        self._subkey_notifications(command_items)
         return result
 
-    def _keyspace_notifications(self, command_items: List[CommandItem], event: bytes) -> None:
+    def _publish_to_channel(
+        self, channel: bytes, message: bytes, pattern_regex: dict[bytes, re.Pattern[bytes]]
+    ) -> None:
+        msg = [b"message", channel, message]
+        subs: Iterable[Any] = self._server.subscribers.get(channel, set())
+        for sock in subs:
+            sock.put_response(msg)
+
+        for pattern, regex in pattern_regex.items():
+            if regex.match(channel):
+                pmsg = [b"pmessage", pattern, channel, message]
+                for sock in self._server.psubscribers[pattern]:
+                    sock.put_response(pmsg)
+
+    def _keyspace_notifications(self, command_items: list[CommandItem], event: bytes) -> None:
         """Send keyspace notifications"""
-        if isinstance(event, str):
-            event = event.encode()
-        pattern_regex: Dict[bytes, re.Pattern[bytes]] = {
+        pattern_regex: dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }
         keyspace_channel_prefix: bytes = f"__keyspace@{self._db_num}__:".encode()
@@ -313,19 +445,62 @@ class BaseFakeSocket:
                 keyspace_channel = keyspace_channel_prefix + command_item.key
 
                 for channel, message in [(keyspace_channel, event), (keyevent_channel, command_item.key)]:
-                    msg = [b"message", channel, message]
-                    subs: Iterable[Any] = self._server.subscribers.get(channel, set())
-                    for sock in subs:
-                        sock.put_response(msg)
-
-                    for pattern, regex in pattern_regex.items():
-                        if regex.match(channel):
-                            pmsg = [b"pmessage", pattern, channel, message]
-                            for sock in self._server.psubscribers[pattern]:
-                                sock.put_response(pmsg)
+                    self._publish_to_channel(channel, message, pattern_regex)
             except Exception as e:
                 LOGGER.error(
                     f"Error sending keyspace notification for event `{event.decode()}` on key {command_item.key.decode()}: {e}"
+                )
+
+    def add_subkey_event(self, event: bytes, key: bytes, subkeys: Sequence[bytes]) -> None:
+        """Record a subkey (e.g. hash field) event, to be published once the current command finishes."""
+        if len(subkeys) > 0:
+            self._subkey_events.append((event, key, list(subkeys)))
+
+    def _subkey_notifications(self, command_items: list[CommandItem]) -> None:
+        """Send subkey notifications (added in redis 8.8), currently emitted for hash fields only.
+
+        Unlike key-level notifications above, these follow the `notify-keyspace-events` config: the `h` class flag must
+        be set, and each of the S/T/I/V flags enables one channel type.
+        """
+        events, self._subkey_events = self._subkey_events, []
+        for command_item in command_items:
+            if isinstance(command_item.value, Hash):
+                expired_fields = command_item.value.take_expired_fields()
+                if expired_fields:
+                    events.insert(0, (b"hexpired", command_item.key, expired_fields))
+        if not events or self.version < (8, 8) or self._server.server_type != "redis":
+            return
+        config_flags = self._server.config.get(b"notify-keyspace-events", b"")
+        if b"h" not in config_flags and b"A" not in config_flags:
+            return
+        if not any(flag in config_flags for flag in (b"S", b"T", b"I", b"V")):
+            return
+        pattern_regex: dict[bytes, re.Pattern[bytes]] = {
+            pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
+        }
+        db_num = str(self._db_num).encode()
+        for event, key, subkeys in events:
+            try:
+                subkeys_payload = b",".join(b"%d:%s" % (len(subkey), subkey) for subkey in subkeys)
+                # Events containing `|` are skipped for the channels using `|` as a delimiter,
+                # and keys containing `\n` for the channel using `\n` as a delimiter.
+                if b"S" in config_flags and b"|" not in event:
+                    channel = b"__subkeyspace@%s__:%s" % (db_num, key)
+                    self._publish_to_channel(channel, event + b"|" + subkeys_payload, pattern_regex)
+                if b"T" in config_flags:
+                    channel = b"__subkeyevent@%s__:%s" % (db_num, event)
+                    message = b"%d:%s|%s" % (len(key), key, subkeys_payload)
+                    self._publish_to_channel(channel, message, pattern_regex)
+                if b"I" in config_flags and b"\n" not in key:
+                    for subkey in subkeys:
+                        channel = b"__subkeyspaceitem@%s__:%s\n%s" % (db_num, key, subkey)
+                        self._publish_to_channel(channel, event, pattern_regex)
+                if b"V" in config_flags and b"|" not in event:
+                    channel = b"__subkeyspaceevent@%s__:%s|%s" % (db_num, event, key)
+                    self._publish_to_channel(channel, subkeys_payload, pattern_regex)
+            except Exception as e:
+                LOGGER.error(
+                    f"Error sending subkey notification for event `{event.decode()}` on key {key.decode()}: {e}"
                 )
 
     def _decode_error(self, error: SimpleError) -> ResponseErrorType:
@@ -349,60 +524,95 @@ class BaseFakeSocket:
         else:
             return result
 
-    def _blocking(self, timeout: Optional[Union[float, int]], func: Callable[[bool], Any]) -> Any:
+    def _blocking(
+        self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
+    ) -> Any:
         """Run a function until it succeeds or timeout is reached.
 
-        The timeout is in seconds, and 0 means infinite. The function
-        is called with a boolean to indicate whether this is the first call.
-        If it returns None, it is considered to have "failed" and is retried
-        each time the condition variable is notified, until the timeout is
-        reached.
+        The timeout is in seconds, and 0 means infinite. The function is called with a boolean to indicate whether this
+        is the first call. If it returns None, it is considered to have "failed" and is retried each time the condition
+        variable is notified, until the timeout is reached.
+
+        `shape` turns the outcome into the reply the command sends, the timed-out None
+        included. It belongs here rather than around the call because the async socket answers a command that blocks
+        outside the command's own control flow, so anything the command does with the return value would be skipped
+        there.
 
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
+        empty = None if shape is None else shape(None)
         deadline = time.time() + timeout if timeout else None
-        while True:
-            timeout = (deadline - time.time()) if deadline is not None else None
-            if timeout is not None and timeout <= 0:
-                return None
-            if self._db.condition.wait(timeout=timeout) is False:
-                return None  # Timeout expired
-            ret = func(False)  # Second pass => first_pass=False
-            if ret is not None:
-                return ret
+        self._blocked = True
+        try:
+            while True:
+                timeout = (deadline - time.time()) if deadline is not None else None
+                if timeout is not None and timeout <= 0:
+                    return empty
+                if self._db.condition.wait(timeout=timeout) is False:
+                    return empty  # Timeout expired
+                if self._unblock_reason is not None:
+                    self._take_unblock_reason()
+                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
+                ret = func(False)  # Second pass => first_pass=False
+                if ret is not None:
+                    return ret if shape is None else shape(ret)
+        finally:
+            self._blocked = False
+            self._unblock_reason = None
 
-    def _name_to_func(self, cmd_name: str) -> Tuple[Optional[Callable[[Any], Any]], Signature]:
+    def _take_unblock_reason(self) -> None:
+        """Consume a pending CLIENT UNBLOCK request, raising if it asked for ERROR."""
+        reason, self._unblock_reason = self._unblock_reason, None
+        if reason == b"error":
+            raise SimpleError(msgs.UNBLOCKED_MSG)
+
+    def _dirty_watched_keys(self, sig: Signature, command_items: list[CommandItem]) -> None:
+        """Invalidate the watches dragonfly invalidates and redis does not.
+
+        Dragonfly dirties every key a write command runs against, so a `SET NX` that was
+        rejected, or a `SREM` that removed nothing, still breaks a `WATCH` on the key. A
+        key that does not exist stays clean, as do the keys of the commands listed in
+        `DRAGONFLY_UNDIRTIED_COMMANDS`.
+        """
+        name = sig.name.split(" ")[0]
+        if name in DRAGONFLY_UNDIRTIED_COMMANDS or not is_write_command(name.encode()):
+            return
+        for item in command_items:
+            if not item.is_modified and self._db.has_watch(item.key) and item.key in self._db:
+                self._db.notify_watch(item.key)
+
+    def _name_to_func(self, cmd_name: str) -> tuple[Callable[[Any], Any] | None, Signature]:
         """Get the signature and the method from the command name."""
         if cmd_name not in SUPPORTED_COMMANDS:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         sig = SUPPORTED_COMMANDS[cmd_name]
         if self._server.server_type not in sig.server_types:
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
-            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(clean_name))
+            raise self._unknown_command(clean_name)
         func = getattr(self, sig.func_name, None)
         return func, sig
 
     def sendall(self, data: AnyStr) -> None:
-        if not self._server.connected:
+        if not self._server.connected or self._killed:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         if isinstance(data, str):
             data = data.encode("ascii")  # type: ignore
         self._parser.send(data)
 
-    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> List[Union[bytes, List[bytes]]]:
+    def _scan(self, keys: Sequence[bytes], cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
         """This is the basis of most of the ``scan`` methods.
 
-        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which
-        we are investigating subsets.
+        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which we are
+        investigating subsets.
 
-        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of
-        guarantees associated with full iterations.
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
+        associated with full iterations.
 
         - A full iteration always retrieves all the elements that were present in the collection from the start to the
           end of a full iteration. This means that if a given element is inside the collection when an iteration is
@@ -414,8 +624,8 @@ class BaseFakeSocket:
           to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
           be returned.
 
-        However, because the SCAN command has very little state associated (just the cursor),
-        it has the following drawbacks:
+        However, because the SCAN command has very little state associated (just the cursor), it has the following
+        drawbacks:
 
         - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
           elements, for example, only using the returned elements to perform operations that are safe when re-applied
@@ -426,6 +636,14 @@ class BaseFakeSocket:
         """
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
+        if count is not None and count <= 0:
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero is accepted and simply falls
+            # back to the default batch size.
+            if self._server.server_type != "dragonfly":
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if count < 0:
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = None
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()
@@ -437,7 +655,7 @@ class BaseFakeSocket:
 
         regex = compile_pattern(pattern) if pattern is not None else None
 
-        def match_key(key: bytes) -> Union[bool, Match[bytes], None]:
+        def match_key(key: bytes) -> bool | Match[bytes] | None:
             if isinstance(key, str):
                 key = key.encode("utf-8")
             return regex.match(key) if regex is not None else True
@@ -463,7 +681,7 @@ class BaseFakeSocket:
         elif key.expireat is None:
             return -1
         else:
-            return int(round((key.expireat - self._db.time) * scale))
+            return int(round((key.expireat - self._db.time) * scale))  # noqa: RUF046  # int() satisfies mypy no-any-return
 
     def _encodefloat(self, value: float, humanfriendly: bool) -> bytes:
         if self.version >= (7,):

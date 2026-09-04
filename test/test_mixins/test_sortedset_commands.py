@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections import OrderedDict
-from typing import Tuple, List, Optional
-
 import math
+from collections import OrderedDict
+
 import pytest
 import redis
 import valkey
@@ -19,6 +18,12 @@ REDIS_VERSION = Version(redis.__version__)
 def round_str(x):
     # assert isinstance(x, bytes)
     return round(float(x))
+
+
+def _rank_with_score(result):
+    """Normalize a ZRANK/ZREVRANK WITHSCORE reply to [rank, float_score]."""
+    rank, score = result
+    return [rank, float(score)]
 
 
 def zincrby(r, key, amount, value):
@@ -253,8 +258,10 @@ def test_zrank_redis7_2(r: ClientType):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    assert r.zrank("foo", "one", withscore=True) == [0, 1.0]
-    assert r.zrank("foo", "two", withscore=True) == [1, 2.0]
+    # redis-py only started decoding the score to a float in 7.x; older versions hand
+    # back the raw bulk string, so normalize rather than pin to a client version.
+    assert _rank_with_score(r.zrank("foo", "one", withscore=True)) == [0, 1.0]
+    assert _rank_with_score(r.zrank("foo", "two", withscore=True)) == [1, 2.0]
 
 
 def test_zrank_non_existent_member(r: ClientType):
@@ -326,11 +333,11 @@ def test_zmscore(r: ClientType):
     The order of the returned scores should always match the order in which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
-    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     r.zadd(cache_key, dict(zip(members, scores)))
-    cached_scores: List[Optional[float]] = r.zmscore(
+    cached_scores: list[float | None] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -342,10 +349,10 @@ def test_zmscore_missing_members(r: ClientType):
     """When none of the requested sorted-set members are in the cache, a value
     of `None` should be returned once for each requested member."""
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
 
     r.zadd(cache_key, {"eight": 8.8})
-    cached_scores: List[Optional[float]] = r.zmscore(
+    cached_scores: list[float | None] = r.zmscore(
         cache_key,
         list(members),
     )
@@ -362,15 +369,15 @@ def test_zmscore_mixed_membership(r: ClientType):
     which the set members were supplied.
     """
     cache_key: str = "scored-set-members"
-    members: Tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
-    scores: Tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
+    members: tuple[str, ...] = ("one", "two", "three", "four", "five", "six")
+    scores: tuple[float, ...] = (1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
 
     r.zadd(
         cache_key,
         {member: scores[idx] for (idx, member) in enumerate(members) if idx % 2 != 0},
     )
 
-    cached_scores: List[Optional[float]] = r.zmscore(cache_key, list(members))
+    cached_scores: list[float | None] = r.zmscore(cache_key, list(members))
 
     assert all(cached_scores[idx] is None for (idx, score) in enumerate(scores) if idx % 2 == 0)
     assert all(cached_scores[idx] == score for (idx, score) in enumerate(scores) if idx % 2 != 0)
@@ -395,8 +402,8 @@ def test_zrevrank_redis7_2(r: ClientType):
     assert r.zrevrank("foo", "one") == 2
     assert r.zrevrank("foo", "two") == 1
     assert r.zrevrank("foo", "three") == 0
-    assert r.zrevrank("foo", "one", withscore=True) == [2, 1.0]
-    assert r.zrevrank("foo", "two", withscore=True) == [1, 2.0]
+    assert _rank_with_score(r.zrevrank("foo", "one", withscore=True)) == [2, 1.0]
+    assert _rank_with_score(r.zrevrank("foo", "two", withscore=True)) == [1, 2.0]
 
 
 def test_zrevrank_non_existent_member(r: ClientType):
@@ -1131,7 +1138,7 @@ def test_zscan(r: ClientType):
     # Set up the data
     name = "zscan-test"
     for ix in range(20):
-        r.zadd(name, {"key:%s" % ix: ix})
+        r.zadd(name, {f"key:{ix}": ix})
     expected = dict(r.zrange(name, 0, -1, withscores=True))
 
     # Test the basic version
@@ -1237,6 +1244,30 @@ def test_zintercard(r: ClientType):
     assert r.zintercard(3, ["a", "b", "c"], limit=1) == 1
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zintercard_negative_limit(r: ClientType, real_server_details):
+    r.zadd("a", {"a1": 1, "a2": 2})
+    r.zadd("b", {"a1": 2, "a2": 2})
+    with pytest.raises(Exception) as ctx:
+        r.zintercard(2, ["a", "b"], limit=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
+    expected = (
+        "limit value is not a positive integer"
+        if real_server_details.server_type == "dragonfly"
+        else "LIMIT can't be negative"
+    )
+    assert expected in str(ctx.value)
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zintercard_no_limit(r: ClientType):
+    # The LIMIT keyword is optional; omitting it returns the full cardinality.
+    r.zadd("a", {"a1": 1, "a2": 2})
+    r.zadd("b", {"a1": 2, "a2": 2})
+    assert r.execute_command("ZINTERCARD", 2, "a", "b") == 2
+
+
 def test_zrangestore(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     assert r.zrangestore("b", "a", 0, 1)
@@ -1286,9 +1317,67 @@ def test_bzmpop(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
+@pytest.mark.unsupported_server_types("valkey")
 def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     r.zadd("A", {"A": 0.0})
     r.zadd("B", {"A": 0.0})
     with pytest.raises(redis.ResponseError):
         r.sort("B")
     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == []
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_count_not_positive(r: ClientType, real_server_details):
+    r.zadd("foo", {"a": 1, "b": 2})
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly accepts both: COUNT 0 pops nothing, and a negative count is read as
+        # unsigned and so pops the whole sorted set.
+        assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", 0) == [b"foo", []]
+        assert r.zcard("foo") == 2
+        assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", -1) == [
+            b"foo",
+            resp_conversion(r, [[b"a", 1.0], [b"b", 2.0]], [[b"a", b"1"], [b"b", b"2"]]),
+        ]
+        assert r.zcard("foo") == 0
+        return
+    for count in (0, -1):
+        with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+            testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", count)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+        testtools.raw_command(r, "bzmpop", 0.01, 1, "foo", "MIN", "COUNT", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # nothing should have been popped
+    assert r.zcard("foo") == 2
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_numkeys_not_positive(r: ClientType, real_server_details):
+    r.zadd("foo", {"a": 1})
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    for numkeys in (0, -1):
+        # Dragonfly reads numkeys as unsigned, so -1 fails to decode before the key check.
+        if is_dragonfly:
+            expected = "at least 1 input key is needed" if numkeys == 0 else "value is not an integer or out of range"
+        else:
+            expected = "numkeys should be greater than 0"
+        with pytest.raises(Exception, match=expected) as ctx:
+            testtools.raw_command(r, "zmpop", numkeys, "foo", "MIN")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_zmpop_too_few_arguments(r: ClientType):
+    for args in (("zmpop", 1), ("zmpop", 1, "foo"), ("bzmpop", 0.01, 1, "foo")):
+        with pytest.raises(Exception, match="wrong number of arguments") as ctx:
+            testtools.raw_command(r, *args)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_bzpopmin_bzpopmax_negative_timeout(r: ClientType):
+    r.zadd("foo", {"m": 1})
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.bzpopmin("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.bzpopmax("foo", timeout=-1)
+    assert r.zcard("foo") == 1

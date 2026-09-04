@@ -23,6 +23,8 @@ def test_sadd(r: ClientType):
     assert set(r.smembers("foo")) == {b"member1", b"member2", b"member3", b"member4"}
 
 
+# valkey-py behaves like redis-py>=5.1 regardless of the installed redis-py version
+@pytest.mark.unsupported_server_types("valkey")
 @testtools.run_test_if_redispy_ver("lt", "5.1")
 def test_sadd_redispy_5(r: ClientType):
     assert r.sadd("foo", "member1") == 1
@@ -352,7 +354,7 @@ def test_sscan(r: ClientType):
     # Set up the data
     name = "sscan-test"
     for ix in range(20):
-        k = "sscan-test:%s" % ix
+        k = f"sscan-test:{ix}"
         r.sadd(name, k)
     expected = r.smembers(name)
     assert len(expected) == 20  # Ensure we know what we're testing
@@ -419,6 +421,20 @@ def test_sintercard_bytes_keys(r: ClientType):
     assert r.sintercard(2, [foo, bar]) == 1
     assert r.sintercard(1, [foo]) == 2
     assert r.sintercard(1, [foo], limit=1) == 1
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_negative_limit(r: ClientType, real_server_details):
+    r.sadd("foo", "member1", "member2")
+    r.sadd("bar", "member2", "member3")
+    with pytest.raises(Exception) as ctx:
+        r.sintercard(2, ["foo", "bar"], limit=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # Dragonfly lower-cases the same complaint.
+    expected = (
+        "limit can't be negative" if real_server_details.server_type == "dragonfly" else "LIMIT can't be negative"
+    )
+    assert expected in str(ctx.value)
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
@@ -517,3 +533,46 @@ def test_psetex_expire_value_using_timedelta(r: ClientType):
     r.psetex("foo", timedelta(seconds=0.5), "bar")
     sleep(1.5)
     assert r.get("foo") is None
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details):
+    r.sadd("foo", "member1")
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    for numkeys in (0, -1):
+        # Dragonfly reads numkeys as unsigned, so -1 fails to decode before the key check.
+        if is_dragonfly:
+            expected = "at least 1 input key is needed" if numkeys == 0 else "value is not an integer or out of range"
+        else:
+            expected = "numkeys should be greater than 0"
+        with pytest.raises(Exception, match=expected) as ctx:
+            testtools.raw_command(r, "sintercard", numkeys, "foo")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_sintercard_numkeys_greater_than_keys(r: ClientType, real_server_details):
+    r.sadd("foo", "member1")
+    # Dragonfly reports a numkeys that overruns the key list as a plain syntax error.
+    expected = (
+        "syntax error"
+        if real_server_details.server_type == "dragonfly"
+        else "Number of keys can't be greater than number of args"
+    )
+    with pytest.raises(Exception, match=expected) as ctx:
+        testtools.raw_command(r, "sintercard", 9, "foo")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_spop_negative_count(r: ClientType, real_server_details):
+    r.sadd("foo", "member1")
+    # Dragonfly fails while decoding the count, so it gives the generic integer error.
+    expected = (
+        "value is not an integer or out of range"
+        if real_server_details.server_type == "dragonfly"
+        else "value is out of range, must be positive"
+    )
+    with pytest.raises(Exception, match=expected) as ctx:
+        r.spop("foo", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.scard("foo") == 1

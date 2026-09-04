@@ -9,6 +9,7 @@ import valkey
 
 from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import raw_command, resp_conversion
 
@@ -294,6 +295,8 @@ def test_set_px_using_timedelta(r: ClientType):
     assert r.get("foo") == b"bar"
 
 
+# valkey-py raises DataError client-side for conflicting options regardless of the installed redis-py version
+@pytest.mark.unsupported_server_types("valkey")
 @testtools.run_test_if_redispy_ver("lt", "5.9")  # This will run for redis-py 4.2.0 or above.
 def test_set_conflicting_expire_options(r: ClientType):
     with pytest.raises(Exception) as ctx:
@@ -462,7 +465,7 @@ def test_setrange(r: ClientType):
     assert r.setrange("bar", 2, "test") == 6
     assert r.get("bar") == b"\x00\x00test"
 
-    assert r.setrange("bar", 501970112, "test") == 501970116
+    assert r.setrange("bar", 50197112, "test") == 50197116
 
 
 def test_setrange_expiry(r: ClientType):
@@ -498,13 +501,13 @@ def test_saving_unicode_type_as_key(r: ClientType):
 
 def test_future_newbytes(r: ClientType):
     # bytes = pytest.importorskip('builtins', reason='future.types not available').bytes
-    r.set(bytes(b"\xc3\x91andu"), "foo")
+    r.set(b"\xc3\x91andu", "foo")
     assert r.get("Ñandu") == b"foo"
 
 
 def test_future_newstr(r: ClientType):
     # str = pytest.importorskip('builtins', reason='future.types not available').str
-    r.set(str("Ñandu"), "foo")
+    r.set("Ñandu", "foo")
     assert r.get("Ñandu") == b"foo"
 
 
@@ -516,7 +519,7 @@ def test_setitem_getitem(r: ClientType):
 
 def test_getitem_non_existent_key(r: ClientType):
     assert r.keys() == []
-    assert "noexists" not in r.keys()
+    assert "noexists" not in r
 
 
 @pytest.mark.slow
@@ -555,7 +558,15 @@ def test_getex(r: ClientType):
     assert r.get("foo5") == b"val"
 
 
+def test_getex_no_option_keeps_ttl(r: ClientType):
+    # GETEX with no expiry option behaves like GET and must leave the TTL untouched; only PERSIST removes it.
+    r.set("foo", "val", ex=100)
+    assert r.getex("foo") == b"val"
+    assert r.ttl("foo") > 0
+
+
 @pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly has no LCS, see test_dragonfly
 def test_lcs(r: ClientType):
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     assert r.lcs("key1", "key2") == b"mytext"

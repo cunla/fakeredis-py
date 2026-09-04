@@ -1,8 +1,10 @@
-from typing import Any, List, Optional, Tuple, Dict
+from __future__ import annotations
+
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import Key, Int, Float, command, CommandItem
+from fakeredis._commands import CommandItem, Float, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString
 from fakeredis.model import HeavyKeeper
 
@@ -14,7 +16,7 @@ class TopkCommandsMixin:
         super().__init__(*args, **kwargs)
 
     @command(name="TOPK.ADD", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_add(self, key: CommandItem, *args: bytes) -> List[Optional[bytes]]:
+    def topk_add(self, key: CommandItem, *args: bytes) -> list[bytes | None]:
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
@@ -24,26 +26,26 @@ class TopkCommandsMixin:
         return res
 
     @command(name="TOPK.COUNT", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_count(self, key: CommandItem, *args: bytes) -> List[int]:
+    def topk_count(self, key: CommandItem, *args: bytes) -> list[int]:
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
-        res: List[int] = [key.value.count(_item) for _item in args]
+        res: list[int] = [key.value.count(_item) for _item in args]
         return res
 
     @command(name="TOPK.QUERY", fixed=(Key(HeavyKeeper), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_query(self, key: CommandItem, *args: bytes) -> List[int]:
+    def topk_query(self, key: CommandItem, *args: bytes) -> list[int]:
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
         topk = {item[1] for item in key.value.list()}
-        res: List[int] = [1 if _item in topk else 0 for _item in args]
+        res: list[int] = [1 if _item in topk else 0 for _item in args]
         return res
 
     @command(name="TOPK.INCRBY", fixed=(Key(), bytes, Int), repeat=(bytes, Int), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_incrby(self, key: CommandItem, *args: Any) -> List[Optional[bytes]]:
+    def topk_incrby(self, key: CommandItem, *args: Any) -> list[bytes | None]:
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
@@ -58,7 +60,7 @@ class TopkCommandsMixin:
         return res
 
     @command(name="TOPK.INFO", fixed=(Key(),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_info(self, key: CommandItem) -> Dict[bytes, Any]:
+    def topk_info(self, key: CommandItem) -> dict[bytes, Any]:
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
@@ -71,13 +73,13 @@ class TopkCommandsMixin:
         }
 
     @command(name="TOPK.LIST", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def topk_list(self, key: CommandItem, *args: Any) -> List[Any]:
+    def topk_list(self, key: CommandItem, *args: Any) -> list[Any]:
         (withcount,), _ = extract_args(args, ("withcount",))
         if key.value is None:
             raise SimpleError("TopK: key does not exist")
         if not isinstance(key.value, HeavyKeeper):
             raise SimpleError("TOPK: key is not a HeavyKeeper")
-        value_list: List[Tuple[int, bytes]] = key.value.list()
+        value_list: list[tuple[int, bytes]] = key.value.list()
         if not withcount:
             return [item[1] for item in value_list]
         else:

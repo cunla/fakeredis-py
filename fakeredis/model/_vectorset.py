@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import math
 import re
 import struct
 from collections import OrderedDict
+from collections.abc import Iterator
 from functools import lru_cache
-from typing import List, Dict, Any, Literal, Optional, Iterator, Self, Union, Set
+from typing import Any, Literal
 
 import numpy as np
 from jsonpath_ng import JSONPath
@@ -13,11 +16,12 @@ from jsonpath_ng.ext import parse
 
 from fakeredis import _msgs as msgs
 from fakeredis._helpers import SimpleError
+from fakeredis._typing import Self
 
 QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 
 
-def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
+def _update_to_jsonpath_format(path: bytes | str) -> str:
     path_str = path.decode() if isinstance(path, bytes) else path
     path_str = re.sub(r"\band\b", "&", path_str)
     path_str = re.sub(r"\bor\b", "|", path_str)
@@ -36,7 +40,7 @@ def _update_to_jsonpath_format(path: Union[bytes, str]) -> str:
 
 
 @lru_cache(maxsize=64)
-def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
+def _parse_jsonfilter(path: str | bytes) -> JSONPath:
     path_str: str = _update_to_jsonpath_format(path)
     try:
         return parse(path_str)
@@ -46,7 +50,7 @@ def _parse_jsonfilter(path: Union[str, bytes]) -> JSONPath:
 
 class Vector:
     def __init__(
-        self, name: bytes, values: List[float], attributes: Optional[bytes], quantization: QUANTIZATION_TYPE, ef: int
+        self, name: bytes, values: list[float], attributes: bytes | None, quantization: QUANTIZATION_TYPE, ef: int
     ) -> None:
         self.name = name
         self.values = values
@@ -67,10 +71,10 @@ class Vector:
         return hash(self.name)
 
     @classmethod
-    def from_vector_values(cls, values: List[float]) -> Self:
+    def from_vector_values(cls, values: list[float]) -> Self:
         return cls(b"", values, b"", "int8", 0)
 
-    def raw(self) -> List[Any]:
+    def raw(self) -> list[Any]:
         raw_bytes = struct.pack(f"{len(self.values)}f", *self.values)
         if self.quantization == "int8":
             norm_values = np.array(self.values) / self.l2_norm if self.l2_norm != 0 else np.array(self.values)
@@ -92,19 +96,64 @@ class Vector:
 class VectorSet:
     def __init__(self, dimensions: int):
         self._dimensions = dimensions
-        self._vectors: Dict[bytes, Vector] = dict()
-        self._links: Dict[bytes, int] = dict()
-        self._quant_type: Optional[str] = None
+        self._vectors: dict[bytes, Vector] = {}
+        self._links: dict[bytes, int] = {}
+        self._quant_type: str | None = None
         self._node_uid_counter: int = 0
         self._max_level: int = 0
-        self._node_levels: Dict[bytes, int] = dict()
-        self._node_links: Dict[bytes, Dict[int, Set[bytes]]] = dict()
+        self._node_links: dict[bytes, dict[int, set[bytes]]] = {}
+        # Row-oriented cache of the set, kept in sync with ``_vectors``: row ``i`` of each array describes
+        # ``_row_vectors[i]``, in insertion order. Keeping the matrix resident lets VADD and VSIM issue a single gemv
+        # instead of restacking every stored vector on each call.
+        self._row_vectors: list[Vector] = []
+        self._matrix: np.ndarray = np.zeros((0, dimensions), dtype=np.float32)
+        self._norms: np.ndarray = np.zeros(0, dtype=np.float64)
+        self._row_levels: np.ndarray = np.zeros(0, dtype=np.int64)
 
     @staticmethod
     def _compute_level(node_index: int, m: int) -> int:
         if m <= 1:
             return 0
         return int(math.log(node_index + 1) / math.log(m))
+
+    def _reserve(self, size: int) -> None:
+        """Grow the cache arrays (doubling) so they can hold at least ``size`` rows."""
+        capacity = self._matrix.shape[0]
+        if size <= capacity:
+            return
+        new_capacity = max(8, capacity * 2, size)
+        matrix = np.zeros((new_capacity, self._dimensions), dtype=np.float32)
+        matrix[:capacity] = self._matrix
+        norms = np.zeros(new_capacity, dtype=np.float64)
+        norms[:capacity] = self._norms
+        levels = np.zeros(new_capacity, dtype=np.int64)
+        levels[:capacity] = self._row_levels
+        self._matrix, self._norms, self._row_levels = matrix, norms, levels
+
+    def _append_row(self, vector: Vector, level: int) -> None:
+        row = len(self._row_vectors)
+        self._reserve(row + 1)
+        self._matrix[row] = vector._arr
+        self._norms[row] = vector.l2_norm
+        self._row_levels[row] = level
+        self._row_vectors.append(vector)
+
+    def _drop_row(self, name: bytes) -> None:
+        """Remove ``name``'s row, shifting later rows down to preserve insertion order."""
+        row = next(i for i, v in enumerate(self._row_vectors) if v.name == name)
+        n = len(self._row_vectors)
+        self._matrix[row : n - 1] = self._matrix[row + 1 : n]
+        self._norms[row : n - 1] = self._norms[row + 1 : n]
+        self._row_levels[row : n - 1] = self._row_levels[row + 1 : n]
+        del self._row_vectors[row]
+
+    def _similarities(self, query: Vector) -> np.ndarray:
+        """Cosine similarity of every stored vector against ``query``, in row order."""
+        n = len(self._row_vectors)
+        norms = self._norms[:n] * query.l2_norm
+        dots = (self._matrix[:n] @ query._arr).astype(np.float64)
+        valid = norms > 0
+        return np.where(valid, dots / np.where(valid, norms, 1.0), 0.0)
 
     @property
     def dimensions(self) -> int:
@@ -114,7 +163,7 @@ class VectorSet:
     def card(self) -> int:
         return len(self._vectors)
 
-    def vector_names(self) -> List[bytes]:
+    def vector_names(self) -> list[bytes]:
         return list(self._vectors.keys())
 
     def exists(self, name: bytes) -> bool:
@@ -124,46 +173,46 @@ class VectorSet:
         if self._quant_type is None:
             self._quant_type = vector.quantization
 
+        # Re-adding an existing name replaces it; drop the stale row first so the cache keeps one row per member.
+        if vector.name in self._vectors:
+            self._drop_row(vector.name)
+            del self._vectors[vector.name]
+
         node_index = self._node_uid_counter
         self._node_uid_counter += 1
 
         level = self._compute_level(node_index, numlinks)
-        self._node_levels[vector.name] = level
-        if level > self._max_level:
-            self._max_level = level
+        self._max_level = max(self._max_level, level)
 
-        # Build links for this node at each of its levels
+        # Build links for this node at each of its levels. Similarities do not depend on the level, so they are computed
+        # once and each level just narrows the candidates.
         self._node_links[vector.name] = {}
-        query_arr = vector._arr
-        query_norm = vector.l2_norm
+        candidate_levels = self._row_levels[: len(self._row_vectors)]
+        sims = self._similarities(vector)
         for lvl in range(level + 1):
-            cand_names = [n for n, node_lvl in self._node_levels.items() if node_lvl >= lvl and n != vector.name]
-            if cand_names:
-                cand_vecs = [self._vectors[n] for n in cand_names]
-                cand_matrix = np.stack([c._arr for c in cand_vecs])
-                cand_norms = np.array([c.l2_norm for c in cand_vecs], dtype=np.float64) * query_norm
-                dots = (cand_matrix @ query_arr).astype(np.float64)
-                valid = cand_norms > 0
-                sims = np.where(valid, dots / np.where(valid, cand_norms, 1.0), 0.0)
-                k = min(numlinks, len(cand_names))
-                if k < len(cand_names):
-                    top_idx = np.argpartition(sims, -k)[-k:]
-                    top_idx = top_idx[np.argsort(sims[top_idx])[::-1]]
-                else:
-                    top_idx = np.argsort(sims)[::-1]
-                self._node_links[vector.name][lvl] = {cand_names[i] for i in top_idx}
-            else:
+            cand_rows = np.flatnonzero(candidate_levels >= lvl)
+            if cand_rows.size == 0:
                 self._node_links[vector.name][lvl] = set()
+                continue
+            cand_sims = sims[cand_rows]
+            k = min(numlinks, cand_rows.size)
+            if k < cand_rows.size:
+                top_idx = np.argpartition(cand_sims, -k)[-k:]
+                top_idx = top_idx[np.argsort(cand_sims[top_idx])[::-1]]
+            else:
+                top_idx = np.argsort(cand_sims)[::-1]
+            self._node_links[vector.name][lvl] = {self._row_vectors[cand_rows[i]].name for i in top_idx}
 
+        self._append_row(vector, level)
         self._vectors[vector.name] = vector
         self._links[vector.name] = numlinks
 
     def remove(self, name: bytes) -> int:
         if name not in self._vectors:
             return 0
+        self._drop_row(name)
         del self._vectors[name]
         del self._links[name]
-        self._node_levels.pop(name, None)
         if name in self._node_links:
             del self._node_links[name]
         for levels_links in self._node_links.values():
@@ -171,7 +220,7 @@ class VectorSet:
                 neighbors.discard(name)
         return 1
 
-    def info(self) -> Dict[bytes, Any]:
+    def info(self) -> dict[bytes, Any]:
         quant = self._quant_type or b"fp32"
         # Normalize quantization type name for the info response
         if quant == "noquant":
@@ -185,7 +234,7 @@ class VectorSet:
             b"hnsw-max-node-uid": self._node_uid_counter,
         }
 
-    def links(self, name: bytes) -> Optional[Dict[int, List[bytes]]]:
+    def links(self, name: bytes) -> dict[int, list[bytes]] | None:
         if name not in self._vectors:
             return None
         node_links = self._node_links.get(name, {0: set()})
@@ -193,16 +242,16 @@ class VectorSet:
 
     def range(
         self,
-        min_value: Optional[bytes],
+        min_value: bytes | None,
         include_min: bool,
-        max_value: Optional[bytes],
+        max_value: bytes | None,
         include_max: bool,
-        count: Optional[int],
-    ) -> List[bytes]:
+        count: int | None,
+    ) -> list[bytes]:
         if count is not None and count < 0:
             count = None
-        res: List[bytes] = []
-        for name in self._vectors.keys():
+        res: list[bytes] = []
+        for name in self._vectors:
             if (min_value is None or name > min_value or (include_min and name == min_value)) and (
                 max_value is None or name < max_value or (include_max and name == max_value)
             ):
@@ -222,7 +271,7 @@ class VectorSet:
     def __iter__(self) -> Iterator[Vector]:
         return iter(self._vectors.values())
 
-    def get(self, k: bytes) -> Optional[Vector]:
+    def get(self, k: bytes) -> Vector | None:
         if k in self._vectors:
             return self._vectors[k]
         return None
@@ -230,42 +279,59 @@ class VectorSet:
     def top_similar(
         self,
         query: Vector,
-        filter_expression: Optional[bytes],
+        filter_expression: bytes | None,
         count: int,
-        epsilon: Optional[float],
-    ) -> "OrderedDict[Vector, float]":
-        """Return top-k most similar vectors using a single batched matrix operation."""
-        candidates = self.accept_filter(filter_expression)
-        if not candidates:
-            return OrderedDict()
-        arr_matrix = np.stack([v._arr for v in candidates])  # (n, d) float32
-        norms = np.array([v.l2_norm for v in candidates], dtype=np.float64) * query.l2_norm
-        dots = (arr_matrix @ query._arr).astype(np.float64)  # one BLAS gemv call
-        valid = norms > 0
-        cosine = np.where(valid, dots / np.where(valid, norms, 1.0), 0.0)
-        scores = (1.0 + cosine) / 2.0
-        if epsilon is not None:
-            mask = scores >= 1.0 - epsilon
-            candidates = [v for v, keep in zip(candidates, mask) if keep]
-            scores = scores[mask]
-        n = len(candidates)
-        if n == 0:
-            return OrderedDict()
-        k = min(count, n)
-        if k < n:
-            top_idx = np.argpartition(scores, -k)[-k:]
-            top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
-        else:
-            top_idx = np.argsort(scores)[::-1]
-        return OrderedDict((candidates[i], float(scores[i])) for i in top_idx)
+        epsilon: float | None,
+        filter_ef: int | None = None,
+    ) -> OrderedDict[Vector, float]:
+        """Return the top-``count`` most similar vectors to ``query``.
 
-    def accept_filter(self, filter_expression: Optional[bytes]) -> list[Vector]:
+        Vectors are examined in best-first order (most similar first), mimicking the exploration order of an HNSW
+        search. When a ``filter_expression`` is supplied,
+        ``filter_ef`` bounds the *filtering effort*: at most that many vectors are
+        examined while looking for matches. Redis defaults this to ``count * 100`` and treats ``0`` as unlimited. A
+        small ``filter_ef`` may therefore miss matches that lie far from the query vector, exactly as real Redis does.
+        """
+        all_vectors = self._row_vectors
+        if not all_vectors:
+            return OrderedDict()
+        cosine = self._similarities(query)  # one BLAS gemv call over the resident matrix
+        scores = (1.0 + cosine) / 2.0
+        # Best-first exploration order: most similar candidate first.
+        order = np.argsort(scores)[::-1]
+
+        parsed_filter = None if filter_expression is None else _parse_jsonfilter(filter_expression)
         if filter_expression is None:
-            return list(self._vectors.values())
-        parsed_expression = _parse_jsonfilter(filter_expression)
-        res = [
-            i
-            for i in self._vectors.values()
-            if i.attributes is not None and (len(parsed_expression.find([json.loads(i.attributes)])) > 0)
-        ]
-        return res
+            max_effort = len(all_vectors)  # exact search when unfiltered
+        elif filter_ef is None:
+            max_effort = count * 100  # Redis default filtering effort
+        elif filter_ef <= 0:
+            max_effort = len(all_vectors)  # 0 means unlimited effort
+        else:
+            max_effort = filter_ef
+        threshold = None if epsilon is None else 1.0 - epsilon
+
+        results: OrderedDict[Vector, float] = OrderedDict()
+        examined = 0
+        for idx in order:
+            if examined >= max_effort:
+                break
+            examined += 1
+            vector = all_vectors[idx]
+            if not self._passes_filter(vector, parsed_filter):
+                continue
+            score = float(scores[idx])
+            if threshold is not None and score < threshold:
+                continue
+            results[vector] = score
+            if len(results) >= count:
+                break
+        return results
+
+    @staticmethod
+    def _passes_filter(vector: Vector, parsed_filter: JSONPath | None) -> bool:
+        if parsed_filter is None:
+            return True
+        if vector.attributes is None:
+            return False
+        return len(parsed_filter.find([json.loads(vector.attributes)])) > 0

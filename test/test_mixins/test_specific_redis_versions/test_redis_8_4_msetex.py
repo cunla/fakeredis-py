@@ -75,7 +75,7 @@ def test_msetex_expiration_px_with_cluster_client(r: ClientType):
     # with expiration - testing px field
     assert r.msetex(mapping=mapping, px=60000) == 1
 
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert pytest.approx(ttl) == 60
     assert r.mget(*mapping.keys()) == [b"1", b"2"]
@@ -106,7 +106,7 @@ def test_msetex_expiration_pxat_and_nx_with_cluster_client(r: ClientType):
         == 0
     )
 
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert 10 < ttl <= 30
     assert r.mget(*mapping.keys(), "new:{test:1}") == [b"1", b"2", b"three", None]
@@ -120,7 +120,7 @@ def test_msetex_expiration_pxat_and_nx_with_cluster_client(r: ClientType):
         )
         == 1
     )
-    old_ttls = [r.ttl(key) for key in mapping.keys()]
+    old_ttls = [r.ttl(key) for key in mapping]
     new_ttls = [r.ttl(key) for key in ["new:{test:1}", "new_2:{test:1}"]]
     for ttl in old_ttls:
         assert 10 < ttl <= 30
@@ -153,7 +153,7 @@ def test_msetex_expiration_exat_and_xx_with_cluster_client(r: ClientType):
         )
         == 0
     )
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert 10 < ttl <= 30
     assert r.mget(*mapping.keys(), "new:{test:1}") == [b"1", b"2", b"three", None]
@@ -167,7 +167,7 @@ def test_msetex_expiration_exat_and_xx_with_cluster_client(r: ClientType):
         )
         == 1
     )
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     assert ttls[0] <= 11
     assert ttls[1] <= 11
     assert 10 < ttls[2] <= 30
@@ -225,7 +225,7 @@ def test_msetex_expiration_px(r: ClientType):
     # with expiration - testing px field
     assert r.msetex(mapping=mapping, px=60000) == 1
 
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert pytest.approx(ttl) == 60
     assert r.mget(*mapping.keys()) == [b"1", b"2"]
@@ -249,7 +249,7 @@ def test_msetex_expiration_pxat_and_nx(r: ClientType):
         )
         == 0
     )
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert 10 < ttl <= 30
     assert r.mget(*mapping.keys(), "new") == [b"1", b"2", b"three", None]
@@ -263,7 +263,7 @@ def test_msetex_expiration_pxat_and_nx(r: ClientType):
         )
         == 1
     )
-    old_ttls = [r.ttl(key) for key in mapping.keys()]
+    old_ttls = [r.ttl(key) for key in mapping]
     new_ttls = [r.ttl(key) for key in ["new", "new_2"]]
     for ttl in old_ttls:
         assert 10 < ttl <= 30
@@ -296,7 +296,7 @@ def test_msetex_expiration_exat_and_xx(r: ClientType):
         )
         == 0
     )
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     for ttl in ttls:
         assert 10 < ttl <= 30
     assert r.mget(*mapping.keys(), "new") == [b"1", b"2", b"three", None]
@@ -310,7 +310,7 @@ def test_msetex_expiration_exat_and_xx(r: ClientType):
         )
         == 1
     )
-    ttls = [r.ttl(key) for key in mapping.keys()]
+    ttls = [r.ttl(key) for key in mapping]
     assert ttls[0] <= 11
     assert ttls[1] <= 11
     assert 10 < ttls[2] <= 30

@@ -1,16 +1,18 @@
+import pytest
+
 from .base import (
-    BaseTest,
+    BaseMachine,
     commands,
-    values,
-    st,
-    keys,
-    common_commands,
     counts,
-    zero_or_more,
-    expires_seconds,
     expires_ms,
-    ints,
+    expires_seconds,
     int_as_bytes,
+    ints,
+    keys,
+    run_machine,
+    st,
+    values,
+    zero_or_more,
 )
 
 optional_bitcount_range = st.just(()) | st.tuples(int_as_bytes, int_as_bytes)
@@ -37,6 +39,11 @@ string_commands = (
 )
 
 
-class TestString(BaseTest):
-    create_command_strategy = commands(st.just("set"), keys, values)
-    command_strategy = string_commands | common_commands
+class StringMachine(BaseMachine):
+    base_commands = string_commands
+    create_commands = commands(st.just("set"), keys, values)
+
+
+@pytest.mark.slow
+def test_string(hypothesis_config):
+    run_machine(StringMachine, hypothesis_config)

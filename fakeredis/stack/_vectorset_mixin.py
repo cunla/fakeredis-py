@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import itertools
 import random
 import struct
-from typing import Any, List, Literal, Optional, Union, cast
+from typing import Any, Literal, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import Key, command, CommandItem, StringTest
+from fakeredis._commands import CommandItem, Key, StringTest, command
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import VectorSet, Vector
+from fakeredis.model import Vector, VectorSet
 
 VSET_ERR_NOTEXIST = "ERR key does not exist"
 
@@ -19,7 +21,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         super().__init__(*args, **kwargs)
 
     @command(name="VCARD", fixed=(Key(VectorSet),), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vcard(self, key: CommandItem) -> Optional[int]:
+    def vcard(self, key: CommandItem) -> int | None:
         if key.value is None:
             return 0
         vs: VectorSet = key.value
@@ -33,7 +35,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         return vs.dimensions
 
     @command(name="VGETATTR", fixed=(Key(VectorSet), bytes), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vgetattr(self, key: CommandItem, member: bytes) -> Optional[bytes]:
+    def vgetattr(self, key: CommandItem, member: bytes) -> bytes | None:
         if key.value is None:
             return None
         vs: VectorSet = key.value
@@ -119,7 +121,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         return 1
 
     @command(name="VEMB", fixed=(Key(VectorSet), bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> Optional[List[float]]:
+    def vemb(self, key: CommandItem, element: bytes, *args: bytes) -> list[float] | None:
         if key.value is None:
             return None
         if element not in key.value:
@@ -138,7 +140,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         return vector.values
 
     @command(name="VRANDMEMBER", fixed=(Key(VectorSet),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
-    def vrandmember(self, key: CommandItem, *args: bytes) -> Optional[Union[bytes, List[bytes]]]:
+    def vrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:
         if key.value is None:
             return None if len(args) == 0 else []
         try:
@@ -173,7 +175,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         repeat=(bytes,),
         flags=msgs.FLAG_DO_NOT_CREATE,
     )
-    def vrange(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> List[bytes]:
+    def vrange(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> list[bytes]:
         if len(args) > 1:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("VRANGE"))
         if key.value is None:
@@ -199,8 +201,9 @@ class VectorSetCommandsMixin(CommandsMixinBase):
         if key.value is None:
             return []
         vector_set: VectorSet = key.value
-        vector: Optional[Vector] = None  # The vector to compare against.
+        vector: Vector | None = None  # The vector to compare against.
         with_scores, with_attributes, count, epsilon, filter_expression = False, False, 10, None, None
+        filter_ef: int | None = None
         i = 0
         while i < len(args):
             if casematch(args[i], b"ele") and i + 1 < len(args):
@@ -246,18 +249,16 @@ class VectorSetCommandsMixin(CommandsMixinBase):
                 filter_expression = args[i + 1]
                 i += 2
             elif casematch(args[i], b"filter-ef") and i + 1 < len(args):
-                filter_expression_ef = args[i + 1]  # noqa: F841
+                filter_ef = int(args[i + 1])
                 i += 2
-            elif casematch(args[i], b"truth"):
-                i += 1
-            elif casematch(args[i], b"nothread"):
+            elif casematch(args[i], b"truth") or casematch(args[i], b"nothread"):
                 i += 1
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         if vector is None:
             raise SimpleError(VSET_ERR_NOTEXIST)
-        res = vector_set.top_similar(vector, filter_expression, count, epsilon)
+        res = vector_set.top_similar(vector, filter_expression, count, epsilon, filter_ef)
         if with_scores and with_attributes:
             if self._client_info.protocol_version == 2:
                 return list(itertools.chain.from_iterable([[k.name, v, k.attributes] for k, v in res.items()]))

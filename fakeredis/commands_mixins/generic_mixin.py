@@ -1,38 +1,60 @@
+from __future__ import annotations
+
 import hashlib
 import pickle
 import random
-from typing import Tuple, Any, Callable, List, Optional, Union, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import (
-    command,
-    Key,
-    Int,
-    DbIndex,
-    BeforeAny,
-    CommandItem,
-    SortFloat,
-    delete_keys,
-)
-from fakeredis._helpers import compile_pattern, SimpleError, OK, casematch, SimpleString
+from fakeredis._commands import BeforeAny, CommandItem, DbIndex, Float, Int, Key, command, delete_keys
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import ZSet, Hash, ExpiringMembersSet
+from fakeredis.model import ExpiringMembersSet, Hash, ZSet
+
+
+class SortFloat(Float):
+    DECODE_ERROR = msgs.INVALID_SORT_FLOAT_MSG
+
+    @classmethod
+    def decode(
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = True,
+        allow_erange: bool = False,
+        allow_empty: bool = True,
+        crop_null: bool = True,
+        decode_error: str | None = None,
+    ) -> float:
+        return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
+
+
+# Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry (EXPIRE, PEXPIRE, SET
+# EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond it is rejected outright.
+DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
 
 
 class GenericCommandsMixin(CommandsMixinBase):
     _ttl: Callable[[CommandItem, float], int]
-    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
     _key_value_type: Callable[[CommandItem], SimpleString]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(GenericCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._db_num: int
 
-    def _lookup_key(self, key: bytes, pattern: bytes) -> Optional[bytes]:
+    def _lookup_key(self, key: bytes, pattern: bytes) -> bytes | None:
         """Python implementation of lookupKeyByPattern from redis"""
         if pattern == b"#":
             return key
+        if self.server_type == "dragonfly":
+            # Dragonfly substitutes the '*' into a plain key name. It neither requires the
+            # pattern to contain a '*' nor understands redis' '->' hash-field syntax, so
+            # "w_*->f" resolves to the literal key "w_<element>->f".
+            new_key = pattern.replace(b"*", key, 1)
+            value = CommandItem(new_key, self._db, item=self._db.get(new_key)).value
+            return value if isinstance(value, bytes) else None
         p = pattern.find(b"*")
         if p == -1:
             return None
@@ -58,35 +80,32 @@ class GenericCommandsMixin(CommandsMixinBase):
             return item.value
 
     def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
-        (
-            (
-                nx,
-                xx,
-                gt,
-                lt,
-            ),
-            _,
-        ) = extract_args(
-            args,
-            (
-                "nx",
-                "xx",
-                "gt",
-                "lt",
-            ),
-            exception=msgs.EXPIRE_UNSUPPORTED_OPTION,
+        is_dragonfly = self.server_type == "dragonfly"
+        unsupported_option = (
+            msgs.DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION if is_dragonfly else msgs.EXPIRE_UNSUPPORTED_OPTION
         )
+        ((nx, xx, gt, lt), _) = extract_args(args, ("nx", "xx", "gt", "lt"), exception=unsupported_option)
         if self.version < (7,) and any((nx, xx, gt, lt)):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("expire"))
-        counter = (nx, gt, lt).count(True)
-        if (counter > 1) or (nx and xx):
-            raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
+        if is_dragonfly:
+            # Dragonfly rejects only the two directly contradictory pairs; unlike redis it accepts NX alongside GT or LT
+            # and then applies both conditions.
+            if nx and xx:
+                raise SimpleError(msgs.DRAGONFLY_NX_XX_ERROR_MSG)
+            if gt and lt:
+                raise SimpleError(msgs.DRAGONFLY_GT_LT_ERROR_MSG)
+        else:
+            counter = (nx, gt, lt).count(True)
+            if (counter > 1) or (nx and xx):
+                raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
         if (
             not key
             or (xx and key.expireat is None)
             or (nx and key.expireat is not None)
-            or (gt and key.expireat is not None and timestamp < key.expireat)
-            or (lt and key.expireat is not None and timestamp > key.expireat)
+            # A key with no expiry is treated as infinity: GT never sets it (nothing is greater than infinity) while LT
+            # always does. GT/LT are also strict, so an equal timestamp must not set either.
+            or (gt and (key.expireat is None or timestamp <= key.expireat))
+            or (lt and key.expireat is not None and timestamp >= key.expireat)
         ):
             return 0
         key.expireat = timestamp
@@ -97,7 +116,7 @@ class GenericCommandsMixin(CommandsMixinBase):
         return delete_keys(*keys)
 
     @command(name="DUMP", fixed=(Key(missing_return=None),))
-    def dump(self, key: CommandItem) -> Optional[bytes]:
+    def dump(self, key: CommandItem) -> bytes | None:
         value = pickle.dumps(key.value)
         checksum = hashlib.sha1(value).digest()
         return checksum + value
@@ -110,17 +129,29 @@ class GenericCommandsMixin(CommandsMixinBase):
                 ret += 1
         return ret
 
+    def _clamp_relative_expiry(self, timestamp: float) -> float:
+        """Clamp a relative expiry deadline to what the server is willing to store."""
+        if self.server_type != "dragonfly":
+            return timestamp
+        return min(timestamp, self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS)
+
+    def _check_absolute_expiry(self, timestamp: float) -> None:
+        """Reject an absolute expiry deadline the server considers too far in the future."""
+        if self.server_type == "dragonfly" and timestamp > self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS:
+            raise SimpleError(msgs.EXPIRY_OUT_OF_RANGE_MSG)
+
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
-        res = self._expireat(key, self._db.time + seconds, *args)
+        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args)
         return res
 
     @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(float(timestamp))
         return self._expireat(key, float(timestamp), *args)
 
     @command(name="KEYS", fixed=(bytes,))
-    def keys(self, pattern: bytes) -> List[bytes]:
+    def keys(self, pattern: bytes) -> list[bytes]:
         if pattern == b"*":
             return list(self._db)
         else:
@@ -147,10 +178,11 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
-        return self._expireat(key, self._db.time + ms / 1000.0, *args)
+        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args)
 
     @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
+        self._check_absolute_expiry(ms_timestamp / 1000.0)
         return self._expireat(key, ms_timestamp / 1000.0, *args)
 
     @command(name="PTTL", fixed=(Key(),))
@@ -174,8 +206,8 @@ class GenericCommandsMixin(CommandsMixinBase):
         return int(key.expireat * 1000)
 
     @command(name="RANDOMKEY", fixed=())
-    def randomkey(self) -> Optional[bytes]:
-        keys: List[bytes] = list(self._db.keys())
+    def randomkey(self) -> bytes | None:
+        keys: list[bytes] = list(self._db.keys())
         if not keys:
             return None
         return random.choice(keys)
@@ -219,24 +251,14 @@ class GenericCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
-    def scan(self, cursor: int, *args: bytes) -> List[Union[bytes, List[bytes]]]:
+    def scan(self, cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
         return self._scan(list(self._db), cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
-    def sort(self, key: CommandItem, *args: bytes) -> Union[int, list[Any]]:
+    def sort(self, key: CommandItem, *args: bytes) -> int | list[Any]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (
-            (
-                asc,
-                desc,
-                alpha,
-                store,
-                sortby,
-                (limit_start, limit_count),
-            ),
-            left_args,
-        ) = extract_args(
+        ((_asc, desc, alpha, store, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*store", "*by", "++limit"),
             error_on_unexpected=False,
@@ -255,12 +277,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # TODO: force sorting if the object is a set and either in Lua or
-        #  storing to a key, to match redis behaviour.
+        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
-        # These transformations are based on the redis implementation, but
-        # changed to produce a half-open range.
+        # These transformations are based on the redis implementation, but changed to produce a half-open range.
         start = max(limit_start, 0)
         end = len(items) if limit_count < 0 else start + limit_count
         if start >= len(items):
@@ -274,28 +294,34 @@ class GenericCommandsMixin(CommandsMixinBase):
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
+            def sort_key(val: bytes) -> bytes | BeforeAny:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:
                     return BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
-                return score, val
+                # Redis breaks ties on the element itself, while dragonfly sorts on the weight alone and so leaves
+                # equally weighted elements in their order.
+                return (score, b"") if self.server_type == "dragonfly" else (score, val)
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
-        elif isinstance(key.value, (list, ZSet)):
+        # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
+        # zsets) and only reverse when DESC is given. Dragonfly ignores DESC in this case.
+        elif desc and isinstance(key.value, (list, ZSet)) and self.server_type != "dragonfly":
             items.reverse()
 
         out = []
+        # Dragonfly reports an unresolvable GET pattern as an empty string rather than nil.
+        empty_get = store is not None or self.server_type == "dragonfly"
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
-                if store is not None and v is None:
+                if v is None and empty_get:
                     v = b""
                 out.append(v)
         if store is not None:
@@ -307,19 +333,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             return out
 
     @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
-    def sort_ro(self, key: CommandItem, *args: bytes) -> List[bytes]:
+    def sort_ro(self, key: CommandItem, *args: bytes) -> list[bytes]:
         if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
-        (
-            (
-                asc,
-                desc,
-                alpha,
-                sortby,
-                (limit_start, limit_count),
-            ),
-            left_args,
-        ) = extract_args(
+        ((_asc, desc, alpha, sortby, (limit_start, limit_count)), left_args) = extract_args(
             args,
             ("asc", "desc", "alpha", "*by", "++limit"),
             error_on_unexpected=False,
@@ -338,12 +355,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # TODO: force sorting if the object is a set and either in Lua or
-        #  storing to a key, to match redis behaviour.
+        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
         items = list(key.value) if key.value is not None else []
 
-        # These transformations are based on the redis implementation, but
-        # changed to produce a half-open range.
+        # These transformations are based on the redis implementation, but changed to produce a half-open range.
         start = max(limit_start, 0)
         end = len(items) if limit_count < 0 else start + limit_count
         if start >= len(items):
@@ -357,28 +372,34 @@ class GenericCommandsMixin(CommandsMixinBase):
 
         if not dontsort:
 
-            def sort_key(val: bytes) -> Union[bytes, BeforeAny]:
+            def sort_key(val: bytes) -> bytes | BeforeAny:
                 byval = self._lookup_key(val, sortby)
                 # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:
                     return BeforeAny()
                 return byval
 
-            def sort_key_score(val: bytes) -> Tuple[float, bytes]:
+            def sort_key_score(val: bytes) -> tuple[float, bytes]:
                 byval = self._lookup_key(val, sortby)
                 score = SortFloat.decode(byval) if byval is not None else 0.0
-                return score, val
+                # Redis breaks ties on the element itself, while dragonfly sorts on the weight alone and so leaves
+                # equally weighted elements in their order.
+                return (score, b"") if self.server_type == "dragonfly" else (score, val)
 
             sort_func = sort_key if alpha else sort_key_score
             items.sort(key=sort_func, reverse=desc)
-        elif isinstance(key.value, (list, ZSet)):
+        # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
+        # zsets) and only reverse when DESC is given. Dragonfly ignores DESC in this case.
+        elif desc and isinstance(key.value, (list, ZSet)) and self.server_type != "dragonfly":
             items.reverse()
 
-        out: List[bytes] = []
+        out: list[bytes] = []
+        is_dragonfly = self.server_type == "dragonfly"
         for row in items[start:end]:
             for g in get:
                 v = self._lookup_key(row, g)
-                out.append(v)  # type:ignore
+                # Dragonfly reports an unresolvable GET pattern as an empty string, not nil.
+                out.append(b"" if v is None and is_dragonfly else v)  # type:ignore
         return out
 
     @command(name="TTL", fixed=(Key(),))
@@ -395,8 +416,13 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="COPY", fixed=(Key(), Key()), repeat=(bytes,))
     def copy(self, key: CommandItem, newkey: CommandItem, *args: bytes) -> int:
+        if self._server.server_type == "dragonfly" and any(casematch(arg, b"db") for arg in args):
+            # Dragonfly's COPY has no DB option at all, so it never even parses the index.
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         (db_num, replace), _ = extract_args(args, ("+db", "replace"))
-        db_num = db_num or self._db_num
+        if db_num is not None and not DbIndex.MIN_VALUE <= db_num <= DbIndex.MAX_VALUE:
+            raise SimpleError(msgs.INVALID_DB_MSG)
+        db_num = self._db_num if db_num is None else db_num
         if key.key == newkey.key and db_num == self._db_num:
             raise SimpleError(msgs.SRC_DST_SAME_MSG)
         if (newkey.key in self._server.dbs[db_num] and not replace) or (key.key not in self._server.dbs[self._db_num]):

@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 import probables
 
@@ -10,9 +10,9 @@ class CountMinSketch(probables.CountMinSketch, BaseModel):
 
     def __init__(
         self,
-        width: Optional[int] = None,
-        depth: Optional[int] = None,
-        probability: Optional[float] = None,
-        error_rate: Optional[float] = None,
+        width: int | None = None,
+        depth: int | None = None,
+        probability: float | None = None,
+        error_rate: float | None = None,
     ):
         super().__init__(width=width, depth=depth, error_rate=error_rate, confidence=probability)

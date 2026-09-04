@@ -5,6 +5,13 @@ import valkey
 from fakeredis._typing import ClientType
 from test.testtools import raw_command
 
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("dragonfly"),
+    ]
+)
+
 
 def test_getbit(r: ClientType):
     r.setbit("foo", 3, 1)
@@ -267,13 +274,13 @@ def test_bitfield_wrong_arguments(r: ClientType):
 def test_bitfield_get(r: ClientType):
     key = "key:bitfield_get"
     r.set(key, b"\xff\xf0\x00")
-    for i in range(0, 12):
+    for i in range(12):
         assert r.bitfield(key).get("u1", i).get("i1", i).execute() == [1, -1]
     for i in range(12, 25):
         for j in range(1, 63):
             assert r.bitfield(key).get(f"u{j}", i).get(f"i{j}", i).execute() == [0, 0]
 
-    for i in range(0, 11):
+    for i in range(11):
         assert r.bitfield(key).get("u2", i).get("i2", i).execute() == [3, -1]
     assert r.bitfield(key).get("u2", 11).get("i2", 11).execute() == [2, -2]
     assert r.bitfield(key).get("u8", 0).get("u8", 8).get("u8", 16).execute() == [0xFF, 0xF0, 0]
@@ -430,4 +437,53 @@ def test_bitfield_set_wrong_arguments(r: ClientType):
     for encoding in ("I8", "i-42", "i5?", "u0", "i0", "i65", "u64", "i 60"):
         with pytest.raises(Exception) as ctx:
             raw_command(r, "bitfield", key, "set", encoding, 0, 0)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_bitfield_hash_offset(r: ClientType):
+    # A '#' prefix multiplies the offset by the type width, so `#1` on a u8 addresses the second byte (bit offset 8), not bit 1.
+    key = "key:bitfield:hash_offset"
+    r.set(key, b"\x00\x22\x00\x00")
+    assert raw_command(r, "bitfield", key, "get", "u8", "#1") == [0x22]
+    assert raw_command(r, "bitfield", key, "get", "u8", "#0", "get", "u8", "#1") == [0, 0x22]
+    assert raw_command(r, "bitfield", key, "set", "u8", "#0", 99) == [0]
+    assert raw_command(r, "bitfield", key, "get", "u8", "#0") == [99]
+    assert raw_command(r, "bitfield", key, "incrby", "u8", "#1", 1) == [0x23]
+    # Malformed '#' offsets are rejected like any other bad offset.
+    for bad in ("#", "#-1", "#abc"):
+        with pytest.raises(Exception) as ctx:
+            raw_command(r, "bitfield", key, "get", "u8", bad)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_bitcount_invalid_range_existing_key(r: ClientType):
+    r.set("foo", "foobar")
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+        raw_command(r, "bitcount", "foo", "a", "b")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+# The BYTE/BIT unit only exists from 7.0; older servers reject it as a syntax error.
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_bitcount_invalid_range_existing_key_bit_unit(r: ClientType):
+    r.set("foo", "foobar")
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+        raw_command(r, "bitcount", "foo", "a", "b", "BIT")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+def test_bitcount_invalid_range_missing_key(r: ClientType):
+    with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+        raw_command(r, "bitcount", "missing", "a", "b")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7.4")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+def test_bitpos_invalid_range_missing_key(r: ClientType):
+    for args in (("missing", 1, "a"), ("missing", 1, "1", "b")):
+        with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+            raw_command(r, "bitpos", *args)
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))

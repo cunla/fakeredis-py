@@ -49,7 +49,14 @@ Support for JSON commands (e.g., [`JSON.GET`][2]) is implemented using
 >>> import fakeredis
 >>> from redis.commands.json.path import Path
 >>> r = fakeredis.FakeStrictRedis()
->>> assert r.json().set("foo", Path.root_path(), {"x": "bar"}, ) == 1
+>>> assert (
+...     r.json().set(
+...         "foo",
+...         Path.root_path(),
+...         {"x": "bar"},
+...     )
+...     == 1
+... )
 >>> r.json().get("foo")
 {'x': 'bar'}
 >>> r.json().get("foo", Path("x"))
@@ -75,10 +82,10 @@ You can install it using `pip install 'fakeredis[probabilistic]'`.
 ```pycon
 >>> import fakeredis
 >>> r = fakeredis.FakeStrictRedis()
->>> r.bf().madd('key', 'v1', 'v2', 'v3') == [1, 1, 1]
->>> r.bf().exists('key', 'v1')
+>>> r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
+>>> r.bf().exists("key", "v1")
 1
->>> r.bf().exists('key', 'v5')
+>>> r.bf().exists("key", "v5")
 0
 ```
 

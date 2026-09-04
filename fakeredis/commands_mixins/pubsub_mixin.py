@@ -1,19 +1,25 @@
-from typing import Any, Dict, Callable, List, Iterable
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
-from fakeredis._helpers import NoResponse, compile_pattern, SimpleError
+from fakeredis._helpers import NoResponse, SimpleError, compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+
+# Dragonfly only serves the sharded pub/sub introspection subcommands in cluster mode.
+DRAGONFLY_NON_CLUSTER_MSG = "ERR PUBSUB {} is not supported in non cluster mode"
 
 
 class PubSubCommandsMixin(CommandsMixinBase):
     put_response: Callable[[Any], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(PubSubCommandsMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions
 
-    def _subscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
+    def _subscribe(self, channels: Iterable[bytes], subscribers: dict[bytes, Any], mtype: bytes) -> NoResponse:
         for channel in channels:
             subs = subscribers[channel]
             if self not in subs:
@@ -23,7 +29,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
             self.put_response(msg)
         return NoResponse()
 
-    def _unsubscribe(self, channels: Iterable[bytes], subscribers: Dict[bytes, Any], mtype: bytes) -> NoResponse:
+    def _unsubscribe(self, channels: Iterable[bytes], subscribers: dict[bytes, Any], mtype: bytes) -> NoResponse:
         if not channels:
             channels = []
             for channel, subs in subscribers.items():
@@ -40,9 +46,21 @@ class PubSubCommandsMixin(CommandsMixinBase):
             self.put_response(msg)
         return NoResponse()
 
-    def _numsub(self, subscribers: Dict[bytes, Any], *channels: bytes) -> List[Any]:
+    def _numsub(self, subscribers: dict[bytes, Any], *channels: bytes) -> list[Any]:
         tuples_list = [(ch, len(subscribers.get(ch, []))) for ch in channels]
         return [item for sublist in tuples_list for item in sublist]
+
+    @property
+    def _shard_subscribers(self) -> dict[bytes, Any]:
+        """The registry SSUBSCRIBE/SPUBLISH work against.
+
+        Outside cluster mode dragonfly keeps a single channel namespace, so a sharded subscription lands in the same
+        place as a plain one: SPUBLISH then reaches plain subscribers and PUBLISH reaches sharded ones. Only the message
+        type differs, and that is decided by the publishing command.
+        """
+        if self._server.server_type == "dragonfly":
+            return self._server.subscribers
+        return self._server.ssubscribers
 
     @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def psubscribe(self, *patterns: bytes) -> NoResponse:
@@ -54,7 +72,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
 
     @command((bytes,), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def ssubscribe(self, *channels: bytes) -> NoResponse:
-        return self._subscribe(channels, self._server.ssubscribers, b"ssubscribe")
+        return self._subscribe(channels, self._shard_subscribers, b"ssubscribe")
 
     @command((), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def punsubscribe(self, *patterns: bytes) -> NoResponse:
@@ -66,7 +84,10 @@ class PubSubCommandsMixin(CommandsMixinBase):
 
     @command(fixed=(), repeat=(bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def sunsubscribe(self, *channels: bytes) -> NoResponse:
-        return self._unsubscribe(channels, self._server.ssubscribers, b"sunsubscribe")
+        # Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe" message, even though it answers SSUBSCRIBE with
+        # "ssubscribe".
+        reply = b"unsubscribe" if self._server.server_type == "dragonfly" else b"sunsubscribe"
+        return self._unsubscribe(channels, self._shard_subscribers, reply)
 
     @command((bytes, bytes))
     def publish(self, channel: bytes, message: bytes) -> int:
@@ -89,7 +110,7 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def spublish(self, channel: bytes, message: bytes) -> int:
         receivers = 0
         msg = [b"smessage", channel, message]
-        subs: Iterable[Any] = self._server.ssubscribers.get(channel, set())
+        subs: Iterable[Any] = self._shard_subscribers.get(channel, set())
         for sock in subs:
             sock.put_response(msg)
             receivers += 1
@@ -106,7 +127,15 @@ class PubSubCommandsMixin(CommandsMixinBase):
     def pubsub_numpat(self, *_: Any) -> int:
         return len(self._server.psubscribers)
 
-    def _channels(self, subscribers_dict: Dict[bytes, Any], *patterns: bytes) -> List[bytes]:
+    def _check_shard_introspection_supported(self, subcommand: str) -> None:
+        """Dragonfly rejects the sharded pub/sub introspection subcommands outside cluster mode.
+
+        SSUBSCRIBE/SPUBLISH themselves work, only PUBSUB SHARDCHANNELS/SHARDNUMSUB are refused.
+        """
+        if self._server.server_type == "dragonfly":
+            raise SimpleError(DRAGONFLY_NON_CLUSTER_MSG.format(subcommand))
+
+    def _channels(self, subscribers_dict: dict[bytes, Any], *patterns: bytes) -> list[bytes]:
         channels = list(subscribers_dict.keys())
         if len(patterns) > 0:
             regex = compile_pattern(patterns[0])
@@ -114,28 +143,50 @@ class PubSubCommandsMixin(CommandsMixinBase):
         return channels
 
     @command(name="PUBSUB CHANNELS", fixed=(), repeat=(bytes,))
-    def pubsub_channels(self, *args: bytes) -> List[bytes]:
+    def pubsub_channels(self, *args: bytes) -> list[bytes]:
         return self._channels(self._server.subscribers, *args)
 
     @command(name="PUBSUB SHARDCHANNELS", fixed=(), repeat=(bytes,))
-    def pubsub_shardchannels(self, *args: bytes) -> List[bytes]:
-        return self._channels(self._server.ssubscribers, *args)
+    def pubsub_shardchannels(self, *args: bytes) -> list[bytes]:
+        self._check_shard_introspection_supported("SHARDCHANNELS")
+        return self._channels(self._shard_subscribers, *args)
 
     @command(name="PUBSUB NUMSUB", fixed=(), repeat=(bytes,))
-    def pubsub_numsub(self, *args: bytes) -> List[Any]:
+    def pubsub_numsub(self, *args: bytes) -> list[Any]:
         return self._numsub(self._server.subscribers, *args)
 
     @command(name="PUBSUB SHARDNUMSUB", fixed=(), repeat=(bytes,))
-    def pubsub_shardnumsub(self, *args: bytes) -> List[Any]:
-        return self._numsub(self._server.ssubscribers, *args)
+    def pubsub_shardnumsub(self, *args: bytes) -> list[Any]:
+        self._check_shard_introspection_supported("SHARDNUMSUB")
+        return self._numsub(self._shard_subscribers, *args)
 
     @command(name="PUBSUB", fixed=())
     def pubsub(self, *args: Any) -> None:
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format("pubsub"))
 
     @command(name="PUBSUB HELP", fixed=())
-    def pubsub_help(self, *args: Any) -> List[bytes]:
-        if self.version >= (7,):
+    def pubsub_help(self, *args: Any) -> list[bytes]:
+        if self._server.server_type == "dragonfly":
+            # Dragonfly ships its own help text, indented with tabs rather than spaces.
+            help_strings = [
+                "PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
+                "CHANNELS [<pattern>]",
+                "\tReturn the currently active channels matching a <pattern> (default: '*').",
+                "NUMPAT",
+                "\tReturn number of subscriptions to patterns.",
+                "NUMSUB [<channel> <channel...>]",
+                "\tReturns the number of subscribers for the specified channels, excluding",
+                "\tpattern subscriptions.",
+                "SHARDCHANNELS [pattern]",
+                "\tReturns a list of active shard channels, optionally matching the specified pattern ",
+                "(default: '*').",
+                "SHARDNUMSUB [<channel> <channel...>]",
+                "\tReturns the number of subscribers for the specified shard channels, excluding",
+                "\tpattern subscriptions.",
+                "HELP",
+                "\tPrints this help.",
+            ]
+        elif self.version >= (7,):
             help_strings = [
                 "PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
                 "CHANNELS [<pattern>]",

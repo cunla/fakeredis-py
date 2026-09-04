@@ -97,8 +97,8 @@ Determines the type of value stored at a key.
 Asynchronously deletes one or more keys.
 
 
-## Unsupported generic commands 
-> To implement support for a command, see [here](/guides/implement-command/) 
+## Unsupported generic commands
+> To implement support for a command, see [here](../../../guides/implement-command/)
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
@@ -107,5 +107,3 @@ Blocks until the asynchronous replication of all preceding write commands sent b
 #### [WAITAOF](https://redis.io/commands/waitaof/) <small>(not implemented)</small>
 
 Blocks until all of the preceding write commands sent by the connection are written to the append-only file of the master and/or replicas.
-
-

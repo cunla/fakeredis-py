@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import random
-from typing import Callable, Any, Optional, List, Union, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import command, Key, Int, CommandItem
-from fakeredis._helpers import OK, SimpleError, casematch, SimpleString
-from fakeredis.model import ExpiringMembersSet
+from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import ExpiringMembersSet
 
 
 def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
@@ -26,13 +29,12 @@ def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem,
 
 
 def _setop(
-    op: Callable[..., Any], stop_if_missing: bool, dst: Optional[CommandItem], key: CommandItem, *keys: CommandItem
+    op: Callable[..., Any], stop_if_missing: bool, dst: CommandItem | None, key: CommandItem, *keys: CommandItem
 ) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
-    If `stop_if_missing`, the output will be made an empty set as soon as
-    an empty input set is encountered (use for SINTER[STORE]). May assume
-    that `key` is a set (or empty), but `keys` could be anything.
+    If `stop_if_missing`, the output will be made an empty set as soon as an empty input set is encountered (use for
+    SINTER[STORE]). May assume that `key` is a set (or empty), but `keys` could be anything.
     """
     ans = _calc_setop(op, stop_if_missing, key, *keys)
     if dst is None:
@@ -43,7 +45,7 @@ def _setop(
 
 
 class SetCommandsMixin(CommandsMixinBase):
-    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:
@@ -74,12 +76,20 @@ class SetCommandsMixin(CommandsMixinBase):
         if self.version < (7,):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("sintercard"))
         if numkeys < 1:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if self.server_type != "dragonfly":
+                raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+            raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         limit = 0
-        if casematch(args[-2], b"limit"):
+        if len(args) >= 2 and casematch(args[-2], b"limit"):
             limit = Int.decode(args[-1])
+            if limit < 0:
+                raise SimpleError(
+                    msgs.DRAGONFLY_LIMIT_NEGATIVE_MSG if self.server_type == "dragonfly" else msgs.LIMIT_NEGATIVE_MSG
+                )
             args = args[:-2]
-        if numkeys != len(args):
+        if numkeys > len(args):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG if self.server_type == "dragonfly" else msgs.TOO_MANY_KEYS_MSG)
+        elif numkeys < len(args):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
 
@@ -95,27 +105,33 @@ class SetCommandsMixin(CommandsMixinBase):
         return int(member in key.value)
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
-    def smismember(self, key: CommandItem, *members: bytes) -> List[int]:
+    def smismember(self, key: CommandItem, *members: bytes) -> list[int]:
         return [self.sismember(key, member) for member in members]
 
     @command((Key(ExpiringMembersSet),))
-    def smembers(self, key: CommandItem) -> List[bytes]:
+    def smembers(self, key: CommandItem) -> list[bytes]:
         return list(key.value)
 
-    @command((Key(ExpiringMembersSet, 0), Key(ExpiringMembersSet), bytes))
+    @command((Key(ExpiringMembersSet), Key(), bytes))
     def smove(self, src: CommandItem, dst: CommandItem, member: bytes) -> int:
-        try:
-            src.value.remove(member)
-            src.updated()
-        except KeyError:
+        src_exists = src.key in self._db
+        dst_wrong_type = dst.value is not None and not isinstance(dst.value, ExpiringMembersSet)
+        # Redis only looks at the destination once the source key exists, while dragonfly checks its type up front -- so
+        # moving out of a missing set into a string fails there and answers 0 on redis.
+        if dst_wrong_type and (src_exists or self.server_type == "dragonfly"):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        if not src_exists or member not in src.value:
             return 0
-        else:
-            dst.value.add(member)
-            dst.updated()  # TODO: is it updated if member was already present?
-            return 1
+        src.value.remove(member)
+        src.updated()
+        if dst.value is None:
+            dst.update(ExpiringMembersSet())
+        dst.value.add(member)
+        dst.updated()  # TODO: is it updated if member was already present?
+        return 1
 
     @command((Key(ExpiringMembersSet),), (Int,))
-    def spop(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
+    def spop(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
         if count is None:
             if not key.value:
                 return None
@@ -125,15 +141,19 @@ class SetCommandsMixin(CommandsMixinBase):
             return item  # type: ignore
         else:
             if count < 0:
-                raise SimpleError(msgs.INDEX_ERROR_MSG)
-            items: Union[bytes, List[bytes]] = self.srandmember(key, count)
+                # Dragonfly rejects the negative count while decoding it, so it reports the generic integer error rather
+                # than redis' "must be positive".
+                if self.server_type == "dragonfly":
+                    raise SimpleError(msgs.INVALID_INT_MSG)
+                raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
+            items: bytes | list[bytes] = self.srandmember(key, count)
             for item in items:
                 key.value.remove(item)
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
     @command((Key(ExpiringMembersSet),), (Int,))
-    def srandmember(self, key: CommandItem, count: Optional[int] = None) -> Union[bytes, List[bytes], None]:
+    def srandmember(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
         if count is None:
             if not key.value:
                 return None
@@ -169,9 +189,8 @@ class SetCommandsMixin(CommandsMixinBase):
         return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
-    # These are not quite the same as the real redis ones, which are
-    # approximate and store the results in a string. Instead, it is implemented
-    # on top of sets.
+    # These are not quite the same as the real redis ones, which are approximate and store the results in a string.
+    # Instead, it is implemented on top of sets.
 
     @command((Key(ExpiringMembersSet),), (bytes,))
     def pfadd(self, key: CommandItem, *elements: bytes) -> int:

@@ -3,40 +3,55 @@ toc:
 toc_depth: 3
 ---
 
-fakeredis: A python implementation of Redis Protocol API
-========================================================
+<p align="center">
+  <img src="assets/logo.svg" alt="fakeredis" width="440">
+</p>
 
+# fakeredis
 
-FakeRedis is a pure-Python implementation of the Redis key-value store.
+<p align="center"><em>A fast, pure-Python implementation of the Redis protocol — no server required.</em></p>
 
-It enables running tests requiring redis server without an actual server.
+---
 
-It provides enhanced versions of the redis-py Python bindings for Redis.
+**fakeredis** is a drop-in replacement for [redis-py](https://github.com/redis/redis-py) and
+[valkey-py](https://github.com/valkey-io/valkey-py) that runs entirely in-memory. Write and run tests that depend on
+[Redis](https://redis.io/), [Valkey](https://github.com/valkey-io/valkey),
+[DragonflyDB](https://dragonflydb.io/), or [KeyDB](https://docs.keydb.dev/) — without spinning up a real server, a
+container, or a network connection.
 
-That provides the following added functionality: A built-in Redis server that is automatically installed, configured and
-managed when the Redis bindings are used.
-A single server shared by multiple programs or multiple independent servers.
-All the servers provided by FakeRedis support all Redis functionality, including advanced features such as RedisJson,
-GeoCommands.
+```python
+import fakeredis
 
-For a list of supported/unsupported redis commands, see [Supported commands][supported-commands].
+r = fakeredis.FakeStrictRedis()
+r.set("foo", "bar")
+r.get("foo")  # b'bar'
+```
 
-## Installation
+That's it — no server to install, no port to manage, no teardown.
+For the full list of commands, see [Supported commands][supported-commands].
 
-To install fakeredis-py, simply:
+## ✨ Why fakeredis?
+
+- 🚀 **Zero setup** — no Redis server, Docker, or network required. Pure Python.
+- 🔌 **Drop-in compatible** — same API as `redis.Redis` and `redis.asyncio.Redis`.
+- ⚡ **Fast & isolated** — in-memory, so tests run quickly and start from a clean slate.
+- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, or KeyDB, and pin a specific server version.
+- 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, TimeSeries, and Geo commands.
+- 🤝 **Share or isolate state** — one shared in-memory server across clients, or independent servers per test.
+- 🌐 **Real TCP mode** — expose the fake server over a socket for clients you can't inject.
+
+## 📥 Installation
 
 ```bash
-pip install fakeredis        ## No additional modules support
-
-pip install fakeredis[lua]   ## Support for LUA scripts
-
-pip install fakeredis[json]  ## Support for RedisJSON commands
-
-# Note on mac you need quotes:
-pip install "fakeredis[json]"
-
-pip install fakeredis[probabilistic,json]  ## Support for RedisJSON and BloomFilter/CuckooFilter/CountMinSketch commands
+pip install fakeredis                        # core, no extras
+pip install "fakeredis[lua]"                 # EVAL / EVALSHA scripting
+pip install "fakeredis[json]"                # JSON.* commands
+pip install "fakeredis[bf]"                  # Bloom / Cuckoo / Count-Min / Top-K filters
+pip install "fakeredis[probabilistic,json]"  # probabilistic filters + JSON
 ```
+
+!!! tip
+    On macOS / zsh you must quote the extras, e.g. `pip install "fakeredis[json]"`.
 
 ## How to Use
 
@@ -94,6 +109,7 @@ import pytest
 @pytest.fixture
 def redis_client(request):
     import fakeredis
+
     redis_client = fakeredis.FakeRedis()
     return redis_client
 ```
@@ -109,15 +125,15 @@ It does this by storing the state internally. For example:
 ```pycon
 >>> import fakeredis
 >>> r = fakeredis.FakeStrictRedis(server_type="redis")
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 True
->>> r.get('foo')
+>>> r.get("foo")
 'bar'
->>> r.lpush('bar', 1)
+>>> r.lpush("bar", 1)
 1
->>> r.lpush('bar', 2)
+>>> r.lpush("bar", 2)
 2
->>> r.lrange('bar', 0, -1)
+>>> r.lrange("bar", 0, -1)
 [2, 1]
 ```
 
@@ -129,16 +145,16 @@ explicitly create one to share state:
 >>> import fakeredis
 >>> server = fakeredis.FakeServer()
 >>> r1 = fakeredis.FakeStrictRedis(server=server)
->>> r1.set('foo', 'bar')
+>>> r1.set("foo", "bar")
 True
 >>> r2 = fakeredis.FakeStrictRedis(server=server)
->>> r2.get('foo')
+>>> r2.get("foo")
 'bar'
->>> r2.set('bar', 'baz')
+>>> r2.set("bar", "baz")
 True
->>> r1.get('bar')
+>>> r1.get("bar")
 'baz'
->>> r2.get('bar')
+>>> r2.get("bar")
 'baz'
 ```
 
@@ -150,10 +166,10 @@ Set the connected attribute of the server to `False` after initialization.
 >>> server = fakeredis.FakeServer()
 >>> server.connected = False
 >>> r = fakeredis.FakeStrictRedis(server=server)
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 ConnectionError: FakeRedis is emulating a connection error.
 >>> server.connected = True
->>> r.set('foo', 'bar')
+>>> r.set("foo", "bar")
 True
 ```
 
@@ -167,9 +183,9 @@ Async redis client is supported. Instead of using `fakeredis.FakeRedis`, use `fa
 ```pycon
 >>> from fakeredis import FakeAsyncRedis
 >>> r1 = FakeAsyncRedis()
->>> await r1.set('foo', 'bar')
+>>> await r1.set("foo", "bar")
 True
->>> await r1.get('foo')
+>>> await r1.get("foo")
 'bar'
 ```
 
@@ -181,12 +197,10 @@ Update your cache settings:
 from fakeredis import FakeConnection
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': '...',
-        'OPTIONS': {
-            'connection_class': FakeConnection
-        }
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "...",
+        "OPTIONS": {"connection_class": FakeConnection},
     }
 }
 ```
@@ -217,6 +231,7 @@ import django_rq
 # do not share the state. Therefore, we define a singleton object to reuse it.
 def get_fake_connection(config: Dict[str, Any], strict: bool):
     from fakeredis import FakeRedis, FakeStrictRedis
+
     redis_cls = FakeStrictRedis if strict else FakeRedis
     if "URL" in config:
         return redis_cls.from_url(
@@ -362,6 +377,12 @@ commands that do not support all features) which should be filed as bugs in GitH
 
 - Redis makes guarantees about the order in which clients blocked on blocking commands are woken up. Fakeredis does not
   honor these guarantees.
+
+- `CLIENT PAUSE` validates and records its arguments, and `CLIENT UNPAUSE` clears them, but command processing is never
+  actually suspended. Commands sent while paused are served immediately instead of being delayed.
+
+- Every fakeredis connection reports the same client address (`127.0.0.1:0`), so the `ADDR` filter of `CLIENT KILL`
+  matches every connection at once rather than a single one.
 
 - Where redis contains bugs, fakeredis generally does not try to provide exact bug compatibility. It's not practical for
   fakeredis to try to match the set of bugs in your specific version of redis.

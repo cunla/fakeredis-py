@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import warnings
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple, Type, Union
+from collections.abc import Iterable, Sequence
+from typing import Any, Callable
 
 import redis.asyncio as redis_async
 from redis import ResponseError
@@ -10,7 +12,8 @@ from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket, _helpers
 from . import _msgs as msgs
-from ._helpers import SimpleError, convert_args_kwargs
+from ._client_setup import build_client_kwds
+from ._helpers import SimpleError
 from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
 
@@ -21,6 +24,10 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.responses: asyncio.Queue = asyncio.Queue()  # type:ignore
+        # Set whenever a response is enqueued so can_read() can wait on it instead of polling the queue (see can_read).
+        self._response_available: asyncio.Event = asyncio.Event()
+        self._event_loop = asyncio.get_running_loop()
+        self._loop_thread_ident = threading.get_ident()
 
     def _decode_error(self, error: SimpleError) -> ResponseError:
         parser = DefaultParser(1)
@@ -30,52 +37,76 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         if not self.responses:
             return
         self.responses.put_nowait(msg)
+        if threading.get_ident() == self._loop_thread_ident:
+            self._response_available.set()
+        else:
+            # Called from another thread, e.g. a sync client publishing to a channel this socket subscribes to on a
+            # shared FakeServer: a plain set() would not wake this socket's sleeping event loop, so the wakeup must be
+            # marshalled through it.
+            try:
+                self._event_loop.call_soon_threadsafe(self._response_available.set)
+            except RuntimeError:  # the loop is already closed
+                pass
 
     async def _async_blocking(
         self,
-        timeout: Optional[Union[float, int]],
+        timeout: float | None,
         func: Callable[[bool], Any],
         event: asyncio.Event,
         callback: Callable[[], None],
+        shape: Callable[[Any], Any] | None = None,
     ) -> None:
-        result = None
+        # The reply for an empty outcome -- a timeout, or an unblock with TIMEOUT.
+        result = None if shape is None else self._decode_result(shape(None))
         try:
             async with async_timeout(timeout if timeout else None):
                 while True:
                     await event.wait()
                     event.clear()
-                    # This is a coroutine outside the normal control flow that
-                    # locks the server, so we have to take our own lock.
+                    # This is a coroutine outside the normal control flow that locks the server, so we have to take our
+                    # own lock.
                     with self._server.lock:
+                        if self._unblock_reason is not None:
+                            try:
+                                self._take_unblock_reason()
+                            except SimpleError as exc:
+                                result = self._decode_result(exc)
+                            break
                         ret = func(False)
                         if ret is not None:
-                            result = self._decode_result(ret)
+                            result = self._decode_result(ret if shape is None else shape(ret))
                             break
         except asyncio.TimeoutError:
             pass
         finally:
             with self._server.lock:
                 self._db.remove_change_callback(callback)
+                self._blocked = False
+                self._unblock_reason = None
             self.put_response(result)
             self.resume()
 
     def _blocking(
         self,
-        timeout: Optional[Union[float, int]],
+        timeout: float | None,
         func: Callable[[bool], None],
+        shape: Callable[[Any], Any] | None = None,
     ) -> Any:
         loop = asyncio.get_event_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
-            return ret
+            return ret if shape is None else shape(ret)
         event = asyncio.Event()
 
         def callback() -> None:
             loop.call_soon_threadsafe(event.set)
 
         self._db.add_change_callback(callback)
+        self._blocked = True
         self.pause()
-        loop.create_task(self._async_blocking(timeout, func, event, callback))
+        # `shape` travels with the task: the reply is put on the queue from there, past the point where the command that
+        # blocked could still touch it.
+        loop.create_task(self._async_blocking(timeout, func, event, callback, shape))
         return _helpers.NoResponse()
 
 
@@ -92,7 +123,7 @@ class FakeReader:
 
 class FakeWriter:
     def __init__(self, socket: AsyncFakeSocket) -> None:
-        self._socket: Optional[AsyncFakeSocket] = socket
+        self._socket: AsyncFakeSocket | None = socket
 
     def close(self) -> None:
         self._socket = None
@@ -116,11 +147,11 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
     async def _connect(self) -> None:
         if not self._server.connected:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
-        self._sock: Optional[AsyncFakeSocket] = AsyncFakeSocket(
+        self._sock: AsyncFakeSocket | None = AsyncFakeSocket(
             self._server, self.db, client_class=self._client_class, lua_modules=self._lua_modules
         )
-        self._reader: Optional[FakeReader] = FakeReader(self._sock)
-        self._writer: Optional[FakeWriter] = FakeWriter(self._sock)
+        self._reader: FakeReader | None = FakeReader(self._sock)
+        self._writer: FakeWriter | None = FakeWriter(self._sock)
 
     def __del__(self) -> None:
         # Ensure _writer is cleared even if disconnect() was never called
@@ -136,37 +167,38 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         self._writer = None
         await super().disconnect(**kwargs)
 
-    async def can_read(self, timeout: Optional[float] = 0) -> bool:
+    async def can_read(self, timeout: float | None = 0) -> bool:
         if not self.is_connected:
             await self.connect()
         if timeout == 0:
             return self._sock is not None and not self._sock.responses.empty()
-        # asyncio.Queue doesn't have a way to wait for the queue to be
-        # non-empty without consuming an item, so kludge it with a sleep/poll
-        # loop.
+        # asyncio.Queue has no "wait until non-empty without consuming" API, so wait on the socket's _response_available
+        # event (set by put_response) rather than polling. timeout=None waits indefinitely.
+        #
+        # The event is only cleared here, never by the consumers that drain the queue (responses.get / get_nowait), so
+        # "event set" does NOT imply "queue non-empty" -- it may be left set after the queue was drained. The recheck of
+        # empty() immediately after clear() is therefore mandatory, not an optimization: it both closes the lost-wakeup
+        # race (an item enqueued between the empty() check and the wait) and absorbs a stale set. Do not remove it.
         loop = asyncio.get_event_loop()
         start = loop.time()
         while True:
-            if self._sock and not self._sock.responses.empty():
+            if self._sock is None:
+                return False
+            if not self._sock.responses.empty():
                 return True
-            await asyncio.sleep(0.01)
-            now = loop.time()
-            if timeout is not None and now > start + timeout:
+            self._sock._response_available.clear()
+            if not self._sock.responses.empty():  # mandatory recheck, see above
+                return True
+            remaining = None if timeout is None else timeout - (loop.time() - start)
+            if remaining is not None and remaining <= 0:
+                return False
+            try:
+                await asyncio.wait_for(self._sock._response_available.wait(), remaining)
+            except asyncio.TimeoutError:
                 return False
 
     async def _get_from_local_cache(self, command: Sequence[str]) -> None:
         return None
-
-    def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: List[Any]) -> None:
-        return None
-
-    def _decode(self, response: Any) -> Any:
-        if isinstance(response, list):
-            return [self._decode(item) for item in response]
-        elif isinstance(response, bytes):
-            return self.encoder.decode(response)
-        else:
-            return response
 
     async def read_response(self, **kwargs: Any) -> Any:
         if not self._sock:
@@ -179,7 +211,7 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
                     await self.disconnect()
                 raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         else:
-            timeout: Optional[float] = kwargs.pop("timeout", None)
+            timeout: float | None = kwargs.pop("timeout", None)
             can_read = await self.can_read(timeout)
             response = await self._reader.read(0) if can_read and self._reader else None
         if isinstance(response, RaiseErrorTypes):
@@ -188,85 +220,48 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
             return response
         return self._decode(response)
 
-    def repr_pieces(self) -> List[Tuple[str, Any]]:
-        pieces = [("server", self._server), ("db", self.db)]
-        if self.client_name:
-            pieces.append(("client_name", self.client_name))
-        return pieces
-
-    def __str__(self) -> str:
-        return self.server_key
-
 
 class FakeAsyncRedisConnection(FakeBaseAsyncConnection, redis_async.Connection):
     pass
 
 
-class FakeRedisMixin:
+class FakeAsyncRedisMixin:
     def __init__(
         self,
         *args: Any,
-        server: Optional[FakeServer] = None,
-        version: Union[VersionType, str, int] = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
+        server: FakeServer | None = None,
+        version: VersionType | str | int = (7,),  # https://github.com/cunla/fakeredis-py/issues/401
         server_type: ServerType = "redis",
-        lua_modules: Optional[Set[str]] = None,
-        client_class: Type[redis_async.Redis] = redis_async.Redis,
-        connection_class: Type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
-        connection_pool_class: Type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
+        lua_modules: set[str] | None = None,
+        client_class: type[redis_async.Redis] = redis_async.Redis,
+        connection_class: type[FakeBaseAsyncConnection] = FakeAsyncRedisConnection,
+        connection_pool_class: type[redis_async.connection.ConnectionPool] = redis_async.connection.ConnectionPool,
         **kwargs: Any,
     ) -> None:
-        kwds = convert_args_kwargs(client_class, *args, **kwargs)
-        kwds["server"] = server
-        kwds["connected"] = kwargs.get("connected", True)
-        if not kwds.get("connection_pool", None):
-            charset = kwds.get("charset", None)
-            errors = kwds.get("errors", None)
-            # Adapted from redis-py
-            if charset is not None:
-                warnings.warn(DeprecationWarning('"charset" is deprecated. Use "encoding" instead'))
-                kwds["encoding"] = charset
-            if errors is not None:
-                warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
-                kwds["encoding_errors"] = errors
-            conn_pool_args = {
-                "host",
-                "port",
-                "db",
-                "username",
-                "password",
-                "socket_timeout",
-                "encoding",
-                "encoding_errors",
-                "decode_responses",
-                "retry_on_timeout",
-                "max_connections",
-                "health_check_interval",
-                "client_name",
-                "connected",
-                "server",
-                "protocol",
-            }
-            connection_kwargs = {
-                "connection_class": connection_class,
-                "version": version,
-                "server_type": server_type,
-                "lua_modules": lua_modules,
-                "client_class": client_class,
-            }
-            connection_kwargs.update({arg: kwds[arg] for arg in conn_pool_args if arg in kwds})
-            kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
-        kwds.pop("server", None)
-        kwds.pop("connected", None)
-        kwds.pop("version", None)
-        kwds.pop("server_type", None)
-        kwds.pop("lua_modules", None)
-        if "lib_name" in kwds and "lib_version" in kwds:
+        connected = kwargs.pop("connected", True)
+        kwds = build_client_kwds(
+            *args,
+            client_class=client_class,
+            connection_class=connection_class,
+            connection_pool_class=connection_pool_class,
+            version=version,
+            server_type=server_type,
+            lua_modules=lua_modules,
+            server=server,
+            connected=connected,
+            **kwargs,
+        )
+        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
             kwds["lib_name"] = "fakeredis"
             kwds["lib_version"] = lib_version
+        if "driver_info" in kwds:
+            from redis import DriverInfo
+
+            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> FakeRedisMixin:
+    def from_url(cls, url: str, **kwargs: Any) -> FakeAsyncRedisMixin:
         self: redis_async.Redis = super().from_url(url, **kwargs)
         pool = self.connection_pool  # Now override how it creates connections
         pool.connection_class = kwargs.pop("connection_class", FakeAsyncRedisConnection)
@@ -275,7 +270,12 @@ class FakeRedisMixin:
         return self
 
 
-class FakeRedis(FakeRedisMixin, redis_async.Redis):
+# Deprecated alias: kept so existing imports of aioredis.FakeRedisMixin keep working; it shadowed the (different) sync
+# mixin of the same name in _connection.py.
+FakeRedisMixin = FakeAsyncRedisMixin
+
+
+class FakeRedis(FakeAsyncRedisMixin, redis_async.Redis):
     pass
 
 

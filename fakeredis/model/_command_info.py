@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import json
 import os
-from typing import Optional, Dict, List, Any, AnyStr
+from typing import Any, AnyStr
+
 from fakeredis._helpers import asbytes
 
-_COMMAND_INFO: Optional[Dict[bytes, List[Any]]] = None
+_COMMAND_INFO: dict[bytes, list[Any]] | None = None
 
 
 def _encode_obj(obj: Any) -> Any:
@@ -23,19 +26,25 @@ def _load_command_info() -> None:
             _COMMAND_INFO = _encode_obj(json.load(f))
 
 
-def get_all_commands_info() -> Dict[bytes, List[Any]]:
+def get_all_commands_info() -> dict[bytes, list[Any]]:
     _load_command_info()
     return _COMMAND_INFO  # type: ignore[return-value]
 
 
-def get_command_info(cmd: bytes) -> Optional[List[Any]]:
+def get_command_info(cmd: bytes) -> list[Any] | None:
     _load_command_info()
     if _COMMAND_INFO is None or cmd not in _COMMAND_INFO:
         return None
     return _COMMAND_INFO.get(cmd, None)
 
 
-def get_categories() -> List[bytes]:
+def is_write_command(cmd: bytes) -> bool:
+    """Whether the command is flagged as writing to its keys."""
+    info = get_command_info(cmd)
+    return info is not None and b"write" in info[2]
+
+
+def get_categories() -> list[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []
@@ -46,7 +55,7 @@ def get_categories() -> List[bytes]:
     return list(categories)
 
 
-def get_commands_by_category(_category: AnyStr) -> List[bytes]:
+def get_commands_by_category(_category: AnyStr) -> list[bytes]:
     _load_command_info()
     if _COMMAND_INFO is None:
         return []

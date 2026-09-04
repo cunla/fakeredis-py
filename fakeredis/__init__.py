@@ -1,8 +1,10 @@
 from . import _typing
-from ._connection import FakeRedis, FakeStrictRedis, FakeRedisConnection, FakeConnection
+from ._connection import FakeConnection, FakeRedis, FakeRedisConnection, FakeStrictRedis
 from ._server import FakeServer
 from ._tcp_server import TcpFakeServer
-from .aioredis import FakeRedis as FakeAsyncRedis, FakeAsyncRedisConnection, FakeConnection as FakeAsyncConnection
+from .aioredis import FakeAsyncRedisConnection
+from .aioredis import FakeConnection as FakeAsyncConnection
+from .aioredis import FakeRedis as FakeAsyncRedis
 
 __version__ = _typing.lib_version
 __author__ = "Daniel Moran"
@@ -13,26 +15,27 @@ __url__ = "https://github.com/cunla/fakeredis-py"
 __bugtrack_url__ = "https://github.com/cunla/fakeredis-py/issues"
 
 __all__ = [
-    "FakeServer",
-    "FakeRedis",
-    "FakeStrictRedis",
-    "FakeRedisConnection",
-    "FakeConnection",
+    "FakeAsyncConnection",
     "FakeAsyncRedis",
     "FakeAsyncRedisConnection",
-    "FakeAsyncConnection",
+    "FakeConnection",
+    "FakeRedis",
+    "FakeRedisConnection",
+    "FakeServer",
+    "FakeStrictRedis",
     "TcpFakeServer",
 ]
 
 try:
     import valkey  # noqa: F401
-    from ._valkey import FakeValkey, FakeAsyncValkey, FakeStrictValkey  # noqa: F401
+
+    from ._valkey import FakeAsyncValkey, FakeStrictValkey, FakeValkey  # noqa: F401
 
     __all__.extend(
         [
-            "FakeValkey",
             "FakeAsyncValkey",
             "FakeStrictValkey",
+            "FakeValkey",
         ]
     )
 except ImportError:

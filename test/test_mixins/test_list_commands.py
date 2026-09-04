@@ -6,6 +6,7 @@ import redis
 import valkey
 
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import resp_conversion
 
@@ -294,6 +295,21 @@ def test_ltrim_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("valkey")
+def test_watch_when_ltrim_does_not_change_value(r: ClientType):
+    # Redis signals the key as modified for every LTRIM on an existing key,
+    # even a no-op trim that removes no elements. A WATCH on the key must
+    # therefore be invalidated, aborting the transaction.
+    r.rpush("foo", "one", "two", "three")
+
+    with r.pipeline() as p:
+        p.watch("foo")
+        assert r.ltrim("foo", 0, -1)  # no elements removed, list is unchanged
+        assert p.multi() is None
+        with pytest.raises((redis.WatchError, valkey.WatchError)):
+            p.execute()
+
+
 def test_lindex(r: ClientType):
     r.rpush("foo", "one")
     r.rpush("foo", "two")
@@ -518,13 +534,13 @@ def test_blpop_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_blpop_transaction(r: ClientType):
+def test_blpop_transaction(r: ClientType, real_server_details):
     p = r.pipeline()
     p.multi()
     p.blpop("missing", timeout=1000)
     result = p.execute()
     # Blocking commands behave like non-blocking versions in transactions
-    assert result == [None]
+    assert result == [testtools.empty_blocking_reply(r, real_server_details.server_type)]
 
 
 def test_brpop_test_multiple_lists(r: ClientType):
@@ -579,10 +595,12 @@ def test_brpoplpush_wrong_type(r: ClientType):
 
 
 @pytest.mark.slow
-def test_blocking_operations_when_empty(r: ClientType):
-    assert r.blpop(["foo"], timeout=1) is None
-    assert r.blpop(["bar", "foo"], timeout=1) is None
-    assert r.brpop("foo", timeout=1) is None
+def test_blocking_operations_when_empty(r: ClientType, real_server_details):
+    empty = testtools.empty_blocking_reply(r, real_server_details.server_type)
+    assert r.blpop(["foo"], timeout=1) == empty
+    assert r.blpop(["bar", "foo"], timeout=1) == empty
+    assert r.brpop("foo", timeout=1) == empty
+    # BRPOPLPUSH replies with a bulk string, which is nil on every server.
     assert r.brpoplpush("foo", "bar", timeout=1) is None
 
 
@@ -663,7 +681,7 @@ def test_blmove(r: ClientType):
 
 
 @pytest.mark.disconnected
-@testtools.fake_only
+@pytest.mark.fake_only
 def test_lmove_disconnected_raises_connection_error(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.lmove(1, 2, "LEFT", "RIGHT")
@@ -724,3 +742,78 @@ def test_lmpop(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.rpush("bar", "a", "b", "c", "d")
     assert r.lmpop("2", "bar", "foo", direction="LEFT") == [b"bar", [b"a"]]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_count_not_positive(r: ClientType, real_server_details):
+    r.rpush("foo", "a", "b")
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly accepts COUNT 0, naming the key but popping nothing, and reports a
+        # negative count as a plain decoding failure.
+        assert testtools.raw_command(r, "lmpop", 1, "foo", "LEFT", "COUNT", 0) == [b"foo", []]
+        for args in (("lmpop", 1, "foo", "LEFT", "COUNT", -1), ("blmpop", 0.01, 1, "foo", "LEFT", "COUNT", -1)):
+            with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
+                testtools.raw_command(r, *args)
+            assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert r.lrange("foo", 0, -1) == [b"a", b"b"]
+        return
+    for count in (0, -1):
+        with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+            testtools.raw_command(r, "lmpop", 1, "foo", "LEFT", "COUNT", count)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match="count should be greater than 0") as ctx:
+        testtools.raw_command(r, "blmpop", 0.01, 1, "foo", "LEFT", "COUNT", -1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # nothing should have been popped
+    assert r.lrange("foo", 0, -1) == [b"a", b"b"]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_numkeys_not_positive(r: ClientType, real_server_details):
+    r.rpush("foo", "a")
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    for numkeys in (0, -1):
+        # Dragonfly reads numkeys as unsigned, so -1 fails to decode before the key check.
+        if is_dragonfly:
+            expected = "at least 1 input key is needed" if numkeys == 0 else "value is not an integer or out of range"
+        else:
+            expected = "numkeys should be greater than 0"
+        with pytest.raises(Exception, match=expected) as ctx:
+            testtools.raw_command(r, "lmpop", numkeys, "foo", "LEFT")
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+def test_lmpop_too_few_arguments(r: ClientType):
+    for args in (("lmpop", 1), ("lmpop", 1, "foo"), ("lmpop", 0, "LEFT"), ("blmpop", 0.01, 1, "foo")):
+        with pytest.raises(Exception, match="wrong number of arguments") as ctx:
+            testtools.raw_command(r, *args)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_lpos_negative_count_or_maxlen(r: ClientType, real_server_details):
+    r.rpush("foo", "a", "b", "a")
+    # Dragonfly rejects these while decoding, so it never names the offending option.
+    is_dragonfly = real_server_details.server_type == "dragonfly"
+    generic = "value is not an integer or out of range"
+    with pytest.raises(Exception, match=generic if is_dragonfly else "COUNT can't be negative") as ctx:
+        r.lpos("foo", "a", count=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception, match=generic if is_dragonfly else "MAXLEN can't be negative") as ctx:
+        r.lpos("foo", "a", count=0, maxlen=-1)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_blocking_list_commands_negative_timeout(r: ClientType):
+    r.rpush("foo", "a")
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.blpop("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.brpop("foo", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.brpoplpush("foo", "bar", timeout=-1)
+    with pytest.raises(Exception, match="timeout is negative"):
+        r.blmove("foo", "bar", timeout=-1)
+    # nothing should have been popped or moved
+    assert r.lrange("foo", 0, -1) == [b"a"]
+    assert r.exists("bar") == 0

@@ -1,20 +1,93 @@
+from __future__ import annotations
+
 import functools
 import math
 import operator
 import string
 import sys
+from dataclasses import dataclass
 from typing import Any
 
-import hypothesis
-import hypothesis.stateful
 import hypothesis.strategies as st
 import pytest
 import redis
-from hypothesis.stateful import rule, initialize, precondition
+import valkey
+from hypothesis import assume, settings
+from hypothesis.stateful import RuleBasedStateMachine, initialize, precondition, rule, run_state_machine_as_test
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
-from ._server_info import redis_ver, floats_kwargs, server_type
+
+# ---------------------------------------------------------------------------
+# Runtime configuration
+#
+# Hypothesis state machines and strategies cannot receive pytest fixtures, so
+# the ``hypothesis_config`` fixture (see conftest.py) hands the server details
+# to ``run_machine``, which publishes them here for the duration of a single
+# machine run. Strategies read this lazily (at draw time), so importing this
+# module never touches the network.
+# ---------------------------------------------------------------------------
+
+_REAL_CLIENT_CLASSES = {
+    "redis": redis.StrictRedis,
+    "dragonfly": redis.StrictRedis,
+    "valkey": valkey.StrictValkey,
+}
+_FAKE_CLIENT_CLASSES = {
+    "redis": fakeredis.FakeStrictRedis,
+    "dragonfly": fakeredis.FakeStrictRedis,
+    "valkey": fakeredis.FakeValkey,
+}
+
+
+@dataclass
+class MachineConfig:
+    """Everything a state machine needs to talk to both servers."""
+
+    server_type: str
+    version: tuple[int, ...]
+    host: str = "localhost"
+    port: int = 6390
+    db: int = 2
+
+    def make_real_client(self) -> redis.Redis:
+        cls = _REAL_CLIENT_CLASSES.get(self.server_type, redis.StrictRedis)
+        return cls(self.host, port=self.port, db=self.db)
+
+    def make_fake_client(self) -> redis.Redis:
+        cls = _FAKE_CLIENT_CLASSES.get(self.server_type, fakeredis.FakeStrictRedis)
+        server = fakeredis.FakeServer(server_type=self.server_type, version=self.version)
+        return cls(server=server, db=self.db)
+
+
+_active_config: MachineConfig | None = None
+
+
+def _server_version() -> tuple[int, ...]:
+    return _active_config.version if _active_config is not None else (7,)
+
+
+def server_type() -> str:
+    """The server the running machine is comparing against, for strategies to branch on."""
+    return _active_config.server_type if _active_config is not None else "redis"
+
+
+def _eng_text_kwargs() -> dict:
+    # A sorted set with a member over 32 bytes switches dragonfly to its skiplist encoding,
+    # where ZADD's GT/LT and CH stop behaving (see docs/dragonfly-support.md). Keep the
+    # generated names short enough to stay out of it.
+    if _active_config is not None and _active_config.server_type == "dragonfly":
+        return {"max_size": 32}
+    return {}
+
+
+def _floats_kwargs() -> dict:
+    # Dragonfly rejects the NaN and infinity scores that Redis accepts. Subnormals are fine
+    # on both, and excluding them costs a filter Hypothesis' health check trips over.
+    if _active_config is not None and _active_config.server_type == "dragonfly":
+        return {"allow_nan": False, "allow_infinity": False}
+    return {}
+
 
 self_strategy = st.runner()
 
@@ -33,11 +106,27 @@ fields = sample_attr("fields")
 values = sample_attr("values")
 scores = sample_attr("scores")
 
-eng_text = st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1))
+# ``eng_text`` is deferred for the same reason as ``floats`` below: the dragonfly-specific
+# limits resolve at draw time from the active config rather than at import time.
+eng_text = st.deferred(
+    lambda: st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1, **_eng_text_kwargs()))
+)
 ints = st.integers(min_value=-2_147_483_648, max_value=2_147_483_647)
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), ints)
-floats = st.floats(width=32, **floats_kwargs)
+# ``floats`` is deferred so the dragonfly-specific exclusions resolve at draw
+# time from the active config rather than at import time.
+floats = st.deferred(lambda: st.floats(width=32, **_floats_kwargs()))
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), floats)
+# Dragonfly aggregates a ZUNIONSTORE/ZINTERSTORE's input sets in its own (hash) order, so
+# weights that cancel catastrophically -- 3e16 against -3e16 -- come out at a different score
+# than they do on redis (see docs/dragonfly-support.md). Keep the weights it is given small
+# enough for the sum to be the same whatever order it adds them in.
+zstore_weights = st.deferred(
+    lambda: st.builds(
+        lambda x: repr(default_normalize(x)).encode(),
+        st.floats(width=32, min_value=-1e6, max_value=1e6) if server_type() == "dragonfly" else floats,
+    )
+)
 counts = st.integers(min_value=-3, max_value=3) | ints
 # Redis has an integer overflow bug in swapdb, so we confine the numbers to
 # a limited range (https://github.com/antirez/redis/issues/5737).
@@ -60,20 +149,12 @@ class WrappedException:
         return str(self.wrapped)
 
     def __repr__(self):
-        return "WrappedException({!r})".format(self.wrapped)
+        return f"WrappedException({self.wrapped!r})"
 
     def __eq__(self, other):
         if not isinstance(other, WrappedException):
             return NotImplemented
-        if type(self.wrapped) != type(other.wrapped):  # noqa: E721
-            return False
-        return True
-        # return self.wrapped.args == other.wrapped.args
-
-    def __ne__(self, other):
-        if not isinstance(other, WrappedException):
-            return NotImplemented
-        return not self == other
+        return type(self.wrapped) is type(other.wrapped)
 
 
 def wrap_exceptions(obj):
@@ -111,9 +192,8 @@ def flatten(args):
 
 
 def default_normalize(x: Any) -> Any:
-    if redis_ver >= (7,) and (isinstance(x, float) or isinstance(x, int)):
+    if _server_version() >= (7,) and isinstance(x, (int, float)):
         return 0 + x
-
     return x
 
 
@@ -165,8 +245,7 @@ class Command:
     def testable(self):
         """Whether this command is suitable for a test.
 
-        The fuzzer can create commands with behaviour that is
-        non-deterministic, not supported, or which hits redis bugs.
+        The fuzzer can create commands with behavior that is non-deterministic, not supported, or which hits redis bugs.
         """
         N = len(self.args)
         if N == 0:
@@ -179,9 +258,7 @@ class Command:
         # Redis will ignore a NULL character in some commands but not others,
         # e.g., it recognizes EXEC\0 but not MULTI\00.
         # Rather than try to reproduce this quirky behavior, just skip these tests.
-        if b"\0" in command:
-            return False
-        return True
+        return b"\x00" not in command
 
 
 def commands(*args, **kwargs):
@@ -205,21 +282,29 @@ common_commands = (
 )
 
 
-@hypothesis.settings(max_examples=1000)
-class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
-    create_command_strategy = st.nothing()
+class BaseMachine(RuleBasedStateMachine):
+    """Fuzzes command sequences, asserting fake and real servers agree.
+
+    Subclasses provide the strategy building blocks below; ``run_machine``
+    binds a :class:`MachineConfig` and executes the machine as a test.
+    """
+
+    #: Commands exercised against every server.
+    base_commands: SearchStrategy = st.nothing()
+    #: Commands used to populate initial data before the main rules run.
+    create_commands: SearchStrategy = st.nothing()
+    #: Commands only real Redis (not valkey/dragonfly) supports.
+    redis_only_commands: SearchStrategy = st.nothing()
+    #: Commands only Redis 7+ supports.
+    redis7_commands: SearchStrategy = st.nothing()
 
     def __init__(self):
         super().__init__()
-        try:
-            self.real = redis.StrictRedis("localhost", port=6390, db=2)
-            self.real.ping()
-        except redis.ConnectionError:
-            pytest.skip("redis is not running")
-        if self.real.info("server").get("arch_bits") != 64:
-            self.real.connection_pool.disconnect()
-            pytest.skip("redis server is not 64-bit")
-        self.fake = fakeredis.FakeStrictRedis(server=fakeredis.FakeServer(version=redis_ver), port=6390, db=2)
+        config = _active_config
+        assert config is not None, "BaseMachine must be run via run_machine()"
+        self.server_type = config.server_type
+        self.real = config.make_real_client()
+        self.fake = config.make_fake_client()
         # Disable the response parsing so that we can check the raw values returned
         self.fake.response_callbacks.clear()
         self.real.response_callbacks.clear()
@@ -234,6 +319,15 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         except redis.ResponseError:
             pass
         self.real.flushall()
+
+        # Resolve the command strategies for this server once, up front. The
+        # rules below read these instance attributes at draw time.
+        self.create_command_strategy = self.create_commands
+        self.command_strategy = self.base_commands | common_commands
+        if config.server_type == "redis":
+            self.command_strategy |= self.redis_only_commands
+            if config.version >= (7,):
+                self.command_strategy |= self.redis7_commands
 
     def teardown(self):
         self.real.connection_pool.disconnect()
@@ -251,11 +345,48 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
             result = exc = e
         return wrap_exceptions(result), exc
 
+    #: Set operations whose answer is empty as soon as one input key is missing.
+    _SHORT_CIRCUITING_SET_OPS = frozenset({b"sdiff", b"sdiffstore", b"zinter", b"zinterstore", b"zintercard"})
+
+    def _unnoticed_dragonfly_wrongtype(self, command, fake_exc) -> bool:
+        """Whether only fakeredis reported a wrongly typed input to a set operation.
+
+        Dragonfly runs these shard by shard and stops as soon as one key is missing -- the
+        answer is empty either way -- so whether it gets as far as a wrongly typed key
+        depends on where the keys landed, and so on the server's thread count. fakeredis
+        checks every key, like redis, so it can only ever be the stricter of the two.
+        """
+        if self.server_type != "dragonfly" or fake_exc is None:
+            return False
+        if not str(fake_exc).startswith("WRONGTYPE"):
+            return False
+        return Command.encode(command.args[0]).lower() in self._SHORT_CIRCUITING_SET_OPS
+
+    @staticmethod
+    def _same(fake_value, real_value) -> bool:
+        """Whether two replies agree, allowing for the last bits of a float.
+
+        A score both servers arrived at by adding the same numbers in a different order --
+        `2**53` against `2**53 + 2` -- is the same score as far as these machines care.
+        """
+        if isinstance(fake_value, (list, tuple)) and isinstance(real_value, (list, tuple)):
+            return len(fake_value) == len(real_value) and all(
+                BaseMachine._same(f, r) for f, r in zip(fake_value, real_value)
+            )
+        if type(fake_value) is float:
+            return fake_value == pytest.approx(real_value)
+        return bool(fake_value == real_value)
+
     def _compare(self, command):
         fake_result, fake_exc = self._evaluate(self.fake, command)
         real_result, real_exc = self._evaluate(self.real, command)
 
         if fake_exc is not None and real_exc is None:
+            if self._unnoticed_dragonfly_wrongtype(command, fake_exc):
+                # The two servers' data has diverged -- the real one stored an empty result
+                # where fakeredis refused the command -- so drop the example rather than
+                # compare anything that follows it.
+                assume(False)
             print(f"{fake_exc} raised on only on fake when running {command}", file=sys.stderr)
             raise fake_exc
         elif real_exc is not None and fake_exc is None:
@@ -274,14 +405,14 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
                 f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})",
             )
             for i in range(len(fake_result)):
-                assert fake_result[i] == real_result[i] or (
-                    type(fake_result[i]) is float and fake_result[i] == pytest.approx(real_result[i])
-                ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+                assert self._same(fake_result[i], real_result[i]), (
+                    f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+                )
 
         else:
-            assert fake_result == real_result or (
-                type(fake_result) is float and fake_result == pytest.approx(real_result)
-            ), f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+            assert self._same(fake_result, real_result), (
+                f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
+            )
             if real_result == b"QUEUED":
                 # Since redis removes the distinction between simple strings and
                 # bulk strings, this might not actually indicate that we're in a
@@ -321,24 +452,11 @@ class CommonMachine(hypothesis.stateful.RuleBasedStateMachine):
         self._compare(command)
 
 
-class BaseTest:
-    """Base class for test classes."""
-
-    command_strategy: SearchStrategy
-    create_command_strategy = st.nothing()
-    command_strategy_redis7 = st.nothing()
-    command_strategy_redis_only = st.nothing()
-
-    @pytest.mark.slow
-    def test(self):
-        class Machine(CommonMachine):
-            create_command_strategy = self.create_command_strategy
-            command_strategy = self.command_strategy
-            if server_type == "redis":
-                command_strategy = command_strategy | self.command_strategy_redis_only
-            if server_type == "redis" and redis_ver >= (7,):
-                command_strategy = command_strategy | self.command_strategy_redis7
-
-        # hypothesis.settings.register_profile("debug", max_examples=10, verbosity=hypothesis.Verbosity.debug)
-        # hypothesis.settings.load_profile("debug")
-        hypothesis.stateful.run_state_machine_as_test(Machine)
+def run_machine(machine_cls: type[BaseMachine], config: MachineConfig) -> None:
+    """Run ``machine_cls`` as a Hypothesis test against ``config``'s servers."""
+    global _active_config
+    _active_config = config
+    try:
+        run_state_machine_as_test(machine_cls, settings=settings())
+    finally:
+        _active_config = None

@@ -1,22 +1,25 @@
 """
-Helper classes and methods used in mixins implementing various commands.
-Unlike _helpers.py, here the methods should be used only in mixins.
+Helper classes and methods used in mixins implementing various commands. Unlike _helpers.py, here the methods should be
+used only in mixins.
 """
+
+from __future__ import annotations
 
 import functools
 import math
 import re
-import sys
-import time
-from typing import Tuple, Union, Optional, Any, Type, List, Callable, Sequence, Dict, Set, Collection
+from collections.abc import Collection, Sequence
+from typing import Any, Callable
 
 from . import _msgs as msgs
-from ._helpers import null_terminate, SimpleError, Database
-from ._typing import VersionType, ServerType
+from ._helpers import Database, SimpleError, null_terminate
+from ._typing import ServerType, VersionType
 
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
 MAX_STRING_SIZE = 512 * 1024 * 1024
-SUPPORTED_COMMANDS: Dict[str, "Signature"] = {}  # Dictionary of supported commands name => Signature
-COMMANDS_WITH_SUB: Set[str] = set()  # Commands with sub-commands
+SUPPORTED_COMMANDS: dict[str, Signature] = {}  # Dictionary of supported commands name => Signature
+COMMANDS_WITH_SUB: set[str] = set()  # Commands with sub-commands
 
 
 class Key:
@@ -24,7 +27,7 @@ class Key:
 
     UNSPECIFIED = object()
 
-    def __init__(self, type_: Optional[Type[Any]] = None, missing_return: Any = UNSPECIFIED) -> None:
+    def __init__(self, type_: type[Any] | None = None, missing_return: Any = UNSPECIFIED) -> None:
         self.type_ = type_
         self.missing_return = missing_return
 
@@ -32,7 +35,7 @@ class Key:
 class Item:
     """An item stored in the database"""
 
-    __slots__ = ["value", "expireat"]
+    __slots__ = ["expireat", "value"]
 
     def __init__(self, value: Any) -> None:
         self.value = value
@@ -45,8 +48,8 @@ class CommandItem:
     It wraps an Item but has extra fields to manage updates and notifications.
     """
 
-    def __init__(self, key: bytes, db: Database, item: Optional["CommandItem"] = None, default: Any = None) -> None:
-        self._expireat: Optional[float]
+    def __init__(self, key: bytes, db: Database, item: CommandItem | None = None, default: Any = None) -> None:
+        self._expireat: float | None
         if item is None:
             self._value = default
             self._expireat = None
@@ -69,11 +72,11 @@ class CommandItem:
         self.expireat = None
 
     @property
-    def expireat(self) -> Optional[float]:
+    def expireat(self) -> float | None:
         return self._expireat
 
     @expireat.setter
-    def expireat(self, value: Optional[float]) -> None:
+    def expireat(self, value: float | None) -> None:
         self._expireat = value
         self._expireat_modified = True
         self._modified = True  # Since redis 6.0.7
@@ -131,7 +134,7 @@ class Int(RedisType):
         return cls.MIN_VALUE <= value <= cls.MAX_VALUE
 
     @classmethod
-    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
+    def decode(cls, value: bytes, decode_error: str | None = None) -> int:
         try:
             out = int(value)
             if not cls.valid(out) or str(out).encode() != value:
@@ -156,25 +159,11 @@ class DbIndex(Int):
     MAX_VALUE = 15
 
 
-class BitOffset(Int):
-    """Argument converter for unsigned bit positions"""
-
-    DECODE_ERROR = msgs.INVALID_BIT_OFFSET_MSG
-    MIN_VALUE = 0
-    MAX_VALUE = 8 * MAX_STRING_SIZE - 1  # Redis imposes 512MB limit on keys
-
-
-class BitValue(Int):
-    DECODE_ERROR = msgs.INVALID_BIT_VALUE_MSG
-    MIN_VALUE = 0
-    MAX_VALUE = 1
-
-
 class Float(RedisType):
     """Argument converter for floating-point values.
 
-    Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT)
-    and double for others (zset scores), but Python doesn't support
+    Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT) and double for others (zset scores), but Python
+    doesn't support
     `long double`.
     """
 
@@ -188,7 +177,7 @@ class Float(RedisType):
         allow_erange: bool = False,
         allow_empty: bool = False,
         crop_null: bool = False,
-        decode_error: Optional[str] = None,
+        decode_error: str | None = None,
     ) -> float:
         # Redis has some quirks in float parsing, with several variants.
         # See https://github.com/antirez/redis/issues/5706
@@ -204,15 +193,28 @@ class Float(RedisType):
             out = float(value)
             if math.isnan(out):
                 raise ValueError
-            if not allow_erange:
-                # Values that over- or under-flow are explicitly rejected by
-                # redis. This is a crude hack to determine whether the input
-                # may have been such a value.
-                if out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
-                    raise ValueError
+            # Values that over- or under-flow are explicitly rejected by redis. This is a crude hack to determine
+            # whether the input may have been such a value.
+            if not allow_erange and out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
+                raise ValueError
             return out
         except ValueError:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
+
+    @classmethod
+    def encode_shortest(cls, value: float) -> bytes:
+        """Render a double the way Dragonfly does, as the shortest string that round-trips.
+
+        Redis pads doubles out to 17 significant digits, so a score of 3.2 comes back as
+        ``3.2000000000000002``; Dragonfly prints ``3.2``, and drops the fractional part
+        altogether for whole numbers.
+        """
+        if math.isinf(value):
+            return str(value).encode()
+        out = repr(value)
+        if out.endswith(".0"):
+            out = out[:-2]
+        return out.encode()
 
     @classmethod
     def encode(cls, value: float, humanfriendly: bool) -> bytes:
@@ -220,11 +222,11 @@ class Float(RedisType):
             return str(value).encode()
         elif humanfriendly:
             # Algorithm from `ld2string` in redis
-            out = "{:.17f}".format(value)
+            out = f"{value:.17f}"
             out = re.sub(r"\.?0+$", "", out)
             return out.encode()
         else:
-            return "{:.17g}".format(value).encode()
+            return f"{value:.17g}".encode()
 
 
 class Timeout(Float):
@@ -233,21 +235,12 @@ class Timeout(Float):
     DECODE_ERROR = msgs.TIMEOUT_NEGATIVE_MSG
     MIN_VALUE = 0.0
 
-
-class SortFloat(Float):
-    DECODE_ERROR = msgs.INVALID_SORT_FLOAT_MSG
-
     @classmethod
-    def decode(
-        cls,
-        value: bytes,
-        allow_leading_whitespace: bool = True,
-        allow_erange: bool = False,
-        allow_empty: bool = True,
-        crop_null: bool = True,
-        decode_error: Optional[str] = None,
-    ) -> float:
-        return super().decode(value, allow_leading_whitespace=True, allow_empty=True, crop_null=True)
+    def decode(cls, value: bytes, *args: Any, **kwargs: Any) -> float:
+        res = super().decode(value, *args, **kwargs)
+        if res < cls.MIN_VALUE:
+            raise SimpleError(cls.DECODE_ERROR)
+        return res
 
 
 @functools.total_ordering
@@ -255,7 +248,7 @@ class BeforeAny:
     def __gt__(self, other: Any) -> bool:
         return False
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, BeforeAny)
 
     def __hash__(self) -> int:
@@ -267,59 +260,17 @@ class AfterAny:
     def __lt__(self, other: Any) -> bool:
         return False
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, AfterAny)
 
     def __hash__(self) -> int:
         return 1
 
 
-class ScoreTest(RedisType):
-    """Argument converter for sorted set score endpoints."""
-
-    def __init__(self, value: float, exclusive: bool = False, bytes_val: Optional[bytes] = None):
-        self.value = value
-        self.exclusive = exclusive
-        self.bytes_val = bytes_val
-
-    @classmethod
-    def decode(cls, value: bytes) -> "ScoreTest":
-        try:
-            original_value = value
-            exclusive = False
-            if value[:1] == b"(":
-                exclusive = True
-                value = value[1:]
-            fvalue = Float.decode(
-                value,
-                allow_leading_whitespace=True,
-                allow_erange=True,
-                allow_empty=True,
-                crop_null=True,
-            )
-            return cls(fvalue, exclusive, original_value)
-        except SimpleError:
-            raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
-
-    def __str__(self) -> str:
-        if self.exclusive:
-            return "({!r}".format(self.value)
-        else:
-            return repr(self.value)
-
-    @property
-    def lower_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
-        return self.value, AfterAny() if self.exclusive else BeforeAny()
-
-    @property
-    def upper_bound(self) -> Tuple[float, Union[AfterAny, BeforeAny]]:
-        return self.value, BeforeAny() if self.exclusive else AfterAny()
-
-
 class StringTest(RedisType):
     """Argument converter for sorted set LEX endpoints."""
 
-    def __init__(self, value: Union[bytes, BeforeAny, AfterAny], exclusive: bool):
+    def __init__(self, value: bytes | BeforeAny | AfterAny, exclusive: bool):
         self.value = value
         self.exclusive = exclusive
 
@@ -328,7 +279,7 @@ class StringTest(RedisType):
         return not self.exclusive
 
     @classmethod
-    def decode(cls, value: bytes) -> "StringTest":
+    def decode(cls, value: bytes) -> StringTest:
         if value == b"-":
             return cls(BeforeAny(), True)
         elif value == b"+":
@@ -346,15 +297,11 @@ class Signature:
         self,
         name: str,
         func_name: str,
-        fixed: Tuple[Type[Union[RedisType, bytes]]],
-        repeat: Tuple[Type[Union[RedisType, bytes]]] = (),  # type:ignore
-        args: Tuple[str] = (),  # type:ignore
+        fixed: tuple[type[RedisType | bytes]],
+        repeat: tuple[type[RedisType | bytes]] = (),  # type:ignore
+        args: tuple[str] = (),  # type:ignore
         flags: str = "",
-        server_types: Collection[ServerType] = (
-            "redis",
-            "valkey",
-            "dragonfly",
-        ),  # supported server types: redis, dragonfly, valkey
+        server_types: Collection[ServerType] = ("redis", "valkey", "dragonfly"),
     ):
         self.name = name
         self.func_name = func_name
@@ -362,7 +309,7 @@ class Signature:
         self.repeat = repeat
         self.flags = set(flags)
         self.command_args = args
-        self.server_types: Set[ServerType] = set(server_types)
+        self.server_types: set[ServerType] = set(server_types)
 
     def check_arity(self, args: Sequence[Any], version: VersionType) -> None:
         if len(args) == len(self.fixed):
@@ -377,7 +324,7 @@ class Signature:
 
     def apply(
         self, args: Sequence[Any], db: Database, version: VersionType
-    ) -> Union[Tuple[Any], Tuple[List[Any], List[CommandItem]]]:
+    ) -> tuple[Any] | tuple[list[Any], list[CommandItem]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
         - a single containing a short-circuit return value
@@ -399,7 +346,7 @@ class Signature:
                 )
 
         # Second pass: read keys and check their types
-        command_items: List[CommandItem] = []
+        command_items: list[CommandItem] = []
         for i, (arg, type_) in enumerate(zip(args_list, types)):
             if isinstance(type_, Key):
                 item = db.get(arg)
@@ -433,7 +380,7 @@ def command(*args, **kwargs) -> Callable:  # type:ignore
         elif isinstance(cmd_names, str):
             create_signature(func, cmd_names.lower())
         else:
-            raise ValueError("command name should be a string or list of strings")
+            raise TypeError("command name should be a string or list of strings")
         return func
 
     return decorator
@@ -450,7 +397,7 @@ def delete_keys(*keys: CommandItem) -> int:
     return ans
 
 
-def fix_range(start: int, end: int, length: int) -> Tuple[int, int]:
+def fix_range(start: int, end: int, length: int) -> tuple[int, int]:
     # Redis handles negative slightly differently for zrange
     if start < 0:
         start = max(0, start + length)
@@ -462,7 +409,7 @@ def fix_range(start: int, end: int, length: int) -> Tuple[int, int]:
     return start, end + 1
 
 
-def fix_range_string(start: int, end: int, length: int) -> Tuple[int, int]:
+def fix_range_string(start: int, end: int, length: int) -> tuple[int, int]:
     # Negative number handling is based on the redis source code
     if 0 > start > end and end < 0:
         return -1, -1
@@ -472,17 +419,3 @@ def fix_range_string(start: int, end: int, length: int) -> Tuple[int, int]:
         end = max(0, end + length)
     end = min(end, length - 1)
     return start, end + 1
-
-
-class Timestamp(Int):
-    """Argument converter for timestamps"""
-
-    @classmethod
-    def decode(cls, value: bytes, decode_error: Optional[str] = None) -> int:
-        if value == b"*":
-            return int(time.time() * 1000)
-        if value == b"-":
-            return -1
-        if value == b"+":
-            return sys.maxsize
-        return super().decode(value, decode_error=msgs.INVALID_EXPIRE_MSG)

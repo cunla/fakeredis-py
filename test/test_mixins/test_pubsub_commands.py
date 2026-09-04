@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import threading
 import time
 import uuid
 from queue import Queue
 from time import sleep
-from typing import Optional, Dict, Any
+from typing import Any
 
 import pytest
 import redis
@@ -12,11 +14,12 @@ from redis.client import PubSub
 
 import fakeredis
 from fakeredis._typing import ClientType
+
 from .. import testtools
 from ..testtools import resp_conversion
 
 
-def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> Optional[Dict[str, Any]]:
+def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> dict[str, Any] | None:
     now = time.time()
     timeout = now + timeout
     while now < timeout:
@@ -144,10 +147,8 @@ def test_pubsub_punsubscribe(r: ClientType):
 @pytest.mark.slow
 def test_pubsub_listen(r: ClientType):
     def _listen(pubsub, q):
-        count = 0
-        for message in pubsub.listen():
+        for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
-            count += 1
             if count == 4:
                 pubsub.close()
 
@@ -213,10 +214,8 @@ def test_pubsub_listen_handler(r: ClientType):
 @pytest.mark.slow
 def test_pubsub_ignore_sub_messages_listen(r: ClientType):
     def _listen(pubsub, q):
-        count = 0
-        for message in pubsub.listen():
+        for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
-            count += 1
             if count == 4:
                 pubsub.close()
 
@@ -369,6 +368,7 @@ def test_pubsub_no_subcommands(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.1")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly ships its own help text
 def test_pubsub_help_redis71(r: ClientType):
     assert testtools.raw_command(r, "PUBSUB HELP") == [
         b"PUBSUB <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
@@ -410,16 +410,26 @@ def test_pubsub_numsub(r: ClientType):
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_published_message_to_shard_channel(r: ClientType):
+    # A unique channel, and an explicit close: dragonfly serves shard and plain channels
+    # from one namespace, so any subscriber another test left on a shared name would be
+    # counted by SPUBLISH here.
+    channel = f"shard-{uuid.uuid4().hex}"
     p = r.pubsub()
-    p.ssubscribe("foo")
-    assert wait_for_message(p) == make_message("ssubscribe", "foo", 1)
-    assert r.spublish("foo", "test message") == 1
+    try:
+        p.ssubscribe(channel)
+        assert wait_for_message(p) == make_message("ssubscribe", channel, 1)
+        assert r.spublish(channel, "test message") == 1
 
-    message = wait_for_message(p)
-    assert isinstance(message, dict)
-    assert message == make_message("smessage", "foo", "test message")
+        message = wait_for_message(p)
+        assert isinstance(message, dict)
+        assert message == make_message("smessage", channel, "test message")
+    finally:
+        p.close()
 
 
+# Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe", so redis-py never clears its
+# shard_channels bookkeeping and `subscribed` stays True. See test_dragonfly for that behaviour.
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_subscribe_property_with_shard_channels_cluster(r: ClientType):
@@ -466,6 +476,7 @@ def test_subscribe_property_with_shard_channels_cluster(r: ClientType):
     assert p.subscribed is False
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # PUBSUB SHARD* needs cluster mode
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0")
 def test_pubsub_shardnumsub(r: ClientType):
@@ -486,6 +497,7 @@ def test_pubsub_shardnumsub(r: ClientType):
     assert r.pubsub_shardnumsub("foo", "bar", "baz", target_nodes="all") == channels
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # PUBSUB SHARD* needs cluster mode
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_pubsub_shardchannels(r: ClientType):

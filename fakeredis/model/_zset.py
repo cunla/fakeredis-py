@@ -1,8 +1,12 @@
-from typing import Any, Tuple, Optional, Generator, Dict, ItemsView, Union, cast
+from __future__ import annotations
+
+from collections.abc import Generator, ItemsView
+from typing import Any, cast
 
 import sortedcontainers
 
 from fakeredis._commands import AfterAny, BeforeAny
+
 from ._base_type import BaseModel
 
 
@@ -10,7 +14,7 @@ class ZSet(BaseModel):
     _model_type = b"zset"
 
     def __init__(self) -> None:
-        self._bylex: Dict[bytes, float] = {}  # Maps value to score
+        self._bylex: dict[bytes, float] = {}  # Maps value to score
         self._byscore = sortedcontainers.SortedList()
 
     def __contains__(self, value: bytes) -> bool:
@@ -33,7 +37,7 @@ class ZSet(BaseModel):
     def __getitem__(self, key: bytes) -> float:
         return self._bylex[key]
 
-    def get(self, key: bytes, default: Optional[float] = None) -> Optional[float]:
+    def get(self, key: bytes, default: float | None = None) -> float | None:
         return self._bylex.get(key, default)
 
     def __len__(self) -> int:
@@ -80,9 +84,9 @@ class ZSet(BaseModel):
 
     def irange_lex(
         self,
-        start: Union[bytes, BeforeAny, AfterAny],
-        stop: Union[bytes, BeforeAny, AfterAny],
-        inclusive: Tuple[bool, bool] = (True, True),
+        start: bytes | BeforeAny | AfterAny,
+        stop: bytes | BeforeAny | AfterAny,
+        inclusive: tuple[bool, bool] = (True, True),
         reverse: bool = False,
     ) -> Any:
         if len(self._byscore) == 0:
@@ -93,10 +97,10 @@ class ZSet(BaseModel):
         it = self._byscore.irange(start_elem, stop_elem, inclusive=inclusive, reverse=reverse)
         return (item[1] for item in it)
 
-    def irange_score(self, start: Tuple[Any, bytes], stop: Tuple[Any, bytes], reverse: bool) -> Any:
+    def irange_score(self, start: tuple[Any, bytes], stop: tuple[Any, bytes], reverse: bool) -> Any:
         return self._byscore.irange(start, stop, reverse=reverse)
 
-    def rank(self, member: bytes) -> Tuple[int, float]:
+    def rank(self, member: bytes) -> tuple[int, float]:
         ind: int = self._byscore.index((self._bylex[member], member))
         return ind, self._byscore[ind][0]
 

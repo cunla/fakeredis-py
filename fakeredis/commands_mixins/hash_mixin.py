@@ -1,15 +1,19 @@
-import random
-from typing import Callable, Dict, List, Any, Optional, Sequence, Union, cast
+from __future__ import annotations
 
 import math
+import random
+from collections.abc import Sequence
+from typing import Any, Callable, List, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import command, Key, Int, Float, CommandItem
-from fakeredis._helpers import SimpleError, OK, casematch, SimpleString
-from fakeredis._helpers import current_time
+from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import Hash
+
+# A hash field's TTL is capped more tightly still, and overshooting it is an error.
+DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class HashCommandsMixin(CommandsMixinBase):
@@ -20,7 +24,8 @@ class HashCommandsMixin(CommandsMixinBase):
         bytes,
     ]
     _encodefloat: Callable[[float, bool], bytes]
-    _scan: Callable[[Sequence[bytes], int, bytes], List[Union[bytes, List[bytes]]]]
+    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
+    add_subkey_event: Callable[[bytes, bytes, Sequence[bytes]], None]
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
@@ -29,18 +34,20 @@ class HashCommandsMixin(CommandsMixinBase):
         created = len(h) - previous_keys_count
 
         key.updated()
+        self.add_subkey_event(b"hset", key.key, args[::2])
         return created
 
     @command((Key(Hash), bytes), (bytes,))
     def hdel(self, key: CommandItem, *fields: bytes) -> int:
         h = key.value
-        rem = 0
+        deleted = []
         for field in fields:
             if field in h:
                 del h[field]
                 key.updated()
-                rem += 1
-        return rem
+                deleted.append(field)
+        self.add_subkey_event(b"hdel", key.key, deleted)
+        return len(deleted)
 
     @command((Key(Hash), bytes))
     def hexists(self, key: CommandItem, field: bytes) -> int:
@@ -51,7 +58,7 @@ class HashCommandsMixin(CommandsMixinBase):
         return key.value.get(field)
 
     @command((Key(Hash),))
-    def hgetall(self, key: CommandItem) -> Dict[bytes, bytes]:
+    def hgetall(self, key: CommandItem) -> dict[bytes, bytes]:
         hash_val: Hash = key.value
         return hash_val.getall()
 
@@ -62,20 +69,23 @@ class HashCommandsMixin(CommandsMixinBase):
         c = field_value + amount
         key.value.update({field: self._encodeint(c)}, clear_expiration=False)
         key.updated()
+        self.add_subkey_event(b"hincrby", key.key, (field,))
         return c
 
     @command((Key(Hash), bytes, bytes))
-    def hincrbyfloat(self, key: CommandItem, field: bytes, amount: bytes) -> bytes:
+    def hincrbyfloat(self, key: CommandItem, field: bytes, amount: bytes) -> bytes | float:
         c = Float.decode(key.value.get(field, b"0")) + Float.decode(amount)
         if not math.isfinite(c):
             raise SimpleError(msgs.NONFINITE_MSG)
         encoded = self._encodefloat(c, True)
         key.value.update({field: encoded}, clear_expiration=False)
         key.updated()
-        return encoded
+        self.add_subkey_event(b"hincrbyfloat", key.key, (field,))
+        # Redis replies with a bulk string, Dragonfly with a double.
+        return c if self.server_type == "dragonfly" else encoded
 
     @command((Key(Hash),))
-    def hkeys(self, key: CommandItem) -> List[bytes]:
+    def hkeys(self, key: CommandItem) -> list[bytes]:
         return list(key.value.keys())
 
     @command((Key(Hash),))
@@ -83,7 +93,7 @@ class HashCommandsMixin(CommandsMixinBase):
         return len(key.value)
 
     @command((Key(Hash), bytes), (bytes,))
-    def hmget(self, key: CommandItem, *fields: bytes) -> List[bytes]:
+    def hmget(self, key: CommandItem, *fields: bytes) -> list[bytes]:
         return [key.value.get(field) for field in fields]
 
     @command((Key(Hash), bytes, bytes), (bytes, bytes))
@@ -92,12 +102,12 @@ class HashCommandsMixin(CommandsMixinBase):
         return OK
 
     @command((Key(Hash), Int), (bytes,))
-    def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> List[Any]:
+    def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         no_values = any(casematch(arg, b"novalues") for arg in args)
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
         scan_result = self._scan(key.value, cursor, *scan_args)
         result_cursor = scan_result[0]
-        keys: List[bytes] = cast(List[bytes], scan_result[1])
+        keys: list[bytes] = cast(List[bytes], scan_result[1])
         if no_values:
             return [result_cursor, keys]
         items = []
@@ -121,11 +131,11 @@ class HashCommandsMixin(CommandsMixinBase):
         return len(key.value.get(field, b""))
 
     @command((Key(Hash),))
-    def hvals(self, key: CommandItem) -> List[bytes]:
+    def hvals(self, key: CommandItem) -> list[bytes]:
         return list(key.value.values())
 
     @command(name="HRANDFIELD", fixed=(Key(Hash),), repeat=(bytes,))
-    def hrandfield(self, key: CommandItem, *args: bytes) -> Union[List[List[str]], List[str], None]:
+    def hrandfield(self, key: CommandItem, *args: bytes) -> list[list[str]] | list[str] | None:
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if key.value is None or len(key.value) == 0:
@@ -149,7 +159,7 @@ class HashCommandsMixin(CommandsMixinBase):
             res = [t[0] for t in res]
         return res
 
-    def _hexpire(self, key: CommandItem, when_ms: int, *args: bytes, command: str = "hexpire") -> List[int]:
+    def _hexpire(self, key: CommandItem, when_ms: int, *args: bytes, command: str = "hexpire") -> list[int]:
         # Deal with input arguments
         (nx, xx, gt, lt), left_args = extract_args(
             args, ("nx", "xx", "gt", "lt"), left_from_first_unexpected=True, error_on_unexpected=False
@@ -162,6 +172,8 @@ class HashCommandsMixin(CommandsMixinBase):
             return [-2] * len(fields)
         # process command
         res = []
+        expired_fields: list[bytes] = []
+        deleted_fields: list[bytes] = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
@@ -175,10 +187,14 @@ class HashCommandsMixin(CommandsMixinBase):
             ):
                 res.append(0)
                 continue
-            res.append(hash_val.set_key_expireat(field, when_ms))
+            field_res = hash_val.set_key_expireat(field, when_ms)
+            (expired_fields if field_res == 1 else deleted_fields).append(field)
+            res.append(field_res)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
-    def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> List[int]:
+    def _get_expireat(self, command: bytes, key: CommandItem, *args: bytes) -> list[int]:
         fields = _get_fields(args, command=command.decode().lower())
         hash_val: Hash = key.value
         if hash_val is None:
@@ -196,68 +212,83 @@ class HashCommandsMixin(CommandsMixinBase):
         return res
 
     @command(name="HEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
-    def hexpire(self, key: CommandItem, seconds: int, *args: bytes) -> List[int]:
+    def hexpire(self, key: CommandItem, seconds: int, *args: bytes) -> list[int]:
+        if seconds < 0:
+            raise SimpleError(msgs.HEXPIRE_INVALID_TIME_MSG)
+        # Dragonfly caps a hash field's TTL at 2**26 seconds -- a tighter limit than the one it applies to whole keys --
+        # and rejects anything past it while decoding.
+        if self.server_type == "dragonfly" and seconds > DRAGONFLY_MAX_HASH_EXPIRE_SECONDS:
+            raise SimpleError(msgs.INVALID_INT_MSG)
         when_ms = current_time() + seconds * 1000
         return self._hexpire(key, when_ms, *args, command="hexpire")
 
     @command(name="HPEXPIRE", fixed=(Key(Hash), Int), repeat=(bytes,))
-    def hpexpire(self, key: CommandItem, milliseconds: int, *args: bytes) -> List[int]:
+    def hpexpire(self, key: CommandItem, milliseconds: int, *args: bytes) -> list[int]:
+        if milliseconds < 0:
+            raise SimpleError(msgs.HEXPIRE_INVALID_TIME_MSG)
         when_ms = current_time() + milliseconds
         return self._hexpire(key, when_ms, *args, command="hpexpire")
 
     @command(name="HEXPIREAT", fixed=(Key(Hash), Int), repeat=(bytes,))
-    def hexpireat(self, key: CommandItem, unix_time_seconds: int, *args: bytes) -> List[int]:
+    def hexpireat(self, key: CommandItem, unix_time_seconds: int, *args: bytes) -> list[int]:
         when_ms = unix_time_seconds * 1000
         return self._hexpire(key, when_ms, *args, command="hexpireat")
 
     @command(name="HPEXPIREAT", fixed=(Key(Hash), Int), repeat=(bytes,))
-    def hpexpireat(self, key: CommandItem, unix_time_ms: int, *args: bytes) -> List[int]:
+    def hpexpireat(self, key: CommandItem, unix_time_ms: int, *args: bytes) -> list[int]:
         return self._hexpire(key, unix_time_ms, *args, command="hpexpireat")
 
     @command(name="HPERSIST", fixed=(Key(Hash),), repeat=(bytes,))
-    def hpersist(self, key: CommandItem, *args: bytes) -> List[int]:
+    def hpersist(self, key: CommandItem, *args: bytes) -> list[int]:
         fields = _get_fields(args, command="hpersist")
         hash_val: Hash = key.value
         res = []
+        persisted_fields = []
         for field in fields:
             if field not in hash_val:
                 res.append(-2)
                 continue
             if hash_val.clear_key_expireat(field):
+                persisted_fields.append(field)
                 res.append(1)
             else:
                 res.append(-1)
+        self.add_subkey_event(b"hpersist", key.key, persisted_fields)
         return res
 
     @command(
         name="HEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE, server_types=("redis",)
     )
-    def hexpiretime(self, key: CommandItem, *args: bytes) -> List[int]:
+    def hexpiretime(self, key: CommandItem, *args: bytes) -> list[int]:
         res = self._get_expireat(b"HEXPIRETIME", key, *args)
         return [(i // 1000 if i > 0 else i) for i in res]
 
     @command(name="HPEXPIRETIME", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
-    def hpexpiretime(self, key: CommandItem, *args: bytes) -> List[int]:
+    def hpexpiretime(self, key: CommandItem, *args: bytes) -> list[int]:
         res = self._get_expireat(b"HPEXPIRETIME", key, *args)
         return res
 
     @command(name="HTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
-    def httl(self, key: CommandItem, *args: bytes) -> List[int]:
+    def httl(self, key: CommandItem, *args: bytes) -> list[int]:
         curr_expireat_ms = self._get_expireat(b"HTTL", key, *args)
         curr_time_ms = current_time()
         return [((i - curr_time_ms) // 1000) if i > 0 else i for i in curr_expireat_ms]
 
     @command(name="HPTTL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
-    def hpttl(self, key: CommandItem, *args: bytes) -> List[int]:
+    def hpttl(self, key: CommandItem, *args: bytes) -> list[int]:
         curr_expireat_ms = self._get_expireat(b"HPTTL", key, *args)
         curr_time_ms = current_time()
         return [(i - curr_time_ms) if i > 0 else i for i in curr_expireat_ms]
 
     @command(name="HGETDEL", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
-    def hgetdel(self, key: CommandItem, *args: bytes) -> List[Any]:
+    def hgetdel(self, key: CommandItem, *args: bytes) -> list[Any]:
         fields = _get_fields(args, command="hgetdel")
         hash_val: Hash = key.value
         res = [hash_val.pop(field) for field in fields]
+        deleted_fields = [field for field, value in zip(fields, res) if value is not None]
+        if deleted_fields:
+            key.updated()
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
     @command(name="HGETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
@@ -275,12 +306,22 @@ class HashCommandsMixin(CommandsMixinBase):
 
         when_ms = _get_when_ms(ex, px, exat, pxat)
         res = []
+        persisted_fields: list[bytes] = []
+        expired_fields: list[bytes] = []
+        deleted_fields: list[bytes] = []
         for field in fields:
             res.append(hash_val.get(field))
+            if field not in hash_val:
+                continue
             if persist:
-                hash_val.clear_key_expireat(field)
+                if hash_val.clear_key_expireat(field):
+                    persisted_fields.append(field)
             elif when_ms is not None:
-                hash_val.set_key_expireat(field, when_ms)
+                field_res = hash_val.set_key_expireat(field, when_ms)
+                (expired_fields if field_res == 1 else deleted_fields).append(field)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hpersist", key.key, persisted_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
     @command(name="HSETEX", fixed=(Key(Hash),), repeat=(bytes,), server_types=("redis",))
@@ -305,13 +346,21 @@ class HashCommandsMixin(CommandsMixinBase):
         if fnx and len(field_keys - hash_val.getall().keys()) < len(field_keys):
             return 0
         res = 0
+        set_fields: list[bytes] = []
+        expired_fields: list[bytes] = []
+        deleted_fields: list[bytes] = []
         for i in range(0, len(field_vals), 2):
             field, value = field_vals[i], field_vals[i + 1]
             hash_val[field] = value
             res = 1
+            set_fields.append(field)
             if not keepttl and when_ms is not None:
-                hash_val.set_key_expireat(field, when_ms)
+                field_res = hash_val.set_key_expireat(field, when_ms)
+                (expired_fields if field_res == 1 else deleted_fields).append(field)
         key.updated()
+        self.add_subkey_event(b"hset", key.key, set_fields)
+        self.add_subkey_event(b"hexpire", key.key, expired_fields)
+        self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
 
 
@@ -327,7 +376,9 @@ def _get_fields(args: Sequence[bytes], with_values: bool = False, command: str =
     return fields
 
 
-def _get_when_ms(ex: Optional[int], px: Optional[int], exat: Optional[int], pxat: Optional[int]) -> Optional[int]:
+def _get_when_ms(ex: int | None, px: int | None, exat: int | None, pxat: int | None) -> int | None:
+    if any(value is not None and value < 0 for value in (ex, px, exat, pxat)):
+        raise SimpleError(msgs.HEXPIRE_INVALID_TIME_MSG)
     if ex is not None:
         when_ms = current_time() + ex * 1000
     elif px is not None:

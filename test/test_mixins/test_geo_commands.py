@@ -1,4 +1,6 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any
 
 import pytest
 import redis
@@ -41,14 +43,7 @@ def test_geoadd(r: ClientType):
 
 
 def test_geoadd_xx(r: ClientType):
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        "place1",
-        2.1873744593677,
-        41.406342043777,
-        "place2",
-    )
+    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     assert r.geoadd("a", values) == 2
     values = (
         2.1909389952632,
@@ -119,7 +114,7 @@ def test_geodist_missing_one_member(r: ClientType):
         (2.191, 41.433, 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: Dict[str, Any], expected):
+def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: dict[str, Any], expected):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     r.geoadd("barcelona", values)
     assert r.georadius("barcelona", long, lat, radius, **extra) == expected
@@ -135,7 +130,7 @@ def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra:
         ("place1", 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: Dict[str, Any], expected):
+def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dict[str, Any], expected):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, b"place2")
     r.geoadd("barcelona", values)
     assert r.georadiusbymember("barcelona", member, radius, **extra) == expected
@@ -145,26 +140,11 @@ def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: Dic
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_with(r: ClientType):
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        "place1",
-        2.1873744593677,
-        41.406342043777,
-        "place2",
-    )
+    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
 
     r.geoadd("barcelona", values)
     # test a bunch of combinations to test the parse response function.
-    res = r.georadius(
-        "barcelona",
-        2.191,
-        41.433,
-        1,
-        unit="km",
-        withdist=True,
-        withcoord=True,
-    )
+    res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
     assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
 
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
@@ -226,7 +206,7 @@ def test_georadius_errors(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_geosearch(r: ClientType):
+def test_geosearch(r: ClientType, real_server_details):
     values = (
         2.1909389952632,
         41.433791470673,
@@ -244,9 +224,35 @@ def test_geosearch(r: ClientType):
     # assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, height=1000, width=1000) == [b"place1"]
     assert set(r.geosearch("barcelona", member="place3", radius=100, unit="km")) == {b"place2", b"place1", b"place3"}
     # test count
-    assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place3", b"place2"]
+    if real_server_details.server_type == "dragonfly":
+        # COUNT alone does not imply an ascending sort on dragonfly: results come back in
+        # geohash (sorted-set score) order unless ASC/DESC is asked for explicitly.
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place2", b"place1"]
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2, sort="ASC") == [
+            b"place3",
+            b"place2",
+        ]
+    else:
+        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place3", b"place2"]
     assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=1, any=True)[0] in [
         b"place1",
         b"place3",
         b"place2",
     ]
+
+
+@pytest.mark.parametrize(
+    "longitude,latitude",
+    [
+        ("-180.0001", "0"),
+        ("180.0001", "0"),
+        ("0", "-85.05112879"),
+        ("0", "85.05112879"),
+    ],
+)
+def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitude: str, latitude: str):
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "geoadd", "geo", longitude, latitude, "member")
+
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "invalid longitude,latitude pair" in str(ctx.value)

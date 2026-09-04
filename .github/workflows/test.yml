@@ -9,6 +9,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - 'pyproject.toml'
   pull_request:
     branches:
       - master
@@ -16,6 +17,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - 'pyproject.toml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,44 +41,44 @@ jobs:
           - "redis:8.8"
           - "valkey/valkey:9.1"
           - "redis:7.4.8"
-          - "valkey/valkey:8.1.6"
+          - "valkey/valkey:8.1.8"
           - "redis:6.2.17"
-        python-version: ["3.9", "3.12", "3.13", "3.14"]
-        redis-py: ["6.4.0", "7.4.0", "8.0.0"]
+        python-version: ["3.10", "3.12", "3.13", "3.14"]
+        redis-py: ["4.6.0", "6.4.0", "7.4.0", "8.1.0"]
         install-extras: [false]
         coverage: [false]
         exclude:
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-py: "7.4.0"
-          - python-version: "3.9"
-            redis-py: "8.0.0"
+          - python-version: "3.10"
+            redis-py: "8.1.0"
           - python-version: "3.14"
             redis-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: false
             coverage: false
         include:
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-image: "redis:8.8"
             redis-py: "4.6.0"
             install-extras: false
             coverage: false
-          - python-version: "3.9"
+          - python-version: "3.10"
             redis-image: "redis:8.8"
             redis-py: "5.3.1"
             install-extras: false
             coverage: false
           - python-version: "3.14"
             redis-image: "redis/redis-stack-server:6.2.6-v20"
-            redis-py: "7.4.0"
+            redis-py: "8.1.0"
             install-extras: true
           - python-version: "3.14"
             redis-image: "redis/redis-stack-server:7.4.0-v8"
-            redis-py: "7.4.0"
+            redis-py: "8.1.0"
             install-extras: true
           - python-version: "3.14"
             redis-image: "redis:8.8"
-            redis-py: "7.4.0"
+            redis-py: "8.1.0"
             install-extras: true
             coverage: true
     permissions:
@@ -99,12 +101,12 @@ jobs:
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-      - uses: actions/setup-python@v6
+        uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           cache-dependency-path: uv.lock
           python-version: ${{ matrix.python-version }}
@@ -127,7 +129,7 @@ jobs:
         timeout-minutes: 5
         if: ${{ !matrix.coverage }}
         run: |
-          uv run pytest -v -m "not slow and not tcp_server"
+          uv run --no-sync pytest -v -m "not slow and not tcp_server"
       - name: Test with coverage
         if: ${{ matrix.coverage }}
         uses: ./.github/actions/test-coverage

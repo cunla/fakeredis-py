@@ -1,0 +1,326 @@
+import asyncio
+import sys
+import threading
+import time
+from unittest import mock
+
+import pytest
+import redis
+import redis.asyncio
+import valkey
+
+import fakeredis
+from fakeredis import FakeServer, aioredis
+from fakeredis._typing import AsyncClientType, async_timeout
+from test import testtools
+from test.conftest import ServerDetails
+from test.testtools import resp_conversion
+
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.asyncio,
+    ]
+)
+
+
+async def test_ping(async_redis: AsyncClientType):
+    pong = await async_redis.ping()
+    assert pong is True
+
+
+async def test_types(async_redis: AsyncClientType):
+    await async_redis.hset("hash", mapping={"key1": "value1", "key2": "value2", "key3": 123})
+    result = await async_redis.hgetall("hash")
+    assert result == {b"key1": b"value1", b"key2": b"value2", b"key3": b"123"}
+
+
+async def test_transaction(async_redis: AsyncClientType):
+    async with async_redis.pipeline(transaction=True) as tr:
+        tr.set("key1", "value1")
+        tr.set("key2", "value2")
+        ok1, ok2 = await tr.execute()
+    assert ok1
+    assert ok2
+    result = await async_redis.get("key1")
+    assert result == b"value1"
+
+
+async def test_transaction_fail(async_redis: AsyncClientType):
+    await async_redis.set("foo", "1")
+    async with async_redis.pipeline(transaction=True) as tr:
+        await tr.watch("foo")
+        await async_redis.set("foo", "2")  # Different connection
+        tr.multi()
+        tr.get("foo")
+        with pytest.raises(Exception) as exc_info:
+            await tr.execute()
+        assert isinstance(exc_info.value, (redis.asyncio.WatchError, valkey.asyncio.WatchError))
+
+
+async def test_pubsub(async_redis):
+    queue = asyncio.Queue()
+
+    async def reader(ps):
+        while True:
+            message = await ps.get_message(ignore_subscribe_messages=True, timeout=5)
+            if message is not None:
+                if message.get("data") == b"stop":
+                    break
+                queue.put_nowait(message)
+
+    async with async_timeout(5), async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        task = asyncio.get_running_loop().create_task(reader(ps))
+        await async_redis.publish("channel", "message1")
+        await async_redis.publish("channel", "message2")
+        result1 = await queue.get()
+        result2 = await queue.get()
+        assert result1 == {"channel": b"channel", "pattern": None, "type": "message", "data": b"message1"}
+        assert result2 == {"channel": b"channel", "pattern": None, "type": "message", "data": b"message2"}
+        await async_redis.publish("channel", "stop")
+        await task
+
+
+@pytest.mark.slow
+async def test_pubsub_timeout(async_redis: AsyncClientType):
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        await ps.get_message(timeout=0.5)  # Subscription message
+        message = await ps.get_message(timeout=0.5)
+        assert message is None
+
+
+@pytest.mark.slow
+async def test_pubsub_disconnect(async_redis: AsyncClientType):
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        await ps.connection.disconnect()
+        message = await ps.get_message(timeout=0.5)  # Subscription message
+        assert message is not None
+        message = await ps.get_message(timeout=0.5)
+        assert message is None
+
+
+async def test_get_message_timeout_does_not_busy_poll(async_redis: AsyncClientType):
+    """Waiting for a response must be event-driven, not a poll loop.
+
+    ``can_read`` used to wait for the response queue to become non-empty by
+    looping over ``asyncio.sleep(0.01)``, waking the event loop 100 times a
+    second for every idle reader. Waiting out a ``get_message`` timeout must
+    not call ``asyncio.sleep`` at all.
+    """
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        message = await ps.get_message(timeout=5)
+        assert message["type"] == "subscribe"
+
+        with mock.patch("asyncio.sleep", wraps=asyncio.sleep) as sleep_spy:
+            message = await ps.get_message(timeout=0.3)
+        assert message is None
+        assert sleep_spy.call_count == 0
+
+
+async def test_pubsub_publish_from_another_thread(async_redis: AsyncClientType, request, real_server_details):
+    """Regression: a sync client publishing from another thread must wake an
+    async subscriber promptly. ``can_read`` waits on an ``asyncio.Event`` set
+    by ``put_response``, which runs on the publisher's thread here, so the
+    wakeup must go through ``call_soon_threadsafe`` -- otherwise the
+    subscriber's event loop is not woken and the message is only seen once
+    the ``get_message`` timeout expires.
+    """
+    is_fake = isinstance(async_redis, (fakeredis.FakeAsyncRedis, fakeredis.FakeAsyncValkey))
+    is_valkey = real_server_details.server_type == "valkey"
+    if is_fake:
+        sync_cls = fakeredis.FakeValkey if is_valkey else fakeredis.FakeStrictRedis
+        publisher = sync_cls(server=request.getfixturevalue("fake_server"))
+    else:
+        sync_cls = valkey.StrictValkey if is_valkey else redis.StrictRedis
+        publisher = sync_cls("localhost", port=6390, db=2)
+
+    async with async_redis.pubsub() as ps:
+        await ps.subscribe("channel")
+        message = await ps.get_message(timeout=5)
+        assert message["type"] == "subscribe"
+
+        timer = threading.Timer(0.1, publisher.publish, args=("channel", "hello"))
+        timer.start()
+        start = time.monotonic()
+        message = await ps.get_message(timeout=5)
+        elapsed = time.monotonic() - start
+        timer.join()
+        assert message == {"channel": b"channel", "pattern": None, "type": "message", "data": b"hello"}
+        # Generous bound: delivery should take ~0.1s; the failure mode is
+        # waiting out the full 5s get_message timeout.
+        assert elapsed < 2.5
+    publisher.close()
+
+
+async def test_wrongtype_error(async_redis: AsyncClientType):
+    await async_redis.set("foo", "bar")
+    with pytest.raises(Exception, match="^WRONGTYPE") as exc_info:
+        await async_redis.rpush("foo", "baz")
+    assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
+
+
+async def test_syntax_error(async_redis: AsyncClientType):
+    with pytest.raises(Exception, match="^wrong number of arguments for 'get' command$") as exc_info:
+        await async_redis.execute_command("get")
+    assert isinstance(exc_info.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
+
+
+@pytest.mark.decode_responses
+async def test_never_decode(async_redis: AsyncClientType):
+    assert async_redis.connection_pool.get_encoder().decode_responses
+
+    await async_redis.execute_command("set", "key", "some ascii")
+    text = await async_redis.execute_command("get", "key")
+    assert isinstance(text, str)
+    bytestr = await async_redis.execute_command("get", "key", NEVER_DECODE=True)
+    assert isinstance(bytestr, bytes)
+
+
+@pytest.mark.decode_responses
+async def test_hgetall_decodes_under_decode_responses(async_redis: AsyncClientType):
+    """Regression: async HGETALL under decode_responses=True must return
+    str keys/values across both RESP2 and RESP3. On RESP3 the server
+    returns a native ``dict``; the async ``_decode`` previously walked
+    ``list``/``bytes`` only, leaving the dict's contents as raw bytes.
+    """
+    await async_redis.hset("h", mapping={"status": "ok", "token": "tok"})
+    result = await async_redis.hgetall("h")
+    assert result == {"status": "ok", "token": "tok"}
+    for k, v in result.items():
+        assert isinstance(k, str), f"hash key {k!r} should be str"
+        assert isinstance(v, str), f"hash value {v!r} should be str"
+
+
+async def test_type(async_redis: AsyncClientType):
+    await async_redis.set("string_key", "value")
+    await async_redis.lpush("list_key", "value")
+    await async_redis.sadd("set_key", "value")
+    await async_redis.zadd("zset_key", {"value": 1})
+    await async_redis.hset("hset_key", "key", "value")
+
+    assert b"string" == await async_redis.type("string_key")
+    assert b"list" == await async_redis.type("list_key")
+    assert b"set" == await async_redis.type("set_key")
+    assert b"zset" == await async_redis.type("zset_key")
+    assert b"hash" == await async_redis.type("hset_key")
+    assert b"none" == await async_redis.type("none_key")
+
+
+async def test_xdel(async_redis: AsyncClientType):
+    stream = "stream"
+
+    # deleting from an empty stream doesn't do anything
+    assert await async_redis.xdel(stream, 1) == 0
+
+    m1 = await async_redis.xadd(stream, {"foo": "bar"})
+    m2 = await async_redis.xadd(stream, {"foo": "bar"})
+    m3 = await async_redis.xadd(stream, {"foo": "bar"})
+
+    # xdel returns the number of deleted elements
+    assert await async_redis.xdel(stream, m1) == 1
+    assert await async_redis.xdel(stream, m2, m3) == 2
+
+
+async def test_connection_with_username_and_password():
+    server = FakeServer()
+    r = aioredis.FakeRedis(server=server)
+    username = "fakeredis-authuser"
+
+    assert (
+        await r.acl_setuser(username, enabled=True, passwords=["+strong_password"], commands=["+hset", "+hget"]) is True
+    )
+
+    assert await r.auth(username=username, password="strong_password") is True
+    r2 = aioredis.FakeRedis(server=server)
+
+    test_value = "this_is_a_test"
+    await r.hset("test:key", "test_hash", test_value)
+    result = await r.hget("test:key", "test_hash")
+    assert result.decode() == test_value
+    assert await r2.hget("test:key", "test_hash") == test_value.encode()
+
+
+@pytest.mark.asyncio
+async def test_cause_fakeredis_bug(async_redis):
+    if sys.version_info < (3, 11):
+        return
+
+    async def worker_task():
+        assert await async_redis.rpush("list1", "list1_val") == 1  # 1
+        assert await async_redis.blpop("list2") == resp_conversion(
+            async_redis, [b"list2", b"list2_val"], (b"list2", b"list2_val")
+        )  # 4
+        assert await async_redis.set("foo", "bar") is True  # 5
+
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(worker_task())
+        assert await async_redis.blpop("list1") == resp_conversion(
+            async_redis, [b"list1", b"list1_val"], (b"list1", b"list1_val")
+        )  # 2
+        assert await async_redis.rpush("list2", "list2_val") == 1  # 3
+
+    # await async_redis.get("foo")  # uncomment to make test pass
+    assert await async_redis.get("foo") == b"bar"
+
+
+@pytest.mark.asyncio
+async def test_hrandfield(async_redis: AsyncClientType):
+    protocol_version = testtools.get_protocol_version(async_redis)
+    assert await async_redis.hrandfield("key") is None
+    hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
+    await async_redis.hset("key", mapping=hash)
+    assert await async_redis.hrandfield("key") is not None
+    assert len(await async_redis.hrandfield("key", 0)) == 0
+    res = await async_redis.hrandfield("key", 2)
+    assert len(res) == 2
+    assert res[0] in set(hash.keys())
+    assert res[1] in set(hash.keys())
+    # with values
+    res = await async_redis.hrandfield("key", 2, True)
+    assert len(res) == resp_conversion(async_redis, 2, 4)
+    if protocol_version == 2:
+        assert res[0] in set(hash.keys())
+        assert res[1] in {str(x).encode() for x in hash.values()}
+        assert res[2] in set(hash.keys())
+        assert res[3] in {str(x).encode() for x in hash.values()}
+    else:
+        assert res[0][1] in {str(x).encode() for x in hash.values()}
+        assert res[1][1] in {str(x).encode() for x in hash.values()}
+        assert res[0][0] in set(hash.keys())
+        assert res[1][0] in set(hash.keys())
+    # without duplications
+    assert len(await async_redis.hrandfield("key", 10)) == 5
+    # with duplications
+    assert len(await async_redis.hrandfield("key", -10)) == 10
+
+
+@pytest.mark.asyncio
+async def test_async_xread(async_redis: AsyncClientType, real_server_details: ServerDetails):
+    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array,
+    # which redis-py's RESP3 parser cannot consume, so the reply is read unparsed there.
+    resp2_shape = testtools.disable_xread_parsing(async_redis, real_server_details.server_type)
+    task = asyncio.create_task(async_redis.xread({"stream": "$"}, block=0))
+    await asyncio.sleep(0)
+    await async_redis.xadd("stream", {"data": "data"}, maxlen=1000, approximate=True)
+    messages = await task
+    assert len(messages) == 1
+    protocol_version = testtools.get_protocol_version(async_redis)
+    if protocol_version == 2 or resp2_shape:
+        assert messages[0][0] == b"stream"
+    else:
+        assert b"stream" in messages
+
+
+async def test_blocking_operation_cancel(async_redis: AsyncClientType):
+    event_task = asyncio.create_task(async_redis.brpop("test"))
+    await asyncio.sleep(0.1)
+    event_task.cancel()
+    try:
+        await event_task
+    except asyncio.CancelledError:
+        pass
+    await asyncio.wait_for(async_redis.get("test"), timeout=1)

@@ -1,10 +1,11 @@
 from ._tdigest_mixin import TDigestCommandsMixin
 from ._timeseries_mixin import TimeSeriesCommandsMixin
-from ._topk_mixin import TopkCommandsMixin  # noqa: F401
+from ._topk_mixin import TopkCommandsMixin
 
 try:
     import numpy  # noqa: F401
-    from ._vectorset_mixin import VectorSetCommandsMixin  # noqa: F401
+
+    from ._vectorset_mixin import VectorSetCommandsMixin
 except ImportError:
 
     class VectorSetCommandsMixin:  # type: ignore
@@ -14,12 +15,13 @@ except ImportError:
 try:
     from jsonpath_ng.ext import parse  # noqa: F401
     from redis.commands.json.path import Path  # noqa: F401
-    from ._json_mixin import JSONCommandsMixin  # noqa: F401
+
+    from ._json_mixin import JSONCommandsMixin
 except ImportError as e:
     if e.name == "fakeredis.stack._json_mixin":
-        raise e
+        raise
 
-    class JSONCommandsMixin:  # type: ignore # noqa: E303
+    class JSONCommandsMixin:  # type: ignore
         pass
 
 
@@ -31,25 +33,25 @@ try:
     from ._cms_mixin import CMSCommandsMixin
 except ImportError as e:
     if e.name == "fakeredis.stack._bf_mixin" or e.name == "fakeredis.stack._cf_mixin":
-        raise e
+        raise
 
-    class BFCommandsMixin:  # type: ignore # noqa: E303
+    class BFCommandsMixin:  # type: ignore
         pass
 
-    class CFCommandsMixin:  # type: ignore # noqa: E303
+    class CFCommandsMixin:  # type: ignore
         pass
 
-    class CMSCommandsMixin:  # type: ignore # noqa: E303
+    class CMSCommandsMixin:  # type: ignore
         pass
 
 
 __all__ = [
-    "TopkCommandsMixin",
-    "JSONCommandsMixin",
     "BFCommandsMixin",
     "CFCommandsMixin",
     "CMSCommandsMixin",
+    "JSONCommandsMixin",
     "TDigestCommandsMixin",
     "TimeSeriesCommandsMixin",
+    "TopkCommandsMixin",
     "VectorSetCommandsMixin",
 ]

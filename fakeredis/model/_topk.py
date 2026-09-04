@@ -1,40 +1,42 @@
+from __future__ import annotations
+
 import heapq
 import random
 import time
-from typing import List, Optional, Tuple
 
 from ._base_type import BaseModel
 
 
-class Bucket(object):
+class Bucket:
     def __init__(self, counter: int, fingerprint: int):
         self.counter = counter
         self.fingerprint = fingerprint
 
     def add(self, fingerprint: int, incr: int, decay: float) -> int:
-        if self.fingerprint == fingerprint:
-            self.counter += incr
-            return self.counter
-        elif self._decay(decay):
-            self.counter += incr
-            self.fingerprint = fingerprint
-            return self.counter
-        return 0
+        # An incr-by-N add is equivalent to N single-unit adds: each unit either bumps a matching bucket, or gets one
+        # chance to decay/evict a colliding one.
+        for _ in range(incr):
+            self._add_one(fingerprint, decay)
+        return self.counter if self.fingerprint == fingerprint else 0
 
     def count(self, fingerprint: int) -> int:
         if self.fingerprint == fingerprint:
             return self.counter
         return 0
 
-    def _decay(self, decay: float) -> bool:
-        if self.counter > 0:
+    def _add_one(self, fingerprint: int, decay: float) -> None:
+        if self.counter == 0:
+            self.fingerprint = fingerprint
+            self.counter = 1
+        elif self.fingerprint == fingerprint:
+            self.counter += 1
+        else:
             probability = decay**self.counter
             if probability >= 1 or random.random() < probability:
                 self.counter -= 1
-        return self.counter == 0
 
 
-class HashArray(object):
+class HashArray:
     def __init__(self, width: int, decay: float):
         self.width = width
         self.decay = decay
@@ -67,7 +69,7 @@ class HeavyKeeper(BaseModel):
         self.depth = depth
         self.decay = decay
         self.hash_arrays = [HashArray(width, decay) for _ in range(depth)]
-        self.min_heap: List[Tuple[int, bytes]] = []
+        self.min_heap: list[tuple[int, bytes]] = []
 
     def _index(self, val: bytes) -> int:
         for ind, item in enumerate(self.min_heap):
@@ -75,7 +77,7 @@ class HeavyKeeper(BaseModel):
                 return ind
         return -1
 
-    def add(self, item: bytes, incr: int) -> Optional[bytes]:
+    def add(self, item: bytes, incr: int) -> bytes | None:
         max_count = 0
         for i in range(self.depth):
             count = self.hash_arrays[i].add(item, incr)
@@ -99,7 +101,7 @@ class HeavyKeeper(BaseModel):
             return self.min_heap[ind][0]
         return max([ha.count(item) for ha in self.hash_arrays])
 
-    def list(self, k: Optional[int] = None) -> List[Tuple[int, bytes]]:
+    def list(self, k: int | None = None) -> list[tuple[int, bytes]]:
         sorted_list = sorted(self.min_heap, key=lambda x: x[0], reverse=True)
         if k is None:
             return sorted_list

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import fnmatch
 import hashlib
-from typing import Dict, Set, List, Union, Optional, Any
+from typing import Any
 
 from fakeredis import _msgs as msgs
-from ._command_info import get_commands_by_category, get_command_info
+
 from .._helpers import SimpleError, current_time
+from ._command_info import get_command_info, get_commands_by_category
 
 
 class Selector:
@@ -14,11 +17,11 @@ class Selector:
         self.keys: bytes = keys
         self.channels: bytes = channels
 
-    def as_array(self) -> List[bytes]:
+    def as_array(self) -> list[bytes]:
         return [b"+" if self.allowed else b"-", self.command, b"keys", self.keys, b"channels", self.channels]
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> "Selector":
+    def from_bytes(cls, data: bytes) -> Selector:
         keys = b""
         channels = b""
         command = b""
@@ -46,13 +49,13 @@ class Selector:
 
 class UserAccessControlList:
     def __init__(self, enabled: bool = True, nopass: bool = False):
-        self._passwords: Set[bytes] = set()
+        self._passwords: set[bytes] = set()
         self.enabled: bool = enabled
         self._nopass: bool = nopass
-        self._key_patterns: Set[bytes] = set()
-        self._channel_patterns: Set[bytes] = set()
-        self._commands: Dict[bytes, bool] = {b"@all": False}
-        self._selectors: Dict[bytes, Selector] = {}
+        self._key_patterns: set[bytes] = set()
+        self._channel_patterns: set[bytes] = set()
+        self._commands: dict[bytes, bool] = {b"@all": False}
+        self._selectors: dict[bytes, Selector] = {}
 
     def reset(self) -> None:
         self.enabled = False
@@ -64,7 +67,7 @@ class UserAccessControlList:
         self._selectors.clear()
 
     @staticmethod
-    def _get_command_info(fields: List[bytes]) -> Optional[List[Any]]:
+    def _get_command_info(fields: list[bytes]) -> list[Any] | None:
         command = fields[0].lower()
         command_info = get_command_info(command)
         if not command_info and len(fields) > 1:
@@ -72,7 +75,7 @@ class UserAccessControlList:
             command_info = get_command_info(command)
         return command_info
 
-    def command_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> bool:
+    def command_allowed(self, command_info: list[Any] | None, fields: list[bytes]) -> bool:
         res = fields[0].lower() == b"auth" or self._commands.get(fields[0].lower(), False)
         res = res or self._commands.get(b"@all", False)
         if not command_info:
@@ -81,7 +84,7 @@ class UserAccessControlList:
             res = res or self._commands.get(category, False)
         return res
 
-    def _get_keys(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
+    def _get_keys(self, command_info: list[Any] | None, fields: list[bytes]) -> list[bytes]:
         if not command_info:
             return []
         first_key, last_key, step = command_info[3:6]
@@ -91,20 +94,20 @@ class UserAccessControlList:
         step = step + 1
         return fields[first_key : last_key + 1 : step]
 
-    def keys_not_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
+    def keys_not_allowed(self, command_info: list[Any] | None, fields: list[bytes]) -> list[bytes]:
         if len(self._key_patterns) == 0:
             return []
         keys = self._get_keys(command_info, fields)
-        res: Set[bytes] = set()
+        res: set[bytes] = set()
         for pat in self._key_patterns:
             res = res.union(fnmatch.filter(keys, pat))
         return list(set(keys) - res)
 
-    def channels_not_allowed(self, command_info: Optional[List[Any]], fields: List[bytes]) -> List[bytes]:
+    def channels_not_allowed(self, command_info: list[Any] | None, fields: list[bytes]) -> list[bytes]:
         if len(self._channel_patterns) == 0:
             return []
         channels = fields[1:2]
-        res: Set[bytes] = set()
+        res: set[bytes] = set()
         for pat in self._channel_patterns:
             res = res.union(fnmatch.filter(channels, pat))
         return list(set(channels) - res)
@@ -113,7 +116,7 @@ class UserAccessControlList:
         self._nopass = True
         self._passwords.clear()
 
-    def check_password(self, password: Optional[bytes]) -> bool:
+    def check_password(self, password: bytes | None) -> bool:
         password_provided: bool = password is not None and password != b""
         if self._nopass:
             return not password_provided
@@ -165,10 +168,10 @@ class UserAccessControlList:
         parsed_selector = Selector.from_bytes(selector)
         self._selectors[parsed_selector.command] = parsed_selector
 
-    def _get_selectors(self) -> List[Dict[str, bytes]]:
-        results: List[Dict[str, bytes]] = []
+    def _get_selectors(self) -> list[dict[str, bytes]]:
+        results: list[dict[str, bytes]] = []
         for command, selector in self._selectors.items():
-            s: Dict[str, bytes] = {
+            s: dict[str, bytes] = {
                 "commands": b"-@all " + (b"+" if selector.allowed else b"-") + command,
                 "keys": selector.keys,
                 "channels": selector.channels,
@@ -176,21 +179,21 @@ class UserAccessControlList:
             results.append(s)
         return results
 
-    def _get_commands(self) -> List[bytes]:
+    def _get_commands(self) -> list[bytes]:
         res = []
         for command, enabled in self._commands.items():
             inc = b"+" if enabled else b"-"
             res.append(inc + command)
         return res
 
-    def _get_key_patterns(self) -> List[bytes]:
+    def _get_key_patterns(self) -> list[bytes]:
         return [b"~" + key_pattern for key_pattern in self._key_patterns]
 
-    def _get_channel_patterns(self) -> List[bytes]:
+    def _get_channel_patterns(self) -> list[bytes]:
         return [b"&" + channel_pattern for channel_pattern in self._channel_patterns]
 
-    def _get_flags(self) -> List[bytes]:
-        flags: List[bytes] = []
+    def _get_flags(self) -> list[bytes]:
+        flags: list[bytes] = []
         flags.append(b"on" if self.enabled else b"off")
         if self._nopass:
             flags.append(b"nopass")
@@ -200,8 +203,8 @@ class UserAccessControlList:
             flags.append(b"allchannels")
         return flags
 
-    def as_array(self) -> List[Union[bytes, List[bytes], List[Dict[str, bytes]]]]:
-        results: List[Union[bytes, List[bytes], List[Dict[str, bytes]]]] = []
+    def as_array(self) -> list[bytes | list[bytes] | list[dict[str, bytes]]]:
+        results: list[bytes | list[bytes] | list[dict[str, bytes]]] = []
         results.extend(
             [
                 b"flags",
@@ -220,8 +223,8 @@ class UserAccessControlList:
         )
         return results
 
-    def _get_selectors_for_rule(self) -> List[bytes]:
-        results: List[bytes] = []
+    def _get_selectors_for_rule(self) -> list[bytes]:
+        results: list[bytes] = []
         for command, selector in self._selectors.items():
             s = b"-@all " + (b"+" if selector.allowed else b"-") + command
             channels = b"resetchannels" + ((b" " + selector.channels) if selector.channels != b"" else b"")
@@ -233,7 +236,7 @@ class UserAccessControlList:
         channels = self._get_channel_patterns()
         if channels != [b"&*"]:
             channels = [b"resetchannels"] + channels
-        rule_parts: List[bytes] = (
+        rule_parts: list[bytes] = (
             self._get_flags()
             + [b"#" + password for password in self._passwords]
             + self._get_commands()
@@ -267,9 +270,9 @@ class AclLogRecord:
         self.client_info: bytes = client_info
         self.entry_id: int = entry_id
 
-    def as_dict(self) -> Dict[str, bytes]:
+    def as_dict(self) -> dict[str, bytes]:
         age_seconds = (current_time() - self.created_ts) / 1000
-        res: Dict[str, bytes] = {
+        res: dict[str, bytes] = {
             "count": str(self.count).encode(),
             "reason": self.reason,
             "context": self.context,
@@ -290,17 +293,17 @@ class AccessControlList:
         default_user_acl.add_key_pattern(b"*")
         default_user_acl.add_channel_pattern(b"*")
         default_user_acl.add_command_or_category(b"+@all")
-        self._user_acl: Dict[bytes, UserAccessControlList] = {b"default": default_user_acl}
-        self._log: List[AclLogRecord] = []
+        self._user_acl: dict[bytes, UserAccessControlList] = {b"default": default_user_acl}
+        self._log: list[AclLogRecord] = []
 
-    def get_users(self) -> List[bytes]:
+    def get_users(self) -> list[bytes]:
         return list(self._user_acl.keys())
 
     def get_user_acl(self, username: bytes) -> UserAccessControlList:
         return self._user_acl.setdefault(username, UserAccessControlList())
 
-    def as_rules(self) -> List[bytes]:
-        res: List[bytes] = []
+    def as_rules(self) -> list[bytes]:
+        res: list[bytes] = []
         for username, user_acl in self._user_acl.items():
             rule_str = b"user " + username + b" " + user_acl.as_rule()
             res.append(rule_str)
@@ -312,7 +315,7 @@ class AccessControlList:
     def reset_log(self) -> None:
         self._log.clear()
 
-    def log(self, count: int) -> List[Dict[str, bytes]]:
+    def log(self, count: int) -> list[dict[str, bytes]]:
         if count > len(self._log) or count < 0:
             count = 0
         res = [x.as_dict() for x in self._log[-count:]]
@@ -343,7 +346,7 @@ class AccessControlList:
         )
         self._log.append(entry)
 
-    def validate_command(self, username: bytes, client_info: bytes, fields: List[bytes]) -> None:
+    def validate_command(self, username: bytes, client_info: bytes, fields: list[bytes]) -> None:
         if username not in self._user_acl:
             return
         if fields and fields[0].lower() == b"auth":

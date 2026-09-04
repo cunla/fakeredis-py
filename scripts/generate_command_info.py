@@ -17,9 +17,11 @@ Generates a JSON file with the following structure:
 that is used for the `COMMAND` redis command.
 """
 
+from __future__ import annotations
+
 import json
 import os
-from typing import Any, List, Dict
+from typing import Any
 
 from fakeredis._commands import SUPPORTED_COMMANDS
 from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
@@ -47,7 +49,7 @@ def implemented_commands() -> set:
     return res
 
 
-def dict_deep_get(d: Dict[Any, Any], *keys, default_value: Any = None) -> Any:
+def dict_deep_get(d: dict[Any, Any], *keys, default_value: Any = None) -> Any:
     res = d
     for key in keys:
         if isinstance(res, list) and isinstance(key, int):
@@ -59,11 +61,11 @@ def dict_deep_get(d: Dict[Any, Any], *keys, default_value: Any = None) -> Any:
     return default_value if res is None else res
 
 
-def key_specs_array(cmd_info: Dict[str, Any]) -> List[Any]:
+def key_specs_array(cmd_info: dict[str, Any]) -> list[Any]:
     return []
 
 
-def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
+def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
     """Returns a list
      1 Name //
      2 Arity //
@@ -81,10 +83,10 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
     first_key = dict_deep_get(cmd_info, "key_specs", 0, "begin_search", "spec", "index", default_value=0)
     last_key = dict_deep_get(cmd_info, "key_specs", -1, "begin_search", "spec", "index", default_value=0)
     step = dict_deep_get(cmd_info, "key_specs", 0, "find_keys", "spec", "keystep", default_value=0)
-    tips = []  # todo
+    tips = []
     subcommands = [
         get_command_info(cmd, all_commands) for cmd in all_commands if cmd_name != cmd and cmd.startswith(cmd_name)
-    ]  # todo
+    ]
     categories = set(cmd_info.get("acl_categories", []))
     for prefix, category in CATEGORIES.items():
         if cmd_name.startswith(prefix.lower()):
@@ -106,7 +108,7 @@ def get_command_info(cmd_name: str, all_commands: Dict[str, Any]) -> List[Any]:
 
 if __name__ == "__main__":
     implemented = implemented_commands()
-    command_info_dict: Dict[str, List[Any]] = {}
+    command_info_dict: dict[str, list[Any]] = {}
     for cmd_meta in METADATA:
         cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
         for cmd in cmds:

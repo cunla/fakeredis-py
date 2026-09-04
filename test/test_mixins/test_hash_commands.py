@@ -9,8 +9,14 @@ from test.testtools import raw_command, resp_conversion
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.4")
 @pytest.mark.unsupported_server_types("valkey")
-def test_hexpire_empty_key(r: ClientType):
-    raw_command(r, "hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
+def test_hexpire_empty_key(r: ClientType, real_server_details):
+    args = ("hexpire", b"", 2055010579, "fields", 2, b"\x89U\x04", b"6\x86\xf4\xdd")
+    if real_server_details.server_type == "dragonfly":
+        # Dragonfly caps a field TTL at 2**26 seconds, well below the one used here.
+        with pytest.raises(Exception, match="value is not an integer or out of range"):
+            raw_command(r, *args)
+        return
+    raw_command(r, *args)
 
 
 def test_hstrlen_missing(r: ClientType):
@@ -286,8 +292,8 @@ def test_hset_removing_last_field_delete_key(r: ClientType):
 def test_hscan_no_values(r: ClientType):
     name = "hscan-test"
     for ix in range(20):
-        k = "key:%s" % ix
-        v = "result:%s" % ix
+        k = f"key:{ix}"
+        v = f"result:{ix}"
         r.hset(name, k, v)
     expected = r.hgetall(name)
     assert len(expected) == 20  # Ensure we know what we're testing
@@ -305,8 +311,8 @@ def test_hscan(r: ClientType):
     # Set up the data
     name = "hscan-test"
     for ix in range(20):
-        k = "key:%s" % ix
-        v = "result:%s" % ix
+        k = f"key:{ix}"
+        v = f"result:{ix}"
         r.hset(name, k, v)
     expected = r.hgetall(name)
     assert len(expected) == 20  # Ensure we know what we're testing

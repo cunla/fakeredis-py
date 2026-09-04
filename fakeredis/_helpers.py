@@ -1,11 +1,12 @@
-import inspect
+from __future__ import annotations
+
 import re
 import threading
 import time
-import uuid
 import weakref
 from collections import defaultdict
-from typing import Any, AnyStr, Callable, Dict, Iterator, MutableMapping, Optional, Set, Type
+from collections.abc import Iterator, MutableMapping
+from typing import Any, AnyStr, Callable
 
 
 class SimpleString:
@@ -34,8 +35,6 @@ class SimpleError(Exception):
 class NoResponse:
     """Returned by pub/sub commands to indicate that no response should be returned"""
 
-    pass
-
 
 OK = SimpleString(b"OK")
 QUEUED = SimpleString(b"QUEUED")
@@ -48,8 +47,7 @@ def current_time() -> int:
 
 
 def null_terminate(s: bytes) -> bytes:
-    # Redis uses C functions on some strings, which means they stop at the
-    # first NULL.
+    # Redis uses C functions on some strings, which means they stop at the first NULL.
     ind = s.find(b"\0")
     if ind > -1:
         return s[:ind].lower()
@@ -57,10 +55,7 @@ def null_terminate(s: bytes) -> bytes:
 
 
 def casematch_any(a: bytes, *args: bytes) -> bool:
-    for b in args:
-        if casematch(a, b):
-            return True
-    return False
+    return any(casematch(a, b) for b in args)
 
 
 def casematch(a: bytes, b: bytes) -> bool:
@@ -81,12 +76,11 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
-    escaping rules to redis, uses ! instead of ^ to negate a character set,
-    and handles invalid cases (such as a [ without a ]) differently. This
-    implementation was written by studying the redis implementation.
+    escaping rules to redis, uses ! instead of ^ to negate a character set, and handles invalid cases (such as a [
+    without a ]) differently. This implementation was written by studying the redis implementation.
     """
-    # It's easier to work with text than bytes, because indexing bytes
-    # doesn't behave the same in Python 3. Latin-1 will round-trip safely.
+    # It's easier to work with text than bytes, because indexing bytes doesn't behave the same in Python 3. Latin-1 will
+    # round-trip safely.
     pattern: str = pattern_bytes.decode(
         "latin-1",
     )
@@ -144,28 +138,39 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
             parts.append(re.escape(c))
     parts.append("\\Z")
     regex: bytes = "".join(parts).encode("latin-1")
-    return re.compile(regex, flags=re.S)
+    return re.compile(regex, flags=re.DOTALL)
 
 
 class Database(MutableMapping):  # type: ignore
-    def __init__(self, lock: Optional[threading.Lock], *args: Any, **kwargs: Any) -> None:
-        self._dict: Dict[bytes, Any] = dict(*args, **kwargs)
+    def __init__(self, lock: threading.Lock | None, *args: Any, **kwargs: Any) -> None:
+        self._dict: dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
         # key to the set of connections
-        self._watches: Dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
+        self._watches: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.condition = threading.Condition(lock)
-        self._change_callbacks: Set[Callable[[], None]] = set()
+        self._change_callbacks: set[Callable[[], None]] = set()
 
-    def swap(self, other: "Database") -> None:
+    def swap(self, other: Database) -> None:
         self._dict, other._dict = other._dict, self._dict
         self.time, other.time = other.time, self.time
 
     def notify_watch(self, key: bytes) -> None:
         for sock in self._watches.get(key, set()):
             sock.notify_watch()
+        self.wake_all()
+
+    def wake_all(self) -> None:
+        """Wake every client blocked on this database, without reporting a key change.
+
+        Used by CLIENT UNBLOCK: woken clients re-check their own state and go back to sleep unless they were the target.
+        """
         self.condition.notify_all()
         for callback in self._change_callbacks:
             callback()
+
+    def has_watch(self, key: bytes) -> bool:
+        """Whether any client is watching `key`."""
+        return bool(self._watches.get(key))
 
     def add_watch(self, key: bytes, sock: Any) -> None:
         self._watches[key].add(sock)
@@ -217,11 +222,13 @@ class Database(MutableMapping):  # type: ignore
         self._remove_expired()
         return len(self._dict)
 
+    # Databases use identity semantics: they are mutable and are keyed by index on the server, never compared by
+    # content.
     def __hash__(self) -> int:
-        return hash(super(object, self))
+        return id(self)
 
     def __eq__(self, other: object) -> bool:
-        return super(object, self) == other
+        return self is other
 
 
 _VALID_RESPONSE_TYPES_RESP2 = (bytes, SimpleString, SimpleError, float, int, list)
@@ -234,24 +241,22 @@ def valid_response_type(value: Any, protocol_version: int, nested: bool = False)
     allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
     if value is not None and not isinstance(value, allowed_types):
         return False
-    if isinstance(value, list):
-        if any(not valid_response_type(item, protocol_version, True) for item in value):
-            return False
-    return True
+    return not (
+        isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
+    )
 
 
-class FakeSelector(object):
+class FakeSelector:
     def __init__(self, sock: Any):
         self.sock = sock
 
-    def check_can_read(self, timeout: Optional[float]) -> bool:
+    def check_can_read(self, timeout: float | None) -> bool:
         if self.sock.responses.qsize():
             return True
         if timeout is not None and timeout <= 0:
             return False
 
-        # A sleep/poll loop is easier to mock out than messing with condition
-        # variables.
+        # A sleep/poll loop is easier to mock out than messing with condition variables.
         start = time.time()
         while True:
             if self.sock.responses.qsize():
@@ -264,32 +269,3 @@ class FakeSelector(object):
     @staticmethod
     def check_is_ready_for_command(_: Any) -> bool:
         return True
-
-
-def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
-    closure = method.__closure__
-    if closure is None:
-        return set()
-    res = set()
-    for cell in closure:
-        value = cell.cell_contents
-        if isinstance(value, list) and len(value) > 0:
-            res.update(value)
-        elif callable(value):
-            res.update(_get_args_to_warn(value))
-    return res
-
-
-def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
-    """Interpret the positional and keyword arguments according to the version of redis in use"""
-    parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
-    args_to_warn = _get_args_to_warn(klass.__init__)
-    # Convert args => kwargs
-    kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
-    kwargs.setdefault("host", uuid.uuid4().hex)
-    kwds = {
-        p.name: kwargs.get(p.name, p.default)
-        for ind, p in enumerate(parameters)
-        if p.default != inspect.Parameter.empty and (p.name not in args_to_warn or p.name in kwargs)
-    }
-    return kwds

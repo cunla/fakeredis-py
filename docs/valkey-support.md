@@ -40,7 +40,6 @@ import valkey
 r = valkey.Valkey(host=server_address[0], port=server_address[1])
 r.set("foo", "bar")
 assert r.get("foo") == b"bar"
-
 ```
 
 [valkey]: https://github.com/valkey-io/valkey

@@ -1,7 +1,11 @@
-from typing import Tuple, List, Dict, Any, Sequence, Optional
+from __future__ import annotations
+
+import sys
+from collections.abc import Sequence
+from typing import Any
 
 from . import _msgs as msgs
-from ._commands import Int, Float
+from ._commands import Float, Int
 from ._helpers import SimpleError, null_terminate
 
 
@@ -29,12 +33,12 @@ def _default_value(s: str) -> Any:
 
 
 def extract_args(
-    actual_args: Tuple[bytes, ...],
-    expected: Tuple[str, ...],
+    actual_args: tuple[bytes, ...],
+    expected: tuple[str, ...],
     error_on_unexpected: bool = True,
     left_from_first_unexpected: bool = True,
-    exception: Optional[str] = None,
-) -> Tuple[List[Any], Sequence[Any]]:
+    exception: str | None = None,
+) -> tuple[list[Any], Sequence[Any]]:
     """Parse argument values.
 
     Extract from actual arguments which arguments exist and their value if relevant.
@@ -65,9 +69,9 @@ def extract_args(
         ('~+maxlen', 'nx', 'xx', '+ex', 'keepttl'))
     10, [True, True, 324, False], None
     """
-    args_info: Dict[bytes, Tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
+    args_info: dict[bytes, tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
 
-    def _parse_params(key: bytes, ind: int, _actual_args: Tuple[bytes, ...]) -> Tuple[Any, int]:
+    def _parse_params(key: bytes, ind: int, _actual_args: tuple[bytes, ...]) -> tuple[Any, int]:
         """Parse an argument from actual args.
         :param key: Argument name to parse
         :param ind: index of argument in actual_args
@@ -110,14 +114,14 @@ def extract_args(
         else:
             return temp_res, expected_following
 
-    results: List[Any] = [_default_value(key) for key in expected]
+    results: list[Any] = [_default_value(key) for key in expected]
     left_args = []
     i = 0
     while i < len(actual_args):
         found = False
-        for key in args_info:
+        for key, arg_info in args_info.items():
             if null_terminate(actual_args[i]) == key:
-                arg_position, _ = args_info[key]
+                arg_position, _ = arg_info
                 results[arg_position], parsed = _parse_params(key, i, actual_args)
                 i += parsed
                 found = True
@@ -128,10 +132,43 @@ def extract_args(
                 raise (
                     SimpleError(msgs.SYNTAX_ERROR_MSG)
                     if exception is None
-                    else SimpleError(exception.format(actual_args[i]))
+                    # The offending argument is echoed as text, not as a bytes repr.
+                    else SimpleError(exception.format(actual_args[i].decode(errors="replace")))
                 )
             if left_from_first_unexpected:
                 return results, actual_args[i:]
             left_args.append(actual_args[i])
         i += 1
     return results, left_args
+
+
+def parse_mpop_args(
+    command: str, numkeys: int, args: tuple[bytes, ...], directions: tuple[str, str], server_type: str = "redis"
+) -> tuple[Sequence[bytes], int, bool]:
+    """Validate the LMPOP/BLMPOP/ZMPOP/BZMPOP tail: keys, a direction token, optional COUNT.
+
+    `args` is ``key [key ...] <directions[0] | directions[1]> [COUNT count]``.
+    Returns (keys, count, whether ``directions[0]`` was the chosen direction).
+    """
+    if len(args) < 2:  # arity (at least one key + a direction) is checked before numkeys, like real redis
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+    if numkeys <= 0:
+        if server_type != "dragonfly":
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+        # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
+        raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
+    (count, first, second), keys = extract_args(
+        args, ("+count", *directions), error_on_unexpected=False, left_from_first_unexpected=False
+    )
+    if len(keys) != numkeys or first == second:  # exactly one direction, and it follows exactly `numkeys` keys
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if count is not None and count <= 0:
+        if server_type != "dragonfly":
+            raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP -- popping
+        # everything -- but rejected outright by LMPOP.
+        if count < 0:
+            if command.lower().endswith("lmpop"):
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = sys.maxsize
+    return keys, 1 if count is None else count, first

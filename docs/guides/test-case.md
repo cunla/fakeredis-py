@@ -20,10 +20,10 @@ To write a new test case for a command:
 Sample of running a test for redis-py v4.2.0 and above, redis-server 7.0 and above.
 
 ```python
-@pytest.mark.supported_server_versions(min_redis_ver='7')
-@testtools.run_test_if_redispy_ver('gte', '4.2.0')
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@testtools.run_test_if_redispy_ver("gte", "4.2.0")
 def test_expire_should_not_expire__when_no_expire_is_set(r):
-    r.set('foo', 'bar')
-    assert r.get('foo') == b'bar'
-    assert r.expire('foo', 1, xx=True) == 0
+    r.set("foo", "bar")
+    assert r.get("foo") == b"bar"
+    assert r.expire("foo", 1, xx=True) == 0
 ```
