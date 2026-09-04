@@ -17,6 +17,8 @@ INVALID_DB_MSG = "ERR DB index is out of range"
 INVALID_MIN_MAX_FLOAT_MSG = "ERR min or max is not a float"
 INVALID_MIN_MAX_STR_MSG = "ERR min or max not a valid string range item"
 STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size (proto-max-bulk-len)"
+# Dragonfly caps a string at 256MB, and words the refusal without the parenthetical.
+DRAGONFLY_STRING_OVERFLOW_MSG = "ERR string exceeds maximum allowed size"
 OVERFLOW_MSG = "ERR increment or decrement would overflow"
 NONFINITE_MSG = "ERR increment would produce NaN or Infinity"
 INCREX_LBOUND_GT_UBOUND_MSG = "ERR LBOUND can't be greater than UBOUND"
@@ -39,7 +41,23 @@ ZUNIONSTORE_KEYS_MSG = "ERR at least 1 input key is needed for {}"
 WRONG_ARGS_MSG7 = "ERR Wrong number of args calling Redis command from script"
 WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
+# Dragonfly reports unknown commands in its own format, without echoing the arguments back.
+DRAGONFLY_UNKNOWN_COMMAND_MSG = "ERR unknown command `{}`"
+# Raised by dragonfly for an absolute expiry deadline beyond DRAGONFLY_MAX_EXPIRE_SECONDS.
+EXPIRY_OUT_OF_RANGE_MSG = "ERR expiry is out of range"
+# Dragonfly checks the expiry option pairs separately, and accepts NX together with GT/LT.
+DRAGONFLY_NX_XX_ERROR_MSG = "ERR NX and XX options at the same time are not compatible"
+DRAGONFLY_GT_LT_ERROR_MSG = "ERR GT and LT options at the same time are not compatible"
+DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION = "ERR Unsupported option: {}"
+# Dragonfly's wording for the SINTERCARD/ZINTERCARD LIMIT and numkeys checks.
+DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
+DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"
+DRAGONFLY_AT_LEAST_ONE_KEY_MSG = "ERR at least 1 input key is needed for this command"
 EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors."
+# Dragonfly leaves off the full stop, refuses WATCH/SUBSCRIBE inside MULTI by name, and
+# ends the transaction as soon as a command fails to queue.
+DRAGONFLY_EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors"
+DRAGONFLY_NOT_IN_TRANSACTION_MSG = "ERR '{0}' not allowed inside a transaction"
 MULTI_NESTED_MSG = "ERR MULTI calls can not be nested"
 WITHOUT_MULTI_MSG = "ERR {0} without MULTI"
 WATCH_INSIDE_MULTI_MSG = "ERR WATCH inside MULTI is not allowed"
@@ -60,6 +78,7 @@ UNBLOCKED_MSG = "UNBLOCKED client unblocked via CLIENT UNBLOCK"
 NO_MATCHING_SCRIPT_MSG = "NOSCRIPT No matching script. Please use EVAL."
 GLOBAL_VARIABLE_MSG = "ERR Script attempted to set global variables: {}"
 COMMAND_IN_SCRIPT_MSG = "ERR This Redis command is not allowed from scripts"
+DRAGONFLY_COMMAND_IN_SCRIPT_MSG = "ERR This Redis command is not allowed from script"
 BAD_SUBCOMMAND_MSG = "ERR Unknown {} subcommand or wrong # of args."
 BAD_COMMAND_IN_PUBSUB_MSG = "ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT allowed in this context"
 CONNECTION_ERROR_MSG = "FakeRedis is emulating a connection error."
@@ -72,6 +91,9 @@ LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
 LUA_SETRESP_ARGS_MSG = "ERR redis.setresp() requires one argument."
 LUA_SETRESP_VERSION_MSG = "ERR RESP version must be 2 or 3."
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
+# Dragonfly reports redis_version 7.x but still wraps script errors the way Redis 6 did,
+# minus the `f_` prefix on the sha.
+DRAGONFLY_SCRIPT_ERROR_MSG = "ERR Error running script (call to {}): @user_script:?: {}"
 RESTORE_KEY_EXISTS = "BUSYKEY Target key name already exists."
 RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"
 

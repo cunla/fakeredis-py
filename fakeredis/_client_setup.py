@@ -1,8 +1,7 @@
 """Helpers for constructing the underlying redis/valkey client.
 
-Used by the sync and async ``FakeRedisMixin`` classes to translate the
-arguments accepted by ``FakeRedis(...)`` (and friends) into the kwargs the
-real client class expects, wiring in a fakeredis connection pool.
+Used by the sync and async ``FakeRedisMixin`` classes to translate the arguments accepted by ``FakeRedis(...)`` (and
+friends) into the kwargs the real client class expects, wiring in a fakeredis connection pool.
 """
 
 from __future__ import annotations
@@ -16,12 +15,11 @@ from typing import Any, Callable
 def _get_args_to_warn(method: Callable[..., Any]) -> set[str]:
     """Collect argument names that ``method`` would emit deprecation warnings for.
 
-    redis-py marks deprecated ``__init__`` arguments by wrapping the method in
-    a ``@deprecated_args(args_to_warn=[...])`` decorator. There is no public
-    API to query the list, so this walks the wrapper's closure cells looking
-    for the ``args_to_warn`` list (recursing through nested wrappers). If
-    redis-py changes how the decorator stores the list, this returns an empty
-    set and deprecated defaults are simply forwarded again.
+    redis-py marks deprecated ``__init__`` arguments by wrapping the method in a
+    ``@deprecated_args(args_to_warn=[...])`` decorator. There is no public
+    API to query the list, so this walks the wrapper's closure cells looking for the ``args_to_warn`` list (recursing
+    through nested wrappers). If redis-py changes how the decorator stores the list, this returns an empty set and
+    deprecated defaults are simply forwarded again.
     """
     closure = method.__closure__
     if closure is None:
@@ -89,9 +87,8 @@ def build_client_kwds(
 ) -> dict[str, Any]:
     """Build the kwargs passed to the underlying redis/valkey client ``__init__``.
 
-    Creates a fakeredis connection pool when one isn't supplied. Shared by the sync
-    and async ``FakeRedisMixin`` classes; the caller still applies any lib_name /
-    driver_info handling specific to its client library.
+    Creates a fakeredis connection pool when one isn't supplied. Shared by the sync and async ``FakeRedisMixin``
+    classes; the caller still applies any lib_name / driver_info handling specific to its client library.
     """
     kwds = convert_args_kwargs(client_class, *args, **kwargs)
     kwds["server"] = server

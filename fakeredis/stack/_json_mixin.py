@@ -19,9 +19,34 @@ from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Float, Int, Key, command, delete_keys
 from fakeredis._helpers import SimpleString
-from fakeredis._typing import JsonType
+from fakeredis._typing import JsonType, ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ZSet
+
+
+def _key_not_found(server_type: ServerType) -> helpers.SimpleError:
+    """The error a JSON command answers with when the key does not exist.
+
+    Dragonfly reports the plain `no such key`, where RedisJSON spells the operation out.
+    """
+    return helpers.SimpleError(msgs.NO_KEY_MSG if server_type == "dragonfly" else msgs.JSON_KEY_NOT_FOUND)
+
+
+# Marks a JSON.ARRPOP match that is not an array, which the servers report differently from
+# an array with nothing left to pop.
+_NOT_AN_ARRAY = object()
+
+
+def _path_is_legacy(path_str: bytes | str | None) -> bool:
+    """Whether `path_str` is a legacy path (`.a`) rather than a JSONPath (`$.a`).
+
+    An omitted path counts as legacy: the reply is shaped for the single root match.
+    """
+    if path_str is None:
+        return True
+    if isinstance(path_str, str):
+        path_str = path_str.encode()
+    return not path_str.startswith(b"$")
 
 
 def _format_path(path: bytes | str) -> str:
@@ -37,7 +62,11 @@ def _format_path(path: bytes | str) -> str:
 
 
 @lru_cache(maxsize=64)
-def _parse_jsonpath(path: str | bytes) -> JSONPath:
+def _parse_jsonpath(path: str | bytes, server_type: ServerType = "redis") -> JSONPath:
+    if server_type == "dragonfly" and "[?" in (path.decode() if isinstance(path, bytes) else path):
+        # Dragonfly's JSONPath has no filter expressions: `$.a[?(@.b>1)]` is a syntax error,
+        # while wildcards and recursive descent parse as they do on RedisJSON.
+        raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
     path_str: str = _format_path(path)
     try:
         return parse(path_str)
@@ -118,8 +147,8 @@ _FPHA_TYPES: dict[bytes, tuple[str, Callable[[float], float]]] = {
 def _shortest_float_in_type(quantized: float, quantizer: Callable[[float], float]) -> float:
     """Return the double parsed from the shortest decimal string that round-trips through the FP type.
 
-    This matches how real redis prints FPHA values: the stored FP16/BF16/FP32 value is rendered with
-    the fewest digits that still parse back to the same value in that type (e.g. FP16(0.1) prints as 0.1).
+    This matches how real redis prints FPHA values: the stored FP16/BF16/FP32 value is rendered with the fewest digits
+    that still parse back to the same value in that type (e.g. FP16(0.1) prints as 0.1).
     """
     for precision in range(1, 18):
         candidate = float(f"{quantized:.{precision}g}")
@@ -172,8 +201,8 @@ def _number_token_positions(raw: bytes) -> list[tuple[int, int]]:
 def _apply_fpha(value: JsonType, fpha_type: bytes, raw: bytes) -> JsonType:
     """Convert homogeneous numeric arrays in `value` to the requested floating-point type.
 
-    Every number in an array whose elements are all numbers is quantized to the FP type; an
-    out-of-range number raises the same error as real redis, pointing at its position in `raw`.
+    Every number in an array whose elements are all numbers is quantized to the FP type; an out-of-range number raises
+    the same error as real redis, pointing at its position in `raw`.
     """
     type_name, quantizer = _FPHA_TYPES[fpha_type]
     # Index of the current number in document order, used to locate the offending token on error.
@@ -208,13 +237,14 @@ def _json_write_iterate(
     key: CommandItem,
     path_str: str | bytes,
     allow_result_none: bool = False,
+    server_type: ServerType = "redis",
 ) -> JsonType:
     """Implement json.* write commands.
     Iterate over values with path_str in key and running method to get new value for path item.
     """
     if key.value is None:
-        raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
-    path = _parse_jsonpath(path_str)
+        raise _key_not_found(server_type)
+    path = _parse_jsonpath(path_str, server_type)
     found_matches = path.find(key.value)
     if len(found_matches) == 0:
         raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
@@ -244,15 +274,16 @@ def _json_read_iterate(
     key: CommandItem,
     *args: Any,
     error_on_zero_matches: bool = False,
+    server_type: ServerType = "redis",
 ) -> list[Any | None] | Any | None:
     path_str = args[0] if len(args) > 0 else "$"
     if key.value is None:
         if path_str[0] == ord(b"$"):
-            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+            raise _key_not_found(server_type)
         else:
             return None
 
-    path = _parse_jsonpath(path_str)
+    path = _parse_jsonpath(path_str, server_type)
     found_matches = path.find(key.value)
     if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
         raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
@@ -292,14 +323,52 @@ class JSONCommandsMixin(CommandsMixinBase):
         super().__init__(*args, **kwargs)
         self._db: helpers.Database
 
-    @staticmethod
+    def _legacy_path_reply(self, res: Any, legacy: bool) -> list[Any | None] | Any | None:
+        """Shape the reply to a legacy path the way the server under test shapes it.
+
+        Under RESP3 dragonfly answers a legacy path with the one-element array it answers a
+        JSONPath with -- `JSON.STRLEN j .a` is `[5]`, not the `5` RedisJSON sends. Under RESP2,
+        for a JSONPath, and for a null -- which is what a path that matched nothing answers
+        with -- the two agree.
+        """
+        if res is None or not legacy or self.server_type != "dragonfly" or self._client_info.protocol_version != 3:
+            return res
+        return [res]
+
+    def _read_iterate(
+        self,
+        method: Callable[[JsonType], Any | None],
+        key: CommandItem,
+        *args: Any,
+        error_on_zero_matches: bool = False,
+    ) -> list[Any | None] | Any | None:
+        res = _json_read_iterate(
+            method, key, *args, error_on_zero_matches=error_on_zero_matches, server_type=self.server_type
+        )
+        return self._legacy_path_reply(res, _path_is_legacy(args[0] if len(args) > 0 else None))
+
+    def _write_iterate(
+        self,
+        method: Callable[[JsonType], tuple[JsonType | None, Any, bool]],
+        key: CommandItem,
+        path_str: str | bytes,
+        allow_result_none: bool = False,
+        legacy: bool | None = None,
+    ) -> list[Any | None] | Any | None:
+        """`legacy` overrides the path form for a command that defaults an omitted path to `$`."""
+        res = _json_write_iterate(
+            method, key, path_str, allow_result_none=allow_result_none, server_type=self.server_type
+        )
+        return self._legacy_path_reply(res, _path_is_legacy(path_str) if legacy is None else legacy)
+
     def _get_single(
+        self,
         key: CommandItem,
         path_str: str | bytes,
         always_return_list: bool = False,
         empty_list_as_none: bool = False,
     ) -> Any:
-        path: JSONPath = _parse_jsonpath(path_str)
+        path: JSONPath = _parse_jsonpath(path_str, self.server_type)
         path_value = path.find(key.value)
         val = [i.value for i in path_value]
         if empty_list_as_none and len(val) == 0:
@@ -318,7 +387,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         if key.value is None:
             return 0
 
-        path = _parse_jsonpath(path_str)
+        path = _parse_jsonpath(path_str, self.server_type)
         if _path_is_root(path):
             delete_keys(key)
             return 1
@@ -335,9 +404,8 @@ class JSONCommandsMixin(CommandsMixinBase):
         key.update(curr_value)
         return res
 
-    @staticmethod
-    def _json_set(key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> SimpleString | None:
-        path = _parse_jsonpath(path_str)
+    def _json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> SimpleString | None:
+        path = _parse_jsonpath(path_str, self.server_type)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value_list = path.find(key.value)
@@ -383,7 +451,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         value = JSONObject.decode(value_bytes)
         if fpha is not None:
             value = _apply_fpha(value, fpha, value_bytes)
-        return JSONCommandsMixin._json_set(key, path_str, value, *left_args)
+        return self._json_set(key, path_str, value, *left_args)
 
     @command(name="JSON.GET", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_get(self, key: CommandItem, *args: bytes) -> bytes | None:
@@ -415,11 +483,11 @@ class JSONCommandsMixin(CommandsMixinBase):
         return result
 
     @command(name="JSON.TOGGLE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
-    def json_toggle(self, key: CommandItem, *args: bytes) -> list[bool | None] | bool | None:
+    def json_toggle(self, key: CommandItem, *args: bytes) -> list[Any] | bytes | bool | None:
         if key.value is None:
-            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+            raise _key_not_found(self.server_type)
         path_str = args[0] if len(args) > 0 else b"$"
-        path = _parse_jsonpath(path_str)
+        path = _parse_jsonpath(path_str, self.server_type)
         found_matches = path.find(key.value)
 
         curr_value = copy.deepcopy(key.value)
@@ -431,8 +499,16 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 res.append(None)
         if all(x is None for x in res):
-            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+            raise _key_not_found(self.server_type)
         key.update(curr_value)
+
+        if self.server_type == "dragonfly":
+            # Dragonfly answers a legacy path with the JSON text of the new value and a
+            # JSONPath with 0/1, where RedisJSON answers with booleans either way.
+            if _path_is_legacy(path_str):
+                return self._legacy_path_reply(JSONObject.encode(res[0]), True)
+            toggled: list[Any] = [int(x) if type(x) is bool else x for x in res]
+            return toggled
 
         if len(res) == 1 and (len(args) == 0 or (len(args) == 1 and args[0] == b".")):
             return res[0]
@@ -442,9 +518,9 @@ class JSONCommandsMixin(CommandsMixinBase):
     @command(name="JSON.CLEAR", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_clear(self, key: CommandItem, *args: bytes) -> int:
         if key.value is None:
-            raise helpers.SimpleError(msgs.JSON_KEY_NOT_FOUND)
+            raise _key_not_found(self.server_type)
         path_str: bytes = args[0] if len(args) > 0 else b"$"
-        path = _parse_jsonpath(path_str)
+        path = _parse_jsonpath(path_str, self.server_type)
         found_matches = path.find(key.value)
         curr_value = copy.deepcopy(key.value)
         res = 0
@@ -472,7 +548,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        return _json_write_iterate(strappend, key, path_str)
+        return self._write_iterate(strappend, key, path_str)
 
     @command(name="JSON.ARRAPPEND", fixed=(Key(), bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrappend(
@@ -490,7 +566,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrappend, key, path_str)
+        return self._write_iterate(arrappend, key, path_str)
 
     @command(name="JSON.ARRINSERT", fixed=(Key(), bytes, Int), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrinsert(
@@ -508,7 +584,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrinsert, key, path_str)
+        return self._write_iterate(arrinsert, key, path_str)
 
     @command(name="JSON.ARRPOP", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrpop(self, key: CommandItem, *args: bytes) -> JsonType:
@@ -520,10 +596,19 @@ class JSONCommandsMixin(CommandsMixinBase):
                 ind = index if index < len(val) else -1
                 res = val.pop(ind)
                 return val, JSONObject.encode(res), True
-            else:
-                return None, None, False
+            # An empty array has nothing to pop; a match that is no array at all is reported
+            # differently again, so the two are told apart below rather than here.
+            return None, (None if type(val) is list else _NOT_AN_ARRAY), False  # type:ignore[return-value]
 
-        return _json_write_iterate(arrpop, key, path_str, allow_result_none=True)
+        res: Any = _json_write_iterate(arrpop, key, path_str, allow_result_none=True, server_type=self.server_type)
+        if isinstance(res, list):
+            return [None if item is _NOT_AN_ARRAY else item for item in res]
+        if res is _NOT_AN_ARRAY:
+            # Flattening a legacy path down to one value, dragonfly reports a match that is no
+            # array as the JSON text `null`, where RedisJSON sends a null reply.
+            res = b"null" if self.server_type == "dragonfly" else None
+        # An omitted path is a legacy path here, whatever the `$` default says.
+        return self._legacy_path_reply(res, _path_is_legacy(args[0] if len(args) > 0 else None))
 
     @command(name="JSON.ARRTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_arrtrim(self, key: CommandItem, *args: bytes) -> JsonType:
@@ -542,7 +627,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        return _json_write_iterate(arrtrim, key, path_str)
+        return self._write_iterate(arrtrim, key, path_str, legacy=_path_is_legacy(args[0] if len(args) > 0 else None))
 
     @command(
         name="JSON.NUMINCRBY",
@@ -560,8 +645,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        res: JsonType = self._resp3_wrapping_list(_json_write_iterate(numincrby, key, path_str))
-        return res
+        return self._number_reply(_json_write_iterate(numincrby, key, path_str, server_type=self.server_type))
 
     @command(
         name="JSON.NUMMULTBY",
@@ -577,8 +661,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             else:
                 return None, None, False
 
-        res: JsonType = self._resp3_wrapping_list(_json_write_iterate(nummultby, key, path_str))
-        return res
+        return self._number_reply(_json_write_iterate(nummultby, key, path_str, server_type=self.server_type))
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
@@ -602,19 +685,19 @@ class JSONCommandsMixin(CommandsMixinBase):
             except StopIteration:
                 return -1
 
-        return _json_read_iterate(check_index, key, path_str, error_on_zero_matches=True)
+        return self._read_iterate(check_index, key, path_str, error_on_zero_matches=True)
 
     @command(name="JSON.STRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_strlen(self, key: CommandItem, *args: bytes) -> list[int | None] | int | None:
-        return _json_read_iterate(lambda val: len(val) if type(val) is str else None, key, *args)
+        return self._read_iterate(lambda val: len(val) if type(val) is str else None, key, *args)
 
     @command(name="JSON.ARRLEN", fixed=(Key(),), repeat=(bytes,))
     def json_arrlen(self, key: CommandItem, *args: bytes) -> list[int | None] | int | None:
-        return _json_read_iterate(lambda val: len(val) if type(val) is list else None, key, *args)
+        return self._read_iterate(lambda val: len(val) if type(val) is list else None, key, *args)
 
     @command(name="JSON.OBJLEN", fixed=(Key(),), repeat=(bytes,))
     def json_objlen(self, key: CommandItem, *args: bytes) -> list[int | None] | int | None:
-        return _json_read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
+        return self._read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
 
     def _resp3_wrapping_list(self, res: Any, wrap_list: bool = False) -> Any:
         if self._resp_version == 2:
@@ -623,14 +706,35 @@ class JSONCommandsMixin(CommandsMixinBase):
             return res
         return [res]
 
+    def _number_reply(self, res: JsonType) -> list[Any | None] | Any | None:
+        """Shape a JSON.NUMINCRBY / JSON.NUMMULTBY reply.
+
+        RedisJSON wraps the new value in an array under RESP3. Dragonfly does not, and
+        under RESP2 sends the JSON text of the value rather than the value itself.
+        """
+        if self.server_type != "dragonfly":
+            return self._resp3_wrapping_list(res)
+        if self._client_info.protocol_version == 2:
+            return JSONObject.encode(res)
+        return res
+
     @command(name="JSON.TYPE", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_type(self, key: CommandItem, *args: bytes) -> list[bytes | None] | bytes | None:
-        res = _json_read_iterate(lambda val: self.TYPE_NAMES.get(type(val), None), key, *args)
+        res = _json_read_iterate(
+            lambda val: self.TYPE_NAMES.get(type(val), None), key, *args, server_type=self.server_type
+        )
+        if self.server_type == "dragonfly":
+            if self._client_info.protocol_version == 3 and isinstance(res, list):
+                # Dragonfly wraps every match of a JSONPath in an array of its own, where
+                # RedisJSON wraps the whole reply in one.
+                wrapped: list[Any] = [[item] for item in res]
+                return wrapped
+            return self._legacy_path_reply(res, _path_is_legacy(args[0] if len(args) > 0 else None))
         return self._resp3_wrapping_list(res, wrap_list=True)  # type:ignore
 
     @command(name="JSON.OBJKEYS", fixed=(Key(),), repeat=(bytes,))
     def json_objkeys(self, key: CommandItem, *args: bytes) -> list[bytes | None] | bytes | None:
-        return _json_read_iterate(lambda val: [i.encode() for i in val] if type(val) is dict else None, key, *args)
+        return self._read_iterate(lambda val: [i.encode() for i in val] if type(val) is dict else None, key, *args)
 
     @command(name="JSON.MSET", fixed=(), repeat=(Key(), bytes, JSONObject), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mset(self, *args: Any) -> SimpleString:
@@ -638,12 +742,12 @@ class JSONCommandsMixin(CommandsMixinBase):
             raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mset"))
         for i in range(0, len(args), 3):
             key, path_str, value = args[i], args[i + 1], args[i + 2]
-            JSONCommandsMixin._json_set(key, path_str, value)
+            self._json_set(key, path_str, value)
         return helpers.OK
 
     @command(name="JSON.MERGE", fixed=(Key(), bytes, JSONObject), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_merge(self, key: CommandItem, path_str: bytes, value: JsonType) -> SimpleString:
-        path: JSONPath = _parse_jsonpath(path_str)
+        path: JSONPath = _parse_jsonpath(path_str, self.server_type)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
             raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         matching = path.find(key.value)

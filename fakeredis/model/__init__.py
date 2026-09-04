@@ -7,6 +7,7 @@ from ._command_info import (
     get_categories,
     get_command_info,
     get_commands_by_category,
+    is_write_command,
 )
 from ._expiring_members_set import ExpiringMembersSet
 from ._hash import Hash
@@ -37,6 +38,7 @@ __all__ = [
     "get_categories",
     "get_command_info",
     "get_commands_by_category",
+    "is_write_command",
 ]
 
 try:

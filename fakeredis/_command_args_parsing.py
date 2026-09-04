@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -131,7 +132,8 @@ def extract_args(
                 raise (
                     SimpleError(msgs.SYNTAX_ERROR_MSG)
                     if exception is None
-                    else SimpleError(exception.format(actual_args[i]))
+                    # The offending argument is echoed as text, not as a bytes repr.
+                    else SimpleError(exception.format(actual_args[i].decode(errors="replace")))
                 )
             if left_from_first_unexpected:
                 return results, actual_args[i:]
@@ -141,7 +143,7 @@ def extract_args(
 
 
 def parse_mpop_args(
-    command: str, numkeys: int, args: tuple[bytes, ...], directions: tuple[str, str]
+    command: str, numkeys: int, args: tuple[bytes, ...], directions: tuple[str, str], server_type: str = "redis"
 ) -> tuple[Sequence[bytes], int, bool]:
     """Validate the LMPOP/BLMPOP/ZMPOP/BZMPOP tail: keys, a direction token, optional COUNT.
 
@@ -151,12 +153,22 @@ def parse_mpop_args(
     if len(args) < 2:  # arity (at least one key + a direction) is checked before numkeys, like real redis
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
     if numkeys <= 0:
-        raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+        if server_type != "dragonfly":
+            raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+        # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
+        raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
     (count, first, second), keys = extract_args(
         args, ("+count", *directions), error_on_unexpected=False, left_from_first_unexpected=False
     )
     if len(keys) != numkeys or first == second:  # exactly one direction, and it follows exactly `numkeys` keys
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     if count is not None and count <= 0:
-        raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+        if server_type != "dragonfly":
+            raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+        # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP -- popping
+        # everything -- but rejected outright by LMPOP.
+        if count < 0:
+            if command.lower().endswith("lmpop"):
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = sys.maxsize
     return keys, 1 if count is None else count, first
