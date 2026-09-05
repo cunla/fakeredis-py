@@ -5,7 +5,7 @@ from fakeredis._typing import ClientType
 _ = pytest.importorskip("lupa")
 
 
-@pytest.mark.unsupported_server_types("redis", "dragonfly")
+@pytest.mark.unsupported_server_types("redis", "dragonfly", "kividb")
 def test_server_is_alias_for_redis(r: ClientType):
     result = r.eval("return tostring(server == redis)", 0)
     assert result == b"true"

@@ -9,7 +9,7 @@ json_tests = pytest.importorskip("probables")
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.unsupported_server_types("dragonfly"),
+        pytest.mark.unsupported_server_types("dragonfly", "kividb"),
     ]
 )
 

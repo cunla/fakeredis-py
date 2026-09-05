@@ -9,7 +9,7 @@ topk_tests = pytest.importorskip("probables")
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb"),
         pytest.mark.supported_server_versions(min_redis_ver="7"),
     ]
 )
