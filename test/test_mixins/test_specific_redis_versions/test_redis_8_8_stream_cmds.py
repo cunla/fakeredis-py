@@ -541,6 +541,18 @@ def test_xnack_invalid_mode_message(r: ClientType):
         testtools.raw_command(r, "XNACK", stream, group, "BOGUS", "IDS", 1, m1)
 
 
+def test_xack_after_xnack_releases_the_entry(r: ClientType):
+    stream, group, consumer = "stream", "group", "consumer"
+    m1 = r.xadd(stream, {"foo": "bar"})
+    r.xgroup_create(stream, group, 0)
+    r.xreadgroup(group, consumer, streams={stream: ">"})
+
+    # XNACK leaves the entry pending but unowned, so XACK has no consumer to charge it back to.
+    assert testtools.raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m1) == 1
+    assert r.xack(stream, group, m1) == 1
+    assert r.xpending(stream, group)["pending"] == 0
+
+
 def test_xnack_nogroup_errors(r: ClientType):
     stream, group = "stream", "group"
     m1 = r.xadd(stream, {"foo": "bar"})
