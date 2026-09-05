@@ -417,6 +417,9 @@ class ScriptingCommandsMixin(CommandsMixinBase):
     def script_help(self, *args: bytes) -> list[bytes]:
         if self.server_type == "dragonfly":
             return [s.encode() for s in DRAGONFLY_SCRIPT_HELP]
+        if self.server_type == "kividb":
+            # KiviDB's SCRIPT has no HELP subcommand.
+            raise SimpleError(msgs.KIVIDB_UNKNOWN_SCRIPT_SUBCOMMAND_MSG.format("help"))
         help_strings = [
             "SCRIPT <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
             "DEBUG (YES|SYNC|NO)",

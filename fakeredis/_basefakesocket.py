@@ -268,11 +268,13 @@ class BaseFakeSocket:
     def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
         """Build the server's "unknown command" error.
 
-        Dragonfly uses its own wording and never echoes the arguments back, so `args` is only appended for the
-        Redis/Valkey format.
+        Dragonfly uses its own wording and never echoes the arguments back, and KiviDB names nothing at all, so
+        `args` is only appended for the Redis/Valkey format.
         """
         if self._server.server_type == "dragonfly":
             return SimpleError(msgs.DRAGONFLY_UNKNOWN_COMMAND_MSG.format(command.upper()))
+        if self._server.server_type == "kividb":
+            return SimpleError(msgs.KIVIDB_UNKNOWN_COMMAND_MSG)
         msg = msgs.UNKNOWN_COMMAND_MSG.format(command)
         if args is not None:
             msg += f"'{args}' "

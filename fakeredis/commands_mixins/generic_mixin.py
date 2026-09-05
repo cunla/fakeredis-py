@@ -410,7 +410,8 @@ class GenericCommandsMixin(CommandsMixinBase):
     def type_cmd(self, key: CommandItem) -> SimpleString:
         return self._key_value_type(key)
 
-    @command(name="UNLINK", fixed=(Key(),), repeat=(Key(),))
+    # KiviDB has no UNLINK at all; DEL is the only way to remove a key there.
+    @command(name="UNLINK", fixed=(Key(),), repeat=(Key(),), server_types=("redis", "valkey", "dragonfly"))
     def unlink(self, *keys: CommandItem) -> int:
         return delete_keys(*keys)
 
