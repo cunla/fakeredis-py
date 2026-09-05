@@ -116,6 +116,10 @@ class CommandItem:
 
 
 class RedisType:
+    # Set on the converters whose parsing depends on which server is being emulated; `Signature.apply`
+    # passes the server type to those, and only those.
+    SERVER_AWARE = False
+
     @classmethod
     def decode(cls, *args, **kwargs):  # type:ignore
         raise NotImplementedError
@@ -270,26 +274,43 @@ class AfterAny:
 class StringTest(RedisType):
     """Argument converter for sorted set LEX endpoints."""
 
-    def __init__(self, value: bytes | BeforeAny | AfterAny, exclusive: bool):
+    SERVER_AWARE = True
+
+    def __init__(self, value: bytes | BeforeAny | AfterAny, exclusive: bool, unbounded: bool = False):
         self.value = value
         self.exclusive = exclusive
+        # KiviDB endpoint that names no item, and so is unbounded on whichever side it is used.
+        self.unbounded = unbounded
 
     @property
     def inclusive(self) -> bool:
         return not self.exclusive
 
     @classmethod
-    def decode(cls, value: bytes) -> StringTest:
-        if value == b"-":
-            return cls(BeforeAny(), True)
-        elif value == b"+":
-            return cls(AfterAny(), True)
-        elif value[:1] == b"(":
+    def decode(cls, value: bytes, server_type: ServerType = "redis") -> StringTest:
+        if value[:1] == b"(":
             return cls(value[1:], True)
         elif value[:1] == b"[":
             return cls(value[1:], False)
+        elif server_type == "kividb":
+            # KiviDB only reads `[item` and `(item`. Everything else -- `-`, `+`, an empty endpoint and
+            # any unprefixed junk -- is unbounded, on whichever side it was given, so `ZRANGEBYLEX k + -`
+            # answers with the whole set where redis answers with nothing.
+            return cls(BeforeAny(), True, unbounded=True)
+        elif value == b"-":
+            return cls(BeforeAny(), True)
+        elif value == b"+":
+            return cls(AfterAny(), True)
         else:
             raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
+
+    def as_min(self) -> StringTest:
+        """This endpoint used as a range's lower bound."""
+        return StringTest(BeforeAny(), True) if self.unbounded else self
+
+    def as_max(self) -> StringTest:
+        """This endpoint used as a range's upper bound."""
+        return StringTest(AfterAny(), True) if self.unbounded else self
 
 
 class Signature:
@@ -323,7 +344,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-        self, args: Sequence[Any], db: Database, version: VersionType
+        self, args: Sequence[Any], db: Database, version: VersionType, server_type: ServerType = "redis"
     ) -> tuple[Any] | tuple[list[Any], list[CommandItem]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
@@ -341,8 +362,10 @@ class Signature:
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
                     return (type_.missing_return,)
             elif type_ is not bytes:
-                args_list[i] = type_.decode(
-                    args_list[i],
+                args_list[i] = (
+                    type_.decode(args_list[i], server_type=server_type)  # type: ignore[call-arg]
+                    if getattr(type_, "SERVER_AWARE", False)
+                    else type_.decode(args_list[i])
                 )
 
         # Second pass: read keys and check their types

@@ -387,7 +387,7 @@ class BaseFakeSocket:
         self._subkey_events = []
         is_dragonfly = self.server_type == "dragonfly"
         try:
-            ret = sig.apply(args, self._db, self.version)
+            ret = sig.apply(args, self._db, self.version, self.server_type)
             if from_script and (
                 msgs.FLAG_NO_SCRIPT in sig.flags or (is_dragonfly and sig.name in DRAGONFLY_NO_SCRIPT_COMMANDS)
             ):
