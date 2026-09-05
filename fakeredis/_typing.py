@@ -22,7 +22,7 @@ lib_version = metadata.version("fakeredis")
 # These are evaluated at runtime (not annotations), so they must use typing aliases rather than PEP 585 builtins to
 # remain importable on Python 3.8.
 VersionType = Tuple[int, ...]
-ServerType = Literal["redis", "dragonfly", "valkey"]
+ServerType = Literal["redis", "dragonfly", "valkey", "kividb"]
 JsonType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 RaiseErrorTypes: tuple[type[Exception], ...] = (redis.ResponseError, redis.AuthenticationError)
 ResponseErrorType = redis.ResponseError

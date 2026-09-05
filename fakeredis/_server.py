@@ -45,7 +45,7 @@ class FakeServer:
     ) -> None:
         """Initialize a new FakeServer instance.
         :param version: The version of the server (e.g. 6, 7.4, "7.4.1", can also be a tuple)
-        :param server_type: The type of server (redis, dragonfly, valkey)
+        :param server_type: The type of server (redis, dragonfly, valkey, kividb)
         :param config: A dictionary of configuration options.
 
         Configuration options:
@@ -65,7 +65,7 @@ class FakeServer:
         self.sockets: list[Any] = []
         self.closed_sockets: list[Any] = []
         self.version: VersionType = _create_version(version)
-        if server_type not in ("redis", "dragonfly", "valkey"):
+        if server_type not in ("redis", "dragonfly", "valkey", "kividb"):
             raise ValueError(f"Unsupported server type: {server_type}")
         self.server_type: ServerType = server_type
         self.config: dict[bytes, bytes] = config or {}
