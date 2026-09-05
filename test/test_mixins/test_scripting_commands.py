@@ -805,3 +805,79 @@ def test_lua_state_isolated_between_eval_calls(r: ClientType) -> None:
     # Verify KEYS/ARGV are actually nil, not stale values
     result4 = r.eval("return KEYS[1] == nil and ARGV[1] == nil", 0)
     assert result4 == 1  # true in Lua = 1
+
+
+def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType, real_server_details) -> None:
+    """A script sees RESP2 replies even on a RESP3 connection, until it asks for RESP3."""
+    r.zadd("z", {"member": 42})
+    script = """
+    local candidate = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+    return {#candidate, candidate[1], candidate[2]}
+    """
+    # Flat member/score, not a nested pair — identical under both protocols. Dragonfly hands the score
+    # to Lua as a number, where redis sends the RESP2 bulk string.
+    score = 42 if real_server_details.server_type == "dragonfly" else b"42"
+    assert r.eval(script, 1, "z") == [2, b"member", score]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_eval_setresp_3_selects_resp3_shapes(r: ClientType) -> None:
+    r.hset("h", mapping={"field": "value"})
+    script = """
+    redis.setresp(3)
+    local reply = redis.call('HGETALL', KEYS[1])
+    if reply['map'] == nil then return 'not-a-map' end
+    return reply['map']['field']
+    """
+    assert r.eval(script, 1, "h") == b"value"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_eval_setresp_2_matches_the_default(r: ClientType) -> None:
+    r.hset("h", mapping={"field": "value"})
+    script = """
+    {setresp}
+    local reply = redis.call('HGETALL', KEYS[1])
+    if reply['map'] ~= nil then return 'a-map' end
+    return {{reply[1], reply[2]}}
+    """
+    assert r.eval(script.format(setresp="redis.setresp(2)"), 1, "h") == [b"field", b"value"]
+    assert r.eval(script.format(setresp=""), 1, "h") == [b"field", b"value"]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_eval_setresp_does_not_leak_into_the_next_script(r: ClientType) -> None:
+    r.hset("h", mapping={"field": "value"})
+    assert r.eval("redis.setresp(3) return 'ok'", 0) == b"ok"
+
+    # The next script starts from RESP2 again.
+    script = """
+    local reply = redis.call('HGETALL', KEYS[1])
+    if reply['map'] ~= nil then return 'a-map' end
+    return reply[1]
+    """
+    assert r.eval(script, 1, "h") == b"field"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize("script", ["redis.setresp(1)", "redis.setresp(4)", "redis.setresp(nil)"])
+def test_eval_setresp_rejects_other_versions(r: ClientType, script: str) -> None:
+    with pytest.raises(Exception) as ctx:
+        r.eval(script, 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "RESP version must be 2 or 3" in str(ctx.value)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize("script", ["redis.setresp()", "redis.setresp(2, 3)"])
+def test_eval_setresp_requires_exactly_one_argument(r: ClientType, script: str) -> None:
+    with pytest.raises(Exception) as ctx:
+        r.eval(script, 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "requires one argument" in str(ctx.value)
+
+
+def test_eval_returns_resp3_shapes_a_script_built(r: ClientType) -> None:
+    """A script may hand back the RESP3 types redis.setresp(3) produces."""
+    assert r.eval("return {double=3.5}", 0) in (b"3.5", 3.5)
+    assert r.eval("return {map={field='value'}}", 0) in ([b"field", b"value"], {b"field": b"value"})

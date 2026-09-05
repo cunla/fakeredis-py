@@ -700,7 +700,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         return self._read_iterate(lambda val: len(val) if type(val) is dict else None, key, *args)
 
     def _resp3_wrapping_list(self, res: Any, wrap_list: bool = False) -> Any:
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             return res
         if isinstance(res, list) and not wrap_list:
             return res

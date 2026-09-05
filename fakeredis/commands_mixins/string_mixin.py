@@ -200,7 +200,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             if not saturate:
                 # Out of bounds: skip the operation, leaving the key and its TTL untouched.
                 result, amount = current, 0
-                if self._client_info.protocol_version == 2 and float_mode:
+                if self._resp_version == 2 and float_mode:
                     return [self._encodefloat(result, True), self._encodefloat(0.0, True)]
                 return [result, amount]
             result = min(max(result, lower), upper)
@@ -219,7 +219,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             key.expireat = None
         elif expire_time is not None and not (enx and key.expireat is not None):
             key.expireat = expire_time
-        if float_mode and self._client_info.protocol_version == 2:
+        if float_mode and self._resp_version == 2:
             return [self._encodefloat(result, True), self._encodefloat(amount, True)]
         return [result, amount]
 

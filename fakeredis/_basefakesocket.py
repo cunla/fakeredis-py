@@ -200,6 +200,10 @@ class BaseFakeSocket:
     def server_type(self) -> ServerType:
         return self._server.server_type
 
+    @property
+    def _resp_version(self) -> int:
+        return getattr(self, "_script_resp", None) or self._client_info.protocol_version
+
     def put_response(self, msg: Any) -> None:
         """Put a response message into the queue of responses.
 
@@ -395,7 +399,8 @@ class BaseFakeSocket:
             else:
                 args, command_items = ret
                 result = func(*args)  # type: ignore
-                if self._client_info.protocol_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
+                resp_version = self._resp_version
+                if resp_version == 2 and msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags:
                     result = _convert_to_resp2(
                         result,
                         self.server_type,
@@ -403,9 +408,7 @@ class BaseFakeSocket:
                         # whatever protocol the client that invoked the script speaks.
                         keep_doubles=from_script and is_dragonfly,
                     )
-                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(
-                    result, self._client_info.protocol_version
-                ):
+                if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(result, resp_version):
                     raise AssertionError(f"Invalid response type for {result}")
         except SimpleError as exc:
             result = exc

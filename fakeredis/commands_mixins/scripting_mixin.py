@@ -92,19 +92,31 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         if isinstance(result, (bytes, int)):
             return result
         if isinstance(result, float):
-            # Redis hands a double reply (ZSCORE, INCRBYFLOAT, ...) to Lua as a string;
-            # Dragonfly hands it over as a number.
+            # Redis hands a double reply (ZSCORE, INCRBYFLOAT, ...) to Lua as a string under RESP2 and as
+            # {double=...} under RESP3. Dragonfly hands it over as a plain number whatever the script's RESP
+            # mode, so it is checked first.
             if self.server_type == "dragonfly":
                 return result
+            if self._resp_version == 3:
+                return lua_runtime.table_from({b"double": result})
             return Float.encode(result, humanfriendly=False)
         elif isinstance(result, SimpleString):
             return lua_runtime.table_from({b"ok": result.value})
         elif result is None:
             return False
+        elif isinstance(result, str):
+            return result.encode()
         elif isinstance(result, list):
             converted = [self._convert_redis_result(lua_runtime, item) for item in result]
             return lua_runtime.table_from(converted)
         if isinstance(result, dict):
+            # RESP3 keeps a map a map, keyed as {map={...}}. RESP2 flattens it to key, value, ...
+            if self._resp_version == 3:
+                converted_map = {
+                    self._convert_redis_result(lua_runtime, k): self._convert_redis_result(lua_runtime, v)
+                    for k, v in result.items()
+                }
+                return lua_runtime.table_from({b"map": lua_runtime.table_from(converted_map)})
             result = list(itertools.chain(*result.items()))
             converted = [self._convert_redis_result(lua_runtime, item) for item in result]
             return lua_runtime.table_from(converted)
@@ -128,6 +140,16 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                         return SimpleError(msg.decode("utf-8", "replace"))
                     else:
                         raise SimpleError(msg.decode("utf-8", "replace"))
+            # The RESP3 shapes a script can hand back, mirroring what redis.call produces
+            # for a script that ran redis.setresp(3). A RESP2 client still gets the RESP2
+            # rendering of these — a bulk string for a double, a flat array for a map.
+            if b"double" in result:
+                double = result[b"double"]
+                if isinstance(double, bool) or not isinstance(double, (int, float)):
+                    raise SimpleError(msgs.LUA_WRONG_NUMBER_ARGS_MSG)
+                return float(double)
+            if b"map" in result:
+                return {self._convert_lua_result(k): self._convert_lua_result(v) for k, v in result[b"map"].items()}
             # Convert Lua tables into lists, starting from index 1, mimicking the behavior of StrictRedis.
             result_list = []
             for index in itertools.count(1):
@@ -161,6 +183,23 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         result = self._convert_redis_result(lua_runtime, result)
         return result
 
+    def _lua_setresp(self, lua_runtime: Any, expected_globals: set[Any], *args: Any) -> None:
+        """`redis.setresp(n)` — pick the RESP version `redis.call` replies in for this script."""
+        _check_for_lua_globals(lua_runtime, expected_globals)
+        if len(args) != 1:
+            raise SimpleError(msgs.LUA_SETRESP_ARGS_MSG)
+        resp = args[0]
+        if isinstance(resp, bytes):
+            # redis reads the argument with lua_tonumber, which coerces a numeric string.
+            try:
+                resp = float(resp)
+            except ValueError:
+                raise SimpleError(msgs.LUA_SETRESP_VERSION_MSG)
+        # Lua has one number type, so 3 arrives as 3.0; anything that is not exactly 2 or 3 is an error.
+        if isinstance(resp, bool) or not isinstance(resp, (int, float)) or resp not in (2, 3):
+            raise SimpleError(msgs.LUA_SETRESP_VERSION_MSG)
+        self._script_resp = int(resp)
+
     def _lua_redis_pcall(self, lua_runtime: Any, expected_globals: set[Any], op: bytes, *args: Any) -> Any:
         try:
             return self._lua_redis_call(lua_runtime, expected_globals, op, *args)
@@ -188,15 +227,19 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             )
             # Valkey exposes a `server` alias for the `redis` global in Lua scripts
             server_alias_str = "server = redis" if server.server_type == "valkey" else ""
+            # Dragonfly has no `redis.setresp`; leaving the field unset makes a script that calls it fail the way the
+            # real server does, with "attempt to call a nil value (field 'setresp')".
+            setresp_str = "" if server.server_type == "dragonfly" else "redis.setresp = redis_setresp"
 
             # Create initialization function that sets up callbacks once
             set_globals_init = lua_runtime.eval(
                 f"""
-                function(redis_call, redis_pcall, redis_log, cjson_encode, cjson_decode, cjson_null)
+                function(redis_call, redis_pcall, redis_log, redis_setresp, cjson_encode, cjson_decode, cjson_null)
                     redis = {{}}
                     redis.call = redis_call
                     redis.pcall = redis_pcall
                     redis.log = redis_log
+                    {setresp_str}
                     {log_levels_str}
                     redis.error_reply = function(msg) return {{err=msg}} end
                     redis.status_reply = function(msg) return {{ok=msg}} end
@@ -231,6 +274,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                 lambda *args: None,
                 lambda *args: None,
                 lambda *args: None,
+                lambda *args: None,
                 _lua_cjson_null,
             )
             s._lua_expected_globals = set(lua_runtime.globals().keys())
@@ -254,9 +298,17 @@ class ScriptingCommandsMixin(CommandsMixinBase):
 
                 return wrapper
 
+            def make_setresp_wrapper() -> Callable[..., Any]:
+                def wrapper(*args: Any) -> Any:
+                    socket = s._lua_current_socket[0]
+                    return socket._lua_setresp(lua_runtime, expected_globals, *args)
+
+                return wrapper
+
             # Cache the callback wrappers and static partials
             s._lua_redis_call_wrapper = make_redis_call_wrapper()
             s._lua_redis_pcall_wrapper = make_redis_pcall_wrapper()
+            s._lua_setresp_wrapper = make_setresp_wrapper()
             s._lua_log_partial = functools.partial(_lua_redis_log, lua_runtime, expected_globals, server.server_type)
             s._lua_cjson_encode_partial = functools.partial(_lua_cjson_encode, lua_runtime, expected_globals)
             s._lua_cjson_decode_partial = functools.partial(_lua_cjson_decode, lua_runtime, expected_globals)
@@ -266,6 +318,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                 s._lua_redis_call_wrapper,
                 s._lua_redis_pcall_wrapper,
                 s._lua_log_partial,
+                s._lua_setresp_wrapper,
                 s._lua_cjson_encode_partial,
                 s._lua_cjson_decode_partial,
                 _lua_cjson_null,
@@ -288,6 +341,9 @@ class ScriptingCommandsMixin(CommandsMixinBase):
 
         # Update the current socket so cached callbacks can find it
         s._lua_current_socket[0] = self
+        # Every script starts at RESP2, whatever protocol the calling client speaks, and
+        # `redis.setresp` does not carry over from an earlier script.
+        self._script_resp = 2
 
         # Only update KEYS and ARGV per call (callbacks are already set up)
         s._lua_set_keys_argv(
@@ -311,6 +367,8 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.DRAGONFLY_SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
             raise SimpleError(msgs.SCRIPT_ERROR_MSG.format(sha1.decode(), ex))
         finally:
+            # Back to the client's own protocol, so the EVAL reply itself is shaped for it.
+            self._script_resp = None
             # Clean up Lua tables (KEYS/ARGV) created for this script execution
             lua_runtime.execute("collectgarbage()")
 

@@ -88,6 +88,8 @@ LUA_COMMAND_ARG_MSG6 = "ERR Lua redis() command arguments must be strings or int
 LUA_COMMAND_ARG_MSG = "ERR Lua redis lib command arguments must be strings or integers"
 VALKEY_LUA_COMMAND_ARG_MSG = "Command arguments must be strings or integers script: {}"
 LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
+LUA_SETRESP_ARGS_MSG = "ERR redis.setresp() requires one argument."
+LUA_SETRESP_VERSION_MSG = "ERR RESP version must be 2 or 3."
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
 # Dragonfly reports redis_version 7.x but still wraps script errors the way Redis 6 did,
 # minus the `f_` prefix on the sha.

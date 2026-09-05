@@ -117,8 +117,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         # RESP2 always returns a flat list. RESP3 returns a flat member/score pair only when no count was given; with an
         # explicit count it returns an array of pairs. Dragonfly answers RESP3 with an array of pairs either way.
         if self.server_type == "dragonfly":
-            return self._client_info.protocol_version == 2
-        return self._client_info.protocol_version == 2 or count is None
+            return self._resp_version == 2
+        return self._resp_version == 2 or count is None
 
     @command((Key(ZSet),), (Int,))
     def zpopmin(self, key: CommandItem, count: int | None = None) -> list[Any]:
@@ -157,7 +157,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     def _apply_withscores(self, items: list[tuple[bytes, bytes]], withscores: bool) -> list[Any]:
         if withscores:
-            if self._client_info.protocol_version == 2:
+            if self._resp_version == 2:
                 out = []
                 for item in items:
                     out.append(item[1])
@@ -466,7 +466,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         """
         if not withscores:
             return list(zset)
-        if self._client_info.protocol_version == 2 or (flat_on_dragonfly and self.server_type == "dragonfly"):
+        if self._resp_version == 2 or (flat_on_dragonfly and self.server_type == "dragonfly"):
             return [item for member in zset for item in (member, zset[member])]
         return [[member, zset[member]] for member in zset]
 
@@ -636,9 +636,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
         if not withscores:
             res = [t[0] for t in res]
-        elif self._client_info.protocol_version == 2:
+        elif self._resp_version == 2:
             res = [item for t in res for item in t]
-        else:  # self._client_info.protocol_version == 3 and withscores
+        else:  # self._resp_version == 3 and withscores
             res = [list(item) for item in res]
         return res
 

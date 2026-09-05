@@ -129,7 +129,7 @@ class BFCommandsMixin(CommandsMixinBase):
             res = key.value.scale if key.value.scale > 0 else None
         else:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if self._client_info.protocol_version == 2:
+        if self._resp_version == 2:
             return [res]
         return {res_key: res}
 

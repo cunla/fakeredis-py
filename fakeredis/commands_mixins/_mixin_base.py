@@ -16,6 +16,7 @@ class CommandsMixinBase:
     _server: FakeServer
     _client_info: ClientInfo
     _db: Database
+    _script_resp: int | None = None
 
     @property
     def version(self) -> VersionType:
@@ -24,6 +25,15 @@ class CommandsMixinBase:
     @property
     def server_type(self) -> ServerType:
         raise NotImplementedError
+
+    @property
+    def _resp_version(self) -> int:
+        """RESP version the reply being built should be shaped for.
+
+        That is the client's negotiated protocol, except inside a script, where replies to
+        `redis.call` follow the script's own RESP mode instead.
+        """
+        return self._script_resp if self._script_resp is not None else self._client_info.protocol_version
 
     def _blocking(
         self, timeout: float | None, func: Callable[[bool], Any], shape: Callable[[Any], Any] | None = None
@@ -37,6 +47,6 @@ class CommandsMixinBase:
         Redis sends a null array, which RESP3 renders as nil. Dragonfly sends an empty array instead, so under RESP3 the
         client sees `[]` rather than `None`. Under RESP2 both encode to `*-1` and the client sees `None` either way.
         """
-        if result is None and self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
+        if result is None and self.server_type == "dragonfly" and self._resp_version == 3:
             return []
         return result

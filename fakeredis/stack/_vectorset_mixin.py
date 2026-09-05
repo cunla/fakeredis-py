@@ -260,7 +260,7 @@ class VectorSetCommandsMixin(CommandsMixinBase):
             raise SimpleError(VSET_ERR_NOTEXIST)
         res = vector_set.top_similar(vector, filter_expression, count, epsilon, filter_ef)
         if with_scores and with_attributes:
-            if self._client_info.protocol_version == 2:
+            if self._resp_version == 2:
                 return list(itertools.chain.from_iterable([[k.name, v, k.attributes] for k, v in res.items()]))
             return {k.name: [v, k.attributes] for k, v in res.items()}
         if with_scores:
