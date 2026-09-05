@@ -28,7 +28,17 @@ toc_depth: 2
   of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
 - fix: `redis.call` in a Lua script now returns RESP2 shapes whatever protocol the calling client negotiated, matching
   real Redis, where a script must opt into RESP3 explicitly; `redis.setresp(2)`/`redis.setresp(3)` are now supported and
-  select the script's response mode, which resets to RESP2 for each script run (#543)
+  select the script's response mode, which resets to RESP2 for each script run. Dragonfly has no `redis.setresp`,
+  so fakeredis does not expose one when emulating it either (#543)
+- fix: `XCLAIM`/`XAUTOCLAIM` now move an entry's pending count to the claiming consumer instead of leaving it on the
+  previous owner, so a later `XACK` no longer drives that consumer's count negative (#548)
+- fix: `XACK` no longer raises a raw Python `KeyError` when a pending entry has no live consumer, and
+  `XGROUP DELCONSUMER` now removes the entries that consumer still owned, returning how many it dropped (#549)
+- fix: `XCLAIM` now honours `RETRYCOUNT`, and `XCLAIM`/`XAUTOCLAIM` honour `JUSTID`, when updating an entry's delivery
+  counter — `RETRYCOUNT` takes precedence over `JUSTID`, and a negative `RETRYCOUNT` means "not given" and falls through
+  to the usual increment (#544)
+- fix: cancelling a blocking async command (`BRPOP`, `BLPOP`, `XREAD BLOCK 0`, ...) no longer leaves the connection
+  unusable — it went back to the pool with its socket still paused, so every later command on it hung (#471)
 
 ### 🧰 Maintenance
 
