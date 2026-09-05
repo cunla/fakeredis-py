@@ -1,0 +1,78 @@
+---
+name: Test KiviDB
+
+on:
+  workflow_dispatch:
+
+
+concurrency:
+  group: kividb-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tests:
+          - "test_mixins"
+          - "test_stack"
+          - "test_async"
+          - "test_internals"
+          - "test_tcp_server"
+          - "test_keyspace_notifications.py"
+          - "test_hypothesis"
+    permissions:
+      pull-requests: write
+    services:
+      redis:
+        image: quay.io/kividbio/kividb:v1.0.4-lua
+        ports:
+          - 6390:6380
+        options: >-
+          --health-cmd "redis-cli -p 6380 ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
+        with:
+          cache-dependency-path: uv.lock
+          python-version: 3.13
+      - name: Install dependencies
+        env:
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          uv sync --all-extras
+
+      - name: Test without coverage
+        run: |
+          uv run pytest test/${{ matrix.tests }} \
+          --html=report-${{ matrix.tests }}.html \
+          --self-contained-html \
+          -v
+      - name: Upload Tests Result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tests-result-${{ matrix.tests }}
+          path: report-${{ matrix.tests }}.html
+
+  upload-results:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Collect Tests Result
+        uses: actions/upload-artifact/merge@v7
+        with:
+          delete-merged: true
