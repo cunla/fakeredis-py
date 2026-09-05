@@ -301,7 +301,7 @@ class Signature:
         repeat: tuple[type[RedisType | bytes]] = (),  # type:ignore
         args: tuple[str] = (),  # type:ignore
         flags: str = "",
-        server_types: Collection[ServerType] = ("redis", "valkey", "dragonfly"),
+        server_types: Collection[ServerType] = ("redis", "valkey", "dragonfly", "kividb"),
     ):
         self.name = name
         self.func_name = func_name
