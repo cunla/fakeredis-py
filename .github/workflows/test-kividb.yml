@@ -20,6 +20,7 @@ jobs:
           - "test_stack"
           - "test_async"
           - "test_internals"
+          - "test_kividb"
           - "test_tcp_server"
           - "test_keyspace_notifications.py"
           - "test_hypothesis"
