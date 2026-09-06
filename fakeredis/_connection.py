@@ -104,7 +104,7 @@ class FakeRedisMixin:
         """
         :param server: The FakeServer instance to use for this connection.
         :param version: The Redis version to use, as a tuple (major, minor).
-        :param server_type: The type of server, e.g., "redis", "valkey".
+        :param server_type: The type of server, e.g., "redis", "valkey", "dragonfly", "kividb".
         :param lua_modules: A set of Lua modules to load.
         :param client_class: The Redis client class to use, e.g., redis.Redis or valkey.Valkey.
         """

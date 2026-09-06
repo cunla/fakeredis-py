@@ -40,6 +40,20 @@ def test_deprecated_args_no_warnings(warn_mock: mock.MagicMock):
 
 
 @pytest.mark.fake
+@pytest.mark.parametrize("server_type", ["redis", "valkey", "dragonfly", "kividb"])
+def test_supported_server_types(server_type: str):
+    r = fakeredis.FakeStrictRedis(server_type=server_type)
+    r.set("foo", "bar")
+    assert r.get("foo") == b"bar"
+
+
+@pytest.mark.fake
+def test_unsupported_server_type():
+    with pytest.raises(ValueError, match="Unsupported server type: mongo"):
+        fakeredis.FakeServer(server_type="mongo")
+
+
+@pytest.mark.fake
 class TestInitArgs:
     def test_singleton(self):
         shared_server = fakeredis.FakeServer()
