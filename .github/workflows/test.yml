@@ -37,7 +37,7 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        redis-image:
+        server-image:
           - "redis:8.8"
           - "valkey/valkey:9.1"
           - "redis:7.4.8"
@@ -53,39 +53,44 @@ jobs:
           - python-version: "3.10"
             redis-py: "8.1.0"
           - python-version: "3.14"
-            redis-image: "redis:8.8"
+            server-image: "redis:8.8"
             redis-py: "7.4.0"
             install-extras: false
             coverage: false
         include:
           - python-version: "3.10"
-            redis-image: "redis:8.8"
+            server-image: "redis:8.8"
             redis-py: "4.6.0"
             install-extras: false
             coverage: false
           - python-version: "3.10"
-            redis-image: "redis:8.8"
+            server-image: "redis:8.8"
             redis-py: "5.3.1"
             install-extras: false
             coverage: false
           - python-version: "3.14"
-            redis-image: "redis/redis-stack-server:6.2.6-v20"
+            server-image: "redis/redis-stack-server:6.2.6-v20"
             redis-py: "8.1.0"
             install-extras: true
           - python-version: "3.14"
-            redis-image: "redis/redis-stack-server:7.4.0-v8"
+            server-image: "redis/redis-stack-server:7.4.0-v8"
             redis-py: "8.1.0"
             install-extras: true
           - python-version: "3.14"
-            redis-image: "redis:8.8"
+            server-image: "redis:8.8"
             redis-py: "8.1.0"
             install-extras: true
             coverage: true
+          - python-version: "3.14"
+            server-image: "docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.2"
+            redis-py: "8.1.0"
+            install-extras: true
+            coverage: false
     permissions:
       pull-requests: write
     services:
       keydb:
-        image: ${{ matrix.redis-image }}
+        image: ${{ matrix.server-image }}
         ports:
           - 6390:6379
         options: >-
@@ -95,7 +100,7 @@ jobs:
           --health-retries 5
     name: >
       tests
-      ${{ matrix.redis-image }},
+      ${{ matrix.server-image }},
       py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
       cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
     outputs:

@@ -7,11 +7,64 @@ tags:
 toc_depth: 2
 ---
 
-## v2.37.1 -
+## v2.38.0 -
 
 ### 🚀 Features
 
-- feat: implement the Dragonfly `CL.THROTTLE` rate-limiting command
+- feat: implement Dragonfly's `CL.THROTTLE` rate-limiting command, ported from Dragonfly's own code so
+  the quirks match — millisecond-ceiling time fields, `remaining` truncating towards zero, and an
+  over-sized request reporting `retry_after = -1` without writing the key (#536)
+- feat(dragonfly): match its errors, validation and limits — backticked unknown-command errors,
+  unsigned `numkeys`/`COUNT`, `SCAN COUNT 0` falling back to the default batch size, `SMOVE` checking
+  its destination type up front, no `LCS` at all, a relative expiry past `2**28-1` seconds clamped
+  while an absolute one is rejected, hash-field TTLs capped at `2**26` seconds, and strings capped at
+  256MB rather than Redis' 512MB (#555, #556)
+- feat(dragonfly): match the replies it sends — doubles from `INCRBYFLOAT`/`HINCRBYFLOAT`, empty arrays
+  from a timed-out blocking pop and from an `XREAD`/`XREADGROUP` that matched nothing, `ZPOPMIN`/
+  `ZPOPMAX` always paired under RESP3, flat `WITHSCORES` from `ZUNION`/`ZINTER`, a null
+  `first-entry`/`last-entry` for an empty stream, `-1` as `XINFO GROUPS`' unknown-lag sentinel,
+  `XPENDING` looking up the key before the group, and one namespace for shard and plain pub/sub
+  channels (#557, #558, #559)
+- feat(dragonfly): match its command behaviour — `SORT` without `->` hash-field patterns and without
+  Redis' weight tie-break, `COPY` without a `DB` option, `GEORADIUS`/`GEOSEARCH` in geohash order
+  unless sorted, a watched key dirtied by any write, Lua 5.4 scripting (non-integral numbers as
+  doubles, Redis 6-style error wrapping, admin commands refused inside scripts), and its own JSON
+  quirks (legacy paths wrapped like JSONPath, no filter expressions) (#560, #561, #562, #563)
+
+### 🐛 Bug Fixes
+
+- fix: `redis.call` in a Lua script now returns RESP2 shapes whatever protocol the client negotiated,
+  matching real Redis, where a script must opt into RESP3. `redis.setresp(2)`/`redis.setresp(3)` are
+  now supported and reset to RESP2 for each run. Dragonfly has no `redis.setresp`, so fakeredis does
+  not expose one when emulating it (#543)
+- fix: `XCLAIM`/`XAUTOCLAIM` now move an entry's pending count to the claiming consumer instead of
+  leaving it on the previous owner, so a later `XACK` no longer drives that count negative (#548)
+- fix: `XACK` no longer raises a raw Python `KeyError` when a pending entry has no live consumer, and
+  `XGROUP DELCONSUMER` now removes the entries that consumer owned, returning how many it dropped
+  (#549)
+- fix: `XCLAIM` now honours `RETRYCOUNT`, and `XCLAIM`/`XAUTOCLAIM` honour `JUSTID`, when updating an
+  entry's delivery counter. `RETRYCOUNT` takes precedence over `JUSTID`, and a negative `RETRYCOUNT`
+  means "not given" (#544)
+- fix: cancelling a blocking async command (`BRPOP`, `BLPOP`, `XREAD BLOCK 0`, ...) no longer leaves
+  the connection unusable — it went back to the pool with its socket still paused, so every later
+  command on it hung (#471)
+- fix: `XAUTOCLAIM` now returns the cursor its next scan should start from, and `0-0` once the pending
+  list is exhausted (#547)
+- fix: `SMOVE` no longer raises `WRONGTYPE` for a wrongly typed destination when the source key is
+  missing, `BITCOUNT` reports the syntax error before decoding its range arguments on a pre-7.0
+  server, and `GEORADIUS` returns an unsorted reply in geohash order rather than insertion order
+  (#553)
+- fix: reap `TcpFakeServer` handler threads when a client disconnects (#541)
+
+### 🧰 Maintenance
+
+- docs: `docs/dragonfly-support.md` now writes up every Dragonfly divergence fakeredis emulates, and
+  the handful it does not (#564)
+- test(hypothesis): the stateful machines now run against Dragonfly in CI, with the non-deterministic
+  corners kept out (skiplist-encoded sorted sets, hash-order aggregation, `SAVE`, short-circuiting set
+  intersections) (#564)
+
+## v2.37.1 - 2026-08-18
 
 ### 🐛 Bug Fixes
 
@@ -26,19 +79,6 @@ toc_depth: 2
   the following transaction, matching real Redis
 - fix: align stream group errors with Redis — `XPENDING` on a missing key or unknown group now raises `NOGROUP` instead
   of returning `0`/an empty array, and neither `XPENDING` nor `XINFO GROUPS` creates the key as a side effect (#532)
-- fix: `redis.call` in a Lua script now returns RESP2 shapes whatever protocol the calling client negotiated, matching
-  real Redis, where a script must opt into RESP3 explicitly; `redis.setresp(2)`/`redis.setresp(3)` are now supported and
-  select the script's response mode, which resets to RESP2 for each script run. Dragonfly has no `redis.setresp`,
-  so fakeredis does not expose one when emulating it either (#543)
-- fix: `XCLAIM`/`XAUTOCLAIM` now move an entry's pending count to the claiming consumer instead of leaving it on the
-  previous owner, so a later `XACK` no longer drives that consumer's count negative (#548)
-- fix: `XACK` no longer raises a raw Python `KeyError` when a pending entry has no live consumer, and
-  `XGROUP DELCONSUMER` now removes the entries that consumer still owned, returning how many it dropped (#549)
-- fix: `XCLAIM` now honours `RETRYCOUNT`, and `XCLAIM`/`XAUTOCLAIM` honour `JUSTID`, when updating an entry's delivery
-  counter — `RETRYCOUNT` takes precedence over `JUSTID`, and a negative `RETRYCOUNT` means "not given" and falls through
-  to the usual increment (#544)
-- fix: cancelling a blocking async command (`BRPOP`, `BLPOP`, `XREAD BLOCK 0`, ...) no longer leaves the connection
-  unusable — it went back to the pool with its socket still paused, so every later command on it hung (#471)
 
 ### 🧰 Maintenance
 
