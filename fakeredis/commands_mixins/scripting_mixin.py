@@ -143,7 +143,9 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             # The RESP3 shapes a script can hand back, mirroring what redis.call produces
             # for a script that ran redis.setresp(3). A RESP2 client still gets the RESP2
             # rendering of these — a bulk string for a double, a flat array for a map.
-            if b"double" in result:
+            # Dragonfly, which has no redis.setresp, knows `map` but not `double`: a table
+            # keyed `double` has no array part left, so it comes back as an empty array.
+            if b"double" in result and self.server_type != "dragonfly":
                 double = result[b"double"]
                 if isinstance(double, bool) or not isinstance(double, (int, float)):
                     raise SimpleError(msgs.LUA_WRONG_NUMBER_ARGS_MSG)

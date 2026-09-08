@@ -125,3 +125,11 @@ def test_lua_log_still_needs_two_arguments(r: ClientType):
     with pytest.raises(Exception, match="requires two arguments or more") as ctx:
         r.register_script("redis.log(redis.LOG_WARNING)")()
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def test_eval_returns_a_map_but_not_a_double(r: ClientType):
+    # Dragonfly has no `redis.setresp`, and of the RESP3 shapes a script can hand back it
+    # knows `map` but not `double`: a table keyed `double` has no array part left, so it
+    # answers with an empty array where Redis replies 3.5.
+    assert r.eval("return {double=3.5}", 0) == []
+    assert r.eval("return {map={field='value'}}", 0) == resp_conversion(r, {b"field": b"value"}, [b"field", b"value"])

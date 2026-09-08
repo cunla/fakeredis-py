@@ -281,6 +281,11 @@ double rather than a bulk string, which a RESP3 client sees as a float. Dragonfl
 double under RESP2 as the shortest string that round-trips, where Redis pads it out to 17
 significant digits — a `ZSCORE` of `3.2` reads back as `3.2`, not `3.2000000000000002`.
 
+There is no `redis.setresp` — a script that calls it dies with `attempt to call a nil value
+(field 'setresp')` — and a script hands its reply back knowing `ok`, `err` and `map`, but not
+`double`. `return {double=3.5}` is read as a table with no array part and answers with an
+empty array, where Redis replies `3.5`.
+
 `FLUSHDB` and `FLUSHALL` join the set of commands a script may not call, alongside `SAVE`,
 `BGSAVE`, `SHUTDOWN`, `DEBUG`, `CONFIG`, `CLIENT`, `SCRIPT`, `EVAL`, `MULTI`/`EXEC`, the
 `(P)SUBSCRIBE` family and the blocking pops:
