@@ -86,7 +86,10 @@ scripts = [
   "python-dotenv>=1.2 ; python_version >= '3.10'",
   "pygithub>=2.8 ; python_version >= '3.10'",
 ]
-documentation = ["mkdocs>=1.6.1", "mkdocs-material>=9.6.14"]
+documentation = [
+  "mkdocs>=1.6.1 ; python_version >= '3.10'",
+  "mkdocs-material>=9.6.14 ; python_version >= '3.10'",
+]
 
 [tool.uv]
 default-groups = ["dev", "test", "scripts"]

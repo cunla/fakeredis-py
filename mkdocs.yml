@@ -75,7 +75,7 @@ nav:
           - Scripting: supported-commands/Redis/SCRIPTING.md
           - Server: supported-commands/Redis/SERVER.md
           - Set: supported-commands/Redis/SET.md
-          - Sorted Set: supported-commands/Redis/SORTEDSET.md
+          - Sorted Set: supported-commands/Redis/SORTED-SET.md
           - Stream: supported-commands/Redis/STREAM.md
           - String: supported-commands/Redis/STRING.md
           - Transactions: supported-commands/Redis/TRANSACTIONS.md
