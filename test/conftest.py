@@ -29,9 +29,8 @@ class ServerDetails:
     @property
     def server_version(self) -> VersionType:
         if self.server_type in ("dragonfly", "kividb"):
-            # Dragonfly and KiviDB number their own releases (1.x) unrelated to the
-            # Redis version they emulate, so FakeServer must be built with the
-            # Redis-compatible version they report rather than their own.
+            # Dragonfly and KiviDB number their own releases (1.x) unrelated to the Redis version they emulate, so
+            # FakeServer must be built with the Redis-compatible version they report rather than their own.
             return self.redis_version
         elif self.server_type == "valkey":
             return self.valkey_version or self.redis_version

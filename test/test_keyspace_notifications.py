@@ -4,8 +4,8 @@ import pytest
 import redis
 from redis.client import PubSub
 
-# Dragonfly implements only the `Ex` event class (expired keyevents), enabled with the
-# `--notify_keyspace_events=Ex` startup flag; `CONFIG SET notify-keyspace-events` always fails there.
+# Dragonfly implements only the `Ex` event class (expired keyevents), enabled with the `--notify_keyspace_events=Ex`
+# startup flag; `CONFIG SET notify-keyspace-events` always fails there.
 pytestmark = pytest.mark.unsupported_server_types("dragonfly")
 
 
