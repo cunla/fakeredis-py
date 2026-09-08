@@ -16,8 +16,8 @@ toc_depth: 3
 **fakeredis** is a drop-in replacement for [redis-py](https://github.com/redis/redis-py) and
 [valkey-py](https://github.com/valkey-io/valkey-py) that runs entirely in-memory. Write and run tests that depend on
 [Redis](https://redis.io/), [Valkey](https://github.com/valkey-io/valkey),
-[DragonflyDB](https://dragonflydb.io/), or [KeyDB](https://docs.keydb.dev/) — without spinning up a real server, a
-container, or a network connection.
+[DragonflyDB](https://dragonflydb.io/), [KeyDB](https://docs.keydb.dev/), or
+[KiviDB](https://www.kividb.io/) — without spinning up a real server, a container, or a network connection.
 
 ```python
 import fakeredis
@@ -35,7 +35,7 @@ For the full list of commands, see [Supported commands][supported-commands].
 - 🚀 **Zero setup** — no Redis server, Docker, or network required. Pure Python.
 - 🔌 **Drop-in compatible** — same API as `redis.Redis` and `redis.asyncio.Redis`.
 - ⚡ **Fast & isolated** — in-memory, so tests run quickly and start from a clean slate.
-- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, or KeyDB, and pin a specific server version.
+- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, KeyDB, or KiviDB, and pin a specific server version.
 - 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, TimeSeries, and Geo commands.
 - 🤝 **Share or isolate state** — one shared in-memory server across clients, or independent servers per test.
 - 🌐 **Real TCP mode** — expose the fake server over a socket for clients you can't inject.
