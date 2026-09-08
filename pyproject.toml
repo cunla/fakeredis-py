@@ -86,10 +86,7 @@ scripts = [
   "python-dotenv>=1.2 ; python_version >= '3.10'",
   "pygithub>=2.8 ; python_version >= '3.10'",
 ]
-documentation = [
-  "mkdocs>=1.6.1",
-  "mkdocs-material>=9.6.14",
-]
+documentation = ["mkdocs>=1.6.1", "mkdocs-material>=9.6.14"]
 
 [tool.uv]
 default-groups = ["dev", "test", "scripts"]
@@ -144,8 +141,6 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint]
-# The project uses Ruff's default rule set. A few opinionated rules are disabled
-# where the flagged pattern is deliberate.
 ignore = [
   "BLE001", # blind-except: intentional broad `except Exception` for robustness (pub/sub delivery, stream parsing, harnesses)
   "S112",   # try-except-continue: intentional skipping of malformed stream entries
