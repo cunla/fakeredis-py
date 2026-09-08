@@ -93,9 +93,7 @@ jobs:
       contents: read
       pull-requests: write
     name: >
-      tests
-      ${{ matrix.server-image }},
-      py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
+      tests py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},${{ matrix.server-image }},
       cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
     uses: ./.github/workflows/test-combination.yml
     with:
@@ -104,6 +102,6 @@ jobs:
       redis-py: ${{ matrix.redis-py }}
       install-extras: ${{ matrix.install-extras }}
       coverage: ${{ matrix.coverage }}
-      timeout-minutes: 5
+      timeout-minutes: 5 # considered only when coverage is false.
     secrets:
       GIST_SECRET: ${{ secrets.GIST_SECRET }}
