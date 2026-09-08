@@ -9,6 +9,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - '.github/workflows/test-combination.yml'
       - 'pyproject.toml'
   pull_request:
     branches:
@@ -17,6 +18,7 @@ on:
       - 'fakeredis/**'
       - 'test/**'
       - '.github/workflows/test.yml'
+      - '.github/workflows/test-combination.yml'
       - 'pyproject.toml'
 
 concurrency:
@@ -32,7 +34,6 @@ jobs:
     uses: ./.github/workflows/test-no-matrix.yml
   test:
     needs: ["ruff", "basic_tests"]
-    runs-on: ubuntu-latest
     strategy:
       max-parallel: 8
       fail-fast: false
@@ -72,10 +73,12 @@ jobs:
             server-image: "redis/redis-stack-server:6.2.6-v20"
             redis-py: "8.1.0"
             install-extras: true
+            coverage: false
           - python-version: "3.14"
             server-image: "redis/redis-stack-server:7.4.0-v8"
             redis-py: "8.1.0"
             install-extras: true
+            coverage: false
           - python-version: "3.14"
             server-image: "redis:8.8"
             redis-py: "8.1.0"
@@ -87,57 +90,17 @@ jobs:
             install-extras: true
             coverage: false
     permissions:
+      contents: read
       pull-requests: write
-    services:
-      keydb:
-        image: ${{ matrix.server-image }}
-        ports:
-          - 6390:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     name: >
-      tests
-      ${{ matrix.server-image }},
-      py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},
-      cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
-    outputs:
-      version: ${{ steps.getVersion.outputs.VERSION }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@v10.0.1
-      - uses: actions/setup-python@v7
-        with:
-          cache-dependency-path: uv.lock
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        env:
-          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
-        run: |
-          uv sync --extra lua --extra valkey
-          if [ ${{ matrix.install-extras }} == true ]; then
-              uv sync --all-extras
-          fi
-          uv pip install redis==${{ matrix.redis-py }}
-      - name: Get version
-        id: getVersion
-        shell: bash
-        run: |
-          VERSION=$(uv version --short)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      - name: Test without coverage
-        timeout-minutes: 5
-        if: ${{ !matrix.coverage }}
-        run: |
-          uv run --no-sync pytest -v -m "not slow and not tcp_server"
-      - name: Test with coverage
-        if: ${{ matrix.coverage }}
-        uses: ./.github/actions/test-coverage
-        with:
-          github-secret: ${{ secrets.GITHUB_TOKEN }}
-          gist-secret: ${{ secrets.GIST_SECRET }}
+      tests py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},${{ matrix.server-image }}
+    uses: ./.github/workflows/test-combination.yml
+    with:
+      server-image: ${{ matrix.server-image }}
+      python-version: ${{ matrix.python-version }}
+      redis-py: ${{ matrix.redis-py }}
+      install-extras: ${{ matrix.install-extras }}
+      coverage: ${{ matrix.coverage }}
+      timeout-minutes: 5 # considered only when coverage is false.
+    secrets:
+      GIST_SECRET: ${{ secrets.GIST_SECRET }}
