@@ -111,6 +111,7 @@ concurrency:
 
 jobs:
   test:
+    name: "Test ${{ inputs.server-image }}, py${{ inputs.python-version }}, redis-py:${{ inputs.redis-py }}, extras:${{ inputs.install-extras }}, coverage:${{ inputs.coverage }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read

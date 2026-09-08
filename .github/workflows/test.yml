@@ -93,8 +93,7 @@ jobs:
       contents: read
       pull-requests: write
     name: >
-      tests py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},${{ matrix.server-image }},
-      cov:${{ matrix.coverage }},extra:${{matrix.install-extras}}
+      tests py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},${{ matrix.server-image }}
     uses: ./.github/workflows/test-combination.yml
     with:
       server-image: ${{ matrix.server-image }}
