@@ -2,7 +2,7 @@ rules:
   unpinned-images:
     ignore:
       - 'test.yml'
-      - 'test-dragonfly.yml'
+      - 'test-combination.yml'
   unpinned-uses:
     config:
       policies:
