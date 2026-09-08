@@ -19,8 +19,8 @@
 ---
 
 **fakeredis** is a drop-in replacement for [redis-py][redis-py] and [valkey-py][valkey-py] that runs entirely
-in-memory. Write tests that depend on [Redis][redis], [Valkey][valkey], [DragonflyDB][dragonflydb], or
-[KeyDB][keydb] — without spinning up a real server, a container, or a network connection.
+in-memory. Write tests that depend on [Redis][redis], [Valkey][valkey], [DragonflyDB][dragonflydb],
+[KeyDB][keydb], or [KiviDB][kividb] — without spinning up a real server, a container, or a network connection.
 
 ```python
 import fakeredis
@@ -37,7 +37,7 @@ That's it. No server to install, no port to manage, no teardown.
 - 🚀 **Zero setup** — no Redis server, Docker, or network required. Pure Python.
 - 🔌 **Drop-in compatible** — same API as `redis.Redis` and `redis.asyncio.Redis`.
 - ⚡ **Fast & isolated** — in-memory, so tests run quickly and start from a clean slate.
-- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, or KeyDB, and pin a specific server version.
+- 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, KeyDB, or KiviDB, and pin a specific server version.
 - 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, TimeSeries, and Geo commands.
 - 🤝 **Share or isolate state** — one shared in-memory server across clients, or independent servers per test.
 
@@ -95,10 +95,12 @@ async def main():
 **Pin a server type and version:**
 
 ```python
-# Behave like Redis 6...
+# Behave like Redis 6 — which is what KeyDB is compatible with...
 r = fakeredis.FakeStrictRedis(version=6)
-# ...or like Valkey
+# ...or like Valkey, DragonflyDB or KiviDB
 r = fakeredis.FakeStrictRedis(server_type="valkey")
+r = fakeredis.FakeStrictRedis(server_type="dragonfly")
+r = fakeredis.FakeStrictRedis(server_type="kividb")
 ```
 
 ### Using it in tests (pytest)
@@ -137,3 +139,4 @@ Contributions are welcome! Check out the [contributing guide](./docs/about/contr
 [valkey]: https://github.com/valkey-io/valkey
 [dragonflydb]: https://dragonflydb.io/
 [keydb]: https://docs.keydb.dev/
+[kividb]: https://www.kividb.io/
