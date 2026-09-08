@@ -44,6 +44,7 @@ on:
           - "redis/redis-stack-server:6.2.6-v20"
           - "docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.2"
           - "docker.dragonflydb.io/dragonflydb/dragonfly:latest"
+          - "quay.io/kividbio/kividb:v1.0.4-lua"
       markers:
         description: "pytest -m expression (ignored when coverage is on)"
         type: string
@@ -135,10 +136,13 @@ jobs:
     services:
       server:
         image: ${{ inputs.server-image }}
+        # KiviDB listens on 6380, every other server on 6379. The port belongs to
+        # the image, so derive it here instead of asking the caller for it. The
+        # host side is always 6390 - that is where the test suite looks.
         ports:
-          - 6390:6379
+          - 6390:${{ contains(inputs.server-image, 'kividb') && '6380' || '6379' }}
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "redis-cli -p ${{ contains(inputs.server-image, 'kividb') && '6380' || '6379' }} ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
