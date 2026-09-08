@@ -7,7 +7,9 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
-  - package-ecosystem: "pip" # See documentation for possible values
+  # The project is uv-locked (pyproject.toml + uv.lock); the "pip" ecosystem
+  # does not update uv.lock, so Python updates never opened PRs under it.
+  - package-ecosystem: "uv"
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
