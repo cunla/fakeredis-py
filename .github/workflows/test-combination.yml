@@ -43,9 +43,70 @@ on:
           - "redis/redis-stack-server:7.4.0-v8"
           - "redis/redis-stack-server:6.2.6-v20"
           - "docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.2"
+      install-extras:
+        description: "Install all optional extras"
+        type: boolean
+        required: false
+        default: true
+      coverage:
+        description: "Run with coverage (and report it)"
+        type: boolean
+        required: false
+        default: false
+      upload-report:
+        description: "Upload an HTML test report as an artifact"
+        type: boolean
+        required: false
+        default: true
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version"
+        type: string
+        required: true
+      redis-py:
+        description: "redis-py version"
+        type: string
+        required: true
+      server-image:
+        description: "Server to test against"
+        type: string
+        required: true
+      install-extras:
+        description: "Install all optional extras"
+        type: boolean
+        required: false
+        default: false
+      coverage:
+        description: "Run with coverage (and report it)"
+        type: boolean
+        required: false
+        default: false
+      upload-report:
+        description: "Upload an HTML test report as an artifact"
+        type: boolean
+        required: false
+        default: false
+      timeout-minutes:
+        description: "Timeout for the test step"
+        type: number
+        required: false
+        default: 15
+    secrets:
+      GIST_SECRET:
+        description: "Token used to update the coverage badge gist"
+        required: false
+    outputs:
+      version:
+        description: "Version of fakeredis under test"
+        value: ${{ jobs.test.outputs.version }}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Scoped to the combination so a matrix caller does not cancel its own jobs
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{ inputs.server-image }}-
+    ${{ inputs.python-version }}-${{ inputs.redis-py }}-
+    ${{ inputs.install-extras }}-${{ inputs.coverage }}
   cancel-in-progress: true
 
 jobs:
@@ -53,6 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
     services:
       server:
         image: ${{ inputs.server-image }}
@@ -63,6 +125,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    outputs:
+      version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -76,17 +140,44 @@ jobs:
       - name: Install dependencies
         env:
           PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+          INSTALL_EXTRAS: ${{ inputs.install-extras }}
+          REDIS_PY: ${{ inputs.redis-py }}
         run: |
-          uv sync --all-extras
-          uv pip install redis==${{ inputs.redis-py }}
-      - name: Run tests
-        timeout-minutes: 15
+          uv sync --extra lua --extra valkey
+          if [ "$INSTALL_EXTRAS" == "true" ]; then
+              uv sync --all-extras
+          fi
+          uv pip install "redis==$REDIS_PY"
+      - name: Get version
+        id: getVersion
+        shell: bash
+        run: |
+          VERSION=$(uv version --short)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      - name: Test without coverage
+        if: ${{ !inputs.coverage }}
+        timeout-minutes: ${{ inputs.timeout-minutes || 15 }}
         run: |
           uv run --no-sync pytest -v -m "not slow and not tcp_server" \
             --html=report.html --self-contained-html
+      - name: Test with coverage
+        if: ${{ inputs.coverage }}
+        uses: ./.github/actions/test-coverage
+        with:
+          github-secret: ${{ secrets.GITHUB_TOKEN }}
+          gist-secret: ${{ secrets.GIST_SECRET }}
+      - name: Name the test report
+        if: ${{ always() && inputs.upload-report && !inputs.coverage }}
+        id: reportName
+        shell: bash
+        env:
+          SERVER_IMAGE: ${{ inputs.server-image }}
+        run: |
+          SLUG=$(echo "$SERVER_IMAGE" | tr '/:' '--')
+          echo "NAME=report-$SLUG-py${{ inputs.python-version }}-redis-py${{ inputs.redis-py }}" >> $GITHUB_OUTPUT
       - name: Upload test report
-        if: always()
+        if: ${{ always() && inputs.upload-report && !inputs.coverage }}
         uses: actions/upload-artifact@v7
         with:
-          name: report-py${{ inputs.python-version }}-redis-py${{ inputs.redis-py }}
+          name: ${{ steps.reportName.outputs.NAME }}
           path: report.html
