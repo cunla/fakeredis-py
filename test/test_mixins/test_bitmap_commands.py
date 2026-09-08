@@ -87,8 +87,7 @@ def test_get_set_bits(r: ClientType):
 
 
 def test_setbits_and_getkeys(r: ClientType):
-    # The bit operations and the get commands
-    # should play nicely with each other.
+    # The bit operations and the get commands should play nicely with each other.
     r.setbit("foo", 1, 1)
     assert r.get("foo") == b"@"
     r.setbit("foo", 2, 1)
@@ -441,7 +440,7 @@ def test_bitfield_set_wrong_arguments(r: ClientType):
 
 
 def test_bitfield_hash_offset(r: ClientType):
-    # A '#' prefix multiplies the offset by the type width, so `#1` on a u8 addresses the second byte (bit offset 8), not bit 1.
+    # A '#' prefix multiplies the offset by the type width: `#1` on a u8 is the second byte (bit offset 8), not bit 1.
     key = "key:bitfield:hash_offset"
     r.set(key, b"\x00\x22\x00\x00")
     assert raw_command(r, "bitfield", key, "get", "u8", "#1") == [0x22]

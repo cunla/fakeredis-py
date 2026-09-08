@@ -267,8 +267,7 @@ class StreamGroup:
             except Exception:
                 continue
             if parsed in self.pel:
-                # An XNACK-released entry is pending but unowned, so there is nobody to charge the
-                # acknowledgement back to.
+                # An XNACK-released entry is pending but unowned, so there is nobody to charge the acknowledgement to.
                 consumer = self.consumers.get(self.pel[parsed].consumer_name)
                 if consumer is not None:
                     consumer.pending -= 1

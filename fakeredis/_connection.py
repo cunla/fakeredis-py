@@ -25,10 +25,9 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         self._selector: FakeSelector | None = FakeSelector(self._sock)
 
     def activate_maint_notifications_handling_if_enabled(self, *args: Any, **kwargs: Any) -> None:
-        # redis-py>=8.0 performs a real socket.getaddrinfo() DNS lookup here to determine the
-        # endpoint type for RESP3 maintenance notifications. A fake server never sends those
-        # notifications, so we skip the handshake entirely to avoid any real network calls.
-        # See https://github.com/cunla/fakeredis-py/issues/513
+        # redis-py>=8.0 performs a real socket.getaddrinfo() DNS lookup here to determine the endpoint type for RESP3
+        # maintenance notifications. A fake server never sends those notifications, so we skip the handshake entirely to
+        # avoid any real network calls. See https://github.com/cunla/fakeredis-py/issues/513
         return None
 
     def _connect(self) -> FakeSocket:

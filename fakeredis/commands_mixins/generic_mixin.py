@@ -49,9 +49,8 @@ class GenericCommandsMixin(CommandsMixinBase):
         if pattern == b"#":
             return key
         if self.server_type == "dragonfly":
-            # Dragonfly substitutes the '*' into a plain key name. It neither requires the
-            # pattern to contain a '*' nor understands redis' '->' hash-field syntax, so
-            # "w_*->f" resolves to the literal key "w_<element>->f".
+            # Dragonfly substitutes the '*' into a plain key name. It neither requires the pattern to contain a '*' nor
+            # understands redis' '->' hash-field syntax, so "w_*->f" resolves to the literal key "w_<element>->f".
             new_key = pattern.replace(b"*", key, 1)
             value = CommandItem(new_key, self._db, item=self._db.get(new_key)).value
             return value if isinstance(value, bytes) else None

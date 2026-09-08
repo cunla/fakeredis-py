@@ -486,8 +486,7 @@ def test_xreadgroup(r: ClientType, real_server_details):
 
     r.xgroup_destroy(stream, group)
 
-    # create the group using $ as the last id meaning subsequent reads
-    # will only find messages added after this
+    # create the group using $ as the last id meaning subsequent reads will only find messages added after this
     r.xgroup_create(stream, group, "$")
 
     # xread starting after the last message returns an empty message list
@@ -615,8 +614,8 @@ def test_xinfo_stream_redis7(r: ClientType, real_server_details):
     assert "last-generated-id" in info
 
     r.xtrim(stream, 0)
-    # Info about empty stream. Dragonfly answers the missing entries with a null array
-    # where redis sends nil, which redis-py's parser cannot read, so bypass it.
+    # Info about empty stream. Dragonfly answers the missing entries with a null array where redis sends nil, which
+    # redis-py's parser cannot read, so bypass it.
     empty_entry = testtools.null_array_reply(r, real_server_details.server_type)
     if real_server_details.server_type == "dragonfly":
         info = testtools.xinfo_stream_raw(r, stream)
@@ -794,8 +793,7 @@ def test_xautoclaim_redis7(r: ClientType):
     message = get_stream_message(r, stream, message_id1)
     r.xgroup_create(stream, group, 0)
 
-    # trying to claim a message that isn't already pending doesn't
-    # do anything
+    # trying to claim a message that isn't already pending doesn't do anything
     assert r.xautoclaim(stream, group, consumer2, min_idle_time=0) == [b"0-0", [], []]
 
     # read the group as consumer1 to initially claim the messages
@@ -805,8 +803,7 @@ def test_xautoclaim_redis7(r: ClientType):
     response = r.xautoclaim(stream, group, consumer2, min_idle_time=0, count=1)
     assert response[1] == [message]
 
-    # reclaim the messages as consumer1, but use the justid argument
-    # which only returns message ids
+    # reclaim the messages as consumer1, but use the justid argument which only returns message ids
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
         message_id1,
         message_id2,
@@ -876,8 +873,7 @@ def test_xclaim_trimmed_redis7(r: ClientType):
     # add a 3rd and trim the stream down to 2 items
     r.xadd(stream, {"item": 3}, maxlen=2, approximate=False)
 
-    # xclaim them from consumer2
-    # the item that is still in the stream should be returned
+    # xclaim them from consumer2 the item that is still in the stream should be returned
     item = r.xclaim(stream, group, "consumer2", 0, [sid1, sid2])
     assert len(item) == 1
     assert item[0][0] == sid2
@@ -890,8 +886,7 @@ def test_xclaim(r: ClientType):
     message = get_stream_message(r, stream, message_id)
     r.xgroup_create(stream, group, 0)
 
-    # trying to claim a message that isn't already pending doesn't
-    # do anything
+    # trying to claim a message that isn't already pending doesn't do anything
     assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == []
 
     # read the group as consumer1 to initially claim the messages
@@ -900,8 +895,7 @@ def test_xclaim(r: ClientType):
     # claim the message as consumer2
     assert r.xclaim(stream, group, consumer2, min_idle_time=0, message_ids=(message_id,)) == [message]
 
-    # reclaim the message as consumer1, but use the justid argument
-    # which only returns message ids
+    # reclaim the message as consumer1, but use the justid argument which only returns message ids
     assert r.xclaim(stream, group, consumer1, min_idle_time=0, message_ids=(message_id,), justid=True) == [message_id]
 
 
@@ -989,8 +983,7 @@ def test_xclaim_min_idle_time_not_met_leaves_delivery_count(r: ClientType):
 
 
 def test_xread_blocking(create_connection, real_server_details):
-    # thread with xread block 0 should hang
-    # putting data in the stream should unblock it
+    # thread with xread block 0 should hang putting data in the stream should unblock it
     event = threading.Event()
     event.clear()
 
@@ -1004,8 +997,8 @@ def test_xread_blocking(create_connection, real_server_details):
     t = threading.Thread(target=thread_func)
     t.start()
     r1 = create_connection(db=1)
-    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array,
-    # which redis-py's RESP3 parser cannot consume, so the reply is read unparsed there.
+    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array, which redis-py's RESP3 parser
+    # cannot consume, so the reply is read unparsed there.
     resp2_shape = testtools.disable_xread_parsing(r1, real_server_details.server_type)
     event.set()
     result = r1.xread({"stream": "$"}, block=0, count=1)
@@ -1325,8 +1318,8 @@ def test_xclaim_force_credits_the_claiming_consumer(r: ClientType):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_xclaim_of_an_entry_deleted_from_the_stream_releases_the_owner(r: ClientType):
-    # Redis 7.0 made XCLAIM drop a PEL entry whose stream record is gone; 6.2 keeps it and
-    # hands it to the claimer instead.
+    # Redis 7.0 made XCLAIM drop a PEL entry whose stream record is gone; 6.2 keeps it and hands it to the claimer
+    # instead.
     stream, group = "stream", "group"
     ids = _deliver(r, stream, group, 2)
     r.xdel(stream, ids[0])

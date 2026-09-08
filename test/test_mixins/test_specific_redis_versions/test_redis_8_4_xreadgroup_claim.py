@@ -226,8 +226,8 @@ def test_xreadgroup_claim_nacked_entries_first(r: ClientType):
     r.xreadgroup(group, consumer, streams={stream: ">"})
     raw_command(r, "XNACK", stream, group, "FAIL", "IDS", 1, m2)
 
-    # XNACK-released entries are immediately claimable regardless of min-idle-time,
-    # and are reported before other idle pending entries
+    # XNACK-released entries are immediately claimable regardless of min-idle-time, and are reported before other idle
+    # pending entries
     res = raw_command(r, "XREADGROUP", "GROUP", group, consumer, "CLAIM", 60_000, "STREAMS", stream, ">")
     entries = res[stream.encode()] if get_protocol_version(r) == 3 else res[0][1]
     assert [entry[0] for entry in entries] == [m2]

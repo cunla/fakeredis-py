@@ -522,8 +522,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             for member, score in s.items():
                 # With COUNT, each set contributes its weight regardless of the member's score.
                 score = w if aggregate == b"count" else score * w
-                # Redis only does this step for ZUNIONSTORE. See
-                # https://github.com/antirez/redis/issues/3954.
+                # Redis only does this step for ZUNIONSTORE. See https://github.com/antirez/redis/issues/3954.
                 if func in {"ZUNIONSTORE", "ZUNION"} and math.isnan(score):
                     score = 0.0
                 if member not in out_members:

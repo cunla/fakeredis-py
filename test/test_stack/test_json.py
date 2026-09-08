@@ -500,8 +500,7 @@ def test_objlen(r: redis.Redis, real_server_details: ServerDetails):
     # Test missing key
     assert r.json().objlen("non_existing_doc", "..a") is None
 
-    # Test missing path
-    # with pytest.raises(exceptions.ResponseError):
+    # Test missing path with pytest.raises(exceptions.ResponseError):
     r.json().objlen("doc1", ".nowhere")
 
 

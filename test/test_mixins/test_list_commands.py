@@ -101,8 +101,7 @@ def test_lrem_negative_count(r: ClientType):
     r.lpush("foo", "one")
     r.lpush("foo", "removeme")
     r.lrem("foo", -1, "removeme")
-    # Should remove it from the end of the list,
-    # leaving the 'removeme' from the front of the list alone.
+    # Should remove it from the end of the list, leaving the 'removeme' from the front of the list alone.
     assert r.lrange("foo", 0, -1) == [b"removeme", b"one", b"two", b"three"]
 
 
@@ -174,8 +173,7 @@ def test_lpop_empty_list(r: ClientType):
     r.rpush("foo", "one")
     r.lpop("foo")
     assert r.lpop("foo") is None
-    # Verify what happens if we try to pop from a key
-    # we've never seen before.
+    # Verify what happens if we try to pop from a key we've never seen before.
     assert r.lpop("noexists") is None
 
 
@@ -297,9 +295,8 @@ def test_ltrim_wrong_type(r: ClientType):
 
 @pytest.mark.unsupported_server_types("valkey")
 def test_watch_when_ltrim_does_not_change_value(r: ClientType):
-    # Redis signals the key as modified for every LTRIM on an existing key,
-    # even a no-op trim that removes no elements. A WATCH on the key must
-    # therefore be invalidated, aborting the transaction.
+    # Redis signals the key as modified for every LTRIM on an existing key, even a no-op trim that removes no elements.
+    # A WATCH on the key must therefore be invalidated, aborting the transaction.
     r.rpush("foo", "one", "two", "three")
 
     with r.pipeline() as p:
@@ -426,8 +423,7 @@ def test_rpoplpush(r: ClientType):
     assert r.lrange("foo", 0, -1) == [b"one"]
     assert r.lrange("bar", 0, -1) == [b"two", b"one"]
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus bar = ['two', b'one']
+    # Catch instances where we store bytes and strings inconsistently and thus bar = ['two', b'one']
     assert r.lrem("bar", -1, "two") == 1
 
 
@@ -480,12 +476,10 @@ def test_blpop_test_multiple_lists(r: ClientType):
 
     r.rpush("foo", "one")
     r.rpush("foo", "two")
-    # bar has nothing, so the returned value should come
-    # from foo.
+    # bar has nothing, so the returned value should come from foo.
     assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"one"], (b"foo", b"one"))
     r.rpush("bar", "three")
-    # bar now has something, so the returned value should come
-    # from bar.
+    # bar now has something, so the returned value should come from bar.
     assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"bar", b"three"], (b"bar", b"three"))
     assert r.blpop(["bar", "foo"], timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
@@ -574,8 +568,7 @@ def test_brpoplpush_multi_keys(r: ClientType):
     assert r.brpoplpush("foo", "bar", timeout=1) == b"two"
     assert r.lrange("bar", 0, -1) == [b"two"]
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus bar = ['two']
+    # Catch instances where we store bytes and strings inconsistently and thus bar = ['two']
     assert r.lrem("bar", -1, "two") == 1
 
 
@@ -669,8 +662,7 @@ def test_lmove(r: ClientType):
     assert r.lrange("foo", 0, -1) == [b"one", b"one"]
     assert r.lrange("bar", 0, -1) == [b"two", b"three"]
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus bar = ['two', b'one']
+    # Catch instances where we store bytes and strings inconsistently and thus bar = ['two', b'one']
     assert r.lrem("bar", -1, "two") == 1
 
 
@@ -748,8 +740,8 @@ def test_lmpop(r: ClientType):
 def test_lmpop_count_not_positive(r: ClientType, real_server_details):
     r.rpush("foo", "a", "b")
     if real_server_details.server_type == "dragonfly":
-        # Dragonfly accepts COUNT 0, naming the key but popping nothing, and reports a
-        # negative count as a plain decoding failure.
+        # Dragonfly accepts COUNT 0, naming the key but popping nothing, and reports a negative count as a plain
+        # decoding failure.
         assert testtools.raw_command(r, "lmpop", 1, "foo", "LEFT", "COUNT", 0) == [b"foo", []]
         for args in (("lmpop", 1, "foo", "LEFT", "COUNT", -1), ("blmpop", 0.01, 1, "foo", "LEFT", "COUNT", -1)):
             with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:

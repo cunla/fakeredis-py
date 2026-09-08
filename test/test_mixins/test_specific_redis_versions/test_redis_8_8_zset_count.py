@@ -36,9 +36,9 @@ def _pairs(res) -> list:
     return [tuple(item) for item in res]
 
 
-# The commands below are issued with `raw_command` rather than the redis-py helpers, since redis-py
-# only accepts AGGREGATE COUNT from 8.0.0 onwards and rejects it client-side before it reaches the
-# server. Going through raw_command keeps these tests meaningful on every supported redis-py version.
+# The commands below are issued with `raw_command` rather than the redis-py helpers, since redis-py only accepts
+# AGGREGATE COUNT from 8.0.0 onwards and rejects it client-side before it reaches the server. Going through raw_command
+# keeps these tests meaningful on every supported redis-py version.
 
 
 def test_zunion_aggregate_count(zsets: ClientType):

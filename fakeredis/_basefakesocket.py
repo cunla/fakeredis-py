@@ -32,17 +32,16 @@ from ._typing import ResponseErrorType, ServerType, VersionType
 LOGGER = logging.getLogger("fakeredis")
 
 
-# Commands Dragonfly refuses to run from inside a Lua script but Redis is happy to run.
-# The rest of Dragonfly's no-script set (SAVE, BGSAVE, SCRIPT, EVAL, MULTI/EXEC, the
-# (P)SUBSCRIBE family and the blocking pops) already carries `FLAG_NO_SCRIPT` here.
+# Commands Dragonfly refuses inside a Lua script but Redis allows. The rest of its no-script set (SAVE, BGSAVE, SCRIPT,
+# EVAL, MULTI/EXEC, the (P)SUBSCRIBE family, the blocking pops) already carries `FLAG_NO_SCRIPT` here.
 DRAGONFLY_NO_SCRIPT_COMMANDS = frozenset({"flushdb", "flushall", "shutdown", "debug", "config", "client"})
 # Dragonfly refuses to queue the (un)subscribe family inside a MULTI, where redis queues it.
 DRAGONFLY_NO_TRANSACTION_COMMANDS = frozenset(
     {"subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ssubscribe", "sunsubscribe"}
 )
-# Write commands whose keys dragonfly leaves clean unless it really wrote them: the ones that
-# only read the keys beside their destination, and the two that bow out before touching the
-# key at all -- a rejected MSETNX and a SETRANGE with an empty value. See `_dirty_watched_keys`.
+# Write commands whose keys dragonfly leaves clean unless it really wrote them: the ones that only read the keys beside
+# their destination, and the two that bow out before touching the key at all -- a rejected MSETNX and a SETRANGE with an
+# empty value. See `_dirty_watched_keys`.
 DRAGONFLY_UNDIRTIED_COMMANDS = frozenset(
     {
         "bitop",
@@ -362,9 +361,8 @@ class BaseFakeSocket:
                 if self.server_type != "dragonfly":
                     self._transaction_failed = True
                 elif not unknown_command:
-                    # Dragonfly stops queueing as soon as a command fails to queue, rather
-                    # than queueing on and refusing the EXEC. An unknown command is the one
-                    # exception: there the transaction carries on unharmed.
+                    # Dragonfly stops queueing as soon as a command fails to queue, rather than queueing on and refusing
+                    # the EXEC. An unknown command is the one exception: there the transaction carries on unharmed.
                     self.abort_transaction()
             if cmd == "exec" and exc.value.startswith("ERR "):
                 exc.value = "EXECABORT Transaction discarded because of: " + exc.value[4:]
@@ -404,8 +402,8 @@ class BaseFakeSocket:
                     result = _convert_to_resp2(
                         result,
                         self.server_type,
-                        # Dragonfly gives a script's `redis.call` a double as a Lua number
-                        # whatever protocol the client that invoked the script speaks.
+                        # Dragonfly gives a script's `redis.call` a double as a Lua number whatever protocol the client
+                        # that invoked the script speaks.
                         keep_doubles=from_script and is_dragonfly,
                     )
                 if msgs.FLAG_SKIP_CONVERT_TO_RESP2 not in sig.flags and not valid_response_type(result, resp_version):
@@ -485,8 +483,8 @@ class BaseFakeSocket:
         for event, key, subkeys in events:
             try:
                 subkeys_payload = b",".join(b"%d:%s" % (len(subkey), subkey) for subkey in subkeys)
-                # Events containing `|` are skipped for the channels using `|` as a delimiter,
-                # and keys containing `\n` for the channel using `\n` as a delimiter.
+                # Events containing `|` are skipped for the channels using `|` as a delimiter, and keys containing `\n`
+                # for the channel using `\n` as a delimiter.
                 if b"S" in config_flags and b"|" not in event:
                     channel = b"__subkeyspace@%s__:%s" % (db_num, key)
                     self._publish_to_channel(channel, event + b"|" + subkeys_payload, pattern_regex)

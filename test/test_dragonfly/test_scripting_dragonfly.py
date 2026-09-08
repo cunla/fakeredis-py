@@ -27,8 +27,8 @@ pytestmark.extend(
 
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
 def test_script_flush_ignores_extra_args(r: ClientType, args: tuple[str, ...]):
-    # Redis rejects anything that is not ASYNC/SYNC; Dragonfly has no mode argument at all
-    # and simply ignores whatever follows.
+    # Redis rejects anything that is not ASYNC/SYNC; Dragonfly has no mode argument at all and simply ignores whatever
+    # follows.
     sha1 = r.script_load("return 'a'")
     assert raw_command(r, "SCRIPT FLUSH {}".format(" ".join(args))) == b"OK"
     assert r.script_exists(sha1) == [0]
@@ -63,15 +63,14 @@ def test_script_help(r: ClientType):
 
 @pytest.mark.parametrize("value", [3.2, 3.8, -3.8])
 def test_eval_keeps_fractional_numbers(r: ClientType, value: float):
-    # Redis truncates every Lua number to an integer, Dragonfly replies with a double --
-    # rendered under RESP2 as the shortest bulk string that round-trips.
+    # Redis truncates every Lua number to an integer, Dragonfly replies with a double -- rendered under RESP2 as the
+    # shortest bulk string that round-trips.
     assert r.eval(f"return {value}", 0) == resp_conversion(r, value, str(value).encode())
 
 
 def test_eval_still_truncates_whole_numbers(r: ClientType):
-    # `return 3.0` is not asserted here: Dragonfly runs Lua 5.4, whose integer subtype tells
-    # it apart from `return 3` and makes it a double, and the 5.1 runtime fakeredis uses
-    # cannot draw that distinction.
+    # `return 3.0` is not asserted here: Dragonfly runs Lua 5.4, whose integer subtype tells it apart from `return 3`
+    # and makes it a double, and the 5.1 runtime fakeredis uses cannot draw that distinction.
     assert r.eval("return 3", 0) == 3
 
 
@@ -128,8 +127,7 @@ def test_lua_log_still_needs_two_arguments(r: ClientType):
 
 
 def test_eval_returns_a_map_but_not_a_double(r: ClientType):
-    # Dragonfly has no `redis.setresp`, and of the RESP3 shapes a script can hand back it
-    # knows `map` but not `double`: a table keyed `double` has no array part left, so it
-    # answers with an empty array where Redis replies 3.5.
+    # Dragonfly has no `redis.setresp`, and of the RESP3 shapes a script can hand back it knows `map` but not `double`:
+    # a table keyed `double` has no array part left, so it answers with an empty array where Redis replies 3.5.
     assert r.eval("return {double=3.5}", 0) == []
     assert r.eval("return {map={field='value'}}", 0) == resp_conversion(r, {b"field": b"value"}, [b"field", b"value"])

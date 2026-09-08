@@ -27,8 +27,8 @@ def test_topk_incrby(r: redis.Redis):
     result = r.topk().incrby("topk", ["42", "xyzzy"], [8, 4])
     # "42" is already in top-3; incrementing it never displaces another item
     assert result[0] is None
-    # "xyzzy"(4) competes with "bar"(3); hash collisions may inflate bar's estimate,
-    # so displacement is not guaranteed — accept either outcome
+    # "xyzzy"(4) competes with "bar"(3); hash collisions may inflate bar's estimate, so displacement is not guaranteed —
+    # accept either outcome
     assert result[1] in (None, resp_conversion(r, b"bar", "bar"))
     with pytest.deprecated_call():
         counts = r.topk().count("topk", "bar", "baz", "42", "xyzzy", 4)

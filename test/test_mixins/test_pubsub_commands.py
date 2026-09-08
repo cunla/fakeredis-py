@@ -410,9 +410,8 @@ def test_pubsub_numsub(r: ClientType):
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
 def test_published_message_to_shard_channel(r: ClientType):
-    # A unique channel, and an explicit close: dragonfly serves shard and plain channels
-    # from one namespace, so any subscriber another test left on a shared name would be
-    # counted by SPUBLISH here.
+    # A unique channel, and an explicit close: dragonfly serves shard and plain channels from one namespace, so any
+    # subscriber another test left on a shared name would be counted by SPUBLISH here.
     channel = f"shard-{uuid.uuid4().hex}"
     p = r.pubsub()
     try:
@@ -427,8 +426,8 @@ def test_published_message_to_shard_channel(r: ClientType):
         p.close()
 
 
-# Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe", so redis-py never clears its
-# shard_channels bookkeeping and `subscribed` stays True. See test_dragonfly for that behaviour.
+# Dragonfly confirms SUNSUBSCRIBE with a plain "unsubscribe", so redis-py never clears its shard_channels bookkeeping
+# and `subscribed` stays True. See test_dragonfly for that behaviour.
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @testtools.run_test_if_redispy_ver("gte", "5.0.0rc2")
