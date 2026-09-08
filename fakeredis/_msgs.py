@@ -54,8 +54,8 @@ DRAGONFLY_LIMIT_NEGATIVE_MSG = "ERR limit can't be negative"
 DRAGONFLY_LIMIT_NOT_POSITIVE_MSG = "ERR limit value is not a positive integer"
 DRAGONFLY_AT_LEAST_ONE_KEY_MSG = "ERR at least 1 input key is needed for this command"
 EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors."
-# Dragonfly leaves off the full stop, refuses WATCH/SUBSCRIBE inside MULTI by name, and
-# ends the transaction as soon as a command fails to queue.
+# Dragonfly leaves off the full stop, refuses WATCH/SUBSCRIBE inside MULTI by name, and ends the transaction as soon as
+# a command fails to queue.
 DRAGONFLY_EXECABORT_MSG = "EXECABORT Transaction discarded because of previous errors"
 DRAGONFLY_NOT_IN_TRANSACTION_MSG = "ERR '{0}' not allowed inside a transaction"
 MULTI_NESTED_MSG = "ERR MULTI calls can not be nested"
@@ -91,8 +91,7 @@ LUA_WRONG_NUMBER_ARGS_MSG = "ERR wrong number or type of arguments"
 LUA_SETRESP_ARGS_MSG = "ERR redis.setresp() requires one argument."
 LUA_SETRESP_VERSION_MSG = "ERR RESP version must be 2 or 3."
 SCRIPT_ERROR_MSG = "ERR Error running script (call to f_{}): @user_script:?: {}"
-# Dragonfly reports redis_version 7.x but still wraps script errors the way Redis 6 did,
-# minus the `f_` prefix on the sha.
+# Dragonfly reports redis_version 7.x but wraps script errors the way Redis 6 did, minus the `f_` prefix on the sha.
 DRAGONFLY_SCRIPT_ERROR_MSG = "ERR Error running script (call to {}): @user_script:?: {}"
 RESTORE_KEY_EXISTS = "BUSYKEY Target key name already exists."
 RESTORE_INVALID_CHECKSUM_MSG = "ERR DUMP payload version or checksum are wrong"

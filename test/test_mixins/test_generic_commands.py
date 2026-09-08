@@ -264,8 +264,8 @@ def test_sort_with_hash(r: ClientType, real_server_details):
     r.hset("record_eldest", "name", "adult")
 
     if real_server_details.server_type == "dragonfly":
-        # Dragonfly has no `->` hash-field syntax: "record_*->age" is taken as a literal key
-        # name, so no weight resolves, the list keeps its natural order and GET yields "".
+        # Dragonfly has no `->` hash-field syntax: "record_*->age" is taken as a literal key name, so no weight
+        # resolves, the list keeps its natural order and GET yields "".
         assert r.sort("foo", by="record_*->age") == [b"middle", b"eldest", b"youngest"]
         assert r.sort("foo", by="record_*->age", get="record_*->name") == [b"", b"", b""]
     else:
@@ -401,9 +401,8 @@ def test_expire_should_throw_error(r: ClientType, real_server_details):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_expire_gt_lt_no_ttl_and_equal(r: ClientType):
-    # A key with no expiry is treated as infinity: GT must not set one
-    # (nothing is greater than infinity) and returns 0, while LT sets it.
-    # GT and LT are strict, so an equal expiry sets neither.
+    # A key with no expiry is treated as infinity: GT must not set one (nothing is greater than infinity) and returns 0,
+    # while LT sets it. GT and LT are strict, so an equal expiry sets neither.
     r.set("foo", "bar")
     assert r.expire("foo", 100, gt=True) == 0
     assert r.ttl("foo") == -1
@@ -773,8 +772,7 @@ def test_watch_when_setbit_does_not_change_value(r: ClientType, real_server_deta
         assert r.setbit("foo", 0, 0) == 0
         assert p.multi() is None
         if real_server_details.server_type == "dragonfly":
-            # Dragonfly dirties a watched key on any SETBIT, even one that writes back
-            # the value it already held.
+            # Dragonfly dirties a watched key on any SETBIT, even one that writes back the value it already held.
             with pytest.raises((redis.WatchError, valkey.WatchError)):
                 p.execute()
         else:

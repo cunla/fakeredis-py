@@ -28,8 +28,8 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
 
     `get_slice` must take a count and return a slice expression for the range to pop.
     """
-    # This implementation is somewhat contorted to match the odd
-    # behaviours described in https://github.com/redis/redis/issues/9680.
+    # This implementation is somewhat contorted to match the odd behaviours described in
+    # https://github.com/redis/redis/issues/9680.
     count = 1
     if len(args) > 1:
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)

@@ -52,8 +52,7 @@ REDIS_LOG_LEVELS_TO_LOGGING = {
 
 _lua_cjson_null = object()  # sentinel value
 
-# Dragonfly's own SCRIPT HELP text, reproduced verbatim -- including the trailing space on
-# the "following flags" line and the "sript" typo.
+# Dragonfly's SCRIPT HELP text, verbatim: the trailing space on the "following flags" line and the "sript" typo.
 DRAGONFLY_SCRIPT_HELP = [
     "SCRIPT <subcommand> [<arg> [value] [opt] ...]",
     "Subcommands are:",
@@ -92,9 +91,8 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         if isinstance(result, (bytes, int)):
             return result
         if isinstance(result, float):
-            # Redis hands a double reply (ZSCORE, INCRBYFLOAT, ...) to Lua as a string under RESP2 and as
-            # {double=...} under RESP3. Dragonfly hands it over as a plain number whatever the script's RESP
-            # mode, so it is checked first.
+            # Redis hands a double reply (ZSCORE, INCRBYFLOAT, ...) to Lua as a string under RESP2 and {double=...}
+            # under RESP3. Dragonfly always hands it over as a plain number, so it is checked first.
             if self.server_type == "dragonfly":
                 return result
             if self._resp_version == 3:
@@ -140,11 +138,10 @@ class ScriptingCommandsMixin(CommandsMixinBase):
                         return SimpleError(msg.decode("utf-8", "replace"))
                     else:
                         raise SimpleError(msg.decode("utf-8", "replace"))
-            # The RESP3 shapes a script can hand back, mirroring what redis.call produces
-            # for a script that ran redis.setresp(3). A RESP2 client still gets the RESP2
-            # rendering of these — a bulk string for a double, a flat array for a map.
-            # Dragonfly, which has no redis.setresp, knows `map` but not `double`: a table
-            # keyed `double` has no array part left, so it comes back as an empty array.
+            # The RESP3 shapes a script can hand back, mirroring what redis.call produces for a script that ran
+            # redis.setresp(3). A RESP2 client still gets the RESP2 rendering of these — a bulk string for a double, a
+            # flat array for a map. Dragonfly, which has no redis.setresp, knows `map` but not `double`: a table keyed
+            # `double` has no array part left, so it comes back as an empty array.
             if b"double" in result and self.server_type != "dragonfly":
                 double = result[b"double"]
                 if isinstance(double, bool) or not isinstance(double, (int, float)):
@@ -163,10 +160,9 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         elif isinstance(result, str):
             return result.encode()
         elif isinstance(result, float):
-            # Redis truncates every Lua number to an integer. Dragonfly, whose interpreter
-            # is Lua 5.4, keeps a non-integral one and replies with a double. It tells 3
-            # from 3.0 through Lua 5.4's integer subtype, which the 5.1 runtime used here
-            # does not have, so a whole number is returned as an integer either way.
+            # Redis truncates every Lua number to an integer. Dragonfly, whose interpreter is Lua 5.4, keeps a
+            # non-integral one and replies with a double. It tells 3 from 3.0 through Lua 5.4's integer subtype, which
+            # the 5.1 runtime used here does not have, so a whole number is returned as an integer either way.
             if self.server_type == "dragonfly" and not result.is_integer():
                 return result
             return int(result)
@@ -343,8 +339,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
 
         # Update the current socket so cached callbacks can find it
         s._lua_current_socket[0] = self
-        # Every script starts at RESP2, whatever protocol the calling client speaks, and
-        # `redis.setresp` does not carry over from an earlier script.
+        # Every script starts at RESP2 whatever the calling client speaks; `redis.setresp` does not carry over.
         self._script_resp = 2
 
         # Only update KEYS and ARGV per call (callbacks are already set up)

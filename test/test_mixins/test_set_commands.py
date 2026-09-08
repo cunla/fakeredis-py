@@ -104,8 +104,7 @@ def test_sdiffstore(r: ClientType):
     r.sadd("bar", "member3")
     assert r.sdiffstore("baz", "foo", "bar") == 1
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {'member1', b'member1'}
+    # Catch instances where we store bytes and strings inconsistently and thus baz = {'member1', b'member1'}
     r.sadd("baz", "member1")
     assert r.scard("baz") == 1
 
@@ -149,8 +148,7 @@ def test_sinterstore(r: ClientType):
     r.sadd("bar", "member3")
     assert r.sinterstore("baz", "foo", "bar") == 1
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {'member2', b'member2'}
+    # Catch instances where we store bytes and strings inconsistently and thus baz = {'member2', b'member2'}
     r.sadd("baz", "member2")
     assert r.scard("baz") == 1
 
@@ -338,8 +336,8 @@ def test_sunionstore(r: ClientType):
     assert r.sunionstore("baz", "foo", "bar") == 3
     assert set(r.smembers("baz")) == {b"member1", b"member2", b"member3"}
 
-    # Catch instances where we store bytes and strings inconsistently
-    # and thus baz = {b'member1', b'member2', b'member3', 'member3'}
+    # Catch instances where we store bytes and strings inconsistently and thus baz = {b'member1', b'member2',
+    # b'member3', 'member3'}
     r.sadd("baz", "member3")
     assert r.scard("baz") == 3
 

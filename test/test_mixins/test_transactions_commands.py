@@ -16,8 +16,7 @@ def test_multiple_successful_watch_calls(r: redis.Redis):
     # Check that the watched keys buffer has been emptied.
     p.execute()
 
-    # bam is no longer being watched, so it's ok to modify
-    # it now.
+    # bam is no longer being watched, so it's ok to modify it now.
     p.watch("foo")
     r.set("bam", "boo")
     p.multi()
@@ -26,8 +25,7 @@ def test_multiple_successful_watch_calls(r: redis.Redis):
 
 
 def test_watch_state_is_cleared_after_abort(r: redis.Redis):
-    # redis-py's pipeline handling and connection pooling interferes with this
-    # test, so raw commands are used instead.
+    # redis-py's pipeline handling and connection pooling interferes with this test, so raw commands are used instead.
     testtools.raw_command(r, "watch", "foo")
     testtools.raw_command(r, "multi")
     with pytest.raises(Exception) as ctx:
@@ -90,8 +88,8 @@ def test_pipeline_length(r: redis.Redis):
 
 
 def test_pipeline_no_commands(r: redis.Redis):
-    # Prior to 3.4, redis-py's execute is a nop if there are no commands
-    # queued, so it succeeds even if watched keys have been changed.
+    # Prior to 3.4, redis-py's execute is a nop if there are no commands queued, so it succeeds even if watched keys
+    # have been changed.
     r.set("foo", "1")
     p = r.pipeline()
     p.watch("foo")
@@ -108,8 +106,7 @@ def test_pipeline_failed_transaction(r: redis.Redis):
     p.set("foo", "bar")
     # Deliberately induce a syntax error
     p.execute_command("set")
-    # It should be an ExecAbortError, but redis-py tries to DISCARD after the
-    # failed EXEC, which raises a ResponseError.
+    # It should be an ExecAbortError, but redis-py tries to DISCARD after the failed EXEC, which raises a ResponseError.
     with pytest.raises(Exception) as ctx:
         p.execute()
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -135,8 +132,7 @@ def test_pipeline_move(r: redis.Redis):
     p = r.pipeline()
     p.watch("foo")
     r.move("foo", 1)
-    # Ensure the transaction isn't empty, which had different behaviour in
-    # older versions of redis-py.
+    # Ensure the transaction isn't empty, which had different behaviour in older versions of redis-py.
     p.multi()
     p.set("bar", "baz")
     with pytest.raises(Exception) as ctx:
@@ -147,8 +143,7 @@ def test_pipeline_move(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.0.6")
 def test_exec_bad_arguments(r: redis.Redis):
-    # Redis 6.0.6 changed the behaviour of exec so that it always fails with
-    # EXECABORT, even when it's just bad syntax.
+    # Redis 6.0.6 changed the behaviour of exec so that it always fails with EXECABORT, even when it's just bad syntax.
     with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
 
@@ -170,8 +165,7 @@ def test_exec_bad_arguments_abort(r: redis.Redis):
 
 
 def test_pipeline(r: redis.Redis):
-    # The pipeline method returns an object for
-    # issuing multiple commands in a batch.
+    # The pipeline method returns an object for issuing multiple commands in a batch.
     p = r.pipeline()
     p.watch("bam")
     p.multi()
@@ -211,8 +205,7 @@ def test_pipeline_ignore_errors(r: redis.Redis):
 
 
 def test_pipeline_non_transactional(r: redis.Redis):
-    # For our simple-minded model I don't think
-    # there is any observable difference.
+    # For our simple-minded model I don't think there is any observable difference.
     p = r.pipeline(transaction=False)
     res = p.set("baz", "quux").get("baz").execute()
 
@@ -295,8 +288,7 @@ def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
             p.execute()
 
         assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
-        # Now watch another key.  It should be ok to change
-        # foo as we're no longer watching it.
+        # Now watch another key.  It should be ok to change foo as we're no longer watching it.
         p.watch("bar")
         r.set("foo", "four")
         p.multi()

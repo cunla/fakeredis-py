@@ -85,8 +85,7 @@ def test_get_set_bits(r: ClientType):
 
 
 def test_setbits_and_getkeys(r: ClientType):
-    # The bit operations and the get commands
-    # should play nicely with each other.
+    # The bit operations and the get commands should play nicely with each other.
     r.setbit("foo", 1, 1)
     assert r.get("foo") == b"@"
     r.setbit("foo", 2, 1)
@@ -246,8 +245,8 @@ def test_bitpos_wrong_arguments(r: ClientType):
 
 
 def test_bitfield_empty(r: ClientType):
-    # A BITFIELD with no operations is accepted and yields no results, whether or not
-    # an OVERFLOW is given (OVERFLOW on its own only sets the mode for later operations).
+    # A BITFIELD with no operations is accepted and yields no results, whether or not an OVERFLOW is given (OVERFLOW on
+    # its own only sets the mode for later operations).
     key = "key:bitfield"
     assert r.bitfield(key).execute() == []
 

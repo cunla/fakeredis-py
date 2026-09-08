@@ -225,8 +225,8 @@ def test_geosearch(r: ClientType, real_server_details):
     assert set(r.geosearch("barcelona", member="place3", radius=100, unit="km")) == {b"place2", b"place1", b"place3"}
     # test count
     if real_server_details.server_type == "dragonfly":
-        # COUNT alone does not imply an ascending sort on dragonfly: results come back in
-        # geohash (sorted-set score) order unless ASC/DESC is asked for explicitly.
+        # COUNT alone does not imply an ascending sort on dragonfly: results come back in geohash (sorted-set score)
+        # order unless ASC/DESC is asked for explicitly.
         assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place2", b"place1"]
         assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2, sort="ASC") == [
             b"place3",

@@ -204,12 +204,12 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         try:
             response = await self._read_response(**kwargs)
         except BaseException:
-            # redis-py's own read_response closes the connection on any BaseException, cancellation included, so that
-            # a half-consumed command/reply pair never goes back to the pool. Without it, cancelling a blocking
-            # command hands the socket back still paused and mid-block, and every later command on it hangs.
+            # redis-py's own read_response closes the connection on any BaseException, cancellation included, so that a
+            # half-consumed command/reply pair never goes back to the pool. Without it, cancelling a blocking command
+            # hands the socket back still paused and mid-block, and every later command on it hangs.
             #
-            # Like redis-py, this covers only the read itself: an error *reply* is raised below, outside the guard, so
-            # a WRONGTYPE or the like propagates without tearing the connection down.
+            # Like redis-py, this covers only the read itself: an error *reply* is raised below, outside the guard, so a
+            # WRONGTYPE or the like propagates without tearing the connection down.
             if kwargs.get("disconnect_on_error", True):
                 await self.disconnect(nowait=True)
             raise

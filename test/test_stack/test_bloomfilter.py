@@ -171,8 +171,7 @@ def test_bf_insert(r: redis.Redis):
 def test_bf_scandump_and_loadchunk(r: redis.Redis):
     r.bf().create("myBloom", "0.0001", "1000")
 
-    # Test is probabilistic and might fail. It is OK to change variables if
-    # certain to not break anything
+    # Test is probabilistic and might fail. It is OK to change variables if certain to not break anything
 
     res = 0
     for x in range(1000):

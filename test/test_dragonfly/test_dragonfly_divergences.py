@@ -158,8 +158,7 @@ def test_a_write_leaves_a_watched_key_it_only_reads_alone(r: ClientType):
     r.sadd("foo", "member")
     with r.pipeline() as p:
         p.watch("foo")
-        # SDIFFSTORE only reads the keys after its destination, and a rejected MSETNX
-        # never touches one at all.
+        # SDIFFSTORE only reads the keys after its destination, and a rejected MSETNX never touches one at all.
         assert raw_command(r, "sdiffstore", "dst", "foo", "other") == 1
         assert raw_command(r, "msetnx", "foo", "x") == 0
         p.multi()
@@ -168,9 +167,8 @@ def test_a_write_leaves_a_watched_key_it_only_reads_alone(r: ClientType):
 
 
 def test_sunsubscribe_is_confirmed_as_unsubscribe(r: ClientType):
-    # A unique channel: dragonfly's "unsubscribe" reply leaves redis-py's shard_channels
-    # set populated, so closing the pubsub does not reliably drop the server-side
-    # subscription and a shared name would leak into other tests.
+    # A unique channel: dragonfly's "unsubscribe" reply leaves redis-py's shard_channels set populated, so closing the
+    # pubsub does not reliably drop the server-side subscription and a shared name would leak into other tests.
     channel = f"shard-{uuid.uuid4().hex}"
     p = r.pubsub()
     try:
@@ -205,8 +203,8 @@ def test_pubsub_help_text(r: ClientType):
 
 
 def test_shard_and_plain_channels_share_one_namespace(r: ClientType):
-    # Outside cluster mode dragonfly has a single channel namespace: SPUBLISH reaches a
-    # plain subscriber and PUBLISH reaches a sharded one. Only the message type differs.
+    # Outside cluster mode dragonfly has a single channel namespace: SPUBLISH reaches a plain subscriber and PUBLISH
+    # reaches a sharded one. Only the message type differs.
     channel = f"chan-{uuid.uuid4().hex}"
     plain, shard = r.pubsub(), r.pubsub()
     try:
@@ -256,8 +254,8 @@ def test_xinfo_groups_reports_unknown_lag_as_nil(r: ClientType):
 
 
 def test_xinfo_stream_reports_the_entries_of_an_empty_stream_as_a_null_array(r: ClientType):
-    # Redis sends nil, which RESP3 renders as nil; dragonfly keeps sending the RESP2 null
-    # array, so a RESP3 client reads it back as an empty array.
+    # Redis sends nil, which RESP3 renders as nil; dragonfly keeps sending the RESP2 null array, so a RESP3 client reads
+    # it back as an empty array.
     r.xadd("stream", {"foo": "bar"})
     r.xtrim("stream", maxlen=0)
     info = testtools.xinfo_stream_raw(r, "stream")
@@ -267,8 +265,8 @@ def test_xinfo_stream_reports_the_entries_of_an_empty_stream_as_a_null_array(r: 
 
 
 def test_xpending_looks_the_key_up_before_the_group(r: ClientType):
-    # Redis reports both possibilities in one NOGROUP error; dragonfly checks the key
-    # first, and only names the group once the key exists.
+    # Redis reports both possibilities in one NOGROUP error; dragonfly checks the key first, and only names the group
+    # once the key exists.
     _raises(r, "no such key", "xpending", "nosuchstream", "group")
     r.xadd("stream", {"foo": "bar"})
     err = _raises(r, "NOGROUP", "xpending", "stream", "group")
@@ -276,8 +274,8 @@ def test_xpending_looks_the_key_up_before_the_group(r: ClientType):
 
 
 def test_zpopmin_returns_an_array_of_pairs_under_resp3(r: ClientType):
-    # Redis answers a countless ZPOPMIN/ZPOPMAX with a flat member/score pair under RESP3;
-    # dragonfly wraps it in an array, exactly as it does for the counted form.
+    # Redis answers a countless ZPOPMIN/ZPOPMAX with a flat member/score pair under RESP3; dragonfly wraps it in an
+    # array, exactly as it does for the counted form.
     r.zadd("z", {"a": 1.0, "b": 2.0})
     expected = resp_conversion(r, [[b"a", 1.0]], [b"a", b"1"])
     assert raw_command(r, "zpopmin", "z") == expected
@@ -289,8 +287,8 @@ def test_zpopmin_on_a_missing_key_is_still_an_empty_array(r: ClientType):
 
 
 def test_zunion_and_zinter_keep_the_flat_withscores_shape(r: ClientType):
-    # Under RESP3 redis pairs each member with its score; dragonfly keeps the RESP2 shape
-    # for these two, though not for ZDIFF.
+    # Under RESP3 redis pairs each member with its score; dragonfly keeps the RESP2 shape for these two, though not for
+    # ZDIFF.
     r.zadd("a", {"m": 1.0})
     r.zadd("b", {"m": 2.0})
     for command in ("zunion", "zinter"):
@@ -299,8 +297,7 @@ def test_zunion_and_zinter_keep_the_flat_withscores_shape(r: ClientType):
 
 
 def test_zdiff_only_accepts_sorted_sets(r: ClientType):
-    # Redis reads a plain set as a sorted set scoring every member 1; so does dragonfly,
-    # except here.
+    # Redis reads a plain set as a sorted set scoring every member 1; so does dragonfly, except here.
     r.sadd("s", "m")
     r.zadd("z", {"m": 1.0})
     _raises(r, "WRONGTYPE", "zdiff", 2, "s", "z")
@@ -374,8 +371,8 @@ def test_subscribing_is_not_allowed_inside_a_transaction(r: ClientType, subscrib
 
 
 def test_a_stopped_transaction_keeps_its_queue_for_the_next_multi(r: ClientType):
-    # Redis would have queued the WATCH's neighbours and refused the EXEC; dragonfly stops
-    # queueing but hangs on to what it has, and the next MULTI carries on where it left off.
+    # Redis would have queued the WATCH's neighbours and refused the EXEC; dragonfly stops queueing but hangs on to what
+    # it has, and the next MULTI carries on where it left off.
     assert raw_command(r, "multi") == b"OK"
     assert raw_command(r, "set", "first", "1") == b"QUEUED"
     _raises(r, "'WATCH' not allowed inside a transaction", "watch", "foo")

@@ -34,10 +34,9 @@ def test_socket_cleanup_watch(fake_server):
     r1 = fakeredis.FakeStrictRedis(server=fake_server)
     r2 = fakeredis.FakeStrictRedis(server=fake_server)
     pipeline = r1.pipeline(transaction=False)
-    # This needs some poking into redis-py internals to ensure that we reach
-    # FakeSocket._cleanup. We need to close the socket while there is still
-    # a watch in place, but not allow it to be garbage collected (hence we
-    # set 'sock' even though it is unused).
+    # This needs some poking into redis-py internals to ensure that we reach FakeSocket._cleanup. We need to close the
+    # socket while there is still a watch in place, but not allow it to be garbage collected (hence we set 'sock' even
+    # though it is unused).
     with pipeline:
         pipeline.watch("test")
         sock = pipeline.connection._sock  # noqa: F841

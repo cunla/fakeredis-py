@@ -19,8 +19,8 @@ pytestmark.extend(
 
 
 def _get(r: ClientType, key: str):
-    # The legacy `.` path returns the raw document on both real redis and fakeredis,
-    # while `$` wrapping differs; parsing the JSON also ignores formatting differences.
+    # The legacy `.` path returns the raw document on both real redis and fakeredis, while `$` wrapping differs; parsing
+    # the JSON also ignores formatting differences.
     return json.loads(testtools.raw_command(r, "JSON.GET", key, "."))
 
 

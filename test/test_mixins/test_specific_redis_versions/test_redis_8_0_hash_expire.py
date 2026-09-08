@@ -84,8 +84,7 @@ def test_hgetex_validate_expired_fields_removed(r: ClientType):
     r.hset("test:hash", "foo", "bar", mapping={"1": 1, "3": "three", "4": b"four"})
 
     test_keys = ["foo", "1", "3"]
-    # test get multiple fields with expiration set
-    # validate that expired fields are removed
+    # test get multiple fields with expiration set validate that expired fields are removed
     assert r.hgetex("test:hash", *test_keys, ex=1) == [b"bar", b"1", b"three"]
     time.sleep(1.1)
     assert r.hgetex("test:hash", *test_keys) == [None, None, None]
@@ -119,8 +118,7 @@ def test_hsetex_no_expiration(r: ClientType):
 def test_hsetex_expiration_ex_and_keepttl(r: ClientType):
     r.delete("test:hash")
 
-    # set items from key/value provided
-    # combined with mapping and items with expiration - testing ex field
+    # set items from key/value provided combined with mapping and items with expiration - testing ex field
     assert (
         r.hsetex(
             "test:hash",
@@ -145,8 +143,7 @@ def test_hsetex_expiration_ex_and_keepttl(r: ClientType):
 
 def test_hsetex_expiration_px(r: ClientType):
     r.delete("test:hash")
-    # set items from key/value provided and mapping
-    # with expiration - testing px field
+    # set items from key/value provided and mapping with expiration - testing px field
     assert r.hsetex("test:hash", "foo", "bar", mapping={"1": 1, "2": "2"}, px=60000) == 1
     test_keys = ["foo", "1", "2"]
     ttls = r.httl("test:hash", *test_keys)

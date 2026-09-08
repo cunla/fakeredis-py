@@ -3,9 +3,9 @@ import pytest
 from .base import BaseMachine, commands, keys, run_machine, server_type, st, values
 from .test_string import string_commands
 
-# Dragonfly's SAVE returns before the snapshot is finished, so a SAVE that follows one too
-# closely is refused with "SAVING - can not save database" -- which nothing on the machine's
-# side can predict. Redis saves synchronously and has no such window.
+# Dragonfly's SAVE returns before the snapshot is finished, so a SAVE that follows one too closely is refused with
+# "SAVING - can not save database" -- which nothing on the machine's side can predict. Redis saves synchronously and has
+# no such window.
 save_commands = st.deferred(lambda: st.nothing() if server_type() == "dragonfly" else commands(st.just("save")))
 
 # TODO: real redis raises an error if there is a save already in progress.

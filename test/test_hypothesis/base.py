@@ -73,17 +73,16 @@ def server_type() -> str:
 
 
 def _eng_text_kwargs() -> dict:
-    # A sorted set with a member over 32 bytes switches dragonfly to its skiplist encoding,
-    # where ZADD's GT/LT and CH stop behaving (see docs/dragonfly-support.md). Keep the
-    # generated names short enough to stay out of it.
+    # A sorted set with a member over 32 bytes switches dragonfly to its skiplist encoding, where ZADD's GT/LT and CH
+    # stop behaving (see docs/dragonfly-support.md). Keep the generated names short enough to stay out of it.
     if _active_config is not None and _active_config.server_type == "dragonfly":
         return {"max_size": 32}
     return {}
 
 
 def _floats_kwargs() -> dict:
-    # Dragonfly rejects the NaN and infinity scores that Redis accepts. Subnormals are fine
-    # on both, and excluding them costs a filter Hypothesis' health check trips over.
+    # Dragonfly rejects the NaN and infinity scores that Redis accepts. Subnormals are fine on both, and excluding them
+    # costs a filter Hypothesis' health check trips over.
     if _active_config is not None and _active_config.server_type == "dragonfly":
         return {"allow_nan": False, "allow_infinity": False}
     return {}
@@ -106,21 +105,21 @@ fields = sample_attr("fields")
 values = sample_attr("values")
 scores = sample_attr("scores")
 
-# ``eng_text`` is deferred for the same reason as ``floats`` below: the dragonfly-specific
-# limits resolve at draw time from the active config rather than at import time.
+# ``eng_text`` is deferred for the same reason as ``floats`` below: the dragonfly-specific limits resolve at draw time
+# from the active config rather than at import time.
 eng_text = st.deferred(
     lambda: st.builds(lambda x: x.encode(), st.text(alphabet=string.ascii_letters, min_size=1, **_eng_text_kwargs()))
 )
 ints = st.integers(min_value=-2_147_483_648, max_value=2_147_483_647)
 int_as_bytes = st.builds(lambda x: str(default_normalize(x)).encode(), ints)
-# ``floats`` is deferred so the dragonfly-specific exclusions resolve at draw
-# time from the active config rather than at import time.
+# ``floats`` is deferred so the dragonfly-specific exclusions resolve at draw time from the active config rather than at
+# import time.
 floats = st.deferred(lambda: st.floats(width=32, **_floats_kwargs()))
 float_as_bytes = st.builds(lambda x: repr(default_normalize(x)).encode(), floats)
-# Dragonfly aggregates a ZUNIONSTORE/ZINTERSTORE's input sets in its own (hash) order, so
-# weights that cancel catastrophically -- 3e16 against -3e16 -- come out at a different score
-# than they do on redis (see docs/dragonfly-support.md). Keep the weights it is given small
-# enough for the sum to be the same whatever order it adds them in.
+# Dragonfly aggregates a ZUNIONSTORE/ZINTERSTORE's input sets in its own (hash) order, so weights that cancel
+# catastrophically -- 3e16 against -3e16 -- come out at a different score than they do on redis (see
+# docs/dragonfly-support.md). Keep the weights it is given small enough for the sum to be the same whatever order it
+# adds them in.
 zstore_weights = st.deferred(
     lambda: st.builds(
         lambda x: repr(default_normalize(x)).encode(),
@@ -128,8 +127,8 @@ zstore_weights = st.deferred(
     )
 )
 counts = st.integers(min_value=-3, max_value=3) | ints
-# Redis has an integer overflow bug in swapdb, so we confine the numbers to
-# a limited range (https://github.com/antirez/redis/issues/5737).
+# Redis has an integer overflow bug in swapdb, so we confine the numbers to a limited range
+# (https://github.com/antirez/redis/issues/5737).
 dbnums = st.integers(min_value=0, max_value=3) | st.integers(min_value=-1000, max_value=1000)
 # The filter is to work around https://github.com/antirez/redis/issues/5632
 patterns = st.text(alphabet=st.sampled_from("[]^$*.?-azAZ\\\r\n\t")) | st.binary().filter(lambda x: b"\0" not in x)
@@ -255,9 +254,8 @@ class Command:
             return False
         if command == b"keys" and N == 2 and self.args[1] != b"*":
             return False
-        # Redis will ignore a NULL character in some commands but not others,
-        # e.g., it recognizes EXEC\0 but not MULTI\00.
-        # Rather than try to reproduce this quirky behavior, just skip these tests.
+        # Redis will ignore a NULL character in some commands but not others, e.g., it recognizes EXEC\0 but not
+        # MULTI\00. Rather than try to reproduce this quirky behavior, just skip these tests.
         return b"\x00" not in command
 
 
@@ -320,8 +318,8 @@ class BaseMachine(RuleBasedStateMachine):
             pass
         self.real.flushall()
 
-        # Resolve the command strategies for this server once, up front. The
-        # rules below read these instance attributes at draw time.
+        # Resolve the command strategies for this server once, up front. The rules below read these instance attributes
+        # at draw time.
         self.create_command_strategy = self.create_commands
         self.command_strategy = self.base_commands | common_commands
         if config.server_type == "redis":
@@ -383,9 +381,8 @@ class BaseMachine(RuleBasedStateMachine):
 
         if fake_exc is not None and real_exc is None:
             if self._unnoticed_dragonfly_wrongtype(command, fake_exc):
-                # The two servers' data has diverged -- the real one stored an empty result
-                # where fakeredis refused the command -- so drop the example rather than
-                # compare anything that follows it.
+                # The two servers' data has diverged -- the real one stored an empty result where fakeredis refused the
+                # command -- so drop the example rather than compare anything that follows it.
                 assume(False)
             print(f"{fake_exc} raised on only on fake when running {command}", file=sys.stderr)
             raise fake_exc
@@ -393,8 +390,7 @@ class BaseMachine(RuleBasedStateMachine):
             assert real_exc == fake_exc, f"Expected exception `{real_exc}` not raised when running {command}"
         elif real_exc is None and isinstance(real_result, list) and command.args and command.args[0].lower() == "exec":
             assert fake_result is not None
-            # Transactions need to use the normalize functions of the
-            # component commands.
+            # Transactions need to use the normalize functions of the component commands.
             assert len(self.transaction_normalize) == len(real_result)
             assert len(self.transaction_normalize) == len(fake_result)
             for n, r, f in zip(self.transaction_normalize, real_result, fake_result):
@@ -414,10 +410,9 @@ class BaseMachine(RuleBasedStateMachine):
                 f"Discrepancy when running command {command}, fake({fake_result}) != real({real_result})"
             )
             if real_result == b"QUEUED":
-                # Since redis removes the distinction between simple strings and
-                # bulk strings, this might not actually indicate that we're in a
-                # transaction. But it is extremely unlikely that hypothesis will
-                # find such examples.
+                # Since redis removes the distinction between simple strings and bulk strings, this might not actually
+                # indicate that we're in a transaction. But it is extremely unlikely that hypothesis will find such
+                # examples.
                 self.transaction_normalize.append(command.normalize)
         if len(command.args) == 1 and Command.encode(command.args[0]).lower() in (b"discard", b"exec"):
             self.transaction_normalize = []
@@ -436,9 +431,8 @@ class BaseMachine(RuleBasedStateMachine):
         for key, value in attrs.items():
             setattr(self, key, value)
 
-    # hypothesis doesn't allow ordering of @initialize, so we have to put
-    # preconditions on rules to ensure we call init_data exactly once and
-    # after init_attrs.
+    # hypothesis doesn't allow ordering of @initialize, so we have to put preconditions on rules to ensure we call
+    # init_data exactly once and after init_attrs.
     @precondition(lambda self: not self.initialized_data)
     @rule(commands=self_strategy.flatmap(lambda self: st.lists(self.create_command_strategy)))
     def init_data(self, commands):

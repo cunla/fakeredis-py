@@ -150,8 +150,7 @@ async def test_pubsub_publish_from_another_thread(async_redis: AsyncClientType, 
         elapsed = time.monotonic() - start
         timer.join()
         assert message == {"channel": b"channel", "pattern": None, "type": "message", "data": b"hello"}
-        # Generous bound: delivery should take ~0.1s; the failure mode is
-        # waiting out the full 5s get_message timeout.
+        # Generous bound: delivery should take ~0.1s; the failure mode is waiting out the full 5s get_message timeout.
         assert elapsed < 2.5
     publisher.close()
 
@@ -300,8 +299,8 @@ async def test_hrandfield(async_redis: AsyncClientType):
 
 @pytest.mark.asyncio
 async def test_async_xread(async_redis: AsyncClientType, real_server_details: ServerDetails):
-    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array,
-    # which redis-py's RESP3 parser cannot consume, so the reply is read unparsed there.
+    # Dragonfly answers a blocking XREAD woken by a new entry with the RESP2-style array, which redis-py's RESP3 parser
+    # cannot consume, so the reply is read unparsed there.
     resp2_shape = testtools.disable_xread_parsing(async_redis, real_server_details.server_type)
     task = asyncio.create_task(async_redis.xread({"stream": "$"}, block=0))
     await asyncio.sleep(0)

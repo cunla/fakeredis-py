@@ -179,8 +179,8 @@ class Float(RedisType):
         crop_null: bool = False,
         decode_error: str | None = None,
     ) -> float:
-        # Redis has some quirks in float parsing, with several variants.
-        # See https://github.com/antirez/redis/issues/5706
+        # Redis has some quirks in float parsing, with several variants. See
+        # https://github.com/antirez/redis/issues/5706
         try:
             if crop_null:
                 value = null_terminate(value)

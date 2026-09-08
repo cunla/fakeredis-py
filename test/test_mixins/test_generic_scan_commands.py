@@ -209,8 +209,8 @@ def test_scan_family_count_not_positive(r: ClientType, real_server_details):
     is_dragonfly = real_server_details.server_type == "dragonfly"
     commands = (("scan", 0), ("sscan", "set", 0), ("hscan", "hash", 0), ("zscan", "zset", 0))
     for count in (0, -1):
-        # Dragonfly reads COUNT as unsigned: 0 is accepted and uses the default batch size,
-        # while a negative value fails to decode.
+        # Dragonfly reads COUNT as unsigned: 0 is accepted and uses the default batch size, while a negative value fails
+        # to decode.
         if is_dragonfly and count == 0:
             for args in commands:
                 raw_command(r, *args, "COUNT", count)

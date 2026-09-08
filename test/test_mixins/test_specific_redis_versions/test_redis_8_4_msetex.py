@@ -71,8 +71,7 @@ def test_msetex_expiration_px_with_cluster_client(r: ClientType):
         r.delete(key)
 
     mapping = {"1:{test:1}": 1, "2:{test:1}": "2"}
-    # set key/value pairs provided in mapping
-    # with expiration - testing px field
+    # set key/value pairs provided in mapping with expiration - testing px field
     assert r.msetex(mapping=mapping, px=60000) == 1
 
     ttls = [r.ttl(key) for key in mapping]
@@ -221,8 +220,7 @@ def test_msetex_expiration_px(r: ClientType):
         r.delete(key)
 
     mapping = {"1": 1, "2": "2"}
-    # set key/value pairs provided in mapping
-    # with expiration - testing px field
+    # set key/value pairs provided in mapping with expiration - testing px field
     assert r.msetex(mapping=mapping, px=60000) == 1
 
     ttls = [r.ttl(key) for key in mapping]

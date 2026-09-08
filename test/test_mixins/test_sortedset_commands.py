@@ -91,8 +91,7 @@ def test_zrange_with_rev_and_bylex(r: ClientType):
     assert r.zrange("foo", b"[two_b", b"(three_a", desc=True, bylex=True) == [b"two_b", b"two_a"]
     assert r.zrange("foo", b"(two_b", b"-", desc=True, bylex=True) == [b"two_a", b"three_a", b"one_a"]
     assert r.zrange("foo", b"(two_b", b"[two_b", bylex=True) == []
-    # reversed max + and min - boundaries
-    # these will be always empty, but allowed by redis
+    # reversed max + and min - boundaries these will be always empty, but allowed by redis
     assert r.zrange("foo", b"-", b"+", desc=True, bylex=True) == []
     assert r.zrange("foo", b"[three_a", b"+", desc=True, bylex=True) == []
     assert r.zrange("foo", b"-", b"[o", desc=True, bylex=True) == []
@@ -110,8 +109,7 @@ def test_zrange_with_bylex(r: ClientType):
     assert r.zrange("foo", b"(three_a", b"[two_b", bylex=True) == [b"two_a", b"two_b"]
     assert r.zrange("foo", b"-", b"(two_b", bylex=True) == [b"one_a", b"three_a", b"two_a"]
     assert r.zrange("foo", b"[two_b", b"(two_b", bylex=True) == []
-    # reversed max + and min - boundaries
-    # these will be always empty, but allowed by redis
+    # reversed max + and min - boundaries these will be always empty, but allowed by redis
     assert r.zrange("foo", b"+", b"-", bylex=True) == []
     assert r.zrange("foo", b"+", b"[three_a", bylex=True) == []
     assert r.zrange("foo", b"[o", b"-", bylex=True) == []
@@ -258,8 +256,8 @@ def test_zrank_redis7_2(r: ClientType):
     assert r.zrank("foo", "one") == 0
     assert r.zrank("foo", "two") == 1
     assert r.zrank("foo", "three") == 2
-    # redis-py only started decoding the score to a float in 7.x; older versions hand
-    # back the raw bulk string, so normalize rather than pin to a client version.
+    # redis-py only started decoding the score to a float in 7.x; older versions hand back the raw bulk string, so
+    # normalize rather than pin to a client version.
     assert _rank_with_score(r.zrank("foo", "one", withscore=True)) == [0, 1.0]
     assert _rank_with_score(r.zrank("foo", "two", withscore=True)) == [1, 2.0]
 
@@ -624,8 +622,7 @@ def test_zrangebylex(r: ClientType):
     assert r.zrangebylex("foo", b"(three_a", b"[two_b") == [b"two_a", b"two_b"]
     assert r.zrangebylex("foo", b"-", b"(two_b") == [b"one_a", b"three_a", b"two_a"]
     assert r.zrangebylex("foo", b"[two_b", b"(two_b") == []
-    # reversed max + and min - boundaries
-    # these will be always empty, but allowed by redis
+    # reversed max + and min - boundaries these will be always empty, but allowed by redis
     assert r.zrangebylex("foo", b"+", b"-") == []
     assert r.zrangebylex("foo", b"+", b"[three_a") == []
     assert r.zrangebylex("foo", b"[o", b"-") == []
@@ -651,8 +648,7 @@ def test_zlexcount(r: ClientType):
     assert r.zlexcount("foo", b"(three_a", b"[two_b") == 2
     assert r.zlexcount("foo", b"-", b"(two_b") == 3
     assert r.zlexcount("foo", b"[two_b", b"(two_b") == 0
-    # reversed max + and min - boundaries
-    # these will be always empty, but allowed by redis
+    # reversed max + and min - boundaries these will be always empty, but allowed by redis
     assert r.zlexcount("foo", b"+", b"-") == 0
     assert r.zlexcount("foo", b"+", b"[three_a") == 0
     assert r.zlexcount("foo", b"[o", b"-") == 0
@@ -726,8 +722,7 @@ def test_zrevrangebylex(r: ClientType):
     assert r.zrevrangebylex("foo", b"[two_b", b"(three_a") == [b"two_b", b"two_a"]
     assert r.zrevrangebylex("foo", b"(two_b", b"-") == [b"two_a", b"three_a", b"one_a"]
     assert r.zrangebylex("foo", b"(two_b", b"[two_b") == []
-    # reversed max + and min - boundaries
-    # these will be always empty, but allowed by redis
+    # reversed max + and min - boundaries these will be always empty, but allowed by redis
     assert r.zrevrangebylex("foo", b"-", b"+") == []
     assert r.zrevrangebylex("foo", b"[three_a", b"+") == []
     assert r.zrevrangebylex("foo", b"-", b"[o") == []
@@ -983,8 +978,8 @@ def test_zunionstore_nan_to_zero(r: ClientType):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
     r.zunionstore("bar", OrderedDict([("foo", 1.0), ("foo2", 0.0)]))
-    # This is different to test_zinterstore_nan_to_zero because of a quirk
-    # in redis. See https://github.com/antirez/redis/issues/3954.
+    # This is different to test_zinterstore_nan_to_zero because of a quirk in redis. See
+    # https://github.com/antirez/redis/issues/3954.
     assert r.zscore("bar", "x") == math.inf
 
 
@@ -1330,8 +1325,8 @@ def test_zrangebyscore_negative_start_after_sort(r: ClientType):
 def test_zmpop_count_not_positive(r: ClientType, real_server_details):
     r.zadd("foo", {"a": 1, "b": 2})
     if real_server_details.server_type == "dragonfly":
-        # Dragonfly accepts both: COUNT 0 pops nothing, and a negative count is read as
-        # unsigned and so pops the whole sorted set.
+        # Dragonfly accepts both: COUNT 0 pops nothing, and a negative count is read as unsigned and so pops the whole
+        # sorted set.
         assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", 0) == [b"foo", []]
         assert r.zcard("foo") == 2
         assert testtools.raw_command(r, "zmpop", 1, "foo", "MIN", "COUNT", -1) == [

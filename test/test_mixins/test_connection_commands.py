@@ -181,8 +181,8 @@ def test_client_pause(r: ClientType):
 def test_client_unpause(r: ClientType):
     assert raw_command(r, "CLIENT", "PAUSE", "10000") == b"OK"
     assert raw_command(r, "CLIENT", "UNPAUSE") == b"OK"
-    # CLIENT PAUSE never actually suspends fakeredis, so this only proves the server
-    # still answers; it is UNPAUSE's contract on a real server that matters here.
+    # CLIENT PAUSE never actually suspends fakeredis, so this only proves the server still answers; it is UNPAUSE's
+    # contract on a real server that matters here.
     assert r.ping()
 
 
@@ -227,9 +227,8 @@ def test_client_kill_by_id(r: ClientType, create_connection):
 
     assert raw_command(r, "CLIENT", "KILL", "ID", str(victim_id)) == 1
 
-    # The killed connection is gone, so the victim can only reach the server over a new
-    # one. Whether the drop first surfaces as an error depends on the client's retry
-    # policy rather than on the server, so accept either.
+    # The killed connection is gone, so the victim can only reach the server over a new one. Whether the drop first
+    # surfaces as an error depends on the client's retry policy rather than on the server, so accept either.
     try:
         new_id = victim.client_id()
     except CONNECTION_ERRORS:
@@ -267,8 +266,7 @@ def test_client_kill_no_match_returns_zero(r: ClientType):
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
 def test_client_kill_skipme_defaults_to_yes(r: ClientType):
-    # The caller is a normal client, but SKIPME defaults to yes, so it is spared and
-    # stays usable.
+    # The caller is a normal client, but SKIPME defaults to yes, so it is spared and stays usable.
     raw_command(r, "CLIENT", "KILL", "TYPE", "normal")
     assert r.ping()
 
@@ -445,8 +443,8 @@ def test_reset_clears_client_flags(r: ClientType):
         assert client_info_field(conn, b"flags") == b"N"
 
 
-# RESP2 only: a real server delivers the subscribe confirmation as a RESP3 push message,
-# while fakeredis queues plain Python objects and has no push framing to mirror it with.
+# RESP2 only: a real server delivers the subscribe confirmation as a RESP3 push message, while fakeredis queues plain
+# Python objects and has no push framing to mirror it with.
 @pytest.mark.resp2_only
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")

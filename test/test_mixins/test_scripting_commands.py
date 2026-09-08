@@ -18,13 +18,12 @@ _ = pytest.importorskip("lupa")
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_script_exists_redis7(r: ClientType):
-    # test response for no arguments by bypassing the py-redis command
-    # as it requires at least one argument
+    # test response for no arguments by bypassing the py-redis command as it requires at least one argument
     with pytest.raises(Exception) as ctx:
         raw_command(r, "SCRIPT EXISTS")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    # use single character characters for non-existing scripts, as those
-    # will never be equal to an actual sha1 hash digest
+    # use single character characters for non-existing scripts, as those will never be equal to an actual sha1 hash
+    # digest
     assert r.script_exists("a") == [0]
     assert r.script_exists("a", "b", "c", "d", "e", "f") == [0, 0, 0, 0, 0, 0]
 
@@ -534,10 +533,8 @@ def test_eval_sdiff(r: ClientType):
         "foo",
         "bar",
     )
-    # Note: while fakeredis sorts the result when using Lua, this isn't
-    # actually part of the redis contract (see
-    # https://github.com/antirez/redis/issues/5538), and for Redis 5 we
-    # need to sort val to pass the test.
+    # Note: while fakeredis sorts the result when using Lua, this isn't actually part of the redis contract (see
+    # https://github.com/antirez/redis/issues/5538), and for Redis 5 we need to sort val to pass the test.
     assert sorted(val) == [b"a", b"c", b"d", b"e", b"f"]
 
 
@@ -814,8 +811,8 @@ def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType, r
     local candidate = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
     return {#candidate, candidate[1], candidate[2]}
     """
-    # Flat member/score, not a nested pair — identical under both protocols. Dragonfly hands the score
-    # to Lua as a number, where redis sends the RESP2 bulk string.
+    # Flat member/score, not a nested pair — identical under both protocols. Dragonfly hands the score to Lua as a
+    # number, where redis sends the RESP2 bulk string.
     score = 42 if real_server_details.server_type == "dragonfly" else b"42"
     assert r.eval(script, 1, "z") == [2, b"member", score]
 

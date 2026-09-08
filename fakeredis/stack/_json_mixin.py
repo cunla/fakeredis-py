@@ -32,8 +32,7 @@ def _key_not_found(server_type: ServerType) -> helpers.SimpleError:
     return helpers.SimpleError(msgs.NO_KEY_MSG if server_type == "dragonfly" else msgs.JSON_KEY_NOT_FOUND)
 
 
-# Marks a JSON.ARRPOP match that is not an array, which the servers report differently from
-# an array with nothing left to pop.
+# Marks a JSON.ARRPOP match that is not an array, which servers report differently from an empty array.
 _NOT_AN_ARRAY = object()
 
 
@@ -64,8 +63,8 @@ def _format_path(path: bytes | str) -> str:
 @lru_cache(maxsize=64)
 def _parse_jsonpath(path: str | bytes, server_type: ServerType = "redis") -> JSONPath:
     if server_type == "dragonfly" and "[?" in (path.decode() if isinstance(path, bytes) else path):
-        # Dragonfly's JSONPath has no filter expressions: `$.a[?(@.b>1)]` is a syntax error,
-        # while wildcards and recursive descent parse as they do on RedisJSON.
+        # Dragonfly's JSONPath has no filter expressions: `$.a[?(@.b>1)]` is a syntax error, while wildcards and
+        # recursive descent parse as they do on RedisJSON.
         raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
     path_str: str = _format_path(path)
     try:
@@ -503,8 +502,8 @@ class JSONCommandsMixin(CommandsMixinBase):
         key.update(curr_value)
 
         if self.server_type == "dragonfly":
-            # Dragonfly answers a legacy path with the JSON text of the new value and a
-            # JSONPath with 0/1, where RedisJSON answers with booleans either way.
+            # Dragonfly answers a legacy path with the JSON text of the new value and a JSONPath with 0/1, where
+            # RedisJSON answers with booleans either way.
             if _path_is_legacy(path_str):
                 return self._legacy_path_reply(JSONObject.encode(res[0]), True)
             toggled: list[Any] = [int(x) if type(x) is bool else x for x in res]
@@ -596,16 +595,16 @@ class JSONCommandsMixin(CommandsMixinBase):
                 ind = index if index < len(val) else -1
                 res = val.pop(ind)
                 return val, JSONObject.encode(res), True
-            # An empty array has nothing to pop; a match that is no array at all is reported
-            # differently again, so the two are told apart below rather than here.
+            # An empty array has nothing to pop; a match that is no array at all is reported differently again, so the
+            # two are told apart below rather than here.
             return None, (None if type(val) is list else _NOT_AN_ARRAY), False  # type:ignore[return-value]
 
         res: Any = _json_write_iterate(arrpop, key, path_str, allow_result_none=True, server_type=self.server_type)
         if isinstance(res, list):
             return [None if item is _NOT_AN_ARRAY else item for item in res]
         if res is _NOT_AN_ARRAY:
-            # Flattening a legacy path down to one value, dragonfly reports a match that is no
-            # array as the JSON text `null`, where RedisJSON sends a null reply.
+            # Flattening a legacy path down to one value, dragonfly reports a match that is no array as the JSON text
+            # `null`, where RedisJSON sends a null reply.
             res = b"null" if self.server_type == "dragonfly" else None
         # An omitted path is a legacy path here, whatever the `$` default says.
         return self._legacy_path_reply(res, _path_is_legacy(args[0] if len(args) > 0 else None))
@@ -725,8 +724,8 @@ class JSONCommandsMixin(CommandsMixinBase):
         )
         if self.server_type == "dragonfly":
             if self._client_info.protocol_version == 3 and isinstance(res, list):
-                # Dragonfly wraps every match of a JSONPath in an array of its own, where
-                # RedisJSON wraps the whole reply in one.
+                # Dragonfly wraps every match of a JSONPath in an array of its own, where RedisJSON wraps the
+                # whole reply in one.
                 wrapped: list[Any] = [[item] for item in res]
                 return wrapped
             return self._legacy_path_reply(res, _path_is_legacy(args[0] if len(args) > 0 else None))

@@ -16,9 +16,8 @@ from .base import (
     zstore_weights,
 )
 
-# A negative LIMIT offset is undefined behaviour in Redis (it reads out of
-# bounds, so the result depends on leftover internal state), so keep the offset
-# non-negative. A negative count is well-defined and means "unlimited".
+# A negative LIMIT offset is undefined behaviour in Redis (it reads out of bounds, so the result depends on leftover
+# internal state), so keep the offset non-negative. A negative count is well-defined and means "unlimited".
 limit_offsets = st.integers(min_value=0, max_value=3) | st.integers(min_value=0, max_value=2_147_483_647)
 limits = st.just(()) | st.tuples(st.just("limit"), limit_offsets, counts)
 score_tests = scores | st.builds(lambda x: b"(" + repr(x).encode(), scores)

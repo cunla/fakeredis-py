@@ -17,8 +17,8 @@ class TransactionsCommandsMixin(CommandsMixinBase):
         # When in a MULTI, set to a list of function calls
         self._transaction: list[Any] | None = None
         self._transaction_failed = False
-        # Dragonfly only: queueing stopped after a command failed to queue, but the queue
-        # itself is kept until the next MULTI resumes it (or DISCARD/EXEC throws it away).
+        # Dragonfly only: queueing stopped after a command failed to queue, but the queue itself is kept until the next
+        # MULTI resumes it (or DISCARD/EXEC throws it away).
         self._transaction_paused = False
         # Set when executing the commands from EXEC
         self._in_transaction = False

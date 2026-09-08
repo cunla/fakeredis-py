@@ -1,6 +1,5 @@
-#  Note: the alphabet in geohash differs from the common base32
-#  alphabet described in IETF's RFC 4648
-#  (http://tools.ietf.org/html/rfc4648)
+# Note: the alphabet in geohash differs from the common base32 alphabet described in IETF's RFC 4648
+# (http://tools.ietf.org/html/rfc4648)
 
 from __future__ import annotations
 

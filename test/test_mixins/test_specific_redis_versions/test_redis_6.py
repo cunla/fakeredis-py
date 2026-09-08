@@ -61,12 +61,11 @@ def test_pubsub_help_redis6(r: ClientType):
 
 @pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
 def test_script_exists_redis6(r: ClientType):
-    # test response for no arguments by bypassing the py-redis command
-    # as it requires at least one argument
+    # test response for no arguments by bypassing the py-redis command as it requires at least one argument
     assert raw_command(r, "SCRIPT EXISTS") == []
 
-    # use single character characters for non-existing scripts, as those
-    # will never be equal to an actual sha1 hash digest
+    # use single character characters for non-existing scripts, as those will never be equal to an actual sha1 hash
+    # digest
     assert r.script_exists("a") == [0]
     assert r.script_exists("a", "b", "c", "d", "e", "f") == [0, 0, 0, 0, 0, 0]
 
@@ -90,8 +89,7 @@ def test_xautoclaim_redis6(r: ClientType):
     message = get_stream_message(r, stream, message_id1)
     r.xgroup_create(stream, group, 0)
 
-    # trying to claim a message that isn't already pending doesn't
-    # do anything
+    # trying to claim a message that isn't already pending doesn't do anything
     assert r.xautoclaim(stream, group, consumer2, min_idle_time=0) == [b"0-0", []]
 
     # read the group as consumer1 to initially claim the messages
@@ -101,8 +99,7 @@ def test_xautoclaim_redis6(r: ClientType):
     response = r.xautoclaim(stream, group, consumer2, min_idle_time=0, count=1)
     assert response[1] == [message]
 
-    # reclaim the messages as consumer1, but use the justid argument
-    # which only returns message ids
+    # reclaim the messages as consumer1, but use the justid argument which only returns message ids
     assert r.xautoclaim(stream, group, consumer1, min_idle_time=0, start_id=0, justid=True) == [
         message_id1,
         message_id2,
