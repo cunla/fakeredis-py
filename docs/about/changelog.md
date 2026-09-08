@@ -36,7 +36,8 @@ toc_depth: 2
 - fix: `redis.call` in a Lua script now returns RESP2 shapes whatever protocol the client negotiated,
   matching real Redis, where a script must opt into RESP3. `redis.setresp(2)`/`redis.setresp(3)` are
   now supported and reset to RESP2 for each run. Dragonfly has no `redis.setresp`, so fakeredis does
-  not expose one when emulating it (#543)
+  not expose one when emulating it, and a script returning `{double=...}` there answers with an empty
+  array the way the real server does (#543)
 - fix: `XCLAIM`/`XAUTOCLAIM` now move an entry's pending count to the claiming consumer instead of
   leaving it on the previous owner, so a later `XACK` no longer drives that count negative (#548)
 - fix: `XACK` no longer raises a raw Python `KeyError` when a pending entry has no live consumer, and
