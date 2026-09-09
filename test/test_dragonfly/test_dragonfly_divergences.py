@@ -20,7 +20,7 @@ from test.testtools import raw_command, resp_conversion
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.unsupported_server_types("redis", "valkey"),
+        pytest.mark.unsupported_server_types("redis", "valkey", "kividb"),
     ]
 )
 

@@ -20,7 +20,7 @@ _ = pytest.importorskip("lupa")
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.unsupported_server_types("redis", "valkey"),
+        pytest.mark.unsupported_server_types("redis", "valkey", "kividb"),
     ]
 )
 
