@@ -1015,6 +1015,7 @@ def test_zunionstore_nan_to_zero_ordering(r: ClientType):
     assert r.zscore("baz", "e1") == 0.0
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zunionstore_mixed_set_types(r: ClientType):
     # No score, redis will use 1.0.
     r.sadd("foo", "one")
@@ -1056,7 +1057,7 @@ def test_zinterstore(r: ClientType):
     assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 2), (b"two", 4)])
 
 
-@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.unsupported_server_types("dragonfly", "kividb")
 def test_zinterstore_mixed_set_types(r: ClientType):
     r.sadd("foo", "one")
     r.sadd("foo", "two")
