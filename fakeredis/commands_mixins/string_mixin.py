@@ -149,9 +149,11 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             return Float.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_FLOAT_MSG.format(name))
         return Int.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_INTEGER_MSG.format(name))
 
-    @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis",))
+    @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis", "kividb"))
     def increx(self, key: CommandItem, *args: bytes) -> list[Any]:
-        if self.version < (8, 8):
+        # KiviDB reports redis_version 7.0.15 but ships INCREX, so its support is keyed off the
+        # server type rather than the version it claims.
+        if self.version < (8, 8) and self.server_type != "kividb":
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("INCREX"))
         (byfloat, byint, saturate, lbound, ubound, ex, px, exat, pxat, persist, enx), _ = extract_args(
             args,
@@ -384,7 +386,7 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             key.expireat = None if expire_time is None else int(expire_time)
         return key.get(None)
 
-    @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,), server_types=("redis", "valkey"))
+    @command(fixed=(Key(bytes), Key(bytes)), repeat=(bytes,), server_types=("redis", "valkey", "kividb"))
     def lcs(self, k1: CommandItem, k2: CommandItem, *args: bytes) -> bytes | int | dict[bytes, Any]:
         s1 = k1.value or b""
         s2 = k2.value or b""

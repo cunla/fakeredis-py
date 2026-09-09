@@ -323,7 +323,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
             res.append([msg.encode() for msg in msgs_removed])
         return res
 
-    @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis",))
+    @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis", "kividb"))
     def xdelex(self, key: CommandItem, *args: bytes) -> list[int]:
         """XDELEX key [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
         mode, ids = self._parse_xdelex_args(args, "XDELEX")
@@ -333,6 +333,8 @@ class StreamsCommandsMixin(CommandsMixinBase):
         key.updated()
         return res
 
+    # KiviDB has XACKDEL, but shaped like XACK - `XACKDEL key group id [id ...]`, with no ref-policy
+    # and no IDS count - so the Redis form below would answer where the real server errors.
     @command(name="XACKDEL", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
     def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> list[int]:
         """XACKDEL key group [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
@@ -366,10 +368,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
         ids = list(args[i : i + num_ids])
         return mode, ids
 
-    @command(name="XNACK", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
+    @command(name="XNACK", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis", "kividb"))
     def xnack(self, key: CommandItem, group_name: bytes, *args: bytes) -> int:
         """XNACK key group <SILENT | FAIL | FATAL> IDS numids id [id ...] [RETRYCOUNT count] [FORCE]"""
-        if self.version < (8, 8):
+        # As for INCREX, KiviDB has XNACK despite reporting redis_version 7.0.15.
+        if self.version < (8, 8) and self.server_type != "kividb":
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("XNACK"))
         if len(args) < 3:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XNACK"))

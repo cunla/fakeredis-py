@@ -300,6 +300,7 @@ def test_type(r: ClientType):
     assert r.type("none_key") == b"none"
 
 
+@pytest.mark.unsupported_server_types("kividb")  # KiviDB has no UNLINK
 def test_unlink(r: ClientType):
     r.set("foo", "bar")
     r.unlink("foo")
