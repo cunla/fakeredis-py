@@ -24,4 +24,4 @@ scratch*
 .env
 scripts/*.md
 notes.md
-
+notes*.md
