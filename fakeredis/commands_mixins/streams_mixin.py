@@ -23,6 +23,10 @@ class StreamsCommandsMixin(CommandsMixinBase):
         elements = left_args[1:]
         if not elements or len(elements) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XADD"))
+        # XADD takes an untyped Key so that NOMKSTREAM can tell a missing key from an empty stream,
+        # which leaves the type check to be made here, once the arity is known to be good.
+        if key.value is not None and not isinstance(key.value, XStream):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         stream = key.value if key.value is not None else XStream()
         if self.version < (7,) and entry_key != b"*" and not StreamRangeTest.valid_key(entry_key):
             raise SimpleError(msgs.XADD_INVALID_ID)
