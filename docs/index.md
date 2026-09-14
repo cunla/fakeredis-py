@@ -158,6 +158,11 @@ True
 'baz'
 ```
 
+Clients created without `server=` get the `FakeServer` of their address (`host` and `port`, or `path` for a unix
+socket), so two clients pointed at the same address share state for the lifetime of the process. To start again from
+empty databases, e.g. between tests, call `fakeredis.FakeServer.clear_all_servers()`: clients created afterwards get a
+new server, while existing clients keep the one they have.
+
 It is also possible to mock connection errors, so you can effectively test your error handling.
 Set the connected attribute of the server to `False` after initialization.
 

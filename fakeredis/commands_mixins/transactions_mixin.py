@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import CommandItem, Key, command
@@ -9,8 +9,6 @@ from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
 class TransactionsCommandsMixin(CommandsMixinBase):
-    _run_command: Callable  # type: ignore
-
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
         super().__init__(*args, **kwargs)
         self._watches: set[Any] = set()

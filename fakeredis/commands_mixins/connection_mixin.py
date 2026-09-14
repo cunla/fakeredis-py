@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any
 
 import fakeredis
 from fakeredis import _msgs as msgs
@@ -18,8 +18,6 @@ CLIENT_KILL_TYPES = {b"normal", b"master", b"replica", b"slave", b"pubsub"}
 
 
 class ConnectionCommandsMixin(CommandsMixinBase):
-    _clear_watches: Callable[[], None]
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db_num: int
