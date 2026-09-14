@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import Self
 
@@ -11,7 +10,6 @@ from ._base_type import BaseModel
 
 
 class ExpiringMembersSet(BaseModel):
-    DECODE_ERROR = msgs.INVALID_HASH_MSG
     _model_type = b"set"
 
     def __init__(self, values: dict[bytes, int | None] | None = None, *args: Any, **kwargs: Any) -> None:
@@ -20,7 +18,7 @@ class ExpiringMembersSet(BaseModel):
 
     def _expire_members(self) -> None:
         now = current_time()
-        removed = [k for k in self._values if (self._values[k] or (now + 1)) < now]
+        removed = [k for k, when_ms in self._values.items() if when_ms is not None and when_ms < now]
         for k in removed:
             self._values.pop(k)
 
@@ -33,7 +31,12 @@ class ExpiringMembersSet(BaseModel):
         return 1
 
     def clear_key_expireat(self, key: bytes) -> bool:
-        return self._values.pop(key, None) is not None
+        """Remove the TTL of member `key`, keeping the member. Returns whether it had one."""
+        self._expire_members()
+        if self._values.get(key) is None:
+            return False
+        self._values[key] = None
+        return True
 
     def get_key_expireat(self, key: bytes) -> int | None:
         self._expire_members()
@@ -53,7 +56,7 @@ class ExpiringMembersSet(BaseModel):
     def __iter__(self) -> Iterator[bytes]:
         self._expire_members()
         now = current_time()
-        return iter({k for k in self._values if (self._values[k] or (now + 1)) >= now})
+        return iter({k for k, when_ms in self._values.items() if when_ms is None or when_ms >= now})
 
     def __get__(self, instance: object, owner: None = None) -> set[bytes]:
         self._expire_members()
