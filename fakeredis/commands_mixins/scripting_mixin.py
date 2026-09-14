@@ -16,13 +16,16 @@ from fakeredis._helpers import (
     OK,
     SimpleError,
     SimpleString,
+    compile_pattern,
     decode_command_bytes,
     null_terminate,
 )
+from fakeredis.model import is_write_command
 
 from .. import _msgs as msgs
 from .._server import FakeServer
 from .._typing import ServerType, VersionType
+from ._lua_functions import FunctionsEngine
 from ._mixin_base import CommandsMixinBase
 
 __LUA_RUNTIMES_MAP = {
@@ -77,6 +80,9 @@ DRAGONFLY_SCRIPT_HELP = [
     "HELP",
     "   Prints this help.",
 ]
+
+# Servers that have Redis Functions. Dragonfly and KiviDB answer FUNCTION and FCALL as unknown commands.
+_FUNCTION_SERVER_TYPES: tuple[ServerType, ...] = ("redis", "valkey")
 
 
 class ScriptingCommandsMixin(CommandsMixinBase):
@@ -438,6 +444,280 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         ]
 
         return [s.encode() for s in help_strings]
+
+    def _functions(self) -> FunctionsEngine:
+        s: Any = self._server
+        if getattr(s, "_lua_functions", None) is None:
+            s._lua_functions = FunctionsEngine(
+                LUA_MODULE,
+                s.server_type,
+                s.version,
+                _lua_redis_log,
+                _lua_cjson_encode,
+                _lua_cjson_decode,
+                _lua_cjson_null,
+            )
+        engine: FunctionsEngine = s._lua_functions
+        return engine
+
+    def _require_functions(self, command_name: str) -> None:
+        """Functions arrived in Redis 7."""
+        if self.version < (7,):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format(command_name))
+
+    def _function_redis_call(self, lua_runtime: Any, read_only: bool, *args: Any) -> Any:
+        """`redis.call` from a function: EVAL's, plus refusing writes to a read-only function, in Redis 7's wording."""
+        valkey = self.server_type == "valkey"
+        if not args:
+            raise SimpleError(msgs.LUA_CALL_NO_ARGS_MSG)
+        try:
+            op, *call_args = [_convert_redis_arg(arg) for arg in args]
+        except SimpleError:
+            raise SimpleError(msgs.VALKEY_FUNCTION_COMMAND_ARG_MSG if valkey else msgs.LUA_COMMAND_ARG_MSG) from None
+        wrong_args_msg = msgs.VALKEY_WRONG_ARGS_MSG7 if valkey else msgs.WRONG_ARGS_MSG7
+        try:
+            func, sig = self._name_to_func(decode_command_bytes(op))
+        except SimpleError:
+            raise SimpleError(
+                msgs.VALKEY_SCRIPT_UNKNOWN_COMMAND_MSG if valkey else msgs.SCRIPT_UNKNOWN_COMMAND_MSG
+            ) from None
+        if func is None:
+            raise SimpleError(wrong_args_msg)
+        try:
+            sig.check_arity(call_args, self.version)
+        except SimpleError:
+            raise SimpleError(wrong_args_msg) from None
+        if read_only and is_write_command(sig.name.encode()):
+            raise SimpleError(msgs.SCRIPT_READ_ONLY_WRITE_MSG)
+        result = self._run_command(func, sig, call_args, True)
+        return self._convert_redis_result(lua_runtime, result)
+
+    @command(
+        name="FUNCTION LOAD",
+        fixed=(bytes,),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def function_load(self, *args: bytes) -> bytes:
+        self._require_functions("function")
+        replace = False
+        for option in args[:-1]:
+            if option.lower() != b"replace":
+                text = option.decode("utf-8", "replace").replace("\r", " ").replace("\n", " ")
+                raise SimpleError(msgs.FUNCTION_UNKNOWN_OPTION_MSG.format(text))
+            replace = True
+        return self._functions().load(args[-1], replace)
+
+    @command(name="FUNCTION DELETE", fixed=(bytes,), flags=msgs.FLAG_NO_SCRIPT, server_types=_FUNCTION_SERVER_TYPES)
+    def function_delete(self, library_name: bytes) -> SimpleString:
+        self._require_functions("function")
+        self._functions().delete(library_name)
+        return OK
+
+    @command(
+        name="FUNCTION FLUSH",
+        fixed=(),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def function_flush(self, *args: bytes) -> SimpleString:
+        self._require_functions("function")
+        if len(args) > 1:
+            raise SimpleError(msgs.FUNCTION_SUBCOMMAND_SYNTAX_MSG.format("FLUSH"))
+        if args and args[0].lower() not in (b"sync", b"async"):
+            raise SimpleError(msgs.FUNCTION_FLUSH_MODE_MSG)
+        self._functions().libraries.clear()
+        return OK
+
+    @command(
+        name="FUNCTION LIST",
+        fixed=(),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def function_list(self, *args: bytes) -> list[dict[bytes, Any]]:
+        self._require_functions("function")
+        with_code = False
+        pattern: bytes | None = None
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if not with_code and arg.lower() == b"withcode":
+                with_code = True
+            elif pattern is None and arg.lower() == b"libraryname":
+                if i == len(args) - 1:
+                    raise SimpleError(msgs.FUNCTION_LIST_NO_LIBRARY_NAME_MSG)
+                i += 1
+                pattern = args[i]
+            else:
+                raise SimpleError(msgs.FUNCTION_LIST_UNKNOWN_ARG_MSG.format(arg.decode("utf-8", "replace")))
+            i += 1
+        # LIBRARYNAME matches library names case-insensitively.
+        regex = compile_pattern(pattern.lower()) if pattern is not None else None
+        result = []
+        for library in self._functions().libraries.values():
+            if regex is not None and not regex.match(library.name.lower()):
+                continue
+            info: dict[bytes, Any] = {
+                b"library_name": library.name,
+                b"engine": b"LUA",
+                b"functions": [
+                    {b"name": function.name, b"description": function.description, b"flags": list(function.flags)}
+                    for function in library.functions.values()
+                ],
+            }
+            if with_code:
+                info[b"library_code"] = library.code
+            result.append(info)
+        return result
+
+    @command(name="FUNCTION STATS", fixed=(), flags=msgs.FLAG_NO_SCRIPT, server_types=_FUNCTION_SERVER_TYPES)
+    def function_stats(self) -> dict[bytes, Any]:
+        self._require_functions("function")
+        libraries = self._functions().libraries.values()
+        return {
+            b"running_script": None,
+            b"engines": {
+                b"LUA": {
+                    b"libraries_count": len(libraries),
+                    b"functions_count": sum(len(library.functions) for library in libraries),
+                }
+            },
+        }
+
+    @command(name="FUNCTION KILL", fixed=(), flags=msgs.FLAG_NO_SCRIPT, server_types=_FUNCTION_SERVER_TYPES)
+    def function_kill(self) -> None:
+        self._require_functions("function")
+        # A function runs to completion under the server lock, so there is never one to kill.
+        raise SimpleError(msgs.FUNCTION_NOTBUSY_MSG)
+
+    @command(name="FUNCTION DUMP", fixed=(), flags=msgs.FLAG_NO_SCRIPT, server_types=_FUNCTION_SERVER_TYPES)
+    def function_dump(self) -> bytes:
+        self._require_functions("function")
+        return self._functions().dump()
+
+    @command(
+        name="FUNCTION RESTORE",
+        fixed=(bytes,),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def function_restore(self, payload: bytes, *args: bytes) -> SimpleString:
+        self._require_functions("function")
+        if len(args) > 1:
+            raise SimpleError(msgs.FUNCTION_SUBCOMMAND_SYNTAX_MSG.format("RESTORE"))
+        policy = args[0].lower() if args else b"append"
+        if policy not in (b"append", b"replace", b"flush"):
+            raise SimpleError(msgs.FUNCTION_RESTORE_POLICY_MSG)
+        self._functions().restore(payload, policy)
+        return OK
+
+    @command(name="FUNCTION", fixed=(), flags=msgs.FLAG_NO_SCRIPT, server_types=_FUNCTION_SERVER_TYPES)
+    def function(self) -> None:
+        self._require_functions("function")
+        raise SimpleError(msgs.WRONG_ARGS_MSG6.format("function"))
+
+    @command(name="FUNCTION HELP", fixed=(), server_types=_FUNCTION_SERVER_TYPES)
+    def function_help(self) -> list[bytes]:
+        self._require_functions("function")
+        # Redis 7.0 still listed the library description it had dropped, and still said "Prints".
+        before_7_1 = self.version < (7, 1)
+        help_strings = [
+            "FUNCTION <subcommand> [<arg> [value] [opt] ...]. Subcommands are:",
+            "LOAD [REPLACE] <FUNCTION CODE>",
+            "    Create a new library with the given library name and code.",
+            "DELETE <LIBRARY NAME>",
+            "    Delete the given library.",
+            "LIST [LIBRARYNAME PATTERN] [WITHCODE]",
+            "    Return general information on all the libraries:",
+            "    * Library name",
+            "    * The engine used to run the Library",
+            *(["    * Library description"] if before_7_1 else []),
+            "    * Functions list",
+            "    * Library code (if WITHCODE is given)",
+            "    It also possible to get only function that matches a pattern using LIBRARYNAME argument.",
+            "STATS",
+            "    Return information about the current function running:",
+            "    * Function name",
+            "    * Command used to run the function",
+            "    * Duration in MS that the function is running",
+            "    If no function is running, return nil",
+            "    In addition, returns a list of available engines.",
+            "KILL",
+            "    Kill the current running function.",
+            "FLUSH [ASYNC|SYNC]",
+            "    Delete all the libraries.",
+            "    When called without the optional mode argument, the behavior is determined by the",
+            "    lazyfree-lazy-user-flush configuration directive. Valid modes are:",
+            "    * ASYNC: Asynchronously flush the libraries.",
+            "    * SYNC: Synchronously flush the libraries.",
+            "DUMP",
+            "    Return a serialized payload representing the current libraries, can be restored using FUNCTION RESTORE command",
+            "RESTORE <PAYLOAD> [FLUSH|APPEND|REPLACE]",
+            "    Restore the libraries represented by the given payload, it is possible to give a restore policy to",
+            "    control how to handle existing libraries (default APPEND):",
+            "    * FLUSH: delete all existing libraries.",
+            "    * APPEND: appends the restored libraries to the existing libraries. On collision, abort.",
+            "    * REPLACE: appends the restored libraries to the existing libraries, On collision, replace the old",
+            "      libraries with the new libraries (notice that even on this option there is a chance of failure",
+            "      in case of functions name collision with another library).",
+            "HELP",
+            "    Prints this help." if before_7_1 else "    Print this help.",
+        ]
+        return [s.encode() for s in help_strings]
+
+    @command(
+        name="FCALL",
+        fixed=(bytes, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def fcall(self, function_name: bytes, numkeys: bytes, *keys_and_args: bytes) -> Any:
+        return self._fcall("fcall", function_name, numkeys, keys_and_args, read_only_command=False)
+
+    @command(
+        name="FCALL_RO",
+        fixed=(bytes, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_NO_SCRIPT,
+        server_types=_FUNCTION_SERVER_TYPES,
+    )
+    def fcall_ro(self, function_name: bytes, numkeys: bytes, *keys_and_args: bytes) -> Any:
+        return self._fcall("fcall_ro", function_name, numkeys, keys_and_args, read_only_command=True)
+
+    def _fcall(
+        self,
+        command_name: str,
+        function_name: bytes,
+        numkeys_arg: bytes,
+        keys_and_args: tuple[bytes, ...],
+        read_only_command: bool,
+    ) -> Any:
+        self._require_functions(command_name)
+        engine = self._functions()
+        function = engine.find(function_name)
+        if function is None:
+            raise SimpleError(msgs.FUNCTION_NOT_FOUND_MSG)
+        numkeys = Int.decode(numkeys_arg, decode_error=msgs.FUNCTION_BAD_NUMKEYS_MSG)
+        if numkeys > len(keys_and_args):
+            raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
+        if numkeys < 0:
+            raise SimpleError(msgs.NEGATIVE_KEYS_MSG)
+        read_only = b"no-writes" in function.flags
+        if read_only_command and not read_only:
+            raise SimpleError(msgs.FUNCTION_WRITE_FLAG_RO_MSG)
+        # Like an EVAL script, a function starts at RESP2 whatever its caller speaks.
+        self._script_resp = 2
+        try:
+            result = engine.call(self, function, keys_and_args[:numkeys], keys_and_args[numkeys:], read_only)
+        finally:
+            self._script_resp = None
+        return self._convert_lua_result(result, nested=False)
 
 
 def _ensure_str(s: AnyStr, encoding: str, replaceerr: str) -> str:
