@@ -3,14 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from typing import Any, AnyStr
 
-from fakeredis import _msgs as msgs
 from fakeredis._helpers import asbytes, current_time
 
 from ._base_type import BaseModel
 
 
 class Hash(BaseModel):
-    DECODE_ERROR = msgs.INVALID_HASH_MSG
     _model_type = b"hash"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
