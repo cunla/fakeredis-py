@@ -6,7 +6,7 @@ import math
 import random
 import sys
 from collections.abc import Sequence
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args, parse_mpop_args
@@ -82,9 +82,6 @@ class ScoreTest(RedisType):
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):
-    _scan: Callable[..., Any]
-    _encodefloat: Callable[[float, bool], bytes]
-
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> list[list[Any]]:
         if count < 0:
             raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
@@ -434,7 +431,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         new_cursor, ans = self._scan(key.value.items(), cursor, *args)
         flat = []
-        for member, score in ans:
+        # _scan returns the items it was given, and a sorted set's items are (member, score) pairs.
+        for member, score in cast("list[tuple[bytes, float]]", ans):
             flat.append(member)
             flat.append(self._encodefloat(score, False))
         return [new_cursor, flat]

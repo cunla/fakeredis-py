@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from importlib import metadata
 from typing import Any, Dict, List, Literal, Tuple, Union
 
 import redis
@@ -12,11 +13,6 @@ if sys.version_info >= (3, 11):
 else:
     from async_timeout import timeout as async_timeout
     from typing_extensions import Self
-
-try:
-    from importlib import metadata
-except ImportError:  # for Python < 3.8
-    import importlib_metadata as metadata  # type: ignore
 
 lib_version = metadata.version("fakeredis")
 # These are evaluated at runtime (not annotations), so they must use typing aliases rather than PEP 585 builtins to

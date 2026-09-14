@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Sequence
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
@@ -45,8 +44,6 @@ def _setop(
 
 
 class SetCommandsMixin(CommandsMixinBase):
-    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
-
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)

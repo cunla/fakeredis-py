@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import extract_args
@@ -78,14 +78,6 @@ def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
 
 
 class StringCommandsMixin(CommandsMixinBase, ABC):
-    _encodeint: Callable[
-        [
-            int,
-        ],
-        bytes,
-    ]
-    _encodefloat: Callable[[float, bool], bytes]
-
     @property
     @abstractmethod
     def version(self) -> VersionType:
