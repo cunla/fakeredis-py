@@ -17,12 +17,18 @@ class ExpiringMembersSet(BaseModel):
     def __init__(self, values: dict[bytes, int | None] | None = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._values: dict[bytes, int | None] = values or {}
+        # Whether any member may carry a TTL, so reads on the common set with none can skip the expiry scan. It can be
+        # left True after the last TTL is gone, but is never False while one remains.
+        self._may_expire = any(v is not None for v in self._values.values())
 
     def _expire_members(self) -> None:
+        if not self._may_expire:
+            return
         now = current_time()
         removed = [k for k in self._values if (self._values[k] or (now + 1)) < now]
         for k in removed:
             self._values.pop(k)
+        self._may_expire = any(v is not None for v in self._values.values())
 
     def set_member_expireat(self, key: bytes, when_ms: int) -> int:
         now = current_time()
@@ -30,6 +36,7 @@ class ExpiringMembersSet(BaseModel):
             self._values.pop(key, None)
             return 2
         self._values[key] = when_ms
+        self._may_expire = True
         return 1
 
     def clear_key_expireat(self, key: bytes) -> bool:
@@ -78,6 +85,7 @@ class ExpiringMembersSet(BaseModel):
         self._expire_members()
         if isinstance(other, ExpiringMembersSet):
             self._values.update(other._values)
+            self._may_expire = self._may_expire or other._may_expire
             return self
         for value in other:
             self._values[value] = None
