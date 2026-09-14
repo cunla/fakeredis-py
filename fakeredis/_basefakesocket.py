@@ -4,6 +4,7 @@ import itertools
 import logging
 import queue
 import re
+import threading
 import time
 import weakref
 from collections.abc import Generator, Iterable, Sequence
@@ -152,6 +153,8 @@ class BaseFakeSocket:
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
         self.responses: queue.Queue[bytes] | None = queue.Queue()
+        # Set whenever a response is queued or the socket closes, so FakeSelector can wait for one instead of polling.
+        self.response_ready = threading.Event()
         # Prevents parser from processing commands. Not used in this module, but set by aioredis module to prevent new
         # commands being processed while handling a blocking command.
         self._paused = False
@@ -213,6 +216,7 @@ class BaseFakeSocket:
         responses = self.responses
         if responses:
             responses.put(msg)
+            self.response_ready.set()
 
     def pause(self) -> None:
         self._paused = True
@@ -263,6 +267,8 @@ class BaseFakeSocket:
         self._server = None  # type: ignore
         self._db = None
         self.responses = None
+        # Wake a FakeSelector waiting for a response that will now never come.
+        self.response_ready.set()
 
     def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
         """Build the server's "unknown command" error.
