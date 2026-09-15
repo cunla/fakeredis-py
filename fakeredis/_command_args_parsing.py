@@ -32,12 +32,17 @@ def _default_value(s: str) -> Any:
         return [None] * ind
 
 
+class _IncompleteArgument(Exception):
+    """An option was given without all of the values it takes."""
+
+
 def extract_args(
     actual_args: tuple[bytes, ...],
     expected: tuple[str, ...],
     error_on_unexpected: bool = True,
     left_from_first_unexpected: bool = True,
     exception: str | None = None,
+    ignore_incomplete: bool = False,
 ) -> tuple[list[Any], Sequence[Any]]:
     """Parse argument values.
 
@@ -48,6 +53,8 @@ def extract_args(
     :param error_on_unexpected: Should an error be raised when actual_args contain an unexpected argument?
     :param left_from_first_unexpected: Once reaching an unexpected argument in actual_args, Should parsing stop?
     :param exception: What exception msg to raise
+    :param ignore_incomplete: Treat an option that is missing some of its values as an unexpected argument,
+        rather than a syntax error. KiviDB's sorted set commands read their options that way.
     :returns:
         - List of values for expected arguments.
         - List of remaining args.
@@ -99,6 +106,8 @@ def extract_args(
             return True, 0
 
         if ind + expected_following >= len(_actual_args):
+            if ignore_incomplete:
+                raise _IncompleteArgument()
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         temp_res = []
         for i in range(expected_following):
@@ -122,7 +131,10 @@ def extract_args(
         for key, arg_info in args_info.items():
             if null_terminate(actual_args[i]) == key:
                 arg_position, _ = arg_info
-                results[arg_position], parsed = _parse_params(key, i, actual_args)
+                try:
+                    results[arg_position], parsed = _parse_params(key, i, actual_args)
+                except _IncompleteArgument:
+                    break  # left to the unexpected-argument handling below
                 i += parsed
                 found = True
                 break
@@ -153,6 +165,8 @@ def parse_mpop_args(
     if len(args) < 2:  # arity (at least one key + a direction) is checked before numkeys, like real redis
         raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
     if numkeys <= 0:
+        if server_type == "kividb":
+            raise SimpleError(msgs.KIVIDB_NUMKEYS_NON_POSITIVE_MSG)
         if server_type != "dragonfly":
             raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
         # Dragonfly reads numkeys as unsigned, so a negative one never decodes.
@@ -163,7 +177,10 @@ def parse_mpop_args(
     if len(keys) != numkeys or first == second:  # exactly one direction, and it follows exactly `numkeys` keys
         raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     if count is not None and count <= 0:
-        if server_type != "dragonfly":
+        if server_type == "kividb":
+            # KiviDB does not check COUNT: zero pops nothing, and a negative one pops a single element.
+            count = 0 if count == 0 else 1
+        elif server_type != "dragonfly":
             raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
         # Dragonfly accepts COUNT 0 and simply pops nothing. A negative count is read as unsigned by ZMPOP -- popping
         # everything -- but rejected outright by LMPOP.
