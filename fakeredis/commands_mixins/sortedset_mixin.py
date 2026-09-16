@@ -24,6 +24,7 @@ from fakeredis._commands import (
     fix_range,
 )
 from fakeredis._helpers import SimpleError, casematch, null_terminate
+from fakeredis._typing import ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ExpiringMembersSet, ZSet
 
@@ -39,16 +40,29 @@ SORTED_SET_METHODS = {
 _T = TypeVar("_T")
 
 
+def _reject_invalid_scores(*tests: ScoreTest) -> None:
+    """Endpoints only KiviDB accepts are still rejected by the commands that reject them there."""
+    if any(test.invalid for test in tests):
+        raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
+
+
 class ScoreTest(RedisType):
     """Argument converter for sorted set score endpoints."""
 
-    def __init__(self, value: float, exclusive: bool = False, bytes_val: bytes | None = None):
+    SERVER_AWARE = True
+
+    def __init__(
+        self, value: float, exclusive: bool = False, bytes_val: bytes | None = None, invalid: bool = False
+    ) -> None:
         self.value = value
         self.exclusive = exclusive
         self.bytes_val = bytes_val
+        # KiviDB endpoint that is not a float. Its ranged reads answer with nothing rather than
+        # rejecting it, while ZCOUNT and ZREMRANGEBYSCORE reject it the way redis does.
+        self.invalid = invalid
 
     @classmethod
-    def decode(cls, value: bytes) -> ScoreTest:
+    def decode(cls, value: bytes, server_type: ServerType = "redis") -> ScoreTest:
         try:
             original_value = value
             exclusive = False
@@ -64,6 +78,8 @@ class ScoreTest(RedisType):
             )
             return cls(fvalue, exclusive, original_value)
         except SimpleError:
+            if server_type == "kividb":
+                return cls(math.nan, exclusive, original_value, invalid=True)
             raise SimpleError(msgs.INVALID_MIN_MAX_FLOAT_MSG)
 
     def __str__(self) -> str:
@@ -142,6 +158,28 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         res = self._blocking(timeout, functools.partial(self._bzpop, keys, True), self._empty_blocking_reply)  # type:ignore
         return res  # type:ignore
 
+    def _range_limit(self, args: tuple[bytes, ...], flags: tuple[str, ...]) -> Any:
+        """Parse the options of a ranged sorted set read, `flags` first and LIMIT last.
+
+        KiviDB reads those options loosely: an argument it does not recognise, and an option given
+        without all of its values, are both dropped rather than reported as a syntax error.
+        """
+        lax = self.server_type == "kividb"
+        results, _ = extract_args(args, (*flags, "++limit"), error_on_unexpected=not lax, ignore_incomplete=lax)
+        offset, count = results[-1]
+        # A negative offset skips the whole range on redis; KiviDB reads it as no offset at all.
+        limit = (max(offset or 0, 0) if lax else (offset or 0), -1 if count is None else count)
+        return (*results[:-1], limit) if flags else limit
+
+    def _zrange_index(self, value: bytes) -> int:
+        """Decode a ZRANGE index. KiviDB reads one it cannot use -- junk, or out of 64-bit range -- as 0."""
+        try:
+            return Int.decode(value)
+        except SimpleError:
+            if self.server_type == "kividb":
+                return 0
+            raise
+
     @staticmethod
     def _limit_items(items: list[_T], offset: int, count: int) -> list[_T]:
         out: list[_T] = []
@@ -182,8 +220,16 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if nx and xx:
             raise SimpleError(msgs.ZADD_NX_XX_ERROR_MSG)
-        if [nx, gt, lt].count(True) > 1:
-            raise SimpleError(msgs.ZADD_NX_GT_LT_ERROR_MSG)
+        if gt and lt:
+            raise SimpleError(
+                msgs.KIVIDB_ZADD_GT_LT_MSG if self.server_type == "kividb" else msgs.ZADD_NX_GT_LT_ERROR_MSG
+            )
+        if nx and (gt or lt):
+            # KiviDB accepts NX with GT/LT, where redis rejects the combination, and NX wins: an
+            # existing member is left alone whatever GT/LT would have said.
+            if self.server_type != "kividb":
+                raise SimpleError(msgs.ZADD_NX_GT_LT_ERROR_MSG)
+            gt = lt = False
         if incr and len(elements) != 2:
             raise SimpleError(msgs.ZADD_INCR_LEN_ERROR_MSG)
         # Parse all scores first, before updating
@@ -237,6 +283,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
     def zcount(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest) -> int:
+        _reject_invalid_scores(_min, _max)
         return key.value.zcount(_min.lower_bound, _max.upper_bound)  # type: ignore[no-any-return]
 
     @command((Key(ZSet), Float, bytes))
@@ -256,6 +303,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), StringTest, StringTest))
     def zlexcount(self, key: CommandItem, _min: StringTest, _max: StringTest) -> int:
+        _min, _max = _min.as_min(), _max.as_max()
         return key.value.zlexcount(_min.value, _min.exclusive, _max.value, _max.exclusive)  # type: ignore[no-any-return]
 
     def _zrangebyscore(
@@ -268,6 +316,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         offset: int,
         count: int,
     ) -> list[Any]:
+        if _min.invalid or _max.invalid:
+            return []
         zset = key.value
         if reverse:
             _min, _max = _max, _min
@@ -281,11 +331,13 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     ) -> list[Any]:
         zset = key.value
         if byscore:
+            if start.invalid or stop.invalid:
+                return []
             items = zset.irange_score(start.lower_bound, stop.upper_bound, reverse=reverse)
         else:
             if start.bytes_val is None or stop.bytes_val is None:
                 raise ValueError("start and stop must not be None")
-            start_i, stop_i = Int.decode(start.bytes_val), Int.decode(stop.bytes_val)
+            start_i, stop_i = self._zrange_index(start.bytes_val), self._zrange_index(stop.bytes_val)
             start_i, stop_i = fix_range(start_i, stop_i, len(zset))
             if reverse:
                 start_i, stop_i = len(zset) - stop_i, len(zset) - start_i
@@ -299,6 +351,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         zset = key.value
         if reverse:
             _min, _max = _max, _min
+        _min, _max = _min.as_min(), _max.as_max()
         items = zset.irange_lex(
             _min.value,
             _max.value,
@@ -309,25 +362,55 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return items
 
     def _zrange_args(self, key: CommandItem, start: bytes, stop: bytes, *args: bytes) -> list[Any]:
+        lax = self.server_type == "kividb"
         (bylex, byscore, rev, (offset, count), withscores), _ = extract_args(
-            args, ("bylex", "byscore", "rev", "++limit", "withscores")
+            args,
+            ("bylex", "byscore", "rev", "++limit", "withscores"),
+            error_on_unexpected=not lax,
+            ignore_incomplete=lax,
         )
-        if offset is not None and not bylex and not byscore:
-            raise SimpleError(msgs.SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG)
-        if bylex and byscore:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if lax:
+            # KiviDB rejects neither a LIMIT on its own nor BYLEX together with BYSCORE: it drops the
+            # LIMIT, and lets BYSCORE win.
+            bylex = bylex and not byscore
+        else:
+            if offset is not None and not bylex and not byscore:
+                raise SimpleError(msgs.SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG)
+            if bylex and byscore:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        offset = offset or 0
+        offset = max(offset or 0, 0) if lax else (offset or 0)
         count = -1 if count is None else count
 
+        server_type = self.server_type
         if bylex:
-            res = self._zrangebylex(key, StringTest.decode(start), StringTest.decode(stop), rev, offset, count)
+            res = self._zrangebylex(
+                key,
+                StringTest.decode(start, server_type),
+                StringTest.decode(stop, server_type),
+                rev,
+                offset,
+                count,
+            )
         elif byscore:
             res = self._zrangebyscore(
-                key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, offset, count
+                key,
+                ScoreTest.decode(start, server_type),
+                ScoreTest.decode(stop, server_type),
+                rev,
+                withscores,
+                offset,
+                count,
             )
         else:
-            res = self._zrange(key, ScoreTest.decode(start), ScoreTest.decode(stop), rev, withscores, byscore)
+            res = self._zrange(
+                key,
+                ScoreTest.decode(start, server_type),
+                ScoreTest.decode(stop, server_type),
+                rev,
+                withscores,
+                byscore,
+            )
         return res
 
     @command((Key(ZSet), bytes, bytes), (bytes,))
@@ -350,30 +433,22 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
     def zrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> list[bytes]:
-        ((offset, count),), _ = extract_args(args, ("++limit",))
-        offset = offset or 0
-        count = -1 if count is None else count
+        (offset, count) = self._range_limit(args, ())
         return self._zrangebylex(key, _min, _max, False, offset, count)
 
     @command((Key(ZSet), StringTest, StringTest), (bytes,))
     def zrevrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest, *args: bytes) -> list[bytes]:
-        ((offset, count),), _ = extract_args(args, ("++limit",))
-        offset = offset or 0
-        count = -1 if count is None else count
+        (offset, count) = self._range_limit(args, ())
         return self._zrangebylex(key, _min, _max, True, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> list[Any]:
-        (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
-        offset = offset or 0
-        count = -1 if count is None else count
+        withscores, (offset, count) = self._range_limit(args, ("withscores",))
         return self._zrangebyscore(key, _min, _max, False, withscores, offset, count)
 
     @command((Key(ZSet), ScoreTest, ScoreTest), (bytes,))
     def zrevrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest, *args: bytes) -> list[Any]:
-        (withscores, (offset, count)), _ = extract_args(args, ("withscores", "++limit"))
-        offset = offset or 0
-        count = -1 if count is None else count
+        withscores, (offset, count) = self._range_limit(args, ("withscores",))
         return self._zrangebyscore(key, _min, _max, True, withscores, offset, count)
 
     @command(name="ZRANK", fixed=(Key(ZSet), bytes), repeat=(bytes,))
@@ -415,11 +490,13 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), StringTest, StringTest))
     def zremrangebylex(self, key: CommandItem, _min: StringTest, _max: StringTest) -> int:
+        _min, _max = _min.as_min(), _max.as_max()
         items = key.value.irange_lex(_min.value, _max.value, inclusive=(not _min.exclusive, not _max.exclusive))
         return self.zrem(key, *items)  # type: ignore[no-any-return]
 
     @command((Key(ZSet), ScoreTest, ScoreTest))
     def zremrangebyscore(self, key: CommandItem, _min: ScoreTest, _max: ScoreTest) -> int:
+        _reject_invalid_scores(_min, _max)
         items = key.value.irange_score(_min.lower_bound, _max.upper_bound, reverse=False)
         return self.zrem(key, *[item[1] for item in items])  # type: ignore[no-any-return]
 
@@ -471,13 +548,20 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return [[member, zset[member]] for member in zset]
 
     def _zunioninterdiff(self, func: str, dest: CommandItem | None, numkeys: int, *args: bytes) -> ZSet | int:
-        if numkeys < 1:
+        if numkeys < 1 and self.server_type == "kividb":
+            # KiviDB takes numkeys 0 as "no input keys" -- an empty result, and an emptied destination
+            # for the STORE forms -- and only rejects a negative one.
+            if numkeys < 0:
+                raise SimpleError(msgs.KIVIDB_NUMKEYS_POSITIVE_MSG)
+        elif numkeys < 1:
             if self.server_type != "dragonfly":
                 raise SimpleError(msgs.ZUNIONSTORE_KEYS_MSG.format(func.lower()))
             # Dragonfly reads numkeys as unsigned, so a negative one never decodes, and it words the zero case without
             # naming the command.
             raise SimpleError(msgs.INVALID_INT_MSG if numkeys < 0 else msgs.DRAGONFLY_AT_LEAST_ONE_KEY_MSG)
         if numkeys > len(args):
+            if self.server_type == "kividb":
+                raise SimpleError(msgs.KIVIDB_NUMKEYS_TOO_MANY_MSG)
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         aggregate = b"sum"
         weights = [1.0] * numkeys
@@ -495,6 +579,12 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 if aggregate not in (b"sum", b"min", b"max") and not (aggregate == b"count" and count_supported):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
+            elif self.server_type == "kividb":
+                # KiviDB walks past an argument it does not recognise, but still reports a WEIGHTS
+                # that does not carry one value per key.
+                if casematch(arg, b"weights"):
+                    raise SimpleError(msgs.INVALID_WEIGHT_MSG)
+                i += 1
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -508,7 +598,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.WRONGTYPE_MSG)
             sets.append(self._get_zset(item.value))
 
-        out_members = set(sets[0])
+        out_members: set[bytes] = set(sets[0]) if sets else set()  # KiviDB allows numkeys 0, i.e. no input sets
         method = SORTED_SET_METHODS[func]
         for s in sets[1:]:
             out_members = method(out_members, set(s))  # type: ignore[no-untyped-call]
@@ -597,10 +687,14 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         )
         limit = limit if limit is not None else 0
         if limit < 0:
-            # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one.
-            if self.server_type == "dragonfly":
+            # Dragonfly words the ZINTERCARD limit check differently from the SINTERCARD one, and
+            # KiviDB does not check at all -- a negative limit is no limit.
+            if self.server_type == "kividb":
+                limit = 0
+            elif self.server_type == "dragonfly":
                 raise SimpleError(msgs.DRAGONFLY_LIMIT_NOT_POSITIVE_MSG)
-            raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
+            else:
+                raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
         limit = limit if limit != 0 else sys.maxsize
         res = self._zunioninterdiff("ZINTER", None, numkeys, *left_args)
         return min(limit, len(res))  # type: ignore[arg-type]
