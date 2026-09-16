@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
 
 import pytest
 import redis
 from hypothesis import settings
 
-from .base import MachineConfig
+from test.conftest import ServerDetails
 
-if TYPE_CHECKING:
-    from test.conftest import ServerDetails
+from .base import MachineConfig
 
 # The differential machines run many command sequences and are slow, so keep the example count tunable for fast local
 # iteration (set FAKEREDIS_HYPOTHESIS_EXAMPLES) while defaulting to a thorough-but-affordable count for CI.

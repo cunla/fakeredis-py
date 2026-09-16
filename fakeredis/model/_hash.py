@@ -3,14 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from typing import Any, AnyStr
 
-from fakeredis import _msgs as msgs
 from fakeredis._helpers import asbytes, current_time
 
 from ._base_type import BaseModel
 
 
 class Hash(BaseModel):
-    DECODE_ERROR = msgs.INVALID_HASH_MSG
     _model_type = b"hash"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -21,6 +19,9 @@ class Hash(BaseModel):
         self._expired_fields: list[bytes] = []
 
     def _expire_keys(self) -> None:
+        # Every read lands here, and most hashes never set a field TTL.
+        if not self._expirations:
+            return
         now = current_time()
         expired = [k for k, exp in self._expirations.items() if exp < now]
         for k in expired:
@@ -80,16 +81,19 @@ class Hash(BaseModel):
         self._expire_keys()
         return self._values.get(asbytes(key), default)
 
+    # Fields are stored as bytes (every write goes through `asbytes`), and so are values, so the accessors below only
+    # copy. They still return lists rather than views: callers delete fields while iterating over the result.
     def keys(self) -> Iterable[bytes]:
         self._expire_keys()
-        return [asbytes(k) for k in self._values]
+        return list(self._values)
 
     def values(self) -> Iterable[Any]:
-        return [v for k, v in self.items()]
+        self._expire_keys()
+        return list(self._values.values())
 
     def items(self) -> Iterable[tuple[bytes, Any]]:
         self._expire_keys()
-        return [(asbytes(k), asbytes(v)) for k, v in self._values.items()]
+        return list(self._values.items())
 
     def update(self, values: dict[bytes, Any], clear_expiration: bool) -> None:
         self._expire_keys()
@@ -101,8 +105,7 @@ class Hash(BaseModel):
 
     def getall(self) -> dict[bytes, bytes]:
         self._expire_keys()
-        res = self._values.copy()
-        return {asbytes(k): asbytes(v) for k, v in res.items()}
+        return self._values.copy()
 
     def pop(self, key: AnyStr, d: Any = None) -> Any:
         self._expire_keys()

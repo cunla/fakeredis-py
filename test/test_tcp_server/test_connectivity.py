@@ -9,6 +9,7 @@ import redis
 
 from fakeredis._tcp_server import TcpFakeServer
 from test.conftest import ServerDetails
+from test.testtools import REDIS_PY_VERSION
 
 pytestmark = []
 pytestmark.extend(
@@ -117,3 +118,32 @@ def test_tcp_server_clean_shutdown():
     for ht in handler_threads:
         ht.join(timeout=2.0)
         assert not ht.is_alive(), f"Handler thread {ht.name} is still alive after shutdown"
+
+
+@pytest.mark.parametrize("protocol", [2, 3])
+def test_tcp_server_reply_types(tcp_server_address: tuple[str, int], protocol: int):
+    """Nulls, doubles, maps and sets are encoded differently under RESP2 and RESP3."""
+    if REDIS_PY_VERSION.major < 5:
+        if protocol == 3:
+            pytest.skip("RESP3 needs redis-py 5")
+        kwargs = {}
+    else:
+        kwargs = {"protocol": protocol}
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1], **kwargs) as r:
+        assert r.get("missing") is None
+        r.hset("hash", mapping={"field": "1"})
+        assert r.hgetall("hash") == {b"field": b"1"}
+        r.zadd("zset", {"member": 1.5})
+        assert r.zscore("zset", "member") == 1.5
+        r.sadd("set", "a", "b")
+        assert r.smembers("set") == {b"a", b"b"}
+        assert r.incrbyfloat("float", 0.5) == 0.5
+
+
+def test_tcp_server_keeps_the_connection_after_a_shutdown_value(tcp_server_address: tuple[str, int]):
+    # A reply whose value was the string "shutdown" used to make the server close the connection.
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
+        client_id = r.client_id()
+        r.set("key", "SHUTDOWN")
+        assert r.get("key") == b"SHUTDOWN"
+        assert r.client_id() == client_id
