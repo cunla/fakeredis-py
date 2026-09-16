@@ -92,7 +92,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         func: Callable[[bool], None],
         shape: Callable[[Any], Any] | None = None,
     ) -> Any:
-        loop = asyncio.get_event_loop()
+        # A command only ever blocks from inside the client's running event loop.
+        loop = asyncio.get_running_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
             return ret if shape is None else shape(ret)
@@ -179,7 +180,7 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         # "event set" does NOT imply "queue non-empty" -- it may be left set after the queue was drained. The recheck of
         # empty() immediately after clear() is therefore mandatory, not an optimization: it both closes the lost-wakeup
         # race (an item enqueued between the empty() check and the wait) and absorbs a stale set. Do not remove it.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         start = loop.time()
         while True:
             if self._sock is None:
