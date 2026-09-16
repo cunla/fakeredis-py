@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable
 
+from fakeredis._helpers import Database
+from fakeredis._server import FakeServer
 from fakeredis._typing import ServerType, VersionType
-
-if TYPE_CHECKING:
-    from fakeredis._helpers import Database
-    from fakeredis._server import FakeServer
-    from fakeredis.model import ClientInfo
+from fakeredis.model import ClientInfo
 
 
 class CommandsMixinBase:
