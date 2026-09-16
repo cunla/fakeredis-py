@@ -85,6 +85,7 @@ def test_sdiff_empty(r: ClientType):
     assert set(r.sdiff("foo")) == set()
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_sdiff_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")
@@ -129,6 +130,7 @@ def test_sinter_bytes_keys(r: ClientType):
     assert set(r.sinter(foo)) == {b"member1", b"member2"}
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_sinter_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")
@@ -316,6 +318,7 @@ def test_sunion(r: ClientType):
     assert set(r.sunion("foo", "bar")) == {b"member1", b"member2", b"member3"}
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_sunion_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     r.sadd("bar", "member")
@@ -435,6 +438,7 @@ def test_sintercard_negative_limit(r: ClientType, real_server_details):
     assert expected in str(ctx.value)
 
 
+@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sintercard_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})

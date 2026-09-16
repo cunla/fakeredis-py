@@ -27,9 +27,17 @@ class Key:
 
     UNSPECIFIED = object()
 
-    def __init__(self, type_: type[Any] | None = None, missing_return: Any = UNSPECIFIED) -> None:
+    def __init__(
+        self,
+        type_: type[Any] | None = None,
+        missing_return: Any = UNSPECIFIED,
+        empty_on_wrongtype: Collection[ServerType] = (),
+    ) -> None:
         self.type_ = type_
         self.missing_return = missing_return
+        # Server types that read a key of the wrong type as an empty one here, rather than answering
+        # WRONGTYPE. KiviDB does that for the multi-key set operations.
+        self.empty_on_wrongtype = empty_on_wrongtype
 
 
 class Item:
@@ -375,7 +383,9 @@ class Signature:
                 item = db.get(arg)
                 default = None
                 if type_.type_ is not None and item is not None and type(item.value) is not type_.type_:
-                    raise SimpleError(msgs.WRONGTYPE_MSG)
+                    if server_type not in type_.empty_on_wrongtype:
+                        raise SimpleError(msgs.WRONGTYPE_MSG)
+                    item = None
                 if (
                     msgs.FLAG_DO_NOT_CREATE not in self.flags
                     and type_.type_ is not None

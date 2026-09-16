@@ -44,11 +44,17 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
 
 
 class ListCommandsMixin(CommandsMixinBase):
-    def _bpop_pass(self, keys: list[bytes], op: Callable[[list[bytes]], bytes], first_pass: bool) -> list[bytes] | None:
+    def _bpop_pass(
+        self,
+        keys: list[bytes],
+        op: Callable[[list[bytes]], bytes],
+        first_pass: bool,
+        check_type: bool = True,
+    ) -> list[bytes] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             if not isinstance(item.value, list):
-                if first_pass:
+                if first_pass and check_type:
                     raise SimpleError(msgs.WRONGTYPE_MSG)
                 else:
                     continue
@@ -59,10 +65,14 @@ class ListCommandsMixin(CommandsMixinBase):
                 return [key, ret]
         return None
 
-    def _bpop(self, args: Any, op: Callable[[list[bytes]], bytes]) -> Any:
+    def _bpop(self, args: Any, op: Callable[[list[bytes]], bytes], check_type: bool = True) -> Any:
         keys = args[:-1]
         timeout = Timeout.decode(args[-1])
-        return self._blocking(timeout, functools.partial(self._bpop_pass, keys, op), self._empty_blocking_reply)
+        return self._blocking(
+            timeout,
+            functools.partial(self._bpop_pass, keys, op, check_type=check_type),
+            self._empty_blocking_reply,
+        )
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def blpop(self, *args: bytes) -> Any:
@@ -70,12 +80,15 @@ class ListCommandsMixin(CommandsMixinBase):
 
     @command((bytes, bytes), (bytes,), flags=msgs.FLAG_NO_SCRIPT)
     def brpop(self, *args: bytes) -> Any:
-        return self._bpop(args, lambda lst: lst.pop())
+        # KiviDB checks the key's type in BLPOP but not in BRPOP, where a key of the wrong type is
+        # simply passed over -- so a BRPOP naming only such a key blocks, and then answers nil.
+        return self._bpop(args, lambda lst: lst.pop(), check_type=self.server_type != "kividb")
 
     def _brpoplpush_pass(self, source: bytes, destination: bytes, first_pass: bool) -> Any:
         src = CommandItem(source, self._db, item=self._db.get(source), default=[])
         if not isinstance(src.value, list):
-            if first_pass:
+            # As for BRPOP, KiviDB passes over a source of the wrong type instead of reporting it.
+            if first_pass and self.server_type != "kividb":
                 raise SimpleError(msgs.WRONGTYPE_MSG)
             else:
                 return None
@@ -170,6 +183,8 @@ class ListCommandsMixin(CommandsMixinBase):
 
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            if self.server_type == "kividb" and item and not isinstance(item.value, list):
+                continue  # KiviDB's LMPOP and BLMPOP pass over a key of the wrong type
             res = _list_pop_count(op, item, count)
             if res:
                 return [key, res]
