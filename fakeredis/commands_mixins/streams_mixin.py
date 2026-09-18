@@ -10,7 +10,7 @@ from fakeredis._commands import CommandItem, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
-from fakeredis.model._stream import MAX_KEY, MIN_KEY
+from fakeredis.model._stream import MAX_ID_PART, MAX_KEY, MIN_KEY
 
 
 @dataclass
@@ -183,15 +183,17 @@ class StreamsCommandsMixin(CommandsMixinBase):
     def xlen(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @command(name="XRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
+    @command(name="XRANGE", fixed=(Key(), bytes, bytes), repeat=(bytes,))
+    def xrange(self, key: CommandItem, start: bytes, end: bytes, *args: bytes) -> list[bytes]:
+        _min, _max = StreamRangeTest.decode(start), StreamRangeTest.decode(end, missing_seq=MAX_ID_PART)
         (count,), _ = extract_args(args, ("+count",))
-        return self._xrange(key.value, _min, _max, False, count)
+        return self._xrange(self._stream_value(key), _min, _max, False, count)
 
-    @command(name="XREVRANGE", fixed=(Key(XStream), StreamRangeTest, StreamRangeTest), repeat=(bytes,))
-    def xrevrange(self, key: CommandItem, _min: StreamRangeTest, _max: StreamRangeTest, *args: bytes) -> list[bytes]:
+    @command(name="XREVRANGE", fixed=(Key(), bytes, bytes), repeat=(bytes,))
+    def xrevrange(self, key: CommandItem, end: bytes, start: bytes, *args: bytes) -> list[bytes]:
+        _max, _min = StreamRangeTest.decode(end, missing_seq=MAX_ID_PART), StreamRangeTest.decode(start)
         (count,), _ = extract_args(args, ("+count",))
-        return self._xrange(key.value, _max, _min, True, count)
+        return self._xrange(self._stream_value(key), _min, _max, True, count)
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
     def xread(self, *args: bytes) -> None | dict[bytes, Any] | list[list[Any]]:
@@ -296,7 +298,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         elif len(args) >= 3:
             start, end, count = (
                 StreamRangeTest.decode(args[0]),
-                StreamRangeTest.decode(args[1]),
+                StreamRangeTest.decode(args[1], missing_seq=MAX_ID_PART),
                 Int.decode(args[2]),
             )
             if len(args) > 3:
@@ -312,32 +314,37 @@ class StreamsCommandsMixin(CommandsMixinBase):
         else:
             return group.pending_summary()
 
-    @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(
+        name="XGROUP CREATE",
+        fixed=(Key(XStream), bytes, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL + msgs.FLAG_DO_NOT_CREATE,
+    )
     def xgroup_create(self, key: CommandItem, group_name: bytes, start_key: bytes, *args: bytes) -> SimpleString:
         (mkstream, entries_read_arg), _ = extract_args(args, ("mkstream", "+entriesread"))
         entries_read = self._entries_read_arg(entries_read_arg)
-        if key.key not in self._db and not mkstream:
+        if key.value is None and not mkstream:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        stream: XStream = key.value
+        stream: XStream = key.value if key.value is not None else XStream()
         last_delivered_key = stream.last_id if start_key == b"$" else StreamEntryKey.parse_str(start_key)
         if stream.group_get(group_name) is not None:
             raise SimpleError(msgs.XGROUP_BUSYGROUP)
         if self.server_type == "dragonfly":
             entries_read = None  # Dragonfly takes ENTRIESREAD here, but ignores it
         stream.group_add(group_name, last_delivered_key, self._clamp_entries_read(stream, entries_read))
-        key.updated()
+        key.update(stream)
         return OK
 
-    @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,))
+    @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def xgroup_setid(self, key: CommandItem, group_name: bytes, start_key: bytes, *args: bytes) -> SimpleString:
         (entries_read_arg,), _ = extract_args(args, ("+entriesread",))
         entries_read = self._entries_read_arg(entries_read_arg)
-        if key.key not in self._db:
+        if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         stream: XStream = key.value
         group = stream.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
         # Unlike CREATE, SETID also takes `-` and `+`.
         if start_key in (b"$", b"-", b"+"):
             last_delivered_key = {b"$": stream.last_id, b"-": MIN_KEY, b"+": MAX_KEY}[start_key]
@@ -369,29 +376,29 @@ class StreamsCommandsMixin(CommandsMixinBase):
         """Whether XINFO works out a group's lag with the shortcuts Redis 7.4 added (see `StreamGroup.lag`)."""
         return self.server_type == "redis" and self.version >= (7, 4)
 
-    @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes), repeat=())
+    @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xgroup_destroy(self, key: CommandItem, group_name: bytes) -> int:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         res: int = key.value.group_delete(group_name)
         return res
 
-    @command(name="XGROUP CREATECONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=())
+    @command(name="XGROUP CREATECONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xgroup_createconsumer(self, key: CommandItem, group_name: bytes, consumer_name: bytes) -> int:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
         return group.add_consumer(consumer_name)
 
-    @command(name="XGROUP DELCONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=())
+    @command(name="XGROUP DELCONSUMER", fixed=(Key(XStream), bytes, bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xgroup_delconsumer(self, key: CommandItem, group_name: bytes, consumer_name: bytes) -> int:
         if key.value is None:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
         return group.del_consumer(consumer_name)
 
     @command(name="XINFO GROUPS", fixed=(Key(XStream),), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -420,26 +427,30 @@ class StreamsCommandsMixin(CommandsMixinBase):
                     res[i + 1] = []  # type: ignore[call-overload]
         return res
 
-    @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=())
+    @command(name="XINFO CONSUMERS", fixed=(Key(XStream), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xinfo_consumers(self, key: CommandItem, group_name: bytes) -> list[dict[str, bytes | int]]:
         if key.value is None:
-            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
+            raise SimpleError(msgs.NO_KEY_MSG)
         group: StreamGroup = key.value.group_get(group_name)
         if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key.key.decode()))
         res: list[dict[str, bytes | int]] = group.consumers_info()
         return res
 
-    @command(name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
+    @command(
+        name="XCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE
+    )
     def xclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, *args: bytes
     ) -> list[bytes] | list[list[bytes | list[bytes]]]:
         stream = key.value
-        if stream is None:
-            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        group: StreamGroup = stream.group_get(group_name)
-        if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+        if stream is None and self.server_type == "dragonfly":
+            raise SimpleError(msgs.NO_KEY_MSG)
+        group: StreamGroup | None = stream.group_get(group_name) if stream is not None else None
+        if group is None:
+            if self.server_type == "dragonfly":
+                return []  # Dragonfly claims nothing from a group that is not there
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         (idle, _time, retrycount, force, justid), msg_ids = extract_args(
             args,
@@ -458,18 +469,21 @@ class StreamsCommandsMixin(CommandsMixinBase):
             return [msg.encode() for msg in msgs_claimed]
         return [stream.format_record(msg) for msg in msgs_claimed]
 
-    @command(name="XAUTOCLAIM", fixed=(Key(XStream), bytes, bytes, Int, bytes), repeat=(bytes,))
+    @command(
+        name="XAUTOCLAIM",
+        fixed=(Key(XStream), bytes, bytes, Int, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_DO_NOT_CREATE,
+    )
     def xautoclaim(
         self, key: CommandItem, group_name: bytes, consumer_name: bytes, min_idle_ms: int, start: bytes, *args: bytes
     ) -> list[bytes | list[bytes | list[tuple[bytes, list[bytes]]]]]:
         (count, justid), _ = extract_args(args, ("+count", "justid"))
         count = count or 100
         stream = key.value
-        if stream is None:
-            raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        group: StreamGroup = stream.group_get(group_name)
-        if not group:
-            raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
+        group: StreamGroup | None = stream.group_get(group_name) if stream is not None else None
+        if group is None:
+            raise SimpleError(msgs.XNACK_NOGROUP_MSG.format(key.key.decode(), group_name.decode()))
 
         keys, next_key = group.read_pel_msgs(min_idle_ms, start, count)
         msgs_claimed, msgs_removed = group.claim(min_idle_ms, keys, consumer_name, None, False, justid=bool(justid))
@@ -582,7 +596,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @staticmethod
     def _xrange(
-        stream: XStream,
+        stream: XStream | None,
         _min: StreamRangeTest,
         _max: StreamRangeTest,
         reverse: bool,

@@ -151,14 +151,22 @@ class StreamRangeTest:
             return False
 
     @classmethod
-    def decode(cls, value: bytes, exclusive: bool = False) -> StreamRangeTest:
+    def decode(cls, value: bytes, exclusive: bool = False, missing_seq: int = 0) -> StreamRangeTest:
+        """Parse a range bound; one with no sequence number, a bare millisecond time, takes `missing_seq`.
+
+        That is 0 for the start of a range, and the largest sequence number for its end, which then takes in every
+        entry of that millisecond.
+        """
         if value == b"-":
             return cls(BeforeAny(), True)
         elif value == b"+":
             return cls(AfterAny(), True)
         elif value[:1] == b"(":
-            return cls(StreamEntryKey.parse_str(value[1:]), True)
-        return cls(StreamEntryKey.parse_str(value), exclusive)
+            value, exclusive = value[1:], True
+        key = StreamEntryKey.parse_str(value)
+        if b"-" not in value:
+            key = StreamEntryKey(key.ts, missing_seq)
+        return cls(key, exclusive)
 
 
 @dataclass

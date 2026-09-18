@@ -11,6 +11,7 @@ import redis
 import valkey
 
 from fakeredis._typing import ClientType
+from test import testtools
 
 pytestmark = [
     pytest.mark.supported_server_versions(min_redis_ver="7"),
@@ -131,3 +132,44 @@ def test_xinfo_groups_lag_after_trimming_past_the_group(r: ClientType, real_serv
     assert _group(r) == (b"8-1", 8, 2)
     r.xtrim("s", maxlen=0, approximate=False)
     assert _group(r) == (b"8-1", 8, 0 if trim_aware else 2)
+
+
+def _error(r: ClientType, *args) -> str:
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, *args)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    return str(ctx.value)
+
+
+def test_group_commands_on_a_missing_key(r: ClientType, real_server_details):
+    key_needed = (
+        "The XGROUP subcommand requires the key to exist. "
+        "Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
+    )
+    assert _error(r, "XGROUP", "CREATE", "missing", "g", "0") == key_needed
+    for args in (("SETID", "missing", "g", "0"), ("DESTROY", "missing", "g"), ("CREATECONSUMER", "missing", "g", "c")):
+        assert _error(r, "XGROUP", *args) == key_needed
+    assert _error(r, "XGROUP", "DELCONSUMER", "missing", "g", "c") == key_needed
+    assert _error(r, "XINFO", "CONSUMERS", "missing", "g") == "no such key"
+    assert _error(r, "XAUTOCLAIM", "missing", "g", "c", 0, "0") == "NOGROUP No such key 'missing' or consumer group 'g'"
+    if real_server_details.server_type == "dragonfly":
+        assert _error(r, "XCLAIM", "missing", "g", "c", 0, "1-1") == "no such key"
+    else:
+        assert (
+            _error(r, "XCLAIM", "missing", "g", "c", 0, "1-1") == "NOGROUP No such key 'missing' or consumer group 'g'"
+        )
+    assert r.exists("missing") == 0
+
+
+def test_group_commands_on_a_missing_group(r: ClientType, real_server_details):
+    r.xadd("s", {"f": "v"}, id="1-1")
+    no_group = "NOGROUP No such consumer group 'g' for key name 's'"
+    for args in (("SETID", "s", "g", "0"), ("CREATECONSUMER", "s", "g", "c"), ("DELCONSUMER", "s", "g", "c")):
+        assert _error(r, "XGROUP", *args) == no_group
+    assert _error(r, "XINFO", "CONSUMERS", "s", "g") == no_group
+    assert r.xgroup_destroy("s", "g") == 0
+    assert _error(r, "XAUTOCLAIM", "s", "g", "c", 0, "0") == "NOGROUP No such key 's' or consumer group 'g'"
+    if real_server_details.server_type == "dragonfly":
+        assert testtools.raw_command(r, "XCLAIM", "s", "g", "c", 0, "1-1") == []
+    else:
+        assert _error(r, "XCLAIM", "s", "g", "c", 0, "1-1") == "NOGROUP No such key 's' or consumer group 'g'"
