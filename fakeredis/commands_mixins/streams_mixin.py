@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+from dataclasses import dataclass
 from typing import Any
 
 import fakeredis._msgs as msgs
@@ -8,52 +9,175 @@ from fakeredis._command_args_parsing import extract_args
 from fakeredis._commands import CommandItem, Int, Key, command
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import StreamGroup, StreamRangeTest, XStream
+from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
+from fakeredis.model._stream import MAX_KEY, MIN_KEY
+
+
+@dataclass
+class _AddTrimArgs:
+    """The options of XADD and XTRIM, and XADD's entry ID, as redis' streamParseAddOrTrimArgsOrReply leaves them."""
+
+    maxlen: int | None = None
+    minid: StreamEntryKey | None = None
+    approx: bool = False
+    limit: int = 0  # the most entries to trim, 0 for no limit
+    ref_policy: bytes = b"KEEPREF"
+    nomkstream: bool = False
+    idmp_pid: bytes | None = None
+    idmp_iid: bytes | None = None  # None with a producer ID for IDMPAUTO
+    entry_id: StreamEntryKey | None = None  # None for `*`
+    seq_given: bool = True  # False for `ms-*`
+    id_index: int = 0  # the position of XADD's entry ID in its arguments
 
 
 class StreamsCommandsMixin(CommandsMixinBase):
     @command(name="XADD", fixed=(Key(),), repeat=(bytes,))
     def xadd(self, key: CommandItem, *args: bytes) -> bytes | None:
-        (nomkstream, limit, maxlen, minid, idmpauto, idmp), left_args = extract_args(
-            args, ("nomkstream", "+limit", "~+maxlen", "~minid", "*idmpauto", "**idmp"), error_on_unexpected=False
-        )
-        if nomkstream and key.value is None:
+        if len(args) < 3:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xadd"))
+        opts = self._parse_add_trim_args(args, xadd=True)
+        fields = args[opts.id_index + 1 :]
+        if len(fields) < 2 or len(fields) % 2 != 0:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xadd"))
+        if opts.entry_id == MIN_KEY and opts.seq_given:
+            raise SimpleError(msgs.XADD_ID_ZERO_MSG)
+        if key.value is None and opts.nomkstream:
             return None
-        entry_key = left_args[0]
-        elements = left_args[1:]
-        if not elements or len(elements) % 2 != 0:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("XADD"))
-        stream = key.value if key.value is not None else XStream()
-        if self.version < (7,) and entry_key != b"*" and not StreamRangeTest.valid_key(entry_key):
-            raise SimpleError(msgs.XADD_INVALID_ID)
-        producer_id, idempotent_id = None, None
-        if idmp is not None:
-            producer_id, idempotent_id = idmp
-        if idmpauto is not None:
-            producer_id = idmpauto
-        res: bytes | None = stream.add(
-            elements, entry_key=entry_key, producer_id=producer_id, idempotent_id=idempotent_id
-        )
-        if res is None:
-            if not StreamRangeTest.valid_key(left_args[0]):
-                raise SimpleError(msgs.XADD_INVALID_ID)
+        stream = self._stream_value(key) or XStream()
+        idempotent_id = b""
+        if opts.idmp_pid is not None:
+            idempotent_id = opts.idmp_iid if opts.idmp_iid is not None else hex(hash(fields)).encode()
+            existing = stream.idmp_lookup(opts.idmp_pid, idempotent_id)
+            if existing is not None:
+                return existing.encode()
+        if stream.last_id == MAX_KEY:
+            raise SimpleError(msgs.XADD_IDS_EXHAUSTED_MSG)
+        entry_key = stream.next_id(opts.entry_id, opts.seq_given)
+        if entry_key is None:
             raise SimpleError(msgs.XADD_ID_LOWER_THAN_LAST)
-        if maxlen is not None or minid is not None:
-            stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
+        stream.add(fields, entry_key, *self._stream_node_limits())
+        if opts.idmp_pid is not None:
+            stream.idmp_record(opts.idmp_pid, idempotent_id, entry_key)
+        if opts.maxlen is not None or opts.minid is not None:
+            self._trim_stream(stream, opts)
         key.update(stream)
-        return res
+        return entry_key.encode()
 
-    @command(name="XTRIM", fixed=(Key(XStream),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
+    @command(name="XTRIM", fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def xtrim(self, key: CommandItem, *args: bytes) -> int:
-        (limit, maxlen, minid), _ = extract_args(args, ("+limit", "~+maxlen", "~minid"))
-        if maxlen is not None and minid is not None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if maxlen is None and minid is None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        stream = key.value or XStream()
-        res = stream.trim(max_length=maxlen, start_entry_key=minid, limit=limit)
-        key.update(stream)
-        return res
+        if len(args) < 2:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xtrim"))
+        opts = self._parse_add_trim_args(args, xadd=False)
+        stream = self._stream_value(key)
+        if stream is None:
+            return 0
+        trimmed = self._trim_stream(stream, opts)
+        if trimmed:
+            key.updated()
+        return trimmed
+
+    def _parse_add_trim_args(self, args: tuple[bytes, ...], xadd: bool) -> _AddTrimArgs:
+        """Parse the options XADD and XTRIM share, in any order, and for XADD the entry ID that ends them."""
+        opts = _AddTrimArgs()
+        # Consumer group reference policies and idempotent producers are Redis-only, from 8.2 and 8.6 respectively.
+        ref_policies = self.server_type == "redis" and self.version >= (8, 2)
+        idmp = self.server_type == "redis" and self.version >= (8, 6)
+        ref_policy_given = limit_given = False
+        i = 0
+        while i < len(args):
+            opt, more = args[i], len(args) - 1 - i
+            if xadd and opt == b"*":
+                break
+            if casematch_any(opt, b"maxlen", b"minid") and more:
+                if opts.maxlen is not None or opts.minid is not None:
+                    raise SimpleError(msgs.XTRIM_MAXLEN_AND_MINID_MSG)
+                opts.approx = more >= 2 and args[i + 1] == b"~"
+                if more >= 2 and args[i + 1] in (b"~", b"="):
+                    i += 1
+                i += 1
+                if casematch(opt, b"maxlen"):
+                    opts.maxlen = Int.decode(args[i])
+                    if opts.maxlen < 0:
+                        raise SimpleError(msgs.XTRIM_MAXLEN_NEGATIVE_MSG)
+                else:
+                    opts.minid = StreamEntryKey.parse_str(args[i])
+            elif casematch(opt, b"limit") and more:
+                i += 1
+                opts.limit = Int.decode(args[i])
+                if opts.limit < 0:
+                    raise SimpleError(msgs.XTRIM_LIMIT_NEGATIVE_MSG)
+                limit_given = True
+            elif ref_policies and not ref_policy_given and casematch_any(opt, b"keepref", b"delref", b"acked"):
+                opts.ref_policy = opt.upper()
+                ref_policy_given = True
+            elif xadd and casematch(opt, b"nomkstream"):
+                opts.nomkstream = True
+            elif xadd and idmp and casematch(opt, b"idmpauto") and more:
+                if opts.idmp_pid is not None:
+                    raise SimpleError(msgs.XADD_IDMP_TWICE_MSG)
+                if not args[i + 1]:
+                    raise SimpleError(msgs.XADD_IDMPAUTO_EMPTY_PID_MSG)
+                opts.idmp_pid = args[i + 1]
+                i += 1
+            elif xadd and idmp and casematch(opt, b"idmp") and more >= 2:
+                if opts.idmp_pid is not None:
+                    raise SimpleError(msgs.XADD_IDMP_TWICE_MSG)
+                if not args[i + 1]:
+                    raise SimpleError(msgs.XADD_IDMP_EMPTY_PID_MSG)
+                if not args[i + 2]:
+                    raise SimpleError(msgs.XADD_IDMP_EMPTY_IID_MSG)
+                opts.idmp_pid, opts.idmp_iid = args[i + 1], args[i + 2]
+                i += 2
+            elif xadd:
+                # Anything else is the entry ID; `ms-*` arrived in Redis 7.
+                opts.entry_id, opts.seq_given = StreamEntryKey.parse_xadd_id(opt, allow_seq_star=self.version >= (7,))
+                if opts.idmp_pid is not None:
+                    raise SimpleError(msgs.XADD_IDMP_EXPLICIT_ID_MSG)
+                break
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            i += 1
+        opts.id_index = i
+
+        trims = opts.maxlen is not None or opts.minid is not None
+        if opts.limit and not trims:
+            raise SimpleError(msgs.XTRIM_LIMIT_WITHOUT_STRATEGY_MSG)
+        if not xadd and not trims:
+            raise SimpleError(msgs.XTRIM_NO_STRATEGY_MSG)
+        if limit_given and not opts.approx:
+            raise SimpleError(msgs.XTRIM_LIMIT_WITHOUT_APPROX_MSG)
+        if not limit_given and opts.approx:
+            # Approximate trimming is kept from doing too much at once: 100 nodes' worth of entries by default.
+            node_max_entries = self._stream_node_limits()[0]
+            opts.limit = min(100 * node_max_entries, 1000000) if node_max_entries > 0 else 10000
+        return opts
+
+    def _trim_stream(self, stream: XStream, opts: _AddTrimArgs) -> int:
+        if self.server_type == "kividb":
+            # KiviDB trims exactly, `~` or not, and takes no notice of LIMIT.
+            return stream.trim(opts.maxlen, opts.minid, ref_policy=opts.ref_policy)
+        if opts.approx and opts.ref_policy != b"KEEPREF" and self.version < (8, 6):
+            # Before Redis 8.6, approximate trimming stopped short of any node it could not drop whole, which only
+            # KEEPREF ever does.
+            return 0
+        return stream.trim(opts.maxlen, opts.minid, opts.approx, opts.limit, opts.ref_policy)
+
+    def _stream_node_limits(self) -> tuple[int, int]:
+        """The `stream-node-max-entries` and `stream-node-max-bytes` settings, which decide how entries are packed
+        into nodes, and so how much approximate trimming drops."""
+        limits = []
+        for name, default in ((b"stream-node-max-entries", 100), (b"stream-node-max-bytes", 4096)):
+            try:
+                limits.append(int(self._server.config.get(name, default)))
+            except ValueError:
+                limits.append(default)
+        return limits[0], limits[1]
+
+    @staticmethod
+    def _stream_value(key: CommandItem) -> XStream | None:
+        if key.value is not None and not isinstance(key.value, XStream):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        return key.value
 
     @command(name="XLEN", fixed=(Key(XStream),))
     def xlen(self, key: CommandItem) -> int:
@@ -190,25 +314,60 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @command(name="XGROUP CREATE", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def xgroup_create(self, key: CommandItem, group_name: bytes, start_key: bytes, *args: bytes) -> SimpleString:
-        (mkstream, entries_read), _ = extract_args(args, ("mkstream", "+entriesread"))
-        if key.value is None and not mkstream:
+        (mkstream, entries_read_arg), _ = extract_args(args, ("mkstream", "+entriesread"))
+        entries_read = self._entries_read_arg(entries_read_arg)
+        if key.key not in self._db and not mkstream:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        if key.value.group_get(group_name) is not None:
+        stream: XStream = key.value
+        last_delivered_key = stream.last_id if start_key == b"$" else StreamEntryKey.parse_str(start_key)
+        if stream.group_get(group_name) is not None:
             raise SimpleError(msgs.XGROUP_BUSYGROUP)
-        key.value.group_add(group_name, start_key, entries_read)
+        if self.server_type == "dragonfly":
+            entries_read = None  # Dragonfly takes ENTRIESREAD here, but ignores it
+        stream.group_add(group_name, last_delivered_key, self._clamp_entries_read(stream, entries_read))
         key.updated()
         return OK
 
     @command(name="XGROUP SETID", fixed=(Key(XStream), bytes, bytes), repeat=(bytes,))
     def xgroup_setid(self, key: CommandItem, group_name: bytes, start_key: bytes, *args: bytes) -> SimpleString:
-        (entries_read,), _ = extract_args(args, ("+entriesread",))
-        if key.value is None:
+        (entries_read_arg,), _ = extract_args(args, ("+entriesread",))
+        entries_read = self._entries_read_arg(entries_read_arg)
+        if key.key not in self._db:
             raise SimpleError(msgs.XGROUP_KEY_NOT_FOUND_MSG)
-        group = key.value.group_get(group_name)
+        stream: XStream = key.value
+        group = stream.group_get(group_name)
         if not group:
             raise SimpleError(msgs.XGROUP_GROUP_NOT_FOUND_MSG.format(group_name.decode(), key))
-        group.set_id(start_key, entries_read)
+        # Unlike CREATE, SETID also takes `-` and `+`.
+        if start_key in (b"$", b"-", b"+"):
+            last_delivered_key = {b"$": stream.last_id, b"-": MIN_KEY, b"+": MAX_KEY}[start_key]
+        elif self.server_type == "dragonfly" and not StreamRangeTest.valid_key(start_key):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        else:
+            last_delivered_key = StreamEntryKey.parse_str(start_key)
+        if entries_read_arg is None and self.server_type == "dragonfly":
+            entries_read = group.entries_read  # Dragonfly keeps the group's count unless given ENTRIESREAD
+        group.set_id(last_delivered_key, self._clamp_entries_read(stream, entries_read))
         return OK
+
+    def _entries_read_arg(self, entries_read: int | None) -> int | None:
+        """The ENTRIESREAD of XGROUP CREATE/SETID, with -1 (like no ENTRIESREAD at all) meaning unknown: None."""
+        if entries_read is not None and entries_read < -1:
+            raise SimpleError(
+                msgs.SYNTAX_ERROR_MSG if self.server_type == "dragonfly" else msgs.XGROUP_ENTRIES_READ_MSG
+            )
+        return None if entries_read == -1 else entries_read
+
+    def _clamp_entries_read(self, stream: XStream, entries_read: int | None) -> int | None:
+        # Since 8.2.3 redis caps ENTRIESREAD at the number of entries the stream has ever taken in.
+        if entries_read is not None and self.server_type == "redis" and self.version >= (8, 2, 3):
+            return min(entries_read, stream.entries_added)
+        return entries_read
+
+    @property
+    def _trim_aware_lag(self) -> bool:
+        """Whether XINFO works out a group's lag with the shortcuts Redis 7.4 added (see `StreamGroup.lag`)."""
+        return self.server_type == "redis" and self.version >= (7, 4)
 
     @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes), repeat=())
     def xgroup_destroy(self, key: CommandItem, group_name: bytes) -> int:
@@ -239,7 +398,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
     def xinfo_groups(self, key: CommandItem) -> list[dict[bytes, Any]]:
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: list[dict[bytes, Any]] = key.value.groups_info()
+        res: list[dict[bytes, Any]] = key.value.groups_info(self._trim_aware_lag)
         if self.server_type == "dragonfly":
             # Dragonfly uses -1 as its "lag unknown" sentinel and reports it as nil.
             for group in res:
@@ -252,7 +411,7 @@ class StreamsCommandsMixin(CommandsMixinBase):
         (full,), _ = extract_args(args, ("full",))
         if key.value is None:
             raise SimpleError(msgs.NO_KEY_MSG)
-        res: list[bytes] = key.value.stream_info(full)
+        res: list[bytes] = key.value.stream_info(full, self._trim_aware_lag)
         if self.server_type == "dragonfly" and self._client_info.protocol_version == 3:
             # An empty stream's first/last entry is a null array on dragonfly, where redis sends nil; under RESP3 a
             # client reads that back as an empty array.
