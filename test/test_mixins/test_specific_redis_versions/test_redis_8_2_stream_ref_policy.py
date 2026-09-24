@@ -104,7 +104,14 @@ def test_xtrim_minid_with_ref_policy(r: ClientType, ref_policy, trimmed, remaini
     assert _pending_ids(r) == pending
 
 
-@pytest.mark.parametrize("ref_policy,trimmed,pending", [("KEEPREF", 200, 30), ("DELREF", 240, 0), ("ACKED", 120, 30)])
+@pytest.mark.parametrize(
+    "ref_policy,trimmed,pending",
+    [
+        ("KEEPREF", 200, 30),
+        ("DELREF", 240, 0),
+        ("ACKED", 120, 30),
+    ],
+)
 def test_xtrim_approximate_with_ref_policy(r: ClientType, real_server_details, ref_policy, trimmed, pending):
     pipe = r.pipeline(transaction=False)
     for i in range(1, 251):  # nodes of 100, 100 and 50 entries
