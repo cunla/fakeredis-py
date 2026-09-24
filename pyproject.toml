@@ -152,8 +152,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
   "DTZ005",
-  "DTZ006",
-] # tests use naive local datetimes for expiry/time checks on purpose
+  "DTZ006", # tests use naive local datetimes for expiry/time checks on purpose
+  "FA102",  # tests only run on python >= 3.10, so PEP 585 generics need no `from __future__ import annotations`
+]
 "test/test_mixins/test_connection_commands.py" = [
   "B017",
 ] # broad pytest.raises across redis + valkey disconnected clients

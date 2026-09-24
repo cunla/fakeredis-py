@@ -6,8 +6,6 @@ The Redis-flavoured versions of these tests live in
 counterparts, so both sides of each divergence stay covered.
 """
 
-from __future__ import annotations
-
 import pytest
 import redis
 import valkey
