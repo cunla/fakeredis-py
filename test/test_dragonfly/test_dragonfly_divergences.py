@@ -5,8 +5,6 @@ The Redis-flavoured versions of these tests are marked
 Dragonfly counterparts, so both sides of each divergence stay covered.
 """
 
-from __future__ import annotations
-
 import time
 import uuid
 
