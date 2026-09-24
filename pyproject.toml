@@ -67,10 +67,18 @@ Funding = "https://github.com/sponsors/cunla"
 
 [dependency-groups]
 dev = [
-  "ruff>=0.15",
-  "mypy>=2.3; python_version >= '3.10'",
-  "pre-commit>=4.6; python_version >= '3.10'",
+  "ruff>=0.16",
+  "mypy>=2.3; python_version >= '3.13'",
+  "pre-commit>=4.6; python_version >= '3.13'",
   "pyyaml>=6",
+]
+scripts = [
+  "python-dotenv>=1.2 ; python_version >= '3.13'",
+  "pygithub>=2.8 ; python_version >= '3.12'",
+]
+documentation = [
+  "mkdocs>=1.6.1 ; python_version >= '3.13'",
+  "mkdocs-material>=9.6.14 ; python_version >= '3.13'",
 ]
 test = [
   "coverage>=7.15 ; python_version >= '3.10'",
@@ -81,14 +89,6 @@ test = [
   "pytest-cov>=6.3 ; python_version >= '3.10'",
   "pytest-mock>=3.15 ; python_version >= '3.10'",
   "pytest-html>=4.1 ; python_version >= '3.10'",
-]
-scripts = [
-  "python-dotenv>=1.2 ; python_version >= '3.10'",
-  "pygithub>=2.8 ; python_version >= '3.10'",
-]
-documentation = [
-  "mkdocs>=1.6.1 ; python_version >= '3.10'",
-  "mkdocs-material>=9.6.14 ; python_version >= '3.10'",
 ]
 
 [tool.uv]
