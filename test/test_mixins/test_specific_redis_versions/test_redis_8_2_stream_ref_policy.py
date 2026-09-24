@@ -3,8 +3,6 @@
 See https://github.com/cunla/fakeredis-py/issues/583
 """
 
-from __future__ import annotations
-
 import pytest
 import redis
 import valkey
