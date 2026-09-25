@@ -66,6 +66,7 @@ def test_zrange_same_score(r: ClientType):
     assert r.zrange("foo", 2, 3) == [b"two_c", b"two_d"]
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrange_with_bylex_and_byscore(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -77,6 +78,7 @@ def test_zrange_with_bylex_and_byscore(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrange_with_rev_and_bylex(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -95,6 +97,7 @@ def test_zrange_with_rev_and_bylex(r: ClientType):
     assert r.zrange("foo", b"-", b"[o", desc=True, bylex=True) == []
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrange_with_bylex(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -450,6 +453,7 @@ def test_zrevrange_score_cast(r: ClientType):
     )
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrange_with_large_int(r: ClientType):
     with pytest.raises(Exception, match="value is not an integer or out of range") as ctx:
         r.zrange("", 0, 9223372036854775808)
@@ -460,6 +464,7 @@ def test_zrange_with_large_int(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebyscore(r: ClientType):
     r.zadd("foo", {"zero": 0})
     r.zadd("foo", {"two": 2})
@@ -476,6 +481,7 @@ def test_zrangebyscore(r: ClientType):
     assert r.zrangebyscore("foo", "-inf", "+inf", start=0, num=2) == [b"zero", b"two"]
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebysore_exclusive(r: ClientType):
     r.zadd("foo", {"zero": 0})
     r.zadd("foo", {"two": 2})
@@ -487,6 +493,7 @@ def test_zrangebysore_exclusive(r: ClientType):
     assert r.zrangebyscore("foo", 0.0, 4, start=-1, num=2) == []
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebyscore_raises_error(r: ClientType):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
@@ -569,6 +576,7 @@ def test_zrevrangebyscore_exclusive(r: ClientType):
     assert r.zrevrangebyscore("foo", "(3", "(0", 1, 2) == [b"one"]
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrevrangebyscore_raises_error(r: ClientType):
     r.zadd("foo", {"one": 1})
     r.zadd("foo", {"two": 2})
@@ -608,6 +616,7 @@ def test_zrevrangebyscore_cast_scores(r: ClientType):
     )
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebylex(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -634,6 +643,7 @@ def test_zrangebylex_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zlexcount(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -660,6 +670,7 @@ def test_zlexcount_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebylex_with_limit(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -676,6 +687,7 @@ def test_zrangebylex_with_limit(r: ClientType):
     assert r.zrangebylex("foo", b"+", b"-", 1, 1) == []
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrangebylex_raises_error(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -708,6 +720,7 @@ def test_zrangebylex_raises_error(r: ClientType):
     assert isinstance(ctx.value, (redis.RedisError, valkey.ValkeyError))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrevrangebylex(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -734,6 +747,7 @@ def test_zrevrangebylex_with_limit(r: ClientType):
     assert r.zrevrangebylex("foo", b"+", b"-", 1, 2) == [b"two_a", b"three_a"]
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zrevrangebylex_raises_error(r: ClientType):
     r.zadd("foo", {"one_a": 0})
     r.zadd("foo", {"two_a": 0})
@@ -880,6 +894,7 @@ def test_zremrangebylex(r: ClientType):
     assert r.zremrangebylex("foo", b"[t", b"+") == 0
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zremrangebylex_error(r: ClientType):
     r.zadd("foo", {"two_a": 0})
     r.zadd("foo", {"two_b": 0})
@@ -1066,6 +1081,7 @@ def test_zinterstore_onekey(r: ClientType):
     assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1)])
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zinterstore_nokey(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.zinterstore("baz", [], aggregate="MAX")
@@ -1081,6 +1097,7 @@ def test_zinterstore_nan_to_zero(r: ClientType):
     assert r.zscore("bar", "x") == 0.0
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_zunionstore_nokey(r: ClientType):
     with pytest.raises(Exception) as ctx:
         r.zunionstore("baz", [], aggregate="MAX")
@@ -1237,6 +1254,7 @@ def test_zintercard(r: ClientType):
     assert r.zintercard(3, ["a", "b", "c"], limit=1) == 1
 
 
+@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_zintercard_negative_limit(r: ClientType, real_server_details):
     r.zadd("a", {"a1": 1, "a2": 2})
@@ -1319,6 +1337,7 @@ def test_zrangebyscore_negative_start_after_sort(r: ClientType):
     assert r.zrangebyscore("B", 0.0, 0.0, start=-1, num=1) == []
 
 
+@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_zmpop_count_not_positive(r: ClientType, real_server_details):
     r.zadd("foo", {"a": 1, "b": 2})
@@ -1344,6 +1363,7 @@ def test_zmpop_count_not_positive(r: ClientType, real_server_details):
     assert r.zcard("foo") == 2
 
 
+@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_zmpop_numkeys_not_positive(r: ClientType, real_server_details):
     r.zadd("foo", {"a": 1})
