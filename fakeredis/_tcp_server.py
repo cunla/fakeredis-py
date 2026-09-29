@@ -22,7 +22,8 @@ from typing import Any
 import redis
 from redis.connection import DefaultParser
 
-from fakeredis import FakeRedisConnection, FakeServer
+from fakeredis._core import FakeServer
+from fakeredis._core._connection import FakeRedisConnection
 from fakeredis._typing import ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")

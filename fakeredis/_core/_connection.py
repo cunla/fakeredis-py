@@ -12,7 +12,7 @@ from fakeredis._core._client_setup import build_client_kwds
 from fakeredis._core._selector import FakeSelector
 from fakeredis._core._server import FakeBaseConnectionMixin, FakeServer
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType, lib_version
+from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType
 
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
@@ -119,13 +119,6 @@ class FakeRedisMixin:
             server=server,
             **kwargs,
         )
-        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
-            kwds["lib_name"] = "fakeredis"
-            kwds["lib_version"] = lib_version
-        if "driver_info" in kwds:
-            from redis import DriverInfo
-
-            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod

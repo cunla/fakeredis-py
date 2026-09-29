@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._core import Database
 from fakeredis._helpers import SimpleError
 
 from ._base_type import BaseModel
+
+if TYPE_CHECKING:
+    from fakeredis._core import Database
 
 
 class TimeSeries(BaseModel):

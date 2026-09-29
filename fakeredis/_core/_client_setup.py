@@ -9,6 +9,8 @@ import uuid
 import warnings
 from typing import Any, Callable, Dict, Optional, Set, Type
 
+from fakeredis._typing import lib_version
+
 
 def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
     """Collect argument names that ``method`` would emit deprecation warnings for.
@@ -111,6 +113,14 @@ def build_client_kwds(
         }
         connection_kwargs.update({arg: kwds[arg] for arg in _CONNECTION_POOL_KWARGS if arg in kwds})
         kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
+    # Report fakeredis, not the client library, in CLIENT SETINFO / CLIENT INFO.
+    if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
+        kwds["lib_name"] = "fakeredis"
+        kwds["lib_version"] = lib_version
+    if "driver_info" in kwds:
+        from redis import DriverInfo
+
+        kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
     for key in ("server", "connected", "version", "server_type", "lua_modules"):
         kwds.pop(key, None)
     return kwds

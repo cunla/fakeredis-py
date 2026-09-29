@@ -5,7 +5,6 @@ used only in mixins.
 
 from __future__ import annotations
 
-import functools
 import math
 import re
 from collections.abc import Collection, Sequence
@@ -15,6 +14,7 @@ from . import _msgs as msgs
 from ._core import Database
 from ._helpers import SimpleError, null_terminate
 from ._typing import ServerType, VersionType
+from .model._base_type import AfterAny, BeforeAny
 
 # Dragonfly stores at most 256MB in one string, where redis allows 512MB.
 DRAGONFLY_MAX_STRING_SIZE = 2**28
@@ -242,30 +242,6 @@ class Timeout(Float):
         if res < cls.MIN_VALUE:
             raise SimpleError(cls.DECODE_ERROR)
         return res
-
-
-@functools.total_ordering
-class BeforeAny:
-    def __gt__(self, other: Any) -> bool:
-        return False
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, BeforeAny)
-
-    def __hash__(self) -> int:
-        return 1
-
-
-@functools.total_ordering
-class AfterAny:
-    def __lt__(self, other: Any) -> bool:
-        return False
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, AfterAny)
-
-    def __hash__(self) -> int:
-        return 1
 
 
 class StringTest(RedisType):
