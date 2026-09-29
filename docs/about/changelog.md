@@ -76,6 +76,12 @@ toc_depth: 2
   (`fakeredis._client_setup`) and `FakeBaseConnectionMixin`, which moves out of `FakeServer`'s module. `fakeredis._core`
   now holds only the server and storage layer, and exports all of it. The private valkey class
   `FakeAysncValkeyConnection` is renamed to `FakeAsyncValkeyConnection`
+- refactor: split `_basefakesocket.py` into a `fakeredis/_socket/` package: the dispatch core (`_base.py`), RESP
+  helpers (`_resp.py`, which also takes `valid_response_type` from `_helpers.py`), keyspace/subkey notifications
+  (`_notifications.py`) and Dragonfly's dispatch rules (`_dragonfly.py`), next to `FakeSocket` (from `_fakesocket.py`)
+  and `AsyncFakeSocket` (from `fakeredis.aioredis`, which still re-exports it). The helpers command mixins share
+  (`_scan`, `_ttl`, `_encodefloat`, `_encodeint`, `_key_value_type`) move to `CommandsMixinBase`, replacing the
+  per-mixin `Callable` stand-ins, and the socket's duplicate of `CommandsMixinBase._resp_version` is removed
 
 ## v2.38.0 - 2026-09-08
 

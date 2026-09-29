@@ -1,10 +1,9 @@
 """Async fakeredis clients, for use with ``redis.asyncio``.
 
-The implementation lives in ``fakeredis._clients._async``; this module is the public import path.
+The implementation lives in ``fakeredis._clients._async`` and ``fakeredis._socket._async``; this module is the public import path.
 """
 
 from ._clients._async import (
-    AsyncFakeSocket,
     FakeAsyncConnection,
     FakeAsyncRedisConnection,
     FakeAsyncRedisMixin,
@@ -15,6 +14,7 @@ from ._clients._async import (
     FakeRedisMixin,
     FakeWriter,
 )
+from ._socket import AsyncFakeSocket
 
 __all__ = [
     "AsyncFakeSocket",

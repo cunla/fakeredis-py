@@ -3,8 +3,7 @@ from __future__ import annotations
 import hashlib
 import pickle
 import random
-from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import DbIndex, Float, Int, extract_args
@@ -37,10 +36,6 @@ DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
 
 
 class GenericCommandsMixin(CommandsMixinBase):
-    _ttl: Callable[[CommandItem, float], int]
-    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
-    _key_value_type: Callable[[CommandItem], SimpleString]
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db_num: int
