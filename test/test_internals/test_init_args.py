@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 import fakeredis
-from test.testtools import run_test_if_redispy_ver
+from test.testtools import pool_get_connection, run_test_if_redispy_ver
 
 
 @pytest.mark.fake
@@ -239,3 +239,23 @@ class TestInitArgs:
         fake_redis_1.set("foo", "bar")
 
         assert fake_redis_2.get("foo") is None
+
+
+@pytest.mark.fake
+def test_major_versions_sharing_a_first_digit_get_separate_servers():
+    r1 = fakeredis.FakeRedis(host="versions", version=1)
+    r10 = fakeredis.FakeRedis(host="versions", version=10)
+    r1.set("foo", "bar")
+    assert r10.get("foo") is None
+
+
+@pytest.mark.fake
+def test_client_ids_are_consecutive_and_renewed_on_reconnect():
+    server = fakeredis.FakeServer()
+    clients = [fakeredis.FakeRedis(server=server) for _ in range(3)]
+    assert [client.client_id() for client in clients] == [1, 2, 3]
+
+    conn = pool_get_connection(clients[0].connection_pool)
+    conn.disconnect()
+    conn.connect()
+    assert conn.get_socket()._client_info["id"] == 4

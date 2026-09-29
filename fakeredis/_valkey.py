@@ -4,7 +4,7 @@ from typing import Any
 
 import valkey
 
-from ._connection import FakeBaseConnection, FakeRedisMixin
+from ._core._connection import FakeBaseConnection, FakeRedisMixin
 from ._typing import Self
 from .aioredis import FakeAsyncRedisMixin, FakeBaseAsyncConnection
 

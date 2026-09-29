@@ -5,8 +5,9 @@ from collections import namedtuple
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Key, command
+from fakeredis._command_args_parsing import Float, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.geo import distance, geo_decode, geo_encode

@@ -10,7 +10,8 @@ from typing import Any, ClassVar
 
 import redis
 
-from fakeredis._helpers import Database, FakeSelector
+from fakeredis._core._database import Database
+from fakeredis._core._selector import FakeSelector
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import AccessControlList, ClientInfo
 
@@ -26,12 +27,6 @@ def _create_version(v: tuple[int, ...] | int | str) -> VersionType:
         v_split = v.split(".")
         return tuple(int(x) for x in v_split)
     raise ValueError(f"Unsupported version: {v}")
-
-
-def _version_to_str(v: VersionType) -> str:
-    if isinstance(v, tuple):
-        return ".".join(str(x) for x in v)
-    return str(v)
 
 
 class FakeServer:
@@ -121,15 +116,15 @@ class FakeBaseConnectionMixin:
             else:
                 host, port = kwargs.get("host"), kwargs.get("port")
                 self.server_key = f"{host}:{port}"
-            self.server_key += f":{server_type}:v{_version_to_str(version)[0]}"
+            self.server_key += f":{server_type}:v{_create_version(version)[0]}"
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         client_info_arg = kwargs.pop("client_info", {})
         super().__init__(*args, **kwargs)
         protocol = getattr(self, "protocol", 2)
 
+        # The client id is assigned by the socket, one per (re)connection, as redis does.
         client_info = {
-            "id": self._server.get_next_client_id(),
             "addr": "127.0.0.1:0",
             "laddr": "127.0.0.1:6379",
             "fd": 8,

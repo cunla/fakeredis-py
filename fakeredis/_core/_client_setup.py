@@ -4,15 +4,15 @@ Used by the sync and async ``FakeRedisMixin`` classes to translate the arguments
 friends) into the kwargs the real client class expects, wiring in a fakeredis connection pool.
 """
 
-from __future__ import annotations
-
 import inspect
 import uuid
 import warnings
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Optional, Set, Type
+
+from fakeredis._typing import lib_version
 
 
-def _get_args_to_warn(method: Callable[..., Any]) -> set[str]:
+def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
     """Collect argument names that ``method`` would emit deprecation warnings for.
 
     redis-py marks deprecated ``__init__`` arguments by wrapping the method in a
@@ -34,7 +34,7 @@ def _get_args_to_warn(method: Callable[..., Any]) -> set[str]:
     return res
 
 
-def convert_args_kwargs(klass: type[object], *args: Any, **kwargs: Any) -> dict[str, Any]:
+def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Interpret the positional and keyword arguments according to the version of redis in use"""
     parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
     args_to_warn = _get_args_to_warn(klass.__init__)
@@ -75,16 +75,16 @@ _CONNECTION_POOL_KWARGS = frozenset(
 
 def build_client_kwds(
     *args: Any,
-    client_class: type[Any],
-    connection_class: type[Any],
-    connection_pool_class: type[Any],
+    client_class: Type[Any],
+    connection_class: Type[Any],
+    connection_pool_class: Type[Any],
     version: Any,
     server_type: Any,
     lua_modules: Any,
     server: Any,
-    connected: bool | None = None,
+    connected: Optional[bool] = None,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Build the kwargs passed to the underlying redis/valkey client ``__init__``.
 
     Creates a fakeredis connection pool when one isn't supplied. Shared by the sync and async ``FakeRedisMixin``
@@ -104,7 +104,7 @@ def build_client_kwds(
         if errors is not None:
             warnings.warn(DeprecationWarning('"errors" is deprecated. Use "encoding_errors" instead'))
             kwds["encoding_errors"] = errors
-        connection_kwargs: dict[str, Any] = {
+        connection_kwargs: Dict[str, Any] = {
             "connection_class": connection_class,
             "version": version,
             "server_type": server_type,
@@ -113,6 +113,14 @@ def build_client_kwds(
         }
         connection_kwargs.update({arg: kwds[arg] for arg in _CONNECTION_POOL_KWARGS if arg in kwds})
         kwds["connection_pool"] = connection_pool_class(**connection_kwargs)
+    # Report fakeredis, not the client library, in CLIENT SETINFO / CLIENT INFO.
+    if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
+        kwds["lib_name"] = "fakeredis"
+        kwds["lib_version"] = lib_version
+    if "driver_info" in kwds:
+        from redis import DriverInfo
+
+        kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
     for key in ("server", "connected", "version", "server_type", "lua_modules"):
         kwds.pop(key, None)
     return kwds

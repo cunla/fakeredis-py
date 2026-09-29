@@ -7,15 +7,12 @@ from collections.abc import Iterable, Sequence
 from typing import Any, Callable
 
 import redis.asyncio as redis_async
-from redis import ResponseError
-from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket, _helpers
 from . import _msgs as msgs
-from ._client_setup import build_client_kwds
+from ._core import FakeBaseConnectionMixin, FakeServer, build_client_kwds
 from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin, FakeServer
-from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
+from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout
 
 
 class AsyncFakeSocket(_fakesocket.FakeSocket):
@@ -28,10 +25,6 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         self._response_available: asyncio.Event = asyncio.Event()
         self._event_loop = asyncio.get_running_loop()
         self._loop_thread_ident = threading.get_ident()
-
-    def _decode_error(self, error: SimpleError) -> ResponseError:
-        parser = DefaultParser(1)
-        return parser.parse_error(error.value)
 
     def put_response(self, msg: Any) -> None:
         if not self.responses:
@@ -92,7 +85,8 @@ class AsyncFakeSocket(_fakesocket.FakeSocket):
         func: Callable[[bool], None],
         shape: Callable[[Any], Any] | None = None,
     ) -> Any:
-        loop = asyncio.get_event_loop()
+        # A command only ever blocks from inside the client's running event loop.
+        loop = asyncio.get_running_loop()
         ret = func(True)
         if ret is not None or self._in_transaction:
             return ret if shape is None else shape(ret)
@@ -148,7 +142,11 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         if not self._server.connected:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
         self._sock: AsyncFakeSocket | None = AsyncFakeSocket(
-            self._server, self.db, client_class=self._client_class, lua_modules=self._lua_modules
+            self._server,
+            self.db,
+            client_class=self._client_class,
+            lua_modules=self._lua_modules,
+            client_info=self._client_info,
         )
         self._reader: FakeReader | None = FakeReader(self._sock)
         self._writer: FakeWriter | None = FakeWriter(self._sock)
@@ -179,7 +177,7 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
         # "event set" does NOT imply "queue non-empty" -- it may be left set after the queue was drained. The recheck of
         # empty() immediately after clear() is therefore mandatory, not an optimization: it both closes the lost-wakeup
         # race (an item enqueued between the empty() check and the wait) and absorbs a stale set. Do not remove it.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         start = loop.time()
         while True:
             if self._sock is None:
@@ -264,13 +262,6 @@ class FakeAsyncRedisMixin:
             connected=connected,
             **kwargs,
         )
-        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
-            kwds["lib_name"] = "fakeredis"
-            kwds["lib_version"] = lib_version
-        if "driver_info" in kwds:
-            from redis import DriverInfo
-
-            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod

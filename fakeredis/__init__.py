@@ -1,6 +1,6 @@
 from . import _typing
-from ._connection import FakeConnection, FakeRedis, FakeRedisConnection, FakeStrictRedis
-from ._server import FakeServer
+from ._core import FakeServer
+from ._core._connection import FakeConnection, FakeRedis, FakeRedisConnection, FakeStrictRedis
 from ._tcp_server import TcpFakeServer
 from .aioredis import FakeAsyncRedisConnection
 from .aioredis import FakeConnection as FakeAsyncConnection

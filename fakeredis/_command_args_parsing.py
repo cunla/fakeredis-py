@@ -1,12 +1,167 @@
 from __future__ import annotations
 
+import math
+import re
 import sys
 from collections.abc import Sequence
 from typing import Any
 
 from . import _msgs as msgs
-from ._commands import Float, Int
 from ._helpers import SimpleError, null_terminate
+from .model._base_type import AfterAny, BeforeAny
+
+
+class RedisType:
+    @classmethod
+    def decode(cls, *args, **kwargs):  # type:ignore
+        raise NotImplementedError
+
+
+class Int(RedisType):
+    """Argument converter for 64-bit signed integers"""
+
+    DECODE_ERROR = msgs.INVALID_INT_MSG
+    ENCODE_ERROR = msgs.OVERFLOW_MSG
+    MIN_VALUE = -(2**63)
+    MAX_VALUE = 2**63 - 1
+
+    @classmethod
+    def valid(cls, value: int) -> bool:
+        return cls.MIN_VALUE <= value <= cls.MAX_VALUE
+
+    @classmethod
+    def decode(cls, value: bytes, decode_error: str | None = None) -> int:
+        try:
+            out = int(value)
+            if not cls.valid(out) or str(out).encode() != value:
+                raise ValueError
+            return out
+        except ValueError:
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
+
+    @classmethod
+    def encode(cls, value: int) -> bytes:
+        if cls.valid(value):
+            return str(value).encode()
+        else:
+            raise SimpleError(cls.ENCODE_ERROR)
+
+
+class DbIndex(Int):
+    """Argument converter for database indices"""
+
+    DECODE_ERROR = msgs.INVALID_DB_MSG
+    MIN_VALUE = 0
+    MAX_VALUE = 15
+
+
+class Float(RedisType):
+    """Argument converter for floating-point values.
+
+    Redis uses long double for some cases (INCRBYFLOAT, HINCRBYFLOAT) and double for others (zset scores), but Python
+    doesn't support
+    `long double`.
+    """
+
+    DECODE_ERROR = msgs.INVALID_FLOAT_MSG
+
+    @classmethod
+    def decode(
+        cls,
+        value: bytes,
+        allow_leading_whitespace: bool = False,
+        allow_erange: bool = False,
+        allow_empty: bool = False,
+        crop_null: bool = False,
+        decode_error: str | None = None,
+    ) -> float:
+        # Redis has some quirks in float parsing, with several variants. See
+        # https://github.com/antirez/redis/issues/5706
+        try:
+            if crop_null:
+                value = null_terminate(value)
+            if allow_empty and value == b"":
+                value = b"0.0"
+            if not allow_leading_whitespace and value[:1].isspace():
+                raise ValueError
+            if value[-1:].isspace():
+                raise ValueError
+            out = float(value)
+            if math.isnan(out):
+                raise ValueError
+            # Values that over- or under-flow are explicitly rejected by redis. This is a crude hack to determine
+            # whether the input may have been such a value.
+            if not allow_erange and out in (math.inf, -math.inf, 0.0) and re.match(b"^[^a-zA-Z]*[1-9]", value):
+                raise ValueError
+            return out
+        except ValueError:
+            raise SimpleError(decode_error or cls.DECODE_ERROR)
+
+    @classmethod
+    def encode_shortest(cls, value: float) -> bytes:
+        """Render a double the way Dragonfly does, as the shortest string that round-trips.
+
+        Redis pads doubles out to 17 significant digits, so a score of 3.2 comes back as
+        ``3.2000000000000002``; Dragonfly prints ``3.2``, and drops the fractional part
+        altogether for whole numbers.
+        """
+        if math.isinf(value):
+            return str(value).encode()
+        out = repr(value)
+        if out.endswith(".0"):
+            out = out[:-2]
+        return out.encode()
+
+    @classmethod
+    def encode(cls, value: float, humanfriendly: bool) -> bytes:
+        if math.isinf(value):
+            return str(value).encode()
+        elif humanfriendly:
+            # Algorithm from `ld2string` in redis
+            out = f"{value:.17f}"
+            out = re.sub(r"\.?0+$", "", out)
+            return out.encode()
+        else:
+            return f"{value:.17g}".encode()
+
+
+class Timeout(Float):
+    """Argument converter for timeouts"""
+
+    DECODE_ERROR = msgs.TIMEOUT_NEGATIVE_MSG
+    MIN_VALUE = 0.0
+
+    @classmethod
+    def decode(cls, value: bytes, *args: Any, **kwargs: Any) -> float:
+        res = super().decode(value, *args, **kwargs)
+        if res < cls.MIN_VALUE:
+            raise SimpleError(cls.DECODE_ERROR)
+        return res
+
+
+class StringTest(RedisType):
+    """Argument converter for sorted set LEX endpoints."""
+
+    def __init__(self, value: bytes | BeforeAny | AfterAny, exclusive: bool):
+        self.value = value
+        self.exclusive = exclusive
+
+    @property
+    def inclusive(self) -> bool:
+        return not self.exclusive
+
+    @classmethod
+    def decode(cls, value: bytes) -> StringTest:
+        if value == b"-":
+            return cls(BeforeAny(), True)
+        elif value == b"+":
+            return cls(AfterAny(), True)
+        elif value[:1] == b"(":
+            return cls(value[1:], True)
+        elif value[:1] == b"[":
+            return cls(value[1:], False)
+        else:
+            raise SimpleError(msgs.INVALID_MIN_MAX_STR_MSG)
 
 
 def _count_params(s: str) -> int:

@@ -4,6 +4,7 @@ import itertools
 import logging
 import queue
 import re
+import threading
 import time
 import weakref
 from collections.abc import Generator, Iterable, Sequence
@@ -15,8 +16,9 @@ import redis
 from fakeredis.model import BaseModel, ClientInfo, Hash, is_write_command
 
 from . import _msgs as msgs
-from ._command_args_parsing import extract_args
-from ._commands import COMMANDS_WITH_SUB, SUPPORTED_COMMANDS, CommandItem, Float, Int, Signature
+from ._command_args_parsing import Float, Int, extract_args
+from ._commands import COMMANDS_WITH_SUB, SUPPORTED_COMMANDS, Signature
+from ._core import CommandItem, FakeServer
 from ._helpers import (
     QUEUED,
     NoResponse,
@@ -136,22 +138,23 @@ class BaseFakeSocket:
 
     def __init__(
         self,
-        server: FakeServer,  # type: ignore # noqa: F821
+        server: FakeServer,
         db: int,
         client_class: type,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        info = kwargs.pop("client_info", {})
+        # Copied: the connection passes in its own ClientInfo, which must not pick up this socket's id.
+        info = dict(kwargs.pop("client_info", None) or {})
         super().__init__(*args, **kwargs)
-        from fakeredis import FakeServer
-
         self._server: FakeServer = server
         self._fileno = _get_next_file_no()
         self._db_num = db
         self._db = server.dbs[self._db_num]
         self._client_class = client_class
         self.responses: queue.Queue[bytes] | None = queue.Queue()
+        # Set whenever a response is queued or the socket closes, so FakeSelector can wait for one instead of polling.
+        self.response_ready = threading.Event()
         # Prevents parser from processing commands. Not used in this module, but set by aioredis module to prevent new
         # commands being processed while handling a blocking command.
         self._paused = False
@@ -179,11 +182,7 @@ class BaseFakeSocket:
         self._pubsub: int
         self._transaction_failed: bool
         self._transaction_paused: bool
-        info.update(
-            {
-                "id": self._server.get_next_client_id(),
-            }
-        )
+        info["id"] = self._server.get_next_client_id()
         self._client_info = ClientInfo(**info)
         self._server.sockets.append(self)
 
@@ -213,6 +212,7 @@ class BaseFakeSocket:
         responses = self.responses
         if responses:
             responses.put(msg)
+            self.response_ready.set()
 
     def pause(self) -> None:
         self._paused = True
@@ -261,8 +261,10 @@ class BaseFakeSocket:
             pass
         self._server.closed_sockets.append(weakref.ref(self))
         self._server = None  # type: ignore
-        self._db = None
+        self._db = None  # type: ignore
         self.responses = None
+        # Wake a FakeSelector waiting for a response that will now never come.
+        self.response_ready.set()
 
     def _unknown_command(self, command: str, args: str | None = None) -> SimpleError:
         """Build the server's "unknown command" error.
