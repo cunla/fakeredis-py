@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 import fakeredis
-from test.testtools import run_test_if_redispy_ver
+from test.testtools import pool_get_connection, run_test_if_redispy_ver
 
 
 @pytest.mark.fake
@@ -255,7 +255,7 @@ def test_client_ids_are_consecutive_and_renewed_on_reconnect():
     clients = [fakeredis.FakeRedis(server=server) for _ in range(3)]
     assert [client.client_id() for client in clients] == [1, 2, 3]
 
-    conn = clients[0].connection_pool.get_connection()
+    conn = pool_get_connection(clients[0].connection_pool)
     conn.disconnect()
     conn.connect()
     assert conn.get_socket()._client_info["id"] == 4
