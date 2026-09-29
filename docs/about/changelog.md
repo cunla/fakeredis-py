@@ -65,12 +65,17 @@ toc_depth: 2
 - chore: update dependencies and the `setup-uv` action (#587)
 - refactor: move the connection, server, database and selector internals into a `fakeredis/_core/` package, and
   remove the import cycles between the core, `model` and the command modules. The public API is unchanged; the
-  private modules `fakeredis._server`, `fakeredis._connection` and `fakeredis._client_setup` are now under
-  `fakeredis._core`
+  private module `fakeredis._server` is now under `fakeredis._core`
 - refactor: split `_commands.py` into the command registry (`@command`, `Signature`, `Key`), which stays there;
   `Item`/`CommandItem`/`delete_keys`, now in `fakeredis._core`; the argument converters (`Int`, `Float`, `DbIndex`,
   `Timeout`, `StringTest`), now in `_command_args_parsing.py`; and `fix_range`/`fix_range_string` and the string-size
   limits, now in `_helpers.py`
+- refactor: move the client-facing classes into a `fakeredis/_clients/` package: the sync connection and clients
+  (`fakeredis._connection`), the async ones (`fakeredis.aioredis`, which stays as the public import path), the valkey
+  clients (`fakeredis._valkey`), `TcpFakeServer` (`fakeredis._tcp_server`), `build_client_kwds`
+  (`fakeredis._client_setup`) and `FakeBaseConnectionMixin`, which moves out of `FakeServer`'s module. `fakeredis._core`
+  now holds only the server and storage layer, and exports all of it. The private valkey class
+  `FakeAysncValkeyConnection` is renamed to `FakeAsyncValkeyConnection`
 
 ## v2.38.0 - 2026-09-08
 

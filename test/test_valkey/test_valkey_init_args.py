@@ -2,7 +2,7 @@ import pytest
 import valkey
 
 import fakeredis
-from fakeredis._valkey import FakeAsyncValkeyConnection, FakeValkeyConnection
+from fakeredis._clients._valkey import FakeAsyncValkeyConnection, FakeValkeyConnection
 
 
 def test_init_args():

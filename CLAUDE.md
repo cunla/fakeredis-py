@@ -52,9 +52,12 @@ Client (redis-py/valkey-py)
 
 ### Key Modules
 
-- **`_core/_connection.py`** — `FakeConnection` (sync) and `FakeRedisMixin`; entry points `FakeRedis`, `FakeStrictRedis`
-- **`aioredis.py`** — `AsyncFakeSocket`, `FakeAsyncConnection`, `FakeAsyncRedis` (async path using `asyncio.Queue`)
-- **`_valkey.py`** — `FakeValkey` / `FakeAsyncValkey` entry points for the valkey-py client
+- **`_clients/`** — the top layer, everything a user instantiates; nothing below may import from it:
+  - `_sync.py` — `FakeBaseConnection`/`FakeRedisConnection` and `FakeRedisMixin`; entry points `FakeRedis`, `FakeStrictRedis`
+  - `_async.py` — `AsyncFakeSocket`, `FakeAsyncRedisConnection`, `FakeAsyncRedis` (async path using `asyncio.Queue`); re-exported by the public `aioredis.py`
+  - `_valkey.py` — `FakeValkey` / `FakeAsyncValkey` entry points for the valkey-py client (optional dep, so not imported by `_clients/__init__`)
+  - `_base.py` — `FakeBaseConnectionMixin`, shared by sync and async connections; `_setup.py` — `build_client_kwds`
+  - `_tcp_server.py` — `TcpFakeServer`: exposes a `FakeServer` over a real TCP socket (used by `tcp_server` test marker)
 - **`_core/_server.py`** — `FakeServer`: holds all databases, script cache, pub/sub state, ACL; share one instance across connections to share state
 - **`_commands.py`** — command registry: `@command`, `SUPPORTED_COMMANDS`, `Signature`, `Key`
 - **`_command_args_parsing.py`** — argument converters (`Int`, `Float`, `DbIndex`, `Timeout`, `StringTest`) and `extract_args`
@@ -66,7 +69,6 @@ Client (redis-py/valkey-py)
 - **`stack/`** — optional Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo filters, TopK, T-Digest, VectorSet); activated when optional deps are present (extras: `json`, `bf`, `probabilistic`, `vectorset`; `lua` enables `EVAL`/`EVALSHA`)
 - **`model/`** — data structure implementations (`ZSet`, `Hash`, `Stream`, `TimeSeries`, etc.)
 - **`server_specific_commands/`** — server-specific extensions (e.g. DragonflyDB commands)
-- **`_tcp_server.py`** — `FakeTcpServer`: exposes a `FakeServer` over a real TCP socket (used by `tcp_server` test marker)
 
 ### Command Implementation Pattern
 
