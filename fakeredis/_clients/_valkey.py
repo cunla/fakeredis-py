@@ -4,9 +4,9 @@ from typing import Any
 
 import valkey
 
-from ._core._connection import FakeBaseConnection, FakeRedisMixin
-from ._typing import Self
-from .aioredis import FakeAsyncRedisMixin, FakeBaseAsyncConnection
+from fakeredis._clients._async import FakeAsyncRedisMixin, FakeBaseAsyncConnection
+from fakeredis._clients._sync import FakeBaseConnection, FakeRedisMixin
+from fakeredis._typing import Self
 
 
 def _set_server_type(args_dict: dict[str, Any]) -> None:

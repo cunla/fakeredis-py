@@ -5,7 +5,7 @@ from threading import Thread
 import pytest
 import redis
 
-from fakeredis._tcp_server import TcpFakeServer
+from fakeredis._clients._tcp_server import TcpFakeServer
 from test.conftest import ServerDetails
 from test.testtools import REDIS_PY_VERSION
 

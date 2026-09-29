@@ -329,7 +329,7 @@ implementation that mirrors Redis behaviour, without any network I/O.
 
 ```mermaid
 flowchart LR
-    Client["redis-py / valkey-py\nclient"] -->|"send_command()"| FC["FakeConnection\n_core/_connection.py"]
+    Client["redis-py / valkey-py\nclient"] -->|"send_command()"| FC["FakeConnection\n_clients/_sync.py"]
     FC -->|"_connect()"| FS["FakeSocket\n(mixin stack)"]
     FS -->|"dispatch"| MX["Command mixin\ncommands_mixins/"]
     MX -->|"read / write"| DB["Database\n_core/_database.py"]
