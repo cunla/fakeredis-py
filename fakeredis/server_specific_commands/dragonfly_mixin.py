@@ -4,7 +4,8 @@ from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import CommandItem, Int, Key, command
-from fakeredis._helpers import Database, SimpleError, current_time
+from fakeredis._core import Database
+from fakeredis._helpers import SimpleError, current_time
 from fakeredis.model import ExpiringMembersSet
 
 _INT64_MAX = 2**63 - 1

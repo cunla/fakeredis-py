@@ -7,13 +7,12 @@ from typing import Any
 
 import redis
 
-from fakeredis._client_setup import build_client_kwds
+from fakeredis import _msgs as msgs
+from fakeredis._core._client_setup import build_client_kwds
+from fakeredis._core._selector import FakeSelector
+from fakeredis._core._server import FakeBaseConnectionMixin, FakeServer
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector
-
-from . import _msgs as msgs
-from ._server import FakeBaseConnectionMixin, FakeServer
-from ._typing import RaiseErrorTypes, Self, ServerType, VersionType, lib_version
+from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType, lib_version
 
 
 class FakeBaseConnection(FakeBaseConnectionMixin):

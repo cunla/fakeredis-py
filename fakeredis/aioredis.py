@@ -12,9 +12,8 @@ from redis.asyncio.connection import DefaultParser
 
 from . import _fakesocket, _helpers
 from . import _msgs as msgs
-from ._client_setup import build_client_kwds
+from ._core import FakeBaseConnectionMixin, FakeServer, build_client_kwds
 from ._helpers import SimpleError
-from ._server import FakeBaseConnectionMixin, FakeServer
 from ._typing import RaiseErrorTypes, ServerType, VersionType, async_timeout, lib_version
 
 

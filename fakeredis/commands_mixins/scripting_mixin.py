@@ -21,7 +21,7 @@ from fakeredis._helpers import (
 )
 
 from .. import _msgs as msgs
-from .._server import FakeServer
+from .._core import FakeServer
 from .._typing import ServerType, VersionType
 from ._mixin_base import CommandsMixinBase
 

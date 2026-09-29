@@ -6,8 +6,8 @@ import pytest
 import redis
 
 from fakeredis import FakeServer
+from fakeredis._core import FakeSelector
 from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector
 
 pytestmark = [pytest.mark.fake]
 

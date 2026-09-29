@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import Database, SimpleError
+from fakeredis._core import Database
+from fakeredis._helpers import SimpleError
 
 from ._base_type import BaseModel
 

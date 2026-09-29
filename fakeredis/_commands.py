@@ -12,7 +12,8 @@ from collections.abc import Collection, Sequence
 from typing import Any, Callable
 
 from . import _msgs as msgs
-from ._helpers import Database, SimpleError, null_terminate
+from ._core import Database
+from ._helpers import SimpleError, null_terminate
 from ._typing import ServerType, VersionType
 
 # Dragonfly stores at most 256MB in one string, where redis allows 512MB.

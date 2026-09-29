@@ -10,7 +10,8 @@ from typing import Any, ClassVar
 
 import redis
 
-from fakeredis._helpers import Database, FakeSelector
+from fakeredis._core._database import Database
+from fakeredis._core._selector import FakeSelector
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import AccessControlList, ClientInfo
 
