@@ -1,7 +1,5 @@
 """Tests for `fakeredis-py`'s emulation of Redis's JSON command subset."""
 
-from __future__ import annotations
-
 from typing import (
     Any,
 )

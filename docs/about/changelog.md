@@ -7,6 +7,53 @@ tags:
 toc_depth: 2
 ---
 
+## v2.39.0 - 2026-09-29
+
+### 🚀 Features
+
+- feat(kividb): add the `kividb` server type — `server_type="kividb"` is accepted by `FakeServer`, `FakeRedis` and
+  `TcpFakeServer`, and the command surface matches a real KiviDB 1.0.4 rather than the Redis version it reports:
+  `LCS`, the hash-field TTL family (`HTTL`, `HPTTL`, `HEXPIRETIME`, `HPEXPIRETIME`, `HGETEX`, `HGETDEL`), `INCREX`,
+  `XDELEX` and `XNACK` are served; `UNLINK` and `SCRIPT HELP` are not, and unknown commands get KiviDB's bare
+  `ERR unknown command`. `HSETEX` and `XACKDEL` stay refused until KiviDB's own argument forms are emulated
+  (#570, #571)
+- feat(streams): `XADD`/`XTRIM` accept the `KEEPREF` | `DELREF` | `ACKED` reference policies (Redis 8.2+). `DELREF`
+  drops trimmed entries from every group's PEL, and `ACKED` keeps entries any group still references — including
+  entries a group has not read yet, which `XDELEX`/`XACKDEL` now also respect (#583)
+
+### 🐛 Bug Fixes
+
+- fix(streams): approximate (`~`) trimming drops whole nodes as Redis does — the stream tracks node boundaries
+  (`stream-node-max-entries`/`-bytes`), `LIMIT` counts like Redis, and `XINFO STREAM` reports the real
+  `radix-tree-keys`. `XADD`/`XTRIM` options are parsed with Redis' errors (`LIMIT` without `~`, `MAXLEN` with
+  `MINID`, negative values, invalid IDs) (#583)
+- fix(streams): `XADD` compares new IDs with the last generated ID rather than the last surviving entry, so deleted
+  IDs are never reused; `0-0`, IDs past 64 bits and an exhausted stream get Redis' errors, `XADD` on another type
+  raises `WRONGTYPE`, and `XTRIM` on a missing key no longer creates it (#583)
+- fix(streams): `XGROUP SETID` uses the ID it is given (`SETID 0` skipped the first entry) and validates
+  `ENTRIESREAD`; `XGROUP CREATE ... $` follows the last generated ID and no longer creates a missing stream without
+  `MKSTREAM`; `entries-read` and `lag` follow Redis' rules, deletions included (#583)
+- fix(streams): `XGROUP SETID`/`DESTROY`/`CREATECONSUMER`/`DELCONSUMER`, `XINFO CONSUMERS`, `XCLAIM` and `XAUTOCLAIM`
+  on a missing key now return Redis' errors instead of treating it as an empty stream, and `NOGROUP` errors name the
+  key instead of printing a Python object (#584)
+- fix(streams): `XRANGE`, `XREVRANGE` and `XPENDING` read an end ID without a sequence number (e.g. `5`) as covering
+  the whole millisecond, as Redis does, rather than as `5-0` (#584)
+- fix(tcp-server): `TcpFakeServer` now answers RESP2 clients in RESP2 — it always wrote RESP3, so redis-py raised
+  `Protocol Error` on nil replies, maps and doubles. It also no longer closes the connection when a reply is the
+  string `"shutdown"` (#580)
+- fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL instead of removing it, and a TTL of `0` is
+  no longer read as "no TTL" (#578)
+
+### 🧰 Maintenance
+
+- perf: cache compiled glob patterns (used by `PSUBSCRIBE` and keyspace notifications), skip TTL scans on hashes and
+  sets with nothing to expire, and wake `get_message(timeout=...)` as soon as a message arrives instead of polling
+  in 10ms steps (#577)
+- refactor: use `asyncio.get_running_loop()` in the async socket (#580)
+- test(kividb): run the suite against a real KiviDB in CI (#570)
+- test: drop `from __future__ import annotations` from test files (#586)
+- chore: update dependencies and the `setup-uv` action (#587)
+
 ## v2.38.0 - 2026-09-08
 
 ### 🚀 Features
