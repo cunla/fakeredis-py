@@ -18,14 +18,6 @@ DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class HashCommandsMixin(CommandsMixinBase):
-    _encodeint: Callable[
-        [
-            int,
-        ],
-        bytes,
-    ]
-    _encodefloat: Callable[[float, bool], bytes]
-    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
     add_subkey_event: Callable[[bytes, bytes, Sequence[bytes]], None]
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:

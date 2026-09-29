@@ -11,7 +11,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._clients._base import FakeBaseConnectionMixin
 from fakeredis._clients._setup import build_client_kwds
 from fakeredis._core import FakeSelector, FakeServer
-from fakeredis._fakesocket import FakeSocket
+from fakeredis._socket import FakeSocket
 from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType
 
 
