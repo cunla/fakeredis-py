@@ -31,7 +31,7 @@ from fakeredis.stack import (
 )
 
 from ._basefakesocket import BaseFakeSocket
-from ._server import FakeServer
+from ._core import FakeServer
 from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
 from .server_specific_commands import DragonflyCommandsMixin
 

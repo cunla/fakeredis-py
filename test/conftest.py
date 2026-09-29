@@ -10,7 +10,7 @@ import redis
 import valkey
 
 import fakeredis
-from fakeredis._server import _create_version
+from fakeredis._core._server import _create_version
 from fakeredis._tcp_server import TCP_SERVER_TEST_PORT, TcpFakeServer
 from fakeredis._typing import AsyncClientType, ClientType, ServerType, VersionType
 from test.testtools import REDIS_PY_VERSION

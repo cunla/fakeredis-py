@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import fakeredis._msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._command_args_parsing import Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, casematch_any, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream

@@ -5,9 +5,10 @@ from collections.abc import Sequence
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args, parse_mpop_args
-from fakeredis._commands import CommandItem, Int, Key, Timeout, command, fix_range
-from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
+from fakeredis._command_args_parsing import Int, Timeout, extract_args, parse_mpop_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, fix_range
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 

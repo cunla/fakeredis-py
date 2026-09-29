@@ -126,3 +126,22 @@ async def test_init_args():
     assert await r3.get("bar") == b"baz"
     assert await r4.get("bar") == b"baz"
     assert await r1.get("bar") is None
+
+
+@pytest.mark.fake
+async def test_async_client_info_matches_sync():
+    server = FakeServer()
+    sync_info = FakeStrictRedis(server=server).client_info()
+    async_info = await FakeAsyncRedis(server=server).client_info()
+    for field in ("addr", "laddr", "fd"):
+        assert async_info[field] == sync_info[field]
+
+
+@pytest.mark.fake
+async def test_async_valkey_raises_valkey_errors():
+    from fakeredis import FakeAsyncValkey
+
+    r = FakeAsyncValkey()
+    await r.set("foo", "bar")
+    with pytest.raises(valkey.ResponseError):
+        await r.lpush("foo", 1)
