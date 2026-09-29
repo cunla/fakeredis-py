@@ -37,6 +37,10 @@ OK = SimpleString(b"OK")
 QUEUED = SimpleString(b"QUEUED")
 BGSAVE_STARTED = SimpleString(b"Background saving started")
 
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
+MAX_STRING_SIZE = 512 * 1024 * 1024
+
 
 def current_time() -> int:
     """Return current_time in ms"""
@@ -155,3 +159,27 @@ def valid_response_type(value: Any, protocol_version: int, nested: bool = False)
     return not (
         isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
     )
+
+
+def fix_range(start: int, end: int, length: int) -> tuple[int, int]:
+    # Redis handles negative slightly differently for zrange
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end += length
+    if start > end or start >= length:
+        return -1, -1
+    end = min(end, length - 1)
+    return start, end + 1
+
+
+def fix_range_string(start: int, end: int, length: int) -> tuple[int, int]:
+    # Negative number handling is based on the redis source code
+    if 0 > start > end and end < 0:
+        return -1, -1
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end = max(0, end + length)
+    end = min(end, length - 1)
+    return start, end + 1

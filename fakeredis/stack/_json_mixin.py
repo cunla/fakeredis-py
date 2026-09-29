@@ -16,9 +16,9 @@ from jsonpath_ng.ext import parse
 
 from fakeredis import _helpers as helpers
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Int, Key, command, delete_keys
-from fakeredis._core import Database
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem, Database, delete_keys
 from fakeredis._helpers import SimpleString
 from fakeredis._typing import JsonType, ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase

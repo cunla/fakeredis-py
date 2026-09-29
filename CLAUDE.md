@@ -56,10 +56,11 @@ Client (redis-py/valkey-py)
 - **`aioredis.py`** — `AsyncFakeSocket`, `FakeAsyncConnection`, `FakeAsyncRedis` (async path using `asyncio.Queue`)
 - **`_valkey.py`** — `FakeValkey` / `FakeAsyncValkey` entry points for the valkey-py client
 - **`_core/_server.py`** — `FakeServer`: holds all databases, script cache, pub/sub state, ACL; share one instance across connections to share state
-- **`_commands.py`** — `SUPPORTED_COMMANDS` registry, `Signature`, `Key`, `CommandItem` classes
-- **`_core/_database.py`** — `Database` (in-memory dict with expiration, WATCH tracking, blocking-wait condition)
+- **`_commands.py`** — command registry: `@command`, `SUPPORTED_COMMANDS`, `Signature`, `Key`
+- **`_command_args_parsing.py`** — argument converters (`Int`, `Float`, `DbIndex`, `Timeout`, `StringTest`) and `extract_args`
+- **`_core/_database.py`** — `Database` (in-memory dict with expiration, WATCH tracking, blocking-wait condition), and `Item`/`CommandItem`, the stored value and a command's handle on it
 - **`_core/_selector.py`** — `FakeSelector`: lets a connection wait for a queued response
-- **`_helpers.py`** — `SimpleString`, `SimpleError`, and small utilities
+- **`_helpers.py`** — `SimpleString`, `SimpleError`, string-size limits, `fix_range`, and small utilities
 - **`_basefakesocket.py`** — base class for `FakeSocket`; core dispatch loop and response encoding
 - **`commands_mixins/`** — one file per Redis data type/feature area; all mixed into `FakeSocket`
 - **`stack/`** — optional Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo filters, TopK, T-Digest, VectorSet); activated when optional deps are present (extras: `json`, `bf`, `probabilistic`, `vectorset`; `lua` enables `EVAL`/`EVALSHA`)

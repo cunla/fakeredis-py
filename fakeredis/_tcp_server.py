@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fakeredis._commands import Float
+from fakeredis._command_args_parsing import Float
 from fakeredis._helpers import SimpleError
 
 try:

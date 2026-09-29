@@ -5,7 +5,8 @@ from collections.abc import Sequence
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import DbIndex, Int, command
+from fakeredis._command_args_parsing import DbIndex, Int
+from fakeredis._commands import command
 from fakeredis._helpers import OK, NoResponse, SimpleError, SimpleString, casematch
 from fakeredis._typing import lib_version
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase

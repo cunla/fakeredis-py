@@ -11,7 +11,8 @@ from typing import Any, AnyStr, Callable
 
 import lupa
 
-from fakeredis._commands import Float, Int, Signature, command
+from fakeredis._command_args_parsing import Float, Int
+from fakeredis._commands import Signature, command
 from fakeredis._helpers import (
     OK,
     SimpleError,

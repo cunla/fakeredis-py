@@ -95,3 +95,97 @@ class Database(MutableMapping):  # type: ignore
 
     def __eq__(self, other: object) -> bool:
         return self is other
+
+
+class Item:
+    """An item stored in the database"""
+
+    __slots__ = ["expireat", "value"]
+
+    def __init__(self, value: Any) -> None:
+        self.value = value
+        self.expireat = None
+
+
+class CommandItem:
+    """An item referenced by a command.
+
+    It wraps an Item but has extra fields to manage updates and notifications.
+    """
+
+    def __init__(self, key: bytes, db: Database, item: CommandItem | None = None, default: Any = None) -> None:
+        self._expireat: float | None
+        if item is None:
+            self._value = default
+            self._expireat = None
+        else:
+            self._value = item.value
+            self._expireat = item.expireat
+        self.key = key
+        self.db = db
+        self._modified = False
+        self._expireat_modified = False
+
+    @property
+    def value(self) -> Any:
+        return self._value
+
+    @value.setter
+    def value(self, new_value: Any) -> None:
+        self._value = new_value
+        self._modified = True
+        self.expireat = None
+
+    @property
+    def expireat(self) -> float | None:
+        return self._expireat
+
+    @expireat.setter
+    def expireat(self, value: float | None) -> None:
+        self._expireat = value
+        self._expireat_modified = True
+        self._modified = True  # Since redis 6.0.7
+
+    def get(self, default: Any) -> Any:
+        return self._value if self else default
+
+    def update(self, new_value: Any) -> None:
+        self._value = new_value
+        self._modified = True
+
+    def updated(self) -> None:
+        self._modified = True
+
+    @property
+    def is_modified(self) -> bool:
+        return self._modified or self._expireat_modified
+
+    def writeback(self, remove_empty_val: bool = True) -> None:
+        if self._modified:
+            self.db.notify_watch(self.key)
+            if not isinstance(self.value, bytes) and (self.value is None or (not self.value and remove_empty_val)):
+                self.db.pop(self.key, None)
+                return
+            item = self.db.setdefault(self.key, Item(None))
+            item.value = self.value
+            item.expireat = self.expireat
+            return
+
+        if self._expireat_modified and self.key in self.db:
+            self.db[self.key].expireat = self.expireat
+
+    def __bool__(self) -> bool:
+        return bool(self._value) or isinstance(self._value, bytes)
+
+    __nonzero__ = __bool__  # For Python 2
+
+
+def delete_keys(*keys: CommandItem) -> int:
+    ans = 0
+    done = set()
+    for key in keys:
+        if key and key.key not in done:
+            key.value = None
+            done.add(key.key)
+            ans += 1
+    return ans

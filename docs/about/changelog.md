@@ -63,6 +63,10 @@ toc_depth: 2
   remove the import cycles between the core, `model` and the command modules. The public API is unchanged; the
   private modules `fakeredis._server`, `fakeredis._connection` and `fakeredis._client_setup` are now under
   `fakeredis._core`
+- refactor: split `_commands.py` into the command registry (`@command`, `Signature`, `Key`), which stays there;
+  `Item`/`CommandItem`/`delete_keys`, now in `fakeredis._core`; the argument converters (`Int`, `Float`, `DbIndex`,
+  `Timeout`, `StringTest`), now in `_command_args_parsing.py`; and `fix_range`/`fix_range_string` and the string-size
+  limits, now in `_helpers.py`
 
 ## v2.38.0 - 2026-09-08
 

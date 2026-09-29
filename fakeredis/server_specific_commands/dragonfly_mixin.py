@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import CommandItem, Int, Key, command
-from fakeredis._core import Database
+from fakeredis._command_args_parsing import Int
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem, Database
 from fakeredis._helpers import SimpleError, current_time
 from fakeredis.model import ExpiringMembersSet
 
