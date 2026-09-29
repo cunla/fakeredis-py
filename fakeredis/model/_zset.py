@@ -5,9 +5,7 @@ from typing import Any, cast
 
 import sortedcontainers
 
-from fakeredis._commands import AfterAny, BeforeAny
-
-from ._base_type import BaseModel
+from ._base_type import AfterAny, BaseModel, BeforeAny
 
 
 class ZSet(BaseModel):

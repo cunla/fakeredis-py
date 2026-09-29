@@ -52,18 +52,23 @@ Client (redis-py/valkey-py)
 
 ### Key Modules
 
-- **`_connection.py`** — `FakeConnection` (sync) and `FakeRedisMixin`; entry points `FakeRedis`, `FakeStrictRedis`
-- **`aioredis.py`** — `AsyncFakeSocket`, `FakeAsyncConnection`, `FakeAsyncRedis` (async path using `asyncio.Queue`)
-- **`_valkey.py`** — `FakeValkey` / `FakeAsyncValkey` entry points for the valkey-py client
-- **`_server.py`** — `FakeServer`: holds all databases, script cache, pub/sub state, ACL; share one instance across connections to share state
-- **`_commands.py`** — `SUPPORTED_COMMANDS` registry, `Signature`, `Key`, `CommandItem` classes
-- **`_helpers.py`** — `Database` (in-memory dict with expiration), `SimpleString`, `SimpleError`
+- **`_clients/`** — the top layer, everything a user instantiates; nothing below may import from it:
+  - `_sync.py` — `FakeBaseConnection`/`FakeRedisConnection` and `FakeRedisMixin`; entry points `FakeRedis`, `FakeStrictRedis`
+  - `_async.py` — `AsyncFakeSocket`, `FakeAsyncRedisConnection`, `FakeAsyncRedis` (async path using `asyncio.Queue`); re-exported by the public `aioredis.py`
+  - `_valkey.py` — `FakeValkey` / `FakeAsyncValkey` entry points for the valkey-py client (optional dep, so not imported by `_clients/__init__`)
+  - `_base.py` — `FakeBaseConnectionMixin`, shared by sync and async connections; `_setup.py` — `build_client_kwds`
+  - `_tcp_server.py` — `TcpFakeServer`: exposes a `FakeServer` over a real TCP socket (used by `tcp_server` test marker)
+- **`_core/_server.py`** — `FakeServer`: holds all databases, script cache, pub/sub state, ACL; share one instance across connections to share state
+- **`_commands.py`** — command registry: `@command`, `SUPPORTED_COMMANDS`, `Signature`, `Key`
+- **`_command_args_parsing.py`** — argument converters (`Int`, `Float`, `DbIndex`, `Timeout`, `StringTest`) and `extract_args`
+- **`_core/_database.py`** — `Database` (in-memory dict with expiration, WATCH tracking, blocking-wait condition), and `Item`/`CommandItem`, the stored value and a command's handle on it
+- **`_core/_selector.py`** — `FakeSelector`: lets a connection wait for a queued response
+- **`_helpers.py`** — `SimpleString`, `SimpleError`, string-size limits, `fix_range`, and small utilities
 - **`_basefakesocket.py`** — base class for `FakeSocket`; core dispatch loop and response encoding
 - **`commands_mixins/`** — one file per Redis data type/feature area; all mixed into `FakeSocket`
 - **`stack/`** — optional Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo filters, TopK, T-Digest, VectorSet); activated when optional deps are present (extras: `json`, `bf`, `probabilistic`, `vectorset`; `lua` enables `EVAL`/`EVALSHA`)
 - **`model/`** — data structure implementations (`ZSet`, `Hash`, `Stream`, `TimeSeries`, etc.)
 - **`server_specific_commands/`** — server-specific extensions (e.g. DragonflyDB commands)
-- **`_tcp_server.py`** — `FakeTcpServer`: exposes a `FakeServer` over a real TCP socket (used by `tcp_server` test marker)
 
 ### Command Implementation Pattern
 

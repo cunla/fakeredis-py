@@ -544,7 +544,7 @@ def test_script(r: ClientType):
 
 @pytest.mark.fake_only
 def test_lua_log(r, caplog):
-    logger = fakeredis._server.LOGGER
+    logger = fakeredis._core._server.LOGGER
     script = """
         redis.log(redis.LOG_DEBUG, "debug")
         redis.log(redis.LOG_VERBOSE, "verbose")
@@ -598,7 +598,7 @@ def test_lua_log_wrong_level(r: ClientType):
 
 @pytest.mark.fake_only
 def test_lua_log_defined_vars(r, caplog):
-    logger = fakeredis._server.LOGGER
+    logger = fakeredis._core._server.LOGGER
     script = """
         local var='string'
         redis.log(redis.LOG_DEBUG, var)

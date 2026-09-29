@@ -23,6 +23,10 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
+- fix(valkey): `FakeValkey.from_url`, `FakeStrictValkey.from_url` and `FakeAsyncValkey.from_url` work. The sync ones
+  built a redis pool, which rejected `valkey://` URLs, and defaulted `server_type` to `"redis"`, which the valkey
+  clients then refused; the async one used redis connections, which failed on the first command, and would have
+  raised redis exceptions instead of valkey ones
 - fix(streams): approximate (`~`) trimming drops whole nodes as Redis does — the stream tracks node boundaries
   (`stream-node-max-entries`/`-bytes`), `LIMIT` counts like Redis, and `XINFO STREAM` reports the real
   `radix-tree-keys`. `XADD`/`XTRIM` options are parsed with Redis' errors (`LIMIT` without `~`, `MAXLEN` with
@@ -43,6 +47,12 @@ toc_depth: 2
   string `"shutdown"` (#580)
 - fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL instead of removing it, and a TTL of `0` is
   no longer read as "no TTL" (#578)
+- fix(async): `FakeAsyncValkey` raises `valkey` exceptions instead of `redis` ones, and async connections report
+  `addr`, `laddr` and `fd` in `CLIENT INFO` like sync ones
+- fix: each connection gets a single client ID — IDs were allocated twice, so they went 2, 4, 6 — and a reconnect gets
+  a new one, as in Redis
+- fix: `FakeRedis(version=10)` no longer shares a server with `version=1` — the shared-server key used the first
+  character of the version string instead of the major version
 
 ### 🧰 Maintenance
 
@@ -53,6 +63,19 @@ toc_depth: 2
 - test(kividb): run the suite against a real KiviDB in CI (#570)
 - test: drop `from __future__ import annotations` from test files (#586)
 - chore: update dependencies and the `setup-uv` action (#587)
+- refactor: move the connection, server, database and selector internals into a `fakeredis/_core/` package, and
+  remove the import cycles between the core, `model` and the command modules. The public API is unchanged; the
+  private module `fakeredis._server` is now under `fakeredis._core`
+- refactor: split `_commands.py` into the command registry (`@command`, `Signature`, `Key`), which stays there;
+  `Item`/`CommandItem`/`delete_keys`, now in `fakeredis._core`; the argument converters (`Int`, `Float`, `DbIndex`,
+  `Timeout`, `StringTest`), now in `_command_args_parsing.py`; and `fix_range`/`fix_range_string` and the string-size
+  limits, now in `_helpers.py`
+- refactor: move the client-facing classes into a `fakeredis/_clients/` package: the sync connection and clients
+  (`fakeredis._connection`), the async ones (`fakeredis.aioredis`, which stays as the public import path), the valkey
+  clients (`fakeredis._valkey`), `TcpFakeServer` (`fakeredis._tcp_server`), `build_client_kwds`
+  (`fakeredis._client_setup`) and `FakeBaseConnectionMixin`, which moves out of `FakeServer`'s module. `fakeredis._core`
+  now holds only the server and storage layer, and exports all of it. The private valkey class
+  `FakeAysncValkeyConnection` is renamed to `FakeAsyncValkeyConnection`
 
 ## v2.38.0 - 2026-09-08
 

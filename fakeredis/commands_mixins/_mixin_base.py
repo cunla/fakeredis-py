@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from fakeredis._helpers import Database
-from fakeredis._server import FakeServer
+from fakeredis._core import Database, FakeServer
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import ClientInfo
 

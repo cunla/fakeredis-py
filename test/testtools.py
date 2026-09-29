@@ -10,7 +10,7 @@ import pytest
 import redis
 from packaging.version import Version
 
-from fakeredis._commands import Float
+from fakeredis._command_args_parsing import Float
 from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)

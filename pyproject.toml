@@ -155,6 +155,9 @@ ignore = [
   "DTZ006", # tests use naive local datetimes for expiry/time checks on purpose
   "FA102",  # tests only run on python >= 3.10, so PEP 585 generics need no `from __future__ import annotations`
 ]
+"fakeredis/_clients/_setup.py" = [
+  "FA100", # uses typing.Dict/Optional/... so it runs on python 3.8 without `from __future__ import annotations`
+]
 "test/test_mixins/test_connection_commands.py" = [
   "B017",
 ] # broad pytest.raises across redis + valkey disconnected clients
