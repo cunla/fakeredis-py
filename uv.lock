@@ -652,7 +652,7 @@ wheels = [
 
 [[package]]
 name = "fakeredis"
-version = "2.38.1"
+version = "2.39.0"
 source = { editable = "." }
 dependencies = [
     { name = "redis", version = "6.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
