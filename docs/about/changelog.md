@@ -23,6 +23,10 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
+- fix(valkey): `FakeValkey.from_url`, `FakeStrictValkey.from_url` and `FakeAsyncValkey.from_url` work. The sync ones
+  built a redis pool, which rejected `valkey://` URLs, and defaulted `server_type` to `"redis"`, which the valkey
+  clients then refused; the async one used redis connections, which failed on the first command, and would have
+  raised redis exceptions instead of valkey ones
 - fix(streams): approximate (`~`) trimming drops whole nodes as Redis does — the stream tracks node boundaries
   (`stream-node-max-entries`/`-bytes`), `LIMIT` counts like Redis, and `XINFO STREAM` reports the real
   `radix-tree-keys`. `XADD`/`XTRIM` options are parsed with Redis' errors (`LIMIT` without `~`, `MAXLEN` with
