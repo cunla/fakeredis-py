@@ -43,6 +43,12 @@ toc_depth: 2
   string `"shutdown"` (#580)
 - fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL instead of removing it, and a TTL of `0` is
   no longer read as "no TTL" (#578)
+- fix(async): `FakeAsyncValkey` raises `valkey` exceptions instead of `redis` ones, and async connections report
+  `addr`, `laddr` and `fd` in `CLIENT INFO` like sync ones
+- fix: each connection gets a single client ID — IDs were allocated twice, so they went 2, 4, 6 — and a reconnect gets
+  a new one, as in Redis
+- fix: `FakeRedis(version=10)` no longer shares a server with `version=1` — the shared-server key used the first
+  character of the version string instead of the major version
 
 ### 🧰 Maintenance
 
@@ -53,6 +59,10 @@ toc_depth: 2
 - test(kividb): run the suite against a real KiviDB in CI (#570)
 - test: drop `from __future__ import annotations` from test files (#586)
 - chore: update dependencies and the `setup-uv` action (#587)
+- refactor: move the connection, server, database and selector internals into a `fakeredis/_core/` package, and
+  remove the import cycles between the core, `model` and the command modules. The public API is unchanged; the
+  private modules `fakeredis._server`, `fakeredis._connection` and `fakeredis._client_setup` are now under
+  `fakeredis._core`
 
 ## v2.38.0 - 2026-09-08
 
