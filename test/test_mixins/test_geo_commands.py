@@ -256,8 +256,12 @@ def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitu
     assert "invalid longitude,latitude pair" in str(ctx.value)
 
 
-def test_search_by_missing_member(r: ClientType):
+def test_search_by_missing_member(r: ClientType, real_server_details):
     r.geoadd("geo", (13.361389, 38.115556, "Palermo"))
+    if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
+        expected_msg = "member missing does not exist"
+    else:
+        expected_msg = "could not decode requested zset member"
     for call in (
         lambda: r.georadiusbymember("geo", "missing", 100, unit="km"),
         lambda: r.execute_command("GEORADIUSBYMEMBER_RO", "geo", "missing", 100, "km"),
@@ -267,7 +271,7 @@ def test_search_by_missing_member(r: ClientType):
         with pytest.raises(Exception) as ctx:
             call()
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-        assert "could not decode requested zset member" in str(ctx.value)
+        assert expected_msg in str(ctx.value)
 
     # a missing key is not an error, it just finds nothing
     assert r.georadiusbymember("missing-key", "x", 100, unit="km") == []
