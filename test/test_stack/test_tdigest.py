@@ -162,6 +162,9 @@ def test_tdigest_quantile_nan(r: redis.Redis):
     res = r.tdigest().quantile("foo", 0)[0]
     assert math.isnan(float(res)), f"Expected NaN, got {res}"
 
+    res = r.tdigest().quantile("foo", 1)[0]
+    assert math.isnan(float(res)), f"Expected NaN, got {res}"
+
 
 @pytest.mark.supported_server_versions(min_redis_ver="8.10")
 def test_tdigest_quantile_single_observation(r: redis.Redis):
@@ -170,9 +173,6 @@ def test_tdigest_quantile_single_observation(r: redis.Redis):
     assert all(math.isnan(float(x)) for x in r.tdigest().quantile("foo", 0.5, 0.9))
     r.tdigest().add("foo", [123])
     assert [float(x) for x in r.tdigest().quantile("foo", 0, 0.5, 1)] == [123.0, 123.0, 123.0]
-
-    res = r.tdigest().quantile("foo", 1)[0]
-    assert math.isnan(float(res)), f"Expected NaN, got {res}"
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
