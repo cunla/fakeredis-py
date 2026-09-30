@@ -84,9 +84,7 @@ def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
     last_key = dict_deep_get(cmd_info, "key_specs", -1, "begin_search", "spec", "index", default_value=0)
     step = dict_deep_get(cmd_info, "key_specs", 0, "find_keys", "spec", "keystep", default_value=0)
     tips = []
-    subcommands = [
-        get_command_info(cmd, all_commands) for cmd in all_commands if cmd.startswith(cmd_name + " ")
-    ]
+    subcommands = [get_command_info(cmd, all_commands) for cmd in all_commands if cmd.startswith(cmd_name + " ")]
     categories = set(cmd_info.get("acl_categories", []))
     for prefix, category in CATEGORIES.items():
         if cmd_name.startswith(prefix.lower()):
