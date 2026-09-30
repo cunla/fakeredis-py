@@ -174,6 +174,30 @@ def test_bitop(r: ClientType):
     assert r.get("dest-xor") == b"\x07\r\x0c\x06\x04\x14"
 
 
+def test_bitop_different_lengths_and_missing_keys(r: ClientType):
+    r.set("key1", "hello")
+    r.set("key2", "10")
+
+    # the shorter string is padded with zero bytes up to the longest one
+    assert r.bitop("or", "dest", "key1", "key2") == 5
+    assert r.get("dest") == b"yullo"
+    assert r.bitop("xor", "dest", "key2", "key1") == 5
+    assert r.get("dest") == b"YUllo"
+
+    # a missing key counts as an empty string, wherever it appears
+    assert r.bitop("and", "dest", "key1", "missing") == 5
+    assert r.get("dest") == b"\x00" * 5
+    assert r.bitop("or", "dest", "missing", "key1") == 5
+    assert r.get("dest") == b"hello"
+
+    # an empty result deletes the destination
+    assert r.bitop("and", "dest", "missing", "missing2") == 0
+    assert r.exists("dest") == 0
+    r.set("dest", "x")
+    assert r.bitop("not", "dest", "missing") == 0
+    assert r.exists("dest") == 0
+
+
 def test_bitop_errors(r: ClientType):
     r.set("key1", "foobar")
     r.set("key2", "abcdef")
