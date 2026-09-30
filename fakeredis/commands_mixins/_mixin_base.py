@@ -1,14 +1,29 @@
 from __future__ import annotations
 
+import itertools
+from collections.abc import Collection
+from re import Match
 from typing import Any, Callable
 
-from fakeredis._core import Database, FakeServer
+from fakeredis import _msgs as msgs
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._core import CommandItem, Database, FakeServer
+from fakeredis._helpers import SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis._typing import ServerType, VersionType
-from fakeredis.model import ClientInfo
+from fakeredis.model import BaseModel, ClientInfo
+
+
+def bin_reverse(x: int, bits_count: int) -> int:
+    result = 0
+    for i in range(bits_count):
+        if (x >> i) & 1:
+            result |= 1 << (bits_count - 1 - i)
+    return result
 
 
 class CommandsMixinBase:
-    """Base class for command mixins that declares shared read-only attributes."""
+    """Base class for command mixins: declares the attributes the socket provides, and the helpers several mixins
+    share."""
 
     _server: FakeServer
     _client_info: ClientInfo
@@ -47,3 +62,106 @@ class CommandsMixinBase:
         if result is None and self.server_type == "dragonfly" and self._resp_version == 3:
             return []
         return result
+
+    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes) -> list[Any]:
+        """This is the basis of most of the ``scan`` methods.
+
+        `keys` holds plain keys, or (member, score) pairs for ZSCAN; MATCH and TYPE test the first element of a pair.
+
+        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which we are
+        investigating subsets.
+
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
+        associated with full iterations.
+
+        - A full iteration always retrieves all the elements that were present in the collection from the start to the
+          end of a full iteration. This means that if a given element is inside the collection when an iteration is
+          started and is still there when an iteration terminates, then at some point the SCAN command returned it to
+          the user.
+
+        - A full iteration never returns any element that was NOT present in the collection from the start to the end
+          of a full iteration. So if an element was removed before the start of an iteration and is never added back
+          to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
+          be returned.
+
+        However, because the SCAN command has very little state associated (just the cursor), it has the following
+        drawbacks:
+
+        - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
+          elements, for example, only using the returned elements to perform operations that are safe when re-applied
+          multiple times.
+        - Elements that were not constantly present in the collection during a full iteration may be returned or not:
+          it is undefined.
+
+        """
+        cursor = int(cursor)
+        (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
+        if count is not None and count <= 0:
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero is accepted and simply falls
+            # back to the default batch size.
+            if self._server.server_type != "dragonfly":
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if count < 0:
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = None
+        count = 10 if count is None else count
+        data = sorted(keys)
+        bits_len = (len(keys) - 1).bit_length()
+        cursor = bin_reverse(cursor, bits_len)
+        if cursor >= len(keys):
+            return [b"0", []]
+        result_cursor = cursor + count
+        result_data = []
+
+        regex = compile_pattern(pattern) if pattern is not None else None
+
+        def match_key(key: bytes) -> bool | Match[bytes] | None:
+            if isinstance(key, str):
+                key = key.encode("utf-8")
+            return regex.match(key) if regex is not None else True
+
+        def match_type(key: bytes) -> bool:
+            return _type is None or casematch(self._key_value_type(self._db[key]).value, _type)
+
+        if pattern is not None or _type is not None:
+            for val in itertools.islice(data, cursor, cursor + count):
+                compare_val = val[0] if isinstance(val, tuple) else val
+                if match_key(compare_val) and match_type(compare_val):
+                    result_data.append(val)
+        else:
+            result_data = data[cursor : cursor + count]
+
+        if result_cursor >= len(data):
+            result_cursor = 0
+        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
+
+    def _ttl(self, key: CommandItem, scale: float) -> int:
+        if not key:
+            return -2
+        elif key.expireat is None:
+            return -1
+        else:
+            return int(round((key.expireat - self._db.time) * scale))  # noqa: RUF046  # int() satisfies mypy no-any-return
+
+    def _encodefloat(self, value: float, humanfriendly: bool) -> bytes:
+        if self.version >= (7,):
+            value = 0 + value
+        return Float.encode(value, humanfriendly)
+
+    def _encodeint(self, value: int) -> bytes:
+        if self.version >= (7,):
+            value = 0 + value
+        return Int.encode(value)
+
+    @staticmethod
+    def _key_value_type(key: CommandItem) -> SimpleString:
+        if key.value is None:
+            return SimpleString(b"none")
+        elif isinstance(key.value, bytes):
+            return SimpleString(b"string")
+        elif isinstance(key.value, list):
+            return SimpleString(b"list")
+        elif isinstance(key.value, BaseModel):
+            return SimpleString(key.value.model_type())
+        else:
+            assert False  # pragma: nocover
