@@ -36,6 +36,7 @@ class CommandsMixinBase:
     _client_info: ClientInfo
     _db: Database
     _script_resp: int | None = None
+    _in_transaction: bool = False
 
     @property
     def version(self) -> VersionType:

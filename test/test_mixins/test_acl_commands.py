@@ -43,6 +43,14 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "xnack",
     "xackdel",
     "armget",
+    "blmovem",
+    "lmovem",
+    "sdiffcard",
+    "sunioncard",
+    "ts.nrange",
+    "ts.nrevrange",
+    "ts.querylabels",
+    "ts.read",
 }
 
 
