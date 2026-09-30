@@ -64,7 +64,7 @@ METADATA = [
         ".commands.json",
         "Redis",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
-        [],
+        ["LMOVEM", "BLMOVEM", "SUNIONCARD", "SDIFFCARD"],
     ),
     CommandsMeta(
         ".json.commands.json",
@@ -76,7 +76,7 @@ METADATA = [
         ".ts.commands.json",
         "RedisTimeSeries",
         "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redistimeseries.json",
-        [],
+        ["TS.NRANGE", "TS.NREVRANGE", "TS.READ", "TS.QUERYLABELS"],
     ),
     CommandsMeta(
         ".ft.commands.json",
