@@ -133,7 +133,6 @@ def test_sort_foo(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly")  # dragonfly stores the set in its own order
 def test_sort_set_without_sorting_is_sorted_when_stored(r: ClientType):
     r.sadd("s", "10", "9", "1", "-2")
@@ -141,12 +140,14 @@ def test_sort_set_without_sorting_is_sorted_when_stored(r: ClientType):
     assert r.lrange("dst", 0, -1) == [b"-2", b"1", b"10", b"9"]
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sort_ro_on_set(r: ClientType):
     r.sadd("s", "b", "c", "a")
     # redis-py's sort_ro() sends SORT, so issue SORT_RO itself.
     assert raw_command(r, "SORT_RO", "s", "ALPHA") == [b"a", b"b", b"c"]
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sort_ro_rejects_store(r: ClientType):
     r.sadd("s", "a")
     with pytest.raises(Exception) as ctx:
@@ -155,6 +156,7 @@ def test_sort_ro_rejects_store(r: ClientType):
     assert "syntax error" in str(ctx.value)
 
 
+@pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_sort_ro(r: ClientType):
     r["score:1"] = 8
     r["score:2"] = 3

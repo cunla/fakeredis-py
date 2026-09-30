@@ -655,6 +655,12 @@ def test_sort_set_without_sorting_is_sorted_in_script(r: ClientType):
     r.sadd("s", "10", "9", "1", "-2")
     # Outside a script the order is unspecified, but a script gets the members lexicographically.
     assert r.eval("return redis.call('SORT', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly returns the set in its own order
+def test_sort_ro_set_without_sorting_is_sorted_in_script(r: ClientType):
+    r.sadd("s", "10", "9", "1", "-2")
     assert r.eval("return redis.call('SORT_RO', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
 
 
