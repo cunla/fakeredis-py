@@ -8,10 +8,10 @@ from typing import Any
 import redis
 
 from fakeredis import _msgs as msgs
-from fakeredis._core._client_setup import build_client_kwds
-from fakeredis._core._selector import FakeSelector
-from fakeredis._core._server import FakeBaseConnectionMixin, FakeServer
-from fakeredis._fakesocket import FakeSocket
+from fakeredis._clients._base import FakeBaseConnectionMixin
+from fakeredis._clients._setup import build_client_kwds
+from fakeredis._core import FakeSelector, FakeServer
+from fakeredis._socket import FakeSocket
 from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType
 
 

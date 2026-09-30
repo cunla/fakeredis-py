@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import re
 import time
-from typing import Any, AnyStr
+from typing import AnyStr
 
 
 class SimpleString:
@@ -144,21 +144,6 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     parts.append("\\Z")
     regex: bytes = "".join(parts).encode("latin-1")
     return re.compile(regex, flags=re.DOTALL)
-
-
-_VALID_RESPONSE_TYPES_RESP2 = (bytes, SimpleString, SimpleError, float, int, list)
-_VALID_RESPONSE_TYPES_RESP3 = (bytes, SimpleString, SimpleError, float, int, list, dict, str)
-
-
-def valid_response_type(value: Any, protocol_version: int, nested: bool = False) -> bool:
-    if isinstance(value, NoResponse) and not nested:
-        return True
-    allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
-    if value is not None and not isinstance(value, allowed_types):
-        return False
-    return not (
-        isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
-    )
 
 
 def fix_range(start: int, end: int, length: int) -> tuple[int, int]:

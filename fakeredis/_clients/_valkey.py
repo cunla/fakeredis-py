@@ -4,15 +4,18 @@ from typing import Any
 
 import valkey
 
-from ._core._connection import FakeBaseConnection, FakeRedisMixin
-from ._typing import Self
-from .aioredis import FakeAsyncRedisMixin, FakeBaseAsyncConnection
+from fakeredis._clients._async import FakeAsyncRedisMixin, FakeBaseAsyncConnection
+from fakeredis._clients._sync import FakeBaseConnection, FakeRedisMixin
+from fakeredis._typing import Self
+
+
+def _set_server_type(args_dict: dict[str, Any]) -> None:
+    if args_dict.setdefault("server_type", "valkey") != "valkey":
+        raise ValueError("server_type must be valkey")
 
 
 def _validate_server_type(args_dict: dict[str, Any]) -> None:
-    if "server_type" in args_dict and args_dict["server_type"] != "valkey":
-        raise ValueError("server_type must be valkey")
-    args_dict.setdefault("server_type", "valkey")
+    _set_server_type(args_dict)
     args_dict.setdefault("client_class", valkey.Valkey)
     args_dict.setdefault("connection_class", FakeValkeyConnection)
     args_dict.setdefault("connection_pool_class", valkey.ConnectionPool)
@@ -22,7 +25,7 @@ class FakeValkeyConnection(FakeBaseConnection, valkey.Connection):
     _connection_error_class = valkey.ConnectionError
 
 
-class FakeAysncValkeyConnection(FakeBaseAsyncConnection, valkey.asyncio.Connection):
+class FakeAsyncValkeyConnection(FakeBaseAsyncConnection, valkey.asyncio.Connection):
     _connection_error_class = valkey.ConnectionError
 
 
@@ -33,6 +36,9 @@ class FakeValkey(FakeRedisMixin, valkey.Valkey):
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        # Set the valkey defaults before the pool is built from the URL: FakeRedisMixin.from_url would otherwise build a
+        # redis pool of redis connections for a "redis" server.
+        _validate_server_type(kwargs)
         return super().from_url(*args, **kwargs)
 
 
@@ -43,17 +49,25 @@ class FakeStrictValkey(FakeRedisMixin, valkey.StrictValkey):
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        # Set the valkey defaults before the pool is built from the URL: FakeRedisMixin.from_url would otherwise build a
+        # redis pool of redis connections for a "redis" server.
+        _validate_server_type(kwargs)
         return super().from_url(*args, **kwargs)
 
 
 class FakeAsyncValkey(FakeAsyncRedisMixin, valkey.asyncio.Valkey):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault("client_class", valkey.asyncio.Valkey)
-        kwargs.setdefault("connection_class", FakeAysncValkeyConnection)
+        kwargs.setdefault("connection_class", FakeAsyncValkeyConnection)
         kwargs.setdefault("connection_pool_class", valkey.asyncio.ConnectionPool)
         _validate_server_type(kwargs)
         super().__init__(*args, **kwargs)
 
     @classmethod
     def from_url(cls, *args: Any, **kwargs: Any) -> Self:
+        # valkey.asyncio.Valkey.from_url passes these kwargs to the pool only, so the fake connections are configured
+        # here rather than in __init__.
+        _set_server_type(kwargs)
+        kwargs.setdefault("client_class", valkey.asyncio.Valkey)
+        kwargs.setdefault("connection_class", FakeAsyncValkeyConnection)
         return super().from_url(*args, **kwargs)
