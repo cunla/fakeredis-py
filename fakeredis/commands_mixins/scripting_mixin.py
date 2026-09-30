@@ -11,7 +11,8 @@ from typing import Any, AnyStr, Callable
 
 import lupa
 
-from fakeredis._commands import Float, Int, command
+from fakeredis._command_args_parsing import Float, Int
+from fakeredis._commands import command
 from fakeredis._helpers import (
     OK,
     SimpleError,
@@ -21,7 +22,7 @@ from fakeredis._helpers import (
 )
 
 from .. import _msgs as msgs
-from .._server import FakeServer
+from .._core import FakeServer
 from .._typing import ServerType, VersionType
 from ._mixin_base import CommandsMixinBase
 

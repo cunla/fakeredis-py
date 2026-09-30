@@ -1,12 +1,9 @@
 from __future__ import annotations
 
+import functools
 import re
-import threading
 import time
-import weakref
-from collections import defaultdict
-from collections.abc import Iterator, MutableMapping
-from typing import Any, AnyStr, Callable
+from typing import AnyStr
 
 
 class SimpleString:
@@ -40,6 +37,10 @@ OK = SimpleString(b"OK")
 QUEUED = SimpleString(b"QUEUED")
 BGSAVE_STARTED = SimpleString(b"Background saving started")
 
+# Dragonfly stores at most 256MB in one string, where redis allows 512MB.
+DRAGONFLY_MAX_STRING_SIZE = 2**28
+MAX_STRING_SIZE = 512 * 1024 * 1024
+
 
 def current_time() -> int:
     """Return current_time in ms"""
@@ -72,8 +73,12 @@ def asbytes(value: AnyStr) -> bytes:
     return value
 
 
+@functools.lru_cache(maxsize=1024)
 def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     """Compile a glob pattern (e.g., for keys) to a `bytes` regex.
+
+    Cached: clients reuse a handful of patterns, and every PUBLISH and keyspace notification recompiles each pattern
+    subscribed with PSUBSCRIBE.
 
     `fnmatch.fnmatchcase` doesn't work for this because it uses different
     escaping rules to redis, uses ! instead of ^ to negate a character set, and handles invalid cases (such as a [
@@ -141,131 +146,25 @@ def compile_pattern(pattern_bytes: bytes) -> re.Pattern:  # type: ignore
     return re.compile(regex, flags=re.DOTALL)
 
 
-class Database(MutableMapping):  # type: ignore
-    def __init__(self, lock: threading.Lock | None, *args: Any, **kwargs: Any) -> None:
-        self._dict: dict[bytes, Any] = dict(*args, **kwargs)
-        self.time = 0.0
-        # key to the set of connections
-        self._watches: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
-        self.condition = threading.Condition(lock)
-        self._change_callbacks: set[Callable[[], None]] = set()
-
-    def swap(self, other: Database) -> None:
-        self._dict, other._dict = other._dict, self._dict
-        self.time, other.time = other.time, self.time
-
-    def notify_watch(self, key: bytes) -> None:
-        for sock in self._watches.get(key, set()):
-            sock.notify_watch()
-        self.wake_all()
-
-    def wake_all(self) -> None:
-        """Wake every client blocked on this database, without reporting a key change.
-
-        Used by CLIENT UNBLOCK: woken clients re-check their own state and go back to sleep unless they were the target.
-        """
-        self.condition.notify_all()
-        for callback in self._change_callbacks:
-            callback()
-
-    def has_watch(self, key: bytes) -> bool:
-        """Whether any client is watching `key`."""
-        return bool(self._watches.get(key))
-
-    def add_watch(self, key: bytes, sock: Any) -> None:
-        self._watches[key].add(sock)
-
-    def remove_watch(self, key: bytes, sock: Any) -> None:
-        watches = self._watches[key]
-        watches.discard(sock)
-        if not watches:
-            del self._watches[key]
-
-    def add_change_callback(self, callback: Callable[[], None]) -> None:
-        self._change_callbacks.add(callback)
-
-    def remove_change_callback(self, callback: Callable[[], None]) -> None:
-        self._change_callbacks.remove(callback)
-
-    def clear(self) -> None:
-        for key in self:
-            self.notify_watch(key)
-        self._dict.clear()
-
-    def expired(self, item: Any) -> bool:
-        return item.expireat is not None and item.expireat < self.time
-
-    def _remove_expired(self) -> None:
-        for key in list(self._dict):
-            item = self._dict[key]
-            if self.expired(item):
-                del self._dict[key]
-
-    def __getitem__(self, key: bytes) -> Any:
-        item = self._dict[key]
-        if self.expired(item):
-            del self._dict[key]
-            raise KeyError(key)
-        return item
-
-    def __setitem__(self, key: bytes, value: Any) -> None:
-        self._dict[key] = value
-
-    def __delitem__(self, key: bytes) -> None:
-        del self._dict[key]
-
-    def __iter__(self) -> Iterator[bytes]:
-        self._remove_expired()
-        return iter(self._dict)
-
-    def __len__(self) -> int:
-        self._remove_expired()
-        return len(self._dict)
-
-    # Databases use identity semantics: they are mutable and are keyed by index on the server, never compared by
-    # content.
-    def __hash__(self) -> int:
-        return id(self)
-
-    def __eq__(self, other: object) -> bool:
-        return self is other
+def fix_range(start: int, end: int, length: int) -> tuple[int, int]:
+    # Redis handles negative slightly differently for zrange
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end += length
+    if start > end or start >= length:
+        return -1, -1
+    end = min(end, length - 1)
+    return start, end + 1
 
 
-_VALID_RESPONSE_TYPES_RESP2 = (bytes, SimpleString, SimpleError, float, int, list)
-_VALID_RESPONSE_TYPES_RESP3 = (bytes, SimpleString, SimpleError, float, int, list, dict, str)
-
-
-def valid_response_type(value: Any, protocol_version: int, nested: bool = False) -> bool:
-    if isinstance(value, NoResponse) and not nested:
-        return True
-    allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
-    if value is not None and not isinstance(value, allowed_types):
-        return False
-    return not (
-        isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
-    )
-
-
-class FakeSelector:
-    def __init__(self, sock: Any):
-        self.sock = sock
-
-    def check_can_read(self, timeout: float | None) -> bool:
-        if self.sock.responses.qsize():
-            return True
-        if timeout is not None and timeout <= 0:
-            return False
-
-        # A sleep/poll loop is easier to mock out than messing with condition variables.
-        start = time.time()
-        while True:
-            if self.sock.responses.qsize():
-                return True
-            time.sleep(0.01)
-            now = time.time()
-            if timeout is not None and now > start + timeout:
-                return False
-
-    @staticmethod
-    def check_is_ready_for_command(_: Any) -> bool:
-        return True
+def fix_range_string(start: int, end: int, length: int) -> tuple[int, int]:
+    # Negative number handling is based on the redis source code
+    if 0 > start > end and end < 0:
+        return -1, -1
+    if start < 0:
+        start = max(0, start + length)
+    if end < 0:
+        end = max(0, end + length)
+    end = min(end, length - 1)
+    return start, end + 1

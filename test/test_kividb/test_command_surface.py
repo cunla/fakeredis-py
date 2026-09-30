@@ -6,8 +6,6 @@ and lacks `UNLINK` and `SCRIPT HELP`, which Redis has had since 4.0 and 5.0. Sup
 keyed off the server type rather than off the version it claims.
 """
 
-from __future__ import annotations
-
 import pytest
 import redis
 

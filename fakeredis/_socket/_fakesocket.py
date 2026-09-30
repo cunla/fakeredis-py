@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from fakeredis._core import FakeServer
+from fakeredis._socket._base import BaseFakeSocket
 from fakeredis.commands_mixins import (
     AclCommandsMixin,
     ArrayCommandsMixin,
@@ -19,6 +21,8 @@ from fakeredis.commands_mixins import (
     StringCommandsMixin,
     TransactionsCommandsMixin,
 )
+from fakeredis.commands_mixins.sortedset_mixin import SortedSetCommandsMixin
+from fakeredis.server_specific_commands import DragonflyCommandsMixin
 from fakeredis.stack import (
     BFCommandsMixin,
     CFCommandsMixin,
@@ -29,11 +33,6 @@ from fakeredis.stack import (
     TopkCommandsMixin,
     VectorSetCommandsMixin,
 )
-
-from ._basefakesocket import BaseFakeSocket
-from ._server import FakeServer
-from .commands_mixins.sortedset_mixin import SortedSetCommandsMixin
-from .server_specific_commands import DragonflyCommandsMixin
 
 
 class FakeSocket(
