@@ -212,16 +212,25 @@ class GeoCommandsMixin(CommandsMixinBase):
     def georadius(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[bytes] | int:
         return self._georadius(key, long, lat, radius, *args)
 
+    @staticmethod
+    def _member_position(key: CommandItem, member_name: bytes) -> tuple[float, float]:
+        member_score = key.value.get(member_name)
+        if member_score is None:
+            if key.value:
+                raise SimpleError(msgs.GEO_MEMBER_NOT_FOUND_MSG)
+            # A missing key finds nothing, wherever the search is centred.
+            return 0.0, 0.0
+        lat, long, _, _ = geo_decode(member_score)
+        return lat, long
+
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
     def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes) -> list[bytes] | int:
-        member_score = key.value.get(member_name)
-        lat, long, _, _ = geo_decode(member_score)
+        lat, long = self._member_position(key, member_name)
         return self._georadius(key, long, lat, radius, *args)
 
     @command(name="GEORADIUSBYMEMBER_RO", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
     def georadiusbymember_ro(self, key: CommandItem, member_name: bytes, radius: float, *args: float) -> list[Any]:
-        member_score = key.value.get(member_name)
-        lat, long, _, _ = geo_decode(member_score)
+        lat, long = self._member_position(key, member_name)
         return self.georadius_ro(key, long, lat, radius, *args)  # type: ignore[no-any-return]
 
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
