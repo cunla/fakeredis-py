@@ -418,7 +418,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), Int), (bytes, bytes))
     def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
-        new_cursor, ans = self._scan(key.value.items(), cursor, *args)
+        new_cursor, ans = self._scan(key.value.items(), cursor, *args, scanned_key=key.key)
         flat = []
         for member, score in ans:
             flat.append(member)
