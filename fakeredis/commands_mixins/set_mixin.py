@@ -125,8 +125,11 @@ class SetCommandsMixin(CommandsMixinBase):
         src.updated()
         if dst.value is None:
             dst.update(ExpiringMembersSet())
-        dst.value.add(member)
-        dst.updated()  # TODO: is it updated if member was already present?
+        # A member already in the destination leaves it untouched, so its watchers are not told -- except on dragonfly,
+        # which counts the destination as modified all the same.
+        if member not in dst.value or self.server_type == "dragonfly":
+            dst.value.add(member)
+            dst.updated()
         return 1
 
     @command((Key(ExpiringMembersSet),), (Int,))
@@ -177,7 +180,7 @@ class SetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ExpiringMembersSet), Int), (bytes, bytes))
     def sscan(self, key: CommandItem, cursor: int, *args: bytes) -> Any:
-        return self._scan(key.value, cursor, *args)
+        return self._scan(key.value, cursor, *args, scanned_key=key.key)
 
     @command((Key(ExpiringMembersSet),), (Key(ExpiringMembersSet),))
     def sunion(self, *keys: CommandItem) -> Any:
