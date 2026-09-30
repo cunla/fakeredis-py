@@ -67,7 +67,6 @@ def test_scan_delete_unseen_key_while_scanning_should_not_returns_it_in_scan(r: 
     assert key_to_remove not in keys
 
 
-@pytest.mark.xfail  # todo
 def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: ClientType):
     size = 30
     all_keys_dict = key_val_dict(size=size)
@@ -87,6 +86,17 @@ def test_scan_delete_seen_key_while_scanning_should_return_all_keys(r: ClientTyp
     keys = set(keys)
     assert len(keys) == size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
     assert key_to_remove in keys
+
+
+def test_zscan_delete_seen_member_while_scanning_should_return_all_members(r: ClientType):
+    size = 30
+    r.zadd("zs", {f"m{i:02}": i for i in range(size)})
+    cursor, members = r.zscan("zs", 0, count=10)
+    assert r.zrem("zs", members[0][0]) == 1
+    while cursor != 0:
+        cursor, data = r.zscan("zs", cursor, count=10)
+        members.extend(data)
+    assert {m for m, _ in members} == {f"m{i:02}".encode() for i in range(size)}
 
 
 def test_scan_add_key_while_scanning_should_return_all_keys(r: ClientType):

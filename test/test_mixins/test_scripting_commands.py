@@ -625,7 +625,7 @@ def test_hscan_cursors_are_bytes(r: ClientType):
     assert isinstance(result, bytes)
 
 
-@pytest.mark.xfail  # TODO
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly refuses keys a script did not declare
 def test_deleting_while_scan(r: ClientType):
     for i in range(100):
         r.set(f"key-{i}", i)
@@ -648,6 +648,14 @@ def test_deleting_while_scan(r: ClientType):
 
     assert len(r.register_script(script)()) == 100
     assert len(r.keys()) == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly returns the set in its own order
+def test_sort_set_without_sorting_is_sorted_in_script(r: ClientType):
+    r.sadd("s", "10", "9", "1", "-2")
+    # Outside a script the order is unspecified, but a script gets the members lexicographically.
+    assert r.eval("return redis.call('SORT', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
+    assert r.eval("return redis.call('SORT_RO', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
 
 
 def test_eval_cjson_encode_decode(r: ClientType) -> None:

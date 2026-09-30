@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import itertools
 from collections.abc import Collection
 from re import Match
@@ -19,6 +20,12 @@ def bin_reverse(x: int, bits_count: int) -> int:
         if (x >> i) & 1:
             result |= 1 << (bits_count - 1 - i)
     return result
+
+
+def _scan_sort_key(val: Any) -> Any:
+    """The part of a scanned element that places it: the member of a ZSCAN (member, score) pair, whose score may change
+    between calls, or the element itself."""
+    return val[0] if isinstance(val, tuple) else val
 
 
 class CommandsMixinBase:
@@ -63,10 +70,11 @@ class CommandsMixinBase:
             return []
         return result
 
-    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes) -> list[Any]:
+    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes, scanned_key: bytes | None = None) -> list[Any]:
         """This is the basis of most of the ``scan`` methods.
 
         `keys` holds plain keys, or (member, score) pairs for ZSCAN; MATCH and TYPE test the first element of a pair.
+        `scanned_key` names the key whose members are scanned (HSCAN, SSCAN, ZSCAN), or is None for SCAN itself.
 
         This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which we are
         investigating subsets.
@@ -107,7 +115,15 @@ class CommandsMixinBase:
         count = 10 if count is None else count
         data = sorted(keys)
         bits_len = (len(keys) - 1).bit_length()
-        cursor = bin_reverse(cursor, bits_len)
+        # A cursor is a position in the sorted collection, but positions shift when elements are removed mid-scan and
+        # an unseen element would be skipped. So each cursor handed out also records the last element it covered, and
+        # the scan resumes after that element, wherever it now sits.
+        scan_state = (self._db, scanned_key)
+        last_seen = self._server.scan_cursors.get((scan_state, cursor)) if cursor else None
+        if last_seen is None:
+            cursor = bin_reverse(cursor, bits_len)
+        else:
+            cursor = bisect.bisect_right([_scan_sort_key(val) for val in data], last_seen)
         if cursor >= len(keys):
             return [b"0", []]
         result_cursor = cursor + count
@@ -132,8 +148,10 @@ class CommandsMixinBase:
             result_data = data[cursor : cursor + count]
 
         if result_cursor >= len(data):
-            result_cursor = 0
-        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
+            return [b"0", result_data]
+        encoded_cursor = bin_reverse(result_cursor, bits_len)
+        self._server.remember_scan_cursor((scan_state, encoded_cursor), _scan_sort_key(data[result_cursor - 1]))
+        return [str(encoded_cursor).encode(), result_data]
 
     def _ttl(self, key: CommandItem, scale: float) -> int:
         if not key:
