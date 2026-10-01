@@ -1,10 +1,6 @@
 
-## Unsupported search commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
-
-#### [FT._LIST](https://redis.io/commands/ft._list/) <small>(not implemented)</small>
-
-Returns a list of all existing indexes
+## Unsupported search commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
 
 #### [FT.AGGREGATE](https://redis.io/commands/ft.aggregate/) <small>(not implemented)</small>
 
@@ -17,6 +13,10 @@ Adds an alias to the index
 #### [FT.ALIASDEL](https://redis.io/commands/ft.aliasdel/) <small>(not implemented)</small>
 
 Deletes an alias from the index
+
+#### [FT.ALIASLIST](https://redis.io/commands/ft.aliaslist/) <small>(not implemented)</small>
+
+Lists all aliases for the index
 
 #### [FT.ALIASUPDATE](https://redis.io/commands/ft.aliasupdate/) <small>(not implemented)</small>
 
@@ -105,3 +105,5 @@ Creates or updates a synonym group with additional terms
 #### [FT.TAGVALS](https://redis.io/commands/ft.tagvals/) <small>(not implemented)</small>
 
 Returns the distinct tags indexed in a Tag field
+
+

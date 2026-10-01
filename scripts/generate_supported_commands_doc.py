@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+import re
 
 import requests
 import yaml
@@ -19,6 +19,8 @@ IGNORE_COMMANDS = {
     "FUNCTION HELP",
     "SCRIPT HELP",
     "JSON.DEBUG",
+    "BF.DEBUG",
+    "CF.DEBUG",
     "JSON.DEBUG HELP",
     "JSON.DEBUG MEMORY",
     "JSON.RESP",
@@ -50,56 +52,43 @@ IGNORE_COMMANDS = {
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 markdown_filename_template = "docs/supported-commands/{}.md"
 
-
-@dataclass
-class CommandsMeta:
-    local_filename: str
-    stack: str
-    url: str
-    markdown_commands: list[str]
+COMMANDS_URL = "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json"
+COMMANDS_LOCAL_FILENAME = ".commands.json"
+# Commands missing from commands.json, read from their markdown page instead
+MARKDOWN_COMMANDS: list[str] = []
 
 
-METADATA = [
-    CommandsMeta(
-        ".commands.json",
-        "Redis",
-        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands.json",
-        ["LMOVEM", "BLMOVEM", "SUNIONCARD", "SDIFFCARD"],
-    ),
-    CommandsMeta(
-        ".json.commands.json",
-        "RedisJson",
-        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisjson.json",
-        [],
-    ),
-    CommandsMeta(
-        ".ts.commands.json",
-        "RedisTimeSeries",
-        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redistimeseries.json",
-        ["TS.NRANGE", "TS.NREVRANGE", "TS.READ", "TS.QUERYLABELS"],
-    ),
-    CommandsMeta(
-        ".ft.commands.json",
-        "RedisSearch",
-        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisearch.json",
-        [],
-    ),
-    CommandsMeta(
-        ".bloom.commands.json",
-        "RedisBloom",
-        "https://raw.githubusercontent.com/redis/docs/refs/heads/main/data/commands_redisbloom.json",
-        [],
-    ),
-]
+# The `module` field of a command in commands.json (core commands have none) => docs/supported-commands/ sub-directory
+MODULE_STACKS = {
+    None: "Redis",
+    "ReJSON": "RedisJson",
+    "timeseries": "RedisTimeSeries",
+    "search": "RedisSearch",
+    "bf": "RedisBloom",
+    "vectorset": "Redis",
+}
+# Group names in commands.json that are renamed for the docs
+GROUP_RENAMES = {"vector_set": "vectorset"}
+
+
+def is_internal_command(cmd: str) -> bool:
+    """Internal commands, e.g., `_FT.DEBUG`, `FT._LIST`"""
+    return any(part.startswith("_") for part in re.split(r"[ .]", cmd))
+
+
+def _download(url: str, filename: str) -> None:
+    if os.path.exists(filename):
+        return
+    response = requests.get(url)
+    response.raise_for_status()
+    with open(filename, "wb") as f:
+        f.write(response.content)
 
 
 def download_command_markdown(command: str) -> dict:
     url = f"https://raw.githubusercontent.com/redis/docs/refs/heads/main/content/commands/{command.lower()}.md"
     filename = os.path.join(THIS_DIR, f"{command}.md")
-    if not os.path.exists(filename):
-        contents = requests.get(url).content
-        with open(filename, "wb") as f:
-            f.write(contents)
+    _download(url, filename)
     # Read markdown file and extract metadata from the top of the file, which is in the format:
     # ---
     # summary: "summary of the command"
@@ -116,16 +105,14 @@ def download_command_markdown(command: str) -> dict:
     return metadata
 
 
-def download_single_stack_commands(filename, url, markdown_commands: list[str]) -> dict:
-    full_filename = os.path.join(THIS_DIR, filename)
-    if not os.path.exists(full_filename):
-        contents = requests.get(url).content
-        with open(full_filename, "wb") as f:
-            f.write(contents)
+def download_commands() -> dict[str, dict]:
+    """All commands (core and modules) from redis/docs, keyed by lowercase name, without internal commands"""
+    full_filename = os.path.join(THIS_DIR, COMMANDS_LOCAL_FILENAME)
+    _download(COMMANDS_URL, full_filename)
     with open(full_filename) as f:
         curr_cmds = json.load(f)
-    cmds = {k.lower(): v for k, v in curr_cmds.items()}
-    for cmd in markdown_commands:
+    cmds = {k.lower(): v for k, v in curr_cmds.items() if not is_internal_command(k)}
+    for cmd in MARKDOWN_COMMANDS:
         if cmd.lower() not in cmds:
             try:
                 cmds[cmd.lower()] = download_command_markdown(cmd)
@@ -143,24 +130,25 @@ def implemented_commands() -> set:
     return res
 
 
-def _commands_groups(commands: dict) -> dict[str, list[str]]:
-    groups = {}
-    for cmd in commands:
-        group = commands[cmd]["group"]
-        if group == "module":
-            group = commands[cmd]["module"]
-        groups.setdefault(group, []).append(cmd)
-    return groups
+def _commands_by_stack_and_group(commands: dict) -> dict[str, dict[str, list[str]]]:
+    res: dict[str, dict[str, list[str]]] = {}
+    for cmd, info in commands.items():
+        if "summary" not in info:  # Undocumented commands, e.g., deprecated `FT.ADD`, `SEARCH.CLUSTERSET`
+            continue
+        group = GROUP_RENAMES.get(info["group"], info["group"])
+        res.setdefault(MODULE_STACKS[info.get("module")], {}).setdefault(group, []).append(cmd)
+    return res
 
 
-def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_commands: set[str], stack: str) -> None:
-    groups = _commands_groups(redis_commands)
-    for group in groups:
+def generate_redis_commands_markdown_files(
+    redis_commands: dict, groups: dict[str, list[str]], fakeredis_commands: set[str], stack: str
+) -> None:
+    for group, group_commands in groups.items():
         filename = markdown_filename_template.format(f"{stack}/{group.upper()}")
         with open(filename, "w") as f:
-            implemented_in_group = set(groups[group]).intersection(fakeredis_commands)
+            implemented_in_group = set(group_commands).intersection(fakeredis_commands)
             implemented_in_group = sorted(implemented_in_group)
-            unimplemented_in_group = set(groups[group]) - fakeredis_commands
+            unimplemented_in_group = set(group_commands) - fakeredis_commands
             unimplemented_in_group = sorted(
                 {cmd for cmd in unimplemented_in_group if cmd.upper() not in IGNORE_COMMANDS}
             )
@@ -189,10 +177,8 @@ def generate_redis_commands_markdown_files(redis_commands: dict, fakeredis_comma
 
 if __name__ == "__main__":
     implemented = implemented_commands()
-    non_redis_commands = implemented
-    for cmd_meta in METADATA:
-        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
-        generate_redis_commands_markdown_files(cmds, implemented, cmd_meta.stack)
-        non_redis_commands = non_redis_commands - set(cmds.keys())
+    cmds = download_commands()
+    for stack, groups in _commands_by_stack_and_group(cmds).items():
+        generate_redis_commands_markdown_files(cmds, groups, implemented, stack)
     print("Commands not in any redis stack:")
-    print(non_redis_commands)
+    print(implemented - set(cmds.keys()))

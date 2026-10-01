@@ -18,7 +18,7 @@ Create a compaction rule
 
 ## [TS.DECRBY](https://redis.io/commands/ts.decrby/)
 
-Decrease the value of the sample with the maximum existing timestamp, or create a new sample with a value equal to the value of the sample with the maximum existing timestamp with a given decrement
+Decrease the value of the latest sample
 
 ## [TS.DEL](https://redis.io/commands/ts.del/)
 
@@ -34,7 +34,7 @@ Get the sample with the highest timestamp from a given time series
 
 ## [TS.INCRBY](https://redis.io/commands/ts.incrby/)
 
-Increase the value of the sample with the maximum existing timestamp, or create a new sample with a value equal to the value of the sample with the maximum existing timestamp with a given increment
+Increase the value of the latest sample
 
 ## [TS.INFO](https://redis.io/commands/ts.info/)
 
@@ -54,15 +54,15 @@ Query a range across multiple time series by filters in forward direction
 
 ## [TS.MREVRANGE](https://redis.io/commands/ts.mrevrange/)
 
-Query a range across multiple time-series by filters in reverse direction
+Query a range across multiple time series by filters in reverse direction
 
 ## [TS.NRANGE](https://redis.io/commands/ts.nrange/)
 
-Query a range across multiple time series in forward direction, returning the results grouped by timestamp
+Query a range across multiple time series in forward direction, returning the results pivoted by timestamp (one value column per key)
 
 ## [TS.NREVRANGE](https://redis.io/commands/ts.nrevrange/)
 
-Query a range across multiple time series in reverse direction, returning the results grouped by timestamp
+Query a range across multiple time series in reverse direction, returning the results pivoted by timestamp (one value column per key)
 
 ## [TS.QUERYINDEX](https://redis.io/commands/ts.queryindex/)
 
