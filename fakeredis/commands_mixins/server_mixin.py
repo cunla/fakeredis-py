@@ -36,7 +36,6 @@ class ServerCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         for db in self._server.dbs.values():
             db.clear()
-        # TODO: clear watches and/or pubsub as well?
         return OK
 
     @command(())

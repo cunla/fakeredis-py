@@ -1,92 +1,99 @@
-# RedisJson `json` commands (22/22 implemented)
+# RedisJson `json` commands (22/23 implemented)
 
 ## [JSON.ARRAPPEND](https://redis.io/commands/json.arrappend/)
 
-Append one or more json values into the array at path after the last element in it.
+Append the JSON values into the array at path after the last element in it
 
 ## [JSON.ARRINDEX](https://redis.io/commands/json.arrindex/)
 
-Returns the index of the first occurrence of a JSON scalar value in the array at path
+Search for the first occurrence of a JSON value in an array
 
 ## [JSON.ARRINSERT](https://redis.io/commands/json.arrinsert/)
 
-Inserts the JSON scalar(s) value at the specified index in the array at path
+Insert the json values into the array at path before the index (shifts to the right)
 
 ## [JSON.ARRLEN](https://redis.io/commands/json.arrlen/)
 
-Returns the length of the array at path
+Report the length of the JSON array at path in key
 
 ## [JSON.ARRPOP](https://redis.io/commands/json.arrpop/)
 
-Removes and returns the element at the specified index in the array at path
+Remove and return the element at the specified index in the array at path
 
 ## [JSON.ARRTRIM](https://redis.io/commands/json.arrtrim/)
 
-Trims the array at path to contain only the specified inclusive range of indices from start to stop
+Trim an array so that it contains only the specified inclusive range of elements
 
 ## [JSON.CLEAR](https://redis.io/commands/json.clear/)
 
-Clears all values from an array or an object and sets numeric values to `0`
+Clear container values (arrays/objects) and set numeric values to 0
 
 ## [JSON.DEL](https://redis.io/commands/json.del/)
 
-Deletes a value
+Delete a value
 
 ## [JSON.FORGET](https://redis.io/commands/json.forget/)
 
-Deletes a value
+Delete a value
 
 ## [JSON.GET](https://redis.io/commands/json.get/)
 
-Gets the value at one or more paths in JSON serialized form
+Get JSON value at path
 
 ## [JSON.MERGE](https://redis.io/commands/json.merge/)
 
-Merges a given JSON value into matching paths. Consequently, JSON values at matching paths are updated, deleted, or expanded with new children
+Merge a given JSON value into matching paths. Consequently, JSON values at matching paths are updated, deleted, or expanded with new children
 
 ## [JSON.MGET](https://redis.io/commands/json.mget/)
 
-Returns the values at a path from one or more keys
+Return the values at path from multiple key arguments
 
 ## [JSON.MSET](https://redis.io/commands/json.mset/)
 
-Sets or updates the JSON value of one or more keys
+Set or update one or more JSON values according to the specified key-path-value triplets
 
 ## [JSON.NUMINCRBY](https://redis.io/commands/json.numincrby/)
 
-Increments the numeric value at path by a value
+Increment the number value stored at path by number
 
 ## [JSON.NUMMULTBY](https://redis.io/commands/json.nummultby/)
 
-Multiplies the numeric value at path by a value
+Multiply the number value stored at path by number
 
 ## [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
 
-Returns the JSON keys of the object at path
+Return the keys in the object that's referenced by path
 
 ## [JSON.OBJLEN](https://redis.io/commands/json.objlen/)
 
-Returns the number of keys of the object at path
+Report the number of keys in the JSON object at path in key
 
 ## [JSON.SET](https://redis.io/commands/json.set/)
 
-Sets or updates the JSON value at a path
+Set the JSON value at path in key
 
 ## [JSON.STRAPPEND](https://redis.io/commands/json.strappend/)
 
-Appends a string to a JSON string value at path
+Append the json-string values to the string at path
 
 ## [JSON.STRLEN](https://redis.io/commands/json.strlen/)
 
-Returns the length of the JSON String at path in key
+Report the length of the JSON String at path in key
 
 ## [JSON.TOGGLE](https://redis.io/commands/json.toggle/)
 
-Toggles a boolean value
+Toggle the boolean value stored at path
 
 ## [JSON.TYPE](https://redis.io/commands/json.type/)
 
-Returns the type of the JSON value at path
+Report the type of JSON value at path
 
+
+## Unsupported json commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
+
+#### [JSON.NUMPOWBY](https://redis.io/commands/json.numpowby/) <small>(not implemented)</small>
+
+Raise the number value stored at path to the power of number
 
 

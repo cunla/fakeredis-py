@@ -194,6 +194,26 @@ TIMESERIES_DUPLICATE_POLICY_BLOCK = (
     "TSDB: Error at upsert, update is not supported when DUPLICATE_POLICY is set to BLOCK mode"
 )
 TIMESERIES_BAD_FILTER_EXPRESSION = "TSDB: failed parsing labels"
+TIMESERIES_FILTER_BY_TS_MISSING = "TSDB: FILTER_BY_TS one or more arguments are missing"
+TIMESERIES_NO_MATCHER = "TSDB: please provide at least one matcher"
+TIMESERIES_FILTER_WITHOUT_EXPRESSIONS = "TSDB: FILTER given with no filter expressions"
+TIMESERIES_QUERYLABELS_BAD_SUBTYPE = "TSDB: unknown subtype, must be one of LABELS|VALUES"
+TIMESERIES_QUERYLABELS_EXPECTED_FILTER = "TSDB: unknown argument, expected FILTER"
+TIMESERIES_EXCLUDEEMPTY_WITH_GROUPBY = "TSDB: EXCLUDEEMPTY is not allowed with GROUPBY"
+TIMESERIES_NUMKEYS_NOT_POSITIVE = "TSDB: numkeys must be a positive integer"
+TIMESERIES_WRONG_FROM_TIMESTAMP = "TSDB: wrong fromTimestamp"
+TIMESERIES_WRONG_TO_TIMESTAMP = "TSDB: wrong toTimestamp"
+TIMESERIES_INVALID_COUNT = "TSDB: Invalid COUNT value"
+TIMESERIES_BAD_AGGREGATION = "TSDB: Couldn't parse AGGREGATION"
+TIMESERIES_AGGREGATION_COUNT_NOT_NUMKEYS = "TSDB: the number of AGGREGATION arguments must be equal to numkeys"
+TIMESERIES_BUCKET_DURATION_NOT_POSITIVE = "TSDB: bucketDuration must be greater than zero"
+TIMESERIES_READ_BAD_BLOCK_MS = "TSDB: BLOCK milliseconds must be a non-negative integer"
+TIMESERIES_READ_BAD_MIN_COUNT = "TSDB: BLOCK min_count must be a positive integer"
+TIMESERIES_READ_BAD_MAX_COUNT = "TSDB: MAX_COUNT must be a positive integer"
+TIMESERIES_READ_MIN_ABOVE_MAX = "TSDB: BLOCK min_count must be <= MAX_COUNT"
+TIMESERIES_READ_BLOCK_NOT_ALLOWED = (
+    "TSDB: blocking TS.READ (with BLOCK) is not allowed inside MULTI, EVAL, or a deny-blocking context"
+)
 HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
 HEXPIRE_INVALID_TIME_MSG = "ERR invalid expire time, must be >= 0"
 

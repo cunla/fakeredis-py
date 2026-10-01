@@ -213,7 +213,6 @@ class GenericCommandsMixin(CommandsMixinBase):
     def rename(self, key: CommandItem, newkey: CommandItem) -> SimpleString:
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
-        # TODO: check interaction with WATCH
         if newkey.key != key.key:
             newkey.value = key.value
             newkey.expireat = key.expireat

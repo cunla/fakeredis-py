@@ -539,9 +539,10 @@ def test_xreadgroup(r: ClientType, real_server_details):
     assert actual == resp_conversion(r, expected_resp3, expected_resp2)
     # delete all the messages in the stream
     assert r.xtrim(stream, 0) == 2
-    # TODO groups keep ids of deleted messages
-    # expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
-    # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
+    # The group keeps the ids of the deleted messages pending, with their fields gone.
+    expected_resp2 = [[stream.encode(), [(m1, {}), (m2, {})]]]
+    expected_resp3 = {stream.encode(): [[(m1, {}), (m2, {})]]}
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
     # A blocking read that finds nothing: on dragonfly under RESP3 the empty-array reply
     # is not something redis-py can parse, so issue it raw there.
     testtools.assert_empty_stream_read(

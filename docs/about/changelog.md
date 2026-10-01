@@ -7,81 +7,40 @@ tags:
 toc_depth: 2
 ---
 
-## v2.39.0 - 2026-09-29
+## v2.39.0 - 2026-10-01
 
 ### 🚀 Features
 
-- feat(kividb): add the `kividb` server type — `server_type="kividb"` is accepted by `FakeServer`, `FakeRedis` and
-  `TcpFakeServer`, and the command surface matches a real KiviDB 1.0.4 rather than the Redis version it reports:
-  `LCS`, the hash-field TTL family (`HTTL`, `HPTTL`, `HEXPIRETIME`, `HPEXPIRETIME`, `HGETEX`, `HGETDEL`), `INCREX`,
-  `XDELEX` and `XNACK` are served; `UNLINK` and `SCRIPT HELP` are not, and unknown commands get KiviDB's bare
-  `ERR unknown command`. `HSETEX` and `XACKDEL` stay refused until KiviDB's own argument forms are emulated
-  (#570, #571)
-- feat(streams): `XADD`/`XTRIM` accept the `KEEPREF` | `DELREF` | `ACKED` reference policies (Redis 8.2+). `DELREF`
-  drops trimmed entries from every group's PEL, and `ACKED` keeps entries any group still references — including
-  entries a group has not read yet, which `XDELEX`/`XACKDEL` now also respect (#583)
+- feat: support Redis 8.10 commands `LMOVEM`, `BLMOVEM`, `SUNIONCARD`, `SDIFFCARD`, `TS.QUERYLABELS`, `TS.NRANGE`, `TS.NREVRANGE` and `TS.READ` (#597)
+- feat(kividb): add the `kividb` server type, matching KiviDB 1.0.4's command surface (#570, #571)
+- feat(streams): `XADD`/`XTRIM` accept the `KEEPREF`/`DELREF`/`ACKED` reference policies (#583)
 
 ### 🐛 Bug Fixes
 
-- fix(valkey): `FakeValkey.from_url`, `FakeStrictValkey.from_url` and `FakeAsyncValkey.from_url` work. The sync ones
-  built a redis pool, which rejected `valkey://` URLs, and defaulted `server_type` to `"redis"`, which the valkey
-  clients then refused; the async one used redis connections, which failed on the first command, and would have
-  raised redis exceptions instead of valkey ones
-- fix(streams): approximate (`~`) trimming drops whole nodes as Redis does — the stream tracks node boundaries
-  (`stream-node-max-entries`/`-bytes`), `LIMIT` counts like Redis, and `XINFO STREAM` reports the real
-  `radix-tree-keys`. `XADD`/`XTRIM` options are parsed with Redis' errors (`LIMIT` without `~`, `MAXLEN` with
-  `MINID`, negative values, invalid IDs) (#583)
-- fix(streams): `XADD` compares new IDs with the last generated ID rather than the last surviving entry, so deleted
-  IDs are never reused; `0-0`, IDs past 64 bits and an exhausted stream get Redis' errors, `XADD` on another type
-  raises `WRONGTYPE`, and `XTRIM` on a missing key no longer creates it (#583)
-- fix(streams): `XGROUP SETID` uses the ID it is given (`SETID 0` skipped the first entry) and validates
-  `ENTRIESREAD`; `XGROUP CREATE ... $` follows the last generated ID and no longer creates a missing stream without
-  `MKSTREAM`; `entries-read` and `lag` follow Redis' rules, deletions included (#583)
-- fix(streams): `XGROUP SETID`/`DESTROY`/`CREATECONSUMER`/`DELCONSUMER`, `XINFO CONSUMERS`, `XCLAIM` and `XAUTOCLAIM`
-  on a missing key now return Redis' errors instead of treating it as an empty stream, and `NOGROUP` errors name the
-  key instead of printing a Python object (#584)
-- fix(streams): `XRANGE`, `XREVRANGE` and `XPENDING` read an end ID without a sequence number (e.g. `5`) as covering
-  the whole millisecond, as Redis does, rather than as `5-0` (#584)
-- fix(tcp-server): `TcpFakeServer` now answers RESP2 clients in RESP2 — it always wrote RESP3, so redis-py raised
-  `Protocol Error` on nil replies, maps and doubles. It also no longer closes the connection when a reply is the
-  string `"shutdown"` (#580)
-- fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL instead of removing it, and a TTL of `0` is
-  no longer read as "no TTL" (#578)
-- fix(async): `FakeAsyncValkey` raises `valkey` exceptions instead of `redis` ones, and async connections report
-  `addr`, `laddr` and `fd` in `CLIENT INFO` like sync ones
-- fix: each connection gets a single client ID — IDs were allocated twice, so they went 2, 4, 6 — and a reconnect gets
-  a new one, as in Redis
-- fix: `FakeRedis(version=10)` no longer shares a server with `version=1` — the shared-server key used the first
-  character of the version string instead of the major version
+- fix: `MOVE`/`SMOVE` invalidate `WATCH` like Redis, add `SORT_RO`, sort unsorted `SORT` results in scripts/`STORE`, and fix `ZSCAN` while deleting (#595)
+- fix(bitmap): `BITOP` pads shorter operands and treats missing keys as empty (#593)
+- fix(geo): `*BYMEMBER`/`FROMMEMBER` searches on a missing member return Redis'/Valkey 9's error instead of crashing (#594)
+- fix(valkey): `from_url` works for `FakeValkey`, `FakeStrictValkey` and `FakeAsyncValkey` (#591)
+- fix(streams): approximate (`~`) trimming drops whole nodes and `XADD`/`XTRIM` options use Redis' errors (#583)
+- fix(streams): `XADD` never reuses deleted IDs and rejects invalid IDs like Redis (#583)
+- fix(streams): `XGROUP SETID`/`CREATE`, `entries-read` and `lag` follow Redis' rules (#583)
+- fix(streams): consumer-group commands on a missing key return Redis' errors (#584)
+- fix(streams): `XRANGE`/`XREVRANGE`/`XPENDING` treat an end ID without sequence as the whole millisecond (#584)
+- fix(tdigest): `TDIGEST.QUANTILE` on a single observation follows Redis 8.10 (#597)
+- fix(tcp-server): `TcpFakeServer` answers RESP2 clients in RESP2 (#580)
+- fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL (#578)
+- fix(async): `FakeAsyncValkey` raises `valkey` exceptions and async connections report `addr`/`laddr`/`fd` (#589)
+- fix: each connection gets one client ID, and a new one on reconnect (#589)
+- fix: `FakeRedis(version=10)` no longer shares a server with `version=1` (#589)
 
 ### 🧰 Maintenance
 
-- perf: cache compiled glob patterns (used by `PSUBSCRIBE` and keyspace notifications), skip TTL scans on hashes and
-  sets with nothing to expire, and wake `get_message(timeout=...)` as soon as a message arrives instead of polling
-  in 10ms steps (#577)
-- refactor: use `asyncio.get_running_loop()` in the async socket (#580)
-- test(kividb): run the suite against a real KiviDB in CI (#570)
+- perf: cache glob patterns, skip empty TTL scans, and stop polling in `get_message(timeout=...)` (#577)
+- refactor: layer internals into `fakeredis/_core`, `fakeredis/_clients` and `fakeredis/_socket` packages (#589, #590, #592)
+- test: run CI against Redis 8.10 and a real KiviDB (#570, #597)
+- test: drop stale TODOs and narrow Dragonfly zset test skips (#596)
 - test: drop `from __future__ import annotations` from test files (#586)
 - chore: update dependencies and the `setup-uv` action (#587)
-- refactor: move the connection, server, database and selector internals into a `fakeredis/_core/` package, and
-  remove the import cycles between the core, `model` and the command modules. The public API is unchanged; the
-  private module `fakeredis._server` is now under `fakeredis._core`
-- refactor: split `_commands.py` into the command registry (`@command`, `Signature`, `Key`), which stays there;
-  `Item`/`CommandItem`/`delete_keys`, now in `fakeredis._core`; the argument converters (`Int`, `Float`, `DbIndex`,
-  `Timeout`, `StringTest`), now in `_command_args_parsing.py`; and `fix_range`/`fix_range_string` and the string-size
-  limits, now in `_helpers.py`
-- refactor: move the client-facing classes into a `fakeredis/_clients/` package: the sync connection and clients
-  (`fakeredis._connection`), the async ones (`fakeredis.aioredis`, which stays as the public import path), the valkey
-  clients (`fakeredis._valkey`), `TcpFakeServer` (`fakeredis._tcp_server`), `build_client_kwds`
-  (`fakeredis._client_setup`) and `FakeBaseConnectionMixin`, which moves out of `FakeServer`'s module. `fakeredis._core`
-  now holds only the server and storage layer, and exports all of it. The private valkey class
-  `FakeAysncValkeyConnection` is renamed to `FakeAsyncValkeyConnection`
-- refactor: split `_basefakesocket.py` into a `fakeredis/_socket/` package: the dispatch core (`_base.py`), RESP
-  helpers (`_resp.py`, which also takes `valid_response_type` from `_helpers.py`), keyspace/subkey notifications
-  (`_notifications.py`) and Dragonfly's dispatch rules (`_dragonfly.py`), next to `FakeSocket` (from `_fakesocket.py`)
-  and `AsyncFakeSocket` (from `fakeredis.aioredis`, which still re-exports it). The helpers command mixins share
-  (`_scan`, `_ttl`, `_encodefloat`, `_encodeint`, `_key_value_type`) move to `CommandsMixinBase`, replacing the
-  per-mixin `Callable` stand-ins, and the socket's duplicate of `CommandsMixinBase._resp_version` is removed
 
 ## v2.38.0 - 2026-09-08
 

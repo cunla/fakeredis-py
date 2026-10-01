@@ -1,6 +1,6 @@
 
-## Unsupported cluster commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
+## Unsupported cluster commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
 
 #### [ASKING](https://redis.io/commands/asking/) <small>(not implemented)</small>
 
@@ -140,4 +140,6 @@ Enables read-only queries for a connection to a Redis Cluster replica node.
 
 #### [READWRITE](https://redis.io/commands/readwrite/) <small>(not implemented)</small>
 
-Enables read-write queries for a connection to a Reids Cluster replica node.
+Enables read-write queries for a connection to a Redis Cluster replica node.
+
+

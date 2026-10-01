@@ -362,26 +362,29 @@ class BaseFakeSocket(NotificationsMixin):
         `shape` turns the outcome into the reply the command sends, the timed-out None
         included. It belongs here rather than around the call because the async socket answers a command that blocks
         outside the command's own control flow, so anything the command does with the return value would be skipped
-        there.
+        there. The timed-out reply is shaped when the timeout fires, so it can report what is there by then (TS.READ).
 
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
             return ret if shape is None else shape(ret)
-        empty = None if shape is None else shape(None)
+
+        def empty() -> Any:
+            return None if shape is None else shape(None)
+
         deadline = time.time() + timeout if timeout else None
         self._blocked = True
         try:
             while True:
                 timeout = (deadline - time.time()) if deadline is not None else None
                 if timeout is not None and timeout <= 0:
-                    return empty
+                    return empty()
                 if self._db.condition.wait(timeout=timeout) is False:
-                    return empty  # Timeout expired
+                    return empty()  # Timeout expired
                 if self._unblock_reason is not None:
                     self._take_unblock_reason()
-                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
+                    return empty()  # Unblocked with TIMEOUT: same empty result as a timeout
                 ret = func(False)  # Second pass => first_pass=False
                 if ret is not None:
                     return ret if shape is None else shape(ret)

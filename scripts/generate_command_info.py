@@ -24,7 +24,7 @@ import os
 from typing import Any
 
 from fakeredis._commands import SUPPORTED_COMMANDS
-from scripts.generate_supported_commands_doc import METADATA, download_single_stack_commands
+from scripts.generate_supported_commands_doc import download_commands
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
@@ -84,9 +84,7 @@ def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
     last_key = dict_deep_get(cmd_info, "key_specs", -1, "begin_search", "spec", "index", default_value=0)
     step = dict_deep_get(cmd_info, "key_specs", 0, "find_keys", "spec", "keystep", default_value=0)
     tips = []
-    subcommands = [
-        get_command_info(cmd, all_commands) for cmd in all_commands if cmd_name != cmd and cmd.startswith(cmd_name)
-    ]
+    subcommands = [get_command_info(cmd, all_commands) for cmd in all_commands if cmd.startswith(cmd_name + " ")]
     categories = set(cmd_info.get("acl_categories", []))
     for prefix, category in CATEGORIES.items():
         if cmd_name.startswith(prefix.lower()):
@@ -109,18 +107,17 @@ def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
 if __name__ == "__main__":
     implemented = implemented_commands()
     command_info_dict: dict[str, list[Any]] = {}
-    for cmd_meta in METADATA:
-        cmds = download_single_stack_commands(cmd_meta.local_filename, cmd_meta.url, cmd_meta.markdown_commands)
-        for cmd in cmds:
-            if cmd not in implemented:
-                continue
-            command_info_dict[cmd] = get_command_info(cmd, cmds)
-            subcommand = cmd.split(" ")
-            if len(subcommand) > 1:
-                command_info_dict.setdefault(
-                    subcommand[0],
-                    [subcommand[0], -1, [], 0, 0, 0, [], [], [], []],
-                )[9].append(command_info_dict[cmd])
-            print(command_info_dict[cmd])
+    cmds = download_commands()
+    for cmd in cmds:
+        if cmd not in implemented:
+            continue
+        command_info_dict[cmd] = get_command_info(cmd, cmds)
+        subcommand = cmd.split(" ")
+        if len(subcommand) > 1:
+            command_info_dict.setdefault(
+                subcommand[0],
+                [subcommand[0], -1, [], 0, 0, 0, [], [], [], []],
+            )[9].append(command_info_dict[cmd])
+        print(command_info_dict[cmd])
     with open(os.path.join(os.path.dirname(__file__), "..", "fakeredis", "commands.json"), "w") as f:
         json.dump(command_info_dict, f)
