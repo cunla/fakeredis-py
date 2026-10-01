@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import Int
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, Database
 from fakeredis._helpers import SimpleError, current_time
+from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ExpiringMembersSet
 
 _INT64_MAX = 2**63 - 1
@@ -34,9 +35,7 @@ def _ms_to_seconds(value_ms: int) -> int:
     return seconds + 1 if value_ms > 0 else seconds
 
 
-class DragonflyCommandsMixin:
-    _expireat: Callable[[CommandItem, int], int]
-
+class DragonflyCommandsMixin(CommandsMixinBase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._db: Database

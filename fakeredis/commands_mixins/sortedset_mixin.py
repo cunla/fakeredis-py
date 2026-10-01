@@ -6,7 +6,7 @@ import math
 import random
 import sys
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import Float, Int, RedisType, StringTest, Timeout, extract_args, parse_mpop_args
@@ -420,7 +420,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         new_cursor, ans = self._scan(key.value.items(), cursor, *args, scanned_key=key.key)
         flat = []
-        for member, score in ans:
+        # _scan returns the items it was given, and a sorted set's items are (member, score) pairs.
+        for member, score in cast("list[tuple[bytes, float]]", ans):
             flat.append(member)
             flat.append(self._encodefloat(score, False))
         return [new_cursor, flat]

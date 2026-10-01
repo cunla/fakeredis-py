@@ -242,6 +242,18 @@ class TestInitArgs:
 
 
 @pytest.mark.fake
+def test_clear_all_servers():
+    before = fakeredis.FakeStrictRedis(host="clear-all-servers", port=6000)
+    before.set("foo", "bar")
+    assert fakeredis.FakeStrictRedis(host="clear-all-servers", port=6000).get("foo") == b"bar"
+
+    fakeredis.FakeServer.clear_all_servers()
+
+    assert fakeredis.FakeStrictRedis(host="clear-all-servers", port=6000).get("foo") is None
+    # A client created before the reset keeps the server it had.
+    assert before.get("foo") == b"bar"
+
+
 def test_major_versions_sharing_a_first_digit_get_separate_servers():
     r1 = fakeredis.FakeRedis(host="versions", version=1)
     r10 = fakeredis.FakeRedis(host="versions", version=10)

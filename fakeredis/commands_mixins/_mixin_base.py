@@ -4,7 +4,7 @@ import bisect
 import itertools
 from collections.abc import Collection
 from re import Match
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import Float, Int, extract_args
@@ -12,6 +12,11 @@ from fakeredis._core import CommandItem, Database, FakeServer
 from fakeredis._helpers import SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import BaseModel, ClientInfo
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from fakeredis._commands import Signature
 
 
 def bin_reverse(x: int, bits_count: int) -> int:
@@ -29,14 +34,39 @@ def _scan_sort_key(val: Any) -> Any:
 
 
 class CommandsMixinBase:
-    """Base class for command mixins: declares the attributes the socket provides, and the helpers several mixins
-    share."""
+    """Base class for command mixins: the contract between a mixin and the socket it is mixed into.
+
+    `FakeSocket` combines `BaseFakeSocket` with every mixin, so a mixin can use state and helpers that live on the socket
+    or on a sibling mixin. Everything a mixin relies on that way is declared here, once, along with the helpers several
+    mixins share.
+    """
 
     _server: FakeServer
     _client_info: ClientInfo
     _db: Database
     _script_resp: int | None = None
     _in_transaction: bool = False
+
+    if TYPE_CHECKING:
+        # Stubs for type checkers only. They do not exist at runtime, so they can never shadow the implementations that
+        # come later in FakeSocket's MRO.
+
+        # Implemented by BaseFakeSocket.
+        def put_response(self, msg: Any) -> None: ...
+
+        def add_subkey_event(self, event: bytes, key: bytes, subkeys: Sequence[bytes]) -> None: ...
+
+        def _name_to_func(self, cmd_name: str) -> tuple[Callable[[Any], Any] | None, Signature]: ...
+
+        def _run_command(
+            self, func: Callable[[Any], Any] | None, sig: Signature, args: list[Any], from_script: bool
+        ) -> Any: ...
+
+        # Implemented by GenericCommandsMixin.
+        def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int: ...
+
+        # Implemented by TransactionsCommandsMixin.
+        def _clear_watches(self) -> None: ...
 
     @property
     def version(self) -> VersionType:
