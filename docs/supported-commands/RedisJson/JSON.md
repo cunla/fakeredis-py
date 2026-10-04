@@ -1,4 +1,4 @@
-# RedisJson `json` commands (22/23 implemented)
+# RedisJson `json` commands (23/23 implemented)
 
 ## [JSON.ARRAPPEND](https://redis.io/commands/json.arrappend/)
 
@@ -60,6 +60,10 @@ Increment the number value stored at path by number
 
 Multiply the number value stored at path by number
 
+## [JSON.NUMPOWBY](https://redis.io/commands/json.numpowby/)
+
+Raise the number value stored at path to the power of number
+
 ## [JSON.OBJKEYS](https://redis.io/commands/json.objkeys/)
 
 Return the keys in the object that's referenced by path
@@ -88,12 +92,5 @@ Toggle the boolean value stored at path
 
 Report the type of JSON value at path
 
-
-## Unsupported json commands 
-> To implement support for a command, see [here](../../../guides/implement-command/) 
-
-#### [JSON.NUMPOWBY](https://redis.io/commands/json.numpowby/) <small>(not implemented)</small>
-
-Raise the number value stored at path to the power of number
 
 
