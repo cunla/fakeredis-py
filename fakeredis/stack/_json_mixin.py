@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import itertools
 import json
+import math
 import struct
 from functools import lru_cache
 from json import JSONDecodeError
@@ -112,6 +113,32 @@ class JSONObject:
     def encode(cls, value: Any) -> bytes | None:
         """Serialize the supplied Python object into a valid, JSON-formatted byte-encoded string."""
         return json.dumps(value, default=str).encode() if value is not None else None
+
+
+_INT64_MIN, _INT64_MAX = -(1 << 63), (1 << 63) - 1
+
+
+def _decode_json_number(value: bytes) -> int | float:
+    """Parse a numeric command argument given as JSON text, keeping `2` an integer and `2.0` a double."""
+    try:
+        number = json.loads(value)
+    except (JSONDecodeError, UnicodeDecodeError):
+        raise helpers.SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
+    if type(number) not in {int, float}:
+        raise helpers.SimpleError(msgs.JSON_BAD_INPUT_NUMBER_MSG)
+    if not math.isfinite(number):
+        # json.loads reads `NaN` and `Infinity`, which are not JSON, and turns `1e400` into infinity.
+        if value.strip().lstrip(b"-")[:1].isdigit():
+            raise helpers.SimpleError(msgs.JSON_NUMBER_OUT_OF_RANGE_MSG.format(len(value)))
+        raise helpers.SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
+    if type(number) is int and (not _INT64_MIN <= number <= _INT64_MAX or value.strip() == b"-0"):
+        return float(number)  # what does not fit an integer is read as a double, and so is `-0`
+    return number  # type: ignore[no-any-return]
+
+
+def _encode_json_numbers(value: Any) -> bytes:
+    """Serialize numbers as RedisJSON writes them in a RESP2 reply: no spaces, and `1e30` rather than `1e+30`."""
+    return json.dumps(value, separators=(",", ":")).replace("e+", "e").encode()
 
 
 def _quantize_fp16(value: float) -> float:
@@ -662,6 +689,68 @@ class JSONCommandsMixin(CommandsMixinBase):
                 return None, None, False
 
         return self._number_reply(_json_write_iterate(nummultby, key, path_str, server_type=self.server_type))
+
+    @command(
+        name="JSON.NUMPOWBY",
+        fixed=(Key(), bytes, bytes),
+        repeat=(bytes,),
+        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
+        server_types=("redis",),
+    )
+    def json_numpowby(self, key: CommandItem, path_str: bytes, encoded_exponent: bytes, *args: bytes) -> Any:
+        if len(args) > 0 and self.version >= (8, 6):  # earlier versions ignore trailing arguments
+            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.numpowby"))
+        exponent = _decode_json_number(encoded_exponent)
+        if key.value is None:
+            raise _key_not_found(self.server_type)
+        found_matches = _parse_jsonpath(path_str, self.server_type).find(key.value)
+
+        curr_value = copy.deepcopy(key.value)
+        res: list[int | float | None] = []
+        for item in found_matches:
+            if type(item.value) not in {int, float}:
+                res.append(None)
+                continue
+            try:
+                new_value = self._json_pow(item.value, exponent)
+            except helpers.SimpleError:
+                key.update(curr_value)  # the matches before the failing one stay written
+                raise
+            curr_value = item.full_path.update(curr_value, new_value)
+            res.append(new_value)
+        key.update(curr_value)
+
+        if self._client_info.protocol_version == 3:
+            return res  # every match, for a legacy path too
+        if not _path_is_legacy(path_str):
+            return _encode_json_numbers(res)
+        numbers = [item for item in res if item is not None]
+        if len(numbers) == 0:
+            if self.version >= (8, 2):
+                raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER)
+            raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER_WITH_PATH.format(_format_path(path_str)))
+        return _encode_json_numbers(numbers[-1])
+
+    def _json_pow(self, base: float, exponent: float) -> int | float:
+        """Raise a JSON number to a power the way RedisJSON does: two integers stay an integer, anything else is a
+        double.
+        """
+        if type(base) is int and type(exponent) is int:
+            if self.version < (8, 8):
+                # Before Redis 8.8 the exponent is truncated to 32 bits and the result wraps around 64 bits, so a
+                # negative exponent is a huge one and `2 ** -1` is 0.
+                wrapped = pow(base, exponent % (1 << 32), 1 << 64)
+                return wrapped - (1 << 64) if wrapped > _INT64_MAX else wrapped
+            if not 0 <= exponent < (1 << 32) or (abs(base) > 1 and exponent > 63):
+                raise helpers.SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
+            result: int = base**exponent
+            if not _INT64_MIN <= result <= _INT64_MAX:
+                raise helpers.SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
+            return result
+        try:
+            return math.pow(base, exponent)
+        except (ValueError, OverflowError):  # NaN (a root of a negative number) or infinity
+            raise helpers.SimpleError(msgs.JSON_RESULT_NOT_A_NUMBER_MSG)
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)

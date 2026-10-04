@@ -45,7 +45,48 @@ def _setop(
         return len(dst.value)
 
 
+def _parse_setop_card_args(args: tuple[bytes, ...], allow_approx: bool) -> tuple[tuple[bytes, ...], int]:
+    """Parse the `numkeys key [key ...] [APPROX] [LIMIT limit]` arguments of SUNIONCARD and SDIFFCARD.
+
+    Returns the keys and the limit (0 for none). Options may repeat, the last LIMIT winning.
+    """
+    numkeys = Int.decode(args[0], msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+    if numkeys < 1:
+        raise SimpleError(msgs.NUMKEYS_GREATER_THAN_ZERO_MSG)
+    if numkeys > len(args) - 1:
+        raise SimpleError(msgs.TOO_MANY_KEYS_MSG)
+    keys, options = args[1 : 1 + numkeys], args[1 + numkeys :]
+    limit, i = 0, 0
+    while i < len(options):
+        if casematch(options[i], b"limit") and i + 1 < len(options):
+            limit = Int.decode(options[i + 1], msgs.LIMIT_NEGATIVE_MSG)
+            if limit < 0:
+                raise SimpleError(msgs.LIMIT_NEGATIVE_MSG)
+            i += 2
+        elif allow_approx and casematch(options[i], b"approx"):
+            i += 1  # The exact count is always within the approximation's error, so compute it exactly.
+        else:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    return keys, limit
+
+
 class SetCommandsMixin(CommandsMixinBase):
+    def _setop_card(self, op: Callable[..., Any], args: tuple[bytes, ...], allow_approx: bool) -> int:
+        keys, limit = _parse_setop_card_args(args, allow_approx)
+        items = [CommandItem(key, self._db, item=self._db.get(key), default=ExpiringMembersSet()) for key in keys]
+        res = len(_calc_setop(op, False, *items))
+        return res if limit == 0 else min(limit, res)
+
+    @command(name="SUNIONCARD", fixed=(bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def sunioncard(self, *args: bytes) -> int:
+        """SUNIONCARD numkeys key [key ...] [APPROX] [LIMIT limit]"""
+        return self._setop_card(lambda a, b: a | b, args, allow_approx=True)
+
+    @command(name="SDIFFCARD", fixed=(bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def sdiffcard(self, *args: bytes) -> int:
+        """SDIFFCARD numkeys key [key ...] [LIMIT limit]"""
+        return self._setop_card(lambda a, b: a - b, args, allow_approx=False)
+
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)
@@ -125,8 +166,11 @@ class SetCommandsMixin(CommandsMixinBase):
         src.updated()
         if dst.value is None:
             dst.update(ExpiringMembersSet())
-        dst.value.add(member)
-        dst.updated()  # TODO: is it updated if member was already present?
+        # A member already in the destination leaves it untouched, so its watchers are not told -- except on dragonfly,
+        # which counts the destination as modified all the same.
+        if member not in dst.value or self.server_type == "dragonfly":
+            dst.value.add(member)
+            dst.updated()
         return 1
 
     @command((Key(ExpiringMembersSet),), (Int,))
@@ -177,7 +221,7 @@ class SetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ExpiringMembersSet), Int), (bytes, bytes))
     def sscan(self, key: CommandItem, cursor: int, *args: bytes) -> Any:
-        return self._scan(key.value, cursor, *args)
+        return self._scan(key.value, cursor, *args, scanned_key=key.key)
 
     @command((Key(ExpiringMembersSet),), (Key(ExpiringMembersSet),))
     def sunion(self, *keys: CommandItem) -> Any:

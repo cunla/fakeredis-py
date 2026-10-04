@@ -14,7 +14,7 @@ Returns, for each input reverse rank, an estimation of the value (floating-point
 
 ## [TDIGEST.CDF](https://redis.io/commands/tdigest.cdf/)
 
-Returns, for each input value, an estimation of the fraction (floating-point) of (observations smaller than the given value + half the observations equal to the given value)
+Returns, for each input value, an estimation of the floating-point fraction of (observations smaller than the given value + half the observations equal to the given value). Multiple fractions can be retrieved in a single call.
 
 ## [TDIGEST.CREATE](https://redis.io/commands/tdigest.create/)
 

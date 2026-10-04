@@ -418,7 +418,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), Int), (bytes, bytes))
     def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
-        new_cursor, ans = self._scan(key.value.items(), cursor, *args)
+        new_cursor, ans = self._scan(key.value.items(), cursor, *args, scanned_key=key.key)
         flat = []
         # _scan returns the items it was given, and a sorted set's items are (member, score) pairs.
         for member, score in cast("list[tuple[bytes, float]]", ans):
@@ -509,8 +509,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             for member, score in s.items():
                 # With COUNT, each set contributes its weight regardless of the member's score.
                 score = w if aggregate == b"count" else score * w
-                # Redis only does this step for ZUNIONSTORE. See https://github.com/antirez/redis/issues/3954.
-                if func in {"ZUNIONSTORE", "ZUNION"} and math.isnan(score):
+                # Redis only does this step for ZUNIONSTORE (see https://github.com/antirez/redis/issues/3954), while
+                # dragonfly does it for ZINTERSTORE too -- so there inf * 1 + inf * 0 sums to inf rather than to NaN.
+                if (func in {"ZUNIONSTORE", "ZUNION"} or self.server_type == "dragonfly") and math.isnan(score):
                     score = 0.0
                 if member not in out_members:
                     continue

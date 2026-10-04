@@ -2,7 +2,7 @@
 
 ## [CMS.INCRBY](https://redis.io/commands/cms.incrby/)
 
-Increases the count of one or more items by increment
+Increases the count of one or more items by increment, which may be negative
 
 ## [CMS.INFO](https://redis.io/commands/cms.info/)
 

@@ -96,7 +96,7 @@ class HashCommandsMixin(CommandsMixinBase):
     def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         no_values = any(casematch(arg, b"novalues") for arg in args)
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
-        scan_result = self._scan(key.value, cursor, *scan_args)
+        scan_result = self._scan(key.value, cursor, *scan_args, scanned_key=key.key)
         result_cursor = scan_result[0]
         keys: list[bytes] = cast(List[bytes], scan_result[1])
         if no_values:

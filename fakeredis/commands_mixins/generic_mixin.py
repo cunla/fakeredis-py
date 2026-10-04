@@ -159,8 +159,10 @@ class GenericCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SRC_DST_SAME_MSG)
         if not key or key.key in self._server.dbs[db]:
             return 0
-        # TODO: what is the interaction with expiry?
+        # The stored item carries its expiry with it. The source key's watchers are told on writeback, but the
+        # destination key changes behind the target database's back, so tell its watchers here.
         self._server.dbs[db][key.key] = self._server.dbs[self._db_num][key.key]
+        self._server.dbs[db].notify_watch(key.key)
         key.value = None  # Causes deletion
         return 1
 
@@ -211,7 +213,6 @@ class GenericCommandsMixin(CommandsMixinBase):
     def rename(self, key: CommandItem, newkey: CommandItem) -> SimpleString:
         if not key:
             raise SimpleError(msgs.NO_KEY_MSG)
-        # TODO: check interaction with WATCH
         if newkey.key != key.key:
             newkey.value = key.value
             newkey.expireat = key.expireat
@@ -251,6 +252,13 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
     def sort(self, key: CommandItem, *args: bytes) -> int | list[Any]:
+        return self._sort(key, args, allow_store=True)
+
+    @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
+    def sort_ro(self, key: CommandItem, *args: bytes) -> int | list[Any]:
+        return self._sort(key, args, allow_store=False)
+
+    def _sort(self, key: CommandItem, args: tuple[bytes, ...], allow_store: bool) -> int | list[Any]:
         if key.value is not None and not isinstance(key.value, (ExpiringMembersSet, list, ZSet)):
             raise SimpleError(msgs.WRONGTYPE_MSG)
         ((_asc, desc, alpha, store, sortby, (limit_start, limit_count)), left_args) = extract_args(
@@ -259,6 +267,8 @@ class GenericCommandsMixin(CommandsMixinBase):
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
+        if store is not None and not allow_store:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         limit_start = limit_start or 0
         limit_count = -1 if limit_count is None else limit_count
         dontsort = sortby is not None and b"*" not in sortby
@@ -272,7 +282,15 @@ class GenericCommandsMixin(CommandsMixinBase):
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
-        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
+        # A set has no order of its own, so where the result must be reproducible -- stored under a key, or returned to
+        # a script -- redis sorts it lexicographically even when BY asks for no sorting.
+        if (
+            dontsort
+            and isinstance(key.value, ExpiringMembersSet)
+            and (store is not None or self._script_resp is not None)
+            and self.server_type != "dragonfly"
+        ):
+            dontsort, alpha, sortby = False, True, None
         items = list(key.value) if key.value is not None else []
 
         # These transformations are based on the redis implementation, but changed to produce a half-open range.
@@ -291,7 +309,6 @@ class GenericCommandsMixin(CommandsMixinBase):
 
             def sort_key(val: bytes) -> bytes | BeforeAny:
                 byval = self._lookup_key(val, sortby)
-                # TODO: use locale.strxfrm when not storing? But then need to decode too.
                 if byval is None:
                     return BeforeAny()
                 return byval
@@ -326,76 +343,6 @@ class GenericCommandsMixin(CommandsMixinBase):
             return len(out)
         else:
             return out
-
-    @command(name="SORT_RO", fixed=(Key(),), repeat=(bytes,))
-    def sort_ro(self, key: CommandItem, *args: bytes) -> list[bytes]:
-        if key.value is not None and not isinstance(key.value, (set, list, ZSet)):
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        ((_asc, desc, alpha, sortby, (limit_start, limit_count)), left_args) = extract_args(
-            args,
-            ("asc", "desc", "alpha", "*by", "++limit"),
-            error_on_unexpected=False,
-            left_from_first_unexpected=False,
-        )
-        limit_start = limit_start or 0
-        limit_count = -1 if limit_count is None else limit_count
-        dontsort = sortby is not None and b"*" not in sortby
-
-        i = 0
-        get = []
-        while i < len(left_args):
-            if casematch(left_args[i], b"get") and i + 1 < len(left_args):
-                get.append(left_args[i + 1])
-                i += 2
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-
-        # TODO: force sorting if the object is a set and either in Lua or storing to a key, to match redis behaviour.
-        items = list(key.value) if key.value is not None else []
-
-        # These transformations are based on the redis implementation, but changed to produce a half-open range.
-        start = max(limit_start, 0)
-        end = len(items) if limit_count < 0 else start + limit_count
-        if start >= len(items):
-            start = end = len(items) - 1
-        end = min(end, len(items))
-
-        if not get:
-            get.append(b"#")
-        if sortby is None:
-            sortby = b"#"
-
-        if not dontsort:
-
-            def sort_key(val: bytes) -> bytes | BeforeAny:
-                byval = self._lookup_key(val, sortby)
-                # TODO: use locale.strxfrm when not storing? But then need to decode too.
-                if byval is None:
-                    return BeforeAny()
-                return byval
-
-            def sort_key_score(val: bytes) -> tuple[float, bytes]:
-                byval = self._lookup_key(val, sortby)
-                score = SortFloat.decode(byval) if byval is not None else 0.0
-                # Redis breaks ties on the element itself, while dragonfly sorts on the weight alone and so leaves
-                # equally weighted elements in their order.
-                return (score, b"") if self.server_type == "dragonfly" else (score, val)
-
-            sort_func = sort_key if alpha else sort_key_score
-            items.sort(key=sort_func, reverse=desc)
-        # A `BY` pattern with no `*` means "don't sort": keep natural order (insertion order for lists, score order for
-        # zsets) and only reverse when DESC is given. Dragonfly ignores DESC in this case.
-        elif desc and isinstance(key.value, (list, ZSet)) and self.server_type != "dragonfly":
-            items.reverse()
-
-        out: list[bytes] = []
-        is_dragonfly = self.server_type == "dragonfly"
-        for row in items[start:end]:
-            for g in get:
-                v = self._lookup_key(row, g)
-                # Dragonfly reports an unresolvable GET pattern as an empty string, not nil.
-                out.append(b"" if v is None and is_dragonfly else v)  # type:ignore
-        return out
 
     @command(name="TTL", fixed=(Key(),))
     def ttl(self, key: CommandItem) -> int:

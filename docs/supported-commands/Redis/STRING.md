@@ -97,8 +97,8 @@ Returns the length of a string value.
 Returns a substring from a string value.
 
 
-## Unsupported string commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
+## Unsupported string commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
 
 #### [DELEX](https://redis.io/commands/delex/) <small>(not implemented)</small>
 
@@ -107,3 +107,5 @@ Conditionally removes the specified key based on value or digest comparison.
 #### [DIGEST](https://redis.io/commands/digest/) <small>(not implemented)</small>
 
 Returns the XXH3 hash of a string value.
+
+

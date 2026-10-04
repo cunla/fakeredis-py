@@ -43,6 +43,10 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "xnack",
     "xackdel",
     "armget",
+    "blmovem",
+    "lmovem",
+    "sdiffcard",
+    "sunioncard",
 }
 
 
@@ -65,6 +69,8 @@ def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
         commands.discard("hpersist")
         if real_server_details.server_type == "valkey":
             commands = commands - _VALKEY_UNSUPPORTED_COMMANDS
+            # The valkey server under test loads no modules, so it knows none of the module commands (`JSON.GET`).
+            commands = {cmd for cmd in commands if "." not in cmd}
         commands = {asbytes(cmd.replace(" ", "|")) for cmd in commands}
         server_commands = r.acl_cat(cat)
         server_commands = {asbytes(cmd) for cmd in server_commands}

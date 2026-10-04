@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 import weakref
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from typing import Any, ClassVar
 
 from fakeredis._core._database import Database
@@ -67,6 +67,17 @@ class FakeServer:
         # actually suspended (see CLIENT PAUSE docs).
         self.pause_until: float = 0.0
         self.pause_mode: bytes = b"all"
+        # The last element each recent SCAN-family cursor covered, keyed by (scan state, cursor). See `_scan`.
+        self.scan_cursors: OrderedDict[tuple[Any, int], Any] = OrderedDict()
+
+    SCAN_CURSORS_LIMIT: ClassVar[int] = 1024
+
+    def remember_scan_cursor(self, cursor_key: tuple[Any, int], last_seen: Any) -> None:
+        """Record where a SCAN-family cursor resumes, forgetting the oldest cursor once too many are held."""
+        self.scan_cursors[cursor_key] = last_seen
+        self.scan_cursors.move_to_end(cursor_key)
+        while len(self.scan_cursors) > self.SCAN_CURSORS_LIMIT:
+            self.scan_cursors.popitem(last=False)
 
     def get_next_client_id(self) -> int:
         with self.lock:

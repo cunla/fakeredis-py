@@ -38,8 +38,10 @@ That's it. No server to install, no port to manage, no teardown.
 - 🔌 **Drop-in compatible** — same API as `redis.Redis` and `redis.asyncio.Redis`.
 - ⚡ **Fast & isolated** — in-memory, so tests run quickly and start from a clean slate.
 - 🧩 **Multi-backend** — emulate Redis, Valkey, DragonflyDB, KeyDB, or KiviDB, and pin a specific server version.
-- 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, TimeSeries, and Geo commands.
+- 📦 **Redis Stack support** — JSON, Bloom/Cuckoo filters, Count-Min Sketch, Top-K, T-Digest, TimeSeries, and
+  vector sets.
 - 🤝 **Share or isolate state** — one shared in-memory server across clients, or independent servers per test.
+- 🌐 **Real TCP mode** — expose the fake server over a socket with `TcpFakeServer`, for clients you can't inject.
 
 ## 📥 Installation
 
@@ -55,6 +57,7 @@ pip install "fakeredis[json]"         # JSON.* commands
 pip install "fakeredis[bf]"           # Bloom / Cuckoo / Count-Min / Top-K filters
 pip install "fakeredis[probabilistic]"  # alias for the probabilistic filters
 pip install "fakeredis[valkey]"       # Valkey client compatibility
+pip install "fakeredis[vectorset]"    # vector set (V*) commands, Python 3.11+
 ```
 
 ## 🚀 Quickstart
@@ -120,6 +123,44 @@ def test_cache_set(redis_client):
     assert redis_client.get("user:1") == b"alice"
 ```
 
+## 🌐 TCP server mode
+
+The fake clients above only help when you can hand one to the code under test. When the code opens its own
+connection — or isn't Python at all — `TcpFakeServer` serves the same in-memory server over a real TCP socket, so
+anything that speaks the Redis protocol can connect to it:
+
+```python
+from threading import Thread
+
+import redis
+from fakeredis import TcpFakeServer
+
+server = TcpFakeServer(("127.0.0.1", 6379), server_type="redis")
+thread = Thread(target=server.serve_forever, daemon=True)
+thread.start()
+
+r = redis.Redis(host="127.0.0.1", port=6379)  # a regular client, not a fake one
+r.set("foo", "bar")
+r.get("foo")  # b'bar'
+
+# When you are done:
+r.close()
+server.shutdown()
+server.server_close()
+thread.join()
+```
+
+- **Any client** — `redis-py`, `valkey-py`, `redis-cli`, or a client in another language. All connections share
+  one `FakeServer`, so they see the same data.
+- **RESP2 and RESP3** — connections start in RESP2 and switch when the client sends `HELLO 3`, as with a real
+  server. Pub/sub and blocking commands work over the socket too.
+- **Server type and version** — pass `server_type` (`"redis"`, `"valkey"`, `"dragonfly"`, `"kividb"`) and
+  `server_version` (defaults to `(8, 0)`), e.g. `TcpFakeServer(address, server_type="valkey", server_version=(8, 1))`.
+- **Free port** — bind to port `0` to let the OS choose one, then read it back from `server.server_address`.
+
+`TcpFakeServer` is a standard-library [`ThreadingTCPServer`][threadingtcpserver], handling each client connection
+on its own thread. It is meant for tests and local development, not as a production Redis replacement.
+
 See the [official documentation][readthedocs] for the full list of supported commands and configuration options.
 
 ## ❤️ Sponsor
@@ -140,3 +181,4 @@ Contributions are welcome! Check out the [contributing guide](./docs/about/contr
 [dragonflydb]: https://dragonflydb.io/
 [keydb]: https://docs.keydb.dev/
 [kividb]: https://www.kividb.io/
+[threadingtcpserver]: https://docs.python.org/3/library/socketserver.html#socketserver.ThreadingTCPServer

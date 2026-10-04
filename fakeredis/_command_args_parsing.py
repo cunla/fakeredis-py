@@ -8,7 +8,7 @@ from typing import Any
 
 from . import _msgs as msgs
 from ._helpers import SimpleError, null_terminate
-from .model._base_type import AfterAny, BeforeAny
+from .model import AfterAny, BeforeAny
 
 
 class RedisType:
