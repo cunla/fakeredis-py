@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## v2.40.0 - 2026-10-04
+
+### 🚀 Features
+
+- feat(json): implement `JSON.NUMPOWBY` (#602)
+
 ## v2.39.0 - 2026-10-01
 
 ### 🚀 Features
