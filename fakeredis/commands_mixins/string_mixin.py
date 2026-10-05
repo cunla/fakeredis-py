@@ -21,6 +21,11 @@ from fakeredis._helpers import (
 from fakeredis._typing import VersionType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
+try:
+    import xxhash
+except ImportError:  # the `digest` extra is not installed
+    xxhash = None  # type: ignore[assignment]
+
 
 def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
     l1 = len(s1)
@@ -101,6 +106,45 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     @command((Key(bytes), Int))
     def decrby(self, key: CommandItem, amount: int) -> int:
         return self._incrby(key, -amount)
+
+    def _digest(self, value: bytes) -> bytes:
+        if xxhash is None:
+            raise SimpleError(msgs.DIGEST_MISSING_XXHASH_MSG)
+        return xxhash.xxh3_64_hexdigest(value).encode()
+
+    @command(name="DELEX", fixed=(Key(),), repeat=(bytes,), server_types=("redis",))
+    def delex(self, key: CommandItem, *args: bytes) -> int:
+        if self.version < (8, 4):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("DELEX"))
+        if len(args) not in (0, 2):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("delex"))
+        if not key:
+            return 0
+        if len(args) == 0:
+            return delete_keys(key)
+        if not isinstance(key.value, bytes):
+            raise SimpleError(msgs.DELEX_NOT_STRING_MSG)
+        condition, operand = args
+        if casematch(condition, b"ifeq"):
+            matched = key.value == operand
+        elif casematch(condition, b"ifne"):
+            matched = key.value != operand
+        elif casematch(condition, b"ifdeq") or casematch(condition, b"ifdne"):
+            # Only the length is validated; the comparison ignores case.
+            if len(operand) != 16:
+                raise SimpleError(msgs.DIGEST_INVALID_LENGTH_MSG)
+            matched = (self._digest(key.value) == operand.lower()) == casematch(condition, b"ifdeq")
+        else:
+            raise SimpleError(msgs.DELEX_INVALID_CONDITION_MSG)
+        return delete_keys(key) if matched else 0
+
+    @command(name="DIGEST", fixed=(Key(bytes),), server_types=("redis",))
+    def digest(self, key: CommandItem) -> bytes | None:
+        if self.version < (8, 4):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("DIGEST"))
+        if key.value is None:
+            return None
+        return self._digest(key.value)
 
     @command((Key(bytes),))
     def get(self, key: CommandItem) -> bytes:

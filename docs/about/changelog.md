@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - feat(json): implement `JSON.NUMPOWBY` (#602)
+- feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra, `pip install "fakeredis[digest]"` (#600, #601)
 
 ## v2.39.0 - 2026-10-01
 
