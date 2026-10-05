@@ -247,6 +247,50 @@ def test_spop(r: ClientType):
     assert r.spop("foo") is None
 
 
+def test_spop_count(r: ClientType):
+    members = {f"member{i}".encode() for i in range(10)}
+    r.sadd("foo", *members)
+    assert r.spop("foo", 0) == []
+    popped = r.spop("foo", 4)
+    assert len(set(popped)) == 4
+    assert set(popped) <= members
+    assert set(r.smembers("foo")) == members - set(popped)
+    # A count above the cardinality pops everything, and removes the key.
+    assert set(r.spop("foo", 100)) == members - set(popped)
+    assert r.exists("foo") == 0
+    assert r.spop("foo", 3) == []
+
+
+def test_spop_and_srandmember_follow_other_writes(r: ClientType):
+    """Random picks only ever come from the current members, whatever changed the set in between."""
+    r.sadd("foo", "a", "b", "c", "d")
+    assert r.srandmember("foo") in {b"a", b"b", b"c", b"d"}
+    r.srem("foo", "a", "b")
+    assert set(r.srandmember("foo", 10)) == {b"c", b"d"}
+    r.sadd("foo", "e", "e", "c")
+    assert sorted(r.srandmember("foo", 10)) == [b"c", b"d", b"e"]
+    popped = r.spop("foo")
+    left = {b"c", b"d", b"e"} - {popped}
+    assert set(r.srandmember("foo", 10)) == left
+    r.smove("foo", "bar", left.pop())
+    assert set(r.srandmember("foo", 10)) == left
+    r.sunionstore("foo", "foo", "bar")
+    assert set(r.srandmember("foo", 10)) == set(r.smembers("foo"))
+    assert {r.spop("foo"), r.spop("foo")} == {b"c", b"d", b"e"} - {popped}
+    assert r.spop("foo") is None
+    assert r.srandmember("foo") is None
+
+
+def test_srandmember_negative_count(r: ClientType):
+    """A negative count allows repeats, so it can return more elements than the set holds."""
+    assert r.srandmember("foo", -3) == []
+    r.sadd("foo", "member1", "member2")
+    res = r.srandmember("foo", -5)
+    assert len(res) == 5
+    assert set(res) <= {b"member1", b"member2"}
+    assert r.scard("foo") == 2
+
+
 def test_spop_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     with pytest.raises(Exception) as ctx:
