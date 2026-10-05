@@ -217,6 +217,12 @@ TIMESERIES_READ_BLOCK_NOT_ALLOWED = (
 HEXPIRE_NUMFIELDS_DIFFERENT = "The `numfields` parameter must match the number of arguments"
 HEXPIRE_INVALID_TIME_MSG = "ERR invalid expire time, must be >= 0"
 
+# DIGEST / DELEX error messages
+DIGEST_MISSING_XXHASH_MSG = "ERR digests need the xxhash package, install it with `pip install 'fakeredis[digest]'`"
+DIGEST_INVALID_LENGTH_MSG = "ERR must be exactly 16 hexadecimal characters"
+DELEX_NOT_STRING_MSG = "ERR Key should be of string type if conditions are specified"
+DELEX_INVALID_CONDITION_MSG = "ERR Invalid condition. Use IFEQ, IFNE, IFDEQ, or IFDNE"
+
 MISSING_ACLFILE_CONFIG = "ERR This Redis instance is not configured to use an ACL file. You may want to specify users via the ACL SETUSER command and then issue a CONFIG REWRITE (assuming you have a Redis configuration file set) in order to store users in the Redis configuration."
 
 NO_PERMISSION_ERROR = "NOPERM User {} has no permissions to run the '{}' command"
