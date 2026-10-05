@@ -1,4 +1,4 @@
-# Redis `string` commands (24/26 implemented)
+# Redis `string` commands (26/26 implemented)
 
 ## [APPEND](https://redis.io/commands/append/)
 
@@ -11,6 +11,14 @@ Decrements the integer value of a key by one. Uses 0 as initial value if the key
 ## [DECRBY](https://redis.io/commands/decrby/)
 
 Decrements a number from the integer value of a key. Uses 0 as initial value if the key doesn't exist.
+
+## [DELEX](https://redis.io/commands/delex/)
+
+Conditionally removes the specified key based on value or digest comparison.
+
+## [DIGEST](https://redis.io/commands/digest/)
+
+Returns the XXH3 hash of a string value.
 
 ## [GET](https://redis.io/commands/get/)
 
@@ -96,16 +104,5 @@ Returns the length of a string value.
 
 Returns a substring from a string value.
 
-
-## Unsupported string commands 
-> To implement support for a command, see [here](../../../guides/implement-command/) 
-
-#### [DELEX](https://redis.io/commands/delex/) <small>(not implemented)</small>
-
-Conditionally removes the specified key based on value or digest comparison.
-
-#### [DIGEST](https://redis.io/commands/digest/) <small>(not implemented)</small>
-
-Returns the XXH3 hash of a string value.
 
 

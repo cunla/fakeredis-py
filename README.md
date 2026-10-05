@@ -57,6 +57,7 @@ pip install "fakeredis[json]"         # JSON.* commands
 pip install "fakeredis[bf]"           # Bloom / Cuckoo / Count-Min / Top-K filters
 pip install "fakeredis[probabilistic]"  # alias for the probabilistic filters
 pip install "fakeredis[valkey]"       # Valkey client compatibility
+pip install "fakeredis[digest]"       # DIGEST and DELEX IFDEQ / IFDNE (XXH3 digests)
 pip install "fakeredis[vectorset]"    # vector set (V*) commands, Python 3.11+
 ```
 

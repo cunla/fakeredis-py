@@ -53,6 +53,7 @@ bf = ["pyprobables>=0.6"]
 cf = ["pyprobables>=0.6"]
 probabilistic = ["pyprobables>=0.6"]
 valkey = ["valkey>=6"]
+digest = ["xxhash>=3"]
 vectorset = [
   "numpy>=2.4.0 ; python_version >= '3.11'",
   "jsonpath-ng>=1.6 ; python_version >= '3.11'",
