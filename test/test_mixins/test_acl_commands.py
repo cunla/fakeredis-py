@@ -47,6 +47,8 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "lmovem",
     "sdiffcard",
     "sunioncard",
+    "digest",
+    "delex",
 }
 
 
