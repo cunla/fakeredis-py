@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
@@ -178,10 +177,9 @@ class SetCommandsMixin(CommandsMixinBase):
         if count is None:
             if not key.value:
                 return None
-            item = random.sample(list(key.value), 1)[0]
-            key.value.remove(item)
+            item: bytes = key.value.pop_random()
             key.updated()
-            return item  # type: ignore
+            return item
         else:
             if count < 0:
                 # Dragonfly rejects the negative count while decoding it, so it reports the generic integer error rather
@@ -189,25 +187,21 @@ class SetCommandsMixin(CommandsMixinBase):
                 if self.server_type == "dragonfly":
                     raise SimpleError(msgs.INVALID_INT_MSG)
                 raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
-            items: bytes | list[bytes] = self.srandmember(key, count)
-            for item in items:
-                key.value.remove(item)
+            items: list[bytes] = []
+            for _ in range(min(count, len(key.value))):
+                items.append(key.value.pop_random())
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
     @command((Key(ExpiringMembersSet),), (Int,))
     def srandmember(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
         if count is None:
-            if not key.value:
-                return None
-            else:
-                return random.sample(list(key.value), 1)[0]  # type: ignore
+            items: list[bytes] = key.value.random_members(1)
+            return items[0] if items else None
         elif count >= 0:
-            count = min(count, len(key.value))
-            return random.sample(list(key.value), count)
+            return key.value.random_members(count)  # type: ignore[no-any-return]
         else:
-            items = list(key.value)
-            return [random.choice(items) for _ in range(-count)]
+            return key.value.random_members(-count, distinct=False)  # type: ignore[no-any-return]
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def srem(self, key: CommandItem, *members: bytes) -> int:
