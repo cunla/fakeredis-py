@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
@@ -13,8 +13,6 @@ DRAGONFLY_NON_CLUSTER_MSG = "ERR PUBSUB {} is not supported in non cluster mode"
 
 
 class PubSubCommandsMixin(CommandsMixinBase):
-    put_response: Callable[[Any], None]
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._pubsub = 0  # Count of subscriptions

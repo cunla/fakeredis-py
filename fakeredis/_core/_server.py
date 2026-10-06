@@ -90,3 +90,14 @@ class FakeServer:
         if key not in FakeServer._servers_map:
             FakeServer._servers_map[key] = FakeServer(version=version, server_type=server_type)
         return FakeServer._servers_map[key]
+
+    @staticmethod
+    def clear_all_servers() -> None:
+        """Forget the servers created for clients that were not given one.
+
+        A client constructed without `server=` shares a `FakeServer` with every other client pointed at the same address
+        (host and port, or unix socket path), and that server lives as long as the process. Call this between tests to
+        start the next one from empty databases. Existing clients keep the server they have; only clients created
+        afterwards get a new one.
+        """
+        FakeServer._servers_map.clear()

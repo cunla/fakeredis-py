@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import Any, Callable, List, cast
+from typing import Any, List, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import Float, Int, extract_args
@@ -18,8 +18,6 @@ DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class HashCommandsMixin(CommandsMixinBase):
-    add_subkey_event: Callable[[bytes, bytes, Sequence[bytes]], None]
-
     def _hset(self, key: CommandItem, *args: bytes) -> int:
         h = key.value
         previous_keys_count = len(h)

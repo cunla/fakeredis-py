@@ -12,7 +12,7 @@ from typing import Any, AnyStr, Callable
 import lupa
 
 from fakeredis._command_args_parsing import Float, Int
-from fakeredis._commands import Signature, command
+from fakeredis._commands import command
 from fakeredis._helpers import (
     OK,
     SimpleError,
@@ -81,9 +81,6 @@ DRAGONFLY_SCRIPT_HELP = [
 
 
 class ScriptingCommandsMixin(CommandsMixinBase):
-    _name_to_func: Callable[[str], tuple[Callable[..., Any] | None, Signature]]
-    _run_command: Callable[[Callable[..., Any], Signature, list[Any], bool], Any]
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.load_lua_modules: set[str] = kwargs.pop("lua_modules", None) or set()
         super().__init__(*args, **kwargs)
