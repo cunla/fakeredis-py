@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+import redis
 
 import fakeredis
 from test.testtools import pool_get_connection, run_test_if_redispy_ver
@@ -259,3 +260,41 @@ def test_client_ids_are_consecutive_and_renewed_on_reconnect():
     conn.disconnect()
     conn.connect()
     assert conn.get_socket()._client_info["id"] == 4
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "7.2")
+def test_connections_report_the_client_library_without_looking_its_version_up_again():
+    server = fakeredis.FakeServer()
+    fakeredis.FakeRedis(server=server).ping()
+    with mock.patch("importlib.metadata.version", side_effect=AssertionError("version looked up again")):
+        for client in (
+            fakeredis.FakeRedis(server=server),
+            fakeredis.FakeStrictRedis(server=server, protocol=3),
+            fakeredis.FakeRedis.from_url("redis://localhost:6390/0"),
+        ):
+            info = client.client_info()
+            assert info["lib-name"] == "redis-py"
+    assert fakeredis.FakeRedis(server=server).client_info()["lib-ver"] == redis.__version__
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "7.2")
+def test_connection_keeps_the_driver_info_it_is_given():
+    from redis.driver_info import DriverInfo
+
+    server = fakeredis.FakeServer()
+    pool = redis.ConnectionPool(
+        connection_class=fakeredis.FakeRedisConnection,
+        server=server,
+        driver_info=DriverInfo(name="my-lib", lib_version="1.2.3"),
+    )
+    info = redis.Redis(connection_pool=pool).client_info()
+    assert info["lib-name"] == "my-lib"
+    assert info["lib-ver"] == "1.2.3"
+
+    # Connections do not share one DriverInfo: it is mutable.
+    c1 = pool_get_connection(fakeredis.FakeRedis(server=server).connection_pool)
+    c2 = pool_get_connection(fakeredis.FakeRedis(server=server).connection_pool)
+    assert c1.driver_info == c2.driver_info
+    assert c1.driver_info is not c2.driver_info

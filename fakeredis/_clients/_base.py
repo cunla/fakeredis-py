@@ -5,6 +5,7 @@ from typing import Any
 
 import redis
 
+from fakeredis._clients._setup import default_driver_info
 from fakeredis._core import FakeSelector, FakeServer
 from fakeredis._core._server import _create_version
 from fakeredis._typing import ServerType, VersionType
@@ -46,6 +47,9 @@ class FakeBaseConnectionMixin:
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         client_info_arg = kwargs.pop("client_info", {})
+        driver_info = default_driver_info(type(self), kwargs)
+        if driver_info is not None:
+            kwargs["driver_info"] = driver_info
         super().__init__(*args, **kwargs)
         protocol = getattr(self, "protocol", 2)
 
