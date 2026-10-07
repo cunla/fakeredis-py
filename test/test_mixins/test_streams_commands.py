@@ -184,6 +184,53 @@ def test_xrevrange(r: ClientType):
     assert get_ids(results) == [m4]
 
 
+def test_xrange_xrevrange_count(r: ClientType):
+    stream = "stream"
+    ids = [r.xadd(stream, {"n": i}, id=f"{i}-0") for i in range(1, 11)]
+
+    assert get_ids(r.xrange(stream, count=3)) == ids[:3]
+    assert get_ids(r.xrange(stream, min="4", count=3)) == ids[3:6]
+    assert get_ids(r.xrange(stream, min="(4-0", count=3)) == ids[4:7]
+    assert get_ids(r.xrange(stream, min="4", max="5", count=3)) == ids[3:5]
+    assert get_ids(r.xrange(stream, min="9", count=3)) == ids[8:]
+    assert get_ids(r.xrange(stream, min="5", max="4", count=3)) == []
+    assert get_ids(r.xrange(stream, min="11", count=3)) == []
+    assert get_ids(r.xrange(stream, count=100)) == ids
+
+    assert get_ids(r.xrevrange(stream, count=3)) == ids[:6:-1]
+    assert get_ids(r.xrevrange(stream, max="7", count=3)) == ids[6:3:-1]
+    assert get_ids(r.xrevrange(stream, max="(7-0", count=3)) == ids[5:2:-1]
+    assert get_ids(r.xrevrange(stream, max="5", min="4", count=3)) == ids[4:2:-1]
+    assert get_ids(r.xrevrange(stream, max="2", count=3)) == ids[1::-1]
+    assert get_ids(r.xrevrange(stream, max="4", min="5", count=3)) == []
+    assert get_ids(r.xrevrange(stream, count=100)) == ids[::-1]
+
+
+def test_xread_count_limits(r: ClientType):
+    stream = "stream"
+    ids = [r.xadd(stream, {"n": i}, id=f"{i}-0") for i in range(1, 11)]
+
+    def read_ids(start, count):
+        res = r.xread({stream: start}, count=count)
+        entries = res[0][1] if isinstance(res, list) else res[stream.encode()][0]
+        return get_ids(entries)
+
+    assert read_ids("0", 3) == ids[:3]
+    assert read_ids("4", 3) == ids[4:7]
+    assert read_ids("8", 3) == ids[8:]
+    assert read_ids("0", 100) == ids
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "kividb")
+def test_xread_count_not_positive(r: ClientType):
+    stream = "stream"
+    for i in range(1, 6):
+        r.xadd(stream, {"n": i}, id=f"{i}-0")
+    everything = r.execute_command("XREAD", "STREAMS", stream, "0")
+    assert r.execute_command("XREAD", "COUNT", "0", "STREAMS", stream, "0") == everything
+    assert r.execute_command("XREAD", "COUNT", "-2", "STREAMS", stream, "0") == everything
+
+
 def test_xrevrange_exclusive(r: ClientType):
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
