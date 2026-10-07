@@ -11,6 +11,10 @@ from fakeredis._core._server import _create_version
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import ClientInfo
 
+# Exact types (not subclasses) a reply element can have that are handed to the client as they are when it does not
+# decode responses.
+_UNDECODED_TYPES = frozenset((bytes, int, float, type(None)))
+
 
 class FakeBaseConnectionMixin:
     def __init__(
@@ -86,6 +90,9 @@ class FakeBaseConnectionMixin:
 
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
+            if not getattr(self.encoder, "decode_responses", True):  # type: ignore[attr-defined]
+                # Bulk strings stay bytes, so only what is nested needs a closer look.
+                return [item if type(item) in _UNDECODED_TYPES else self._decode(item) for item in response]
             return [self._decode(item) for item in response]
         elif isinstance(response, dict):
             return {self._decode(k): self._decode(v) for k, v in response.items()}
