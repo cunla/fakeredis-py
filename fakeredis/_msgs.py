@@ -38,6 +38,13 @@ ZADD_NX_GT_LT_ERROR_MSG = "ERR GT, LT, and/or NX options at the same time are no
 NX_XX_GT_LT_ERROR_MSG = "ERR NX and XX, GT or LT options at the same time are not compatible"
 EXPIRE_UNSUPPORTED_OPTION = "ERR Unsupported option {}"
 ZUNIONSTORE_KEYS_MSG = "ERR at least 1 input key is needed for {}"
+# KiviDB accepts numkeys 0 and only rejects a negative one, without naming the command.
+KIVIDB_NUMKEYS_POSITIVE_MSG = "ERR numkeys must be a positive integer"
+KIVIDB_NUMKEYS_TOO_MANY_MSG = "ERR numkeys is greater than number of keys"
+# LMPOP/ZMPOP on KiviDB word the numkeys check the same way for zero and for a negative count.
+KIVIDB_NUMKEYS_NON_POSITIVE_MSG = "ERR numkeys can't be non-positive"
+# KiviDB names only the two options it is refusing, since NX is allowed alongside GT/LT there.
+KIVIDB_ZADD_GT_LT_MSG = "ERR GT and LT options at the same time are not compatible"
 WRONG_ARGS_MSG7 = "ERR Wrong number of args calling Redis command from script"
 WRONG_ARGS_MSG6 = "ERR wrong number of arguments for '{}' command"
 UNKNOWN_COMMAND_MSG = "ERR unknown command '{}', with args beginning with: "
