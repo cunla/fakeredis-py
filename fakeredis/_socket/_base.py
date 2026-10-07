@@ -243,7 +243,7 @@ class BaseFakeSocket(NotificationsMixin):
                 unknown_command = True
                 raise
             # ACL check
-            self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
+            self._server.acl.validate_command(self._client_info.user, self._client_info, fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
