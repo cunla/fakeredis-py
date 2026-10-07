@@ -128,9 +128,11 @@ class ScriptingCommandsMixin(CommandsMixinBase):
 
     def _convert_lua_result(self, result: Any, nested: bool = True) -> Any:
         if LUA_MODULE.lua_type(result) == "table":
+            # Tables are probed with lookups throughout: `in` on a Lua table iterates over all of its keys.
             for key in (b"ok", b"err"):
-                if key in result:
-                    msg = self._convert_lua_result(result[key])
+                value = result[key]
+                if value is not None:
+                    msg = self._convert_lua_result(value)
                     if not isinstance(msg, bytes):
                         raise SimpleError(msgs.LUA_WRONG_NUMBER_ARGS_MSG)
                     if key == b"ok":
@@ -143,19 +145,20 @@ class ScriptingCommandsMixin(CommandsMixinBase):
             # redis.setresp(3). A RESP2 client still gets the RESP2 rendering of these — a bulk string for a double, a
             # flat array for a map. Dragonfly, which has no redis.setresp, knows `map` but not `double`: a table keyed
             # `double` has no array part left, so it comes back as an empty array.
-            if b"double" in result and self.server_type != "dragonfly":
-                double = result[b"double"]
+            double = result[b"double"]
+            if double is not None and self.server_type != "dragonfly":
                 if isinstance(double, bool) or not isinstance(double, (int, float)):
                     raise SimpleError(msgs.LUA_WRONG_NUMBER_ARGS_MSG)
                 return float(double)
-            if b"map" in result:
-                return {self._convert_lua_result(k): self._convert_lua_result(v) for k, v in result[b"map"].items()}
+            lua_map = result[b"map"]
+            if lua_map is not None:
+                return {self._convert_lua_result(k): self._convert_lua_result(v) for k, v in lua_map.items()}
             # Convert Lua tables into lists, starting from index 1, mimicking the behavior of StrictRedis.
             result_list = []
             for index in itertools.count(1):
-                if index not in result:
-                    break
                 item = result[index]
+                if item is None:
+                    break
                 result_list.append(self._convert_lua_result(item))
             return result_list
         elif isinstance(result, str):
