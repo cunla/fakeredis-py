@@ -60,6 +60,7 @@ nav:
   - Dragonfly support: dragonfly-support.md
   - Valkey support: valkey-support.md
   - KiviDB support: kividb-support.md
+  - Performance: performance.md
   - Supported commands:
       - 'supported-commands/index.md'
       - Redis commands:
