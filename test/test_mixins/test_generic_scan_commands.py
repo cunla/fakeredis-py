@@ -116,6 +116,91 @@ def test_scan_add_key_while_scanning_should_return_all_keys(r: ClientType):
     assert len(keys) >= size, f"{set(all_keys_dict).difference(keys)} is not empty but should be"
 
 
+def test_zscan_reports_the_score_a_member_has_when_it_is_returned(r: ClientType):
+    size = 600
+    r.zadd("zs", {f"m{i:03}": i for i in range(size)})
+    cursor, members = r.zscan("zs", 0, count=10)
+    assert cursor != 0
+    unseen = next(f"m{i:03}".encode() for i in range(size) if f"m{i:03}".encode() not in dict(members))
+    r.zadd("zs", {unseen: 5000})
+    while cursor != 0:
+        cursor, data = r.zscan("zs", cursor, count=100)
+        members.extend(data)
+    assert dict(members)[unseen] == 5000
+    assert len(dict(members)) == size
+
+
+def test_scan_with_type_delete_unseen_key_while_scanning(r: ClientType):
+    size = 60
+    for i in range(size):
+        r.set(f"str:{i}", i)
+        r.sadd(f"set:{i}", i)
+    cursor, keys = r.scan(0, count=10, _type="string")
+    assert cursor != 0
+    key_to_remove = next(f"str:{i}".encode() for i in range(size) if f"str:{i}".encode() not in keys)
+    assert r.delete(key_to_remove) == 1
+    while cursor != 0:
+        cursor, data = r.scan(cursor, count=10, _type="string")
+        keys.extend(data)
+    assert set(keys) == {f"str:{i}".encode() for i in range(size)} - {key_to_remove}
+
+
+def test_hscan_continues_after_the_key_is_deleted(r: ClientType):
+    r.hset("h", mapping=key_val_dict(size=600))
+    cursor, _ = r.hscan("h", 0, count=10)
+    assert cursor != 0
+    r.delete("h")
+    fields = {}
+    while cursor != 0:
+        cursor, data = r.hscan("h", cursor, count=100)
+        fields.update(data)
+    assert fields == {}
+
+
+def test_sscan_two_iterations_at_once(r: ClientType):
+    size = 600
+    members = {f"{i}".encode() for i in range(size)}
+    r.sadd("s", *members)
+    cursor1, seen1 = r.sscan("s", 0, count=50)
+    cursor2, seen2 = r.sscan("s", 0, count=70)
+    while cursor1 != 0 or cursor2 != 0:
+        if cursor1 != 0:
+            cursor1, data = r.sscan("s", cursor1, count=50)
+            seen1.extend(data)
+        if cursor2 != 0:
+            cursor2, data = r.sscan("s", cursor2, count=70)
+            seen2.extend(data)
+    assert set(seen1) == members
+    assert set(seen2) == members
+
+
+@pytest.mark.fake_only
+def test_scan_cursors_are_forgotten_when_the_iteration_ends(r: ClientType):
+    server = r.connection_pool.connection_kwargs["server"]
+    for i in range(100):
+        r.set(f"key:{i}", i)
+    cursor, keys = r.scan(0, count=10)
+    assert len(server.scan_cursors) == 1
+    while cursor != 0:
+        cursor, data = r.scan(cursor, count=10)
+        keys.extend(data)
+    assert len(keys) == 100
+    assert len(server.scan_cursors) == 0
+
+
+@pytest.mark.fake_only
+def test_scan_with_a_cursor_that_is_not_remembered(r: ClientType):
+    server = r.connection_pool.connection_kwargs["server"]
+    for i in range(100):
+        r.set(f"key:{i}", i)
+    cursor, keys = r.scan(0, count=10)
+    while cursor != 0:
+        server.scan_cursors.clear()
+        cursor, data = r.scan(cursor, count=10)
+        keys.extend(data)
+    assert sorted(keys) == sorted(f"key:{i}".encode() for i in range(100))
+
+
 def test_scan(r: ClientType):
     # Set up the data
     for ix in range(20):

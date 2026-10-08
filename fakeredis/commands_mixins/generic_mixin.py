@@ -244,7 +244,7 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="SCAN", fixed=(Int,), repeat=(bytes, bytes))
     def scan(self, cursor: int, *args: bytes) -> list[bytes | list[bytes]]:
-        return self._scan(list(self._db), cursor, *args)
+        return self._scan(self._db, cursor, *args)
 
     @command(name="SORT", fixed=(Key(),), repeat=(bytes,))
     def sort(self, key: CommandItem, *args: bytes) -> int | list[Any]:

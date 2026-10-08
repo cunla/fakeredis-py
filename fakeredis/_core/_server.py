@@ -67,17 +67,24 @@ class FakeServer:
         # actually suspended (see CLIENT PAUSE docs).
         self.pause_until: float = 0.0
         self.pause_mode: bytes = b"all"
-        # The last element each recent SCAN-family cursor covered, keyed by (scan state, cursor). See `_scan`.
-        self.scan_cursors: OrderedDict[tuple[Any, int], Any] = OrderedDict()
+        # Where each recent SCAN-family cursor resumes: (the iteration's sorted snapshot, the position in it), keyed by
+        # (scan state, cursor). See `_scan`.
+        self.scan_cursors: OrderedDict[tuple[Any, int], tuple[list[Any], int]] = OrderedDict()
 
     SCAN_CURSORS_LIMIT: ClassVar[int] = 1024
 
-    def remember_scan_cursor(self, cursor_key: tuple[Any, int], last_seen: Any) -> None:
+    def remember_scan_cursor(self, cursor_key: tuple[Any, int], resume_at: tuple[list[Any], int]) -> None:
         """Record where a SCAN-family cursor resumes, forgetting the oldest cursor once too many are held."""
-        self.scan_cursors[cursor_key] = last_seen
+        self.scan_cursors[cursor_key] = resume_at
         self.scan_cursors.move_to_end(cursor_key)
         while len(self.scan_cursors) > self.SCAN_CURSORS_LIMIT:
             self.scan_cursors.popitem(last=False)
+
+    def forget_scan_snapshot(self, snapshot: list[Any]) -> None:
+        """Drop the cursors of an iteration that has finished, so its snapshot does not outlive it."""
+        finished = [cursor_key for cursor_key, (held, _) in self.scan_cursors.items() if held is snapshot]
+        for cursor_key in finished:
+            del self.scan_cursors[cursor_key]
 
     def get_next_client_id(self) -> int:
         with self.lock:
