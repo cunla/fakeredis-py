@@ -12,6 +12,8 @@ from fakeredis._typing import ServerType
 
 _VALID_RESPONSE_TYPES_RESP2 = (bytes, SimpleString, SimpleError, float, int, list)
 _VALID_RESPONSE_TYPES_RESP3 = (bytes, SimpleString, SimpleError, float, int, list, dict, str)
+# Exact types (not subclasses) that are valid as they are in either protocol, and that RESP2 conversion leaves alone.
+_RESP2_LEAF_TYPES = frozenset((bytes, int, type(None)))
 
 
 def convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: bool = False) -> Any:
@@ -24,10 +26,14 @@ def convert_to_resp2(val: Any, server_type: ServerType = "redis", keep_doubles: 
             return Float.encode_shortest(val)
         return Float.encode(val, humanfriendly=False)
     if isinstance(val, dict):
-        result = list(itertools.chain(*val.items()))
-        return [convert_to_resp2(item, server_type, keep_doubles) for item in result]
+        val = list(itertools.chain(*val.items()))
     if isinstance(val, (list, tuple)):
-        return [convert_to_resp2(item, server_type, keep_doubles) for item in val]
+        # Most replies are flat arrays of bulk strings or integers, which need no conversion, so those are not worth a
+        # call each.
+        return [
+            item if type(item) in _RESP2_LEAF_TYPES else convert_to_resp2(item, server_type, keep_doubles)
+            for item in val
+        ]
     return val
 
 
@@ -59,6 +65,8 @@ def valid_response_type(value: Any, protocol_version: int, nested: bool = False)
     allowed_types = _VALID_RESPONSE_TYPES_RESP2 if protocol_version == 2 else _VALID_RESPONSE_TYPES_RESP3
     if value is not None and not isinstance(value, allowed_types):
         return False
-    return not (
-        isinstance(value, list) and any(not valid_response_type(item, protocol_version, True) for item in value)
-    )
+    if isinstance(value, list):
+        for item in value:
+            if type(item) not in _RESP2_LEAF_TYPES and not valid_response_type(item, protocol_version, True):
+                return False
+    return True
