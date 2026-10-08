@@ -1,15 +1,114 @@
-# Performance
+# Comparison with Redis and burner-redis
 
-How fast is fakeredis next to a real Redis server, and next to
-[burner-redis](https://github.com/PrefectHQ/burner-redis), another in-process Redis replacement for Python?
-This page shows the same operations timed on all three.
+fakeredis is one of several ways to give Python code a Redis to talk to. This page puts it next to the two
+alternatives it is most often weighed against:
+
+- a **real Redis server**, usually in a container, and
+- [**burner-redis**](https://github.com/PrefectHQ/burner-redis), an in-process Redis-compatible database written in
+  Rust with Python bindings.
+
+It covers what each one supports first, and [how fast each one is](#performance) second. burner-redis was looked at
+in version 0.1.7, by reading its documentation and calling its API; it describes itself as experimental, so expect
+its side of the tables to change.
+
+## Which one to use
+
+- **A real server** when the test is about Redis itself: persistence, replication, clustering, memory limits, or
+  timing under load. Nothing else behaves exactly like it.
+- **fakeredis** when the code under test uses redis-py or valkey-py and should run unchanged, with no server to
+  start. It implements most of the command set, the Redis Stack modules, and the differences between Redis, Valkey
+  and Dragonfly versions.
+- **burner-redis** when the application is asyncio-only, needs only the commands burner-redis implements, and speed
+  or built-in persistence matters more than coverage. It is by far the [fastest of the three](#performance).
+
+## Features
+
+| | Redis server | fakeredis | burner-redis |
+|---|---|---|---|
+| What it is | A server process | A pure-Python library, in-process | A Rust extension module, in-process |
+| Needs a server or container | Yes | No | No |
+| Client used by the application | Any Redis client | redis-py or valkey-py itself, with a fake connection underneath | Its own `BurnerRedis` class, modelled on `redis.asyncio.Redis` |
+| Sync API | Yes | Yes | No |
+| asyncio API | Yes | Yes | Yes |
+| Reachable from other processes and languages | Yes | Yes, through [`TcpFakeServer`](index.md) | No |
+| Client options (`decode_responses`, `db`, `protocol`, `from_url`, …) | Yes | Yes, they are redis-py's | No: the constructor takes `persistence_path` only, and replies are `bytes` |
+| Multiple databases (`SELECT`) | Yes | Yes | No |
+| RESP2 and RESP3 reply shapes | Yes | Yes | Not applicable, there is no wire protocol |
+| Transactions (`MULTI` / `EXEC` / `WATCH`) | Yes | Yes | No: a pipeline runs its commands one after the other |
+| Lua scripting | Lua 5.1 | Lua 5.1, with the `lua` extra | Lua 5.4; a script can only call the commands burner-redis implements |
+| Pub/sub | Yes | Yes, including sharded pub/sub | Channels and patterns |
+| Keyspace notifications | Yes | Yes | No |
+| ACL users | Yes | Yes | No |
+| JSON, time series, probabilistic and vector set commands | Yes (built into Redis 8) | Yes, with extras | No |
+| Emulates other servers | – | Valkey, Dragonfly and KiviDB, and specific versions of each | No |
+| Persistence | RDB and AOF | No, memory only | A snapshot file, saved on exit and on request |
+| Python versions | Any | 3.8 and later | 3.10 and later |
+| Installation | A server binary or container image | A pure-Python wheel | Prebuilt wheels for Linux, macOS and Windows |
+| License | RSALv2, SSPLv1 or AGPLv3 | BSD-3-Clause | MIT |
+
+## Command coverage
+
+The number of commands implemented in each group, out of the commands Redis documents for it. The fakeredis figures
+are the ones on the [supported commands](supported-commands/index.md) pages; the burner-redis figures count the
+commands its 0.1.7 client exposes.
+
+| Group | Redis | fakeredis | burner-redis |
+|---|---:|---:|---:|
+| String | 26 | 26 | 4 |
+| Generic (keys, expiry, `SCAN`) | 31 | 24 | 6 |
+| Hash | 33 | 28 | 7 |
+| List | 24 | 24 | 16 |
+| Set | 19 | 19 | 4 |
+| Sorted set | 35 | 35 | 9 |
+| Stream | 25 | 25 | 16 |
+| Pub/sub | 15 | 15 | 8 |
+| Scripting and functions | 22 | 7 | 4 |
+| Transactions | 5 | 5 | 0 |
+| Bitmap | 6 | 6 | 0 |
+| HyperLogLog | 3 | 3 | 0 |
+| Geospatial | 10 | 10 | 0 |
+| Array | 18 | 18 | 0 |
+| Vector set | 13 | 13 | 0 |
+| Connection | 24 | 19 | 0 |
+| Server | 85 | 23 | 0 |
+| **Core commands** | **394** | **300** | **74** |
+| JSON | 23 | 23 | 0 |
+| Time series | 21 | 21 | 0 |
+| Bloom and cuckoo filters, count-min sketch, t-digest, top-k | 49 | 49 | 0 |
+
+What that means in practice:
+
+- burner-redis covers streams and lists well, which is what its authors' task queue needs, and the basics of the
+  other types. Everyday commands outside that set are missing: `INCR`, `APPEND`, `MSET`, `RENAME`, `TYPE`, `HKEYS`,
+  `HLEN`, `SCARD`, `SINTER`, `ZRANK`, `ZINCRBY`, `PING`, `FLUSHDB` and `DBSIZE`, for example. Calling one fails, and
+  so does a Lua script that uses it.
+- The scripting commands fakeredis lacks are mostly the `FUNCTION` and `FCALL` family and the read-only `EVAL_RO`
+  variants; `EVAL`, `EVALSHA` and `SCRIPT LOAD` / `EXISTS` / `FLUSH` are there. Most of the server group it lacks is administration of a real server (replication, cluster, memory, latency
+  and module management). Search (`FT.*`) is not implemented by either library.
+
+## Client and behaviour
+
+- **Drop-in for redis-py.** A `FakeRedis` *is* a `redis.Redis` (or a `valkey.Valkey`), so everything redis-py does on
+  the client side works as it does against a server: argument encoding, response callbacks, `decode_responses`,
+  connection pools, `from_url`, locks, pipelines and pub/sub objects. burner-redis reimplements the parts of that
+  interface it needs, so code that uses a redis-py feature it has not reimplemented needs changing.
+- **Errors.** Both libraries raise redis-py's exception types when redis-py is installed. fakeredis also reproduces
+  Redis' error messages, which redis-py turns into the same exception subclasses a server would cause.
+- **Server differences.** fakeredis takes a `server_type` and a `version`, and answers the way that server does where
+  they differ, so a suite can be run against the behaviour of the server used in production.
+- **Checked against real servers.** fakeredis' tests run against a real server as well as against fakeredis, and
+  have to pass on both.
+
+## Performance
+
+How fast each one answers, measured with the same operations on all three.
 
 !!! note
 
     These are micro-benchmarks from one machine. Read them for the proportions rather than the absolute values, and
     [run them yourself](#running-the-benchmark) if a decision depends on them.
 
-## In short
+### In short
 
 - **Simple commands** such as `GET`, `SET` or `HSET` take 21–37 µs with fakeredis, against 36–42 µs for a round trip
   to a Redis server on the same machine. burner-redis answers them in about 1 µs.
@@ -27,7 +126,7 @@ This page shows the same operations timed on all three.
   Rust and is called directly, without a client library in between. Lua scripts are the exception: there it is close
   to fakeredis.
 
-## What is compared
+### What is measured
 
 | | What it is | How a command reaches it |
 |---|---|---|
@@ -40,13 +139,7 @@ This page shows the same operations timed on all three.
 burner-redis only has an asyncio API, so the asyncio clients are the like-for-like comparison, and the sync fakeredis
 client is listed next to them because it is what most test suites use.
 
-Speed is one of several differences between them. fakeredis runs on redis-py and valkey-py themselves, sync and
-asyncio, so application code sees the client it uses in production, and it follows the behaviour of specific Redis,
-Valkey and Dragonfly versions across the commands listed under [supported commands](supported-commands/index.md).
-burner-redis describes itself as experimental and implements the subset of `redis.asyncio.Redis` that its authors'
-projects need; commands outside it raise `NotImplementedError` (`INCR` below is one).
-
-## Method
+### Method
 
 - Machine: 8-core arm64 Linux VM, CPython 3.14.6, redis-py 8.1.0. Measured on 2026-10-08.
 - Each operation is awaited back to back on one connection, with no concurrency. The figure is the best of five
@@ -54,7 +147,7 @@ projects need; commands outside it raise `NotImplementedError` (`INCR` below is 
 - Keys and values are short strings. The "large" collections hold 100,000 elements each.
 - The rows that read from the large collections were checked to return the same amount of data from all three.
 
-## Single commands
+### Single commands
 
 Time per call, in microseconds.
 
@@ -91,7 +184,7 @@ Time per call, in microseconds.
 For a simple command, more than half of fakeredis' time is spent in redis-py's own client code, which burner-redis
 does not go through.
 
-## Pipelines
+### Pipelines
 
 Time per command, in microseconds, for `SET`s sent in one pipeline.
 
@@ -104,7 +197,7 @@ Time per command, in microseconds, for `SET`s sent in one pipeline.
 A pipeline removes the per-command round trip, which is where a real server loses most of its time. What is left for
 fakeredis is parsing and running each command in Python.
 
-## Whole-collection reads
+### Whole-collection reads
 
 Time per call, in milliseconds, for a reply of 100,000 elements (10,000 for `MGET`).
 
@@ -121,7 +214,7 @@ Time per call, in milliseconds, for a reply of 100,000 elements (10,000 for `MGE
 
 Without hiredis, a real server's time here is almost entirely redis-py parsing the reply in Python.
 
-## Small reads from large collections
+### Small reads from large collections
 
 Time per call, in microseconds, on the same 100,000-element collections. None of the three slows down with the size
 of the collection for these.
@@ -138,7 +231,7 @@ of the collection for these.
 | `XRANGE - + COUNT 10` | 155 | 46.6 | 57.4 | 52.8 | 3.40 |
 | `XREAD COUNT 10` (from the middle) | 167 | 54.1 | 54.5 | 50.5 | 4.20 |
 
-## New client
+### New client
 
 Time, in microseconds, to create a client, run one `GET` and close it. This matters for test suites that build a
 client per test. For fakeredis and burner-redis the client is new but the data store is reused or empty; for Redis it
@@ -148,7 +241,7 @@ includes opening the TCP connection.
 |---|---:|---:|---:|---:|---:|
 | Create a client, run one `GET`, close it | 1,251 | 1,095 | 264 | 252 | 19.7 |
 
-## Running the benchmark
+### Running the benchmark
 
 The tables are printed by [`scripts/benchmark.py`](https://github.com/cunla/fakeredis-py/blob/master/scripts/benchmark.py).
 It needs a real server to compare with, and flushes the database the URL points at.

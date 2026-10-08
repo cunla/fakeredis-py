@@ -1,6 +1,6 @@
 """Benchmark a real Redis server, fakeredis and burner-redis on the same operations.
 
-Prints the Markdown tables shown in docs/performance.md. All three are driven through their asyncio API, the only one
+Prints the Markdown tables shown in docs/comparison.md. All three are driven through their asyncio API, the only one
 burner-redis has, so the comparison is like for like; fakeredis' sync client is measured next to them as well.
 
     uv run --with burner-redis python scripts/benchmark.py --redis-url redis://localhost:6390/15
