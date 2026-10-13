@@ -47,6 +47,10 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
     "lmovem",
     "sdiffcard",
     "sunioncard",
+    "himport prepare",
+    "himport set",
+    "himport discard",
+    "himport discardall",
     "digest",
     "delex",
 }

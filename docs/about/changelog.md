@@ -7,12 +7,22 @@ tags:
 toc_depth: 2
 ---
 
-## v2.40.0 - 2026-10-04
+## v2.40.0 - 2026-10-15
 
 ### 🚀 Features
 
+- feat: implement `HIMPORT PREPARE`/`SET`/`DISCARD`/`DISCARDALL` (Redis 8.10) (#599)
 - feat(json): implement `JSON.NUMPOWBY` (#602)
 - feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra, `pip install "fakeredis[digest]"` (#600, #601)
+
+### 🧰 Maintenance
+
+- perf: lower per-command and client-construction overhead (#612, #613)
+- perf: expire keys and hash fields through a heap instead of scanning (#606)
+- perf: faster `SPOP`/`SRANDMEMBER`, `SCAN`-family iteration, stream range reads with `COUNT`, large replies and Lua table conversion (#605, #610, #611, #614, #615)
+- test: run CI against Python 3.15
+- docs: document `TcpFakeServer` in the README
+- chore: update dependencies
 
 ## v2.39.0 - 2026-10-01
 

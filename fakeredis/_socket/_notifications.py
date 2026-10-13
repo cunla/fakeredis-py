@@ -14,6 +14,9 @@ from fakeredis.model import Hash
 
 LOGGER = logging.getLogger("fakeredis")
 
+# Commands whose keyspace event is not named after the command.
+KEYSPACE_EVENT_NAMES = {b"himport set": b"hset"}
+
 
 class NotificationsMixin(CommandsMixinBase):
     _db_num: int
@@ -43,6 +46,7 @@ class NotificationsMixin(CommandsMixinBase):
         command_items = [command_item for command_item in command_items if command_item.is_modified]
         if not command_items:
             return
+        event = KEYSPACE_EVENT_NAMES.get(event, event)
         pattern_regex: dict[bytes, re.Pattern[bytes]] = {
             pattern: compile_pattern(pattern) for pattern in self._server.psubscribers
         }
