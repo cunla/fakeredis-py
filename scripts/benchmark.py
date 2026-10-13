@@ -288,9 +288,9 @@ async def main() -> None:
         return BurnerRedis()
 
     backends: dict[str, Callable[[], Awaitable[Any]]] = {
-        "Redis": real,
         "fakeredis": fake_async,
         "fakeredis (sync)": fake_sync,
+        "Redis": real,
     }
     if BurnerRedis is not None:
         backends["burner-redis"] = burner
@@ -344,7 +344,7 @@ async def main() -> None:
     async def new_fake_sync() -> Any:
         return SyncAdapter(fakeredis.FakeRedis(server=server_for_new_clients))
 
-    makers = {"Redis": new_real, "fakeredis": new_fake_async, "fakeredis (sync)": new_fake_sync}
+    makers = {"fakeredis": new_fake_async, "fakeredis (sync)": new_fake_sync, "Redis": new_real}
     if BurnerRedis is not None:
         makers["burner-redis"] = burner
     row: dict[str, float | None] = {}
