@@ -18,6 +18,7 @@ from test.testtools import raw_command
 pytestmark = []
 pytestmark.extend(
     [
+        testtools.run_test_if_redispy_ver("gte", "8.1"),
         pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb"),
         pytest.mark.supported_server_versions(min_redis_ver="8.10"),
     ]
@@ -250,10 +251,6 @@ def test_himport_set_keyspace_notification(r: ClientType):
     assert msgs == [(b"__keyspace@2__:foo", b"hset"), (b"__keyevent@2__:hset", b"foo")]
 
 
-redis_py_himport = testtools.run_test_if_redispy_ver("gte", "8.1")
-
-
-@redis_py_himport
 def test_redis_py_himport_set(r: ClientType):
     assert r.himport_prepare("fs", ["b", "a", "c"]) is True
     assert r.himport_set("foo", "fs", ["1", "2", "3"]) is True
@@ -265,7 +262,6 @@ def test_redis_py_himport_set(r: ClientType):
     assert r.hgetall("foo") == {b"x": b"9"}
 
 
-@redis_py_himport
 def test_redis_py_himport_set_errors(r: ClientType):
     r.himport_prepare("fs", ["a", "b"])
     with pytest.raises(redis.exceptions.NoSuchFieldsetError, match="no such fieldset"):
@@ -279,7 +275,6 @@ def test_redis_py_himport_set_errors(r: ClientType):
     assert r.exists("foo") == 0
 
 
-@redis_py_himport
 def test_redis_py_himport_prepares_each_connection(r: ClientType):
     r.himport_prepare("fs", ["a"])
     assert r.himport_set("foo", "fs", ["1"]) is True
@@ -290,7 +285,6 @@ def test_redis_py_himport_prepares_each_connection(r: ClientType):
     assert r.hgetall("bar") == {b"a": b"2"}
 
 
-@redis_py_himport
 def test_redis_py_himport_recovers_after_reset(r: ClientType):
     r.himport_prepare("fs", ["a"])
     assert r.himport_set("foo", "fs", ["1"]) is True
@@ -304,7 +298,6 @@ def test_redis_py_himport_recovers_after_reset(r: ClientType):
         conn.delete("foo")
 
 
-@redis_py_himport
 def test_redis_py_himport_in_pipeline(r: ClientType):
     r.himport_prepare("fs", ["a", "b"])
     for transaction in (True, False):
@@ -314,7 +307,6 @@ def test_redis_py_himport_in_pipeline(r: ClientType):
             assert p.execute() == [True, {b"a": b"1", b"b": b"2"}]
 
 
-@redis_py_himport
 def test_redis_py_himport_discard(r: ClientType):
     r.himport_prepare("fs", ["a"])
     r.himport_prepare("other", ["a"])
