@@ -94,3 +94,21 @@ async def test_blocking_client_unblock_error(async_redis, conn):
 @pytest.mark.supported_server_versions(min_redis_ver="6")
 async def test_client_unblock_not_blocked(async_redis, conn):
     assert await async_redis.execute_command("CLIENT", "UNBLOCK", str(await conn.client_id())) == 0
+
+
+@pytest.mark.slow
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+@pytest.mark.supported_server_versions(min_redis_ver="8.10")
+async def test_ts_read_timeout_returns_samples_added_while_blocked(async_redis, conn):
+    """A TS.READ that times out short of min_count answers with the samples there are by then."""
+    pytest.importorskip("probables")
+    await async_redis.execute_command("TS.CREATE", "ts")
+
+    async def add():
+        await asyncio.sleep(0.1)
+        await async_redis.execute_command("TS.ADD", "ts", 1000, 1)
+
+    task = asyncio.get_running_loop().create_task(add())
+    result = await conn.execute_command("TS.READ", "ts", 0, "BLOCK", 500, 5)
+    await task
+    assert [[t, float(v)] for t, v in result] == [[1000, 1.0]]

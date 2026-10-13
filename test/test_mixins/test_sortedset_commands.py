@@ -1020,7 +1020,6 @@ def test_zunionstore_badkey(r: ClientType):
     assert r.zrange("baz", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"one", 1), (b"two", 2)])
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO Should pass?
 def test_zunionstore_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
@@ -1073,12 +1072,13 @@ def test_zinterstore_nokey(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
-def test_zinterstore_nan_to_zero(r: ClientType):
+def test_zinterstore_nan_to_zero(r: ClientType, real_server_details):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
     r.zinterstore("bar", OrderedDict([("foo", 1.0), ("foo2", 0.0)]))
-    assert r.zscore("bar", "x") == 0.0
+    # Redis sums inf * 1 + inf * 0 to NaN and stores 0. Dragonfly zeroes the NaN product first, so the sum stays inf.
+    expected = math.inf if real_server_details.server_type == "dragonfly" else 0.0
+    assert r.zscore("bar", "x") == expected
 
 
 def test_zunionstore_nokey(r: ClientType):
@@ -1169,16 +1169,23 @@ def test_zdiffstore(r: ClientType):
     assert r.zrange("out", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 3.0)])
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
-def test_zdiff(r: ClientType):
+def _skip_dragonfly_resp3_zset_reply(r: ClientType, real_server_details) -> None:
+    # Under RESP3, dragonfly nests a ZDIFF reply without scores one level too deep and sends WITHSCORES replies flat,
+    # which redis-py cannot parse.
+    if real_server_details.server_type == "dragonfly" and testtools.get_protocol_version(r) == 3:
+        pytest.skip("dragonfly's RESP3 reply shape for this command is not what redis-py expects")
+
+
+def test_zdiff(r: ClientType, real_server_details):
+    _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     r.zadd("b", {"a1": 1, "a2": 2})
     assert r.zdiff(["a", "b"]) == [b"a3"]
     assert r.zdiff(["a", "b"], withscores=True) == resp_conversion(r, [[b"a3", 3.0]], [b"a3", b"3"])
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
-def test_zunion(r: ClientType):
+def test_zunion(r: ClientType, real_server_details):
+    _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 1, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})
@@ -1202,8 +1209,8 @@ def test_zunion(r: ClientType):
     )
 
 
-@pytest.mark.unsupported_server_types("dragonfly")  # TODO bad response
-def test_zinter(r: ClientType):
+def test_zinter(r: ClientType, real_server_details):
+    _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
     r.zadd("c", {"a1": 6, "a3": 5, "a4": 4})

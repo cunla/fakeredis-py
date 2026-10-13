@@ -247,6 +247,50 @@ def test_spop(r: ClientType):
     assert r.spop("foo") is None
 
 
+def test_spop_count(r: ClientType):
+    members = {f"member{i}".encode() for i in range(10)}
+    r.sadd("foo", *members)
+    assert r.spop("foo", 0) == []
+    popped = r.spop("foo", 4)
+    assert len(set(popped)) == 4
+    assert set(popped) <= members
+    assert set(r.smembers("foo")) == members - set(popped)
+    # A count above the cardinality pops everything, and removes the key.
+    assert set(r.spop("foo", 100)) == members - set(popped)
+    assert r.exists("foo") == 0
+    assert r.spop("foo", 3) == []
+
+
+def test_spop_and_srandmember_follow_other_writes(r: ClientType):
+    """Random picks only ever come from the current members, whatever changed the set in between."""
+    r.sadd("foo", "a", "b", "c", "d")
+    assert r.srandmember("foo") in {b"a", b"b", b"c", b"d"}
+    r.srem("foo", "a", "b")
+    assert set(r.srandmember("foo", 10)) == {b"c", b"d"}
+    r.sadd("foo", "e", "e", "c")
+    assert sorted(r.srandmember("foo", 10)) == [b"c", b"d", b"e"]
+    popped = r.spop("foo")
+    left = {b"c", b"d", b"e"} - {popped}
+    assert set(r.srandmember("foo", 10)) == left
+    r.smove("foo", "bar", left.pop())
+    assert set(r.srandmember("foo", 10)) == left
+    r.sunionstore("foo", "foo", "bar")
+    assert set(r.srandmember("foo", 10)) == set(r.smembers("foo"))
+    assert {r.spop("foo"), r.spop("foo")} == {b"c", b"d", b"e"} - {popped}
+    assert r.spop("foo") is None
+    assert r.srandmember("foo") is None
+
+
+def test_srandmember_negative_count(r: ClientType):
+    """A negative count allows repeats, so it can return more elements than the set holds."""
+    assert r.srandmember("foo", -3) == []
+    r.sadd("foo", "member1", "member2")
+    res = r.srandmember("foo", -5)
+    assert len(res) == 5
+    assert set(res) <= {b"member1", b"member2"}
+    assert r.scard("foo") == 2
+
+
 def test_spop_wrong_type(r: ClientType):
     r.zadd("foo", {"member": 1})
     with pytest.raises(Exception) as ctx:
@@ -572,3 +616,64 @@ def test_spop_negative_count(r: ClientType, real_server_details):
         r.spop("foo", -1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert r.scard("foo") == 1
+
+
+setop_card_test = pytest.mark.supported_server_versions(min_redis_ver="8.10")
+setop_card_servers = pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+
+
+@setop_card_test
+@setop_card_servers
+def test_sunioncard(r: ClientType):
+    r.sadd("s1", "a", "b", "c")
+    r.sadd("s2", "c", "d", "e")
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2") == 5
+    assert r.execute_command("SUNIONCARD", 2, "s1", "missing") == 3
+    assert r.execute_command("SUNIONCARD", 1, "missing") == 0
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2", "LIMIT", 3) == 3
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2", "LIMIT", 0) == 5
+    # APPROX estimates with a HyperLogLog, which is exact at these sizes.
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2", "APPROX") == 5
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2", "limit", 2, "approx") == 2
+    # Options may repeat; the last LIMIT wins.
+    assert r.execute_command("SUNIONCARD", 2, "s1", "s2", "LIMIT", 1, "LIMIT", 4) == 4
+    # numkeys comes first, so an option word can be a key.
+    assert r.execute_command("SUNIONCARD", 1, "LIMIT") == 0
+
+
+@setop_card_test
+@setop_card_servers
+def test_sdiffcard(r: ClientType):
+    r.sadd("s1", "a", "b", "c")
+    r.sadd("s2", "c", "d", "e")
+    assert r.execute_command("SDIFFCARD", 2, "s1", "s2") == 2
+    assert r.execute_command("SDIFFCARD", 2, "s2", "s1") == 2
+    assert r.execute_command("SDIFFCARD", 2, "s1", "missing") == 3
+    assert r.execute_command("SDIFFCARD", 2, "missing", "s1") == 0
+    assert r.execute_command("SDIFFCARD", 1, "s1", "LIMIT", 1) == 1
+    assert r.execute_command("SDIFFCARD", 2, "s1", "s2", "LIMIT", 5) == 2
+    with pytest.raises(redis.ResponseError, match="^syntax error$"):
+        r.execute_command("SDIFFCARD", 2, "s1", "s2", "APPROX")
+
+
+@setop_card_test
+@setop_card_servers
+@pytest.mark.parametrize("command", ["SUNIONCARD", "SDIFFCARD"])
+def test_setop_card_errors(r: ClientType, command: str):
+    r.sadd("s1", "a")
+    r.set("str", "value")
+    for numkeys in ("0", "-1", "x"):
+        with pytest.raises(redis.ResponseError, match="numkeys should be greater than 0"):
+            r.execute_command(command, numkeys, "s1")
+    with pytest.raises(redis.ResponseError, match="^Number of keys can't be greater than number of args$"):
+        r.execute_command(command, 3, "s1", "s2")
+    for args in (("s1", "s2"), ("s1", "FOO"), ("s1", "LIMIT")):
+        with pytest.raises(redis.ResponseError, match="^syntax error$"):
+            r.execute_command(command, 1, *args)
+    for limit in ("-1", "x"):
+        with pytest.raises(redis.ResponseError, match="^LIMIT can't be negative$"):
+            r.execute_command(command, 1, "s1", "LIMIT", limit)
+    # Every key is type checked, wherever it sits.
+    for keys in (("s1", "str"), ("str", "s1"), ("missing", "str")):
+        with pytest.raises(redis.ResponseError, match="WRONGTYPE"):
+            r.execute_command(command, 2, *keys)

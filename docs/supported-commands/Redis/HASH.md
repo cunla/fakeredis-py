@@ -1,4 +1,4 @@
-# Redis `hash` commands (28/28 implemented)
+# Redis `hash` commands (28/33 implemented)
 
 ## [HDEL](https://redis.io/commands/hdel/)
 
@@ -111,3 +111,29 @@ Returns the TTL in seconds of a hash field.
 ## [HVALS](https://redis.io/commands/hvals/)
 
 Returns all values in a hash.
+
+
+## Unsupported hash commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
+
+#### [HIMPORT](https://redis.io/commands/himport/) <small>(not implemented)</small>
+
+A container for session-based hash import commands using fieldsets.
+
+#### [HIMPORT DISCARD](https://redis.io/commands/himport-discard/) <small>(not implemented)</small>
+
+Removes a single session-local fieldset by name.
+
+#### [HIMPORT DISCARDALL](https://redis.io/commands/himport-discardall/) <small>(not implemented)</small>
+
+Removes all session-local fieldsets for the connection.
+
+#### [HIMPORT PREPARE](https://redis.io/commands/himport-prepare/) <small>(not implemented)</small>
+
+Defines a session-local fieldset that maps a name to a sorted set of field names.
+
+#### [HIMPORT SET](https://redis.io/commands/himport-set/) <small>(not implemented)</small>
+
+Creates a fieldset-based hash from values supplied in the order matching a previously prepared fieldset.
+
+

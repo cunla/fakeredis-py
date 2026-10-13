@@ -809,3 +809,144 @@ def test_blocking_list_commands_negative_timeout(r: ClientType):
     # nothing should have been popped or moved
     assert r.lrange("foo", 0, -1) == [b"a"]
     assert r.exists("bar") == 0
+
+
+lmovem_test = pytest.mark.supported_server_versions(min_redis_ver="8.10")
+lmovem_servers = pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+
+
+@lmovem_test
+@lmovem_servers
+def test_lmovem(r: ClientType):
+    r.rpush("src", "1", "2", "3", "4", "5")
+    # Without the how-many block it moves one element, like LMOVE, but replies with an array.
+    assert r.execute_command("LMOVEM", "src", "dst", "LEFT", "RIGHT") == [b"1"]
+    # One by one onto the head reverses the moved block; in bulk it keeps its order in the source.
+    assert r.execute_command("LMOVEM", "src", "dst", "LEFT", "LEFT", "COUNT", 2, "OBO") == [b"3", b"2"]
+    assert r.lrange("dst", 0, -1) == [b"3", b"2", b"1"]
+    assert r.execute_command("LMOVEM", "src", "dst", "right", "left", "count", 1, "bulk") == [b"5"]
+    assert r.lrange("dst", 0, -1) == [b"5", b"3", b"2", b"1"]
+    # COUNT moves what there is; the emptied source is deleted.
+    assert r.execute_command("LMOVEM", "src", "dst", "LEFT", "RIGHT", "COUNT", 10, "OBO") == [b"4"]
+    assert r.exists("src") == 0
+    assert r.lrange("dst", 0, -1) == [b"5", b"3", b"2", b"1", b"4"]
+
+
+@lmovem_test
+@lmovem_servers
+def test_lmovem_ordering(r: ClientType):
+    for from_end, to_end, ordering, moved, dst in [
+        ("LEFT", "LEFT", "OBO", [b"b", b"a"], [b"b", b"a", b"x"]),
+        ("LEFT", "LEFT", "BULK", [b"a", b"b"], [b"a", b"b", b"x"]),
+        ("LEFT", "RIGHT", "OBO", [b"a", b"b"], [b"x", b"a", b"b"]),
+        ("LEFT", "RIGHT", "BULK", [b"a", b"b"], [b"x", b"a", b"b"]),
+        ("RIGHT", "LEFT", "OBO", [b"c", b"d"], [b"c", b"d", b"x"]),
+        ("RIGHT", "LEFT", "BULK", [b"c", b"d"], [b"c", b"d", b"x"]),
+        ("RIGHT", "RIGHT", "OBO", [b"d", b"c"], [b"x", b"d", b"c"]),
+        ("RIGHT", "RIGHT", "BULK", [b"c", b"d"], [b"x", b"c", b"d"]),
+    ]:
+        r.delete("src", "dst")
+        r.rpush("src", "a", "b", "c", "d")
+        r.rpush("dst", "x")
+        assert r.execute_command("LMOVEM", "src", "dst", from_end, to_end, "EXACTLY", 2, ordering) == moved
+        assert r.lrange("dst", 0, -1) == dst
+
+
+@lmovem_test
+@lmovem_servers
+def test_lmovem_same_key(r: ClientType):
+    r.rpush("l", "a", "b", "c")
+    # One by one rotates the moved elements in reverse, in bulk it leaves them as they were.
+    assert r.execute_command("LMOVEM", "l", "l", "LEFT", "LEFT", "EXACTLY", 2, "OBO") == [b"b", b"a"]
+    assert r.lrange("l", 0, -1) == [b"b", b"a", b"c"]
+    assert r.execute_command("LMOVEM", "l", "l", "LEFT", "RIGHT", "COUNT", 2, "BULK") == [b"b", b"a"]
+    assert r.lrange("l", 0, -1) == [b"c", b"b", b"a"]
+
+
+@lmovem_test
+@lmovem_servers
+def test_lmovem_nothing_to_move(r: ClientType):
+    r.rpush("src", "a", "b")
+    r.set("str", "value")
+    # EXACTLY moves nothing when the source is short, before looking at the destination's type.
+    assert r.execute_command("LMOVEM", "src", "dst", "LEFT", "RIGHT", "EXACTLY", 3, "OBO") is None
+    assert r.execute_command("LMOVEM", "src", "str", "LEFT", "RIGHT", "EXACTLY", 3, "OBO") is None
+    assert r.lrange("src", 0, -1) == [b"a", b"b"]
+    # A missing source is nil whatever the options.
+    assert r.execute_command("LMOVEM", "missing", "dst", "LEFT", "RIGHT") is None
+    assert r.execute_command("LMOVEM", "missing", "dst", "LEFT", "RIGHT", "COUNT", 2, "BULK") is None
+    assert r.execute_command("LMOVEM", "missing", "str", "LEFT", "RIGHT") is None
+    assert r.exists("dst") == 0
+
+
+@lmovem_test
+@lmovem_servers
+def test_lmovem_errors(r: ClientType):
+    r.rpush("src", "a", "b")
+    r.set("str", "value")
+    with pytest.raises(redis.ResponseError, match="WRONGTYPE"):
+        r.execute_command("LMOVEM", "str", "dst", "LEFT", "RIGHT")
+    with pytest.raises(redis.ResponseError, match="WRONGTYPE"):
+        r.execute_command("LMOVEM", "src", "str", "LEFT", "RIGHT", "COUNT", 1, "OBO")
+    for bad_count in ("0", "-1", "x", "99999999999999999999"):
+        with pytest.raises(redis.ResponseError, match="^count should be greater than 0$"):
+            r.execute_command("LMOVEM", "src", "dst", "LEFT", "RIGHT", "COUNT", bad_count, "OBO")
+    for args in (
+        ("UP", "RIGHT"),
+        ("LEFT", "RIGHT", "COUNT", 2),
+        ("LEFT", "RIGHT", "OBO"),
+        ("LEFT", "RIGHT", "OBO", "COUNT", 1),
+        ("LEFT", "RIGHT", "COUNT", 1, "FOO"),
+        ("LEFT", "RIGHT", "FOO", 1, "OBO"),
+        ("LEFT", "RIGHT", "COUNT", 1, "OBO", "COUNT", 1, "OBO"),
+    ):
+        with pytest.raises(redis.ResponseError, match="^syntax error$"):
+            r.execute_command("LMOVEM", "src", "dst", *args)
+    assert r.lrange("src", 0, -1) == [b"a", b"b"]
+
+
+@lmovem_test
+@lmovem_servers
+def test_blmovem(r: ClientType):
+    r.rpush("src", "a", "b", "c")
+    # The timeout comes before the how-many block.
+    assert r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", 0.1) == [b"a"]
+    assert r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", 0, "COUNT", 5, "BULK") == [b"b", b"c"]
+    assert r.lrange("dst", 0, -1) == [b"a", b"b", b"c"]
+    assert r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", 0.1, "COUNT", 5, "BULK") is None
+    with pytest.raises(redis.ResponseError, match="timeout is negative"):
+        r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", -1)
+    with pytest.raises(redis.ResponseError, match="^syntax error$"):
+        r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", 0.1, "COUNT", 1)
+
+
+@pytest.mark.slow
+@lmovem_test
+@lmovem_servers
+def test_blmovem_exactly_waits_for_enough_elements(r: ClientType):
+    r.rpush("src", "x1")
+
+    def push():
+        sleep(0.2)
+        r.rpush("src", "x2")
+        sleep(0.2)
+        r.rpush("src", "x3")
+
+    thread = threading.Thread(target=push)
+    thread.start()
+    try:
+        moved = r.execute_command("BLMOVEM", "src", "dst", "LEFT", "RIGHT", 5, "EXACTLY", 3, "BULK")
+    finally:
+        thread.join()
+    assert moved == [b"x1", b"x2", b"x3"]
+    assert r.exists("src") == 0
+
+
+@lmovem_test
+@lmovem_servers
+def test_blmovem_in_transaction_does_not_block(r: ClientType):
+    p = r.pipeline()
+    p.rpush("src", "1", "2")
+    p.execute_command("BLMOVEM", "src", "dst", "LEFT", "LEFT", 0, "EXACTLY", 5, "BULK")
+    p.execute_command("BLMOVEM", "src", "dst", "LEFT", "LEFT", 0, "COUNT", 5, "BULK")
+    assert p.execute() == [2, None, [b"1", b"2"]]

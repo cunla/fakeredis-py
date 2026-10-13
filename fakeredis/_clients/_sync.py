@@ -19,6 +19,9 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
     _connection_error_class = redis.ConnectionError
 
     def connect(self) -> None:
+        if self._sock:
+            # redis-py calls this before every command; an open connection already has its selector.
+            return
         super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called
         self._selector: FakeSelector | None = FakeSelector(self._sock)

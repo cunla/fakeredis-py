@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import itertools
 from collections.abc import Collection
-from re import Match
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
@@ -29,6 +27,7 @@ class CommandsMixinBase:
     _client_info: ClientInfo
     _db: Database
     _script_resp: int | None = None
+    _in_transaction: bool = False
 
     @property
     def version(self) -> VersionType:
@@ -63,13 +62,11 @@ class CommandsMixinBase:
             return []
         return result
 
-    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes) -> list[Any]:
+    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes, scanned_key: bytes | None = None) -> list[Any]:
         """This is the basis of most of the ``scan`` methods.
 
-        `keys` holds plain keys, or (member, score) pairs for ZSCAN; MATCH and TYPE test the first element of a pair.
-
-        This implementation is KNOWN to be un-performant, as it requires grabbing the full set of keys over which we are
-        investigating subsets.
+        `keys` is the collection being scanned: the database for SCAN, or the set, hash or sorted set stored at
+        `scanned_key` for SSCAN, HSCAN and ZSCAN. Iterating over it gives the elements MATCH and TYPE are tested on.
 
         The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
         associated with full iterations.
@@ -93,6 +90,10 @@ class CommandsMixinBase:
         - Elements that were not constantly present in the collection during a full iteration may be returned or not:
           it is undefined.
 
+        Here an iteration sorts the collection once, when it starts, and every cursor it hands out is remembered along
+        with that sorted snapshot and a position in it. Later calls read on from the snapshot and leave out what has
+        been removed since, so elements removed mid-scan cannot shift the ones still to come, and a call costs what it
+        returns rather than the size of the collection. Elements added mid-scan are not returned by that iteration.
         """
         cursor = int(cursor)
         (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
@@ -105,35 +106,38 @@ class CommandsMixinBase:
                 raise SimpleError(msgs.INVALID_INT_MSG)
             count = None
         count = 10 if count is None else count
-        data = sorted(keys)
-        bits_len = (len(keys) - 1).bit_length()
-        cursor = bin_reverse(cursor, bits_len)
-        if cursor >= len(keys):
-            return [b"0", []]
-        result_cursor = cursor + count
-        result_data = []
-
-        regex = compile_pattern(pattern) if pattern is not None else None
-
-        def match_key(key: bytes) -> bool | Match[bytes] | None:
-            if isinstance(key, str):
-                key = key.encode("utf-8")
-            return regex.match(key) if regex is not None else True
-
-        def match_type(key: bytes) -> bool:
-            return _type is None or casematch(self._key_value_type(self._db[key]).value, _type)
+        scan_state = (self._db, scanned_key)
+        remembered = self._server.scan_cursors.get((scan_state, cursor)) if cursor else None
+        if remembered is None:
+            # A new iteration, or a cursor that is no longer remembered, which is read as a position in the collection
+            # as it is now.
+            snapshot = sorted(keys)
+            position = bin_reverse(cursor, (len(snapshot) - 1).bit_length())
+            batch = snapshot[position : position + count]
+        else:
+            snapshot, position = remembered
+            batch = [val for val in snapshot[position : position + count] if val in keys]
+        bits_len = (len(snapshot) - 1).bit_length()
 
         if pattern is not None or _type is not None:
-            for val in itertools.islice(data, cursor, cursor + count):
-                compare_val = val[0] if isinstance(val, tuple) else val
-                if match_key(compare_val) and match_type(compare_val):
-                    result_data.append(val)
-        else:
-            result_data = data[cursor : cursor + count]
+            regex = compile_pattern(pattern) if pattern is not None else None
 
-        if result_cursor >= len(data):
-            result_cursor = 0
-        return [str(bin_reverse(result_cursor, bits_len)).encode(), result_data]
+            def matches(key: bytes | str) -> bool:
+                if isinstance(key, str):
+                    key = key.encode("utf-8")
+                if regex is not None and not regex.match(key):
+                    return False
+                return _type is None or casematch(self._key_value_type(self._db[key]).value, _type)
+
+            batch = [val for val in batch if matches(val)]
+
+        position += count
+        if position >= len(snapshot):
+            self._server.forget_scan_snapshot(snapshot)
+            return [b"0", batch]
+        encoded_cursor = bin_reverse(position, bits_len)
+        self._server.remember_scan_cursor((scan_state, encoded_cursor), (snapshot, position))
+        return [str(encoded_cursor).encode(), batch]
 
     def _ttl(self, key: CommandItem, scale: float) -> int:
         if not key:

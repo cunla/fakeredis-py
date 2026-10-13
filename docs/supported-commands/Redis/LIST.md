@@ -1,8 +1,12 @@
-# Redis `list` commands (22/22 implemented)
+# Redis `list` commands (24/24 implemented)
 
 ## [BLMOVE](https://redis.io/commands/blmove/)
 
 Pops an element from a list, pushes it to another list and returns it. Blocks until an element is available otherwise. Deletes the list if the last element was moved.
+
+## [BLMOVEM](https://redis.io/commands/blmovem/)
+
+Moves up to (or exactly) a number of elements from one list to another and returns them. Blocks until the elements are available otherwise. Deletes the source list if it becomes empty.
 
 ## [BLMPOP](https://redis.io/commands/blmpop/)
 
@@ -35,6 +39,10 @@ Returns the length of a list.
 ## [LMOVE](https://redis.io/commands/lmove/)
 
 Returns an element after popping it from one list and pushing it to another. Deletes the list if the last element was moved.
+
+## [LMOVEM](https://redis.io/commands/lmovem/)
+
+Moves up to (or exactly) a number of elements from one list to another and returns them. Deletes the source list if it becomes empty.
 
 ## [LMPOP](https://redis.io/commands/lmpop/)
 

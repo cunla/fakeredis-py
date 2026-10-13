@@ -27,6 +27,10 @@ from fakeredis.model import ClientInfo
 _file_no_counter = itertools.count(8)
 
 
+# Exact types (not subclasses) of reply elements that `_decode_result` has nothing to do for.
+_PLAIN_RESULT_TYPES = frozenset((bytes, int, float, type(None)))
+
+
 def _get_next_file_no() -> int:
     return next(_file_no_counter)
 
@@ -243,7 +247,7 @@ class BaseFakeSocket(NotificationsMixin):
                 unknown_command = True
                 raise
             # ACL check
-            self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
+            self._server.acl.validate_command(self._client_info.user, self._client_info, fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
@@ -342,7 +346,7 @@ class BaseFakeSocket(NotificationsMixin):
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""
         if isinstance(result, list):
-            return [self._decode_result(r) for r in result]
+            return [r if type(r) in _PLAIN_RESULT_TYPES else self._decode_result(r) for r in result]
         elif isinstance(result, SimpleString):
             return result.value
         elif isinstance(result, SimpleError):
@@ -362,26 +366,29 @@ class BaseFakeSocket(NotificationsMixin):
         `shape` turns the outcome into the reply the command sends, the timed-out None
         included. It belongs here rather than around the call because the async socket answers a command that blocks
         outside the command's own control flow, so anything the command does with the return value would be skipped
-        there.
+        there. The timed-out reply is shaped when the timeout fires, so it can report what is there by then (TS.READ).
 
         Returns the function return value, or None if the timeout has passed.
         """
         ret = func(True)  # Call with first_pass=True
         if ret is not None or self._in_transaction:
             return ret if shape is None else shape(ret)
-        empty = None if shape is None else shape(None)
+
+        def empty() -> Any:
+            return None if shape is None else shape(None)
+
         deadline = time.time() + timeout if timeout else None
         self._blocked = True
         try:
             while True:
                 timeout = (deadline - time.time()) if deadline is not None else None
                 if timeout is not None and timeout <= 0:
-                    return empty
+                    return empty()
                 if self._db.condition.wait(timeout=timeout) is False:
-                    return empty  # Timeout expired
+                    return empty()  # Timeout expired
                 if self._unblock_reason is not None:
                     self._take_unblock_reason()
-                    return empty  # Unblocked with TIMEOUT: same empty result as a timeout
+                    return empty()  # Unblocked with TIMEOUT: same empty result as a timeout
                 ret = func(False)  # Second pass => first_pass=False
                 if ret is not None:
                     return ret if shape is None else shape(ret)

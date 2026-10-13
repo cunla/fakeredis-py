@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import Int, Timeout, extract_args, parse_mpop_args
@@ -42,6 +42,87 @@ def _list_pop(get_slice: Callable[[int], slice], key: CommandItem, *args: bytes)
     if ret and not args:
         return ret[0]
     return ret
+
+
+def _parse_list_end(where: bytes) -> bool:
+    """Parse a LEFT/RIGHT argument, returning True for LEFT."""
+    if casematch(where, b"left"):
+        return True
+    if casematch(where, b"right"):
+        return False
+    raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+
+
+def _parse_lmovem_options(args: tuple[bytes, ...]) -> tuple[bool, int, bool]:
+    """Parse the optional `<COUNT | EXACTLY> count <OBO | BULK>` trailer of [B]LMOVEM.
+
+    Returns (exactly, count, one_by_one). Without the trailer a single element is moved.
+    """
+    if not args:
+        return False, 1, False
+    if len(args) != 3:
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if casematch(args[0], b"count"):
+        exactly = False
+    elif casematch(args[0], b"exactly"):
+        exactly = True
+    else:
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    count = Int.decode(args[1], msgs.COUNT_GREATER_THAN_ZERO_MSG)
+    if count < 1:
+        raise SimpleError(msgs.COUNT_GREATER_THAN_ZERO_MSG)
+    if casematch(args[2], b"obo"):
+        one_by_one = True
+    elif casematch(args[2], b"bulk"):
+        one_by_one = False
+    else:
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    return exactly, count, one_by_one
+
+
+def _lmovem(
+    src: CommandItem,
+    dst: CommandItem,
+    from_left: bool,
+    to_left: bool,
+    exactly: bool,
+    count: int,
+    one_by_one: bool,
+    first_pass: bool,
+) -> list[bytes] | None:
+    """Move elements for [B]LMOVEM, returning them in destination order, or None if nothing could be moved.
+
+    A missing, empty or (EXACTLY) too short source moves nothing, and is checked before the destination's type.
+    """
+    if src.value is not None and not isinstance(src.value, list):
+        if first_pass:
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        return None
+    src_len = len(src.value) if src.value else 0
+    if src_len < (count if exactly else 1):
+        return None
+    if dst.value is not None and not isinstance(dst.value, list):
+        raise SimpleError(msgs.WRONGTYPE_MSG)
+    n = min(count, src_len)
+    source: list[bytes] = cast(list[bytes], src.value)
+    if from_left:
+        popped = source[:n]
+        del source[:n]
+    else:
+        popped = source[: -n - 1 : -1]
+        del source[-n:]
+    # One by one, each element lands beyond the previous one, so a head push reverses the popped order. In bulk, the
+    # block keeps the elements' relative order in the source, which is the reverse of the order they were popped
+    # from the tail.
+    moved = popped[::-1] if (to_left if one_by_one else not from_left) else popped
+    target = dst.value if dst.value is not None else []  # the source itself when both name the same key
+    if to_left:
+        target[0:0] = moved
+    else:
+        target.extend(moved)
+    src.updated()
+    dst.update(target)
+    return moved
 
 
 class ListCommandsMixin(CommandsMixinBase):
@@ -158,6 +239,49 @@ class ListCommandsMixin(CommandsMixinBase):
         timeout: float,
     ) -> Any:
         return self._blocking(timeout, functools.partial(self._lmove, first_list, second_list, src, dst))
+
+    @command(name="LMOVEM", fixed=(Key(), Key(), bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def lmovem(self, src: CommandItem, dst: CommandItem, wherefrom: bytes, whereto: bytes, *args: bytes) -> Any:
+        """LMOVEM source destination <LEFT | RIGHT> <LEFT | RIGHT> [<COUNT count | EXACTLY count> <OBO | BULK>]"""
+        from_left, to_left = _parse_list_end(wherefrom), _parse_list_end(whereto)
+        exactly, count, one_by_one = _parse_lmovem_options(args)
+        return _lmovem(src, dst, from_left, to_left, exactly, count, one_by_one, True)
+
+    def _blmovem_pass(
+        self,
+        source: bytes,
+        destination: bytes,
+        from_left: bool,
+        to_left: bool,
+        exactly: bool,
+        count: int,
+        one_by_one: bool,
+        first_pass: bool,
+    ) -> list[bytes] | None:
+        src = CommandItem(source, self._db, item=self._db.get(source))
+        dst = src if destination == source else CommandItem(destination, self._db, item=self._db.get(destination))
+        moved = _lmovem(src, dst, from_left, to_left, exactly, count, one_by_one, first_pass)
+        if moved is not None:
+            src.writeback()
+            if dst is not src:
+                dst.writeback()
+        return moved
+
+    @command(name="BLMOVEM", fixed=(bytes, bytes, bytes, bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def blmovem(
+        self, source: bytes, destination: bytes, wherefrom: bytes, whereto: bytes, timeout: bytes, *args: bytes
+    ) -> Any:
+        """BLMOVEM source destination <LEFT | RIGHT> <LEFT | RIGHT> timeout [<COUNT count | EXACTLY count> <OBO | BULK>]
+
+        Blocks until the source holds an element, or with EXACTLY until it holds `count` of them.
+        """
+        from_left, to_left = _parse_list_end(wherefrom), _parse_list_end(whereto)
+        timeout_secs = Timeout.decode(timeout)
+        exactly, count, one_by_one = _parse_lmovem_options(args)
+        return self._blocking(
+            timeout_secs,
+            functools.partial(self._blmovem_pass, source, destination, from_left, to_left, exactly, count, one_by_one),
+        )
 
     @command(fixed=(Key(),), repeat=(bytes,))
     def lpop(self, key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:

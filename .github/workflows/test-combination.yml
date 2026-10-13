@@ -35,8 +35,9 @@ on:
         description: "Server to test against"
         type: choice
         required: true
-        default: "redis:8.8"
+        default: "redis:8.10"
         options:
+          - "redis:8.10"
           - "redis:8.8"
           - "redis:8.4"
           - "redis:7.4.8"

@@ -47,6 +47,7 @@ pip install fakeredis                        # core, no extras
 pip install "fakeredis[lua]"                 # EVAL / EVALSHA scripting
 pip install "fakeredis[json]"                # JSON.* commands
 pip install "fakeredis[bf]"                  # Bloom / Cuckoo / Count-Min / Top-K filters
+pip install "fakeredis[digest]"              # DIGEST and DELEX IFDEQ / IFDNE (XXH3 digests)
 pip install "fakeredis[probabilistic,json]"  # probabilistic filters + JSON
 ```
 

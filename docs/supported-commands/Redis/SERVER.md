@@ -1,4 +1,4 @@
-# Redis `server` commands (23/77 implemented)
+# Redis `server` commands (23/85 implemented)
 
 ## [ACL CAT](https://redis.io/commands/acl-cat/)
 
@@ -93,8 +93,8 @@ Swaps two Redis databases.
 Returns the server time.
 
 
-## Unsupported server commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
+## Unsupported server commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
 
 #### [ACL](https://redis.io/commands/acl/) <small>(not implemented)</small>
 
@@ -103,6 +103,38 @@ A container for Access List Control commands.
 #### [ACL DRYRUN](https://redis.io/commands/acl-dryrun/) <small>(not implemented)</small>
 
 Simulates the execution of a command by a user, without executing the command.
+
+#### [BACKUP](https://redis.io/commands/backup/) <small>(not implemented)</small>
+
+A container for backup management commands.
+
+#### [BACKUP ABORT](https://redis.io/commands/backup-abort/) <small>(not implemented)</small>
+
+Cancel a backup that has not been sealed yet.
+
+#### [BACKUP CLEANUP](https://redis.io/commands/backup-cleanup/) <small>(not implemented)</small>
+
+Remove a sealed backup's files and return to idle.
+
+#### [BACKUP HELP](https://redis.io/commands/backup-help/) <small>(not implemented)</small>
+
+Return helpful text about BACKUP command parameters.
+
+#### [BACKUP LIST](https://redis.io/commands/backup-list/) <small>(not implemented)</small>
+
+List the immutable backup file paths pinned so far.
+
+#### [BACKUP SEAL](https://redis.io/commands/backup-seal/) <small>(not implemented)</small>
+
+Freeze the current backup (BASE + INCR + manifest).
+
+#### [BACKUP START](https://redis.io/commands/backup-start/) <small>(not implemented)</small>
+
+Start a new backup into the configured 'backupdirname'.
+
+#### [BACKUP STATUS](https://redis.io/commands/backup-status/) <small>(not implemented)</small>
+
+Report the current backup state.
 
 #### [BGREWRITEAOF](https://redis.io/commands/bgrewriteaof/) <small>(not implemented)</small>
 
@@ -311,3 +343,5 @@ An internal command used in replication.
 #### [TRIMSLOTS](https://redis.io/commands/trimslots/) <small>(not implemented)</small>
 
 Trim the keys that belong to specified slots.
+
+

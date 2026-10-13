@@ -77,8 +77,8 @@ Resets the connection.
 Changes the selected database.
 
 
-## Unsupported connection commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
+## Unsupported connection commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
 
 #### [CLIENT](https://redis.io/commands/client/) <small>(not implemented)</small>
 
@@ -99,3 +99,5 @@ Controls server-assisted client-side caching for the connection.
 #### [CLIENT TRACKINGINFO](https://redis.io/commands/client-trackinginfo/) <small>(not implemented)</small>
 
 Returns information about server-assisted client-side caching for the connection.
+
+

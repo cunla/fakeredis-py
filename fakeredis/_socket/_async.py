@@ -45,8 +45,11 @@ class AsyncFakeSocket(FakeSocket):
         callback: Callable[[], None],
         shape: Callable[[Any], Any] | None = None,
     ) -> None:
-        # The reply for an empty outcome -- a timeout, or an unblock with TIMEOUT.
-        result = None if shape is None else self._decode_result(shape(None))
+        def empty() -> Any:
+            """The reply for an empty outcome -- a timeout, or an unblock with TIMEOUT -- shaped when it happens."""
+            return None if shape is None else self._decode_result(shape(None))
+
+        result: Any = None
         try:
             async with async_timeout(timeout if timeout else None):
                 while True:
@@ -58,6 +61,7 @@ class AsyncFakeSocket(FakeSocket):
                         if self._unblock_reason is not None:
                             try:
                                 self._take_unblock_reason()
+                                result = empty()
                             except SimpleError as exc:
                                 result = self._decode_result(exc)
                             break
@@ -66,7 +70,8 @@ class AsyncFakeSocket(FakeSocket):
                             result = self._decode_result(ret if shape is None else shape(ret))
                             break
         except asyncio.TimeoutError:
-            pass
+            with self._server.lock:
+                result = empty()
         finally:
             with self._server.lock:
                 self._db.remove_change_callback(callback)

@@ -1016,12 +1016,15 @@ class XStream(BaseModel):
             node_index += 1
         return trimmed
 
-    def irange(self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False) -> list[Any]:
+    def irange(
+        self, start: StreamRangeTest, stop: StreamRangeTest, reverse: bool = False, count: int | None = None
+    ) -> list[Any]:
         """Returns a range of the stream values from start to stop.
 
         :param start: Start key
         :param stop: Stop key
         :param reverse: Should the range be in reverse order?
+        :param count: Return at most this many entries, taken from the end the range is read from.
         :returns: The range between start and stop
         """
 
@@ -1037,10 +1040,15 @@ class XStream(BaseModel):
 
         start_ind = _find_index(start)
         stop_ind = _find_index(stop, from_left=False)
-        matches = [self.format_record(self._ids[x]) for x in range(start_ind, stop_ind)]
         if reverse:
-            return list(reversed(matches))
-        return matches
+            if count is not None:
+                start_ind = max(start_ind, stop_ind - count)
+            indexes = range(stop_ind - 1, start_ind - 1, -1)
+        else:
+            if count is not None:
+                stop_ind = min(stop_ind, start_ind + count)
+            indexes = range(start_ind, stop_ind)
+        return [self.format_record(self._ids[x]) for x in indexes]
 
     def last_item_key(self) -> bytes:
         return self._ids[-1].encode() if len(self._ids) > 0 else b"0-0"

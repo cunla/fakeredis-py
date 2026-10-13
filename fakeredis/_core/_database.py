@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import heapq
+import itertools
+import random
 import threading
 import weakref
 from collections import defaultdict
@@ -11,6 +14,10 @@ class Database(MutableMapping):  # type: ignore
     def __init__(self, lock: threading.Lock | None, *args: Any, **kwargs: Any) -> None:
         self._dict: dict[bytes, Any] = dict(*args, **kwargs)
         self.time = 0.0
+        # (expiry, key) for every expiry ever stored, soonest first, so sweeping out expired keys only looks at the
+        # ones that are due rather than at every key. Entries are not removed when a key is deleted or its expiry
+        # changes: the stored item is the truth, and an entry that no longer matches it is skipped when it surfaces.
+        self._expiry_heap: list[tuple[float, bytes]] = []
         # key to the set of connections
         self._watches: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.condition = threading.Condition(lock)
@@ -18,6 +25,7 @@ class Database(MutableMapping):  # type: ignore
 
     def swap(self, other: Database) -> None:
         self._dict, other._dict = other._dict, self._dict
+        self._expiry_heap, other._expiry_heap = other._expiry_heap, self._expiry_heap
         self.time, other.time = other.time, self.time
 
     def notify_watch(self, key: bytes) -> None:
@@ -57,15 +65,37 @@ class Database(MutableMapping):  # type: ignore
         for key in self:
             self.notify_watch(key)
         self._dict.clear()
+        self._expiry_heap.clear()
 
     def expired(self, item: Any) -> bool:
         return item.expireat is not None and item.expireat < self.time
 
+    def schedule_expiry(self, key: bytes, expireat: float | None) -> None:
+        """Record that the item stored at `key` now expires at `expireat`, so `_remove_expired` will find it."""
+        if expireat is None:
+            return
+        heap = self._expiry_heap
+        # Re-setting the same TTLs over and over leaves stale entries behind; rebuild once they outnumber the keys.
+        if len(heap) > 2 * len(self._dict) + 64:
+            heap[:] = [(item.expireat, k) for k, item in self._dict.items() if item.expireat is not None]
+            heapq.heapify(heap)
+        heapq.heappush(heap, (expireat, key))
+
     def _remove_expired(self) -> None:
-        for key in list(self._dict):
-            item = self._dict[key]
-            if self.expired(item):
+        heap = self._expiry_heap
+        while heap and heap[0][0] < self.time:
+            _, key = heapq.heappop(heap)
+            item = self._dict.get(key)
+            if item is not None and self.expired(item):
                 del self._dict[key]
+
+    def random_key(self) -> bytes | None:
+        """A random live key, or None if there are none, without copying the keys."""
+        self._remove_expired()
+        if not self._dict:
+            return None
+        index = random.randrange(len(self._dict))
+        return next(itertools.islice(self._dict, index, None))
 
     def __getitem__(self, key: bytes) -> Any:
         item = self._dict[key]
@@ -76,6 +106,7 @@ class Database(MutableMapping):  # type: ignore
 
     def __setitem__(self, key: bytes, value: Any) -> None:
         self._dict[key] = value
+        self.schedule_expiry(key, value.expireat)
 
     def __delitem__(self, key: bytes) -> None:
         del self._dict[key]
@@ -169,10 +200,12 @@ class CommandItem:
             item = self.db.setdefault(self.key, Item(None))
             item.value = self.value
             item.expireat = self.expireat
+            self.db.schedule_expiry(self.key, self.expireat)
             return
 
         if self._expireat_modified and self.key in self.db:
             self.db[self.key].expireat = self.expireat
+            self.db.schedule_expiry(self.key, self.expireat)
 
     def __bool__(self) -> bool:
         return bool(self._value) or isinstance(self._value, bytes)

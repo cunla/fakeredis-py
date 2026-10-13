@@ -1106,3 +1106,55 @@ def test_ts_madd_nonexistent_key(r: redis.Redis):
     result = r.ts().madd([("ts1", 1000, 1.0), ("nokey", 2000, 2.0)])
     assert result[0] == 1000
     assert isinstance(result[1], redis.ResponseError)
+
+
+def _range_values(res) -> list:
+    """Normalize [timestamp, value] rows: RESP2 sends values as bulk strings, RESP3 as doubles; NaN becomes "nan"."""
+    return [[t, "nan" if math.isnan(float(v)) else float(v)] for t, v in res]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8")
+def test_range_empty_bucket_values(r: redis.Redis):
+    raw_command(r, "TS.CREATE", "t")
+    raw_command(r, "TS.MADD", "t", 1000, 20, "t", 3000, 25)
+
+    def empty_range(aggregator: str) -> list:
+        return _range_values(raw_command(r, "TS.RANGE", "t", "-", "+", "AGGREGATION", aggregator, 1000, "EMPTY"))
+
+    # An empty bucket counts and sums to 0, `last` carries the previous sample forward, the rest report NaN.
+    assert empty_range("sum") == [[1000, 20.0], [2000, 0.0], [3000, 25.0]]
+    assert empty_range("count") == [[1000, 1.0], [2000, 0.0], [3000, 1.0]]
+    assert empty_range("last") == [[1000, 20.0], [2000, 20.0], [3000, 25.0]]
+    assert empty_range("avg") == [[1000, 20.0], [2000, "nan"], [3000, 25.0]]
+    assert empty_range("max") == [[1000, 20.0], [2000, "nan"], [3000, 25.0]]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8")
+def test_range_align(r: redis.Redis):
+    raw_command(r, "TS.CREATE", "t")
+    raw_command(r, "TS.MADD", "t", 1000, 10, "t", 2000, 12, "t", 2500, 13)
+    res = raw_command(r, "TS.RANGE", "t", "-", "+", "ALIGN", 500, "AGGREGATION", "sum", 1000)
+    assert _range_values(res) == [[500, 10.0], [1500, 12.0], [2500, 13.0]]
+    res = raw_command(r, "TS.RANGE", "t", 1200, "+", "ALIGN", "-", "AGGREGATION", "sum", 1000)
+    assert _range_values(res) == [[1200, 12.0], [2200, 13.0]]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8")
+def test_range_ignores_unknown_arguments(r: redis.Redis):
+    raw_command(r, "TS.CREATE", "t")
+    raw_command(r, "TS.MADD", "t", 1000, 10, "t", 2000, 12)
+    assert _range_values(raw_command(r, "TS.RANGE", "t", "-", "+", "FOO")) == [[1000, 10.0], [2000, 12.0]]
+    res = raw_command(r, "TS.RANGE", "t", "-", "+", "FOO", "FILTER_BY_TS", 2000, "BAR")
+    assert _range_values(res) == [[2000, 12.0]]
+    with pytest.raises(redis.ResponseError, match="^TSDB: FILTER_BY_TS one or more arguments are missing$"):
+        raw_command(r, "TS.RANGE", "t", "-", "+", "FILTER_BY_TS")
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8")
+def test_range_count_aggregation_is_a_double(r: redis.Redis):
+    if get_protocol_version(r) != 3:
+        pytest.skip("RESP3 only")
+    raw_command(r, "TS.CREATE", "t")
+    raw_command(r, "TS.ADD", "t", 1000, 10)
+    res = raw_command(r, "TS.RANGE", "t", "-", "+", "AGGREGATION", "count", 1000)
+    assert res == [[1000, 1.0]] and isinstance(res[0][1], float)

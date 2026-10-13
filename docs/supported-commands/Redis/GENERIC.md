@@ -1,4 +1,4 @@
-# Redis `generic` commands (24/26 implemented)
+# Redis `generic` commands (24/31 implemented)
 
 ## [COPY](https://redis.io/commands/copy/)
 
@@ -97,8 +97,28 @@ Determines the type of value stored at a key.
 Asynchronously deletes one or more keys.
 
 
-## Unsupported generic commands
-> To implement support for a command, see [here](../../../guides/implement-command/)
+## Unsupported generic commands 
+> To implement support for a command, see [here](../../../guides/implement-command/) 
+
+#### [BLESS](https://redis.io/commands/bless/) <small>(not implemented)</small>
+
+A container for key-blessing commands.
+
+#### [BLESS CLEAR](https://redis.io/commands/bless-clear/) <small>(not implemented)</small>
+
+Removes protection flags from a key.
+
+#### [BLESS GET](https://redis.io/commands/bless-get/) <small>(not implemented)</small>
+
+Returns the active protection flags of a key.
+
+#### [BLESS SCAN](https://redis.io/commands/bless-scan/) <small>(not implemented)</small>
+
+Incrementally iterates the blessed keys of the current database that carry the given flag.
+
+#### [BLESS SET](https://redis.io/commands/bless-set/) <small>(not implemented)</small>
+
+Adds protection flags to a key against memory pressure.
 
 #### [WAIT](https://redis.io/commands/wait/) <small>(not implemented)</small>
 
@@ -107,3 +127,5 @@ Blocks until the asynchronous replication of all preceding write commands sent b
 #### [WAITAOF](https://redis.io/commands/waitaof/) <small>(not implemented)</small>
 
 Blocks until all of the preceding write commands sent by the connection are written to the append-only file of the master and/or replicas.
+
+

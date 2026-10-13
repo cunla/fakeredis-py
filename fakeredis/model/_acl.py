@@ -7,6 +7,7 @@ from typing import Any
 from fakeredis import _msgs as msgs
 
 from .._helpers import SimpleError, current_time
+from ._client_info import ClientInfo
 from ._command_info import get_command_info, get_commands_by_category
 
 
@@ -74,6 +75,18 @@ class UserAccessControlList:
             command = command + b" " + fields[1].lower()
             command_info = get_command_info(command)
         return command_info
+
+    def unrestricted(self) -> bool:
+        """Whether no rule of this user can refuse a command: every command is granted and none is revoked, on every
+        key and every channel. This is what the default user looks like, so it lets the per-command check skip the
+        command lookup and the pattern matching.
+        """
+        return (
+            self._commands.get(b"@all", False)
+            and b"*" in self._key_patterns
+            and b"*" in self._channel_patterns
+            and all(self._commands.values())
+        )
 
     def command_allowed(self, command_info: list[Any] | None, fields: list[bytes]) -> bool:
         res = fields[0].lower() == b"auth" or self._commands.get(fields[0].lower(), False)
@@ -346,7 +359,11 @@ class AccessControlList:
         )
         self._log.append(entry)
 
-    def validate_command(self, username: bytes, client_info: bytes, fields: list[bytes]) -> None:
+    def validate_command(self, username: bytes, client_info: ClientInfo, fields: list[bytes]) -> None:
+        """Raise if `username` may not run the command in `fields`.
+
+        `client_info` is only rendered when a denial is logged: doing it for every command costs more than the check.
+        """
         if username not in self._user_acl:
             return
         if fields and fields[0].lower() == b"auth":
@@ -355,18 +372,20 @@ class AccessControlList:
         user_acl = self._user_acl[username]
         if not user_acl.enabled:
             raise SimpleError("User disabled")
+        if user_acl.unrestricted():
+            return
         command_info = UserAccessControlList._get_command_info(fields)
         if command_info is None:
             return
         if not user_acl.command_allowed(command_info, fields):
-            self.add_log_record(b"command", b"toplevel", fields[0], username, client_info)
+            self.add_log_record(b"command", b"toplevel", fields[0], username, client_info.as_bytes())
             raise SimpleError(msgs.NO_PERMISSION_ERROR.format(username.decode(), fields[0].lower().decode()))
         keys_not_allowed = user_acl.keys_not_allowed(command_info, fields)
         if len(keys_not_allowed) > 0:
-            self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info)
+            self.add_log_record(b"key", b"toplevel", keys_not_allowed[0], username, client_info.as_bytes())
             raise SimpleError(msgs.NO_PERMISSION_KEY_ERROR)
         if b"@pubsub" in command_info[6]:
             channels_not_allowed = user_acl.channels_not_allowed(command_info, fields)
             if len(channels_not_allowed) > 0:
-                self.add_log_record(b"channel", b"toplevel", channels_not_allowed[0], username, client_info)
+                self.add_log_record(b"channel", b"toplevel", channels_not_allowed[0], username, client_info.as_bytes())
                 raise SimpleError(msgs.NO_PERMISSION_CHANNEL_ERROR)

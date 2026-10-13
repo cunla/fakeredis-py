@@ -605,10 +605,9 @@ class StreamsCommandsMixin(CommandsMixinBase):
     ) -> list[bytes]:
         if stream is None:
             return []
-        if count is None:
-            count = len(stream)
-        res = stream.irange(_min, _max, reverse=reverse)
-        return res[:count]
+        if count is not None:
+            count = max(count, 0)
+        return stream.irange(_min, _max, reverse=reverse, count=count)
 
     def _xreadgroup(
         self,
@@ -659,13 +658,19 @@ class StreamsCommandsMixin(CommandsMixinBase):
         return self._empty_stream_read_reply(res)
 
     def _xread(
-        self, stream_start_id_list: list[tuple[bytes, StreamRangeTest]], count: int, blocking: bool, first_pass: bool
+        self,
+        stream_start_id_list: list[tuple[bytes, StreamRangeTest]],
+        count: int | None,
+        blocking: bool,
+        first_pass: bool,
     ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
         res: dict[bytes, Any] = {}
         for stream_name, start_id in stream_start_id_list:
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
-            stream_results = self._xrange(item.value, start_id, max_inf, False, count)
+            # COUNT 0, or a negative one, asks for everything
+            limit = count if count is not None and count > 0 else None
+            stream_results = self._xrange(item.value, start_id, max_inf, False, limit)
             if len(stream_results) > 0:
                 res[item.key] = stream_results
 
