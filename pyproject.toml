@@ -70,8 +70,8 @@ Funding = "https://github.com/sponsors/cunla"
 dev = [
   "ruff>=0.16",
   "mypy>=2.3; python_version >= '3.13'",
-  "pre-commit>=4.6; python_version >= '3.13'",
-  "pyyaml>=6",
+  "pre-commit>=4.6; python_version >= '3.13' and python_version < '3.15'",
+  "pyyaml>=6; python_version >= '3.13' and python_version < '3.15'",
 ]
 scripts = [
   "python-dotenv>=1.2 ; python_version >= '3.13'",
