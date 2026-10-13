@@ -1,5 +1,9 @@
 """Tests for the `HIMPORT` commands introduced in Redis 8.10: session-local fieldsets and the hashes built from them.
 
+Most tests send the commands raw. redis-py 8.1 added `himport_*` methods, but they keep a registry of fieldsets on the
+client and prepare, discard and re-prepare them on each connection as needed, which hides what the server does with a
+fieldset. The tests at the end of the file go through those methods.
+
 See https://github.com/cunla/fakeredis-py/issues/599
 """
 
@@ -7,6 +11,7 @@ import pytest
 import redis
 
 from fakeredis._typing import ClientType
+from test import testtools
 from test.test_keyspace_notifications import wait_for_message
 from test.testtools import raw_command
 
@@ -243,3 +248,84 @@ def test_himport_set_keyspace_notification(r: ClientType):
         msg = wait_for_message(p, timeout=0.1)
     # It is reported as the `hset` it amounts to.
     assert msgs == [(b"__keyspace@2__:foo", b"hset"), (b"__keyevent@2__:hset", b"foo")]
+
+
+redis_py_himport = testtools.run_test_if_redispy_ver("gte", "8.1")
+
+
+@redis_py_himport
+def test_redis_py_himport_set(r: ClientType):
+    assert r.himport_prepare("fs", ["b", "a", "c"]) is True
+    assert r.himport_set("foo", "fs", ["1", "2", "3"]) is True
+    assert r.hgetall("foo") == {b"a": b"2", b"b": b"1", b"c": b"3"}
+
+    # Preparing the name again replaces the fieldset, on the server too.
+    assert r.himport_prepare("fs", ["x"]) is True
+    assert r.himport_set("foo", "fs", ["9"]) is True
+    assert r.hgetall("foo") == {b"x": b"9"}
+
+
+@redis_py_himport
+def test_redis_py_himport_set_errors(r: ClientType):
+    r.himport_prepare("fs", ["a", "b"])
+    with pytest.raises(redis.exceptions.NoSuchFieldsetError, match="no such fieldset"):
+        r.himport_set("foo", "nofs", ["1"])
+    with pytest.raises(redis.ResponseError, match="value count does not match fieldset field count"):
+        r.himport_set("foo", "fs", ["1"])
+    # A fieldset is only sent to the server with the first hash that uses it, which is when the server gets to reject it.
+    assert r.himport_prepare("dup", ["a", "a"]) is True
+    with pytest.raises(redis.ResponseError, match="duplicate field name in fieldset"):
+        r.himport_set("foo", "dup", ["1", "2"])
+    assert r.exists("foo") == 0
+
+
+@redis_py_himport
+def test_redis_py_himport_prepares_each_connection(r: ClientType):
+    r.himport_prepare("fs", ["a"])
+    assert r.himport_set("foo", "fs", ["1"]) is True
+    # The pool's connection is busy, so the next hash goes out on a new one, which has to be given the fieldset first.
+    with r.pipeline() as p:
+        p.watch("other")
+        assert r.himport_set("bar", "fs", ["2"]) is True
+    assert r.hgetall("bar") == {b"a": b"2"}
+
+
+@redis_py_himport
+def test_redis_py_himport_recovers_after_reset(r: ClientType):
+    r.himport_prepare("fs", ["a"])
+    assert r.himport_set("foo", "fs", ["1"]) is True
+    with r.client() as conn:
+        assert conn.himport_set("foo", "fs", ["2"]) is True
+        # RESET drops the connection's fieldsets, and takes it back to database 0 and RESP2; redis-py prepares the
+        # fieldset again when the server says it is gone.
+        raw_command(conn, "RESET")
+        assert conn.himport_set("foo", "fs", ["3"]) is True
+        assert conn.hget("foo", "a") == b"3"
+        conn.delete("foo")
+
+
+@redis_py_himport
+def test_redis_py_himport_in_pipeline(r: ClientType):
+    r.himport_prepare("fs", ["a", "b"])
+    for transaction in (True, False):
+        with r.pipeline(transaction=transaction) as p:
+            p.himport_set("foo", "fs", ["1", "2"])
+            p.hgetall("foo")
+            assert p.execute() == [True, {b"a": b"1", b"b": b"2"}]
+
+
+@redis_py_himport
+def test_redis_py_himport_discard(r: ClientType):
+    r.himport_prepare("fs", ["a"])
+    r.himport_prepare("other", ["a"])
+    assert r.himport_set("foo", "fs", ["1"]) is True
+    assert r.himport_discard("fs") == 1
+    assert r.himport_discard("fs") == 0
+    # The server is told to discard it before the connection is used for another hash.
+    with pytest.raises(redis.exceptions.NoSuchFieldsetError):
+        r.himport_set("foo", "fs", ["1"])
+    assert raw_command(r, "HIMPORT", "DISCARD", "fs") == 0
+    assert r.himport_set("foo", "other", ["2"]) is True
+    assert r.himport_discard_all() == 1
+    with pytest.raises(redis.exceptions.NoSuchFieldsetError):
+        r.himport_set("foo", "other", ["1"])
