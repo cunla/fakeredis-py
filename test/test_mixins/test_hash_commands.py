@@ -412,12 +412,12 @@ def test_himport_set_field_order(r: ClientType):
 def test_himport_set_replaces_hash(r: ClientType):
     raw_command(r, "HIMPORT", "PREPARE", "fs", "a", "b")
     r.hset("foo", mapping={"a": "old", "z": "9"})
-    r.hexpire("foo", 100, "a", "z")
+    raw_command(r, "HEXPIRE", "foo", 100, "FIELDS", 2, "a", "z")
     r.expire("foo", 100)
     raw_command(r, "HIMPORT", "SET", "foo", "fs", "1", "2")
     assert r.hgetall("foo") == {b"a": b"1", b"b": b"2"}
     assert r.ttl("foo") == -1
-    assert r.httl("foo", "a", "b", "z") == [-1, -1, -2]
+    assert raw_command(r, "HTTL", "foo", "FIELDS", 3, "a", "b", "z") == [-1, -1, -2]
 
     raw_command(r, "HIMPORT", "SET", "foo", "fs", "", "4")
     assert r.hgetall("foo") == {b"a": b"", b"b": b"4"}
