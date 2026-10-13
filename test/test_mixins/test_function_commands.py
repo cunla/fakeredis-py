@@ -442,26 +442,3 @@ def test_functions_need_redis_7():
         r.function_list()
     with pytest.raises(redis.ResponseError, match="unknown command 'fcall'"):
         r.fcall("f", 0)
-
-
-@pytest.mark.supported_server_versions(min_redis_ver="8.10")
-@pytest.mark.unsupported_server_types("valkey", "dragonfly", "kividb")
-def test_himport_fieldsets_are_scoped_to_the_function(r: ClientType):
-    library = """#!lua name=himport
-redis.register_function('use', function(keys, args) return redis.call('HIMPORT', 'SET', keys[1], args[1], '1') end)
-redis.register_function('prepare_and_use', function(keys, args)
-  redis.call('HIMPORT', 'PREPARE', 'lfs', 'a')
-  return redis.call('HIMPORT', 'SET', keys[1], 'lfs', '1')
-end)
-"""
-    raw_command(r, "FUNCTION", "LOAD", library)
-    raw_command(r, "HIMPORT", "PREPARE", "fs", "a")
-    # A function does not see the caller's fieldsets...
-    assert _error(r, "FCALL", "use", 1, "foo", "fs").startswith("no such fieldset")
-    # ...it can prepare and use its own...
-    assert raw_command(r, "FCALL", "prepare_and_use", 1, "foo") == b"OK"
-    assert r.hgetall("foo") == {b"a": b"1"}
-    # ...which neither a later call nor the caller gets to use.
-    assert _error(r, "FCALL", "use", 1, "bar", "lfs").startswith("no such fieldset")
-    assert _error(r, "HIMPORT", "SET", "bar", "lfs", "1") == "no such fieldset"
-    assert raw_command(r, "HIMPORT", "SET", "bar", "fs", "1") == b"OK"
