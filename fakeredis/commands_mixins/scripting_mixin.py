@@ -12,7 +12,7 @@ from typing import Any, AnyStr, Callable
 import lupa
 
 from fakeredis._command_args_parsing import Float, Int
-from fakeredis._commands import Signature, command
+from fakeredis._commands import COMMANDS_WITH_SUB, Signature, command
 from fakeredis._helpers import (
     OK,
     SimpleError,
@@ -177,7 +177,12 @@ class ScriptingCommandsMixin(CommandsMixinBase):
     def _lua_redis_call(self, lua_runtime: Any, expected_globals: set[Any], op: bytes, *args: Any) -> Any:
         # Check if we've set any global variables before making any change.
         _check_for_lua_globals(lua_runtime, expected_globals)
-        func, sig = self._name_to_func(decode_command_bytes(op))
+        cmd = decode_command_bytes(op)
+        if cmd in COMMANDS_WITH_SUB and args:
+            # A container command: its subcommand is part of the name it is registered under.
+            cmd += " " + decode_command_bytes(_convert_redis_arg(args[0]))
+            args = args[1:]
+        func, sig = self._name_to_func(cmd)
         if func is None:
             raise SimpleError(msgs.WRONG_ARGS_MSG7)
         new_args = [_convert_redis_arg(arg) for arg in args]
@@ -345,6 +350,8 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         s._lua_current_socket[0] = self
         # Every script starts at RESP2 whatever the calling client speaks; `redis.setresp` does not carry over.
         self._script_resp = 2
+        # A script sees none of the caller's HIMPORT fieldsets, and the ones it prepares end with it.
+        caller_fieldsets, self._fieldsets = self._fieldsets, {}
 
         # Only update KEYS and ARGV per call (callbacks are already set up)
         s._lua_set_keys_argv(
@@ -370,6 +377,7 @@ class ScriptingCommandsMixin(CommandsMixinBase):
         finally:
             # Back to the client's own protocol, so the EVAL reply itself is shaped for it.
             self._script_resp = None
+            self._fieldsets = caller_fieldsets
             # Clean up Lua tables (KEYS/ARGV) created for this script execution
             lua_runtime.execute("collectgarbage()")
 

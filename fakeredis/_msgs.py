@@ -6,6 +6,9 @@ SYNTAX_ERROR_LIMIT_ONLY_WITH_MSG = (
     "ERR syntax error, LIMIT is only supported in combination with either BYSCORE or BYLEX"
 )
 INVALID_HASH_MSG = "ERR hash value is not an integer"
+NO_SUCH_FIELDSET_MSG = "ERR no such fieldset"
+DUPLICATE_FIELDSET_FIELD_MSG = "ERR duplicate field name in fieldset"
+FIELDSET_VALUE_COUNT_MSG = "ERR value count does not match fieldset field count"
 INVALID_INT_MSG = "ERR value is not an integer or out of range"
 INVALID_FLOAT_MSG = "ERR value is not a valid float"
 INVALID_WEIGHT_MSG = "ERR weight value is not a float"

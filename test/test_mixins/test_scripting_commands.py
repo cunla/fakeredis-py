@@ -901,3 +901,28 @@ def test_eval_returns_resp3_shapes_a_script_built(r: ClientType) -> None:
     """A script may hand back the RESP3 types redis.setresp(3) produces."""
     assert r.eval("return {double=3.5}", 0) in (b"3.5", 3.5)
     assert r.eval("return {map={field='value'}}", 0) in ([b"field", b"value"], {b"field": b"value"})
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8.10")
+@pytest.mark.unsupported_server_types("valkey", "dragonfly", "kividb")
+def test_himport_fieldsets_are_scoped_to_the_script(r: ClientType):
+    raw_command(r, "HIMPORT", "PREPARE", "fs", "a")
+    # A script does not see the caller's fieldsets...
+    with pytest.raises(redis.ResponseError, match="no such fieldset"):
+        r.eval("return redis.pcall('HIMPORT', 'SET', KEYS[1], 'fs', '1')", 1, "foo")
+    # ...it can prepare and use its own...
+    script = "redis.call('HIMPORT', 'PREPARE', 'lfs', 'k', 'j'); return redis.call('HIMPORT', 'SET', KEYS[1], 'lfs', 'v', 'w')"
+    assert r.eval(script, 1, "foo") == b"OK"
+    assert r.hgetall("foo") == {b"k": b"v", b"j": b"w"}
+    # ...which neither a later script nor the caller gets to use.
+    with pytest.raises(redis.ResponseError, match="no such fieldset"):
+        r.eval("return redis.call('HIMPORT', 'SET', KEYS[1], 'lfs', 'v', 'w')", 1, "bar")
+    with pytest.raises(redis.ResponseError, match="no such fieldset"):
+        raw_command(r, "HIMPORT", "SET", "bar", "lfs", "v", "w")
+    assert raw_command(r, "HIMPORT", "SET", "bar", "fs", "1") == b"OK"
+
+
+def test_eval_container_command(r: ClientType):
+    r.xadd("foo", {"a": 1})
+    assert r.eval("return redis.call('XGROUP', 'CREATE', KEYS[1], 'group', '$')", 1, "foo") == b"OK"
+    assert len(r.eval("return redis.call('xinfo', 'groups', KEYS[1])", 1, "foo")) == 1

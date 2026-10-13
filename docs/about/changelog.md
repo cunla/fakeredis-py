@@ -11,6 +11,7 @@ toc_depth: 2
 
 ### 🚀 Features
 
+- feat: implement `HIMPORT PREPARE`/`SET`/`DISCARD`/`DISCARDALL` (Redis 8.10) (#599)
 - feat(json): implement `JSON.NUMPOWBY` (#602)
 - feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra, `pip install "fakeredis[digest]"` (#600, #601)
 

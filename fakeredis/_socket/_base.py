@@ -89,6 +89,7 @@ class BaseFakeSocket(NotificationsMixin):
         self._blocked = False
         self._unblock_reason: bytes | None = None
         self._subkey_events = []
+        self._fieldsets = {}
         self._parser = self._parse_commands()
         self._parser.send(None)
         # Assigned elsewhere
