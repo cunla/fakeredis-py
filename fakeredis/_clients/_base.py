@@ -5,10 +5,15 @@ from typing import Any
 
 import redis
 
+from fakeredis._clients._setup import default_driver_info
 from fakeredis._core import FakeSelector, FakeServer
 from fakeredis._core._server import _create_version
 from fakeredis._typing import ServerType, VersionType
 from fakeredis.model import ClientInfo
+
+# Exact types (not subclasses) a reply element can have that are handed to the client as they are when it does not
+# decode responses.
+_UNDECODED_TYPES = frozenset((bytes, int, float, type(None)))
 
 
 class FakeBaseConnectionMixin:
@@ -46,6 +51,9 @@ class FakeBaseConnectionMixin:
             self._server = FakeServer.get_server(self.server_key, server_type=server_type, version=version)
             self._server.connected = connected
         client_info_arg = kwargs.pop("client_info", {})
+        driver_info = default_driver_info(type(self), kwargs)
+        if driver_info is not None:
+            kwargs["driver_info"] = driver_info
         super().__init__(*args, **kwargs)
         protocol = getattr(self, "protocol", 2)
 
@@ -82,6 +90,9 @@ class FakeBaseConnectionMixin:
 
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):
+            if not getattr(self.encoder, "decode_responses", True):  # type: ignore[attr-defined]
+                # Bulk strings stay bytes, so only what is nested needs a closer look.
+                return [item if type(item) in _UNDECODED_TYPES else self._decode(item) for item in response]
             return [self._decode(item) for item in response]
         elif isinstance(response, dict):
             return {self._decode(k): self._decode(v) for k, v in response.items()}

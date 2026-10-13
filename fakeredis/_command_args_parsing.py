@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import math
 import re
 import sys
@@ -201,6 +202,17 @@ def _default_value(s: str) -> Any:
         return [None] * ind
 
 
+@functools.lru_cache(maxsize=1024)
+def _parse_expected(expected: tuple[str, ...]) -> tuple[dict[bytes, tuple[int, int]], tuple[Any, ...]]:
+    """What `extract_args` needs to know about an `expected` spec: where each argument goes and how many parameters
+    follow it, and the value each argument has when it is absent.
+
+    Commands pass the same handful of literal specs on every call, so this is worked out once per spec.
+    """
+    args_info = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
+    return args_info, tuple(_default_value(k) for k in expected)
+
+
 class _IncompleteArgument(Exception):
     """An option was given without all of the values it takes."""
 
@@ -245,7 +257,7 @@ def extract_args(
         ('~+maxlen', 'nx', 'xx', '+ex', 'keepttl'))
     10, [True, True, 324, False], None
     """
-    args_info: dict[bytes, tuple[int, int]] = {_encode_arg(k): (i, _count_params(k)) for (i, k) in enumerate(expected)}
+    args_info, defaults = _parse_expected(tuple(expected))
 
     def _parse_params(key: bytes, ind: int, _actual_args: tuple[bytes, ...]) -> tuple[Any, int]:
         """Parse an argument from actual args.
@@ -292,33 +304,34 @@ def extract_args(
         else:
             return temp_res, expected_following
 
-    results: list[Any] = [_default_value(key) for key in expected]
+    # A multi-parameter argument defaults to a list, which the caller must not share with the cached spec.
+    results: list[Any] = [list(default) if isinstance(default, list) else default for default in defaults]
     left_args = []
     i = 0
     while i < len(actual_args):
-        found = False
-        for key, arg_info in args_info.items():
-            if null_terminate(actual_args[i]) == key:
-                arg_position, _ = arg_info
-                try:
-                    results[arg_position], parsed = _parse_params(key, i, actual_args)
-                except _IncompleteArgument:
-                    break  # left to the unexpected-argument handling below
+        key = null_terminate(actual_args[i])
+        arg_info = args_info.get(key)
+        if arg_info is not None:
+            try:
+                results[arg_info[0]], parsed = _parse_params(key, i, actual_args)
+            except _IncompleteArgument:
+                pass  # Treat an incomplete option as unexpected when requested.
+            else:
                 i += parsed
-                found = True
-                break
-
-        if not found:
-            if error_on_unexpected:
-                raise (
-                    SimpleError(msgs.SYNTAX_ERROR_MSG)
-                    if exception is None
-                    # The offending argument is echoed as text, not as a bytes repr.
-                    else SimpleError(exception.format(actual_args[i].decode(errors="replace")))
-                )
-            if left_from_first_unexpected:
-                return results, actual_args[i:]
-            left_args.append(actual_args[i])
+                i += 1
+                continue
+        else:
+            pass
+        if error_on_unexpected:
+            raise (
+                SimpleError(msgs.SYNTAX_ERROR_MSG)
+                if exception is None
+                # The offending argument is echoed as text, not as a bytes repr.
+                else SimpleError(exception.format(actual_args[i].decode(errors="replace")))
+            )
+        if left_from_first_unexpected:
+            return results, actual_args[i:]
+        left_args.append(actual_args[i])
         i += 1
     return results, left_args
 

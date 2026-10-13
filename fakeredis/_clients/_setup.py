@@ -4,10 +4,11 @@ Used by the sync and async ``FakeRedisMixin`` classes to translate the arguments
 friends) into the kwargs the real client class expects, wiring in a fakeredis connection pool.
 """
 
+import functools
 import inspect
 import uuid
 import warnings
-from typing import Any, Callable, Dict, Optional, Set, Type
+from typing import Any, Callable, Dict, FrozenSet, Optional, Set, Tuple, Type
 
 from fakeredis._typing import lib_version
 
@@ -34,10 +35,19 @@ def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
     return res
 
 
+@functools.lru_cache(maxsize=64)
+def _init_parameters(init: Callable[..., Any]) -> Tuple[Tuple[inspect.Parameter, ...], FrozenSet[str]]:
+    """The parameters of a client's ``__init__`` (without ``self``) and the ones it warns about.
+
+    Inspecting the signature is slow next to the rest of building a client, and it is the same for every client of a
+    class, so it is done once per ``__init__``.
+    """
+    return tuple(inspect.signature(init).parameters.values())[1:], frozenset(_get_args_to_warn(init))
+
+
 def convert_args_kwargs(klass: Type[object], *args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Interpret the positional and keyword arguments according to the version of redis in use"""
-    parameters = list(inspect.signature(klass.__init__).parameters.values())[1:]
-    args_to_warn = _get_args_to_warn(klass.__init__)
+    parameters, args_to_warn = _init_parameters(klass.__init__)
     # Convert args => kwargs
     kwargs.update({parameters[i].name: args[i] for i in range(len(args))})
     if "path" not in kwargs and "host" not in kwargs:
@@ -124,3 +134,45 @@ def build_client_kwds(
     for key in ("server", "connected", "version", "server_type", "lua_modules"):
         kwds.pop(key, None)
     return kwds
+
+
+_ACCEPTS_DRIVER_INFO: Dict[Type[Any], bool] = {}
+
+
+def _accepts_driver_info(connection_class: Type[Any]) -> bool:
+    """Whether a connection class takes ``driver_info`` (recent redis-py does; older ones and valkey-py do not).
+
+    The parameter is declared by a base class and reached through ``**kwargs``, so every ``__init__`` is looked at.
+    """
+    res = _ACCEPTS_DRIVER_INFO.get(connection_class)
+    if res is None:
+        res = _ACCEPTS_DRIVER_INFO[connection_class] = any(
+            "driver_info" in inspect.signature(vars(klass)["__init__"]).parameters
+            for klass in connection_class.__mro__
+            if "__init__" in vars(klass)
+        )
+    return res
+
+
+@functools.lru_cache(maxsize=None)
+def _client_lib_version() -> Any:
+    from redis.utils import get_lib_version
+
+    return get_lib_version()  # type: ignore[no-untyped-call]
+
+
+def default_driver_info(connection_class: Type[Any], kwargs: Dict[str, Any]) -> Any:
+    """The ``driver_info`` to give a connection that was not told what to report in CLIENT SETINFO, or None when
+    the connection should be left to work it out.
+
+    redis-py fills in a missing ``driver_info`` by reading its own version from the installed package metadata, for
+    every connection it creates, which takes several times longer than everything else a fake connection does to get
+    ready. This builds the same value from a version that is looked up once.
+    """
+    if any(arg in kwargs for arg in ("driver_info", "lib_name", "lib_version")):
+        return None
+    if not _accepts_driver_info(connection_class):
+        return None
+    from redis.driver_info import DriverInfo
+
+    return DriverInfo(lib_version=_client_lib_version())

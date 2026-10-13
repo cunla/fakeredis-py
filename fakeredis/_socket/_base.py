@@ -27,6 +27,10 @@ from fakeredis.model import ClientInfo
 _file_no_counter = itertools.count(8)
 
 
+# Exact types (not subclasses) of reply elements that `_decode_result` has nothing to do for.
+_PLAIN_RESULT_TYPES = frozenset((bytes, int, float, type(None)))
+
+
 def _get_next_file_no() -> int:
     return next(_file_no_counter)
 
@@ -243,7 +247,7 @@ class BaseFakeSocket(NotificationsMixin):
                 unknown_command = True
                 raise
             # ACL check
-            self._server.acl.validate_command(self._client_info.user, self._client_info.as_bytes(), fields)
+            self._server.acl.validate_command(self._client_info.user, self._client_info, fields)
             with self._server.lock:
                 # Clean out old connections
                 while True:
@@ -342,7 +346,7 @@ class BaseFakeSocket(NotificationsMixin):
     def _decode_result(self, result: Any) -> Any:
         """Convert SimpleString and SimpleError, recursively"""
         if isinstance(result, list):
-            return [self._decode_result(r) for r in result]
+            return [r if type(r) in _PLAIN_RESULT_TYPES else self._decode_result(r) for r in result]
         elif isinstance(result, SimpleString):
             return result.value
         elif isinstance(result, SimpleError):
