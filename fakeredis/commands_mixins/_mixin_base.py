@@ -28,6 +28,8 @@ class CommandsMixinBase:
     _db: Database
     _script_resp: int | None = None
     _in_transaction: bool = False
+    # HIMPORT fieldsets, name -> fields in the order HIMPORT PREPARE listed them. They belong to the connection.
+    _fieldsets: dict[bytes, tuple[bytes, ...]]
 
     @property
     def version(self) -> VersionType:

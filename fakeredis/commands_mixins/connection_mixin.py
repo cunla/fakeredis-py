@@ -334,6 +334,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         self._reply_off = self._reply_skip = self._reply_skip_next = False
         self._no_evict = self._no_touch = False
         self._update_client_flags()
+        self._fieldsets.clear()
         self._client_info["name"] = ""
         self._client_info["resp"] = 2
         self._client_info["user"] = "default"

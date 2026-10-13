@@ -901,3 +901,9 @@ def test_eval_returns_resp3_shapes_a_script_built(r: ClientType) -> None:
     """A script may hand back the RESP3 types redis.setresp(3) produces."""
     assert r.eval("return {double=3.5}", 0) in (b"3.5", 3.5)
     assert r.eval("return {map={field='value'}}", 0) in ([b"field", b"value"], {b"field": b"value"})
+
+
+def test_eval_container_command(r: ClientType):
+    r.xadd("foo", {"a": 1})
+    assert r.eval("return redis.call('XGROUP', 'CREATE', KEYS[1], 'group', '$')", 1, "foo") == b"OK"
+    assert len(r.eval("return redis.call('xinfo', 'groups', KEYS[1])", 1, "foo")) == 1
