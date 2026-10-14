@@ -145,3 +145,34 @@ def test_tcp_server_keeps_the_connection_after_a_shutdown_value(tcp_server_addre
         r.set("key", "SHUTDOWN")
         assert r.get("key") == b"SHUTDOWN"
         assert r.client_id() == client_id
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ("INCR", "not-an-int"),  # ERR from a command
+        ("NOTACOMMAND",),  # ERR unknown command
+        ("EVALSHA", "0" * 40, "0"),  # NOSCRIPT
+    ],
+)
+def test_tcp_server_keeps_the_connection_after_an_error_reply(tcp_server_address: tuple[str, int], command):
+    # An error reply is an ordinary reply: a real server keeps serving the connection. redis-py reconnects on its own
+    # when the connection is closed, so compare client ids to catch a dropped connection.
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
+        client_id = r.client_id()
+        r.set("not-an-int", "abc")
+        with pytest.raises(redis.ResponseError):
+            r.execute_command(*command)
+        assert r.ping() is True
+        assert r.client_id() == client_id
+
+
+def test_tcp_server_registered_script_loads_on_noscript(tcp_server_address: tuple[str, int]):
+    # Script.__call__ sends EVALSHA, and on NOSCRIPT loads the script and retries on the same connection.
+    pytest.importorskip("lupa")
+    with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:
+        client_id = r.client_id()
+        r.set("key", "value")
+        script = r.register_script("return redis.call('GET', KEYS[1])")
+        assert script(keys=["key"]) == b"value"
+        assert r.client_id() == client_id
