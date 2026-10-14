@@ -1,0 +1,2305 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for fakeredis python library">
+      
+      
+        <meta name="author" content="Daniel Moran">
+      
+      
+      
+        <link rel="prev" href="../kividb-support/">
+      
+      
+        <link rel="next" href="../supported-commands/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Comparison - fakeredis</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-GJBJBKXT19"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-GJBJBKXT19",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-GJBJBKXT19",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+<meta name="google-adsense-account" content="ca-pub-2802331499006697">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2802331499006697"
+        crossorigin="anonymous"></script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#comparison-with-redis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="fakeredis" class="md-header__button md-logo" aria-label="fakeredis" data-md-component="logo">
+      
+  <img src="../assets/logo-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            fakeredis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Comparison
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/cunla/fakeredis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cunla/fakeredis
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="fakeredis" class="md-nav__button md-logo" aria-label="fakeredis" data-md-component="logo">
+      
+  <img src="../assets/logo-icon.svg" alt="logo">
+
+    </a>
+    fakeredis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/cunla/fakeredis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cunla/fakeredis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../redis-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dragonfly-support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dragonfly support
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../valkey-support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Valkey support
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kividb-support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KiviDB support
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+    <a href="#which-one-to-use" class="md-nav__link">
+      <span class="md-ellipsis">
+        Which one to use
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#features" class="md-nav__link">
+      <span class="md-ellipsis">
+        Features
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#command-coverage" class="md-nav__link">
+      <span class="md-ellipsis">
+        Command coverage
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#client-and-behaviour" class="md-nav__link">
+      <span class="md-ellipsis">
+        Client and behaviour
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#performance" class="md-nav__link">
+      <span class="md-ellipsis">
+        Performance
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+    <nav class="md-nav" aria-label="Performance">
+        <ul class="md-nav__list">
+            
+                
+                    <li class="md-nav__item">
+    <a href="#in-short" class="md-nav__link">
+      <span class="md-ellipsis">
+        In short
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#what-is-measured" class="md-nav__link">
+      <span class="md-ellipsis">
+        What is measured
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#method" class="md-nav__link">
+      <span class="md-ellipsis">
+        Method
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#single-commands" class="md-nav__link">
+      <span class="md-ellipsis">
+        Single commands
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#pipelines" class="md-nav__link">
+      <span class="md-ellipsis">
+        Pipelines
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#whole-collection-reads" class="md-nav__link">
+      <span class="md-ellipsis">
+        Whole-collection reads
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#small-reads-from-large-collections" class="md-nav__link">
+      <span class="md-ellipsis">
+        Small reads from large collections
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#new-client" class="md-nav__link">
+      <span class="md-ellipsis">
+        New client
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#running-the-benchmark" class="md-nav__link">
+      <span class="md-ellipsis">
+        Running the benchmark
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+        </ul>
+    </nav>
+    
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../supported-commands/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported commands
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Supported commands
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../supported-commands/Redis/ARRAY/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis commands
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-commands/RedisJson/JSON/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RedisJSON commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-commands/RedisTimeSeries/TIMESERIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time Series commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../supported-commands/RedisBloom/BF/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Probabilistic commands
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-commands/RedisSearch/SEARCH/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-commands/RedisSearch/SUGGESTION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suggestion commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-commands/DRAGONFLY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dragonfly commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/implement-command/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implementing support for a command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/test-case/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a new test case
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+    <a href="#which-one-to-use" class="md-nav__link">
+      <span class="md-ellipsis">
+        Which one to use
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#features" class="md-nav__link">
+      <span class="md-ellipsis">
+        Features
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#command-coverage" class="md-nav__link">
+      <span class="md-ellipsis">
+        Command coverage
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#client-and-behaviour" class="md-nav__link">
+      <span class="md-ellipsis">
+        Client and behaviour
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+      
+        <li class="md-nav__item">
+    <a href="#performance" class="md-nav__link">
+      <span class="md-ellipsis">
+        Performance
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+    <nav class="md-nav" aria-label="Performance">
+        <ul class="md-nav__list">
+            
+                
+                    <li class="md-nav__item">
+    <a href="#in-short" class="md-nav__link">
+      <span class="md-ellipsis">
+        In short
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#what-is-measured" class="md-nav__link">
+      <span class="md-ellipsis">
+        What is measured
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#method" class="md-nav__link">
+      <span class="md-ellipsis">
+        Method
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#single-commands" class="md-nav__link">
+      <span class="md-ellipsis">
+        Single commands
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#pipelines" class="md-nav__link">
+      <span class="md-ellipsis">
+        Pipelines
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#whole-collection-reads" class="md-nav__link">
+      <span class="md-ellipsis">
+        Whole-collection reads
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#small-reads-from-large-collections" class="md-nav__link">
+      <span class="md-ellipsis">
+        Small reads from large collections
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#new-client" class="md-nav__link">
+      <span class="md-ellipsis">
+        New client
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+                
+                    <li class="md-nav__item">
+    <a href="#running-the-benchmark" class="md-nav__link">
+      <span class="md-ellipsis">
+        Running the benchmark
+      </span>
+    </a>
+
+    <!-- Table of contents list -->
+    
+</li>
+                
+            
+        </ul>
+    </nav>
+    
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/cunla/fakeredis/edit/master/docs/comparison.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/cunla/fakeredis/raw/master/docs/comparison.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="comparison-with-redis">Comparison with Redis<a class="headerlink" href="#comparison-with-redis" title="Permanent link">&para;</a></h1>
+<p>fakeredis gives Python code a Redis to talk to without a server: the real redis-py or valkey-py client, backed by
+an in-memory implementation of the commands. This page puts it next to the alternative it is most often weighed
+against: a <strong>real Redis server</strong>, usually in a container.</p>
+<p>It covers what each one supports first, and <a href="#performance">how fast each one is</a> second.</p>
+<h2 id="which-one-to-use">Which one to use<a class="headerlink" href="#which-one-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>fakeredis</strong> when the code under test uses redis-py or valkey-py and should run unchanged, with no server to
+  start. It implements most of the command set, the Redis Stack modules, and the differences between Redis, Valkey
+  and Dragonfly versions.</li>
+<li><strong>A real server</strong> when the test is about Redis itself: persistence, replication, clustering, memory limits, or
+  timing under load. Nothing else behaves exactly like it.</li>
+</ul>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>fakeredis</th>
+<th>Redis server</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What it is</td>
+<td>A pure-Python library, in-process</td>
+<td>A server process</td>
+</tr>
+<tr>
+<td>Needs a server or container</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Client used by the application</td>
+<td>redis-py or valkey-py itself, with a fake connection underneath</td>
+<td>Any Redis client</td>
+</tr>
+<tr>
+<td>Sync API</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>asyncio API</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Reachable from other processes and languages</td>
+<td>Yes, through <a href="../"><code>TcpFakeServer</code></a></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Client options (<code>decode_responses</code>, <code>db</code>, <code>protocol</code>, <code>from_url</code>, …)</td>
+<td>Yes, they are redis-py's</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Multiple databases (<code>SELECT</code>)</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>RESP2 and RESP3 reply shapes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Transactions (<code>MULTI</code> / <code>EXEC</code> / <code>WATCH</code>)</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Lua scripting</td>
+<td>Lua 5.1 to 5.4, with the <code>lua</code> extra</td>
+<td>Lua 5.1</td>
+</tr>
+<tr>
+<td>Pub/sub</td>
+<td>Yes, including sharded pub/sub</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Keyspace notifications</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>ACL users</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>JSON, time series, probabilistic and vector set commands</td>
+<td>Yes, with extras</td>
+<td>Yes (built into Redis 8)</td>
+</tr>
+<tr>
+<td>Emulates other servers</td>
+<td>Valkey, Dragonfly and KiviDB, and specific versions of each</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Persistence</td>
+<td>No, memory only</td>
+<td>RDB and AOF</td>
+</tr>
+<tr>
+<td>Python versions</td>
+<td>3.8 and later</td>
+<td>Any</td>
+</tr>
+<tr>
+<td>Installation</td>
+<td>A pure-Python wheel</td>
+<td>A server binary or container image</td>
+</tr>
+<tr>
+<td>License</td>
+<td>BSD-3-Clause</td>
+<td>RSALv2, SSPLv1 or AGPLv3</td>
+</tr>
+</tbody>
+</table>
+<h2 id="command-coverage">Command coverage<a class="headerlink" href="#command-coverage" title="Permanent link">&para;</a></h2>
+<p>Of the 395 core commands Redis documents (cluster commands aside), fakeredis implements <strong>312</strong>. It also implements
+all 93 commands of the JSON, time series and probabilistic modules. The
+<a href="../supported-commands/">supported commands</a> pages list them group by group.</p>
+<p>For comparison, <a href="https://github.com/PrefectHQ/burner-redis">burner-redis</a>, an in-process Redis-compatible database
+written in Rust with Python bindings, implements <strong>74</strong> of the core commands in version 0.1.7, and does not support
+JSON commands or any of the other module commands. It describes itself as experimental, so expect that to change.</p>
+<p>What that means in practice:</p>
+<ul>
+<li>fakeredis implements every command in most groups, including the JSON, time series and probabilistic modules.
+  The scripting commands it lacks are the read-only <code>EVAL_RO</code> / <code>EVALSHA_RO</code> variants and <code>SCRIPT DEBUG</code> / <code>KILL</code>;
+  <code>EVAL</code>, <code>EVALSHA</code>, the <code>SCRIPT</code> commands, and the <code>FUNCTION</code> and <code>FCALL</code> family are there. Most of the server
+  group it lacks is administration of a real server (replication, cluster, memory, latency and module management).</li>
+<li>burner-redis covers streams and lists well, which is what its authors' task queue needs, and the basics of the
+  other types. Everyday commands outside that set are missing: <code>INCR</code>, <code>APPEND</code>, <code>MSET</code>, <code>RENAME</code>, <code>TYPE</code>, <code>HKEYS</code>,
+  <code>HLEN</code>, <code>SCARD</code>, <code>SINTER</code>, <code>ZRANK</code>, <code>ZINCRBY</code>, <code>PING</code>, <code>FLUSHDB</code> and <code>DBSIZE</code>, for example. Calling one fails, and
+  so does a Lua script that uses it.</li>
+<li>Search (<code>FT.*</code>) is not implemented by either library.</li>
+</ul>
+<h2 id="client-and-behaviour">Client and behaviour<a class="headerlink" href="#client-and-behaviour" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Drop-in for redis-py.</strong> A <code>FakeRedis</code> <em>is</em> a <code>redis.Redis</code> (or a <code>valkey.Valkey</code>), so everything redis-py does on
+  the client side works as it does against a server: argument encoding, response callbacks, <code>decode_responses</code>,
+  connection pools, <code>from_url</code>, locks, pipelines and pub/sub objects.</li>
+<li><strong>Errors.</strong> fakeredis reproduces Redis' error messages, which redis-py turns into the same exception subclasses a
+  server would cause.</li>
+<li><strong>Server differences.</strong> fakeredis takes a <code>server_type</code> and a <code>version</code>, and answers the way that server does where
+  they differ, so a suite can be run against the behaviour of the server used in production.</li>
+<li><strong>Checked against real servers.</strong> fakeredis' tests run against a real server as well as against fakeredis, and
+  have to pass on both.</li>
+</ul>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p>How fast each one answers, measured with the same operations on both.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These are micro-benchmarks from one machine. Read them for the proportions rather than the absolute values, and
+<a href="#running-the-benchmark">run them yourself</a> if a decision depends on them.</p>
+</div>
+<h3 id="in-short">In short<a class="headerlink" href="#in-short" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Simple commands</strong> such as <code>GET</code>, <code>SET</code> or <code>HSET</code> take 21–37 µs with fakeredis, against 36–42 µs for a round trip
+  to a Redis server on the same machine.</li>
+<li><strong>Creating a client</strong> and running its first command costs about 0.26 ms with fakeredis and 1.1–1.3 ms with a real
+  server.</li>
+<li><strong>Replies with many elements</strong> depend on how redis-py parses them. With redis-py's default parser, fakeredis is
+  3–24 times faster than a real server on most 100,000-element replies, because it hands redis-py Python objects and
+  skips the parsing. With <a href="https://github.com/redis/hiredis-py">hiredis</a> installed it is the other way round for most
+  of them: the real server is 2–3 times as fast as fakeredis (<code>HGETALL</code> is level), and somewhat faster on a small
+  stream read such as a 10-entry <code>XRANGE</code>.</li>
+<li><strong>Pipelines:</strong> a real server is faster than fakeredis here, at about 12 µs per command against 20 µs.</li>
+<li><strong>Lua scripts</strong> are slower in fakeredis than on a real server with either parser.</li>
+</ul>
+<h3 id="what-is-measured">What is measured<a class="headerlink" href="#what-is-measured" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>What it is</th>
+<th>How a command reaches it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>fakeredis</strong></td>
+<td><code>FakeAsyncRedis</code>, 2.40.0 in development: <code>master</code> at <code>4ad978b5</code> with <a href="https://github.com/cunla/fakeredis-py/pull/614">#614</a> and <a href="https://github.com/cunla/fakeredis-py/pull/615">#615</a> applied</td>
+<td>redis-py encodes the command, fakeredis parses and runs it in Python and returns Python objects</td>
+</tr>
+<tr>
+<td><strong>fakeredis (sync)</strong></td>
+<td><code>FakeRedis</code>, the same code behind redis-py's sync client</td>
+<td>As above, without the event loop</td>
+</tr>
+<tr>
+<td><strong>Redis</strong></td>
+<td>Redis 8.10.2 in a container on the host network, reached over loopback TCP</td>
+<td>redis-py encodes the command, the server answers over a socket, redis-py parses the reply</td>
+</tr>
+<tr>
+<td><strong>Redis + hiredis</strong></td>
+<td>The same server, with the <code>hiredis</code> package installed</td>
+<td>As above, with the reply parsed in C</td>
+</tr>
+</tbody>
+</table>
+<p>The Redis columns use redis-py's asyncio client, so <code>FakeAsyncRedis</code> is the like-for-like comparison; the sync
+fakeredis client is listed next to it because it is what most test suites use.</p>
+<h3 id="method">Method<a class="headerlink" href="#method" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Machine: 8-core arm64 Linux VM, CPython 3.14.6, redis-py 8.1.0. Measured on 2026-10-08.</li>
+<li>Each operation is awaited back to back on one connection, with no concurrency. The figure is the best of five
+  rounds, each long enough to run for about 0.15 s (three calls per round for the whole-collection reads).</li>
+<li>Keys and values are short strings. The "large" collections hold 100,000 elements each.</li>
+<li>The rows that read from the large collections were checked to return the same amount of data from both.</li>
+</ul>
+<h3 id="single-commands">Single commands<a class="headerlink" href="#single-commands" title="Permanent link">&para;</a></h3>
+<p>Time per call, in microseconds.</p>
+<table>
+<thead>
+<tr>
+<th>µs per call</th>
+<th style="text-align: right;">fakeredis</th>
+<th style="text-align: right;">fakeredis (sync)</th>
+<th style="text-align: right;">Redis</th>
+<th style="text-align: right;">Redis + hiredis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SET</code></td>
+<td style="text-align: right;">32.0</td>
+<td style="text-align: right;">27.9</td>
+<td style="text-align: right;">40.2</td>
+<td style="text-align: right;">40.5</td>
+</tr>
+<tr>
+<td><code>SET ... EX</code></td>
+<td style="text-align: right;">37.4</td>
+<td style="text-align: right;">33.0</td>
+<td style="text-align: right;">42.2</td>
+<td style="text-align: right;">42.8</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td style="text-align: right;">25.1</td>
+<td style="text-align: right;">21.5</td>
+<td style="text-align: right;">37.6</td>
+<td style="text-align: right;">36.1</td>
+</tr>
+<tr>
+<td><code>MGET</code> (10 keys)</td>
+<td style="text-align: right;">47.7</td>
+<td style="text-align: right;">43.3</td>
+<td style="text-align: right;">70.6</td>
+<td style="text-align: right;">44.8</td>
+</tr>
+<tr>
+<td><code>EXISTS</code></td>
+<td style="text-align: right;">25.4</td>
+<td style="text-align: right;">21.7</td>
+<td style="text-align: right;">37.3</td>
+<td style="text-align: right;">37.2</td>
+</tr>
+<tr>
+<td><code>EXPIRE</code></td>
+<td style="text-align: right;">30.4</td>
+<td style="text-align: right;">26.0</td>
+<td style="text-align: right;">38.2</td>
+<td style="text-align: right;">38.0</td>
+</tr>
+<tr>
+<td><code>TTL</code></td>
+<td style="text-align: right;">24.7</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">36.1</td>
+<td style="text-align: right;">35.7</td>
+</tr>
+<tr>
+<td><code>SET</code> + <code>DEL</code></td>
+<td style="text-align: right;">59.0</td>
+<td style="text-align: right;">51.0</td>
+<td style="text-align: right;">76.7</td>
+<td style="text-align: right;">77.3</td>
+</tr>
+<tr>
+<td><code>INCR</code></td>
+<td style="text-align: right;">28.5</td>
+<td style="text-align: right;">24.5</td>
+<td style="text-align: right;">37.2</td>
+<td style="text-align: right;">36.5</td>
+</tr>
+<tr>
+<td><code>HSET</code></td>
+<td style="text-align: right;">30.7</td>
+<td style="text-align: right;">27.1</td>
+<td style="text-align: right;">38.2</td>
+<td style="text-align: right;">37.9</td>
+</tr>
+<tr>
+<td><code>HGET</code></td>
+<td style="text-align: right;">26.8</td>
+<td style="text-align: right;">23.2</td>
+<td style="text-align: right;">38.1</td>
+<td style="text-align: right;">37.1</td>
+</tr>
+<tr>
+<td><code>HGETALL</code> (10 fields)</td>
+<td style="text-align: right;">29.3</td>
+<td style="text-align: right;">25.8</td>
+<td style="text-align: right;">87.4</td>
+<td style="text-align: right;">39.9</td>
+</tr>
+<tr>
+<td><code>HINCRBY</code></td>
+<td style="text-align: right;">31.1</td>
+<td style="text-align: right;">27.2</td>
+<td style="text-align: right;">37.6</td>
+<td style="text-align: right;">37.2</td>
+</tr>
+<tr>
+<td><code>SADD</code></td>
+<td style="text-align: right;">27.7</td>
+<td style="text-align: right;">24.0</td>
+<td style="text-align: right;">37.1</td>
+<td style="text-align: right;">37.2</td>
+</tr>
+<tr>
+<td><code>SISMEMBER</code></td>
+<td style="text-align: right;">26.7</td>
+<td style="text-align: right;">23.1</td>
+<td style="text-align: right;">37.2</td>
+<td style="text-align: right;">37.2</td>
+</tr>
+<tr>
+<td><code>SMEMBERS</code> (10 members)</td>
+<td style="text-align: right;">28.4</td>
+<td style="text-align: right;">24.2</td>
+<td style="text-align: right;">64.1</td>
+<td style="text-align: right;">38.8</td>
+</tr>
+<tr>
+<td><code>RPUSH</code> + <code>LPOP</code></td>
+<td style="text-align: right;">54.3</td>
+<td style="text-align: right;">46.8</td>
+<td style="text-align: right;">74.2</td>
+<td style="text-align: right;">74.1</td>
+</tr>
+<tr>
+<td><code>LRANGE</code> (10 items)</td>
+<td style="text-align: right;">30.1</td>
+<td style="text-align: right;">26.5</td>
+<td style="text-align: right;">63.9</td>
+<td style="text-align: right;">39.0</td>
+</tr>
+<tr>
+<td><code>ZADD</code></td>
+<td style="text-align: right;">30.7</td>
+<td style="text-align: right;">26.9</td>
+<td style="text-align: right;">38.2</td>
+<td style="text-align: right;">38.0</td>
+</tr>
+<tr>
+<td><code>ZSCORE</code></td>
+<td style="text-align: right;">26.6</td>
+<td style="text-align: right;">23.1</td>
+<td style="text-align: right;">37.8</td>
+<td style="text-align: right;">37.0</td>
+</tr>
+<tr>
+<td><code>ZRANGE</code> (10 members, with scores)</td>
+<td style="text-align: right;">51.0</td>
+<td style="text-align: right;">47.0</td>
+<td style="text-align: right;">104</td>
+<td style="text-align: right;">47.7</td>
+</tr>
+<tr>
+<td><code>XADD</code> (<code>MAXLEN 1000</code>)</td>
+<td style="text-align: right;">43.4</td>
+<td style="text-align: right;">39.0</td>
+<td style="text-align: right;">41.6</td>
+<td style="text-align: right;">40.4</td>
+</tr>
+<tr>
+<td><code>XRANGE</code> (10 entries)</td>
+<td style="text-align: right;">57.1</td>
+<td style="text-align: right;">53.1</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">47.4</td>
+</tr>
+<tr>
+<td><code>XREAD</code> (10 entries)</td>
+<td style="text-align: right;">53.4</td>
+<td style="text-align: right;">50.0</td>
+<td style="text-align: right;">161</td>
+<td style="text-align: right;">51.2</td>
+</tr>
+<tr>
+<td><code>XADD</code> + <code>XREADGROUP</code> + <code>XACK</code></td>
+<td style="text-align: right;">113</td>
+<td style="text-align: right;">101</td>
+<td style="text-align: right;">142</td>
+<td style="text-align: right;">127</td>
+</tr>
+<tr>
+<td><code>PUBLISH</code> (no subscribers)</td>
+<td style="text-align: right;">26.1</td>
+<td style="text-align: right;">22.3</td>
+<td style="text-align: right;">37.3</td>
+<td style="text-align: right;">37.7</td>
+</tr>
+<tr>
+<td><code>EVAL</code> (one <code>redis.call</code>)</td>
+<td style="text-align: right;">59.6</td>
+<td style="text-align: right;">54.3</td>
+<td style="text-align: right;">39.2</td>
+<td style="text-align: right;">38.2</td>
+</tr>
+</tbody>
+</table>
+<p>For a simple command, more than half of fakeredis' time is spent in redis-py's own client code.</p>
+<h3 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h3>
+<p>Time per command, in microseconds, for <code>SET</code>s sent in one pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>µs per command</th>
+<th style="text-align: right;">fakeredis</th>
+<th style="text-align: right;">fakeredis (sync)</th>
+<th style="text-align: right;">Redis</th>
+<th style="text-align: right;">Redis + hiredis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10 <code>SET</code>s in one pipeline</td>
+<td style="text-align: right;">22.5</td>
+<td style="text-align: right;">19.7</td>
+<td style="text-align: right;">17.0</td>
+<td style="text-align: right;">15.7</td>
+</tr>
+<tr>
+<td>100 <code>SET</code>s in one pipeline</td>
+<td style="text-align: right;">20.6</td>
+<td style="text-align: right;">19.1</td>
+<td style="text-align: right;">12.8</td>
+<td style="text-align: right;">11.4</td>
+</tr>
+<tr>
+<td>1,000 <code>SET</code>s in one pipeline</td>
+<td style="text-align: right;">20.6</td>
+<td style="text-align: right;">19.3</td>
+<td style="text-align: right;">11.8</td>
+<td style="text-align: right;">10.3</td>
+</tr>
+</tbody>
+</table>
+<p>A pipeline removes the per-command round trip, which is where a real server loses most of its time. What is left for
+fakeredis is parsing and running each command in Python.</p>
+<h3 id="whole-collection-reads">Whole-collection reads<a class="headerlink" href="#whole-collection-reads" title="Permanent link">&para;</a></h3>
+<p>Time per call, in milliseconds, for a reply of 100,000 elements (10,000 for <code>MGET</code>).</p>
+<table>
+<thead>
+<tr>
+<th>ms per call</th>
+<th style="text-align: right;">fakeredis</th>
+<th style="text-align: right;">fakeredis (sync)</th>
+<th style="text-align: right;">Redis</th>
+<th style="text-align: right;">Redis + hiredis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LRANGE 0 -1</code></td>
+<td style="text-align: right;">10.3</td>
+<td style="text-align: right;">11.0</td>
+<td style="text-align: right;">251</td>
+<td style="text-align: right;">5.37</td>
+</tr>
+<tr>
+<td><code>SMEMBERS</code></td>
+<td style="text-align: right;">25.1</td>
+<td style="text-align: right;">29.2</td>
+<td style="text-align: right;">267</td>
+<td style="text-align: right;">13.2</td>
+</tr>
+<tr>
+<td><code>HGETALL</code></td>
+<td style="text-align: right;">38.8</td>
+<td style="text-align: right;">41.2</td>
+<td style="text-align: right;">522</td>
+<td style="text-align: right;">34.6</td>
+</tr>
+<tr>
+<td><code>ZRANGE 0 -1 WITHSCORES</code></td>
+<td style="text-align: right;">211</td>
+<td style="text-align: right;">216</td>
+<td style="text-align: right;">648</td>
+<td style="text-align: right;">74.5</td>
+</tr>
+<tr>
+<td><code>XRANGE - +</code></td>
+<td style="text-align: right;">378</td>
+<td style="text-align: right;">382</td>
+<td style="text-align: right;">1,219</td>
+<td style="text-align: right;">112</td>
+</tr>
+<tr>
+<td><code>KEYS big:key:*</code></td>
+<td style="text-align: right;">27.1</td>
+<td style="text-align: right;">27.7</td>
+<td style="text-align: right;">264</td>
+<td style="text-align: right;">10.4</td>
+</tr>
+<tr>
+<td><code>MGET</code> (10,000 keys)</td>
+<td style="text-align: right;">29.3</td>
+<td style="text-align: right;">28.8</td>
+<td style="text-align: right;">34.0</td>
+<td style="text-align: right;">9.47</td>
+</tr>
+<tr>
+<td><code>scan_iter(count=1000)</code>, whole keyspace</td>
+<td style="text-align: right;">77.8</td>
+<td style="text-align: right;">70.1</td>
+<td style="text-align: right;">285</td>
+<td style="text-align: right;">32.2</td>
+</tr>
+</tbody>
+</table>
+<p>Without hiredis, a real server's time here is almost entirely redis-py parsing the reply in Python.</p>
+<h3 id="small-reads-from-large-collections">Small reads from large collections<a class="headerlink" href="#small-reads-from-large-collections" title="Permanent link">&para;</a></h3>
+<p>Time per call, in microseconds, on the same 100,000-element collections. Neither slows down with the size of
+the collection for these.</p>
+<table>
+<thead>
+<tr>
+<th>µs per call</th>
+<th style="text-align: right;">fakeredis</th>
+<th style="text-align: right;">fakeredis (sync)</th>
+<th style="text-align: right;">Redis</th>
+<th style="text-align: right;">Redis + hiredis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td style="text-align: right;">25.4</td>
+<td style="text-align: right;">21.8</td>
+<td style="text-align: right;">38.2</td>
+<td style="text-align: right;">36.1</td>
+</tr>
+<tr>
+<td><code>HGET</code></td>
+<td style="text-align: right;">27.2</td>
+<td style="text-align: right;">23.6</td>
+<td style="text-align: right;">38.9</td>
+<td style="text-align: right;">37.1</td>
+</tr>
+<tr>
+<td><code>SISMEMBER</code></td>
+<td style="text-align: right;">27.1</td>
+<td style="text-align: right;">23.5</td>
+<td style="text-align: right;">37.6</td>
+<td style="text-align: right;">37.2</td>
+</tr>
+<tr>
+<td><code>ZSCORE</code></td>
+<td style="text-align: right;">26.9</td>
+<td style="text-align: right;">23.4</td>
+<td style="text-align: right;">38.1</td>
+<td style="text-align: right;">37.0</td>
+</tr>
+<tr>
+<td><code>LRANGE 0 9</code></td>
+<td style="text-align: right;">30.4</td>
+<td style="text-align: right;">26.7</td>
+<td style="text-align: right;">64.8</td>
+<td style="text-align: right;">38.0</td>
+</tr>
+<tr>
+<td><code>ZRANGE 0 9</code></td>
+<td style="text-align: right;">36.4</td>
+<td style="text-align: right;">32.2</td>
+<td style="text-align: right;">67.2</td>
+<td style="text-align: right;">40.0</td>
+</tr>
+<tr>
+<td><code>ZRANGEBYSCORE</code> (10 members from the middle)</td>
+<td style="text-align: right;">36.8</td>
+<td style="text-align: right;">32.6</td>
+<td style="text-align: right;">67.3</td>
+<td style="text-align: right;">40.0</td>
+</tr>
+<tr>
+<td><code>XRANGE - + COUNT 10</code></td>
+<td style="text-align: right;">57.4</td>
+<td style="text-align: right;">52.8</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">46.6</td>
+</tr>
+<tr>
+<td><code>XREAD COUNT 10</code> (from the middle)</td>
+<td style="text-align: right;">54.5</td>
+<td style="text-align: right;">50.5</td>
+<td style="text-align: right;">167</td>
+<td style="text-align: right;">54.1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="new-client">New client<a class="headerlink" href="#new-client" title="Permanent link">&para;</a></h3>
+<p>Time, in microseconds, to create a client, run one <code>GET</code> and close it. This matters for test suites that build a
+client per test. For fakeredis the client is new but the data store is reused; for Redis it includes opening the
+TCP connection.</p>
+<table>
+<thead>
+<tr>
+<th>µs per call</th>
+<th style="text-align: right;">fakeredis</th>
+<th style="text-align: right;">fakeredis (sync)</th>
+<th style="text-align: right;">Redis</th>
+<th style="text-align: right;">Redis + hiredis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create a client, run one <code>GET</code>, close it</td>
+<td style="text-align: right;">264</td>
+<td style="text-align: right;">252</td>
+<td style="text-align: right;">1,251</td>
+<td style="text-align: right;">1,095</td>
+</tr>
+</tbody>
+</table>
+<h3 id="running-the-benchmark">Running the benchmark<a class="headerlink" href="#running-the-benchmark" title="Permanent link">&para;</a></h3>
+<p>The tables are printed by <a href="https://github.com/cunla/fakeredis-py/blob/master/scripts/benchmark.py">
+<code>scripts/benchmark.py</code></a>.
+It needs a real server to compare with, and flushes the database the URL points at.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--network<span class="w"> </span>host<span class="w"> </span>redis:8.10<span class="w"> </span>redis-server<span class="w"> </span>--port<span class="w"> </span><span class="m">6398</span><span class="w"> </span>--save<span class="w"> </span><span class="s2">""</span><span class="w"> </span>--appendonly<span class="w"> </span>no
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># redis-py's default parser</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark.py<span class="w"> </span>--redis-url<span class="w"> </span>redis://localhost:6398/15
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># with hiredis</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>hiredis<span class="w"> </span>python<span class="w"> </span>scripts/benchmark.py<span class="w"> </span>--redis-url<span class="w"> </span>redis://localhost:6398/15
+</code></pre></div>
+<p>The server runs on the host network because a published container port adds a proxy hop: about 11 µs per command
+on the machine used here.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../kividb-support/" class="md-footer__link md-footer__link--prev" aria-label="Previous: KiviDB support">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                KiviDB support
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../supported-commands/" class="md-footer__link md-footer__link--next" aria-label="Next: Supported commands">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Supported commands
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2022 - 2023 Daniel Moran
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.prune", "navigation.sections", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
