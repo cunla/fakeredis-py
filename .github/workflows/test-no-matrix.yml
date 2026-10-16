@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           cache-dependency-path: uv.lock
-          python-version: "3.13"
+          python-version: "3.15"
       - name: Test import
         run: |
           uv build
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.14" ]
+        python-version: [ "3.15" ]
     services:
       keydb:
         image: "redis:8.4.0"
