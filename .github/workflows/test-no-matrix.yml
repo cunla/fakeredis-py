@@ -14,11 +14,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.0
       - uses: actions/setup-python@v7
         with:
           cache-dependency-path: uv.lock
-          python-version: "3.13"
+          python-version: "3.15"
       - name: Test import
         run: |
           uv build
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.14" ]
+        python-version: [ "3.15" ]
     services:
       keydb:
         image: "redis:8.4.0"
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.0
       - uses: actions/setup-python@v7
         with:
           cache-dependency-path: uv.lock
