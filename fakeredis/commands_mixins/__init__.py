@@ -14,6 +14,7 @@ from .set_mixin import SetCommandsMixin
 from .streams_mixin import StreamsCommandsMixin
 from .string_mixin import StringCommandsMixin
 from .transactions_mixin import TransactionsCommandsMixin
+from .sortedset_mixin import SortedSetCommandsMixin
 
 try:
     from .scripting_mixin import ScriptingCommandsMixin
@@ -39,6 +40,7 @@ __all__ = [
     "ScriptingCommandsMixin",
     "ServerCommandsMixin",
     "SetCommandsMixin",
+    "SortedSetCommandsMixin",
     "StreamsCommandsMixin",
     "StringCommandsMixin",
     "TransactionsCommandsMixin",

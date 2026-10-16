@@ -17,13 +17,13 @@ from fakeredis.commands_mixins import (
     ScriptingCommandsMixin,
     ServerCommandsMixin,
     SetCommandsMixin,
+    SortedSetCommandsMixin,
     StreamsCommandsMixin,
     StringCommandsMixin,
     TransactionsCommandsMixin,
 )
-from fakeredis.commands_mixins.sortedset_mixin import SortedSetCommandsMixin
-from fakeredis.server_specific_commands import DragonflyCommandsMixin
-from fakeredis.stack import (
+from fakeredis.commands_mixins.server_specific_commands import DragonflyCommandsMixin
+from fakeredis.commands_mixins.stack import (
     BFCommandsMixin,
     CFCommandsMixin,
     CMSCommandsMixin,
