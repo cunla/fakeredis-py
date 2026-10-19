@@ -583,3 +583,20 @@ def test_lcs(r: ClientType):
     with pytest.raises(Exception) as ctx:
         raw_command(r, "lcs", "key1", "key2", "not_supported_arg")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly has no LCS, see test_dragonfly
+def test_lcs_idx_match_ranges(r: ClientType):
+    # Every match is reported as [start, end] in both strings, also the last one and one-character matches
+    r.mset({"key1": "ohmytext", "key2": "mynewtext"})
+    matches = [[[4, 7], [5, 8], 4], [[2, 3], [0, 1], 2]]
+    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == resp_conversion(
+        r, {b"len": 6, b"matches": matches}, [b"matches", matches, b"len", 6]
+    )
+
+    r.mset({"key1": "abc", "key2": "axc"})
+    matches = [[[2, 2], [2, 2], 1], [[0, 0], [0, 0], 1]]
+    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == resp_conversion(
+        r, {b"len": 2, b"matches": matches}, [b"matches", matches, b"len", 2]
+    )
