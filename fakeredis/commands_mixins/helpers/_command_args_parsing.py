@@ -7,15 +7,11 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from . import _msgs as msgs
-from ._helpers import SimpleError, null_terminate
-from .model import AfterAny, BeforeAny
+from fakeredis import _msgs as msgs
+from fakeredis._commands import RedisType
+from fakeredis.model import AfterAny, BeforeAny, SimpleError
 
-
-class RedisType:
-    @classmethod
-    def decode(cls, *args, **kwargs):  # type:ignore
-        raise NotImplementedError
+from ._helpers import null_terminate
 
 
 class Int(RedisType):

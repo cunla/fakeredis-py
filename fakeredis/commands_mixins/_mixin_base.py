@@ -4,11 +4,11 @@ from collections.abc import Collection
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, Int, extract_args
 from fakeredis._core import CommandItem, Database, FakeServer
-from fakeredis._helpers import SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis._typing import ServerType, VersionType
-from fakeredis.model import BaseModel, ClientInfo
+from fakeredis.model import BaseModel, ClientInfo, SimpleError
+
+from .helpers import Float, Int, SimpleString, casematch, compile_pattern, extract_args
 
 
 def bin_reverse(x: int, bits_count: int) -> int:
@@ -171,3 +171,13 @@ class CommandsMixinBase:
             return SimpleString(key.value.model_type())
         else:
             assert False  # pragma: nocover
+
+    def _cleanup(self, server: Any) -> None:
+        """Remove all the references to `self` from `server`.
+
+        This is called with the server lock held, but it may be some time after self.close.
+        """
+        for subs in server.subscribers.values():
+            subs.discard(self)
+        for subs in server.psubscribers.values():
+            subs.discard(self)
