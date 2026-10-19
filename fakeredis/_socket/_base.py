@@ -21,12 +21,11 @@ from fakeredis._socket._dragonfly import (
 from fakeredis._socket._notifications import NotificationsMixin
 from fakeredis._socket._resp import convert_to_resp2, extract_command, valid_response_type
 from fakeredis._typing import ResponseErrorType, ServerType, VersionType
-from fakeredis.commands_mixins.helpers import QUEUED, NoResponse, SimpleString
+from fakeredis.commands_mixins.helpers import NoResponse, SimpleString
 from fakeredis.model import ClientInfo, SimpleError
 
 _file_no_counter = itertools.count(8)
-
-
+QUEUED = SimpleString(b"QUEUED")
 # Exact types (not subclasses) of reply elements that `_decode_result` has nothing to do for.
 _PLAIN_RESULT_TYPES = frozenset((bytes, int, float, type(None)))
 

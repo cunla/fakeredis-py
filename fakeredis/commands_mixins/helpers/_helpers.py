@@ -23,8 +23,6 @@ class NoResponse:
 
 
 OK = SimpleString(b"OK")
-QUEUED = SimpleString(b"QUEUED")
-BGSAVE_STARTED = SimpleString(b"Background saving started")
 
 # Dragonfly stores at most 256MB in one string, where redis allows 512MB.
 DRAGONFLY_MAX_STRING_SIZE = 2**28

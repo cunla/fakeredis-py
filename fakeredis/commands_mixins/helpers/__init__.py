@@ -1,9 +1,7 @@
 __all__ = [
-    "BGSAVE_STARTED",
     "DRAGONFLY_MAX_STRING_SIZE",
     "MAX_STRING_SIZE",
     "OK",
-    "QUEUED",
     "DbIndex",
     "Float",
     "Int",
@@ -24,11 +22,9 @@ __all__ = [
 
 from ._command_args_parsing import DbIndex, Float, Int, StringTest, Timeout, extract_args, parse_mpop_args
 from ._helpers import (
-    BGSAVE_STARTED,
     DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,
     OK,
-    QUEUED,
     NoResponse,
     SimpleString,
     casematch,
