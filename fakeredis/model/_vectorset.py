@@ -15,8 +15,9 @@ from jsonpath_ng.exceptions import JSONPathError
 from jsonpath_ng.ext import parse
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import SimpleError
 from fakeredis._typing import Self
+
+from ._general import SimpleError
 
 QUANTIZATION_TYPE = Literal["noquant", "bin", "int8"]
 

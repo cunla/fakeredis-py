@@ -8,7 +8,6 @@ __all__ = [
     "Float",
     "Int",
     "NoResponse",
-    "RedisType",
     "SimpleString",
     "StringTest",
     "Timeout",
@@ -23,7 +22,7 @@ __all__ = [
     "parse_mpop_args",
 ]
 
-from ._command_args_parsing import DbIndex, Float, Int, RedisType, StringTest, Timeout, extract_args, parse_mpop_args
+from ._command_args_parsing import DbIndex, Float, Int, StringTest, Timeout, extract_args, parse_mpop_args
 from ._helpers import (
     BGSAVE_STARTED,
     DRAGONFLY_MAX_STRING_SIZE,

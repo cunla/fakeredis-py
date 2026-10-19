@@ -9,8 +9,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.commands_mixins.helpers import SimpleError, StringTest, casematch
-from fakeredis.model import Vector, VectorSet
+from fakeredis.commands_mixins.helpers import StringTest, casematch
+from fakeredis.model import SimpleError, Vector, VectorSet
 
 VSET_ERR_NOTEXIST = "ERR key does not exist"
 

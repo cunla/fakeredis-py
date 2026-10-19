@@ -1,6 +1,6 @@
 """The command registry: the `@command` decorator, the `Signature` it records for each command, and `Key` markers.
 
-Argument converters live in `_command_args_parsing.py`, and `CommandItem` in `_core/_database.py`.
+Argument converters live in `commands_mixins/helpers/_command_args_parsing.py`, and `CommandItem` in `_core/_database.py`.
 """
 
 from __future__ import annotations
@@ -11,11 +11,18 @@ from typing import Any, Callable
 from . import _msgs as msgs
 from ._core import CommandItem, Database
 from ._typing import ServerType, VersionType
-from .commands_mixins.helpers import RedisType
 from .model import SimpleError
 
 SUPPORTED_COMMANDS: dict[str, Signature] = {}  # Dictionary of supported commands name => Signature
 COMMANDS_WITH_SUB: set[str] = set()  # Commands with sub-commands
+
+
+class RedisType:
+    """Base class for argument converters in a command signature"""
+
+    @classmethod
+    def decode(cls, *args, **kwargs):  # type:ignore
+        raise NotImplementedError
 
 
 class Key:

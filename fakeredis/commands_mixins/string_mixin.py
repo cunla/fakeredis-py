@@ -10,8 +10,8 @@ from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, delete_keys
 from fakeredis._typing import VersionType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import SimpleError
 
-from ..model import SimpleError
 from .helpers import (
     DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,

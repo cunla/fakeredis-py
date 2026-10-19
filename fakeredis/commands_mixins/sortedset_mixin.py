@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from typing import Any, TypeVar
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import Key, command
+from fakeredis._commands import Key, RedisType, command
 from fakeredis._core import CommandItem
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, SimpleError, ZSet
@@ -17,7 +17,6 @@ from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, SimpleError
 from .helpers import (
     Float,
     Int,
-    RedisType,
     StringTest,
     Timeout,
     casematch,

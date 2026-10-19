@@ -38,6 +38,7 @@ def _get_next_file_no() -> int:
 class BaseFakeSocket(NotificationsMixin):
     abort_transaction: Callable[[], None]
     _forget_transaction: Callable[[], None]
+    _clear_watches: Callable[[], None]
     _queueing: bool
     ACCEPTED_COMMANDS_WHILE_PUBSUB: ClassVar[set[str]] = {
         "ping",

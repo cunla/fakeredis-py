@@ -8,8 +8,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import SimpleError
 
-from ..model import SimpleError
 from .helpers import OK, Int, SimpleString, Timeout, casematch, extract_args, fix_range, parse_mpop_args
 
 
@@ -290,9 +290,9 @@ class ListCommandsMixin(CommandsMixinBase):
 
     def _lmpop(self, keys: Sequence[bytes], count: int, direction_left: bool, first_pass: bool) -> list[Any] | None:
         if direction_left:
-            op = lambda count: slice(None, count)  # noqa: E731
+            op = lambda count: slice(None, count)
         else:
-            op = lambda count: slice(None, -count - 1, -1)  # noqa: E731
+            op = lambda count: slice(None, -count - 1, -1)
 
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])

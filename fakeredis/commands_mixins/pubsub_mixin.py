@@ -6,8 +6,8 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._commands import command
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import SimpleError
 
-from ..model import SimpleError
 from .helpers import NoResponse, compile_pattern
 
 # Dragonfly only serves the sharded pub/sub introspection subcommands in cluster mode.

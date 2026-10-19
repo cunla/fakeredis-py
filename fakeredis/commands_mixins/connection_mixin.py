@@ -8,8 +8,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import command
 from fakeredis._typing import lib_version
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import SimpleError
 
-from ..model import SimpleError
 from .helpers import OK, DbIndex, Int, NoResponse, SimpleString, casematch
 
 PONG = SimpleString(b"PONG")

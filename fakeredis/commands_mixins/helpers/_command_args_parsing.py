@@ -8,15 +8,10 @@ from collections.abc import Sequence
 from typing import Any
 
 from fakeredis import _msgs as msgs
+from fakeredis._commands import RedisType
+from fakeredis.model import AfterAny, BeforeAny, SimpleError
 
-from ...model import AfterAny, BeforeAny, SimpleError
 from ._helpers import null_terminate
-
-
-class RedisType:
-    @classmethod
-    def decode(cls, *args, **kwargs):  # type:ignore
-        raise NotImplementedError
 
 
 class Int(RedisType):

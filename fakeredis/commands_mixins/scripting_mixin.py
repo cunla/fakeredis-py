@@ -12,7 +12,7 @@ from typing import Any, AnyStr, Callable
 import lupa
 
 from fakeredis._commands import COMMANDS_WITH_SUB, Signature, command
-from fakeredis.model import is_write_command
+from fakeredis.model import SimpleError, is_write_command
 
 from .. import _msgs as msgs
 from .._core import FakeServer
@@ -23,7 +23,6 @@ from .helpers import (
     OK,
     Float,
     Int,
-    SimpleError,
     SimpleString,
     compile_pattern,
     decode_command_bytes,

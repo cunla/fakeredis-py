@@ -20,8 +20,8 @@ from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, Database, delete_keys
 from fakeredis._typing import JsonType, ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.commands_mixins.helpers import OK, Float, Int, SimpleError, SimpleString, casematch, extract_args
-from fakeredis.model import ZSet
+from fakeredis.commands_mixins.helpers import OK, Float, Int, SimpleString, casematch, extract_args
+from fakeredis.model import SimpleError, ZSet
 
 
 def _key_not_found(server_type: ServerType) -> SimpleError:

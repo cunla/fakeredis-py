@@ -6,8 +6,8 @@ from typing import Any
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
-from fakeredis.commands_mixins.helpers import OK, Int, SimpleError, SimpleString, casematch, extract_args
-from fakeredis.model import ScalableCuckooFilter
+from fakeredis.commands_mixins.helpers import OK, Int, SimpleString, casematch, extract_args
+from fakeredis.model import ScalableCuckooFilter, SimpleError
 
 
 class CFCommandsMixin:

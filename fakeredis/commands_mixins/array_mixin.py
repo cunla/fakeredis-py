@@ -6,9 +6,9 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.model import SimpleError
 from fakeredis.model._array import Array
 
-from ..model import SimpleError
 from .helpers import Int, casematch
 
 _ARRAY_WRONG_TYPE = msgs.WRONGTYPE_MSG

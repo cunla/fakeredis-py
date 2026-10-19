@@ -8,8 +8,8 @@ from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.commands_mixins.helpers import OK, Float, Int, SimpleError, SimpleString, casematch, extract_args
-from fakeredis.model import ScalableBloomFilter
+from fakeredis.commands_mixins.helpers import OK, Float, Int, SimpleString, casematch, extract_args
+from fakeredis.model import ScalableBloomFilter, SimpleError
 
 
 class BFCommandsMixin(CommandsMixinBase):
