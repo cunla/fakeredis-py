@@ -186,7 +186,8 @@ jobs:
           PYTEST_MARKERS: ${{ inputs.markers }}
         run: |
           uv run --no-sync pytest -v -m "$PYTEST_MARKERS" \
-            --html=report.html --self-contained-html
+            --html=report.html --self-contained-html \
+            -o generate_report_on_test=false
       - name: Test with coverage
         if: ${{ inputs.coverage }}
         uses: ./.github/actions/test-coverage
