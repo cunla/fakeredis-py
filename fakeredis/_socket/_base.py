@@ -13,7 +13,6 @@ import redis
 from fakeredis import _msgs as msgs
 from fakeredis._commands import SUPPORTED_COMMANDS, Signature
 from fakeredis._core import CommandItem, FakeServer
-from fakeredis._helpers import QUEUED, NoResponse, SimpleError, SimpleString
 from fakeredis._socket._dragonfly import (
     DRAGONFLY_NO_SCRIPT_COMMANDS,
     DRAGONFLY_NO_TRANSACTION_COMMANDS,
@@ -22,7 +21,8 @@ from fakeredis._socket._dragonfly import (
 from fakeredis._socket._notifications import NotificationsMixin
 from fakeredis._socket._resp import convert_to_resp2, extract_command, valid_response_type
 from fakeredis._typing import ResponseErrorType, ServerType, VersionType
-from fakeredis.model import ClientInfo
+from fakeredis.commands_mixins.helpers import QUEUED, NoResponse, SimpleString
+from fakeredis.model import ClientInfo, SimpleError
 
 _file_no_counter = itertools.count(8)
 

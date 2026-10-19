@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from fakeredis._command_args_parsing import Float
-from fakeredis._helpers import SimpleError
+from fakeredis.commands_mixins.helpers import Float
+from fakeredis.model import SimpleError
 
 try:
     import fcntl

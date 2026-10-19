@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Int
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, Database
-from fakeredis._helpers import SimpleError, current_time
-from fakeredis.model import ExpiringMembersSet
+from fakeredis.commands_mixins.helpers import Int
+from fakeredis.model import ExpiringMembersSet, SimpleError, current_time
 
 _INT64_MAX = 2**63 - 1
 _UINT64_MAX = 2**64 - 1

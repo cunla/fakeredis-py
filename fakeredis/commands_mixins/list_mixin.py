@@ -5,11 +5,12 @@ from collections.abc import Sequence
 from typing import Any, Callable, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Int, Timeout, extract_args, parse_mpop_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
-from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, fix_range
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+
+from ..model import SimpleError
+from .helpers import OK, Int, SimpleString, Timeout, casematch, extract_args, fix_range, parse_mpop_args
 
 
 def _list_pop_count(get_slice: Callable[[int], slice], key: CommandItem, count: int) -> list[bytes] | None:
@@ -289,9 +290,9 @@ class ListCommandsMixin(CommandsMixinBase):
 
     def _lmpop(self, keys: Sequence[bytes], count: int, direction_left: bool, first_pass: bool) -> list[Any] | None:
         if direction_left:
-            op = lambda count: slice(None, count)
+            op = lambda count: slice(None, count)  # noqa: E731
         else:
-            op = lambda count: slice(None, -count - 1, -1)
+            op = lambda count: slice(None, -count - 1, -1)  # noqa: E731
 
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])

@@ -9,10 +9,10 @@ from collections.abc import Collection, Sequence
 from typing import Any, Callable
 
 from . import _msgs as msgs
-from ._command_args_parsing import RedisType
 from ._core import CommandItem, Database
-from ._helpers import SimpleError
 from ._typing import ServerType, VersionType
+from .commands_mixins.helpers import RedisType
+from .model import SimpleError
 
 SUPPORTED_COMMANDS: dict[str, Signature] = {}  # Dictionary of supported commands name => Signature
 COMMANDS_WITH_SUB: set[str] = set()  # Commands with sub-commands

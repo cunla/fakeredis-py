@@ -7,9 +7,10 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from . import _msgs as msgs
-from ._helpers import SimpleError, null_terminate
-from .model import AfterAny, BeforeAny
+from fakeredis import _msgs as msgs
+
+from ...model import AfterAny, BeforeAny, SimpleError
+from ._helpers import null_terminate
 
 
 class RedisType:

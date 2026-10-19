@@ -22,8 +22,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import SimpleError
 from fakeredis._typing import ServerType, VersionType
+
+from .helpers import SimpleError
 
 # The flags a function can declare, in the order FUNCTION LIST reports them.
 FUNCTION_FLAGS = (b"no-writes", b"allow-oom", b"allow-stale", b"no-cluster", b"allow-cross-slot-keys")
