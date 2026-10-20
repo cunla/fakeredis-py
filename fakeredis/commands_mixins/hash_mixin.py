@@ -350,7 +350,11 @@ class HashCommandsMixin(CommandsMixinBase):
         deleted_fields: list[bytes] = []
         for i in range(0, len(field_vals), 2):
             field, value = field_vals[i], field_vals[i + 1]
+            # Setting a field clears its TTL, so KEEPTTL restores it afterwards
+            when_kept_ms = hash_val.get_key_expireat(field) if keepttl else None
             hash_val[field] = value
+            if when_kept_ms is not None:
+                hash_val.set_key_expireat(field, when_kept_ms)
             res = 1
             set_fields.append(field)
             if not keepttl and when_ms is not None:

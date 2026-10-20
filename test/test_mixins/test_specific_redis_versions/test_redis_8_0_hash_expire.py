@@ -138,7 +138,8 @@ def test_hsetex_expiration_ex_and_keepttl(r: ClientType):
     time.sleep(1.1)
     # validate keepttl
     assert r.hsetex("test:hash", "foo", "bar1", keepttl=True) == 1
-    assert r.httl("test:hash", "foo")[0] < 10
+    assert 0 < r.httl("test:hash", "foo")[0] < 10
+    assert r.hget("test:hash", "foo") == b"bar1"
 
 
 def test_hsetex_expiration_px(r: ClientType):
