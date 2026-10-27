@@ -136,9 +136,23 @@ def test_hsetex_expiration_ex_and_keepttl(r: ClientType):
 
     assert r.hgetex("test:hash", "foo", "1", "2", "i1", "i2") == [b"bar", b"1", b"2", b"11", b"22"]
     time.sleep(1.1)
-    # validate keepttl
+    # validate keepttl: the field keeps its deadline, so its TTL does not grow back
+    ttl_before = r.httl("test:hash", "foo")[0]
     assert r.hsetex("test:hash", "foo", "bar1", keepttl=True) == 1
-    assert 0 < r.httl("test:hash", "foo")[0] < 10
+    assert 0 < r.httl("test:hash", "foo")[0] <= ttl_before
+    assert r.hget("test:hash", "foo") == b"bar1"
+
+
+@pytest.mark.fake_only
+def test_hsetex_keepttl_on_expired_field(r: ClientType):
+    # fake_only: a real server keeps the old deadline of a field that expired but was not reclaimed yet, so there
+    # the result depends on whether active expiry has run
+    r.delete("test:hash")
+    r.hset("test:hash", "foo", "bar")
+    r.hpexpire("test:hash", 100, "foo")
+    time.sleep(0.2)
+    assert r.hsetex("test:hash", "foo", "bar1", keepttl=True) == 1
+    assert r.httl("test:hash", "foo") == [-1]
     assert r.hget("test:hash", "foo") == b"bar1"
 
 
