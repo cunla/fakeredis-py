@@ -134,3 +134,11 @@ class TransactionsCommandsMixin(CommandsMixinBase):
 
     def notify_watch(self) -> None:
         self._watch_notified = True
+
+    def _cleanup(self, server: Any) -> None:
+        """Remove all the references to `self` from `server`.
+
+        This is called with the server lock held, but it may be some time after self.close.
+        """
+        super()._cleanup(server)
+        self._clear_watches()
