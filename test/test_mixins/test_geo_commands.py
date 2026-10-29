@@ -220,7 +220,6 @@ def test_geosearch(r: ClientType, real_server_details):
     r.geoadd("barcelona", values)
     assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, radius=1000) == [b"place1"]
     assert r.geosearch("barcelona", longitude=2.187, latitude=41.406, radius=1000) == [b"place2"]
-    # assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, height=1000, width=1000) == [b"place1"]
     assert set(r.geosearch("barcelona", member="place3", radius=100, unit="km")) == {b"place2", b"place1", b"place3"}
     # test count
     if real_server_details.server_type == "dragonfly":
@@ -238,6 +237,56 @@ def test_geosearch(r: ClientType, real_server_details):
         b"place3",
         b"place2",
     ]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geosearch_bybox(r: ClientType, real_server_details):
+    r.geoadd(
+        "Sicily",
+        (
+            13.361389,
+            38.115556,
+            "Palermo",
+            15.087269,
+            37.502669,
+            "Catania",
+            12.758489,
+            38.788135,
+            "edge1",
+            17.241510,
+            38.788135,
+            "edge2",
+        ),
+    )
+    # The GEOSEARCH example of the Redis documentation: edge1 and edge2 are just inside the 400 x 400 km box
+    res = r.geosearch("Sicily", longitude=15, latitude=37, width=400, height=400, unit="km", sort="ASC", withdist=True)
+    assert [name for name, _ in res[:2]] == [b"Catania", b"Palermo"]
+    assert {name for name, _ in res[2:]} == {b"edge1", b"edge2"}
+    assert [dist for _, dist in res] == pytest.approx([56.4413, 190.4424, 279.7404, 279.7404], abs=0.001)
+    # The default unit of redis-py is meters
+    assert r.geosearch("Sicily", longitude=15, latitude=37, width=120000, height=120000) == [b"Catania"]
+    # Palermo is 166 km from Catania, but more than 150 km away in longitude, so it is outside a 300 km wide box
+    assert r.geosearch("Sicily", member="Catania", width=300, height=200, unit="km") == [b"Catania"]
+    assert r.geosearchstore("dst", "Sicily", longitude=15, latitude=37, width=400, height=400, unit="km") == 4
+    assert r.zcard("dst") == 4
+
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "BYBOX", -1, 400, "km")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "height or width cannot be negative" in str(ctx.value)
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(
+            r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "BYRADIUS", 200, "km", "BYBOX", 4, 4, "km"
+        )
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "ASC", "WITHDIST")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
+        shapes = "BYRADIUS, BYBOX and BYPOLYGON"
+    else:
+        shapes = "BYRADIUS and BYBOX"
+    assert f"exactly one of {shapes} can be specified for GEOSEARCH" in str(ctx.value)
 
 
 @pytest.mark.parametrize(
