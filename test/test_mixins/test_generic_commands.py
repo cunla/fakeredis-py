@@ -832,6 +832,35 @@ def test_copy_replaces(r: ClientType):
     assert r.get("bar") == b"0"
 
 
+def test_copy_does_not_share_value_with_source(r: ClientType):
+    r.rpush("list", "a")
+    r.sadd("set", "a")
+    r.zadd("zset", {"a": 1})
+    r.hset("hash", "f", "a")
+    for key in ("list", "set", "zset", "hash"):
+        assert r.copy(key, key + "-copy") == 1
+
+    r.rpush("list", "b")
+    r.sadd("set-copy", "b")
+    r.zadd("zset", {"a": 2})
+    r.hset("hash-copy", "f", "b")
+
+    assert r.lrange("list-copy", 0, -1) == [b"a"]
+    assert r.smembers("set") == {b"a"}
+    assert r.zscore("zset-copy", "a") == 1
+    assert r.hget("hash", "f") == b"a"
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly COPY has no DB option
+def test_copy_db_does_not_share_value_with_source(r: ClientType):
+    r.rpush("foo", "a")
+    assert r.copy("foo", "foo", destination_db=1) == 1
+    r.rpush("foo", "b")
+
+    r.select(1)
+    assert r.lrange("foo", 0, -1) == [b"a"]
+
+
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_copy_replaces_with_expiry(r: ClientType, real_server_details):
     expire_at = testtools.far_future_expiry(real_server_details.server_type)
