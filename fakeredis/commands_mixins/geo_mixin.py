@@ -109,10 +109,11 @@ def _find_near(
 
 
 class GeoCommandsMixin(CommandsMixinBase):
-    def _search_box(
+    def _search_box_args(
         self, command: str, radius: float | None, width: float | None, height: float | None
-    ) -> tuple[float, float] | None:
-        """Check that exactly one of BYRADIUS and BYBOX is given, and return the (width, height) of BYBOX."""
+    ) -> list[bytes]:
+        """Check that exactly one of BYRADIUS and BYBOX is given, and return the BYBOX args to pass on to the
+        GEORADIUS implementation."""
         if radius is not None and width is not None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if radius is None and width is None:
@@ -121,10 +122,10 @@ class GeoCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.GEO_SEARCH_SHAPE_MSG_VALKEY_9.format(command))
             raise SimpleError(msgs.GEO_SEARCH_SHAPE_MSG.format(command))
         if width is None or height is None:
-            return None
+            return []
         if width < 0 or height < 0:
             raise SimpleError(msgs.GEO_NEGATIVE_BOX_MSG)
-        return width, height
+        return [b"bybox", Float.encode(width, humanfriendly=False), Float.encode(height, humanfriendly=False)]
 
     def _store_geo_results(self, item_name: bytes, geo_results: list[GeoResult], scoredist: bool) -> int:
         db_item = CommandItem(item_name, self._db, item=self._db.get(item_name), default=ZSet())
@@ -135,20 +136,25 @@ class GeoCommandsMixin(CommandsMixinBase):
         db_item.writeback()
         return len(geo_results)
 
-    def _georadius(
-        self,
-        key: CommandItem,
-        long: float,
-        lat: float,
-        radius: float,
-        *args: bytes,
-        box: tuple[float, float] | None = None,
-    ) -> list[bytes] | int:
-        (withcoord, withdist, _withhash, count, count_any, asc, desc, store, storedist), _left_args = extract_args(
-            args,
-            ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc", "*store", "*storedist"),
-            error_on_unexpected=False,
-            left_from_first_unexpected=False,
+    def _georadius(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[bytes] | int:
+        (withcoord, withdist, _withhash, count, count_any, asc, desc, store, storedist, (width, height)), _left_args = (
+            extract_args(
+                args,
+                (
+                    "withcoord",
+                    "withdist",
+                    "withhash",
+                    "+count",
+                    "any",
+                    "asc",
+                    "desc",
+                    "*store",
+                    "*storedist",
+                    "..bybox",
+                ),
+                error_on_unexpected=False,
+                left_from_first_unexpected=False,
+            )
         )
         count = count or sys.maxsize
         conv = translate_meters_to_unit(args[0]) if len(args) >= 1 else 1
@@ -163,7 +169,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             desc,
             # Dragonfly only orders by distance when ASC/DESC is explicit.
             sort=self.server_type != "dragonfly" or asc or desc,
-            box=box,
+            box=(width, height) if width is not None else None,
         )
 
         if store:
@@ -223,18 +229,10 @@ class GeoCommandsMixin(CommandsMixinBase):
         return res * unit
 
     @command(name="GEORADIUS_RO", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
-    def georadius_ro(
-        self,
-        key: CommandItem,
-        long: float,
-        lat: float,
-        radius: float,
-        *args: bytes,
-        box: tuple[float, float] | None = None,
-    ) -> list[Any]:
-        (withcoord, withdist, _withhash, count, count_any, asc, desc), _left_args = extract_args(
+    def georadius_ro(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[Any]:
+        (withcoord, withdist, _withhash, count, count_any, asc, desc, (width, height)), _left_args = extract_args(
             args,
-            ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc"),
+            ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc", "..bybox"),
             error_on_unexpected=False,
             left_from_first_unexpected=False,
         )
@@ -251,7 +249,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             desc,
             # Dragonfly only orders by distance when ASC/DESC is explicit.
             sort=self.server_type != "dragonfly" or asc or desc,
-            box=box,
+            box=(width, height) if width is not None else None,
         )
 
         ret = _parse_results(geo_results, withcoord, withdist)
@@ -274,18 +272,14 @@ class GeoCommandsMixin(CommandsMixinBase):
         return lat, long
 
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
-    def georadiusbymember(
-        self, key: CommandItem, member_name: bytes, radius: float, *args: bytes, box: tuple[float, float] | None = None
-    ) -> list[bytes] | int:
+    def georadiusbymember(self, key: CommandItem, member_name: bytes, radius: float, *args: bytes) -> list[bytes] | int:
         lat, long = self._member_position(key, member_name)
-        return self._georadius(key, long, lat, radius, *args, box=box)
+        return self._georadius(key, long, lat, radius, *args)
 
     @command(name="GEORADIUSBYMEMBER_RO", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
-    def georadiusbymember_ro(
-        self, key: CommandItem, member_name: bytes, radius: float, *args: float, box: tuple[float, float] | None = None
-    ) -> list[Any]:
+    def georadiusbymember_ro(self, key: CommandItem, member_name: bytes, radius: float, *args: float) -> list[Any]:
         lat, long = self._member_position(key, member_name)
-        return self.georadius_ro(key, long, lat, radius, *args, box=box)  # type: ignore[no-any-return]
+        return self.georadius_ro(key, long, lat, radius, *args)  # type: ignore[no-any-return]
 
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
     def geosearch(self, key: CommandItem, *args: bytes) -> list[Any]:
@@ -299,11 +293,11 @@ class GeoCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if frommember is not None and long is not None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        box = self._search_box("GEOSEARCH", radius, width, height)
+        box_args = self._search_box_args("GEOSEARCH", radius, width, height)
         if frommember:
-            return self.georadiusbymember_ro(key, frommember, radius, *left_args, box=box)  # type: ignore[no-any-return]
+            return self.georadiusbymember_ro(key, frommember, radius, *left_args, *box_args)  # type: ignore[no-any-return]
         else:
-            return self.georadius_ro(key, long, lat, radius, *left_args, box=box)  # type: ignore
+            return self.georadius_ro(key, long, lat, radius, *left_args, *box_args)  # type: ignore
 
     @command(name="GEOSEARCHSTORE", fixed=(bytes, Key(ZSet)), repeat=(bytes,))
     def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> list[Any]:
@@ -317,10 +311,10 @@ class GeoCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if frommember is not None and long is not None:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        box = self._search_box("GEOSEARCHSTORE", radius, width, height)
+        box_args = self._search_box_args("GEOSEARCHSTORE", radius, width, height)
         additional = [b"storedist", dst] if storedist else [b"store", dst]
 
         if frommember:
-            return self.georadiusbymember(src, frommember, radius, *left_args, *additional, box=box)  # type: ignore[no-any-return]
+            return self.georadiusbymember(src, frommember, radius, *left_args, *additional, *box_args)  # type: ignore[no-any-return]
         else:
-            return self._georadius(src, long, lat, radius, *left_args, *additional, box=box)  # type: ignore
+            return self._georadius(src, long, lat, radius, *left_args, *additional, *box_args)  # type: ignore
