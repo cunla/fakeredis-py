@@ -32,7 +32,7 @@ try:
     from ._cf_mixin import CFCommandsMixin
     from ._cms_mixin import CMSCommandsMixin
 except ImportError as e:
-    if e.name == "fakeredis.stack._bf_mixin" or e.name == "fakeredis.stack._cf_mixin":
+    if e.name == "fakeredis.command_mixins.stack._bf_mixin" or e.name == "fakeredis.command_mixins.stack._cf_mixin":
         raise
 
     class BFCommandsMixin:  # type: ignore

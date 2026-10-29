@@ -4,11 +4,13 @@ import time
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import DbIndex
 from fakeredis._commands import command
-from fakeredis._helpers import BGSAVE_STARTED, OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import get_all_commands_info, get_command_info
+from fakeredis.model import SimpleError, get_all_commands_info, get_command_info
+
+from .helpers import OK, DbIndex, SimpleString, casematch
+
+BGSAVE_STARTED = SimpleString(b"Background saving started")
 
 
 class ServerCommandsMixin(CommandsMixinBase):

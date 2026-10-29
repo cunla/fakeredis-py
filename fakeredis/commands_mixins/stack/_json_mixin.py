@@ -15,23 +15,21 @@ from jsonpath_ng import JSONPath, Root
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 
-from fakeredis import _helpers as helpers
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, Int, extract_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, Database, delete_keys
-from fakeredis._helpers import SimpleString
 from fakeredis._typing import JsonType, ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import ZSet
+from fakeredis.commands_mixins.helpers import OK, Float, Int, SimpleString, casematch, extract_args
+from fakeredis.model import SimpleError, ZSet
 
 
-def _key_not_found(server_type: ServerType) -> helpers.SimpleError:
+def _key_not_found(server_type: ServerType) -> SimpleError:
     """The error a JSON command answers with when the key does not exist.
 
     Dragonfly reports the plain `no such key`, where RedisJSON spells the operation out.
     """
-    return helpers.SimpleError(msgs.NO_KEY_MSG if server_type == "dragonfly" else msgs.JSON_KEY_NOT_FOUND)
+    return SimpleError(msgs.NO_KEY_MSG if server_type == "dragonfly" else msgs.JSON_KEY_NOT_FOUND)
 
 
 # Marks a JSON.ARRPOP match that is not an array, which servers report differently from an empty array.
@@ -67,12 +65,12 @@ def _parse_jsonpath(path: str | bytes, server_type: ServerType = "redis") -> JSO
     if server_type == "dragonfly" and "[?" in (path.decode() if isinstance(path, bytes) else path):
         # Dragonfly's JSONPath has no filter expressions: `$.a[?(@.b>1)]` is a syntax error, while wildcards and
         # recursive descent parse as they do on RedisJSON.
-        raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
     path_str: str = _format_path(path)
     try:
         return parse(path_str)
     except JsonPathParserError:
-        raise helpers.SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
+        raise SimpleError(msgs.JSON_PATH_DOES_NOT_EXIST.format(path_str))
 
 
 def _path_is_root(path: JSONPath) -> bool:
@@ -107,7 +105,7 @@ class JSONObject:
         try:
             return json.loads(value)
         except JSONDecodeError:
-            raise helpers.SimpleError(cls.DECODE_ERROR)
+            raise SimpleError(cls.DECODE_ERROR)
 
     @classmethod
     def encode(cls, value: Any) -> bytes | None:
@@ -123,14 +121,14 @@ def _decode_json_number(value: bytes) -> int | float:
     try:
         number = json.loads(value)
     except (JSONDecodeError, UnicodeDecodeError):
-        raise helpers.SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
+        raise SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
     if type(number) not in {int, float}:
-        raise helpers.SimpleError(msgs.JSON_BAD_INPUT_NUMBER_MSG)
+        raise SimpleError(msgs.JSON_BAD_INPUT_NUMBER_MSG)
     if not math.isfinite(number):
         # json.loads reads `NaN` and `Infinity`, which are not JSON, and turns `1e400` into infinity.
         if value.strip().lstrip(b"-")[:1].isdigit():
-            raise helpers.SimpleError(msgs.JSON_NUMBER_OUT_OF_RANGE_MSG.format(len(value)))
-        raise helpers.SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
+            raise SimpleError(msgs.JSON_NUMBER_OUT_OF_RANGE_MSG.format(len(value)))
+        raise SimpleError(msgs.JSON_EXPECTED_VALUE_MSG)
     if type(number) is int and (not _INT64_MIN <= number <= _INT64_MAX or value.strip() == b"-0"):
         return float(number)  # what does not fit an integer is read as a double, and so is `-0`
     return number  # type: ignore[no-any-return]
@@ -241,7 +239,7 @@ def _apply_fpha(value: JsonType, fpha_type: bytes, raw: bytes) -> JsonType:
             quantized = quantizer(float(item))
         except OverflowError:
             line_col = _number_token_positions(raw)[index]
-            raise helpers.SimpleError(msgs.JSON_VALUE_OUT_OF_RANGE_MSG.format(type_name, *line_col))
+            raise SimpleError(msgs.JSON_VALUE_OUT_OF_RANGE_MSG.format(type_name, *line_col))
         return _shortest_float_in_type(quantized, quantizer)
 
     def walk(node: JsonType) -> JsonType:
@@ -274,7 +272,7 @@ def _json_write_iterate(
     path = _parse_jsonpath(path_str, server_type)
     found_matches = path.find(key.value)
     if len(found_matches) == 0:
-        raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+        raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
 
     curr_value = copy.deepcopy(key.value)
     res: list[JsonType] = []
@@ -313,7 +311,7 @@ def _json_read_iterate(
     path = _parse_jsonpath(path_str, server_type)
     found_matches = path.find(key.value)
     if error_on_zero_matches and len(found_matches) == 0 and path_str[0] != ord(b"$"):
-        raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
+        raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_STRING.format(path_str))
     res = [method(item.value) for item in found_matches]
 
     if len(path_str) > 1 and path_str[0] == ord(b"."):
@@ -434,17 +432,17 @@ class JSONCommandsMixin(CommandsMixinBase):
     def _json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> SimpleString | None:
         path = _parse_jsonpath(path_str, self.server_type)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
-            raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
+            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         old_value_list = path.find(key.value)
         (nx, xx), _ = extract_args(args, ("nx", "xx"))
         if xx and nx:
-            raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         old_value = old_value_list[0].value if len(old_value_list) > 0 else None
         if (nx and old_value is not None) or (xx and old_value is None):
             return None
         new_value = path.update_or_create(key.value, value)
         key.update(new_value)
-        return helpers.OK
+        return OK
 
     @command(
         name="JSON.SET",
@@ -461,9 +459,9 @@ class JSONCommandsMixin(CommandsMixinBase):
         left_args: list[bytes] = []
         i = 0
         while i < len(args):
-            if helpers.casematch(args[i], b"fpha"):
+            if casematch(args[i], b"fpha"):
                 if i + 1 >= len(args):
-                    raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.set"))
+                    raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.set"))
                 fpha = args[i + 1].lower()
                 i += 2
             else:
@@ -472,9 +470,9 @@ class JSONCommandsMixin(CommandsMixinBase):
         if fpha is not None:
             # The FPHA argument was added in redis 8.8
             if self.version < (8, 8) or self.server_type != "redis":
-                raise helpers.SimpleError(msgs.SYNTAX_ERROR_MSG)
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
             if fpha not in _FPHA_TYPES:
-                raise helpers.SimpleError(msgs.JSON_INVALID_FPHA_TYPE_MSG)
+                raise SimpleError(msgs.JSON_INVALID_FPHA_TYPE_MSG)
         value = JSONObject.decode(value_bytes)
         if fpha is not None:
             value = _apply_fpha(value, fpha, value_bytes)
@@ -484,10 +482,10 @@ class JSONCommandsMixin(CommandsMixinBase):
     def json_get(self, key: CommandItem, *args: bytes) -> bytes | None:
         if key.value is None:
             return None
-        paths = [arg for arg in args if not helpers.casematch(b"noescape", arg)]
+        paths = [arg for arg in args if not casematch(b"noescape", arg)]
         no_wrapping_array = len(paths) == 1 and paths[0][0] == ord(b".")
 
-        formatted_paths: list[str] = [_format_path(arg) for arg in args if not helpers.casematch(b"noescape", arg)]
+        formatted_paths: list[str] = [_format_path(arg) for arg in args if not casematch(b"noescape", arg)]
         path_values = [self._get_single(key, path, len(formatted_paths) > 1) for path in formatted_paths]
 
         # Emulate the behavior of `redis-py`:
@@ -502,7 +500,7 @@ class JSONCommandsMixin(CommandsMixinBase):
     @command(name="JSON.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mget(self, *args: bytes) -> list[bytes | None]:
         if len(args) < 2:
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mget"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mget"))
         path_str = args[-1]
         keys = [CommandItem(key, self._db, item=self._db.get(key), default=[]) for key in args[:-1]]
 
@@ -565,7 +563,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         self, key: CommandItem, path_str: bytes, *args: bytes
     ) -> list[JsonType | None] | JsonType | None:
         if len(args) == 0:
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.strappend"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.strappend"))
         addition = JSONObject.decode(args[0])
 
         def strappend(val: JsonType) -> tuple[JsonType | None, int | None, bool]:
@@ -582,7 +580,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         self, key: CommandItem, path_str: bytes, *args: bytes
     ) -> list[JsonType | None] | JsonType | None:
         if len(args) == 0:
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.arrappend"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.arrappend"))
 
         addition = [JSONObject.decode(item) for item in args]
 
@@ -600,7 +598,7 @@ class JSONCommandsMixin(CommandsMixinBase):
         self, key: CommandItem, path_str: bytes, index: int, *args: bytes
     ) -> list[JsonType | None] | JsonType | None:
         if len(args) == 0:
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.arrinsert"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.arrinsert"))
 
         addition = [JSONObject.decode(item) for item in args]
 
@@ -699,7 +697,7 @@ class JSONCommandsMixin(CommandsMixinBase):
     )
     def json_numpowby(self, key: CommandItem, path_str: bytes, encoded_exponent: bytes, *args: bytes) -> Any:
         if len(args) > 0 and self.version >= (8, 6):  # earlier versions ignore trailing arguments
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.numpowby"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.numpowby"))
         exponent = _decode_json_number(encoded_exponent)
         if key.value is None:
             raise _key_not_found(self.server_type)
@@ -713,7 +711,7 @@ class JSONCommandsMixin(CommandsMixinBase):
                 continue
             try:
                 new_value = self._json_pow(item.value, exponent)
-            except helpers.SimpleError:
+            except SimpleError:
                 key.update(curr_value)  # the matches before the failing one stay written
                 raise
             curr_value = item.full_path.update(curr_value, new_value)
@@ -727,8 +725,8 @@ class JSONCommandsMixin(CommandsMixinBase):
         numbers = [item for item in res if item is not None]
         if len(numbers) == 0:
             if self.version >= (8, 2):
-                raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER)
-            raise helpers.SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER_WITH_PATH.format(_format_path(path_str)))
+                raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER)
+            raise SimpleError(msgs.JSON_PATH_NOT_FOUND_OR_NOT_NUMBER_WITH_PATH.format(_format_path(path_str)))
         return _encode_json_numbers(numbers[-1])
 
     def _json_pow(self, base: float, exponent: float) -> int | float:
@@ -742,15 +740,15 @@ class JSONCommandsMixin(CommandsMixinBase):
                 wrapped = pow(base, exponent % (1 << 32), 1 << 64)
                 return wrapped - (1 << 64) if wrapped > _INT64_MAX else wrapped
             if not 0 <= exponent < (1 << 32) or (abs(base) > 1 and exponent > 63):
-                raise helpers.SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
+                raise SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
             result: int = base**exponent
             if not _INT64_MIN <= result <= _INT64_MAX:
-                raise helpers.SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
+                raise SimpleError(msgs.JSON_NUMERIC_OVERFLOW_MSG)
             return result
         try:
             return math.pow(base, exponent)
         except (ValueError, OverflowError):  # NaN (a root of a negative number) or infinity
-            raise helpers.SimpleError(msgs.JSON_RESULT_NOT_A_NUMBER_MSG)
+            raise SimpleError(msgs.JSON_RESULT_NOT_A_NUMBER_MSG)
 
     # Read operations
     @command(name="JSON.ARRINDEX", fixed=(Key(), bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
@@ -828,21 +826,21 @@ class JSONCommandsMixin(CommandsMixinBase):
     @command(name="JSON.MSET", fixed=(), repeat=(Key(), bytes, JSONObject), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_mset(self, *args: Any) -> SimpleString:
         if len(args) < 3 or len(args) % 3 != 0:
-            raise helpers.SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mset"))
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("json.mset"))
         for i in range(0, len(args), 3):
             key, path_str, value = args[i], args[i + 1], args[i + 2]
             self._json_set(key, path_str, value)
-        return helpers.OK
+        return OK
 
     @command(name="JSON.MERGE", fixed=(Key(), bytes, JSONObject), repeat=(), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_merge(self, key: CommandItem, path_str: bytes, value: JsonType) -> SimpleString:
         path: JSONPath = _parse_jsonpath(path_str, self.server_type)
         if key.value is not None and (type(key.value) is not dict) and not _path_is_root(path):
-            raise helpers.SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
+            raise SimpleError(msgs.JSON_WRONG_REDIS_TYPE)
         matching = path.find(key.value)
         for item in matching:
             prev_value = item.value if item is not None else {}
             _dict_deep_merge(value, prev_value)
         if len(matching) > 0:
             key.updated()
-        return helpers.OK
+        return OK

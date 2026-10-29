@@ -80,7 +80,7 @@ When receiving the command through the socket, the bytes will be converted to th
 supplied or remain as `bytes`.
 
 Argument types (`Key` is in `_commands.py`, the converters such as `Int`, `Float`, `Timeout` and `StringTest` in
-`_command_args_parsing.py`, and `CommandItem` in `_core/_database.py`):
+`commands_mixins/helpers/_command_args_parsing.py`, and `CommandItem` in `_core/_database.py`):
 
 - `Key(KeyType)` - Will get from the DB the key and validate its value is of `KeyType` (if `KeyType` is supplied).
   It will generate a `CommandItem` from it which provides access to the database value.

@@ -8,7 +8,6 @@ import valkey
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
-from test.testtools import get_protocol_version, resp_conversion
 
 
 def get_ids(results):
@@ -317,7 +316,7 @@ def test_xread_blocking_no_count(r: ClientType):
     r.xadd(k, {"value": 1234})
     streams = {k: "0"}
     m1 = r.xread(streams=streams, block=10)
-    if get_protocol_version(r) == 3:
+    if testtools.get_protocol_version(r) == 3:
         m1 = m1[k][0]
     else:
         m1 = m1[0][1]
@@ -331,21 +330,21 @@ def test_xread(r: ClientType, real_server_details):
 
     # xread starting at 0 returns both messages
     actual = r.xread(streams={stream: 0})
-    assert actual == resp_conversion(
+    assert actual == testtools.resp_conversion(
         r,
         {stream.encode(): [[get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]},
         [[stream.encode(), [get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]],
     )
 
     # xread starting at 0 and count=1 returns only the first message
-    assert r.xread(streams={stream: 0}, count=1) == resp_conversion(
+    assert r.xread(streams={stream: 0}, count=1) == testtools.resp_conversion(
         r,
         {stream.encode(): [[get_stream_message(r, stream, m1)]]},
         [[stream.encode(), [get_stream_message(r, stream, m1)]]],
     )
 
     # xread starting at m1 returns only the second message
-    assert r.xread(streams={stream: m1}) == resp_conversion(
+    assert r.xread(streams={stream: m1}) == testtools.resp_conversion(
         r,
         {stream.encode(): [[get_stream_message(r, stream, m2)]]},
         [[stream.encode(), [get_stream_message(r, stream, m2)]]],
@@ -358,7 +357,7 @@ def test_xread(r: ClientType, real_server_details):
 def test_xread_count(r: ClientType):
     r.xadd("test", {"x": 1})
     result = r.xread(streams={"test": "0"}, count=100, block=10)
-    if get_protocol_version(r) == 3:
+    if testtools.get_protocol_version(r) == 3:
         key, values = b"test", result[b"test"][0][0][1]
     else:
         key, values = result[0][0], result[0][1][0][1]
@@ -539,7 +538,7 @@ def test_xreadgroup(r: ClientType, real_server_details):
     expected_resp3 = {stream.encode(): [[get_stream_message(r, stream, m1), get_stream_message(r, stream, m2)]]}
     actual = r.xreadgroup(group, consumer, streams={stream: ">"})
     # xread starting at 0 returns both messages
-    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
+    assert actual == testtools.resp_conversion(r, expected_resp3, expected_resp2)
 
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, 0)
@@ -548,7 +547,7 @@ def test_xreadgroup(r: ClientType, real_server_details):
     expected_resp3 = {stream.encode(): [[get_stream_message(r, stream, m1)]]}
     actual = r.xreadgroup(group, consumer, streams={stream: ">"}, count=1)
     # xread with count=1 returns only the first message
-    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
+    assert actual == testtools.resp_conversion(r, expected_resp3, expected_resp2)
 
     r.xgroup_destroy(stream, group)
 
@@ -564,14 +563,14 @@ def test_xreadgroup(r: ClientType, real_server_details):
     r.xgroup_destroy(stream, group)
     r.xgroup_create(stream, group, "0")
     tmp = r.xreadgroup(group, consumer, streams={stream: ">"}, noack=True)
-    if get_protocol_version(r) == 3:
+    if testtools.get_protocol_version(r) == 3:
         res = tmp[stream.encode()][0]
     else:
         res = tmp[0][1]
     assert len(res) == 2
     # now there should be nothing pending
     tmp = r.xreadgroup(group, consumer, streams={stream: "0"})
-    if get_protocol_version(r) == 3:
+    if testtools.get_protocol_version(r) == 3:
         res = tmp[stream.encode()][0]
     else:
         res = tmp[0][1]
@@ -583,13 +582,15 @@ def test_xreadgroup(r: ClientType, real_server_details):
     expected_resp2 = [[stream.encode(), [(m1, c1), (m2, c2)]]]
     expected_resp3 = {stream.encode(): [[(m1, c1), (m2, c2)]]}
     actual = r.xreadgroup(group, consumer, streams={stream: ">"})
-    assert actual == resp_conversion(r, expected_resp3, expected_resp2)
+    assert actual == testtools.resp_conversion(r, expected_resp3, expected_resp2)
     # delete all the messages in the stream
     assert r.xtrim(stream, 0) == 2
     # The group keeps the ids of the deleted messages pending, with their fields gone.
     expected_resp2 = [[stream.encode(), [(m1, {}), (m2, {})]]]
     expected_resp3 = {stream.encode(): [[(m1, {}), (m2, {})]]}
-    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
     # A blocking read that finds nothing: on dragonfly under RESP3 the empty-array reply
     # is not something redis-py can parse, so issue it raw there.
     testtools.assert_empty_stream_read(
@@ -1074,7 +1075,7 @@ def test_xread_blocking(create_connection, real_server_details):
     if resp2_shape:  # read unparsed, so the entry's fields come back as a flat array
         assert result[0][0] == b"stream"
         assert result[0][1][0][1] == [b"x", b"1"]
-    elif get_protocol_version(r1) == 2:
+    elif testtools.get_protocol_version(r1) == 2:
         assert result[0][0] == b"stream"
         assert result[0][1][0][1] == {b"x": b"1"}
     else:
@@ -1086,7 +1087,7 @@ def test_stream_ttl(r: ClientType):
     stream = "stream"
 
     m1 = r.xadd(stream, {"foo": "bar"})
-    assert r.xread(streams={stream: 0}) == resp_conversion(
+    assert r.xread(streams={stream: 0}) == testtools.resp_conversion(
         r, {b"stream": [[get_stream_message(r, stream, m1)]]}, [[stream.encode(), [get_stream_message(r, stream, m1)]]]
     )
     assert r.xtrim(stream, 0) == 1
@@ -1134,14 +1135,18 @@ def test_xreadgroup_pel_read(r: ClientType, real_server_details):
 
     expected_resp2 = [[stream.encode(), [(m1, c1), (m2, c2)]]]
     expected_resp3 = {stream.encode(): [[(m1, c1), (m2, c2)]]}
-    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
-    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=100) == resp_conversion(
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=100) == testtools.resp_conversion(
         r, expected_resp3, expected_resp2
     )
 
     expected_resp2 = [[stream.encode(), [(m2, c2)]]]
     expected_resp3 = {stream.encode(): [[(m2, c2)]]}
-    assert r.xreadgroup(group, consumer, streams={stream: m1}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, consumer, streams={stream: m1}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
 
     # PEL read does not advance last_delivered_id
     testtools.assert_empty_stream_read(
@@ -1150,7 +1155,7 @@ def test_xreadgroup_pel_read(r: ClientType, real_server_details):
 
     # other consumer has empty PEL
     tmp = r.xreadgroup(group, "consumer2", streams={stream: "0"})
-    res = tmp[stream.encode()][0] if get_protocol_version(r) == 3 else tmp[0][1]
+    res = tmp[stream.encode()][0] if testtools.get_protocol_version(r) == 3 else tmp[0][1]
     assert len(res) == 0
 
 
@@ -1166,11 +1171,15 @@ def test_xreadgroup_pel_read_multi_consumer(r: ClientType):
 
     expected_resp2 = [[stream.encode(), [(m1, c1)]]]
     expected_resp3 = {stream.encode(): [[(m1, c1)]]}
-    assert r.xreadgroup(group, "consumer1", streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, "consumer1", streams={stream: "0"}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
 
     expected_resp2 = [[stream.encode(), [(m2, c2)]]]
     expected_resp3 = {stream.encode(): [[(m2, c2)]]}
-    assert r.xreadgroup(group, "consumer2", streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, "consumer2", streams={stream: "0"}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
 
 
 def test_xreadgroup_pel_read_count(r: ClientType):
@@ -1184,7 +1193,7 @@ def test_xreadgroup_pel_read_count(r: ClientType):
 
     expected_resp2 = [[stream.encode(), [(m1, c1)]]]
     expected_resp3 = {stream.encode(): [[(m1, c1)]]}
-    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=1) == resp_conversion(
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}, count=1) == testtools.resp_conversion(
         r, expected_resp3, expected_resp2
     )
 
@@ -1214,7 +1223,9 @@ def test_xreadgroup_pel_read_after_ack(r: ClientType):
 
     expected_resp2 = [[stream.encode(), [(m1, c1)]]]
     expected_resp3 = {stream.encode(): [[(m1, c1)]]}
-    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == testtools.resp_conversion(
+        r, expected_resp3, expected_resp2
+    )
 
 
 def test_xreadgroup_pel_read_preserves_group_state(r: ClientType):
@@ -1248,7 +1259,7 @@ def test_xreadgroup_pel_read_deleted_entry(r: ClientType):
     r.xdel(stream, m1)
 
     tmp = r.xreadgroup(group, consumer, streams={stream: "0"})
-    res = tmp[stream.encode()][0] if get_protocol_version(r) == 3 else tmp[0][1]
+    res = tmp[stream.encode()][0] if testtools.get_protocol_version(r) == 3 else tmp[0][1]
     assert len(res) == 1
     assert res[0][0] == m1
 
