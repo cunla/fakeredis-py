@@ -1373,6 +1373,26 @@ def test_xack_after_a_claim_does_not_drive_pending_negative(r: ClientType):
     assert r.xpending(stream, group)["pending"] == 1
 
 
+@pytest.mark.unsupported_server_types("dragonfly")  # Dragonfly checks the IDs before the key and group
+def test_xack_invalid_id_on_missing_key_or_group(r: ClientType):
+    stream, group = "stream", "group"
+    # A missing key or group answers 0 before any ID is looked at.
+    assert r.xack("nokey", group, "notanid") == 0
+    _deliver(r, stream, group, 1)
+    assert r.xack(stream, "nogroup", "notanid") == 0
+
+
+def test_xack_invalid_id(r: ClientType):
+    stream, group = "stream", "group"
+    ids = _deliver(r, stream, group, 2)
+    with pytest.raises(redis.ResponseError, match="Invalid stream ID"):
+        r.xack(stream, group, "notanid")
+    # The bad ID is rejected before the valid one is acknowledged.
+    with pytest.raises(redis.ResponseError, match="Invalid stream ID"):
+        r.xack(stream, group, ids[0], "notanid")
+    assert r.xpending(stream, group)["pending"] == 2
+
+
 def test_xclaim_force_credits_the_claiming_consumer(r: ClientType):
     stream, group = "stream", "group"
     r.xgroup_create(stream, group, id="0", mkstream=True)

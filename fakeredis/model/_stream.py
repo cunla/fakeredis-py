@@ -379,11 +379,8 @@ class StreamGroup:
 
     def ack(self, args: tuple[bytes]) -> int:
         res = 0
-        for k in args:
-            try:
-                parsed = StreamEntryKey.parse_str(k)
-            except Exception:
-                continue
+        # Like Redis, reject a malformed ID before acknowledging any of them.
+        for parsed in [StreamEntryKey.parse_str(k) for k in args]:
             if parsed in self.pel:
                 # An XNACK-released entry is pending but unowned, so there is nobody to charge the acknowledgement to.
                 consumer = self.consumers.get(self.pel[parsed].consumer_name)
