@@ -1,82 +1,68 @@
+# Geohashes as Redis computes them for the GEO commands (geohash.c in Redis).
+#
+# A member's score in the sorted set is a 52-bit geohash: 26 bits of longitude and 26 bits of latitude, interleaved.
+# Redis maps the latitude from the Web Mercator range [-85.05112878, 85.05112878] rather than [-90, 90], so to answer
+# GEOHASH it decodes the score and encodes the position again with the standard ranges.
+#
 # Note: the alphabet in geohash differs from the common base32 alphabet described in IETF's RFC 4648
 # (http://tools.ietf.org/html/rfc4648)
 
 from __future__ import annotations
 
 base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
-decodemap = {base32[i]: i for i in range(len(base32))}
+
+GEO_STEP = 26  # bits for each coordinate
+GEO_LAT_MIN, GEO_LAT_MAX = -85.05112878, 85.05112878
+GEO_LONG_MIN, GEO_LONG_MAX = -180.0, 180.0
 
 
-def geo_decode(geohash: str) -> tuple[float, float, float, float]:
+def _interleave(x: int, y: int) -> int:
+    """Interleave the bits of x and y, x taking the even bits and y the odd ones."""
+    bits = 0
+    for i in range(32):
+        bits |= ((x >> i) & 1) << (2 * i) | ((y >> i) & 1) << (2 * i + 1)
+    return bits
+
+
+def _deinterleave(bits: int) -> tuple[int, int]:
+    """Split interleaved bits back into x (the even bits) and y (the odd bits)."""
+    x = y = 0
+    for i in range(32):
+        x |= ((bits >> (2 * i)) & 1) << i
+        y |= ((bits >> (2 * i + 1)) & 1) << i
+    return x, y
+
+
+def _encode(latitude: float, longitude: float, lat_min: float, lat_max: float) -> int:
+    lat_offset = (latitude - lat_min) / (lat_max - lat_min)
+    long_offset = (longitude - GEO_LONG_MIN) / (GEO_LONG_MAX - GEO_LONG_MIN)
+    return _interleave(int(lat_offset * (1 << GEO_STEP)), int(long_offset * (1 << GEO_STEP)))
+
+
+def geo_encode(latitude: float, longitude: float) -> int:
+    """Encode a position to the 52-bit geohash that Redis keeps as the member's score."""
+    return _encode(latitude, longitude, GEO_LAT_MIN, GEO_LAT_MAX)
+
+
+def geo_decode(score: float) -> tuple[float, float, float, float]:
     """
-    Decode the geohash to its exact values, including the error margins of the result.  Returns four float values:
-    latitude, longitude, the plus/minus error for latitude (as a positive number) and the plus/minus error for longitude
-    (as a positive number).
+    Decode a member's score to the centre of its geohash cell.  Returns four float values: latitude, longitude, the
+    plus/minus error for latitude (as a positive number) and the plus/minus error for longitude (as a positive number).
     """
-    lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
-    lat_err, lon_err = 90.0, 180.0
-    is_longitude = True
-    for c in geohash:
-        cd = decodemap[c]
-        for mask in [16, 8, 4, 2, 1]:
-            if is_longitude:  # adds longitude info
-                lon_err /= 2
-                if cd & mask:
-                    lon_interval = (
-                        (lon_interval[0] + lon_interval[1]) / 2,
-                        lon_interval[1],
-                    )
-                else:
-                    lon_interval = (
-                        lon_interval[0],
-                        (lon_interval[0] + lon_interval[1]) / 2,
-                    )
-            else:  # adds latitude info
-                lat_err /= 2
-                if cd & mask:
-                    lat_interval = (
-                        (lat_interval[0] + lat_interval[1]) / 2,
-                        lat_interval[1],
-                    )
-                else:
-                    lat_interval = (
-                        lat_interval[0],
-                        (lat_interval[0] + lat_interval[1]) / 2,
-                    )
-            is_longitude = not is_longitude
-    lat = (lat_interval[0] + lat_interval[1]) / 2
-    lon = (lon_interval[0] + lon_interval[1]) / 2
-    return lat, lon, lat_err, lon_err
+    lat_bits, long_bits = _deinterleave(int(score))
+    lat_scale, long_scale = GEO_LAT_MAX - GEO_LAT_MIN, GEO_LONG_MAX - GEO_LONG_MIN
+    lat_min = GEO_LAT_MIN + (lat_bits / (1 << GEO_STEP)) * lat_scale
+    lat_max = GEO_LAT_MIN + ((lat_bits + 1) / (1 << GEO_STEP)) * lat_scale
+    long_min = GEO_LONG_MIN + (long_bits / (1 << GEO_STEP)) * long_scale
+    long_max = GEO_LONG_MIN + ((long_bits + 1) / (1 << GEO_STEP)) * long_scale
+    lat = min(max((lat_min + lat_max) / 2, GEO_LAT_MIN), GEO_LAT_MAX)
+    long = min(max((long_min + long_max) / 2, GEO_LONG_MIN), GEO_LONG_MAX)
+    return lat, long, (lat_max - lat_min) / 2, (long_max - long_min) / 2
 
 
-def geo_encode(latitude: float, longitude: float, precision: int = 12) -> str:
-    """
-    Encode a position given in float arguments latitude, longitude to a geohash which will have the character count
-    precision.
-    """
-    lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
-    geohash, bits = [], [16, 8, 4, 2, 1]  # type: ignore
-    bit, ch = 0, 0
-    is_longitude = True
-
-    def next_interval(curr: float, interval: tuple[float, float], ch: int) -> tuple[tuple[float, float], int]:
-        mid = (interval[0] + interval[1]) / 2
-        if curr > mid:
-            ch |= bits[bit]
-            return (mid, interval[1]), ch
-        else:
-            return (interval[0], mid), ch
-
-    while len(geohash) < precision:
-        if is_longitude:
-            lon_interval, ch = next_interval(longitude, lon_interval, ch)
-        else:
-            lat_interval, ch = next_interval(latitude, lat_interval, ch)
-        is_longitude = not is_longitude
-        if bit < 4:
-            bit += 1
-        else:
-            geohash += base32[ch]
-            bit = 0
-            ch = 0
-    return "".join(geohash)
+def geohash_string(score: float) -> str:
+    """The standard geohash of a member's position, as GEOHASH gives it: the 52 bits make 10 characters, and Redis
+    pads them to 11 with a "0"."""
+    lat, long, _, _ = geo_decode(score)
+    bits = _encode(lat, long, -90.0, 90.0)
+    return "".join(base32[(bits >> (52 - (i + 1) * 5)) & 0x1F] for i in range(10)) + "0"
