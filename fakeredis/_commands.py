@@ -59,7 +59,7 @@ class Signature:
             raise SimpleError(msg)
 
     def apply(
-        self, args: Sequence[Any], db: Database, version: VersionType
+        self, args: Sequence[Any], db: Database, version: VersionType, server_type: ServerType = "redis"
     ) -> tuple[Any] | tuple[list[Any], list[CommandItem]]:
         """Returns a tuple, which is either:
         - transformed args and a dict of CommandItems; or
@@ -77,8 +77,10 @@ class Signature:
                 if type_.missing_return is not Key.UNSPECIFIED and arg not in db:
                     return (type_.missing_return,)
             elif type_ is not bytes:
-                args_list[i] = type_.decode(
-                    args_list[i],
+                args_list[i] = (
+                    type_.decode(args_list[i], server_type=server_type)  # type: ignore[call-arg]
+                    if getattr(type_, "SERVER_AWARE", False)
+                    else type_.decode(args_list[i])
                 )
 
         # Second pass: read keys and check their types
