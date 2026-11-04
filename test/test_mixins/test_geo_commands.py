@@ -317,8 +317,6 @@ def test_geosearch_bybox_options(r: ClientType):
         (("FROMLONLAT", 15, 37, "BYBOX", 1, "abc", "km"), "need numeric height"),
         (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "parsec"), "unsupported unit provided"),
         (("FROMLONLAT", 15, 37, "BYBOX", 1, 1), "syntax error"),
-        (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "BYRADIUS", 1, "km"), "syntax error"),
-        (("FROMMEMBER", "Catania", "FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km"), "syntax error"),
         (("FROMLONLAT", 15, 37, "BYRADIUS", -1, "km"), "radius cannot be negative"),
         (("BYBOX", 1, 1, "km", "ASC"), "exactly one of FROMMEMBER or FROMLONLAT can be specified for GEOSEARCH"),
         (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "ANY"), "the ANY argument requires COUNT argument"),
@@ -334,6 +332,65 @@ def test_geosearch_bybox_options(r: ClientType):
         )
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     assert "GEOSEARCHSTORE is not compatible with WITHDIST, WITHHASH and WITHCOORD options" in str(ctx.value)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # rejects it too, but with its own error message
+@pytest.mark.parametrize(
+    "shapes",
+    [
+        ("BYRADIUS", 200, "km", "BYBOX", 400, 400, "km"),
+        ("BYBOX", 400, 400, "km", "BYRADIUS", 200, "km"),
+        ("BYBOX", 400, 400, "km", "ASC", "BYRADIUS", 200, "km"),
+    ],
+)
+@pytest.mark.parametrize("origin", [("FROMLONLAT", 15, 37), ("FROMMEMBER", "Catania")])
+def test_geosearch_byradius_and_bybox_are_exclusive(r: ClientType, origin: tuple[Any, ...], shapes: tuple[Any, ...]):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    for command in (("GEOSEARCH", "Sicily"), ("GEOSEARCHSTORE", "dst", "Sicily")):
+        with pytest.raises(Exception) as ctx:
+            testtools.raw_command(r, *command, *origin, *shapes)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert "syntax error" in str(ctx.value)
+    assert r.exists("dst") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # rejects it too, but with its own error message
+@pytest.mark.parametrize(
+    "origins",
+    [
+        ("FROMMEMBER", "Catania", "FROMLONLAT", 15, 37),
+        ("FROMLONLAT", 15, 37, "FROMMEMBER", "Catania"),
+        ("FROMLONLAT", 15, 37, "ASC", "FROMMEMBER", "Catania"),
+        # The member is only looked up when FROMMEMBER is accepted, so a missing one still gives the syntax error
+        ("FROMLONLAT", 15, 37, "FROMMEMBER", "missing"),
+    ],
+)
+@pytest.mark.parametrize("shape", [("BYRADIUS", 200, "km"), ("BYBOX", 400, 400, "km")])
+@pytest.mark.parametrize("key", ["Sicily", "missing-key"])
+def test_geosearch_frommember_and_fromlonlat_are_exclusive(
+    r: ClientType, key: str, origins: tuple[Any, ...], shape: tuple[Any, ...]
+):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    for command in (("GEOSEARCH", key), ("GEOSEARCHSTORE", "dst", key)):
+        with pytest.raises(Exception) as ctx:
+            testtools.raw_command(r, *command, *origins, *shape)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert "syntax error" in str(ctx.value)
+    assert r.exists("dst") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geosearch_missing_member_reported_before_fromlonlat(r: ClientType, real_server_details):
+    # FROMMEMBER looks its member up as soon as it is parsed, so a missing member is reported before the FROMLONLAT
+    # that follows it is rejected
+    r.geoadd("Sicily", (15.087269, 37.502669, "Catania"))
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMMEMBER", "nope", "FROMLONLAT", 15, 37, "BYRADIUS", 1, "km")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
+        assert "member nope does not exist" in str(ctx.value)
+    else:
+        assert "could not decode requested zset member" in str(ctx.value)
 
 
 @pytest.mark.parametrize(
