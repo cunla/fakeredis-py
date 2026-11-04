@@ -77,6 +77,29 @@ def test_geopos(r: ClientType):
     ]
 
 
+def test_geoadd_scores(r: ClientType):
+    # The score of a member is its 52-bit geohash, so sorted set commands work on the key, and GEO commands on a
+    # sorted set with such scores.
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    assert testtools.raw_command(r, "zscore", "Sicily", "Palermo") == resp_conversion(
+        r, 3479099956230698.0, b"3479099956230698"
+    )
+    assert r.zscore("Sicily", "Catania") == 3479447370796909
+    assert r.zrangebyscore("Sicily", 3479447370796909, "+inf") == [b"Catania"]
+    assert r.zcount("Sicily", "-inf", "+inf") == 2
+    assert r.zunionstore("copy", ["Sicily"]) == 2
+    assert r.geopos("copy", "Palermo") == [pytest.approx((13.361389, 38.115556), 0.00001)]
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geo_store_scores(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    assert r.georadius("Sicily", 15, 37, 200, unit="km", store="near") == 2
+    assert r.zscore("near", "Palermo") == 3479099956230698
+    assert r.geosearchstore("near2", "Sicily", longitude=15, latitude=37, radius=200, unit="km") == 2
+    assert r.zscore("near2", "Catania") == 3479447370796909
+
+
 def test_geodist(r: ClientType):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     assert r.geoadd("barcelona", values) == 2

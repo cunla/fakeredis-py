@@ -10,7 +10,7 @@ from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.geo import distance, geo_decode, geo_encode
+from fakeredis.geo import distance, geo_decode, geo_encode, geohash_string
 from fakeredis.model import ZSet
 
 _UNIT_TO_M = {b"km": 0.001, b"mi": 0.000621371, b"ft": 3.28084, b"m": 1}
@@ -152,7 +152,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             ):
                 raise SimpleError(msgs.GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
             should_add = (name in zset and not xx) or (name not in zset and not nx)
-            if should_add and zset.add(name, geo_encode(lat, long, 10)):
+            if should_add and zset.add(name, float(geo_encode(lat, long))):
                 changed_items += 1
         if changed_items:
             key.updated()
@@ -163,7 +163,7 @@ class GeoCommandsMixin(CommandsMixinBase):
     @command(name="GEOHASH", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def geohash(self, key: CommandItem, *members: bytes) -> list[bytes | None]:
         hashes = map(key.value.get, members)
-        geohash_list: list[bytes | None] = [((x + "0").encode() if x is not None else x) for x in hashes]
+        geohash_list: list[bytes | None] = [(geohash_string(x).encode() if x is not None else x) for x in hashes]
         return geohash_list
 
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
