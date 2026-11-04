@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import TDigest
@@ -153,12 +154,14 @@ class TDigestCommandsMixin(CommandsMixinBase):
     def tdigest_quantile(self, key: CommandItem, *quantiles: float) -> list[float]:
         if key.value is None:
             raise SimpleError(msgs.TDIGEST_KEY_NOT_EXISTS)
-        if len(key.value) <= 1:
-            return [float("nan")]
+        if any(q < 0 or q > 1 for q in quantiles):
+            raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
+        # Before redis 8.10, a digest holding a single observation had no quantiles either.
+        single_is_nan = self.server_type != "redis" or self.version < (8, 10)
+        if len(key.value) == 0 or (len(key.value) == 1 and single_is_nan):
+            return [float("nan")] * len(quantiles)
         res: list[float] = []
         for q in quantiles:
-            if q < 0 or q > 1:
-                raise SimpleError(msgs.TDIGEST_BAD_QUANTILE)
             ind = int(q * len(key.value))
             if ind == len(key.value):
                 ind -= 1

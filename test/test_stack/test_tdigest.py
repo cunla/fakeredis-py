@@ -150,6 +150,7 @@ def test_tdigest_byrevrank(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.supported_server_versions(max_redis_ver="8.9")
 def test_tdigest_quantile_nan(r: redis.Redis):
     r.tdigest().create("foo")
     r.tdigest().add("foo", [123])
@@ -163,6 +164,15 @@ def test_tdigest_quantile_nan(r: redis.Redis):
 
     res = r.tdigest().quantile("foo", 1)[0]
     assert math.isnan(float(res)), f"Expected NaN, got {res}"
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8.10")
+def test_tdigest_quantile_single_observation(r: redis.Redis):
+    """Since redis 8.10, every quantile of a single observation is that observation."""
+    r.tdigest().create("foo")
+    assert all(math.isnan(float(x)) for x in r.tdigest().quantile("foo", 0.5, 0.9))
+    r.tdigest().add("foo", [123])
+    assert [float(x) for x in r.tdigest().quantile("foo", 0, 0.5, 1)] == [123.0, 123.0, 123.0]
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")

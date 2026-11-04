@@ -28,6 +28,7 @@ hash_commands = (
     | commands(st.just("hstrlen"), keys, fields)
     | commands(
         st.just("hpersist"),
+        keys,
         st.just("fields"),
         st.just(2),
         st.lists(fields, min_size=2, max_size=2),
@@ -43,9 +44,9 @@ hash_commands = (
 )
 
 hash_commands_redis7 = (
-    commands(st.just("hpersist"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
-    | commands(st.just("hexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
-    | commands(st.just("hpexpiretime"), st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+    commands(st.just("hpersist"), keys, st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+    | commands(st.just("hexpiretime"), keys, st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
+    | commands(st.just("hpexpiretime"), keys, st.just("fields"), st.just(2), st.lists(fields, min_size=2, max_size=2))
     | commands(
         st.just("hexpire"),
         keys,

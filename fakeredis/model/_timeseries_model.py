@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from typing import Callable
+import bisect
+from typing import TYPE_CHECKING, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import Database, SimpleError
+from fakeredis._helpers import SimpleError
 
 from ._base_type import BaseModel
+
+if TYPE_CHECKING:
+    from fakeredis._core import Database
 
 
 class TimeSeries(BaseModel):
@@ -149,18 +153,23 @@ class TimeSeries(BaseModel):
         align = align or 0
         value_min = value_min or float("-inf")
         value_max = value_max or float("inf")
-        rule = TimeSeriesRule(self, TimeSeries(b"", self._db), aggregator, bucket_duration)
-        for x in self.sorted_list:
-            if from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max and (filter_ts is None or x[0] in filter_ts):
-                rule.add_record((x[0], x[1]), bucket_timestamp)
+        rule = TimeSeriesRule(self, TimeSeries(b"", self._db), aggregator, bucket_duration, align)
+        samples = [
+            x
+            for x in self.sorted_list
+            if from_ts <= x[0] <= to_ts and value_min <= x[1] <= value_max and (filter_ts is None or x[0] in filter_ts)
+        ]
+        for x in samples:
+            rule.add_record((x[0], x[1]), bucket_timestamp)
 
         if latest and len(rule.current_bucket) > 0:
             rule.apply_curr_bucket(bucket_timestamp)
-        if empty:
+        if empty and len(rule.dest_key.sorted_list) > 0:
+            samples.sort()
             min_bucket_ts = rule.dest_key.sorted_list[0][0]
             for ts in range(min_bucket_ts, rule.current_bucket_start_ts, bucket_duration):
                 if ts not in rule.dest_key.ts_ind_map:
-                    rule.dest_key.add(ts, float("nan"))
+                    rule.dest_key.add(ts, _empty_bucket_value(rule.aggregator, samples, ts))
             rule.dest_key.sorted_list = sorted(rule.dest_key.sorted_list)
         if reverse:
             rule.dest_key.sorted_list.reverse()
@@ -210,6 +219,19 @@ AGGREGATORS: dict[bytes, Callable[[list[float]], float]] = {
 }
 
 
+def _empty_bucket_value(aggregator: bytes, samples: list[tuple[int, float]], bucket_start_ts: int) -> float:
+    """The value EMPTY reports for a bucket without samples; `samples` must be sorted by timestamp.
+
+    `twa` should interpolate between the samples around the bucket, which is not modelled, so it reports NaN.
+    """
+    if aggregator in (b"sum", b"count"):
+        return 0.0
+    if aggregator == b"last":
+        before = bisect.bisect_left(samples, (bucket_start_ts, float("-inf")))
+        return samples[before - 1][1] if before > 0 else float("nan")
+    return float("nan")
+
+
 def apply_aggregator(
     bucket: list[tuple[int, float]], bucket_start_ts: int, bucket_duration: int, aggregator: bytes
 ) -> float:
@@ -227,7 +249,7 @@ def apply_aggregator(
         return total / bucket_duration
 
     relevant_values: list[float] = [x[1] for x in bucket]
-    return AGGREGATORS[aggregator](relevant_values)
+    return float(AGGREGATORS[aggregator](relevant_values))
 
 
 class TimeSeriesRule:
@@ -250,7 +272,7 @@ class TimeSeriesRule:
 
     def add_record(self, record: tuple[int, float], bucket_timestamp: bytes | None = None) -> bool:
         ts, _val = record
-        bucket_start_ts = ts - (ts % self.bucket_duration) + self.align_timestamp
+        bucket_start_ts = ts - ((ts - self.align_timestamp) % self.bucket_duration)
         if self.current_bucket_start_ts == bucket_start_ts:
             self.current_bucket.append(record)
         if (

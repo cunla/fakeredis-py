@@ -15,9 +15,11 @@ on:
         default: "3.14"
         options:
           - "3.10"
+          - "3.11"
           - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
       redis-py:
         description: "redis-py version"
         type: choice
@@ -33,9 +35,11 @@ on:
         description: "Server to test against"
         type: choice
         required: true
-        default: "redis:8.8"
+        default: "redis:8.10"
         options:
+          - "redis:8.10"
           - "redis:8.8"
+          - "redis:8.4"
           - "redis:7.4.8"
           - "redis:6.2.17"
           - "valkey/valkey:9.1"
@@ -153,7 +157,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.1.0
+        uses: astral-sh/setup-uv@v10.3.2
       - uses: actions/setup-python@v7
         with:
           cache-dependency-path: uv.lock
@@ -182,7 +186,8 @@ jobs:
           PYTEST_MARKERS: ${{ inputs.markers }}
         run: |
           uv run --no-sync pytest -v -m "$PYTEST_MARKERS" \
-            --html=report.html --self-contained-html
+            --html=report.html --self-contained-html \
+            -o generate_report_on_test=false
       - name: Test with coverage
         if: ${{ inputs.coverage }}
         uses: ./.github/actions/test-coverage

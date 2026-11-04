@@ -6,8 +6,9 @@ from collections.abc import Sequence
 from typing import Any, Callable, List, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, current_time
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import Hash
@@ -17,14 +18,6 @@ DRAGONFLY_MAX_HASH_EXPIRE_SECONDS = 2**26
 
 
 class HashCommandsMixin(CommandsMixinBase):
-    _encodeint: Callable[
-        [
-            int,
-        ],
-        bytes,
-    ]
-    _encodefloat: Callable[[float, bool], bytes]
-    _scan: Callable[[Sequence[bytes], int, bytes], list[bytes | list[bytes]]]
     add_subkey_event: Callable[[bytes, bytes, Sequence[bytes]], None]
 
     def _hset(self, key: CommandItem, *args: bytes) -> int:
@@ -105,7 +98,7 @@ class HashCommandsMixin(CommandsMixinBase):
     def hscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
         no_values = any(casematch(arg, b"novalues") for arg in args)
         scan_args = tuple(arg for arg in args if not casematch(arg, b"novalues")) if no_values else args
-        scan_result = self._scan(key.value, cursor, *scan_args)
+        scan_result = self._scan(key.value, cursor, *scan_args, scanned_key=key.key)
         result_cursor = scan_result[0]
         keys: list[bytes] = cast(List[bytes], scan_result[1])
         if no_values:
@@ -368,6 +361,43 @@ class HashCommandsMixin(CommandsMixinBase):
         self.add_subkey_event(b"hexpire", key.key, expired_fields)
         self.add_subkey_event(b"hdel", key.key, deleted_fields)
         return res
+
+    @command(name="HIMPORT PREPARE", fixed=(bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def himport_prepare(self, name: bytes, *fields: bytes) -> SimpleString:
+        """HIMPORT PREPARE fieldset-name field [field ...]"""
+        if len(set(fields)) != len(fields):
+            raise SimpleError(msgs.DUPLICATE_FIELDSET_FIELD_MSG)
+        self._fieldsets[name] = fields
+        return OK
+
+    @command(name="HIMPORT SET", fixed=(Key(Hash), bytes, bytes), repeat=(bytes,), server_types=("redis",))
+    def himport_set(self, key: CommandItem, name: bytes, *values: bytes) -> SimpleString:
+        """HIMPORT SET key fieldset-name value [value ...]"""
+        fields = self._fieldsets.get(name)
+        if fields is None:
+            raise SimpleError(msgs.NO_SUCH_FIELDSET_MSG)
+        if len(values) != len(fields):
+            raise SimpleError(msgs.FIELDSET_VALUE_COUNT_MSG)
+        # The hash is replaced rather than merged into, which drops the key's TTL and its fields' TTLs with it. Values
+        # pair up with the fields as they were listed, while the hash keeps them in the fieldset's sorted order: shorter
+        # names first, then bytewise.
+        h = Hash()
+        h.update(dict(sorted(zip(fields, values), key=lambda item: (len(item[0]), item[0]))), clear_expiration=False)
+        key.value = h
+        self.add_subkey_event(b"hset", key.key, fields)
+        return OK
+
+    @command(name="HIMPORT DISCARD", fixed=(bytes,), server_types=("redis",))
+    def himport_discard(self, name: bytes) -> int:
+        """HIMPORT DISCARD fieldset-name"""
+        return int(self._fieldsets.pop(name, None) is not None)
+
+    @command(name="HIMPORT DISCARDALL", fixed=(), server_types=("redis",))
+    def himport_discardall(self) -> int:
+        """HIMPORT DISCARDALL"""
+        count = len(self._fieldsets)
+        self._fieldsets.clear()
+        return count
 
 
 def _get_fields(args: Sequence[bytes], with_values: bool = False, command: str = "") -> Sequence[bytes]:

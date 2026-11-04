@@ -47,6 +47,7 @@ pip install fakeredis                        # core, no extras
 pip install "fakeredis[lua]"                 # EVAL / EVALSHA scripting
 pip install "fakeredis[json]"                # JSON.* commands
 pip install "fakeredis[bf]"                  # Bloom / Cuckoo / Count-Min / Top-K filters
+pip install "fakeredis[digest]"              # DIGEST and DELEX IFDEQ / IFDNE (XXH3 digests)
 pip install "fakeredis[probabilistic,json]"  # probabilistic filters + JSON
 ```
 
@@ -329,14 +330,14 @@ implementation that mirrors Redis behaviour, without any network I/O.
 
 ```mermaid
 flowchart LR
-    Client["redis-py / valkey-py\nclient"] -->|"send_command()"| FC["FakeConnection\n_connection.py"]
+    Client["redis-py / valkey-py\nclient"] -->|"send_command()"| FC["FakeConnection\n_clients/_sync.py"]
     FC -->|"_connect()"| FS["FakeSocket\n(mixin stack)"]
     FS -->|"dispatch"| MX["Command mixin\ncommands_mixins/"]
-    MX -->|"read / write"| DB["Database\n_helpers.py"]
+    MX -->|"read / write"| DB["Database\n_core/_database.py"]
     DB -->|"result"| FS
     FS -->|"read_response()"| Client
 
-    SRV["FakeServer\n_server.py"] -. "owns" .-> DB
+    SRV["FakeServer\n_core/_server.py"] -. "owns" .-> DB
     FC -. "references" .-> SRV
 ```
 

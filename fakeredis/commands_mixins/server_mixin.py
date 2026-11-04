@@ -4,7 +4,8 @@ import time
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import DbIndex, command
+from fakeredis._command_args_parsing import DbIndex
+from fakeredis._commands import command
 from fakeredis._helpers import BGSAVE_STARTED, OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import get_all_commands_info, get_command_info
@@ -35,7 +36,6 @@ class ServerCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         for db in self._server.dbs.values():
             db.clear()
-        # TODO: clear watches and/or pubsub as well?
         return OK
 
     @command(())

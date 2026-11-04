@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 import redis
 import redis.client
@@ -325,3 +323,43 @@ def test_multidb(create_connection):
 
     assert "r1" not in r1
     assert "r2" not in r2
+
+
+def _watch_is_invalidated(conn: redis.Redis, key: str, action) -> bool:
+    p = conn.pipeline()
+    try:
+        p.watch(key)
+        action()
+        p.multi()
+        p.ping()
+        try:
+            p.execute()
+        except (redis.WatchError, valkey.WatchError):
+            return True
+        return False
+    finally:
+        p.reset()
+
+
+def test_move_invalidates_watch_on_both_databases(r: redis.Redis, create_connection):
+    other_db = create_connection(db=3)
+    r.set("foo", "bar", ex=100)
+    assert _watch_is_invalidated(other_db, "foo", lambda: r.move("foo", 3))
+    assert 0 < other_db.ttl("foo") <= 100
+
+    other_db.delete("foo")
+    r.set("foo", "bar")
+    assert _watch_is_invalidated(r, "foo", lambda: r.move("foo", 3))
+
+
+def test_smove_of_member_already_in_destination_and_its_watch(r: redis.Redis, real_server_details):
+    r.sadd("src", "m", "x")
+    r.sadd("dst", "m")
+    # Dragonfly counts the destination as modified even though the member was already there.
+    touches_dst = real_server_details.server_type == "dragonfly"
+    assert _watch_is_invalidated(r, "dst", lambda: r.smove("src", "dst", "m")) == touches_dst
+    assert set(r.smembers("src")) == {b"x"}
+    assert set(r.smembers("dst")) == {b"m"}
+
+    r.sadd("src", "y")
+    assert _watch_is_invalidated(r, "dst", lambda: r.smove("src", "dst", "y"))

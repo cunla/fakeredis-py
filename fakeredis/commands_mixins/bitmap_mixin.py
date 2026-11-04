@@ -4,17 +4,17 @@ import re
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import (
+from fakeredis._command_args_parsing import Int
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
+from fakeredis._helpers import (
     DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,
-    CommandItem,
-    Int,
-    Key,
-    command,
+    SimpleError,
+    casematch,
     fix_range,
     fix_range_string,
 )
-from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
@@ -184,13 +184,12 @@ class BitmapCommandsMixin(CommandsMixinBase):
 
     @staticmethod
     def _bitop(op: Callable[[Any, Any], Any], *keys: CommandItem) -> Any:
-        value = keys[0].value
-        ans = keys[0].value
-        i = 1
-        while i < len(keys):
-            value = keys[i].value if keys[i].value is not None else b""
-            ans = bytes(op(a, b) for a, b in zip(ans, value))
-            i += 1
+        # Missing keys count as empty strings and shorter strings are padded with zero bytes up to the longest one.
+        values = [key.value if key.value is not None else b"" for key in keys]
+        size = max(len(value) for value in values)
+        ans = values[0].ljust(size, b"\x00")
+        for value in values[1:]:
+            ans = bytes(op(a, b) for a, b in zip(ans, value.ljust(size, b"\x00")))
         return ans
 
     @command((bytes, Key()), (Key(bytes),))
@@ -206,12 +205,13 @@ class BitmapCommandsMixin(CommandsMixinBase):
         elif casematch(op_name, b"not"):
             if len(keys) != 1:
                 raise SimpleError(msgs.BITOP_NOT_ONE_KEY_ONLY)
-            val = keys[0].value
+            val = keys[0].value or b""
             res = bytes([((1 << 8) - 1 - val[i]) for i in range(len(val))])
         else:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("bitop"))
-        dst.value = res
-        return len(dst.value)
+        # An empty result deletes the destination key instead of storing an empty string.
+        dst.value = res or None
+        return len(res)
 
     def _bitfield_get(self, key: CommandItem, encoding: BitfieldEncoding, offset: int) -> int:
         ans = 0

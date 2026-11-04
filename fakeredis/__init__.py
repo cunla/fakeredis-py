@@ -1,10 +1,15 @@
 from . import _typing
-from ._connection import FakeConnection, FakeRedis, FakeRedisConnection, FakeStrictRedis
-from ._server import FakeServer
-from ._tcp_server import TcpFakeServer
-from .aioredis import FakeAsyncRedisConnection
+from ._clients import (
+    FakeAsyncRedis,
+    FakeAsyncRedisConnection,
+    FakeConnection,
+    FakeRedis,
+    FakeRedisConnection,
+    FakeStrictRedis,
+    TcpFakeServer,
+)
+from ._core import FakeServer
 from .aioredis import FakeConnection as FakeAsyncConnection
-from .aioredis import FakeRedis as FakeAsyncRedis
 
 __version__ = _typing.lib_version
 __author__ = "Daniel Moran"
@@ -29,7 +34,7 @@ __all__ = [
 try:
     import valkey  # noqa: F401
 
-    from ._valkey import FakeAsyncValkey, FakeStrictValkey, FakeValkey  # noqa: F401
+    from ._clients._valkey import FakeAsyncValkey, FakeStrictValkey, FakeValkey  # noqa: F401
 
     __all__.extend(
         [

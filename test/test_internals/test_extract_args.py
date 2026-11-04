@@ -138,3 +138,17 @@ def test_extract_args__extract_maxlen():
     assert maxlen == 10
     assert limit == [324, 123]
     assert sortby == b"dd"
+
+
+def test_extract_args__defaults_are_not_shared_between_calls():
+    (limit, count), _ = extract_args((), ("++limit", "+count"))
+    assert limit == [None, None]
+    assert count is None
+    limit[0] = 5
+
+    (limit, count), _ = extract_args((), ("++limit", "+count"))
+    assert limit == [None, None]
+
+    (limit, count), _ = extract_args((b"LIMIT", b"1", b"2", b"count\0junk", b"3"), ("++limit", "+count"))
+    assert limit == [1, 2]
+    assert count == 3

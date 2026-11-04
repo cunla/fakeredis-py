@@ -184,6 +184,53 @@ def test_xrevrange(r: ClientType):
     assert get_ids(results) == [m4]
 
 
+def test_xrange_xrevrange_count(r: ClientType):
+    stream = "stream"
+    ids = [r.xadd(stream, {"n": i}, id=f"{i}-0") for i in range(1, 11)]
+
+    assert get_ids(r.xrange(stream, count=3)) == ids[:3]
+    assert get_ids(r.xrange(stream, min="4", count=3)) == ids[3:6]
+    assert get_ids(r.xrange(stream, min="(4-0", count=3)) == ids[4:7]
+    assert get_ids(r.xrange(stream, min="4", max="5", count=3)) == ids[3:5]
+    assert get_ids(r.xrange(stream, min="9", count=3)) == ids[8:]
+    assert get_ids(r.xrange(stream, min="5", max="4", count=3)) == []
+    assert get_ids(r.xrange(stream, min="11", count=3)) == []
+    assert get_ids(r.xrange(stream, count=100)) == ids
+
+    assert get_ids(r.xrevrange(stream, count=3)) == ids[:6:-1]
+    assert get_ids(r.xrevrange(stream, max="7", count=3)) == ids[6:3:-1]
+    assert get_ids(r.xrevrange(stream, max="(7-0", count=3)) == ids[5:2:-1]
+    assert get_ids(r.xrevrange(stream, max="5", min="4", count=3)) == ids[4:2:-1]
+    assert get_ids(r.xrevrange(stream, max="2", count=3)) == ids[1::-1]
+    assert get_ids(r.xrevrange(stream, max="4", min="5", count=3)) == []
+    assert get_ids(r.xrevrange(stream, count=100)) == ids[::-1]
+
+
+def test_xread_count_limits(r: ClientType):
+    stream = "stream"
+    ids = [r.xadd(stream, {"n": i}, id=f"{i}-0") for i in range(1, 11)]
+
+    def read_ids(start, count):
+        res = r.xread({stream: start}, count=count)
+        entries = res[0][1] if isinstance(res, list) else res[stream.encode()][0]
+        return get_ids(entries)
+
+    assert read_ids("0", 3) == ids[:3]
+    assert read_ids("4", 3) == ids[4:7]
+    assert read_ids("8", 3) == ids[8:]
+    assert read_ids("0", 100) == ids
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "kividb")
+def test_xread_count_not_positive(r: ClientType):
+    stream = "stream"
+    for i in range(1, 6):
+        r.xadd(stream, {"n": i}, id=f"{i}-0")
+    everything = r.execute_command("XREAD", "STREAMS", stream, "0")
+    assert r.execute_command("XREAD", "COUNT", "0", "STREAMS", stream, "0") == everything
+    assert r.execute_command("XREAD", "COUNT", "-2", "STREAMS", stream, "0") == everything
+
+
 def test_xrevrange_exclusive(r: ClientType):
     stream = "stream"
     m1, m2, m3, m4 = _add_to_stream(r, stream, 4)
@@ -227,6 +274,25 @@ def test_xrange(r: ClientType):
 
     results = r.xrange(stream, max=m2, count=1)
     assert get_ids(results) == [m1]
+
+
+@pytest.mark.unsupported_server_types("kividb")
+def test_xrange_bounds_without_sequence_number(r: ClientType):
+    for seq in (1, 2, 3):
+        r.xadd("s", {"f": "v"}, id=f"5-{seq}")
+    r.xadd("s", {"f": "v"}, id="6-0")
+    # A bare millisecond time starts a range at its first sequence number and ends it at its last.
+    assert get_ids(r.xrange("s", min="5", max="5")) == [b"5-1", b"5-2", b"5-3"]
+    assert get_ids(r.xrevrange("s", max="5", min="-")) == [b"5-3", b"5-2", b"5-1"]
+    assert get_ids(r.xrange("s", min="(5", max="+")) == [b"5-1", b"5-2", b"5-3", b"6-0"]
+    assert get_ids(r.xrange("s", min="-", max="(6")) == [b"5-1", b"5-2", b"5-3", b"6-0"]
+    r.xgroup_create("s", "g", id="0")
+    r.xreadgroup("g", "c", {"s": ">"})
+    assert [p["message_id"] for p in r.xpending_range("s", "g", min="-", max="5", count=10)] == [
+        b"5-1",
+        b"5-2",
+        b"5-3",
+    ]
 
 
 def get_stream_message(client, stream, message_id):
@@ -520,9 +586,10 @@ def test_xreadgroup(r: ClientType, real_server_details):
     assert actual == resp_conversion(r, expected_resp3, expected_resp2)
     # delete all the messages in the stream
     assert r.xtrim(stream, 0) == 2
-    # TODO groups keep ids of deleted messages
-    # expected = [[stream.encode(), [(m1, {}), (m2, {})]]]
-    # assert r.xreadgroup(group, consumer, streams={stream: "0"}) == expected
+    # The group keeps the ids of the deleted messages pending, with their fields gone.
+    expected_resp2 = [[stream.encode(), [(m1, {}), (m2, {})]]]
+    expected_resp3 = {stream.encode(): [[(m1, {}), (m2, {})]]}
+    assert r.xreadgroup(group, consumer, streams={stream: "0"}) == resp_conversion(r, expected_resp3, expected_resp2)
     # A blocking read that finds nothing: on dragonfly under RESP3 the empty-array reply
     # is not something redis-py can parse, so issue it raw there.
     testtools.assert_empty_stream_read(

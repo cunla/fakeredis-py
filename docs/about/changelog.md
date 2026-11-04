@@ -7,6 +7,58 @@ tags:
 toc_depth: 2
 ---
 
+## v2.40.0 - 2026-10-15
+
+### 🚀 Features
+
+- feat: implement `HIMPORT PREPARE`/`SET`/`DISCARD`/`DISCARDALL` (Redis 8.10) (#599)
+- feat(json): implement `JSON.NUMPOWBY` (#602)
+- feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra, `pip install "fakeredis[digest]"` (#600, #601)
+
+### 🧰 Maintenance
+
+- perf: lower per-command and client-construction overhead (#612, #613)
+- perf: expire keys and hash fields through a heap instead of scanning (#606)
+- perf: faster `SPOP`/`SRANDMEMBER`, `SCAN`-family iteration, stream range reads with `COUNT`, large replies and Lua table conversion (#605, #610, #611, #614, #615)
+- test: run CI against Python 3.15
+- docs: document `TcpFakeServer` in the README
+- chore: update dependencies
+
+## v2.39.0 - 2026-10-01
+
+### 🚀 Features
+
+- feat: support Redis 8.10 commands `LMOVEM`, `BLMOVEM`, `SUNIONCARD`, `SDIFFCARD`, `TS.QUERYLABELS`, `TS.NRANGE`, `TS.NREVRANGE` and `TS.READ` (#597)
+- feat(kividb): add the `kividb` server type, matching KiviDB 1.0.4's command surface (#570, #571)
+- feat(streams): `XADD`/`XTRIM` accept the `KEEPREF`/`DELREF`/`ACKED` reference policies (#583)
+
+### 🐛 Bug Fixes
+
+- fix: `MOVE`/`SMOVE` invalidate `WATCH` like Redis, add `SORT_RO`, sort unsorted `SORT` results in scripts/`STORE`, and fix `ZSCAN` while deleting (#595)
+- fix(bitmap): `BITOP` pads shorter operands and treats missing keys as empty (#593)
+- fix(geo): `*BYMEMBER`/`FROMMEMBER` searches on a missing member return Redis'/Valkey 9's error instead of crashing (#594)
+- fix(valkey): `from_url` works for `FakeValkey`, `FakeStrictValkey` and `FakeAsyncValkey` (#591)
+- fix(streams): approximate (`~`) trimming drops whole nodes and `XADD`/`XTRIM` options use Redis' errors (#583)
+- fix(streams): `XADD` never reuses deleted IDs and rejects invalid IDs like Redis (#583)
+- fix(streams): `XGROUP SETID`/`CREATE`, `entries-read` and `lag` follow Redis' rules (#583)
+- fix(streams): consumer-group commands on a missing key return Redis' errors (#584)
+- fix(streams): `XRANGE`/`XREVRANGE`/`XPENDING` treat an end ID without sequence as the whole millisecond (#584)
+- fix(tdigest): `TDIGEST.QUANTILE` on a single observation follows Redis 8.10 (#597)
+- fix(tcp-server): `TcpFakeServer` answers RESP2 clients in RESP2 (#580)
+- fix(model): `ExpiringMembersSet` keeps the member when clearing its TTL (#578)
+- fix(async): `FakeAsyncValkey` raises `valkey` exceptions and async connections report `addr`/`laddr`/`fd` (#589)
+- fix: each connection gets one client ID, and a new one on reconnect (#589)
+- fix: `FakeRedis(version=10)` no longer shares a server with `version=1` (#589)
+
+### 🧰 Maintenance
+
+- perf: cache glob patterns, skip empty TTL scans, and stop polling in `get_message(timeout=...)` (#577)
+- refactor: layer internals into `fakeredis/_core`, `fakeredis/_clients` and `fakeredis/_socket` packages (#589, #590, #592)
+- test: run CI against Redis 8.10 and a real KiviDB (#570, #597)
+- test: drop stale TODOs and narrow Dragonfly zset test skips (#596)
+- test: drop `from __future__ import annotations` from test files (#586)
+- chore: update dependencies and the `setup-uv` action (#587)
+
 ## v2.38.0 - 2026-09-08
 
 ### 🚀 Features

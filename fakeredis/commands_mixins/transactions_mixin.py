@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import CommandItem, Key, command
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
@@ -133,3 +134,11 @@ class TransactionsCommandsMixin(CommandsMixinBase):
 
     def notify_watch(self) -> None:
         self._watch_notified = True
+
+    def _cleanup(self, server: Any) -> None:
+        """Remove all the references to `self` from `server`.
+
+        This is called with the server lock held, but it may be some time after self.close.
+        """
+        super()._cleanup(server)
+        self._clear_watches()

@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._commands import CommandItem, Int, Key, command
+from fakeredis._command_args_parsing import Int
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model._array import Array
@@ -27,8 +29,6 @@ def _parse_range_end(val: bytes, array: Array, is_start: bool) -> int:
 
 
 class ArrayCommandsMixin(CommandsMixinBase):
-    # ── write commands ──────────────────────────────────────────────────────
-
     @command((Key(Array), Int, bytes), (bytes,))
     def arset(self, key: CommandItem, index: int, first_val: bytes, *more_vals: bytes) -> int:
         if index < 0:

@@ -6,27 +6,16 @@ import math
 import random
 import sys
 from collections.abc import Sequence
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args, parse_mpop_args
-from fakeredis._commands import (
-    AfterAny,
-    BeforeAny,
-    CommandItem,
-    Float,
-    Int,
-    Key,
-    RedisType,
-    StringTest,
-    Timeout,
-    command,
-    fix_range,
-)
-from fakeredis._helpers import SimpleError, casematch, null_terminate
+from fakeredis._command_args_parsing import Float, Int, RedisType, StringTest, Timeout, extract_args, parse_mpop_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
+from fakeredis._helpers import SimpleError, casematch, fix_range, null_terminate
 from fakeredis._typing import ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import ExpiringMembersSet, ZSet
+from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, ZSet
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -98,9 +87,6 @@ class ScoreTest(RedisType):
 
 
 class SortedSetCommandsMixin(CommandsMixinBase):
-    _scan: Callable[..., Any]
-    _encodefloat: Callable[[float, bool], bytes]
-
     def _zpop(self, key: CommandItem, count: int, reverse: bool, flatten_list: bool) -> list[list[Any]]:
         if count < 0:
             raise SimpleError(msgs.INDEX_NEGATIVE_ERROR_MSG)
@@ -514,11 +500,11 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
     @command((Key(ZSet), Int), (bytes, bytes))
     def zscan(self, key: CommandItem, cursor: int, *args: bytes) -> list[Any]:
-        new_cursor, ans = self._scan(key.value.items(), cursor, *args)
+        new_cursor, members = self._scan(key.value, cursor, *args, scanned_key=key.key)
         flat = []
-        for member, score in ans:
+        for member in members:
             flat.append(member)
-            flat.append(self._encodefloat(score, False))
+            flat.append(self._encodefloat(key.value[member], False))
         return [new_cursor, flat]
 
     @command((Key(ZSet), bytes))
@@ -619,8 +605,9 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             for member, score in s.items():
                 # With COUNT, each set contributes its weight regardless of the member's score.
                 score = w if aggregate == b"count" else score * w
-                # Redis only does this step for ZUNIONSTORE. See https://github.com/antirez/redis/issues/3954.
-                if func in {"ZUNIONSTORE", "ZUNION"} and math.isnan(score):
+                # Redis only does this step for ZUNIONSTORE (see https://github.com/antirez/redis/issues/3954), while
+                # dragonfly does it for ZINTERSTORE too -- so there inf * 1 + inf * 0 sums to inf rather than to NaN.
+                if (func in {"ZUNIONSTORE", "ZUNION"} or self.server_type == "dragonfly") and math.isnan(score):
                     score = 0.0
                 if member not in out_members:
                     continue

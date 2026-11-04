@@ -1,20 +1,35 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any, Callable
 
-from fakeredis._helpers import Database
-from fakeredis._server import FakeServer
+from fakeredis import _msgs as msgs
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._core import CommandItem, Database, FakeServer
+from fakeredis._helpers import SimpleError, SimpleString, casematch, compile_pattern
 from fakeredis._typing import ServerType, VersionType
-from fakeredis.model import ClientInfo
+from fakeredis.model import BaseModel, ClientInfo
+
+
+def bin_reverse(x: int, bits_count: int) -> int:
+    result = 0
+    for i in range(bits_count):
+        if (x >> i) & 1:
+            result |= 1 << (bits_count - 1 - i)
+    return result
 
 
 class CommandsMixinBase:
-    """Base class for command mixins that declares shared read-only attributes."""
+    """Base class for command mixins: declares the attributes the socket provides, and the helpers several mixins
+    share."""
 
     _server: FakeServer
     _client_info: ClientInfo
     _db: Database
     _script_resp: int | None = None
+    _in_transaction: bool = False
+    # HIMPORT fieldsets, name -> fields in the order HIMPORT PREPARE listed them. They belong to the connection.
+    _fieldsets: dict[bytes, tuple[bytes, ...]]
 
     @property
     def version(self) -> VersionType:
@@ -48,3 +63,121 @@ class CommandsMixinBase:
         if result is None and self.server_type == "dragonfly" and self._resp_version == 3:
             return []
         return result
+
+    def _scan(self, keys: Collection[Any], cursor: int, *args: bytes, scanned_key: bytes | None = None) -> list[Any]:
+        """This is the basis of most of the ``scan`` methods.
+
+        `keys` is the collection being scanned: the database for SCAN, or the set, hash or sorted set stored at
+        `scanned_key` for SSCAN, HSCAN and ZSCAN. Iterating over it gives the elements MATCH and TYPE are tested on.
+
+        The SCAN command, and the other commands in the SCAN family, are able to provide to the user a set of guarantees
+        associated with full iterations.
+
+        - A full iteration always retrieves all the elements that were present in the collection from the start to the
+          end of a full iteration. This means that if a given element is inside the collection when an iteration is
+          started and is still there when an iteration terminates, then at some point the SCAN command returned it to
+          the user.
+
+        - A full iteration never returns any element that was NOT present in the collection from the start to the end
+          of a full iteration. So if an element was removed before the start of an iteration and is never added back
+          to the collection for all the time an iteration lasts, the SCAN command ensures that this element will never
+          be returned.
+
+        However, because the SCAN command has very little state associated (just the cursor), it has the following
+        drawbacks:
+
+        - A given element may be returned multiple times. It is up to the application to handle the case of duplicated
+          elements, for example, only using the returned elements to perform operations that are safe when re-applied
+          multiple times.
+        - Elements that were not constantly present in the collection during a full iteration may be returned or not:
+          it is undefined.
+
+        Here an iteration sorts the collection once, when it starts, and every cursor it hands out is remembered along
+        with that sorted snapshot and a position in it. Later calls read on from the snapshot and leave out what has
+        been removed since, so elements removed mid-scan cannot shift the ones still to come, and a call costs what it
+        returns rather than the size of the collection. Elements added mid-scan are not returned by that iteration.
+        """
+        cursor = int(cursor)
+        (pattern, _type, count), _ = extract_args(args, ("*match", "*type", "+count"))
+        if count is not None and count <= 0:
+            # Dragonfly reads COUNT as unsigned: a negative one never decodes, while a zero is accepted and simply falls
+            # back to the default batch size.
+            if self._server.server_type != "dragonfly":
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            if count < 0:
+                raise SimpleError(msgs.INVALID_INT_MSG)
+            count = None
+        count = 10 if count is None else count
+        scan_state = (self._db, scanned_key)
+        remembered = self._server.scan_cursors.get((scan_state, cursor)) if cursor else None
+        if remembered is None:
+            # A new iteration, or a cursor that is no longer remembered, which is read as a position in the collection
+            # as it is now.
+            snapshot = sorted(keys)
+            position = bin_reverse(cursor, (len(snapshot) - 1).bit_length())
+            batch = snapshot[position : position + count]
+        else:
+            snapshot, position = remembered
+            batch = [val for val in snapshot[position : position + count] if val in keys]
+        bits_len = (len(snapshot) - 1).bit_length()
+
+        if pattern is not None or _type is not None:
+            regex = compile_pattern(pattern) if pattern is not None else None
+
+            def matches(key: bytes | str) -> bool:
+                if isinstance(key, str):
+                    key = key.encode("utf-8")
+                if regex is not None and not regex.match(key):
+                    return False
+                return _type is None or casematch(self._key_value_type(self._db[key]).value, _type)
+
+            batch = [val for val in batch if matches(val)]
+
+        position += count
+        if position >= len(snapshot):
+            self._server.forget_scan_snapshot(snapshot)
+            return [b"0", batch]
+        encoded_cursor = bin_reverse(position, bits_len)
+        self._server.remember_scan_cursor((scan_state, encoded_cursor), (snapshot, position))
+        return [str(encoded_cursor).encode(), batch]
+
+    def _ttl(self, key: CommandItem, scale: float) -> int:
+        if not key:
+            return -2
+        elif key.expireat is None:
+            return -1
+        else:
+            return int(round((key.expireat - self._db.time) * scale))  # noqa: RUF046  # int() satisfies mypy no-any-return
+
+    def _encodefloat(self, value: float, humanfriendly: bool) -> bytes:
+        if self.version >= (7,):
+            value = 0 + value
+        return Float.encode(value, humanfriendly)
+
+    def _encodeint(self, value: int) -> bytes:
+        if self.version >= (7,):
+            value = 0 + value
+        return Int.encode(value)
+
+    @staticmethod
+    def _key_value_type(key: CommandItem) -> SimpleString:
+        if key.value is None:
+            return SimpleString(b"none")
+        elif isinstance(key.value, bytes):
+            return SimpleString(b"string")
+        elif isinstance(key.value, list):
+            return SimpleString(b"list")
+        elif isinstance(key.value, BaseModel):
+            return SimpleString(key.value.model_type())
+        else:
+            assert False  # pragma: nocover
+
+    def _cleanup(self, server: Any) -> None:
+        """Remove all the references to `self` from `server`.
+
+        This is called with the server lock held, but it may be some time after self.close.
+        """
+        for subs in server.subscribers.values():
+            subs.discard(self)
+        for subs in server.psubscribers.values():
+            subs.discard(self)

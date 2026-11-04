@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fakeredis._commands import Float
+from fakeredis._command_args_parsing import Float
 from fakeredis._helpers import SimpleError
 
 try:
@@ -22,8 +22,9 @@ from typing import Any
 import redis
 from redis.connection import DefaultParser
 
-from fakeredis import FakeRedisConnection, FakeServer
-from fakeredis._typing import ServerType, VersionType
+from fakeredis._clients._sync import FakeRedisConnection
+from fakeredis._core import FakeServer
+from fakeredis._typing import RaiseErrorTypes, ServerType, VersionType
 
 LOGGER = logging.getLogger("fakeredis")
 # LOGGER.setLevel(logging.DEBUG)
@@ -168,7 +169,12 @@ class TCPFakeRequestHandler(StreamRequestHandler):
         while not self.server._shutdown_event.is_set():
             try:
                 if self.current_client.can_read():
-                    response = self.current_client.read_response()
+                    try:
+                        response = self.current_client.read_response()
+                    except RaiseErrorTypes as e:
+                        # An error reply, which read_response raises the way redis-py does. Send it and keep serving
+                        # the connection, as a real server does.
+                        response = e
                     self.writer.dump(response)
                     continue
 

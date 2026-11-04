@@ -1,8 +1,8 @@
 import pytest
 from redis.exceptions import ResponseError
 
+from fakeredis._clients._tcp_server import encode_reply
 from fakeredis._helpers import SimpleError
-from fakeredis._tcp_server import encode_reply
 
 pytestmark = [pytest.mark.fake]
 

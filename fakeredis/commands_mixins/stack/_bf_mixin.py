@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ScalableBloomFilter

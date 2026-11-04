@@ -4,10 +4,11 @@ import time
 from collections.abc import Sequence
 from typing import Any, Callable
 
-import fakeredis
 from fakeredis import _msgs as msgs
-from fakeredis._commands import DbIndex, Int, command
+from fakeredis._command_args_parsing import DbIndex, Int
+from fakeredis._commands import command
 from fakeredis._helpers import OK, NoResponse, SimpleError, SimpleString, casematch
+from fakeredis._typing import lib_version
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 PONG = SimpleString(b"PONG")
@@ -120,7 +121,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         data = {
             "server": "fakeredis",
-            "version": fakeredis.__version__,
+            "version": lib_version,
             "proto": self._client_info["resp"],
             "id": self._client_info.get("id", 1),
             "mode": "standalone",
@@ -333,6 +334,7 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         self._reply_off = self._reply_skip = self._reply_skip_next = False
         self._no_evict = self._no_touch = False
         self._update_client_flags()
+        self._fieldsets.clear()
         self._client_info["name"] = ""
         self._client_info["resp"] = 2
         self._client_info["user"] = "default"

@@ -7,19 +7,21 @@ from typing import Any
 
 import redis
 
-from fakeredis._client_setup import build_client_kwds
-from fakeredis._fakesocket import FakeSocket
-from fakeredis._helpers import FakeSelector
-
-from . import _msgs as msgs
-from ._server import FakeBaseConnectionMixin, FakeServer
-from ._typing import RaiseErrorTypes, Self, ServerType, VersionType, lib_version
+from fakeredis import _msgs as msgs
+from fakeredis._clients._base import FakeBaseConnectionMixin
+from fakeredis._clients._setup import build_client_kwds
+from fakeredis._core import FakeSelector, FakeServer
+from fakeredis._socket import FakeSocket
+from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType
 
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
     _connection_error_class = redis.ConnectionError
 
     def connect(self) -> None:
+        if self._sock:
+            # redis-py calls this before every command; an open connection already has its selector.
+            return
         super().connect()  # type: ignore
         # The selector is set in redis.Connection.connect() after _connect() is called
         self._selector: FakeSelector | None = FakeSelector(self._sock)
@@ -120,13 +122,6 @@ class FakeRedisMixin:
             server=server,
             **kwargs,
         )
-        if "lib_name" in kwds and "lib_version" in kwds and "driver_info" not in kwds:
-            kwds["lib_name"] = "fakeredis"
-            kwds["lib_version"] = lib_version
-        if "driver_info" in kwds:
-            from redis import DriverInfo
-
-            kwds["driver_info"] = DriverInfo(name="fakeredis", lib_version=lib_version)
         super().__init__(**kwds)
 
     @classmethod

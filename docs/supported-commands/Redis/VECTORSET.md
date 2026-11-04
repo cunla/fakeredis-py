@@ -51,3 +51,6 @@ Associate or remove the JSON attributes of elements
 ## [VSIM](https://redis.io/commands/vsim/)
 
 Return elements by vector similarity
+
+
+

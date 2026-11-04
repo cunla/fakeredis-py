@@ -3,24 +3,28 @@ from __future__ import annotations
 import math
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import (
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem, delete_keys
+from fakeredis._helpers import (
     DRAGONFLY_MAX_STRING_SIZE,
     MAX_STRING_SIZE,
-    CommandItem,
-    Float,
-    Int,
-    Key,
-    command,
-    delete_keys,
+    OK,
+    SimpleError,
+    SimpleString,
+    casematch,
     fix_range_string,
 )
-from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis._typing import VersionType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+
+try:
+    import xxhash
+except ImportError:  # the `digest` extra is not installed
+    xxhash = None  # type: ignore[assignment]
 
 
 def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
@@ -59,33 +63,25 @@ def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
             result = chr(s1[r - 1]) + result
             r -= 1
             c -= 1
+            if curr_length == 0:
+                # Going backwards, the first character of a match is its end
+                s1ind, s2ind = r, c
             curr_length += 1
         elif pi[r][c] == 2:
             r -= 1
         else:
             c -= 1
 
-        if pi[r][c] == 0 and curr_length == 1:
-            s1ind = r
-            s2ind = c
-        elif pi[r][c] > 0 and curr_length > 0:
+        if pi[r][c] > 0 and curr_length > 0:
             matches.append([[r, s1ind], [c, s2ind], curr_length])
             s1ind, s2ind, curr_length = None, None, 0
     if curr_length:
-        matches.append([[s1ind, r], [s2ind, c], curr_length])
+        matches.append([[r, s1ind], [c, s2ind], curr_length])
 
     return opt[l1][l2], result.encode(), matches
 
 
 class StringCommandsMixin(CommandsMixinBase, ABC):
-    _encodeint: Callable[
-        [
-            int,
-        ],
-        bytes,
-    ]
-    _encodefloat: Callable[[float, bool], bytes]
-
     @property
     @abstractmethod
     def version(self) -> VersionType:
@@ -110,6 +106,45 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
     @command((Key(bytes), Int))
     def decrby(self, key: CommandItem, amount: int) -> int:
         return self._incrby(key, -amount)
+
+    def _digest(self, value: bytes) -> bytes:
+        if xxhash is None:
+            raise SimpleError(msgs.DIGEST_MISSING_XXHASH_MSG)
+        return xxhash.xxh3_64_hexdigest(value).encode()
+
+    @command(name="DELEX", fixed=(Key(),), repeat=(bytes,), server_types=("redis",))
+    def delex(self, key: CommandItem, *args: bytes) -> int:
+        if self.version < (8, 4):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("DELEX"))
+        if len(args) not in (0, 2):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("delex"))
+        if not key:
+            return 0
+        if len(args) == 0:
+            return delete_keys(key)
+        if not isinstance(key.value, bytes):
+            raise SimpleError(msgs.DELEX_NOT_STRING_MSG)
+        condition, operand = args
+        if casematch(condition, b"ifeq"):
+            matched = key.value == operand
+        elif casematch(condition, b"ifne"):
+            matched = key.value != operand
+        elif casematch(condition, b"ifdeq") or casematch(condition, b"ifdne"):
+            # Only the length is validated; the comparison ignores case.
+            if len(operand) != 16:
+                raise SimpleError(msgs.DIGEST_INVALID_LENGTH_MSG)
+            matched = (self._digest(key.value) == operand.lower()) == casematch(condition, b"ifdeq")
+        else:
+            raise SimpleError(msgs.DELEX_INVALID_CONDITION_MSG)
+        return delete_keys(key) if matched else 0
+
+    @command(name="DIGEST", fixed=(Key(bytes),), server_types=("redis",))
+    def digest(self, key: CommandItem) -> bytes | None:
+        if self.version < (8, 4):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("DIGEST"))
+        if key.value is None:
+            return None
+        return self._digest(key.value)
 
     @command((Key(bytes),))
     def get(self, key: CommandItem) -> bytes:

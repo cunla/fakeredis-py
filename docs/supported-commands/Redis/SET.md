@@ -1,4 +1,4 @@
-# Redis `set` commands (17/17 implemented)
+# Redis `set` commands (19/19 implemented)
 
 ## [SADD](https://redis.io/commands/sadd/)
 
@@ -11,6 +11,10 @@ Returns the number of members in a set.
 ## [SDIFF](https://redis.io/commands/sdiff/)
 
 Returns the difference of multiple sets.
+
+## [SDIFFCARD](https://redis.io/commands/sdiffcard/)
+
+Returns the number of members of the difference between the first set and all successive sets.
 
 ## [SDIFFSTORE](https://redis.io/commands/sdiffstore/)
 
@@ -63,6 +67,10 @@ Iterates over members of a set.
 ## [SUNION](https://redis.io/commands/sunion/)
 
 Returns the union of multiple sets.
+
+## [SUNIONCARD](https://redis.io/commands/sunioncard/)
+
+Returns the number of members of the union of multiple sets.
 
 ## [SUNIONSTORE](https://redis.io/commands/sunionstore/)
 

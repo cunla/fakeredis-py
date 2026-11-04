@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import gc
 import logging
 import weakref
@@ -178,6 +176,16 @@ def test_eval_table_with_numbers(r: ClientType):
     """
     val = r.eval(lua, 0)
     assert val == [42]
+
+
+def test_eval_table_with_false(r: ClientType):
+    # false is a value, not a hole, so it does not end the array
+    assert r.eval("return {1, false, 3}", 0) == [1, None, 3]
+
+
+def test_eval_large_table(r: ClientType):
+    val = r.eval("local a = {} for i = 1, 5000 do a[i] = i end return a", 0)
+    assert val == list(range(1, 5001))
 
 
 def test_eval_nested_table(r: ClientType):
@@ -546,7 +554,7 @@ def test_script(r: ClientType):
 
 @pytest.mark.fake_only
 def test_lua_log(r, caplog):
-    logger = fakeredis._server.LOGGER
+    logger = fakeredis._core._server.LOGGER
     script = """
         redis.log(redis.LOG_DEBUG, "debug")
         redis.log(redis.LOG_VERBOSE, "verbose")
@@ -600,7 +608,7 @@ def test_lua_log_wrong_level(r: ClientType):
 
 @pytest.mark.fake_only
 def test_lua_log_defined_vars(r, caplog):
-    logger = fakeredis._server.LOGGER
+    logger = fakeredis._core._server.LOGGER
     script = """
         local var='string'
         redis.log(redis.LOG_DEBUG, var)
@@ -627,7 +635,7 @@ def test_hscan_cursors_are_bytes(r: ClientType):
     assert isinstance(result, bytes)
 
 
-@pytest.mark.xfail  # TODO
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly refuses keys a script did not declare
 def test_deleting_while_scan(r: ClientType):
     for i in range(100):
         r.set(f"key-{i}", i)
@@ -650,6 +658,20 @@ def test_deleting_while_scan(r: ClientType):
 
     assert len(r.register_script(script)()) == 100
     assert len(r.keys()) == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly returns the set in its own order
+def test_sort_set_without_sorting_is_sorted_in_script(r: ClientType):
+    r.sadd("s", "10", "9", "1", "-2")
+    # Outside a script the order is unspecified, but a script gets the members lexicographically.
+    assert r.eval("return redis.call('SORT', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")  # dragonfly returns the set in its own order
+def test_sort_ro_set_without_sorting_is_sorted_in_script(r: ClientType):
+    r.sadd("s", "10", "9", "1", "-2")
+    assert r.eval("return redis.call('SORT_RO', KEYS[1], 'BY', 'nosort')", 1, "s") == [b"-2", b"1", b"10", b"9"]
 
 
 def test_eval_cjson_encode_decode(r: ClientType) -> None:
@@ -879,3 +901,9 @@ def test_eval_returns_resp3_shapes_a_script_built(r: ClientType) -> None:
     """A script may hand back the RESP3 types redis.setresp(3) produces."""
     assert r.eval("return {double=3.5}", 0) in (b"3.5", 3.5)
     assert r.eval("return {map={field='value'}}", 0) in ([b"field", b"value"], {b"field": b"value"})
+
+
+def test_eval_container_command(r: ClientType):
+    r.xadd("foo", {"a": 1})
+    assert r.eval("return redis.call('XGROUP', 'CREATE', KEYS[1], 'group', '$')", 1, "foo") == b"OK"
+    assert len(r.eval("return redis.call('xinfo', 'groups', KEYS[1])", 1, "foo")) == 1

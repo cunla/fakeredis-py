@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import heapq
 from collections.abc import Iterable, Iterator
 from typing import Any, AnyStr
 
@@ -15,19 +16,34 @@ class Hash(BaseModel):
         super().__init__(*args, **kwargs)
         self._expirations: dict[bytes, int] = {}
         self._values: dict[bytes, bytes] = {}
+        # (expiry, field) for every TTL ever set, soonest first, so a read only looks at the fields that are due
+        # rather than at all of them. Entries are not removed when a TTL is cleared or replaced: `_expirations` is the
+        # truth, and an entry that no longer matches it is skipped when it surfaces.
+        self._expiry_heap: list[tuple[int, bytes]] = []
         # Fields that expired lazily, pending an `hexpired` subkey notification.
         self._expired_fields: list[bytes] = []
 
     def _expire_keys(self) -> None:
         # Every read lands here, and most hashes never set a field TTL.
-        if not self._expirations:
+        heap = self._expiry_heap
+        if not heap:
             return
         now = current_time()
-        expired = [k for k, exp in self._expirations.items() if exp < now]
-        for k in expired:
-            del self._values[k]
-            del self._expirations[k]
-        self._expired_fields.extend(expired)
+        while heap and heap[0][0] < now:
+            _, k = heapq.heappop(heap)
+            exp = self._expirations.get(k)
+            if exp is not None and exp < now:
+                self._values.pop(k, None)
+                del self._expirations[k]
+                self._expired_fields.append(k)
+
+    def _schedule_expiry(self, key: bytes, when_ms: int) -> None:
+        heap = self._expiry_heap
+        # Refreshing the same TTLs over and over leaves stale entries behind; rebuild once they outnumber the live ones.
+        if len(heap) > 2 * len(self._expirations) + 16:
+            heap[:] = [(exp, k) for k, exp in self._expirations.items()]
+            heapq.heapify(heap)
+        heapq.heappush(heap, (when_ms, key))
 
     def take_expired_fields(self) -> list[bytes]:
         """Return fields that expired since the last call, clearing the buffer."""
@@ -42,6 +58,7 @@ class Hash(BaseModel):
             self._expirations.pop(key_bytes, None)
             return 2
         self._expirations[key_bytes] = when_ms
+        self._schedule_expiry(key_bytes, when_ms)
         return 1
 
     def clear_key_expireat(self, key: AnyStr) -> bool:

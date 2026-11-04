@@ -610,6 +610,125 @@ def test_nummultby(r: redis.Redis, real_server_details: ServerDetails):
         assert r.json().nummultby("doc1", ".b[0].a", 3) == testtools.json_number_reply(r, server_type, 6)
 
 
+def _numpowby(r: redis.Redis, *args):
+    """JSON.NUMPOWBY, which redis-py has no method for: RESP2 carries the reply as JSON text."""
+    res = testtools.raw_command(r, "JSON.NUMPOWBY", *args)
+    return json.loads(res) if isinstance(res, (bytes, str)) else res
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby(r: redis.Redis):
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    assert testtools.raw_command(r, "JSON.NUMPOWBY", "doc1", "$.b[0].a", 3) in (b"[8]", "[8]", [8])
+    assert r.json().get("doc1", "$.b[0].a") == [8]
+    # Test multi
+    assert _numpowby(r, "doc1", "$..a", 2) == [None, 64, 25.0, None]
+    # Test single
+    assert _numpowby(r, "doc1", "$.b[1].a", 0.5) == [5.0]
+    assert _numpowby(r, "doc1", "$.b[2].a", 2) == [None]
+    assert _numpowby(r, "doc1", "$.nowhere", 2) == []
+    assert r.json().get("doc1", "$") == [{"a": "b", "b": [{"a": 64}, {"a": 5.0}, {"a": "c"}]}]
+
+    with pytest.raises(redis.ResponseError):
+        _numpowby(r, "non_existing_doc", "$..a", 2)
+    with pytest.raises(redis.ResponseError):
+        _numpowby(r, "doc1", "$..a")
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby_integer_or_float(r: redis.Redis):
+    def numpowby(base, exponent) -> str:
+        """The stored result as JSON text, which tells `8` and `8.0` apart."""
+        r.json().set("num", "$", base)
+        _numpowby(r, "num", "$", exponent)
+        return testtools.raw_command(r, "JSON.GET", "num", "$").decode()
+
+    assert numpowby(2, "3") == "[8]"
+    assert numpowby(-3, "3") == "[-27]"
+    assert numpowby(0, "0") == "[1]"
+    assert numpowby(2, "62") == "[4611686018427387904]"
+    # A float on either side makes the result one
+    assert numpowby(2, "3.0") == "[8.0]"
+    assert numpowby(4.0, "2") == "[16.0]"
+    assert numpowby(4.0, "0.5") == "[2.0]"
+    assert numpowby(2, "-2.0") == "[0.25]"
+    assert numpowby(2, "1e1") == "[1024.0]"
+    assert numpowby(2, "-0") == "[1.0]"
+    assert numpowby(2.5, "-10000") == "[0.0]"
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby_legacy_path(r: redis.Redis):
+    r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
+
+    assert _numpowby(r, "doc1", ".b[0].a", 3) == testtools.resp_conversion(r, [8], 8)
+    assert _numpowby(r, "doc1", "b[1].a", 2) == testtools.resp_conversion(r, [25.0], 25.0)
+    # A match that is no number, or no match at all, is an error under RESP2 only
+    if testtools.get_protocol_version(r) == 2:
+        for path in (".a", ".nowhere"):
+            with pytest.raises(redis.ResponseError, match="does not exist or does not contains a number"):
+                _numpowby(r, "doc1", path, 2)
+    else:
+        assert _numpowby(r, "doc1", ".a", 2) == [None]
+        assert _numpowby(r, "doc1", ".nowhere", 2) == []
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby_errors(r: redis.Redis):
+    r.json().set("doc1", "$", {"neg": -8.0, "zero": 0, "f": 2.5, "i": 2})
+
+    for path, exponent in (("$.neg", "0.5"), ("$.zero", "-0.5"), ("$.f", "10000")):
+        with pytest.raises(redis.ResponseError, match="result is not a number"):
+            _numpowby(r, "doc1", path, exponent)
+    for exponent in ('"2"', "true", "null", "[1]"):
+        with pytest.raises(redis.ResponseError, match="bad input number"):
+            _numpowby(r, "doc1", "$.i", exponent)
+    with pytest.raises(redis.ResponseError, match="expected value at line 1 column 1"):
+        _numpowby(r, "doc1", "$.i", "x")
+    with pytest.raises(redis.ResponseError, match="number out of range at line 1 column 5"):
+        _numpowby(r, "doc1", "$.i", "1e400")
+    assert r.json().get("doc1", "$") == [{"neg": -8.0, "zero": 0, "f": 2.5, "i": 2}]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="8.8")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby_integer_overflow(r: redis.Redis):
+    doc = {"a": 2, "b": 3, "c": 1}
+    r.json().set("doc1", "$", doc)
+
+    for path, exponent in (("$.a", 63), ("$.a", -1), ("$.c", -1), ("$.c", 4294967296)):
+        with pytest.raises(redis.ResponseError, match="numeric overflow"):
+            _numpowby(r, "doc1", path, exponent)
+    assert r.json().get("doc1", "$") == [doc]
+    # The matches before the one that overflows are written all the same
+    with pytest.raises(redis.ResponseError, match="numeric overflow"):
+        _numpowby(r, "doc1", "$.*", 62)
+    assert r.json().get("doc1", "$") == [{"a": 2**62, "b": 3, "c": 1}]
+
+    with pytest.raises(redis.ResponseError, match="wrong number of arguments"):
+        _numpowby(r, "doc1", "$.b", 2, "extra")
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="8.6")
+@pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
+def test_numpowby_integer_wraps(r: redis.Redis):
+    r.json().set("doc1", "$", {"a": 2, "b": 3, "c": 9223372036854775807, "d": 0})
+
+    assert _numpowby(r, "doc1", "$.a", 63) == [-(2**63)]
+    assert _numpowby(r, "doc1", "$.b", 40) == [-6289078614652622815]
+    assert _numpowby(r, "doc1", "$.c", 2) == [1]
+    # The exponent is truncated to 32 bits
+    r.json().set("doc1", "$.a", 2)
+    assert _numpowby(r, "doc1", "$.a", 4294967297) == [2]
+    assert _numpowby(r, "doc1", "$.a", -1) == [0]
+    assert _numpowby(r, "doc1", "$.d", -1) == [0]
+
+
 @testtools.run_test_if_redispy_ver("gte", "4.6")
 @pytest.mark.supported_server_versions(min_redis_ver="7.1")
 def test_json_merge(r: redis.Redis):

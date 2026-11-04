@@ -1,9 +1,10 @@
 from unittest import mock
 
 import pytest
+import redis
 
 import fakeredis
-from test.testtools import run_test_if_redispy_ver
+from test.testtools import pool_get_connection, run_test_if_redispy_ver
 
 
 @pytest.mark.fake
@@ -239,3 +240,61 @@ class TestInitArgs:
         fake_redis_1.set("foo", "bar")
 
         assert fake_redis_2.get("foo") is None
+
+
+@pytest.mark.fake
+def test_major_versions_sharing_a_first_digit_get_separate_servers():
+    r1 = fakeredis.FakeRedis(host="versions", version=1)
+    r10 = fakeredis.FakeRedis(host="versions", version=10)
+    r1.set("foo", "bar")
+    assert r10.get("foo") is None
+
+
+@pytest.mark.fake
+def test_client_ids_are_consecutive_and_renewed_on_reconnect():
+    server = fakeredis.FakeServer()
+    clients = [fakeredis.FakeRedis(server=server) for _ in range(3)]
+    assert [client.client_id() for client in clients] == [1, 2, 3]
+
+    conn = pool_get_connection(clients[0].connection_pool)
+    conn.disconnect()
+    conn.connect()
+    assert conn.get_socket()._client_info["id"] == 4
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "7.2")
+def test_connections_report_the_client_library_without_looking_its_version_up_again():
+    server = fakeredis.FakeServer()
+    fakeredis.FakeRedis(server=server).ping()
+    with mock.patch("importlib.metadata.version", side_effect=AssertionError("version looked up again")):
+        for client in (
+            fakeredis.FakeRedis(server=server),
+            fakeredis.FakeStrictRedis(server=server, protocol=3),
+            fakeredis.FakeRedis.from_url("redis://localhost:6390/0"),
+        ):
+            info = client.client_info()
+            assert info["lib-name"] == "redis-py"
+    assert fakeredis.FakeRedis(server=server).client_info()["lib-ver"] == redis.__version__
+
+
+@pytest.mark.fake
+@run_test_if_redispy_ver("gte", "7.2")
+def test_connection_keeps_the_driver_info_it_is_given():
+    from redis.driver_info import DriverInfo
+
+    server = fakeredis.FakeServer()
+    pool = redis.ConnectionPool(
+        connection_class=fakeredis.FakeRedisConnection,
+        server=server,
+        driver_info=DriverInfo(name="my-lib", lib_version="1.2.3"),
+    )
+    info = redis.Redis(connection_pool=pool).client_info()
+    assert info["lib-name"] == "my-lib"
+    assert info["lib-ver"] == "1.2.3"
+
+    # Connections do not share one DriverInfo: it is mutable.
+    c1 = pool_get_connection(fakeredis.FakeRedis(server=server).connection_pool)
+    c2 = pool_get_connection(fakeredis.FakeRedis(server=server).connection_pool)
+    assert c1.driver_info == c2.driver_info
+    assert c1.driver_info is not c2.driver_info

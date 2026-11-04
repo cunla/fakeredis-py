@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import itertools
+import math
 import sys
 import time
 from typing import Any, ClassVar, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._commands import CommandItem, Float, Int, Key, command
+from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._commands import Key, command
+from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AGGREGATORS, TimeSeries, TimeSeriesRule
@@ -38,7 +41,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             if len(filter_expression.split(b"!=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"!=")
-            if value == b"-":
+            if value in (b"", b"-"):
                 return label in ts.labels
 
             if value.startswith(b"(") and value.endswith(b")"):
@@ -49,7 +52,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             if len(filter_expression.split(b"=")) != 2:
                 raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
             label, value = filter_expression.split(b"=")
-            if value == b"-":
+            if value in (b"", b"-"):
                 return label not in ts.labels
             if value.startswith(b"(") and value.endswith(b")"):
                 values = set(value[1:-1].split(b","))
@@ -62,7 +65,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
         TimeSeriesCommandsMixin._timeseries_keys = {
             k for k in TimeSeriesCommandsMixin._timeseries_keys if k in self._db
         }
-        for ts_key in TimeSeriesCommandsMixin._timeseries_keys:
+        for ts_key in sorted(TimeSeriesCommandsMixin._timeseries_keys):
             ts = self._db[ts_key].value
             if all(self._filter_expression_check(ts, expr) for expr in filter_expressions):
                 res.append(ts)
@@ -161,7 +164,9 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             key.update(self._create_timeseries(key.key, *args))
         if not self._validate_duplicate_policy(on_duplicate):
             raise SimpleError(msgs.TIMESERIES_INVALID_DUPLICATE_POLICY)
-        return cast(int, key.value.add(timestamp, value, on_duplicate))
+        res = cast(int, key.value.add(timestamp, value, on_duplicate))
+        key.updated()
+        return res
 
     @command(name="TS.GET", fixed=(Key(TimeSeries),), repeat=(bytes,))
     def ts_get(self, key: CommandItem, *args: bytes) -> list[int | float] | None:
@@ -188,6 +193,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
                 results.append(SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST))
             else:
                 results.append(key.value.add(timestamp, value))
+                key.updated()
         return results
 
     @command(name="TS.DEL", fixed=(Key(TimeSeries), Int, Int), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
@@ -323,12 +329,14 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             left_args,
         ) = extract_args(args, RANGE_ARGS, error_on_unexpected=False, left_from_first_unexpected=False)
         latest = True
+        # The module skips arguments it does not recognise; FILTER_BY_TS takes the timestamps that follow it.
         filter_ts: list[int] | None = None
-        if len(left_args) > 0:
-            if not casematch(left_args[0], b"FILTER_BY_TS"):
-                raise SimpleError(msgs.WRONG_ARGS_MSG6)
-            left_args = left_args[1:]
-            filter_ts = [int(x) for x in left_args]
+        for i, arg in enumerate(left_args):
+            if casematch(arg, b"FILTER_BY_TS"):
+                filter_ts = [int(x) for x in itertools.takewhile(lambda x: x.isdigit(), left_args[i + 1 :])]
+                if not filter_ts:
+                    raise SimpleError(msgs.TIMESERIES_FILTER_BY_TS_MISSING)
+                break
         if aggregator is None and (align is not None or bucket_timestamp is not None or empty):
             raise SimpleError(msgs.WRONG_ARGS_MSG6)
         if bucket_timestamp is not None and bucket_timestamp not in (b"-", b"+", b"~"):
@@ -380,7 +388,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     def ts_range(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> list[list[int | float]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        return self._range(False, key.value, from_ts, to_ts, *args)
+        return self._samples_reply(self._range(False, key.value, from_ts, to_ts, *args))
 
     @command(
         name="TS.REVRANGE",
@@ -391,8 +399,7 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     def ts_revrange(self, key: CommandItem, from_ts: int, to_ts: int, *args: bytes) -> list[list[int | float]]:
         if key.value is None:
             raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
-        res = self._range(True, key.value, from_ts, to_ts, *args)
-        return res
+        return self._samples_reply(self._range(True, key.value, from_ts, to_ts, *args))
 
     @command(name="TS.MGET", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mget(self, *args: bytes) -> list[list[bytes | list[list[int | float]]]]:
@@ -514,10 +521,15 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             None,
             None,
         )
+        exclude_empty = False
         i = 0
         while i < len(args_lower):
             if args_lower[i] == b"latest":
                 latest = True  # noqa: F841
+                i += 1
+            elif args_lower[i] == b"excludeempty":
+                # Only recognised before FILTER: after it, the word is taken as a (malformed) filter expression.
+                exclude_empty = True
                 i += 1
             elif args_lower[i] == b"withlabels":
                 with_labels = True
@@ -546,19 +558,29 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mrange"))
         if filter_expression is None or len(filter_expression) == 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.mrange"))
+        if exclude_empty and group_by is not None:
+            raise SimpleError(msgs.TIMESERIES_EXCLUDEEMPTY_WITH_GROUPBY)
 
+        aggregators: list[bytes] = []
+        for i, arg in enumerate(left_args[:-1]):
+            if casematch(arg, b"aggregation"):
+                aggregators = left_args[i + 1].lower().split(b",")
         timeseries = self._get_timeseries(filter_expression)
         res: Any
         if with_labels or (group_by is not None and reducer is not None):
             res = {
-                ts.name: [ts.labels, {b"aggregators": []}, self._range(reverse, ts, from_ts, to_ts, *left_args)]
+                ts.name: [
+                    ts.labels,
+                    {b"aggregators": aggregators},
+                    self._range(reverse, ts, from_ts, to_ts, *left_args),
+                ]
                 for ts in timeseries
             }
         elif selected_labels is not None:
             res = {
                 ts.name: [
                     {label: ts.labels[label] for label in selected_labels if label in ts.labels},
-                    {b"aggregators": []},
+                    {b"aggregators": aggregators},
                     self._range(reverse, ts, from_ts, to_ts, *left_args),
                 ]
                 for ts in timeseries
@@ -567,11 +589,13 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
             res = {
                 ts.name: [
                     {},
-                    {b"aggregators": []},
+                    {b"aggregators": aggregators},
                     self._range(reverse, ts, from_ts, to_ts, *left_args),
                 ]
                 for ts in timeseries
             }
+        if exclude_empty:
+            res = {ts_name: ts_data for ts_name, ts_data in res.items() if ts_data[-1]}
         if group_by is not None and reducer is not None:
             res = self._group_by_label(reverse, res, group_by, reducer)
         if self._resp_version == 2:
@@ -585,3 +609,216 @@ class TimeSeriesCommandsMixin(CommandsMixinBase):  # TimeSeries commands
     @command(name="TS.MREVRANGE", fixed=(Timestamp, Timestamp), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
     def ts_mrevrange(self, from_ts: int, to_ts: int, *args: bytes) -> list[list[bytes | list[list[int | float]]]]:
         return self._mrange(True, from_ts, to_ts, *args)  # type: ignore[no-any-return]
+
+    def _samples_reply(self, rows: list[list[Any]]) -> list[list[Any]]:
+        """Shape (timestamp, value...) rows, whose values may also be nested lists, for the protocol in use.
+
+        RESP2 sends the values as strings, and the module spells NaN as `NaN`.
+        """
+        if self._resp_version != 2:
+            return rows
+
+        def value(v: Any) -> Any:
+            if isinstance(v, list):
+                return [value(x) for x in v]
+            return b"NaN" if isinstance(v, float) and math.isnan(v) else v
+
+        return [[row[0]] + [value(v) for v in row[1:]] for row in rows]
+
+    @command(name="TS.QUERYLABELS", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_querylabels(self, subtype: bytes, *args: bytes) -> list[bytes]:
+        """TS.QUERYLABELS <LABELS | VALUES label> [FILTER filterExpr [filterExpr ...]]"""
+        label: bytes | None = None
+        if casematch(subtype, b"values"):
+            if not args:
+                raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.querylabels"))
+            label, args = args[0], args[1:]
+        elif not casematch(subtype, b"labels"):
+            raise SimpleError(msgs.TIMESERIES_QUERYLABELS_BAD_SUBTYPE)
+        filters: list[bytes] = []
+        if args:
+            if not casematch(args[0], b"filter"):
+                raise SimpleError(msgs.TIMESERIES_QUERYLABELS_EXPECTED_FILTER)
+            filters = list(args[1:])
+            if not filters:
+                raise SimpleError(msgs.TIMESERIES_FILTER_WITHOUT_EXPRESSIONS)
+            if any(b"=" not in expr for expr in filters):
+                raise SimpleError(msgs.TIMESERIES_BAD_FILTER_EXPRESSION)
+            # At least one filter must select series by value (`label=value` or `label=(...)`).
+            if not any(b"!=" not in expr and expr.split(b"=", 1)[1] not in (b"", b"-") for expr in filters):
+                raise SimpleError(msgs.TIMESERIES_NO_MATCHER)
+        found: set[bytes] = set()
+        for ts in self._get_timeseries(filters):
+            if label is None:
+                found.update(ts.labels)
+            elif label in ts.labels:
+                found.add(ts.labels[label])
+        return sorted(found)
+
+    def _nrange(self, reverse: bool, command_name: str, args: tuple[bytes, ...]) -> list[list[Any]]:
+        """TS.N[REV]RANGE numkeys key [key ...] fromTimestamp toTimestamp [options...]
+
+        Runs TS.[REV]RANGE over each key and joins the results by timestamp: a row per timestamp holds each key's
+        values in key order, NaN where the key has none. With AGGREGATION, each key gets its own aggregator argument.
+        """
+        numkeys = Int.decode(args[0], msgs.TIMESERIES_NUMKEYS_NOT_POSITIVE)
+        if numkeys < 0:
+            raise SimpleError(msgs.TIMESERIES_NUMKEYS_NOT_POSITIVE)
+        if numkeys == 0 or len(args) < numkeys + 3:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command_name))
+        keys = args[1 : 1 + numkeys]
+        try:
+            from_ts = Timestamp.decode(args[1 + numkeys])
+        except SimpleError:
+            raise SimpleError(msgs.TIMESERIES_WRONG_FROM_TIMESTAMP)
+        try:
+            to_ts = Timestamp.decode(args[2 + numkeys])
+        except SimpleError:
+            raise SimpleError(msgs.TIMESERIES_WRONG_TO_TIMESTAMP)
+
+        options = args[3 + numkeys :]
+        count: int | None = None
+        aggregators: tuple[bytes, ...] | None = None
+        bucket_duration = b""
+        range_args: list[bytes] = []  # the options that TS.RANGE shares, passed on for each key
+        i = 0
+        while i < len(options):
+            if casematch(options[i], b"count"):
+                count = Int.decode(options[i + 1], msgs.TIMESERIES_INVALID_COUNT) if i + 1 < len(options) else 0
+                if count <= 0:
+                    raise SimpleError(msgs.TIMESERIES_INVALID_COUNT)
+                i += 2
+            elif casematch(options[i], b"aggregation"):
+                # The aggregator arguments run up to the bucket duration, the first integer.
+                end = i + 1
+                while end < len(options) and not options[end].lstrip(b"-").isdigit():
+                    end += 1
+                if end == len(options):
+                    raise SimpleError(msgs.TIMESERIES_BAD_AGGREGATION)
+                aggregators, bucket_duration = options[i + 1 : end], options[end]
+                if len(aggregators) != numkeys:
+                    raise SimpleError(msgs.TIMESERIES_AGGREGATION_COUNT_NOT_NUMKEYS)
+                if Int.decode(bucket_duration) <= 0:
+                    raise SimpleError(msgs.TIMESERIES_BUCKET_DURATION_NOT_POSITIVE)
+                i = end + 1
+            else:
+                range_args.append(options[i])
+                i += 1
+
+        series: list[TimeSeries] = []
+        for key in keys:
+            item = self._db.get(key)
+            if item is None:
+                raise SimpleError(msgs.TIMESERIES_KEY_DOES_NOT_EXIST)
+            if not isinstance(item.value, TimeSeries):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
+            series.append(item.value)
+
+        per_key: list[dict[int, list[Any]]] = []
+        widths: list[int] = []
+        for k, ts in enumerate(series):
+            key_args = list(range_args)
+            if aggregators is not None:
+                key_args += [b"AGGREGATION", aggregators[k], bucket_duration]
+                widths.append(len(aggregators[k].split(b",")))
+            else:
+                widths.append(1)
+            per_key.append({int(row[0]): row[1:] for row in self._range(reverse, ts, from_ts, to_ts, *key_args)})
+
+        timestamps = sorted({t for rows in per_key for t in rows}, reverse=reverse)
+        if count is not None:
+            timestamps = timestamps[:count]
+        nan = float("nan")
+        return self._samples_reply(
+            [[t, [v for rows, width in zip(per_key, widths) for v in rows.get(t, [nan] * width)]] for t in timestamps]
+        )
+
+    @command(name="TS.NRANGE", fixed=(bytes, bytes, bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_nrange(self, *args: bytes) -> list[list[Any]]:
+        return self._nrange(False, "ts.nrange", args)
+
+    @command(name="TS.NREVRANGE", fixed=(bytes, bytes, bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_nrevrange(self, *args: bytes) -> list[list[Any]]:
+        return self._nrange(True, "ts.nrevrange", args)
+
+    @staticmethod
+    def _read_samples(ts: TimeSeries | None, cursor: int, max_count: int | None) -> list[list[Any]]:
+        """The samples at or after `cursor`, oldest first, at most `max_count` of them."""
+        if ts is None:
+            return []
+        return [[t, v] for t, v in sorted(x for x in ts.sorted_list if x[0] >= cursor)][:max_count]
+
+    @command(name="TS.READ", fixed=(bytes, bytes), repeat=(bytes,), flags=msgs.FLAG_DO_NOT_CREATE)
+    def ts_read(self, key: bytes, timestamp: bytes, *args: bytes) -> Any:
+        """TS.READ key timestamp [BLOCK milliseconds min_count] [MAX_COUNT max_count]"""
+        block_ms: int | None = None
+        min_count = 1
+        max_count: int | None = None
+        seen: set[bytes] = set()
+        i = 0
+        while i < len(args):
+            option = args[i].upper()
+            if option == b"BLOCK" and option not in seen and i + 2 < len(args):
+                block_ms = Int.decode(args[i + 1], msgs.TIMESERIES_READ_BAD_BLOCK_MS)
+                # The module reports a malformed min_count with the milliseconds message too.
+                min_count = Int.decode(args[i + 2], msgs.TIMESERIES_READ_BAD_BLOCK_MS)
+                if block_ms < 0:
+                    raise SimpleError(msgs.TIMESERIES_READ_BAD_BLOCK_MS)
+                if min_count < 1:
+                    raise SimpleError(msgs.TIMESERIES_READ_BAD_MIN_COUNT)
+                i += 3
+            elif option == b"MAX_COUNT" and option not in seen and i + 1 < len(args):
+                max_count = Int.decode(args[i + 1], msgs.TIMESERIES_READ_BAD_MAX_COUNT)
+                if max_count < 1:
+                    raise SimpleError(msgs.TIMESERIES_READ_BAD_MAX_COUNT)
+                i += 2
+            else:
+                raise SimpleError(msgs.WRONG_ARGS_MSG6.format("ts.read"))
+            seen.add(option)
+        if block_ms is not None and max_count is not None and min_count > max_count:
+            raise SimpleError(msgs.TIMESERIES_READ_MIN_ABOVE_MAX)
+        if timestamp not in (b"-", b"+", b"$"):
+            if not timestamp.isdigit():
+                raise SimpleError(msgs.TIMESERIES_INVALID_TIMESTAMP)
+            Int.decode(timestamp, msgs.TIMESERIES_INVALID_TIMESTAMP)
+
+        def lookup() -> TimeSeries | None:
+            """The series under `key` now, or None if it is missing (or has since been replaced by another type)."""
+            item = self._db.get(key) if self._db is not None else None
+            return item.value if item is not None and isinstance(item.value, TimeSeries) else None
+
+        item = self._db.get(key)
+        if item is not None and not isinstance(item.value, TimeSeries):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        # The cursor is resolved once, when the command arrives, so it stays put while the client is blocked.
+        timestamps = [t for t, _ in item.value.sorted_list] if item is not None else []
+        if timestamp == b"-":
+            cursor = min(timestamps, default=0)
+        elif timestamp == b"+":
+            cursor = max(timestamps, default=0)
+        elif timestamp == b"$":
+            cursor = max(timestamps) + 1 if timestamps else 0
+        else:
+            cursor = int(timestamp)
+
+        def shape(samples: list[list[Any]] | None) -> list[list[Any]]:
+            # A timeout returns whatever qualifies by then.
+            return self._samples_reply(
+                samples if samples is not None else self._read_samples(lookup(), cursor, max_count)
+            )
+
+        if block_ms is None:
+            return shape(None)
+
+        existed = item is not None
+
+        def read_pass(first_pass: bool) -> list[list[Any]] | None:
+            ts = lookup()
+            if ts is None:
+                return [] if existed else None  # A series removed while blocked answers with an empty list.
+            samples = self._read_samples(ts, cursor, None)
+            return samples[:max_count] if len(samples) >= min_count else None
+
+        if read_pass(True) is None and (self._in_transaction or self._script_resp is not None):
+            raise SimpleError(msgs.TIMESERIES_READ_BLOCK_NOT_ALLOWED)
+        return self._blocking(block_ms / 1000, read_pass, shape)
