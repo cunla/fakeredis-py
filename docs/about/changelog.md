@@ -7,6 +7,18 @@ tags:
 toc_depth: 2
 ---
 
+## Next release
+
+### 🚀 Features
+
+- feat(streams): `XREAD` and `XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
+
+### 🐛 Bug Fixes
+
+- fix(streams): blocking `XREADGROUP` returns entries that are already available, and with `COUNT` it waits for new
+  ones instead of returning at once
+- fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey
+
 ## v2.40.0 - 2026-10-15
 
 ### 🚀 Features

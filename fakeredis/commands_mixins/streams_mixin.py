@@ -13,6 +13,79 @@ from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
 from fakeredis.model._stream import MAX_ID_PART, MAX_KEY, MIN_KEY
 
+XREAD_MAXCOUNT_NOT_POSITIVE_MSG = "ERR MAXCOUNT must be a positive integer"
+XREAD_MAXSIZE_NOT_POSITIVE_MSG = "ERR MAXSIZE must be a positive integer"
+XREAD_MAXCOUNT_BELOW_COUNT_MSG = "ERR MAXCOUNT must be greater than or equal to COUNT"
+
+
+def _reply_size(value: Any, resp3: bool) -> int:
+    """The bytes `value` takes in a reply. A stream record is arrays of bulk strings, with a null in place of the
+    fields of an entry deleted from the stream and the two integers CLAIM appends.
+    """
+    if value is None:
+        return 3 if resp3 else 5  # `_\r\n` / `*-1\r\n`
+    if isinstance(value, int):
+        return len(b":%d\r\n" % value)
+    if isinstance(value, bytes):
+        return len(b"$%d\r\n" % len(value)) + len(value) + 2
+    return len(b"*%d\r\n" % len(value)) + sum(_reply_size(item, resp3) for item in value)
+
+
+class _StreamReadBudget:
+    """The cumulative MAXCOUNT and MAXSIZE caps (Redis 8.10) of one XREAD / XREADGROUP call, across all its streams.
+
+    Redis checks MAXSIZE against the reply bytes written so far: a stream's header (its key, preceded under RESP2 by the
+    array pairing it with its entries) counts as soon as the stream is started, the length of its entries array once
+    the stream is done, and each entry as it is encoded. Once one entry has been sent, reading stops before the next
+    stream or entry when either cap has been reached, so a stream can be in the reply with no entries.
+    """
+
+    def __init__(self, maxcount: int | None, maxsize: int | None, resp3: bool) -> None:
+        self.maxcount, self.maxsize, self.resp3 = maxcount, maxsize, resp3
+        self.entries = self.size = 0
+        self.stream_started = False
+        self._header = 0
+
+    def exhausted(self) -> bool:
+        if self.entries == 0:
+            return False
+        return (self.maxcount is not None and self.entries >= self.maxcount) or (
+            self.maxsize is not None and self.size >= self.maxsize
+        )
+
+    def count_for_stream(self, count: int | None) -> int | None:
+        """The COUNT to read the next stream with: at most what MAXCOUNT leaves."""
+        if self.maxcount is None:
+            return count
+        left = self.maxcount - self.entries
+        return left if count is None else min(count, left)
+
+    def open_stream(self, name: bytes, started: bool = False) -> None:
+        """Get ready for the next stream. Its header is written with its first entry, or right away if `started`."""
+        self.stream_started = False
+        self._header = _reply_size(name, self.resp3) + (0 if self.resp3 else len(b"*2\r\n"))
+        if started:
+            self._start_stream()
+
+    def _start_stream(self) -> None:
+        if not self.stream_started:
+            self.stream_started = True
+            self.size += self._header
+
+    def close_stream(self, entries: int) -> None:
+        if self.stream_started:
+            self.size += len(b"*%d\r\n" % entries)
+
+    def accept(self, record: list[Any]) -> bool:
+        """Whether `record` still fits; if it does, it is counted as sent."""
+        self._start_stream()
+        if self.exhausted():
+            return False
+        self.entries += 1
+        if self.maxsize is not None:
+            self.size += _reply_size(record, self.resp3)
+        return True
+
 
 @dataclass
 class _AddTrimArgs:
@@ -198,7 +271,10 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @command(name="XREAD", fixed=(bytes,), repeat=(bytes,), flags=msgs.FLAG_SKIP_CONVERT_TO_RESP2)
     def xread(self, *args: bytes) -> None | dict[bytes, Any] | list[list[Any]]:
-        ((count, timeout), left_args) = extract_args(args, ("+count", "+block"), error_on_unexpected=False)
+        (count, timeout, *caps), left_args = extract_args(
+            args, ("+count", "+block", *self._stream_read_caps_args()), error_on_unexpected=False
+        )
+        maxcount, maxsize = self._stream_read_caps(count, *caps)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         left_args = left_args[1:]
@@ -211,13 +287,30 @@ class StreamsCommandsMixin(CommandsMixinBase):
             stream_start_id_list.append((left_args[i], start_id))
         if timeout is None:
             return self._empty_stream_read_reply(
-                self._xread(stream_start_id_list, count, blocking=False, first_pass=False)
+                self._xread(stream_start_id_list, count, maxcount, maxsize, blocking=False, first_pass=False)
             )
         return self._blocking(  # type: ignore[no-any-return]
             timeout / 1000.0,
-            functools.partial(self._xread, stream_start_id_list, count, True),
+            functools.partial(self._xread, stream_start_id_list, count, maxcount, maxsize, True),
             self._empty_stream_read_reply,
         )
+
+    def _stream_read_caps_args(self) -> tuple[str, ...]:
+        """The XREAD/XREADGROUP options capping the whole reply, which redis 8.10 added."""
+        return ("+maxcount", "+maxsize") if self.server_type == "redis" and self.version >= (8, 10) else ()
+
+    @staticmethod
+    def _stream_read_caps(
+        count: int | None, maxcount: int | None = None, maxsize: int | None = None
+    ) -> tuple[int | None, int | None]:
+        if maxcount is not None and maxcount <= 0:
+            raise SimpleError(XREAD_MAXCOUNT_NOT_POSITIVE_MSG)
+        if maxsize is not None and maxsize <= 0:
+            raise SimpleError(XREAD_MAXSIZE_NOT_POSITIVE_MSG)
+        # A COUNT of 0 or less reads everything, so it is not compared
+        if maxcount is not None and count is not None and maxcount < count:
+            raise SimpleError(XREAD_MAXCOUNT_BELOW_COUNT_MSG)
+        return maxcount, maxsize
 
     @command(name="XREADGROUP", fixed=(bytes, bytes, bytes), repeat=(bytes,))
     def xreadgroup(
@@ -225,9 +318,10 @@ class StreamsCommandsMixin(CommandsMixinBase):
     ) -> dict[bytes, Any] | list[list[Any]] | None:
         if not casematch(b"GROUP", group_const):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        (count, timeout, noack, min_idle_time), left_args = extract_args(
-            args, ("+count", "+block", "noack", "+claim"), error_on_unexpected=False
+        (count, timeout, noack, min_idle_time, *caps), left_args = extract_args(
+            args, ("+count", "+block", "noack", "+claim", *self._stream_read_caps_args()), error_on_unexpected=False
         )
+        maxcount, maxsize = self._stream_read_caps(count, *caps)
         if min_idle_time is not None and min_idle_time < 0:
             raise SimpleError(msgs.XREADGROUP_CLAIM_NEGATIVE_MSG)
         if len(left_args) < 3 or not casematch(left_args[0], b"STREAMS") or len(left_args) % 2 != 1:
@@ -247,14 +341,13 @@ class StreamsCommandsMixin(CommandsMixinBase):
                     msgs.XREADGROUP_KEY_OR_GROUP_NOT_FOUND_MSG.format(left_args[i].decode(), group_name.decode())
                 )
             group_params.append((group, left_args[i], left_args[i + num_streams]))
+        read = functools.partial(
+            self._xreadgroup, consumer_name, group_params, count, maxcount, maxsize, noack, min_idle_time
+        )
         if timeout is None:
-            return self._xreadgroup_reply(
-                self._xreadgroup(consumer_name, group_params, count, noack, min_idle_time, False)
-            )
+            return self._xreadgroup_reply(read(blocking=False))
         return self._blocking(  # type: ignore[no-any-return]
-            timeout / 1000.0,
-            functools.partial(self._xreadgroup, consumer_name, group_params, count, noack, min_idle_time),
-            self._xreadgroup_reply,
+            timeout / 1000.0, lambda _first_pass: read(blocking=True), self._xreadgroup_reply
         )
 
     @command(name="XDEL", fixed=(Key(XStream),), repeat=(bytes,))
@@ -614,30 +707,40 @@ class StreamsCommandsMixin(CommandsMixinBase):
         consumer_name: bytes,
         group_params: list[tuple[StreamGroup, bytes, bytes]],
         count: int | None,
+        maxcount: int | None,
+        maxsize: int | None,
         noack: bool,
         min_idle_time: int | None,
-        first_pass: bool,
+        blocking: bool,
     ) -> dict[bytes, Any] | None:
         res: dict[bytes, Any] = {}
-        claimed_any = False
+        budget = _StreamReadBudget(maxcount, maxsize, self._client_info.protocol_version == 3)
+        if count is not None and count <= 0 and self.server_type != "dragonfly":
+            count = None  # COUNT 0, or a negative one, asks for everything
         for group, stream_name, start_id in group_params:
+            if budget.exhausted():
+                break
+            new_entries = start_id == b">"
+            # A read of the consumer's history is in the reply even when it finds nothing
+            budget.open_stream(stream_name, started=not new_entries)
+            stream_count = budget.count_for_stream(count)
             claimed: list[Any] = []
             # CLAIM only applies when reading new entries, not the consumer history
-            claim_active = False
-            if min_idle_time is not None and start_id == b">":
-                claim_active = True
-                claimed = group.claim_for_read(min_idle_time, consumer_name, count)
-                claimed_any = claimed_any or len(claimed) > 0
-            remaining_count = count - len(claimed) if count is not None else None
-            stream_results: list[Any] = group.group_read(consumer_name, start_id, remaining_count, noack)
-            if first_pass and (count is None) and not claimed_any:
-                return None
+            claim_active = min_idle_time is not None and new_entries
+            if claim_active:
+                claimed = group.claim_for_read(min_idle_time, consumer_name, stream_count, budget.accept)  # type: ignore[arg-type]
+            remaining_count = stream_count - len(claimed) if stream_count is not None else None
+            stream_results: list[Any] = group.group_read(consumer_name, start_id, remaining_count, noack, budget.accept)
             if claim_active:
                 # With CLAIM, claimed entries are reported before new entries, and every entry carries idle time and
                 # delivery count (0 for new entries).
                 stream_results = claimed + [record + [0, 0] for record in stream_results]
-            if len(stream_results) > 0 or start_id != b">":
+            if budget.stream_started:
                 res[stream_name] = stream_results
+            budget.close_stream(len(stream_results))
+        if blocking and not res:
+            # Only a read of new entries blocks, and only while there are none: None keeps `_blocking` waiting.
+            return None
         return res
 
     def _empty_stream_read_reply(self, res: dict[bytes, Any] | list[Any] | None) -> dict[bytes, Any] | list[Any] | None:
@@ -661,18 +764,30 @@ class StreamsCommandsMixin(CommandsMixinBase):
         self,
         stream_start_id_list: list[tuple[bytes, StreamRangeTest]],
         count: int | None,
+        maxcount: int | None,
+        maxsize: int | None,
         blocking: bool,
         first_pass: bool,
     ) -> None | dict[bytes, Any] | list[list[bytes | list[tuple[bytes, list[bytes]]]]]:
         max_inf = StreamRangeTest.decode(b"+")
         res: dict[bytes, Any] = {}
+        budget = _StreamReadBudget(maxcount, maxsize, self._resp_version == 3)
         for stream_name, start_id in stream_start_id_list:
+            if budget.exhausted():
+                break
             item = CommandItem(stream_name, self._db, item=self._db.get(stream_name), default=None)
             # COUNT 0, or a negative one, asks for everything
-            limit = count if count is not None and count > 0 else None
-            stream_results = self._xrange(item.value, start_id, max_inf, False, limit)
-            if len(stream_results) > 0:
+            limit = budget.count_for_stream(count if count is not None and count > 0 else None)
+            budget.open_stream(item.key)
+            stream_results = []
+            records: list[Any] = self._xrange(item.value, start_id, max_inf, False, limit)
+            for record in records:
+                if not budget.accept(record):
+                    break
+                stream_results.append(record)
+            if budget.stream_started:
                 res[item.key] = stream_results
+            budget.close_stream(len(stream_results))
 
         if self._resp_version == 2:
             # On blocking read, and there are no results, return None (instead of an empty list)
