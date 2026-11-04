@@ -7,6 +7,18 @@ tags:
 toc_depth: 2
 ---
 
+## Next release
+
+### 🚀 Features
+
+- feat(geo): `GEOSEARCH` and `GEOSEARCHSTORE` support `BYBOX`
+
+### 🐛 Bug Fixes
+
+- fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` parse their options like Redis: `FROMMEMBER`/`FROMLONLAT` and `BYRADIUS`/`BYBOX`
+  are mutually exclusive, `BYRADIUS` requires a unit, `FROMLONLAT` coordinates are range-checked, and invalid
+  arguments get Redis' error messages
+
 ## v2.40.0 - 2026-10-15
 
 ### 🚀 Features
