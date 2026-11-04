@@ -59,11 +59,9 @@ Client (redis-py/valkey-py)
   - `_base.py` — `FakeBaseConnectionMixin`, shared by sync and async connections; `_setup.py` — `build_client_kwds`
   - `_tcp_server.py` — `TcpFakeServer`: exposes a `FakeServer` over a real TCP socket (used by `tcp_server` test marker)
 - **`_core/_server.py`** — `FakeServer`: holds all databases, script cache, pub/sub state, ACL; share one instance across connections to share state
-- **`_commands.py`** — command registry: `@command`, `SUPPORTED_COMMANDS`, `Signature`, `Key`
-- **`_command_args_parsing.py`** — argument converters (`Int`, `Float`, `DbIndex`, `Timeout`, `StringTest`) and `extract_args`
+- **`_commands.py`** — command registry: `@command`, `SUPPORTED_COMMANDS`, `Signature`, `Key`, and `RedisType` (base of the argument converters)
 - **`_core/_database.py`** — `Database` (in-memory dict with expiration, WATCH tracking, blocking-wait condition), and `Item`/`CommandItem`, the stored value and a command's handle on it
 - **`_core/_selector.py`** — `FakeSelector`: lets a connection wait for a queued response
-- **`_helpers.py`** — `SimpleString`, `SimpleError`, string-size limits, `fix_range`, and small utilities
 - **`_socket/`** — the fake socket, between the connections above and the command mixins below:
   - `_base.py` — `BaseFakeSocket`: request parsing, command dispatch, transactions/scripts checks, blocking, error decoding
   - `_fakesocket.py` — `FakeSocket`, which mixes every command mixin into `BaseFakeSocket`; `_async.py` — `AsyncFakeSocket`
@@ -71,13 +69,16 @@ Client (redis-py/valkey-py)
   - `_dragonfly.py` — Dragonfly's dispatch rules (commands refused in scripts/transactions, extra WATCH invalidation)
 - **`commands_mixins/_mixin_base.py`** — `CommandsMixinBase`: the attributes the socket provides to mixins, plus shared helpers (`_scan`, `_ttl`, `_encodefloat`, `_encodeint`, `_key_value_type`)
 - **`commands_mixins/`** — one file per Redis data type/feature area; all mixed into `FakeSocket`
-- **`stack/`** — optional Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo filters, TopK, T-Digest, VectorSet); activated when optional deps are present (extras: `json`, `bf`, `probabilistic`, `vectorset`; `lua` enables `EVAL`/`EVALSHA`)
-- **`model/`** — data structure implementations (`ZSet`, `Hash`, `Stream`, `TimeSeries`, etc.)
-- **`server_specific_commands/`** — server-specific extensions (e.g. DragonflyDB commands)
+- **`commands_mixins/helpers/`** — import from the package `__init__`:
+  - `_command_args_parsing.py` — argument converters (`Int`, `Float`, `DbIndex`, `Timeout`, `StringTest`), `extract_args`, `parse_mpop_args`
+  - `_helpers.py` — `SimpleString`/`OK`/`QUEUED`, `NoResponse`, string-size limits, `fix_range`, `casematch`, `compile_pattern`
+- **`commands_mixins/stack/`** — optional Redis Stack modules (JSON, TimeSeries, Bloom/Cuckoo filters, TopK, T-Digest, VectorSet); activated when optional deps are present (extras: `json`, `bf`, `probabilistic`, `vectorset`; `lua` enables `EVAL`/`EVALSHA`)
+- **`model/`** — data structure implementations (`ZSet`, `Hash`, `Stream`, `TimeSeries`, etc.); `_general.py` holds `SimpleError`, `current_time`, `asbytes`
+- **`commands_mixins/server_specific_commands/`** — server-specific extensions (e.g. DragonflyDB commands)
 
 ### Command Implementation Pattern
 
-Commands are methods on mixins in `commands_mixins/` (or `stack/`). The `@command` decorator registers them in `SUPPORTED_COMMANDS`:
+Commands are methods on mixins in `commands_mixins/` (or `commands_mixins/stack/`). The `@command` decorator registers them in `SUPPORTED_COMMANDS`:
 
 ```python
 @command((Key(bytes), bytes))  # signature: key argument, then bytes value
@@ -91,14 +92,14 @@ def append(self, key: CommandItem, value: bytes) -> int:
 
 - `Key(type_)` in the signature causes that argument to be auto-fetched from the database as a `CommandItem`
 - `CommandItem.update()` marks the item dirty so it's written back
-- Raise `SimpleError` (not Python exceptions) to return Redis error responses; message constants live in `_msgs.py`
+- Raise `SimpleError` (from `fakeredis.model`, not Python exceptions) to return Redis error responses; message constants live in `_msgs.py`
 - Use `name=` on `@command` for subcommands (`SCRIPT LOAD`), module commands (`JSON.GET`), or Python reserved words (`exec`)
-- Use `extract_args(actual_args, expected)` from `_command_args_parsing.py` for optional/variadic args:
+- Use `extract_args(actual_args, expected)` from `commands_mixins/helpers` for optional/variadic args:
   - bare name → boolean flag; `+name` → one int; `++name` → two ints; `*name` → string; `.name` → float
 
 ### Adding a New Command
 
-1. Implement the method with `@command(...)` in the appropriate mixin file in `commands_mixins/` (or `stack/` for module commands)
+1. Implement the method with `@command(...)` in the appropriate mixin file in `commands_mixins/` (or `commands_mixins/stack/` for module commands)
 2. Write tests in the corresponding `test/test_mixins/` file — pytest injects a redis connection as `r`
 3. Run `uv run python scripts/generate_command_info.py` to update `commands.json`
 4. Run `uv run python scripts/generate_supported_commands_doc.py` to update `docs/` and include those changes in the PR

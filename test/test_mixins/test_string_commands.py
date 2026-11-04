@@ -5,11 +5,9 @@ import pytest
 import redis
 import valkey
 
-from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
 
 from .. import testtools
-from ..testtools import raw_command, resp_conversion
 
 
 def test_append(r: ClientType):
@@ -259,7 +257,7 @@ def test_set_exat(r: ClientType):
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_pxat(r: ClientType):
-    curr_time = current_time()
+    curr_time = testtools.current_time()
     assert r.set("foo", "bar", pxat=curr_time + 100) is True
     assert r.get("foo") == b"bar"
     time.sleep(0.15)
@@ -384,33 +382,33 @@ def test_set_xx(r: ClientType):
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_get(r: ClientType):
-    assert raw_command(r, "set", "foo", "bar", "GET") is None
+    assert testtools.raw_command(r, "set", "foo", "bar", "GET") is None
     assert r.get("foo") == b"bar"
-    assert raw_command(r, "set", "foo", "baz", "GET") == b"bar"
+    assert testtools.raw_command(r, "set", "foo", "baz", "GET") == b"bar"
     assert r.get("foo") == b"baz"
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def test_set_get_xx(r: ClientType):
-    assert raw_command(r, "set", "foo", "bar", "XX", "GET") is None
+    assert testtools.raw_command(r, "set", "foo", "bar", "XX", "GET") is None
     assert r.get("foo") is None
     r.set("foo", "bar")
-    assert raw_command(r, "set", "foo", "baz", "XX", "GET") == b"bar"
+    assert testtools.raw_command(r, "set", "foo", "baz", "XX", "GET") == b"bar"
     assert r.get("foo") == b"baz"
-    assert raw_command(r, "set", "foo", "baz", "GET") == b"baz"
+    assert testtools.raw_command(r, "set", "foo", "baz", "GET") == b"baz"
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_set_get_nx_redis7(r: ClientType):
     # Note: this will most likely fail on a 7.0 server, based on the docs for SET
-    assert raw_command(r, "set", "foo", "bar", "NX", "GET") is None
+    assert testtools.raw_command(r, "set", "foo", "bar", "NX", "GET") is None
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.2")
 def set_get_wrongtype(r: ClientType):
     r.lpush("foo", "bar")
     with pytest.raises(Exception) as ctx:
-        raw_command(r, "set", "foo", "bar", "GET")
+        testtools.raw_command(r, "set", "foo", "bar", "GET")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
@@ -524,10 +522,10 @@ def test_getitem_non_existent_key(r: ClientType):
 def test_getex(r: ClientType):
     # Exceptions
     with pytest.raises(Exception) as ctx:
-        raw_command(r, "getex", "foo", "px", 1000, "ex", 1)
+        testtools.raw_command(r, "getex", "foo", "px", 1000, "ex", 1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
-        raw_command(r, "getex", "foo", "dsac", 1000, "ex", 1)
+        testtools.raw_command(r, "getex", "foo", "dsac", 1000, "ex", 1)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     r.set("foo", "val")
     assert r.getex("foo", ex=1) == b"val"
@@ -570,10 +568,10 @@ def test_lcs(r: ClientType):
     assert r.lcs("key1", "key2") == b"mytext"
     assert r.lcs("key1", "key2", len=True) == 6
 
-    assert r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True) == resp_conversion(
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3, withmatchlen=True) == testtools.resp_conversion(
         r, {b"len": 6, b"matches": [[[4, 7], [5, 8], 4]]}, [b"matches", [[[4, 7], [5, 8], 4]], b"len", 6]
     )
-    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == resp_conversion(
+    assert r.lcs("key1", "key2", idx=True, minmatchlen=3) == testtools.resp_conversion(
         r, {b"len": 6, b"matches": [[[4, 7], [5, 8]]]}, [b"matches", [[[4, 7], [5, 8]]], b"len", 6]
     )
 
@@ -581,7 +579,7 @@ def test_lcs(r: ClientType):
         assert r.lcs("key1", "key2", len=True, idx=True)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     with pytest.raises(Exception) as ctx:
-        raw_command(r, "lcs", "key1", "key2", "not_supported_arg")
+        testtools.raw_command(r, "lcs", "key1", "key2", "not_supported_arg")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
@@ -591,12 +589,12 @@ def test_lcs_idx_match_ranges(r: ClientType):
     # Every match is reported as [start, end] in both strings, also the last one and one-character matches
     r.mset({"key1": "ohmytext", "key2": "mynewtext"})
     matches = [[[4, 7], [5, 8], 4], [[2, 3], [0, 1], 2]]
-    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == resp_conversion(
+    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == testtools.resp_conversion(
         r, {b"len": 6, b"matches": matches}, [b"matches", matches, b"len", 6]
     )
 
     r.mset({"key1": "abc", "key2": "axc"})
     matches = [[[2, 2], [2, 2], 1], [[0, 0], [0, 0], 1]]
-    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == resp_conversion(
+    assert r.lcs("key1", "key2", idx=True, withmatchlen=True) == testtools.resp_conversion(
         r, {b"len": 2, b"matches": matches}, [b"matches", matches, b"len", 2]
     )

@@ -4,8 +4,8 @@ from probables import CountingCuckooFilter, CuckooFilterFullError, ExpandingBloo
 
 from fakeredis import _msgs as msgs
 
-from .._helpers import SimpleError
 from ._base_type import BaseModel
+from ._general import SimpleError
 
 
 class ScalableBloomFilter(ExpandingBloomFilter, BaseModel):

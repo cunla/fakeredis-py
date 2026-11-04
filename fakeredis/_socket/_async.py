@@ -6,9 +6,10 @@ from typing import Any, Callable
 
 import redis.asyncio as redis_async
 
-from fakeredis._helpers import NoResponse, SimpleError
 from fakeredis._socket._fakesocket import FakeSocket
 from fakeredis._typing import async_timeout
+from fakeredis.commands_mixins.helpers import NoResponse
+from fakeredis.model import SimpleError
 
 
 class AsyncFakeSocket(FakeSocket):

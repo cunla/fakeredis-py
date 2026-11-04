@@ -10,6 +10,7 @@ from ._command_info import (
     is_write_command,
 )
 from ._expiring_members_set import ExpiringMembersSet
+from ._general import SimpleError, current_time
 from ._hash import Hash
 from ._stream import StreamEntryKey, StreamGroup, StreamRangeTest, XStream
 from ._tdigest import TDigest
@@ -28,6 +29,7 @@ __all__ = [
     "ExpiringMembersSet",
     "Hash",
     "HeavyKeeper",
+    "SimpleError",
     "StreamEntryKey",
     "StreamGroup",
     "StreamRangeTest",
@@ -36,6 +38,7 @@ __all__ = [
     "TimeSeriesRule",
     "XStream",
     "ZSet",
+    "current_time",
     "get_all_commands_info",
     "get_categories",
     "get_command_info",

@@ -4,9 +4,9 @@ import bisect
 from typing import TYPE_CHECKING, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import SimpleError
 
 from ._base_type import BaseModel
+from ._general import SimpleError
 
 if TYPE_CHECKING:
     from fakeredis._core import Database

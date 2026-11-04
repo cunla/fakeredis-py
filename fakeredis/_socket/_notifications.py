@@ -8,8 +8,8 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from fakeredis._core import CommandItem
-from fakeredis._helpers import compile_pattern
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
+from fakeredis.commands_mixins.helpers import compile_pattern
 from fakeredis.model import Hash
 
 LOGGER = logging.getLogger("fakeredis")

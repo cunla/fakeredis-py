@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from typing import Any, AnyStr, NamedTuple
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import SimpleError, current_time
 
 from ._base_type import AfterAny, BaseModel, BeforeAny
+from ._general import SimpleError, current_time
 
 # Both parts of a stream ID are unsigned 64-bit integers.
 MAX_ID_PART = 2**64 - 1

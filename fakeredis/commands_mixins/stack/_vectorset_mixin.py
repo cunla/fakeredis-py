@@ -6,12 +6,11 @@ import struct
 from typing import Any, Literal, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import StringTest
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
-from fakeredis._helpers import SimpleError, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import Vector, VectorSet
+from fakeredis.commands_mixins.helpers import StringTest, casematch
+from fakeredis.model import SimpleError, Vector, VectorSet
 
 VSET_ERR_NOTEXIST = "ERR key does not exist"
 

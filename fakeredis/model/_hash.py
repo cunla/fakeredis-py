@@ -4,9 +4,8 @@ import heapq
 from collections.abc import Iterable, Iterator
 from typing import Any, AnyStr
 
-from fakeredis._helpers import asbytes, current_time
-
 from ._base_type import BaseModel
+from ._general import asbytes, current_time
 
 
 class Hash(BaseModel):
