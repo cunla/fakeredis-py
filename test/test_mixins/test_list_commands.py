@@ -553,6 +553,7 @@ def test_brpop_single_key(r: ClientType):
     assert r.brpop("foo", timeout=1) == resp_conversion(r, [b"foo", b"two"], (b"foo", b"two"))
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_brpop_wrong_type(r: ClientType):
     r.set("foo", "bar")
     with pytest.raises(Exception) as ctx:
@@ -572,6 +573,7 @@ def test_brpoplpush_multi_keys(r: ClientType):
     assert r.lrem("bar", -1, "two") == 1
 
 
+@pytest.mark.unsupported_server_types("kividb")
 def test_brpoplpush_wrong_type(r: ClientType):
     r.set("foo", "bar")
     r.rpush("list", "element")

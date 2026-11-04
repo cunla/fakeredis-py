@@ -40,11 +40,12 @@ class StreamsCommandsMixin(CommandsMixinBase):
         fields = args[opts.id_index + 1 :]
         if len(fields) < 2 or len(fields) % 2 != 0:
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("xadd"))
+        stream = self._stream_value(key)
         if opts.entry_id == MIN_KEY and opts.seq_given:
             raise SimpleError(msgs.XADD_ID_ZERO_MSG)
         if key.value is None and opts.nomkstream:
             return None
-        stream = self._stream_value(key) or XStream()
+        stream = stream or XStream()
         idempotent_id = b""
         if opts.idmp_pid is not None:
             idempotent_id = opts.idmp_iid if opts.idmp_iid is not None else hex(hash(fields)).encode()
