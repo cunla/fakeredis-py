@@ -7,7 +7,7 @@ tags:
 toc_depth: 2
 ---
 
-## Next release
+## 2.41.0
 
 ### 🚀 Features
 
