@@ -331,7 +331,8 @@ def test_geosearch_bybox_options(r: ClientType):
             r, "GEOSEARCHSTORE", "dst", "Sicily", "FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "WITHDIST"
         )
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    assert "GEOSEARCHSTORE is not compatible with WITHDIST, WITHHASH and WITHCOORD options" in str(ctx.value)
+    # Redis 6.2 words it "STORE option in GEORADIUS is not compatible with WITHDIST, WITHHASH and WITHCOORDS options"
+    assert "is not compatible with WITHDIST, WITHHASH and WITHCOORD" in str(ctx.value)
 
 
 @pytest.mark.unsupported_server_types("dragonfly")  # rejects it too, but with its own error message
