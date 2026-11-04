@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import pickle
+from copy import deepcopy
 from typing import Any
 
 from fakeredis import _msgs as msgs
@@ -367,7 +368,8 @@ class GenericCommandsMixin(CommandsMixinBase):
         if (newkey.key in self._server.dbs[db_num] and not replace) or (key.key not in self._server.dbs[self._db_num]):
             return 0
 
-        newkey.value = key.value
+        # A time series refers to its database; share that rather than copy it.
+        newkey.value = deepcopy(key.value, {id(db): db for db in self._server.dbs.values()})
         newkey.expireat = key.expireat
         self._server.dbs[db_num][newkey.key] = key
         newkey.db = self._server.dbs[db_num]

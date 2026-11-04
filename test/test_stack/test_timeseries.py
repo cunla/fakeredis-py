@@ -1158,3 +1158,12 @@ def test_range_count_aggregation_is_a_double(r: redis.Redis):
     raw_command(r, "TS.ADD", "t", 1000, 10)
     res = raw_command(r, "TS.RANGE", "t", "-", "+", "AGGREGATION", "count", 1000)
     assert res == [[1000, 1.0]] and isinstance(res[0][1], float)
+
+
+def test_copy_does_not_share_samples(r: redis.Redis):
+    r.ts().create("source")
+    r.ts().add("source", 1, 1)
+    assert r.copy("source", "copy")
+    r.ts().add("source", 2, 2)
+    assert r.ts().get("copy")[0] == 1
+    assert r.ts().get("source")[0] == 2

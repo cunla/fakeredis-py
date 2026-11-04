@@ -171,3 +171,13 @@ class CommandsMixinBase:
             return SimpleString(key.value.model_type())
         else:
             assert False  # pragma: nocover
+
+    def _cleanup(self, server: Any) -> None:
+        """Remove all the references to `self` from `server`.
+
+        This is called with the server lock held, but it may be some time after self.close.
+        """
+        for subs in server.subscribers.values():
+            subs.discard(self)
+        for subs in server.psubscribers.values():
+            subs.discard(self)

@@ -143,10 +143,11 @@ def test_georadius_with(r: ClientType):
     r.geoadd("barcelona", values)
     # test a bunch of combinations to test the parse response function.
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
-    assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
-
-    res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
-    assert res == [pytest.approx([b"place1", 0.0881, pytest.approx((2.1909, 41.4337), 0.0001)], 0.001)]
+    assert len(res) == 1
+    name, dist, coord = res[0]
+    assert name == b"place1"
+    assert dist == pytest.approx(0.0881, 0.001)
+    assert coord == pytest.approx((2.1909, 41.4337), 0.0001)
 
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withcoord=True)
     assert res == [[b"place1", pytest.approx((2.1909, 41.4337), 0.0001)]]

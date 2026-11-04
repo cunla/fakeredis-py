@@ -63,20 +63,20 @@ def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
             result = chr(s1[r - 1]) + result
             r -= 1
             c -= 1
+            if curr_length == 0:
+                # Going backwards, the first character of a match is its end
+                s1ind, s2ind = r, c
             curr_length += 1
         elif pi[r][c] == 2:
             r -= 1
         else:
             c -= 1
 
-        if pi[r][c] == 0 and curr_length == 1:
-            s1ind = r
-            s2ind = c
-        elif pi[r][c] > 0 and curr_length > 0:
+        if pi[r][c] > 0 and curr_length > 0:
             matches.append([[r, s1ind], [c, s2ind], curr_length])
             s1ind, s2ind, curr_length = None, None, 0
     if curr_length:
-        matches.append([[s1ind, r], [s2ind, c], curr_length])
+        matches.append([[r, s1ind], [c, s2ind], curr_length])
 
     return opt[l1][l2], result.encode(), matches
 

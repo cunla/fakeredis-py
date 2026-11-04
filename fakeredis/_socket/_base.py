@@ -36,7 +36,6 @@ def _get_next_file_no() -> int:
 
 
 class BaseFakeSocket(NotificationsMixin):
-    _clear_watches: Callable[[], None]
     abort_transaction: Callable[[], None]
     _forget_transaction: Callable[[], None]
     _queueing: bool
@@ -138,17 +137,6 @@ class BaseFakeSocket(NotificationsMixin):
 
     def fileno(self) -> int:
         return self._fileno
-
-    def _cleanup(self, server: Any) -> None:
-        """Remove all the references to `self` from `server`.
-
-        This is called with the server lock held, but it may be some time after self.close.
-        """
-        for subs in server.subscribers.values():
-            subs.discard(self)
-        for subs in server.psubscribers.values():
-            subs.discard(self)
-        self._clear_watches()
 
     def kill(self) -> None:
         """Disconnect this socket on behalf of CLIENT KILL, from any connection.

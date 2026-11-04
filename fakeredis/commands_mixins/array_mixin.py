@@ -29,8 +29,6 @@ def _parse_range_end(val: bytes, array: Array, is_start: bool) -> int:
 
 
 class ArrayCommandsMixin(CommandsMixinBase):
-    # ── write commands ──────────────────────────────────────────────────────
-
     @command((Key(Array), Int, bytes), (bytes,))
     def arset(self, key: CommandItem, index: int, first_val: bytes, *more_vals: bytes) -> int:
         if index < 0:
