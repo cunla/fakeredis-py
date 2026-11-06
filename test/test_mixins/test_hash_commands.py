@@ -354,7 +354,7 @@ def test_hrandfield(r: ClientType):
     assert r.hrandfield("key") is None
     hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
     r.hset("key", mapping=hash)
-    assert r.hrandfield("key") is not None
+    assert r.hrandfield("key") in set(hash.keys())
     assert len(r.hrandfield("key", 0)) == 0
     res = r.hrandfield("key", 2)
     assert len(res) == 2
@@ -377,6 +377,24 @@ def test_hrandfield(r: ClientType):
     assert len(r.hrandfield("key", 10)) == 5
     # with duplications
     assert len(r.hrandfield("key", -10)) == 10
+
+
+def test_hrandfield_with_count_on_missing_key(r: ClientType):
+    assert r.hrandfield("key", 2) == []
+    assert r.hrandfield("key", -2) == []
+    assert r.hrandfield("key", 0) == []
+    assert r.hrandfield("key", 2, withvalues=True) == []
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_hrandfield_checks_arguments_before_key(r: ClientType):
+    with pytest.raises(Exception, match="value is not an integer or out of range"):
+        raw_command(r, "HRANDFIELD", "key", "two")
+    with pytest.raises(Exception, match="syntax error"):
+        raw_command(r, "HRANDFIELD", "key", "2", "VALUES")
+    r.hset("key", "a", "1")
+    with pytest.raises(Exception, match="syntax error"):
+        raw_command(r, "HRANDFIELD", "key", "2", "VALUES")
 
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "HRANDFIELD", "key", 3, "WITHVALUES", 3)

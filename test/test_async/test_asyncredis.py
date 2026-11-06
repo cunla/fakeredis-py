@@ -272,7 +272,7 @@ async def test_hrandfield(async_redis: AsyncClientType):
     assert await async_redis.hrandfield("key") is None
     hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
     await async_redis.hset("key", mapping=hash)
-    assert await async_redis.hrandfield("key") is not None
+    assert await async_redis.hrandfield("key") in set(hash.keys())
     assert len(await async_redis.hrandfield("key", 0)) == 0
     res = await async_redis.hrandfield("key", 2)
     assert len(res) == 2
