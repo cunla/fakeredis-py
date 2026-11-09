@@ -104,6 +104,12 @@ class FakeBaseConnectionMixin:
     def _add_to_local_cache(self, command: Sequence[str], response: Any, keys: list[Any]) -> None:
         return None
 
+    def get_resolved_ip(self) -> str | None:
+        # redis-py>=8.0 resolves the host with a real socket.getaddrinfo() call (for the maintenance notifications
+        # endpoint type, and in debug logs). The host of a fake connection names a server, not a machine, so there is
+        # nothing to resolve. See https://github.com/cunla/fakeredis-py/issues/513
+        return None
+
     def repr_pieces(self) -> list[tuple[str, Any]]:
         pieces = [("server", self._server), ("db", self.db)]  # type: ignore[attr-defined]
         if self.client_name:
