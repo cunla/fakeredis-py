@@ -49,6 +49,7 @@ on:
           - "docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.2"
           - "docker.dragonflydb.io/dragonflydb/dragonfly:latest"
           - "quay.io/kividbio/kividb:v1.0.4-lua"
+          - "kividb/kividb:v1.2.0-full"
       markers:
         description: "pytest -m expression (ignored when coverage is on)"
         type: string
@@ -145,11 +146,11 @@ jobs:
         # host side is always 6390 - that is where the test suite looks.
         ports:
           - 6390:${{ contains(inputs.server-image, 'kividb') && '6380' || '6379' }}
+        # KiviDB images ship only the server binary (no shell, no redis-cli), so a
+        # health command cannot run inside them; the "Wait for KiviDB" step below
+        # checks the port from the runner instead.
         options: >-
-          --health-cmd "redis-cli -p ${{ contains(inputs.server-image, 'kividb') && '6380' || '6379' }} ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          ${{ !contains(inputs.server-image, 'kividb') && '--health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5' || '' }}
     outputs:
       version: ${{ steps.getVersion.outputs.VERSION }}
     steps:
@@ -173,6 +174,10 @@ jobs:
               uv sync --all-extras
           fi
           uv pip install "redis==$REDIS_PY"
+      - name: Wait for KiviDB
+        if: ${{ contains(inputs.server-image, 'kividb') }}
+        timeout-minutes: 1
+        run: until (exec 3<>/dev/tcp/127.0.0.1/6390) 2>/dev/null; do sleep 1; done
       - name: Get version
         id: getVersion
         shell: bash
