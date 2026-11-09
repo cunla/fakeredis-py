@@ -7,6 +7,14 @@ tags:
 toc_depth: 2
 ---
 
+## Next release
+
+### 🐛 Bug Fixes
+
+- fix: support redis-py 8.2: creating a client no longer fails with
+  `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
+  again, and RESP3 connections still make no DNS lookup (#636)
+
 ## v2.40.0 - 2026-10-15
 
 ### 🚀 Features
