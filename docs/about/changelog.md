@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - feat(geo): `GEOSEARCH` and `GEOSEARCHSTORE` support `BYBOX`
+- feat(streams): `XREAD` and `XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
 
 ### 🐛 Bug Fixes
 
@@ -21,6 +22,9 @@ toc_depth: 2
 - fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` parse their options like Redis: `FROMMEMBER`/`FROMLONLAT` and `BYRADIUS`/`BYBOX`
   are mutually exclusive, `BYRADIUS` requires a unit, `FROMLONLAT` coordinates are range-checked, and invalid
   arguments get Redis' error messages
+- fix(streams): blocking `XREADGROUP` returns entries that are already available, and with `COUNT` it waits for new
+  ones instead of returning at once
+- fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey
 
 ## v2.40.0 - 2026-10-15
 
