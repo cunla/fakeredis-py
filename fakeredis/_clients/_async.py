@@ -26,9 +26,27 @@ class FakeReader:
         return self._socket.responses.empty() and not self._socket._server.connected
 
 
+class FakeTransport:
+    """The parts of ``asyncio.Transport`` redis-py reads off ``StreamWriter.transport``."""
+
+    def __init__(self, writer: FakeWriter) -> None:
+        self._writer = writer
+
+    def is_closing(self) -> bool:
+        return self._writer._socket is None
+
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        return default
+
+
 class FakeWriter:
     def __init__(self, socket: AsyncFakeSocket) -> None:
         self._socket: AsyncFakeSocket | None = socket
+        # redis-py>=8.2 checks writer.transport.is_closing() before every write.
+        self.transport = FakeTransport(self)
+
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        return self.transport.get_extra_info(name, default)
 
     def close(self) -> None:
         self._socket = None
