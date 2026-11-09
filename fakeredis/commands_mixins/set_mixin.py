@@ -7,34 +7,21 @@ from fakeredis._command_args_parsing import Int
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
-from fakeredis._typing import ServerType
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import ExpiringMembersSet
 
-# An input set of SDIFF/SINTER/SUNION and their STORE forms. KiviDB reads one of the wrong type as empty
-# rather than answering WRONGTYPE.
-_LAX_SET_TYPES: tuple[ServerType, ...] = ("kividb",)
-_SET_INPUT = Key(ExpiringMembersSet, empty_on_wrongtype=_LAX_SET_TYPES)
 
-
-def _calc_setop(
-    op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem, lax_types: bool = False
-) -> Any:
-    """`lax_types` reads an input key of the wrong type as an empty set, which is what KiviDB does."""
+def _calc_setop(op: Callable[..., Any], stop_if_missing: bool, key: CommandItem, *keys: CommandItem) -> Any:
     if stop_if_missing and not key.value:
         return set()
     value = key.value
     if not isinstance(value, ExpiringMembersSet):
-        if not lax_types:
-            raise SimpleError(msgs.WRONGTYPE_MSG)
-        return set()
+        raise SimpleError(msgs.WRONGTYPE_MSG)
     ans = value.copy()
     for other in keys:
         value = other.value if other.value is not None else ExpiringMembersSet()
         if not isinstance(value, ExpiringMembersSet):
-            if not lax_types:
-                raise SimpleError(msgs.WRONGTYPE_MSG)
-            value = ExpiringMembersSet()
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         if stop_if_missing and not value:
             return set()
         ans = op(ans, value)
@@ -42,19 +29,14 @@ def _calc_setop(
 
 
 def _setop(
-    op: Callable[..., Any],
-    stop_if_missing: bool,
-    dst: CommandItem | None,
-    key: CommandItem,
-    *keys: CommandItem,
-    lax_types: bool = False,
+    op: Callable[..., Any], stop_if_missing: bool, dst: CommandItem | None, key: CommandItem, *keys: CommandItem
 ) -> Any:
     """Apply one of SINTER[STORE], SUNION[STORE], SDIFF[STORE].
 
     If `stop_if_missing`, the output will be made an empty set as soon as an empty input set is encountered (use for
     SINTER[STORE]). May assume that `key` is a set (or empty), but `keys` could be anything.
     """
-    ans = _calc_setop(op, stop_if_missing, key, *keys, lax_types=lax_types)
+    ans = _calc_setop(op, stop_if_missing, key, *keys)
     if dst is None:
         return list(ans)
     else:
@@ -104,11 +86,6 @@ class SetCommandsMixin(CommandsMixinBase):
         """SDIFFCARD numkeys key [key ...] [LIMIT limit]"""
         return self._setop_card(lambda a, b: a - b, args, allow_approx=False)
 
-    @property
-    def _lax_set_types(self) -> bool:
-        """KiviDB's multi-key set operations read a key of the wrong type as an empty set."""
-        return self.server_type == "kividb"
-
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def sadd(self, key: CommandItem, *members: bytes) -> int:
         old_size = len(key.value)
@@ -120,15 +97,15 @@ class SetCommandsMixin(CommandsMixinBase):
     def scard(self, key: CommandItem) -> int:
         return len(key.value)
 
-    @command((_SET_INPUT,), (_SET_INPUT,))
+    @command((Key(ExpiringMembersSet),), (Key(ExpiringMembersSet),))
     def sdiff(self, *keys: CommandItem) -> Any:
-        return _setop(lambda a, b: a - b, False, None, *keys, lax_types=self._lax_set_types)
+        return _setop(lambda a, b: a - b, False, None, *keys)
 
-    @command((Key(), _SET_INPUT), (_SET_INPUT,))
+    @command((Key(), Key(ExpiringMembersSet)), (Key(ExpiringMembersSet),))
     def sdiffstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
-        return _setop(lambda a, b: a - b, False, dst, *keys, lax_types=self._lax_set_types)
+        return _setop(lambda a, b: a - b, False, dst, *keys)
 
-    @command((_SET_INPUT,), (_SET_INPUT,))
+    @command((Key(ExpiringMembersSet),), (Key(ExpiringMembersSet),))
     def sinter(self, *keys: CommandItem) -> Any:
         res = _setop(lambda a, b: a & b, True, None, *keys)
         return res
@@ -155,12 +132,12 @@ class SetCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         keys = [CommandItem(args[i], self._db, item=self._db.get(args[i])) for i in range(numkeys)]
 
-        res = _setop(lambda a, b: a & b, False, None, *keys, lax_types=self._lax_set_types)
+        res = _setop(lambda a, b: a & b, False, None, *keys)
         return len(res) if limit == 0 else min(limit, len(res))
 
-    @command((Key(), _SET_INPUT), (_SET_INPUT,))
+    @command((Key(), Key(ExpiringMembersSet)), (Key(ExpiringMembersSet),))
     def sinterstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
-        return _setop(lambda a, b: a & b, True, dst, *keys, lax_types=self._lax_set_types)
+        return _setop(lambda a, b: a & b, True, dst, *keys)
 
     @command((Key(ExpiringMembersSet), bytes))
     def sismember(self, key: CommandItem, member: bytes) -> int:
@@ -240,13 +217,13 @@ class SetCommandsMixin(CommandsMixinBase):
     def sscan(self, key: CommandItem, cursor: int, *args: bytes) -> Any:
         return self._scan(key.value, cursor, *args, scanned_key=key.key)
 
-    @command((_SET_INPUT,), (_SET_INPUT,))
+    @command((Key(ExpiringMembersSet),), (Key(ExpiringMembersSet),))
     def sunion(self, *keys: CommandItem) -> Any:
-        return _setop(lambda a, b: a | b, False, None, *keys, lax_types=self._lax_set_types)
+        return _setop(lambda a, b: a | b, False, None, *keys)
 
-    @command((Key(), _SET_INPUT), (_SET_INPUT,))
+    @command((Key(), Key(ExpiringMembersSet)), (Key(ExpiringMembersSet),))
     def sunionstore(self, dst: CommandItem, *keys: CommandItem) -> Any:
-        return _setop(lambda a, b: a | b, False, dst, *keys, lax_types=self._lax_set_types)
+        return _setop(lambda a, b: a | b, False, dst, *keys)
 
     # Hyperloglog commands
     # These are not quite the same as the real redis ones, which are approximate and store the results in a string.

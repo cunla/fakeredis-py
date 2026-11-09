@@ -94,9 +94,6 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             if item and not isinstance(item.value, ZSet):
-                # KiviDB passes over a key of the wrong type here, as it does in BRPOP.
-                if self.server_type == "kividb":
-                    continue
                 raise SimpleError(msgs.WRONGTYPE_MSG)
             temp_res = self._zpop(item, 1, reverse, flatten_list=False)
             if temp_res:
@@ -494,10 +491,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
         # Redis reads a plain set as a sorted set scoring every member 1. Dragonfly does that too, except in
-        # ZDIFF/ZDIFFSTORE, which only accept sorted sets; KiviDB never does it, in any of these commands.
-        zsets_only = self.server_type == "kividb" or (
-            self.server_type == "dragonfly" and func in {"ZDIFF", "ZDIFFSTORE"}
-        )
+        # ZDIFF/ZDIFFSTORE, which only accept sorted sets.
+        zsets_only = self.server_type == "dragonfly" and func in {"ZDIFF", "ZDIFFSTORE"}
         sets = []
         for i in range(numkeys):
             item = CommandItem(args[i], self._db, item=self._db.get(args[i]), default=ZSet())
@@ -645,15 +640,11 @@ class SortedSetCommandsMixin(CommandsMixinBase):
             res = [list(item) for item in res]
         return res
 
-    def _zmpop(
-        self, keys: Sequence[bytes], count: int, reverse: bool, first_pass: bool, check_type: bool = True
-    ) -> list[Any] | None:
+    def _zmpop(self, keys: Sequence[bytes], count: int, reverse: bool, first_pass: bool) -> list[Any] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
             if item and not isinstance(item.value, ZSet):
-                if check_type:
-                    raise SimpleError(msgs.WRONGTYPE_MSG)
-                continue
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             res = self._zpop(item, count, reverse, flatten_list=False)
             if res:
                 item.writeback()  # remove the key if the set is now empty
@@ -673,6 +664,5 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         keys, count, reverse = parse_mpop_args("bzmpop", numkeys, args, ("max", "min"), self.server_type)
         return self._blocking(  # type: ignore[no-any-return]
             timeout,
-            # KiviDB checks the key's type in ZMPOP but not in BZMPOP.
-            functools.partial(self._zmpop, keys, count, reverse, check_type=self.server_type != "kividb"),
+            functools.partial(self._zmpop, keys, count, reverse),
         )
