@@ -15,6 +15,9 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
+- fix: support redis-py 8.2: creating a client no longer fails with
+  `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
+  again, and RESP3 connections still make no DNS lookup (#636)
 - fix(streams): blocking `XREADGROUP` returns entries that are already available, and with `COUNT` it waits for new
   ones instead of returning at once
 - fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey

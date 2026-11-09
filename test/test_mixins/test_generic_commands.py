@@ -847,7 +847,7 @@ def test_copy_does_not_share_value_with_source(r: ClientType):
     r.hset("hash-copy", "f", "b")
 
     assert r.lrange("list-copy", 0, -1) == [b"a"]
-    assert r.smembers("set") == {b"a"}
+    assert set(r.smembers("set")) == {b"a"}  # valkey-py returns a list
     assert r.zscore("zset-copy", "a") == 1
     assert r.hget("hash", "f") == b"a"
 
