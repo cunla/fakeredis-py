@@ -18,17 +18,23 @@ def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
 
     redis-py marks deprecated ``__init__`` arguments by wrapping the method in a
     ``@deprecated_args(args_to_warn=[...])`` decorator. There is no public
-    API to query the list, so this walks the wrapper's closure cells looking for the ``args_to_warn`` list (recursing
-    through nested wrappers). If redis-py changes how the decorator stores the list, this returns an empty set and
-    deprecated defaults are simply forwarded again.
+    API to query the list, so this walks the wrapper's closure cells looking for the names (``args_to_warn`` in
+    older releases, ``warned`` since 8.2) and recursing through nested wrappers. Closure cells can also hold native
+    callables such as ``dict_keys.isdisjoint``, which have no ``__closure__``. If redis-py changes how the decorator
+    stores the list, this returns an empty set and deprecated defaults are simply forwarded again.
     """
-    closure = method.__closure__
+    closure = getattr(method, "__closure__", None)
     if closure is None:
         return set()
+    code = getattr(method, "__code__", None)
+    names = code.co_freevars if code is not None else ()
     res = set()
-    for cell in closure:
+    for index, cell in enumerate(closure):
         value = cell.cell_contents
-        if isinstance(value, list) and len(value) > 0:
+        name = names[index] if index < len(names) else None
+        if (isinstance(value, list) and len(value) > 0) or (
+            name in ("args_to_warn", "warned") and isinstance(value, tuple)
+        ):
             res.update(value)
         elif callable(value):
             res.update(_get_args_to_warn(value))

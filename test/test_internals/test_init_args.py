@@ -4,7 +4,30 @@ import pytest
 import redis
 
 import fakeredis
+from fakeredis._clients._setup import _get_args_to_warn
 from test.testtools import pool_get_connection, run_test_if_redispy_ver
+
+
+@pytest.mark.fake
+def test_args_to_warn_ignores_native_callables():
+    def wrapped(native):
+        def inner():
+            return native
+
+        return inner
+
+    assert _get_args_to_warn(wrapped(type({}.keys()).isdisjoint)) == set()
+
+
+@pytest.mark.fake
+def test_args_to_warn_reads_the_tuple_representation():
+    def wrapped(warned):
+        def inner():
+            return warned
+
+        return inner
+
+    assert _get_args_to_warn(wrapped(("foo", "bar"))) == {"foo", "bar"}
 
 
 @pytest.mark.fake
