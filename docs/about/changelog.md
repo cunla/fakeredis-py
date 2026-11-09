@@ -9,11 +9,18 @@ toc_depth: 2
 
 ## Next release
 
+### 🚀 Features
+
+- feat(geo): `GEOSEARCH` and `GEOSEARCHSTORE` support `BYBOX`
+
 ### 🐛 Bug Fixes
 
 - fix: support redis-py 8.2: creating a client no longer fails with
   `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
   again, and RESP3 connections still make no DNS lookup (#636)
+- fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` parse their options like Redis: `FROMMEMBER`/`FROMLONLAT` and `BYRADIUS`/`BYBOX`
+  are mutually exclusive, `BYRADIUS` requires a unit, `FROMLONLAT` coordinates are range-checked, and invalid
+  arguments get Redis' error messages
 
 ## v2.40.0 - 2026-10-15
 
