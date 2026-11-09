@@ -738,7 +738,6 @@ def test_lmpop(r: ClientType):
     assert r.lmpop("2", "bar", "foo", direction="LEFT") == [b"bar", [b"a"]]
 
 
-@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_lmpop_count_not_positive(r: ClientType, real_server_details):
     r.rpush("foo", "a", "b")
@@ -763,7 +762,6 @@ def test_lmpop_count_not_positive(r: ClientType, real_server_details):
     assert r.lrange("foo", 0, -1) == [b"a", b"b"]
 
 
-@pytest.mark.unsupported_server_types("kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 def test_lmpop_numkeys_not_positive(r: ClientType, real_server_details):
     r.rpush("foo", "a")
