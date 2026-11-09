@@ -2,16 +2,30 @@ from __future__ import annotations
 
 import sys
 from collections import namedtuple
+from dataclasses import dataclass
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, extract_args
+from fakeredis._command_args_parsing import Float, Int, extract_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.geo import distance, geo_decode, geo_encode
 from fakeredis.model import ZSet
+
+GEO_UNSUPPORTED_UNIT = "ERR unsupported unit provided. please use M, KM, FT, MI"
+GEO_INVALID_COORDINATE_MSG = "ERR invalid longitude,latitude pair {},{}"
+GEO_MEMBER_NOT_FOUND_MSG = "ERR could not decode requested zset member"
+GEO_MEMBER_DOES_NOT_EXIST_MSG = "ERR member {} does not exist"
+GEO_NEED_NUMERIC_MSG = "ERR need numeric {}"
+GEO_NEGATIVE_RADIUS_MSG = "ERR radius cannot be negative"
+GEO_NEGATIVE_BOX_MSG = "ERR height or width cannot be negative"
+GEO_COUNT_MUST_BE_POSITIVE_MSG = "ERR COUNT must be > 0"
+GEO_ANY_REQUIRES_COUNT_MSG = "ERR the ANY argument requires COUNT argument"
+GEO_SEARCH_FROM_MSG = "ERR exactly one of FROMMEMBER or FROMLONLAT can be specified for {}"
+GEO_SEARCH_BY_MSG = "ERR exactly one of {} can be specified for {}"
+GEOSEARCHSTORE_WITH_MSG = "ERR GEOSEARCHSTORE is not compatible with WITHDIST, WITHHASH and WITHCOORD options"
 
 _UNIT_TO_M = {b"km": 0.001, b"mi": 0.000621371, b"ft": 3.28084, b"m": 1}
 _GEO_LONGTITUDE_MIN, _GEO_LONGTITUDE_MAX = -180, 180
@@ -25,7 +39,7 @@ def translate_meters_to_unit(unit_arg: bytes) -> float:
     """
     unit = _UNIT_TO_M.get(unit_arg.lower())
     if unit is None:
-        raise SimpleError(msgs.GEO_UNSUPPORTED_UNIT)
+        raise SimpleError(GEO_UNSUPPORTED_UNIT)
     return unit
 
 
@@ -61,18 +75,20 @@ def _find_near(
     count_any: bool,
     desc: bool,
     sort: bool = True,
+    box: tuple[float, float] | None = None,
 ) -> list[GeoResult]:
-    """Find items within area (lat,long)+radius
+    """Find items within area (lat,long)+radius, or within a width x height box centred on (lat,long)
     :param zset: list of items to check
     :param lat: latitude
     :param long: longitude
-    :param radius: radius in whatever units
+    :param radius: radius in whatever units, ignored when `box` is given
     :param conv: conversion of radius to meters
     :param count: number of results to give
     :param count_any: should we return any results that match? (vs. sorted)
     :param desc: should results be sorted descending order?
     :param sort: should results be ordered by distance at all? Dragonfly only orders them
         when ASC/DESC is given explicitly, otherwise it answers in geohash (score) order.
+    :param box: (width, height) of a box to search instead of the radius, in the same units as `radius`
     :returns: List of GeoResults
     """
     results = []
@@ -82,8 +98,10 @@ def _find_near(
     for name in zset:
         _hash = scores[name]
         p_lat, p_long, _, _ = geo_decode(_hash)
+        if box is not None and not _in_box(lat, long, p_lat, p_long, box, conv):
+            continue
         dist = distance((p_lat, p_long), (lat, long)) * conv
-        if dist < radius:
+        if box is not None or dist < radius:
             results.append(GeoResult(name, p_long, p_lat, _hash, dist))
             if count_any and len(results) >= count:
                 break
@@ -92,6 +110,36 @@ def _find_near(
     if count:
         results = results[:count]
     return results
+
+
+def _in_box(lat: float, long: float, p_lat: float, p_long: float, box: tuple[float, float], conv: float) -> bool:
+    """Whether a point is inside a width x height box centred on (lat, long), as redis'
+    `geohashGetDistanceIfInRectangle` decides it: the north-south offset is measured along the centre's meridian, the
+    east-west one along the point's own parallel, both inclusive.
+    """
+    width, height = box
+    if distance((p_lat, long), (lat, long)) * conv > height / 2:
+        return False
+    return distance((p_lat, p_long), (p_lat, long)) * conv <= width / 2
+
+
+@dataclass
+class _GeoSearchArgs:
+    """The parsed arguments of GEOSEARCH / GEOSEARCHSTORE."""
+
+    lat: float = 0.0
+    long: float = 0.0
+    conv: float = 1.0
+    radius: float | None = None
+    box: tuple[float, float] | None = None
+    count: int = 0
+    count_any: bool = False
+    asc: bool = False
+    desc: bool = False
+    withcoord: bool = False
+    withdist: bool = False
+    withhash: bool = False
+    storedist: bool = False
 
 
 class GeoCommandsMixin(CommandsMixinBase):
@@ -150,7 +198,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             if not (
                 _GEO_LONGTITUDE_MIN <= long <= _GEO_LONGTITUDE_MAX and _GEO_LATITUDE_MIN <= lat <= _GEO_LATITUDE_MAX
             ):
-                raise SimpleError(msgs.GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
+                raise SimpleError(GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
             should_add = (name in zset and not xx) or (name not in zset and not nx)
             if should_add and zset.add(name, geo_encode(lat, long, 10)):
                 changed_items += 1
@@ -217,8 +265,8 @@ class GeoCommandsMixin(CommandsMixinBase):
         if member_score is None:
             if key.value:
                 if self.server_type == "valkey" and self.version >= (9,):
-                    raise SimpleError(msgs.GEO_MEMBER_DOES_NOT_EXIST_MSG.format(member_name.decode(errors="replace")))
-                raise SimpleError(msgs.GEO_MEMBER_NOT_FOUND_MSG)
+                    raise SimpleError(GEO_MEMBER_DOES_NOT_EXIST_MSG.format(member_name.decode(errors="replace")))
+                raise SimpleError(GEO_MEMBER_NOT_FOUND_MSG)
             # A missing key finds nothing, wherever the search is centred.
             return 0.0, 0.0
         lat, long, _, _ = geo_decode(member_score)
@@ -234,38 +282,99 @@ class GeoCommandsMixin(CommandsMixinBase):
         lat, long = self._member_position(key, member_name)
         return self.georadius_ro(key, long, lat, radius, *args)  # type: ignore[no-any-return]
 
+    def _parse_geosearch_args(
+        self, cmd_name: str, key: CommandItem, args: tuple[bytes, ...], store: bool
+    ) -> _GeoSearchArgs:
+        """Parse the GEOSEARCH / GEOSEARCHSTORE options the way redis' `georadiusGeneric` does: a repeated FROM* or BY*
+        option overrides the earlier one, while mixing FROMMEMBER with FROMLONLAT or BYRADIUS with BYBOX is a syntax
+        error.
+        """
+        parsed = _GeoSearchArgs()
+        frommember = fromlonlat = False
+        i = 0
+        while i < len(args):
+            arg, remaining = args[i].lower(), len(args) - i - 1
+            if arg == b"withdist":
+                parsed.withdist = True
+            elif arg == b"withhash":
+                parsed.withhash = True
+            elif arg == b"withcoord":
+                parsed.withcoord = True
+            elif arg == b"any":
+                parsed.count_any = True
+            elif arg in (b"asc", b"desc"):
+                parsed.asc, parsed.desc = arg == b"asc", arg == b"desc"
+            elif arg == b"count" and remaining >= 1:
+                parsed.count = Int.decode(args[i + 1])
+                if parsed.count <= 0:
+                    raise SimpleError(GEO_COUNT_MUST_BE_POSITIVE_MSG)
+                i += 1
+            elif arg == b"frommember" and remaining >= 1 and not fromlonlat:
+                parsed.lat, parsed.long = self._member_position(key, args[i + 1])
+                frommember = True
+                i += 1
+            elif arg == b"fromlonlat" and remaining >= 2 and not frommember:
+                parsed.long, parsed.lat = Float.decode(args[i + 1]), Float.decode(args[i + 2])
+                if not (
+                    _GEO_LONGTITUDE_MIN <= parsed.long <= _GEO_LONGTITUDE_MAX
+                    and _GEO_LATITUDE_MIN <= parsed.lat <= _GEO_LATITUDE_MAX
+                ):
+                    raise SimpleError(GEO_INVALID_COORDINATE_MSG.format(f"{parsed.long:f}", f"{parsed.lat:f}"))
+                fromlonlat = True
+                i += 2
+            elif arg == b"byradius" and remaining >= 2 and parsed.box is None:
+                radius = Float.decode(args[i + 1], decode_error=GEO_NEED_NUMERIC_MSG.format("radius"))
+                if radius < 0:
+                    raise SimpleError(GEO_NEGATIVE_RADIUS_MSG)
+                parsed.conv, parsed.radius = translate_meters_to_unit(args[i + 2]), radius
+                i += 2
+            elif arg == b"bybox" and remaining >= 3 and parsed.radius is None:
+                width = Float.decode(args[i + 1], decode_error=GEO_NEED_NUMERIC_MSG.format("width"))
+                height = Float.decode(args[i + 2], decode_error=GEO_NEED_NUMERIC_MSG.format("height"))
+                if width < 0 or height < 0:
+                    raise SimpleError(GEO_NEGATIVE_BOX_MSG)
+                parsed.conv, parsed.box = translate_meters_to_unit(args[i + 3]), (width, height)
+                i += 3
+            elif store and arg == b"storedist":
+                parsed.storedist = True
+            else:
+                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+            i += 1
+
+        if store and (parsed.withdist or parsed.withhash or parsed.withcoord):
+            raise SimpleError(GEOSEARCHSTORE_WITH_MSG)
+        if not (frommember or fromlonlat):
+            raise SimpleError(GEO_SEARCH_FROM_MSG.format(cmd_name))
+        if parsed.radius is None and parsed.box is None:
+            # Valkey 9 added BYPOLYGON, and names it in this error
+            valkey9 = self.server_type == "valkey" and self.version >= (9,)
+            shapes = "BYRADIUS, BYBOX and BYPOLYGON" if valkey9 else "BYRADIUS and BYBOX"
+            raise SimpleError(GEO_SEARCH_BY_MSG.format(shapes, cmd_name))
+        if parsed.count_any and not parsed.count:
+            raise SimpleError(GEO_ANY_REQUIRES_COUNT_MSG)
+        return parsed
+
+    def _geosearch(self, key: CommandItem, parsed: _GeoSearchArgs) -> list[GeoResult]:
+        return _find_near(
+            key.value,
+            parsed.lat,
+            parsed.long,
+            parsed.radius or 0.0,
+            parsed.conv,
+            parsed.count or sys.maxsize,
+            parsed.count_any,
+            parsed.desc,
+            # Dragonfly only orders by distance when ASC/DESC is explicit.
+            sort=self.server_type != "dragonfly" or parsed.asc or parsed.desc,
+            box=parsed.box,
+        )
+
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
     def geosearch(self, key: CommandItem, *args: bytes) -> list[Any]:
-        (frommember, (long, lat), radius), left_args = extract_args(
-            args,
-            ("*frommember", "..fromlonlat", ".byradius"),
-            error_on_unexpected=False,
-            left_from_first_unexpected=False,
-        )
-        if frommember is None and long is None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if frommember is not None and long is not None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if frommember:
-            return self.georadiusbymember_ro(key, frommember, radius, *left_args)  # type: ignore[no-any-return]
-        else:
-            return self.georadius_ro(key, long, lat, radius, *left_args)  # type: ignore
+        parsed = self._parse_geosearch_args("GEOSEARCH", key, args, store=False)
+        return _parse_results(self._geosearch(key, parsed), parsed.withcoord, parsed.withdist)
 
     @command(name="GEOSEARCHSTORE", fixed=(bytes, Key(ZSet)), repeat=(bytes,))
-    def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> list[Any]:
-        (frommember, (long, lat), radius, storedist), left_args = extract_args(
-            args,
-            ("*frommember", "..fromlonlat", ".byradius", "storedist"),
-            error_on_unexpected=False,
-            left_from_first_unexpected=False,
-        )
-        if frommember is None and long is None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if frommember is not None and long is not None:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        additional = [b"storedist", dst] if storedist else [b"store", dst]
-
-        if frommember:
-            return self.georadiusbymember(src, frommember, radius, *left_args, *additional)  # type: ignore[no-any-return]
-        else:
-            return self._georadius(src, long, lat, radius, *left_args, *additional)  # type: ignore
+    def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> int:
+        parsed = self._parse_geosearch_args("GEOSEARCHSTORE", src, args, store=True)
+        return self._store_geo_results(dst, self._geosearch(src, parsed), scoredist=parsed.storedist)

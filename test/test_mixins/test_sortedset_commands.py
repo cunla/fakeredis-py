@@ -1093,8 +1093,12 @@ def test_zinterstore_nan_to_zero(r: ClientType, real_server_details):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
     r.zinterstore("bar", OrderedDict([("foo", 1.0), ("foo2", 0.0)]))
-    # Redis sums inf * 1 + inf * 0 to NaN and stores 0. Dragonfly zeroes the NaN product first, so the sum stays inf.
-    expected = math.inf if real_server_details.server_type == "dragonfly" else 0.0
+    # Redis sums inf * 1 + inf * 0 to NaN and stores 0. Dragonfly and valkey >= 9.1.3 zero the NaN product first, so the
+    # sum stays inf.
+    zeroes_product = real_server_details.server_type == "dragonfly" or (
+        real_server_details.server_type == "valkey" and real_server_details.server_version >= (9, 1, 3)
+    )
+    expected = math.inf if zeroes_product else 0.0
     assert r.zscore("bar", "x") == expected
 
 
