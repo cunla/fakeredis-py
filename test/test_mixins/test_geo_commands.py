@@ -240,6 +240,160 @@ def test_geosearch(r: ClientType, real_server_details):
     ]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geosearch_bybox(r: ClientType, real_server_details):
+    r.geoadd(
+        "Sicily",
+        (
+            13.361389,
+            38.115556,
+            "Palermo",
+            15.087269,
+            37.502669,
+            "Catania",
+            12.758489,
+            38.788135,
+            "edge1",
+            17.241510,
+            38.788135,
+            "edge2",
+        ),
+    )
+    # The GEOSEARCH example of the Redis documentation: edge1 and edge2 are just inside the 400 x 400 km box
+    res = r.geosearch("Sicily", longitude=15, latitude=37, width=400, height=400, unit="km", sort="ASC", withdist=True)
+    assert [name for name, _ in res[:2]] == [b"Catania", b"Palermo"]
+    assert {name for name, _ in res[2:]} == {b"edge1", b"edge2"}
+    assert [dist for _, dist in res] == pytest.approx([56.4413, 190.4424, 279.7404, 279.7404], abs=0.001)
+    # The default unit of redis-py is meters
+    assert r.geosearch("Sicily", longitude=15, latitude=37, width=120000, height=120000) == [b"Catania"]
+    # Palermo is 166 km from Catania, but more than 150 km away in longitude, so it is outside a 300 km wide box
+    assert r.geosearch("Sicily", member="Catania", width=300, height=200, unit="km") == [b"Catania"]
+    assert r.geosearchstore("dst", "Sicily", longitude=15, latitude=37, width=400, height=400, unit="km") == 4
+    assert r.zcard("dst") == 4
+
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "BYBOX", -1, 400, "km")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert "height or width cannot be negative" in str(ctx.value)
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(
+            r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "BYRADIUS", 200, "km", "BYBOX", 4, 4, "km"
+        )
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "ASC", "WITHDIST")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
+        shapes = "BYRADIUS, BYBOX and BYPOLYGON"
+    else:
+        shapes = "BYRADIUS and BYBOX"
+    assert f"exactly one of {shapes} can be specified for GEOSEARCH" in str(ctx.value)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geosearch_bybox_options(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    # STOREDIST scores are distances in the requested unit
+    assert (
+        r.geosearchstore("dst", "Sicily", longitude=15, latitude=37, width=400, height=400, unit="km", storedist=True)
+        == 2
+    )
+    stored = r.zrange("dst", 0, -1, withscores=True)
+    assert [name for name, _ in stored] == [b"Catania", b"Palermo"]
+    assert [score for _, score in stored] == pytest.approx([56.4413, 190.4424], abs=0.001)
+    # A repeated FROM* or BY* option overrides the earlier one
+    assert (
+        testtools.raw_command(
+            r, "GEOSEARCH", "Sicily", "FROMLONLAT", 15, 37, "BYBOX", 400, 400, "km", "BYBOX", 1, 1, "km"
+        )
+        == []
+    )
+    assert testtools.raw_command(
+        r, "GEOSEARCH", "Sicily", "FROMMEMBER", "Catania", "FROMMEMBER", "Palermo", "BYBOX", 1, 1, "km"
+    ) == [b"Palermo"]
+
+    for args, msg in [
+        (("FROMLONLAT", 15, 37, "BYBOX", "abc", 1, "km"), "need numeric width"),
+        (("FROMLONLAT", 15, 37, "BYBOX", 1, "abc", "km"), "need numeric height"),
+        (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "parsec"), "unsupported unit provided"),
+        (("FROMLONLAT", 15, 37, "BYBOX", 1, 1), "syntax error"),
+        (("FROMLONLAT", 15, 37, "BYRADIUS", -1, "km"), "radius cannot be negative"),
+        (("BYBOX", 1, 1, "km", "ASC"), "exactly one of FROMMEMBER or FROMLONLAT can be specified for GEOSEARCH"),
+        (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "ANY"), "the ANY argument requires COUNT argument"),
+        (("FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "COUNT", 0), "COUNT must be > 0"),
+    ]:
+        with pytest.raises(Exception) as ctx:
+            testtools.raw_command(r, "GEOSEARCH", "Sicily", *args)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert msg in str(ctx.value)
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(
+            r, "GEOSEARCHSTORE", "dst", "Sicily", "FROMLONLAT", 15, 37, "BYBOX", 1, 1, "km", "WITHDIST"
+        )
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # Redis 6.2 words it "STORE option in GEORADIUS is not compatible with WITHDIST, WITHHASH and WITHCOORDS options"
+    assert "is not compatible with WITHDIST, WITHHASH and WITHCOORD" in str(ctx.value)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # rejects it too, but with its own error message
+@pytest.mark.parametrize(
+    "shapes",
+    [
+        ("BYRADIUS", 200, "km", "BYBOX", 400, 400, "km"),
+        ("BYBOX", 400, 400, "km", "BYRADIUS", 200, "km"),
+        ("BYBOX", 400, 400, "km", "ASC", "BYRADIUS", 200, "km"),
+    ],
+)
+@pytest.mark.parametrize("origin", [("FROMLONLAT", 15, 37), ("FROMMEMBER", "Catania")])
+def test_geosearch_byradius_and_bybox_are_exclusive(r: ClientType, origin: tuple[Any, ...], shapes: tuple[Any, ...]):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    for command in (("GEOSEARCH", "Sicily"), ("GEOSEARCHSTORE", "dst", "Sicily")):
+        with pytest.raises(Exception) as ctx:
+            testtools.raw_command(r, *command, *origin, *shapes)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert "syntax error" in str(ctx.value)
+    assert r.exists("dst") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")  # rejects it too, but with its own error message
+@pytest.mark.parametrize(
+    "origins",
+    [
+        ("FROMMEMBER", "Catania", "FROMLONLAT", 15, 37),
+        ("FROMLONLAT", 15, 37, "FROMMEMBER", "Catania"),
+        ("FROMLONLAT", 15, 37, "ASC", "FROMMEMBER", "Catania"),
+        # The member is only looked up when FROMMEMBER is accepted, so a missing one still gives the syntax error
+        ("FROMLONLAT", 15, 37, "FROMMEMBER", "missing"),
+    ],
+)
+@pytest.mark.parametrize("shape", [("BYRADIUS", 200, "km"), ("BYBOX", 400, 400, "km")])
+@pytest.mark.parametrize("key", ["Sicily", "missing-key"])
+def test_geosearch_frommember_and_fromlonlat_are_exclusive(
+    r: ClientType, key: str, origins: tuple[Any, ...], shape: tuple[Any, ...]
+):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    for command in (("GEOSEARCH", key), ("GEOSEARCHSTORE", "dst", key)):
+        with pytest.raises(Exception) as ctx:
+            testtools.raw_command(r, *command, *origins, *shape)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+        assert "syntax error" in str(ctx.value)
+    assert r.exists("dst") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_geosearch_missing_member_reported_before_fromlonlat(r: ClientType, real_server_details):
+    # FROMMEMBER looks its member up as soon as it is parsed, so a missing member is reported before the FROMLONLAT
+    # that follows it is rejected
+    r.geoadd("Sicily", (15.087269, 37.502669, "Catania"))
+    with pytest.raises(Exception) as ctx:
+        testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMMEMBER", "nope", "FROMLONLAT", 15, 37, "BYRADIUS", 1, "km")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
+        assert "member nope does not exist" in str(ctx.value)
+    else:
+        assert "could not decode requested zset member" in str(ctx.value)
+
+
 @pytest.mark.parametrize(
     "longitude,latitude",
     [

@@ -32,6 +32,11 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
         # avoid any real network calls. See https://github.com/cunla/fakeredis-py/issues/513
         return None
 
+    def _add_maint_notifications_to_handshake(self, *args: Any, **kwargs: Any) -> None:
+        # redis-py>=8.2 sends the maintenance notifications command along with the rest of the handshake instead of
+        # through activate_maint_notifications_handling_if_enabled(); skip it for the same reason.
+        return None
+
     def _connect(self) -> FakeSocket:
         if not self._server.connected:
             raise self._connection_error_class(msgs.CONNECTION_ERROR_MSG)
