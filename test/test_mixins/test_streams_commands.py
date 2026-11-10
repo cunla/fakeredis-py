@@ -1415,3 +1415,48 @@ def test_xreadgroup_noack_leaves_the_pending_count_at_zero(r: ClientType):
     r.xreadgroup(group, "consumer1", streams={stream: ">"}, noack=True)
     assert _consumer_pending(r, stream, group) == {b"consumer1": 0}
     assert r.xpending(stream, group)["pending"] == 0
+
+
+@pytest.mark.parametrize("count", [None, 5])
+def test_xreadgroup_blocking(create_connection, count):
+    r = create_connection(db=1)  # not flushed between tests
+    r.delete("stream")
+    r.xadd("stream", {"x": "1"}, id="1-0")
+    r.xgroup_create("stream", "group", id="0")
+    # Entries already there are returned right away
+    start = time.time()
+    res = r.xreadgroup("group", "consumer", {"stream": ">"}, count=count, block=5000)
+    assert time.time() - start < 1
+    assert get_ids(testtools.raw_command(r, "XRANGE", "stream", "-", "+")) == [b"1-0"]
+    entries = res[0][1] if get_protocol_version(r) == 2 else res[b"stream"][0]
+    assert get_ids(entries) == [b"1-0"]
+
+    # Otherwise the read waits for one
+    def add_entry():
+        time.sleep(0.2)
+        create_connection(db=1).xadd("stream", {"x": "2"}, id="2-0")
+
+    thread = threading.Thread(target=add_entry)
+    thread.start()
+    start = time.time()
+    res = r.xreadgroup("group", "consumer", {"stream": ">"}, count=count, block=5000)
+    assert time.time() - start >= 0.1
+    thread.join()
+    entries = res[0][1] if get_protocol_version(r) == 2 else res[b"stream"][0]
+    assert get_ids(entries) == [b"2-0"]
+
+
+# Dragonfly reads nothing for COUNT 0, and rejects a negative COUNT
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize("count", [0, -1])
+def test_xreadgroup_count_not_positive(r: ClientType, count):
+    for i in range(1, 4):
+        r.xadd("stream", {"x": i}, id=f"{i}-0")
+    r.xgroup_create("stream", "group", id="0")
+    # Like XREAD, a COUNT of 0 or less reads everything, both new entries and the consumer's history
+    for start_id in (">", "0"):
+        res = testtools.raw_command(
+            r, "XREADGROUP", "GROUP", "group", "c", "COUNT", count, "STREAMS", "stream", start_id
+        )
+        entries = res[0][1] if isinstance(res, list) else res[b"stream"]
+        assert get_ids(entries) == [b"1-0", b"2-0", b"3-0"]

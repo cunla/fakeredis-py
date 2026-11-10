@@ -5,7 +5,7 @@ import itertools
 import re
 import time
 from collections import Counter
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import Any, AnyStr, NamedTuple
 
@@ -286,33 +286,50 @@ class StreamGroup:
         return res
 
     def group_read(
-        self, consumer_name: bytes, start_id: bytes, count: int | None, noack: bool
+        self,
+        consumer_name: bytes,
+        start_id: bytes,
+        count: int | None,
+        noack: bool,
+        accept: Callable[[list[Any]], bool] | None = None,
     ) -> list[list[bytes | list[bytes] | None]]:
+        """Read new entries (`>`) or the consumer's own pending entries for XREADGROUP.
+
+        :param accept: called with each record before it is delivered; returning False stops the read there, leaving
+            that record and the rest undelivered (XREADGROUP's MAXCOUNT/MAXSIZE).
+        """
         _time = current_time()
         if consumer_name not in self.consumers:
             self.consumers[consumer_name] = StreamConsumerInfo(consumer_name)
 
         self.consumers[consumer_name].last_attempt = _time
+        res: list[list[Any]] = []
         if start_id != b">":
             threshold = StreamEntryKey.parse_str(start_id)
             pel_keys = sorted(k for k, v in self.pel.items() if v.consumer_name == consumer_name and k > threshold)
             if count is not None:
                 pel_keys = pel_keys[:count]
             for k in pel_keys:
+                record: list[Any] = self.stream.format_record(k) if k in self.stream else [k.encode(), None]
+                if accept is not None and not accept(record):
+                    break
                 entry = self.pel[k]
                 self.pel[k] = PelEntry(entry.consumer_name, entry.time_read, entry.times_delivered + 1)
+                res.append(record)
             self.consumers[consumer_name].last_success = _time
-            return [self.stream.format_record(k) if k in self.stream else [k.encode(), None] for k in pel_keys]  # type: ignore[misc]
-        ids_read = self.stream.stream_read(self.last_delivered_key, count)
-        if not noack:
-            for k in ids_read:
+            return res
+        for k in self.stream.stream_read(self.last_delivered_key, count):
+            record = self.stream.format_record(k)
+            if accept is not None and not accept(record):
+                break
+            if not noack:
                 # Initialize with times_delivered=1 for new messages
                 self.pel[k] = PelEntry(consumer_name, _time, 1)
-            self.consumers[consumer_name].pending += len(ids_read)
-        for k in ids_read:
+                self.consumers[consumer_name].pending += 1
             self._mark_delivered(k)
+            res.append(record)
         self.consumers[consumer_name].last_success = _time
-        return [self.stream.format_record(x) for x in ids_read]  # type: ignore[misc]
+        return res
 
     def _calc_consumer_last_time(self) -> None:
         # pel values are PelEntry namedtuples
@@ -518,12 +535,20 @@ class StreamGroup:
         self._calc_consumer_last_time()
         return sorted(claimed_msgs), sorted(deleted_msgs)
 
-    def claim_for_read(self, min_idle_ms: int, consumer_name: bytes, count: int | None) -> list[list[Any]]:
+    def claim_for_read(
+        self,
+        min_idle_ms: int,
+        consumer_name: bytes,
+        count: int | None,
+        accept: Callable[[list[Any]], bool] | None = None,
+    ) -> list[list[Any]]:
         """Claim idle pending entries for `XREADGROUP ... CLAIM min-idle-time` (Redis 8.4).
 
         Entries pending for at least min_idle_ms milliseconds are re-assigned to consumer_name, longest-idle first
         (XNACK-released entries have a delivery time of 0, so they come first). Each claimed entry is returned as [id,
         fields, idle-time, previous-delivery-count].
+
+        :param accept: called with each record before it is claimed; returning False stops claiming there.
         """
         curr_time = current_time()
         if consumer_name not in self.consumers:
@@ -539,13 +564,15 @@ class StreamGroup:
             if key not in self.stream:
                 continue  # Entries deleted from the stream are skipped but remain in the PEL
             entry = self.pel[key]
+            record: list[Any] = list(self.stream.format_record(key))
+            record.extend([curr_time - entry.time_read, entry.times_delivered])
+            if accept is not None and not accept(record):
+                break
             if entry.consumer_name != consumer_name:
                 if entry.consumer_name in self.consumers:
                     self.consumers[entry.consumer_name].pending -= 1
                 self.consumers[consumer_name].pending += 1
             self.pel[key] = PelEntry(consumer_name, curr_time, entry.times_delivered + 1)
-            record: list[Any] = list(self.stream.format_record(key))
-            record.extend([curr_time - entry.time_read, entry.times_delivered])
             res.append(record)
         return res
 

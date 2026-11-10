@@ -260,23 +260,28 @@ def test_fcall_bad_redis_calls(r: ClientType, real_server_details: ServerDetails
         r,
         "redis.register_function('unknown', function() return redis.call('NOPE') end)",
         "redis.register_function('arity', function() return redis.call('GET') end)",
-        "redis.register_function('bad_arg', function() return redis.call('SET', 'key', {}) end)",
     )
     if real_server_details.server_type == "valkey":
-        unknown, arity, bad_arg = (
-            "Unknown command called from script",
-            "Wrong number of args calling command from script",
-            "Command arguments must be strings or integers",
-        )
+        unknown, arity = "Unknown command called from script", "Wrong number of args calling command from script"
     else:
-        unknown, arity, bad_arg = (
+        unknown, arity = (
             "Unknown Redis command called from script",
             "Wrong number of args calling Redis command from script",
-            "Lua redis lib command arguments must be strings or integers",
         )
     assert _error(r, "FCALL", "unknown", 0) == unknown + _located(real_server_details, "unknown", 2)
     assert _error(r, "FCALL", "arity", 0) == arity + _located(real_server_details, "arity", 3)
-    assert _error(r, "FCALL", "bad_arg", 0) == bad_arg + _located(real_server_details, "bad_arg", 4)
+
+
+# Redis crashes (SIGSEGV in FUNCTION FLUSH) once a function has called redis.call() with a table argument, taking the
+# real server down for the rest of the run. Seen on 7.4.7, 7.4.8, 8.0 and 8.2; 8.4.7 and valkey are fine.
+@pytest.mark.supported_server_versions(min_redis_ver="8.4")
+def test_fcall_non_string_argument(r: ClientType, real_server_details: ServerDetails):
+    _load(r, "redis.register_function('bad_arg', function() return redis.call('SET', 'key', {}) end)")
+    if real_server_details.server_type == "valkey":
+        expected = "Command arguments must be strings or integers"
+    else:
+        expected = "Lua redis lib command arguments must be strings or integers"
+    assert _error(r, "FCALL", "bad_arg", 0) == expected + _located(real_server_details, "bad_arg", 2)
 
 
 def test_fcall_ro_and_no_writes_functions(r: ClientType, real_server_details: ServerDetails):
