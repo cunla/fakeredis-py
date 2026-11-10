@@ -6,9 +6,9 @@ from typing import Any
 
 from fakeredis import _msgs as msgs
 
-from .._helpers import SimpleError, current_time
 from ._client_info import ClientInfo
 from ._command_info import get_command_info, get_commands_by_category
+from ._general import SimpleError, current_time
 
 
 class Selector:

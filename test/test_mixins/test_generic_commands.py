@@ -6,7 +6,6 @@ import redis
 import valkey
 
 from fakeredis import _msgs as msgs
-from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
 from test import testtools
 from test.testtools import raw_command
@@ -179,7 +178,7 @@ def test_expiretime(r: ClientType):
 def test_expiretime_dragonfly(r: ClientType):
     r.set("a", "foo")
     r.expire("a", 5)
-    assert pytest.approx(int(r.expiretime("a"))) == current_time() // 1000 + 5
+    assert pytest.approx(int(r.expiretime("a"))) == testtools.current_time() // 1000 + 5
 
 
 @pytest.mark.unsupported_server_types("dragonfly")

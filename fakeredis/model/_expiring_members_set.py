@@ -4,10 +4,10 @@ import random
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from fakeredis._helpers import current_time
 from fakeredis._typing import Self
 
 from ._base_type import BaseModel
+from ._general import current_time
 
 
 class ExpiringMembersSet(BaseModel):

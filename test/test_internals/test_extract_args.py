@@ -1,7 +1,7 @@
 import pytest
 
-from fakeredis._command_args_parsing import extract_args
-from fakeredis._helpers import SimpleError
+from fakeredis.commands_mixins.helpers import extract_args
+from fakeredis.model import SimpleError
 
 
 def test_extract_args():
