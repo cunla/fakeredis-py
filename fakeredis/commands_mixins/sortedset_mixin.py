@@ -481,6 +481,10 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 if aggregate not in (b"sum", b"min", b"max") and not (aggregate == b"count" and count_supported):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
+            elif casematch(arg, b"weights") and self.server_type == "kividb" and func not in {"ZDIFF", "ZDIFFSTORE"}:
+                # KiviDB reports a WEIGHTS that runs out of arguments before it has one value per key as a bad
+                # weight, where redis calls it a syntax error.
+                raise SimpleError(msgs.INVALID_WEIGHT_MSG)
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
@@ -502,15 +506,21 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         # We first build a regular dict and turn it into a ZSet. The reason is subtle: a ZSet won't update a score from
         # -0 to +0 (or vice versa) through assignment, but a regular dict will.
         out: dict[bytes, Any] = {}
+        # Redis only zeroes a NaN product for ZUNIONSTORE (see https://github.com/antirez/redis/issues/3954), while
+        # dragonfly and valkey >= 9.1.3 do it for ZINTERSTORE too -- so there inf * 1 + inf * 0 sums to inf rather than
+        # to NaN.
+        zero_nan_products = (
+            func in {"ZUNIONSTORE", "ZUNION"}
+            or self.server_type == "dragonfly"
+            or (self.server_type == "valkey" and self.version >= (9, 1, 3))
+        )
         # The sort affects the order of floating-point operations. Note that redis uses qsort(1), which has no stability
         # guarantees, so we can't be sure to match it in all cases.
         for s, w in sorted(zip(sets, weights), key=lambda x: len(x[0])):
             for member, score in s.items():
                 # With COUNT, each set contributes its weight regardless of the member's score.
                 score = w if aggregate == b"count" else score * w
-                # Redis only does this step for ZUNIONSTORE (see https://github.com/antirez/redis/issues/3954), while
-                # dragonfly does it for ZINTERSTORE too -- so there inf * 1 + inf * 0 sums to inf rather than to NaN.
-                if (func in {"ZUNIONSTORE", "ZUNION"} or self.server_type == "dragonfly") and math.isnan(score):
+                if zero_nan_products and math.isnan(score):
                     score = 0.0
                 if member not in out_members:
                     continue
