@@ -481,6 +481,10 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 if aggregate not in (b"sum", b"min", b"max") and not (aggregate == b"count" and count_supported):
                     raise SimpleError(msgs.SYNTAX_ERROR_MSG)
                 i += 2
+            elif casematch(arg, b"weights") and self.server_type == "kividb" and func not in {"ZDIFF", "ZDIFFSTORE"}:
+                # KiviDB reports a WEIGHTS that runs out of arguments before it has one value per key as a bad
+                # weight, where redis calls it a syntax error.
+                raise SimpleError(msgs.INVALID_WEIGHT_MSG)
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
 
