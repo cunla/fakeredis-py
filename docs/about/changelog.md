@@ -11,6 +11,7 @@ toc_depth: 2
 
 ### 🚀 Features
 
+- feat: `FakeServer(strict_version=True)` rejects commands added after the emulated Redis version, like the real server
 - feat(geo): `GEOSEARCH` and `GEOSEARCHSTORE` support `BYBOX`
 - feat(streams): `XREAD` and `XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
 
