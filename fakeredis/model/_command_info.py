@@ -5,8 +5,10 @@ import os
 from typing import Any, AnyStr
 
 from fakeredis._helpers import asbytes
+from fakeredis._typing import VersionType
 
 _COMMAND_INFO: dict[bytes, list[Any]] | None = None
+_COMMAND_SINCE: dict[bytes, VersionType] = {}
 
 
 def _encode_obj(obj: Any) -> Any:
@@ -23,7 +25,19 @@ def _load_command_info() -> None:
     global _COMMAND_INFO
     if _COMMAND_INFO is None:
         with open(os.path.join(os.path.dirname(__file__), "..", "commands.json"), encoding="utf8") as f:
-            _COMMAND_INFO = _encode_obj(json.load(f))
+            info = _encode_obj(json.load(f))
+        for cmd, cmd_info in info.items():
+            since = cmd_info.pop()  # not part of the `COMMAND` reply
+            if since:
+                _COMMAND_SINCE[cmd] = tuple(since)
+        _COMMAND_INFO = info
+
+
+def is_command_in_version(cmd: bytes, version: VersionType) -> bool:
+    """Compares only the parts `version` has, so `(8,)` has every 8.x command."""
+    _load_command_info()
+    since = _COMMAND_SINCE.get(cmd)
+    return since is None or version >= since[: len(version)]
 
 
 def get_all_commands_info() -> dict[bytes, list[Any]]:
