@@ -321,6 +321,16 @@ def test_eval_global_and_return_ok(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+def test_eval_global_variable_does_not_break_later_scripts(r: ClientType):
+    # A script rejected for setting a global must not leave it behind for the scripts that follow
+    with pytest.raises(Exception) as ctx:
+        r.eval("a=10", 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.eval("return 1", 0) == 1
+    assert r.eval("return redis.call('set', KEYS[1], ARGV[1])", 1, "foo", "bar") == b"OK"
+    assert r.get("foo") == b"bar"
+
+
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_eval_convert_number(r: ClientType):
     # Redis forces all Lua numbers to integer
