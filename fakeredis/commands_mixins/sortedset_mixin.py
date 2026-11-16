@@ -93,6 +93,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def _bzpop(self, keys: list[bytes], reverse: bool, first_pass: bool) -> list[bytes | list[bytes]] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            if item and not isinstance(item.value, ZSet):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             temp_res = self._zpop(item, 1, reverse, flatten_list=False)
             if temp_res:
                 item.writeback()  # remove the key if the set is now empty
@@ -641,6 +643,8 @@ class SortedSetCommandsMixin(CommandsMixinBase):
     def _zmpop(self, keys: Sequence[bytes], count: int, reverse: bool, first_pass: bool) -> list[Any] | None:
         for key in keys:
             item = CommandItem(key, self._db, item=self._db.get(key), default=[])
+            if item and not isinstance(item.value, ZSet):
+                raise SimpleError(msgs.WRONGTYPE_MSG)
             res = self._zpop(item, count, reverse, flatten_list=False)
             if res:
                 item.writeback()  # remove the key if the set is now empty

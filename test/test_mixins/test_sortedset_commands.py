@@ -8,7 +8,7 @@ from packaging.version import Version
 
 from fakeredis._typing import ClientType
 from test import testtools
-from test.testtools import resp_conversion, resp_conversion_from_resp2
+from test.testtools import raw_command, resp_conversion, resp_conversion_from_resp2
 
 REDIS_VERSION = Version(redis.__version__)
 
@@ -1129,6 +1129,24 @@ def test_bzpopmax(r: ClientType):
     assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"two", 2.0], (b"foo", b"two", 2.0))
     assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"foo", b"one", 1.0], (b"foo", b"one", 1.0))
     assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"bar", b"c", 3.5], (b"bar", b"c", 3.5))
+
+
+@pytest.mark.parametrize("command", ["bzpopmin", "bzpopmax"])
+def test_bzpop_wrong_type(r: ClientType, command: str):
+    r.set("str", "v")
+    r.zadd("zset", {"m": 1})
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="WRONGTYPE"):
+        raw_command(r, command, "str", 0.1)
+    # A key that can be popped from is still popped, if it comes first.
+    assert list(raw_command(r, command, "zset", "str", 0.1))[:2] == [b"zset", b"m"]
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.parametrize("args", [("zmpop", 1, "str", "min"), ("bzmpop", 0.1, 1, "str", "min")])
+def test_zmpop_wrong_type(r: ClientType, args: tuple):
+    r.set("str", "v")
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="WRONGTYPE"):
+        raw_command(r, *args)
 
 
 def test_zscan(r: ClientType):
