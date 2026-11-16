@@ -133,6 +133,7 @@ class HashCommandsMixin(CommandsMixinBase):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if key.value is None or len(key.value) == 0:
             return None
+        has_count = len(args) >= 1
         count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
         withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
         if count == 0:
@@ -150,7 +151,7 @@ class HashCommandsMixin(CommandsMixinBase):
                 res = [list(t) for t in res]
         else:
             res = [t[0] for t in res]
-        return res
+        return res if has_count else res[0]
 
     def _hexpire(self, key: CommandItem, when_ms: int, *args: bytes, command: str = "hexpire") -> list[int]:
         # Deal with input arguments

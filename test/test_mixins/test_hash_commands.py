@@ -354,7 +354,7 @@ def test_hrandfield(r: ClientType):
     assert r.hrandfield("key") is None
     hash = {b"a": 1, b"b": 2, b"c": 3, b"d": 4, b"e": 5}
     r.hset("key", mapping=hash)
-    assert r.hrandfield("key") is not None
+    assert r.hrandfield("key") in set(hash.keys())
     assert len(r.hrandfield("key", 0)) == 0
     res = r.hrandfield("key", 2)
     assert len(res) == 2
