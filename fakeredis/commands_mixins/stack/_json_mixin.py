@@ -11,7 +11,7 @@ from functools import lru_cache
 from json import JSONDecodeError
 from typing import Any, Callable, ClassVar
 
-from jsonpath_ng import JSONPath, Root
+from jsonpath_ng import DatumInContext, Fields, Index, JSONPath, Root
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 
@@ -77,6 +77,34 @@ def _parse_jsonpath(path: str | bytes, server_type: ServerType = "redis") -> JSO
 
 def _path_is_root(path: JSONPath) -> bool:
     return path == Root()  # type: ignore
+
+
+def _datum_location(datum: DatumInContext) -> tuple[Any, Any] | None:
+    """The container holding a match and its key in it (array indexes made non-negative), or None for the root."""
+    if datum.context is None:
+        return None
+    parent = datum.context.value
+    if isinstance(datum.path, Index):
+        # Newer jsonpath-ng versions keep a tuple of `indices`, older ones a single `index`.
+        index = datum.path.indices[0] if hasattr(datum.path, "indices") else datum.path.index  # type: ignore[attr-defined]
+        return parent, index % len(parent)
+    if isinstance(datum.path, Fields):
+        return parent, datum.path.fields[0]
+    return None
+
+
+def _location_id(location: tuple[Any, Any]) -> tuple[int, Any]:
+    return id(location[0]), location[1]
+
+
+def _has_matched_ancestor(datum: DatumInContext, matched: set[tuple[int, Any]]) -> bool:
+    ancestor = datum.context
+    while ancestor is not None:
+        location = _datum_location(ancestor)
+        if location is not None and _location_id(location) in matched:
+            return True
+        ancestor = ancestor.context
+    return False
 
 
 def _dict_deep_merge(source: JsonType, destination: dict[str, Any]) -> dict[str, Any]:
@@ -420,13 +448,24 @@ class JSONCommandsMixin(CommandsMixinBase):
             return 1
         curr_value = copy.deepcopy(key.value)
 
-        found_matches = path.find(curr_value)
+        # Collect every match before deleting anything: removing an array element shifts the ones after it, so
+        # searching again would find the next element at the same index and delete it too.
+        found: list[tuple[DatumInContext, tuple[Any, Any]]] = []
+        for match in path.find(curr_value):
+            location = _datum_location(match)
+            if location is not None:
+                found.append((match, location))
+        # A match inside another match goes with it and is not counted separately.
+        matched = {_location_id(location) for _, location in found}
+        to_delete = [location for match, location in found if not _has_matched_ancestor(match, matched)]
+        # Delete from the highest array index down so the indexes still to delete keep pointing at the same elements.
+        # Like Redis, a repeated index (`$.e[0,0]`) deletes again at that position, and a match that is already gone
+        # is skipped and not counted.
         res = 0
-        while len(found_matches) > 0:
-            item = found_matches[0]
-            curr_value = item.full_path.filter(lambda _: True, curr_value)
-            res += 1
-            found_matches = path.find(curr_value)
+        for parent, k in sorted(to_delete, key=lambda loc: loc[1] if isinstance(loc[0], list) else -1, reverse=True):
+            if (k < len(parent)) if isinstance(parent, list) else (k in parent):
+                del parent[k]
+                res += 1
 
         key.update(curr_value)
         return res

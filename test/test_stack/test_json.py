@@ -99,6 +99,30 @@ def test_json_delete_with_dollar(r: redis.Redis):
     r.json().delete("not_a_document", "..a")
 
 
+@pytest.mark.parametrize(
+    "doc,path,deleted,expected",
+    [
+        ({"e": ["a", "b", "c", "d"]}, "$.e[0]", 1, {"e": ["b", "c", "d"]}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[-1]", 1, {"e": ["a", "b", "c"]}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[1:3]", 2, {"e": ["a", "d"]}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[2,0]", 2, {"e": ["b", "d"]}),
+        ({"e": ["a", "b", "c", "d"]}, ".e[0]", 1, {"e": ["b", "c", "d"]}),
+        ({"x": {"e": [[1, 2], [3, 4]]}}, "$.x.e[1][0]", 1, {"x": {"e": [[1, 2], [4]]}}),
+        ({"x": {"e": [[1, 2], [3, 4]]}}, "$.x.e[*][0]", 2, {"x": {"e": [[2], [4]]}}),
+        ({"a": [1, 2, 3], "b": {"a": [4, 5, 6]}}, "$..a[0:2]", 4, {"a": [3], "b": {"a": [6]}}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[0,0]", 2, {"e": ["c", "d"]}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[3,3]", 1, {"e": ["a", "b", "c"]}),
+        ({"e": {"e": 1}, "f": 2}, "$..e", 1, {"f": 2}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[0:4:2]", 2, {"e": ["b", "d"]}),
+        ({"e": ["a", "b", "c", "d"]}, "$.e[-1,3]", 1, {"e": ["a", "b", "c"]}),
+    ],
+)
+def test_json_delete_array_elements(r: redis.Redis, doc, path, deleted, expected):
+    r.json().set("doc", "$", doc)
+    assert r.json().delete("doc", path) == deleted
+    assert r.json().get("doc", "$") == [expected]
+
+
 def test_json_et_non_dict_value(r: redis.Redis):
     r.json().set("str", Path.root_path(), "str_val")
     assert r.json().get("str") == "str_val"
