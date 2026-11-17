@@ -3,26 +3,28 @@ Tests for `fakeredis-py`'s emulation of Redis's JSON.GET command subset.
 """
 
 import json
+from typing import Any
 
 import pytest
 import redis
 import valkey
 from redis.commands.json.path import Path
 
+from fakeredis._typing import ClientType
 from test import testtools
 from test.conftest import ServerDetails
 
 json_tests = pytest.importorskip("jsonpath_ng")
 
 
-def test_jsonsetnx(r: redis.Redis):
+def test_jsonsetnx(r: ClientType):
     key = "test_key"
     assert r.json().set("test_key", "$", {}, nx=True, decode_keys=True) is True
     assert r.json().set(key, "$.group", {}, nx=True) is True
     assert r.json().set("test_key", "$.group", {"data": "value"}, nx=True) is None
 
 
-def test_jsonget(r: redis.Redis):
+def test_jsonget(r: ClientType):
     data = {"x": "bar", "y": {"x": 33}}
     r.json().set("foo", Path.root_path(), data)
     assert r.json().get("foo") == data
@@ -46,7 +48,7 @@ def test_jsonget(r: redis.Redis):
     assert r.json().get("unknown", "$") is None
 
 
-def test_json_setgetdeleteforget(r: redis.Redis):
+def test_json_setgetdeleteforget(r: ClientType):
     data = {"x": "bar"}
     assert r.json().set("foo", Path.root_path(), data) == 1
     assert r.json().get("foo") == data
@@ -56,7 +58,7 @@ def test_json_setgetdeleteforget(r: redis.Redis):
     assert r.exists("foo") == 0
 
 
-def test_json_delete_with_dollar(r: redis.Redis):
+def test_json_delete_with_dollar(r: ClientType):
     doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
     assert r.json().set("doc1", Path.root_path(), doc1)
     assert r.json().delete("doc1", "$..a") == 2
@@ -99,7 +101,7 @@ def test_json_delete_with_dollar(r: redis.Redis):
     r.json().delete("not_a_document", "..a")
 
 
-def _assert_json_delete(r: redis.Redis, doc, path, deleted, expected):
+def _assert_json_delete(r: ClientType, doc: dict[str, Any], path: str, deleted: int, expected: dict[str, Any]):
     r.json().set("doc", "$", doc)
     assert r.json().delete("doc", path) == deleted
     assert r.json().get("doc", "$") == [expected]
@@ -118,7 +120,9 @@ def _assert_json_delete(r: redis.Redis, doc, path, deleted, expected):
         ({"e": {"e": 1}, "f": 2}, "$..e", 1, {"f": 2}),
     ],
 )
-def test_json_delete_array_elements(r: redis.Redis, doc, path, deleted, expected):
+def test_json_delete_array_elements(
+    r: ClientType, doc: dict[str, Any], path: str, deleted: int, expected: dict[str, Any]
+):
     _assert_json_delete(r, doc, path, deleted, expected)
 
 
@@ -130,7 +134,9 @@ def test_json_delete_array_elements(r: redis.Redis, doc, path, deleted, expected
         ({"e": ["a", "b", "c", "d"]}, "$.e[0:4:2]", 2, {"e": ["b", "d"]}),
     ],
 )
-def test_json_delete_array_index_list_and_step(r: redis.Redis, doc, path, deleted, expected):
+def test_json_delete_array_index_list_and_step(
+    r: ClientType, doc: dict[str, Any], path: str, deleted: int, expected: dict[str, Any]
+):
     _assert_json_delete(r, doc, path, deleted, expected)
 
 
@@ -144,11 +150,13 @@ def test_json_delete_array_index_list_and_step(r: redis.Redis, doc, path, delete
         ({"e": ["a", "b", "c", "d"]}, "$.e[-1,3]", 1, {"e": ["a", "b", "c"]}),
     ],
 )
-def test_json_delete_repeated_array_index(r: redis.Redis, doc, path, deleted, expected):
+def test_json_delete_repeated_array_index(
+    r: ClientType, doc: dict[str, Any], path: str, deleted: int, expected: dict[str, Any]
+):
     _assert_json_delete(r, doc, path, deleted, expected)
 
 
-def test_json_et_non_dict_value(r: redis.Redis):
+def test_json_et_non_dict_value(r: ClientType):
     r.json().set("str", Path.root_path(), "str_val")
     assert r.json().get("str") == "str_val"
 
@@ -159,7 +167,7 @@ def test_json_et_non_dict_value(r: redis.Redis):
     assert r.json().get("bool") is False
 
 
-def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
+def test_jsonset_existential_modifiers_should_succeed(r: ClientType):
     obj = {"foo": "bar"}
     assert r.json().set("obj", Path.root_path(), obj)
 
@@ -181,7 +189,7 @@ def test_jsonset_existential_modifiers_should_succeed(r: redis.Redis):
     assert r.json().get("obj") == obj
 
 
-def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
+def test_jsonset_flags_should_be_mutually_exclusive(r: ClientType):
     with pytest.raises(
         Exception, match="nx and xx are mutually exclusive: use one, the other or neither - but not both"
     ):
@@ -191,13 +199,13 @@ def test_jsonset_flags_should_be_mutually_exclusive(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_json_unknown_param(r: redis.Redis):
+def test_json_unknown_param(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "json.set", "obj", "$", json.dumps({"foo": "bar"}), "unknown")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_jsonmget(r: redis.Redis):
+def test_jsonmget(r: ClientType):
     # Test mget with multi paths
     r.json().set("doc1", "$", {"a": 1, "b": 2, "nested": {"a": 3}, "c": None, "nested2": {"a": None}})
     r.json().set("doc2", "$", {"a": 4, "b": 5, "nested": {"a": 6}, "c": None, "nested2": {"a": [None]}})
@@ -218,7 +226,7 @@ def test_jsonmget(r: redis.Redis):
     assert r.json().mget(["missing_doc1", "missing_doc2"], "$..a") == [None, None]
 
 
-def test_jsonmget_should_succeed(r: redis.Redis):
+def test_jsonmget_should_succeed(r: ClientType):
     r.json().set("1", Path.root_path(), 1)
     r.json().set("2", Path.root_path(), 2)
 
@@ -226,14 +234,14 @@ def test_jsonmget_should_succeed(r: redis.Redis):
     assert r.json().mget([1, 2], Path.root_path()) == [1, 2]
 
 
-def test_jsonclear(r: redis.Redis):
+def test_jsonclear(r: ClientType):
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
 
     assert 1 == r.json().clear("arr", Path.root_path())
     assert [] == r.json().get("arr")
 
 
-def test_jsonclear_dollar(r: redis.Redis):
+def test_jsonclear_dollar(r: ClientType):
     data = {
         "nested1": {"a": {"foo": 10, "bar": 20}},
         "a": ["foo"],
@@ -260,7 +268,7 @@ def test_jsonclear_dollar(r: redis.Redis):
     assert r.json().get("doc1", "$") == [{}]
 
 
-def test_jsonclear_no_doc(r: redis.Redis):
+def test_jsonclear_no_doc(r: ClientType):
     # Test missing key
     with pytest.raises(Exception) as ctx:
         r.json().clear("non_existing_doc", "$..a")
@@ -268,7 +276,7 @@ def test_jsonclear_no_doc(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_jsonstrlen(r: redis.Redis, real_server_details: ServerDetails):
+def test_jsonstrlen(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     data = {"x": "bar", "y": {"x": 33}}
     r.json().set("foo", Path.root_path(), data)
@@ -308,7 +316,7 @@ def test_jsonstrlen(r: redis.Redis, real_server_details: ServerDetails):
         assert str(ctx.value) == "could not perform this operation on a key that doesn't exist"
 
 
-def test_toggle(r: redis.Redis, real_server_details: ServerDetails):
+def test_toggle(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("bool", Path.root_path(), False)
     assert r.json().toggle("bool", Path.root_path()) == testtools.json_toggle_reply(r, server_type, True)
@@ -321,7 +329,7 @@ def test_toggle(r: redis.Redis, real_server_details: ServerDetails):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_toggle_dollar(r: redis.Redis):
+def test_toggle_dollar(r: ClientType):
     data = {
         "a": ["foo"],
         "nested1": {"a": False},
@@ -341,7 +349,7 @@ def test_toggle_dollar(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_json_commands_in_pipeline(r: redis.Redis):
+def test_json_commands_in_pipeline(r: ClientType):
     p = r.json().pipeline()
     p.set("foo", Path.root_path(), "bar")
     p.get("foo")
@@ -367,7 +375,7 @@ def test_json_commands_in_pipeline(r: redis.Redis):
     assert r.get("foo") is None
 
 
-def test_strappend(r: redis.Redis, real_server_details: ServerDetails):
+def test_strappend(r: ClientType, real_server_details: ServerDetails):
     # Test single
     r.json().set("json-key", Path.root_path(), "foo")
     assert r.json().strappend("json-key", "bar") == testtools.json_legacy_reply(r, real_server_details.server_type, 6)
@@ -406,15 +414,15 @@ def test_strappend(r: redis.Redis, real_server_details: ServerDetails):
 
 
 @pytest.mark.decode_responses(True)
-def test_decode_null(r: redis.Redis):
+def test_decode_null(r: ClientType):
     assert r.json().get("abc") is None
 
 
-def test_decode_response_disabaled_null(r: redis.Redis):
+def test_decode_response_disabaled_null(r: ClientType):
     assert r.json().get("abc") is None
 
 
-def test_json_get_jset(r: redis.Redis):
+def test_json_get_jset(r: ClientType):
     assert r.json().set("foo", Path.root_path(), "bar") == 1
     assert "bar" == r.json().get("foo")
     assert r.json().get("baz") is None
@@ -422,14 +430,14 @@ def test_json_get_jset(r: redis.Redis):
     assert r.exists("foo") == 0
 
 
-def test_nonascii_setgetdelete(r: redis.Redis):
+def test_nonascii_setgetdelete(r: ClientType):
     assert r.json().set("not-ascii", Path.root_path(), "hyvää-élève")
     assert "hyvää-élève" == r.json().get("not-ascii", no_escape=True)
     assert 1 == r.json().delete("not-ascii")
     assert r.exists("not-ascii") == 0
 
 
-def test_json_setbinarykey(r: redis.Redis):
+def test_json_setbinarykey(r: ClientType):
     data = {"hello": "world", b"some": "value"}
 
     with pytest.raises(TypeError):
@@ -438,7 +446,7 @@ def test_json_setbinarykey(r: redis.Redis):
     assert r.json().set("some-key", Path.root_path(), data, decode_keys=True)
 
 
-def test_set_file(r: redis.Redis):
+def test_set_file(r: ClientType):
     # Standard Library Imports
     import json
     import tempfile
@@ -457,7 +465,7 @@ def test_set_file(r: redis.Redis):
         r.json().set_file("test2", Path.root_path(), no_json_file.name)
 
 
-def test_set_path(r: redis.Redis):
+def test_set_path(r: ClientType):
     # Standard Library Imports
     import json
     import tempfile
@@ -475,7 +483,7 @@ def test_set_path(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_type(r: redis.Redis, real_server_details: ServerDetails):
+def test_type(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("1", Path.root_path(), 1)
 
@@ -514,7 +522,7 @@ def test_type(r: redis.Redis, real_server_details: ServerDetails):
         assert r.json().type("non_existing_doc", "..a") == [None]
 
 
-def test_objlen(r: redis.Redis, real_server_details: ServerDetails):
+def test_objlen(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     # Test missing key, and path
     with pytest.raises(Exception) as ctx:
@@ -553,7 +561,7 @@ def test_objlen(r: redis.Redis, real_server_details: ServerDetails):
     r.json().objlen("doc1", ".nowhere")
 
 
-def test_objkeys(r: redis.Redis, real_server_details: ServerDetails):
+def test_objkeys(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     obj = {"foo": "bar", "baz": "qaz"}
     r.json().set("obj", Path.root_path(), obj)
@@ -599,7 +607,7 @@ def test_objkeys(r: redis.Redis, real_server_details: ServerDetails):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_numincrby(r: redis.Redis, real_server_details: ServerDetails):
+def test_numincrby(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("num", Path.root_path(), 1)
 
@@ -620,7 +628,7 @@ def test_numincrby(r: redis.Redis, real_server_details: ServerDetails):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_nummultby(r: redis.Redis, real_server_details: ServerDetails):
+def test_nummultby(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("num", Path.root_path(), 1)
 
@@ -659,7 +667,7 @@ def test_nummultby(r: redis.Redis, real_server_details: ServerDetails):
         assert r.json().nummultby("doc1", ".b[0].a", 3) == testtools.json_number_reply(r, server_type, 6)
 
 
-def _numpowby(r: redis.Redis, *args):
+def _numpowby(r: ClientType, *args: Any):
     """JSON.NUMPOWBY, which redis-py has no method for: RESP2 carries the reply as JSON text."""
     res = testtools.raw_command(r, "JSON.NUMPOWBY", *args)
     return json.loads(res) if isinstance(res, (bytes, str)) else res
@@ -667,7 +675,7 @@ def _numpowby(r: redis.Redis, *args):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby(r: redis.Redis):
+def test_numpowby(r: ClientType):
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
     assert testtools.raw_command(r, "JSON.NUMPOWBY", "doc1", "$.b[0].a", 3) in (b"[8]", "[8]", [8])
@@ -688,8 +696,8 @@ def test_numpowby(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby_integer_or_float(r: redis.Redis):
-    def numpowby(base, exponent) -> str:
+def test_numpowby_integer_or_float(r: ClientType):
+    def numpowby(base: float, exponent: float) -> str:
         """The stored result as JSON text, which tells `8` and `8.0` apart."""
         r.json().set("num", "$", base)
         _numpowby(r, "num", "$", exponent)
@@ -711,7 +719,7 @@ def test_numpowby_integer_or_float(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby_legacy_path(r: redis.Redis):
+def test_numpowby_legacy_path(r: ClientType):
     r.json().set("doc1", "$", {"a": "b", "b": [{"a": 2}, {"a": 5.0}, {"a": "c"}]})
 
     assert _numpowby(r, "doc1", ".b[0].a", 3) == testtools.resp_conversion(r, [8], 8)
@@ -728,7 +736,7 @@ def test_numpowby_legacy_path(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby_errors(r: redis.Redis):
+def test_numpowby_errors(r: ClientType):
     r.json().set("doc1", "$", {"neg": -8.0, "zero": 0, "f": 2.5, "i": 2})
 
     for path, exponent in (("$.neg", "0.5"), ("$.zero", "-0.5"), ("$.f", "10000")):
@@ -746,7 +754,7 @@ def test_numpowby_errors(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="8.8")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby_integer_overflow(r: redis.Redis):
+def test_numpowby_integer_overflow(r: ClientType):
     doc = {"a": 2, "b": 3, "c": 1}
     r.json().set("doc1", "$", doc)
 
@@ -765,7 +773,7 @@ def test_numpowby_integer_overflow(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="8.6")
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
-def test_numpowby_integer_wraps(r: redis.Redis):
+def test_numpowby_integer_wraps(r: ClientType):
     r.json().set("doc1", "$", {"a": 2, "b": 3, "c": 9223372036854775807, "d": 0})
 
     assert _numpowby(r, "doc1", "$.a", 63) == [-(2**63)]
@@ -780,7 +788,7 @@ def test_numpowby_integer_wraps(r: redis.Redis):
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")
 @pytest.mark.supported_server_versions(min_redis_ver="7.1")
-def test_json_merge(r: redis.Redis):
+def test_json_merge(r: ClientType):
     # Test with root path $
     assert r.json().set("person_data", "$", {"person1": {"personal_data": {"name": "John"}}})
     assert r.json().merge("person_data", "$", {"person1": {"personal_data": {"hobbies": "reading"}}})
@@ -799,7 +807,7 @@ def test_json_merge(r: redis.Redis):
 
 @testtools.run_test_if_redispy_ver("gte", "4.6")
 @pytest.mark.supported_server_versions(min_redis_ver="7.1")
-def test_mset(r: redis.Redis):
+def test_mset(r: ClientType):
     r.json().mset([("1", Path.root_path(), 1), ("2", Path.root_path(), 2)])
 
     assert r.json().mget(["1"], Path.root_path()) == [1]

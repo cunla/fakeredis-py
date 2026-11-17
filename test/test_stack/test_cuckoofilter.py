@@ -2,6 +2,7 @@ import pytest
 import redis
 import valkey
 
+from fakeredis._typing import ClientType
 from test.testtools import get_protocol_version
 
 cuckoofilters_tests = pytest.importorskip("probables")
@@ -15,13 +16,13 @@ pytestmark.extend(
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_cf_type(r: redis.Redis):
+def test_cf_type(r: ClientType):
     assert r.cf().create("cuckoo", 1000)
     assert r.type("cuckoo") == b"MBbloomCF"
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_cf_add_and_insert(r: redis.Redis):
+def test_cf_add_and_insert(r: ClientType):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
     assert not r.cf().addnx("cuckoo", "filter")
@@ -45,7 +46,7 @@ def test_cf_add_and_insert(r: redis.Redis):
         assert info.get(b"Number of filters") == 1
 
 
-def test_cf_exists_and_del(r: redis.Redis):
+def test_cf_exists_and_del(r: ClientType):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "filter")
     assert r.cf().exists("cuckoo", "filter")
@@ -57,7 +58,7 @@ def test_cf_exists_and_del(r: redis.Redis):
     assert 0 == r.cf().count("cuckoo", "filter")
 
 
-def test_cf_count_non_existing(r: redis.Redis):
+def test_cf_count_non_existing(r: ClientType):
     assert r.cf().count("cuckoo", "non_existing") == 0
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().add("cuckoo", "item1")
@@ -65,13 +66,13 @@ def test_cf_count_non_existing(r: redis.Redis):
     assert r.cf().count("cuckoo", "item1") == 3
 
 
-def test_cf_add_autocreates_filter(r: redis.Redis):
+def test_cf_add_autocreates_filter(r: ClientType):
     """CF.ADD on a non-existent key auto-creates the filter."""
     assert r.cf().add("newkey", "item") == 1
     assert r.cf().exists("newkey", "item") == 1
 
 
-def test_cf_del_nonexistent_key(r: redis.Redis):
+def test_cf_del_nonexistent_key(r: ClientType):
     """CF.DEL raises NOT_FOUND when the key does not exist."""
     with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.cf().delete("nokey", "item")
@@ -79,7 +80,7 @@ def test_cf_del_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_info_nonexistent_key(r: redis.Redis):
+def test_cf_info_nonexistent_key(r: ClientType):
     """CF.INFO raises an error when the key does not exist."""
     with pytest.raises(Exception) as ctx:
         r.cf().info("nokey")
@@ -87,7 +88,7 @@ def test_cf_info_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_reserve_key_exists(r: redis.Redis):
+def test_cf_reserve_key_exists(r: ClientType):
     """CF.RESERVE raises an error when the key already exists."""
     r.cf().create("cuckoo", 1000)
     with pytest.raises(Exception, match="item exists") as ctx:
@@ -96,7 +97,7 @@ def test_cf_reserve_key_exists(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_insert_errors(r: redis.Redis):
+def test_cf_insert_errors(r: ClientType):
     """CF.INSERT and CF.INSERTNX raise errors for missing ITEMS keyword or nocreate."""
     with pytest.raises(Exception) as ctx:
         r.execute_command("CF.INSERT", "cuckoo", "foo")
@@ -113,7 +114,7 @@ def test_cf_insert_errors(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_scandump_nonexistent(r: redis.Redis):
+def test_cf_scandump_nonexistent(r: ClientType):
     """CF.SCANDUMP on a non-existent key raises NOT_FOUND."""
     with pytest.raises(Exception, match="[Nn]ot [Ff]ound") as ctx:
         r.execute_command("CF.SCANDUMP", "nokey", 0)
@@ -121,7 +122,7 @@ def test_cf_scandump_nonexistent(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_scandump_and_loadchunk(r: redis.Redis):
+def test_cf_scandump_and_loadchunk(r: ClientType):
     """CF.SCANDUMP and CF.LOADCHUNK round-trip a cuckoo filter."""
     r.cf().create("src", 1000)
     r.cf().add("src", "item1")

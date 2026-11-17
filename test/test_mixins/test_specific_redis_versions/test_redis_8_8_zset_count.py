@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from fakeredis._typing import ClientType
@@ -20,7 +22,7 @@ def zsets(r: ClientType) -> ClientType:
     return r
 
 
-def _withscores(res) -> list:
+def _withscores(res: list[Any]) -> list:
     """Normalize a raw WITHSCORES reply to (member, score) pairs.
 
     `raw_command` skips redis-py's response callbacks, so RESP2 gives a flat list with the scores
@@ -31,7 +33,7 @@ def _withscores(res) -> list:
     return [(res[i], float(res[i + 1])) for i in range(0, len(res), 2)]
 
 
-def _pairs(res) -> list:
+def _pairs(res: list[Any]) -> list:
     """zrange WITHSCORES gives (member, score) tuples in RESP2 and [member, score] lists in RESP3."""
     return [tuple(item) for item in res]
 

@@ -1,9 +1,12 @@
+from typing import Any
+
 import pytest
 import redis
 import valkey
 from redis.commands.bf import BFInfo
 
 from fakeredis import _msgs as msgs
+from fakeredis._typing import ClientType
 from test import testtools
 
 bloom_tests = pytest.importorskip("probables")
@@ -16,22 +19,22 @@ pytestmark.extend(
 )
 
 
-def intlist(obj):
+def intlist(obj: list[Any]):
     return [int(v) for v in obj]
 
 
-def test_bf_type(r: redis.Redis):
+def test_bf_type(r: ClientType):
     assert r.bf().create("bloom", 0.01, 1000)
     assert r.type("bloom") == b"MBbloom--"
 
 
-def test_create_bf(r: redis.Redis):
+def test_create_bf(r: ClientType):
     assert r.bf().create("bloom", 0.01, 1000)
     assert r.bf().create("bloom_e", 0.01, 1000, expansion=1)
     assert r.bf().create("bloom_ns", 0.01, 1000, noScale=True)
 
 
-def test_create_cf(r: redis.Redis):
+def test_create_cf(r: ClientType):
     assert r.cf().create("cuckoo", 1000)
     assert r.cf().create("cuckoo_e", 1000, expansion=1)
     assert r.cf().create("cuckoo_bs", 1000, bucket_size=4)
@@ -41,7 +44,7 @@ def test_create_cf(r: redis.Redis):
     assert r.topk().reserve("topk", 5, 100, 5, 0.9)
 
 
-def test_bf_reserve(r: redis.Redis):
+def test_bf_reserve(r: ClientType):
     assert r.bf().reserve("bloom", 0.01, 1000)
     assert r.bf().reserve("bloom_ns", 0.01, 1000, noScale=True)
     with pytest.raises(Exception, match=msgs.NONSCALING_FILTERS_CANNOT_EXPAND_MSG) as ctx:
@@ -53,7 +56,7 @@ def test_bf_reserve(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_add(r: redis.Redis):
+def test_bf_add(r: ClientType):
     assert r.bf().add("key", "value") == 1
     assert r.bf().add("key", "value") == 0
 
@@ -72,7 +75,7 @@ def test_bf_add(r: redis.Redis):
     assert [1, 0] == intlist(r.bf().mexists("bloom", "foo", "noexist"))
 
 
-def test_bf_madd(r: redis.Redis):
+def test_bf_madd(r: ClientType):
     assert r.bf().madd("key", "v1", "v2", "v2") == [1, 1, 0]
     assert r.bf().madd("key", "v1", "v2", "v4") == [0, 0, 1]
 
@@ -83,7 +86,7 @@ def test_bf_madd(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_card(r: redis.Redis):
+def test_bf_card(r: ClientType):
     assert r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
     assert r.bf().card("key") == 3
     assert r.bf().card("key-new") == 0
@@ -107,7 +110,7 @@ def test_bf_card(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_exists(r: redis.Redis):
+def test_bf_exists(r: ClientType):
     assert r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
     assert r.bf().exists("key", "v1") == 1
     assert r.bf().exists("key", "v5") == 0
@@ -120,7 +123,7 @@ def test_bf_exists(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_mexists(r: redis.Redis):
+def test_bf_mexists(r: ClientType):
     assert r.bf().madd("key", "v1", "v2", "v3") == [1, 1, 1]
     assert r.bf().mexists("key", "v1") == [
         1,
@@ -137,7 +140,7 @@ def test_bf_mexists(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_bf_insert(r: redis.Redis):
+def test_bf_insert(r: ClientType):
     assert r.bf().create("key", 0.01, 1000)
     assert r.bf().insert("key", ["foo"]) == [1]
     assert r.bf().insert("key", ["foo", "bar"]) == [0, 1]
@@ -168,7 +171,7 @@ def test_bf_insert(r: redis.Redis):
         assert 1 == info.get(b"Number of filters")
 
 
-def test_bf_scandump_and_loadchunk(r: redis.Redis):
+def test_bf_scandump_and_loadchunk(r: ClientType):
     r.bf().create("myBloom", "0.0001", "1000")
 
     # Test is probabilistic and might fail. It is OK to change variables if certain to not break anything
@@ -203,7 +206,7 @@ def test_bf_scandump_and_loadchunk(r: redis.Redis):
 
 
 @pytest.mark.resp2_only
-def test_bf_info_resp2(r: redis.Redis):
+def test_bf_info_resp2(r: ClientType):
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
     info: BFInfo = r.bf().info("nonscaling")
@@ -219,7 +222,7 @@ def test_bf_info_resp2(r: redis.Redis):
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.resp3_only
-def test_bf_info_resp3(r: redis.Redis):
+def test_bf_info_resp3(r: ClientType):
     # Store a filter
     r.bf().create("nonscaling", "0.0001", "1000", noScale=True)
     info = r.bf().info("nonscaling")
@@ -235,7 +238,7 @@ def test_bf_info_resp3(r: redis.Redis):
 
 @pytest.mark.resp3_only
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_bf_info_field_queries(r: redis.Redis):
+def test_bf_info_field_queries(r: ClientType):
     """BF.INFO with a specific field name returns only that value"""
     r.bf().create("bloom", 0.01, 1000)
     r.bf().add("bloom", "item1")
@@ -252,7 +255,7 @@ def test_bf_info_field_queries(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
+def test_bf_info_nonscaling_expansion_field(r: ClientType):
     """BF.INFO EXPANSION on a non-scaling filter returns None"""
     r.bf().create("ns", 0.01, 1000, noScale=True)
     res = testtools.raw_command(r, "BF.INFO", "ns", "EXPANSION")
@@ -260,7 +263,7 @@ def test_bf_info_nonscaling_expansion_field(r: redis.Redis):
     assert res == expected_result
 
 
-def test_bf_info_errors(r: redis.Redis):
+def test_bf_info_errors(r: ClientType):
     """BF.INFO raises errors for non-existent keys and too many arguments."""
     with pytest.raises(Exception) as ctx:
         r.bf().info("nokey")
@@ -272,7 +275,7 @@ def test_bf_info_errors(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_scandump_nonexistent(r: redis.Redis):
+def test_bf_scandump_nonexistent(r: ClientType):
     """BF.SCANDUMP on a non-existent key raises NOT_FOUND."""
     with pytest.raises(Exception, match="not found") as ctx:
         r.execute_command("BF.SCANDUMP", "nokey", 0)
@@ -280,7 +283,7 @@ def test_bf_scandump_nonexistent(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_bf_insert_missing_items_keyword(r: redis.Redis):
+def test_bf_insert_missing_items_keyword(r: ClientType):
     """BF.INSERT without the ITEMS keyword raises an error."""
     with pytest.raises(Exception) as ctx:
         r.execute_command("BF.INSERT", "bloom", "foo")
@@ -288,7 +291,7 @@ def test_bf_insert_missing_items_keyword(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cf_scandump_and_loadchunk(r: redis.Redis):
+def test_cf_scandump_and_loadchunk(r: ClientType):
     r.cf().create("myCuckoo", 1000)
 
     for x in range(100):

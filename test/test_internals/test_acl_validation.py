@@ -2,6 +2,7 @@ import pytest
 import redis
 
 import fakeredis
+from fakeredis._typing import ClientType
 from fakeredis.model._acl import UserAccessControlList
 
 pytestmark = [pytest.mark.fake]
@@ -34,7 +35,7 @@ def test_unrestricted():
     assert not _user(b"+@all", keys=b"").unrestricted()
 
 
-def test_restricting_the_default_user_takes_effect(r: redis.Redis):
+def test_restricting_the_default_user_takes_effect(r: ClientType):
     assert r.set("cache:0", 1)
     assert r.set("other:0", 1)
 
@@ -47,7 +48,7 @@ def test_restricting_the_default_user_takes_effect(r: redis.Redis):
     assert r.get("other:0") == b"1"
 
 
-def test_denied_command_is_logged_with_the_client_info(r: redis.Redis):
+def test_denied_command_is_logged_with_the_client_info(r: ClientType):
     r.acl_setuser("limited", enabled=True, reset=True, nopass=True, commands=["+get", "+auth"], keys=["cache:*"])
     limited = fakeredis.FakeRedis(server=r.connection_pool.connection_kwargs["server"])
     limited.auth("", username="limited")

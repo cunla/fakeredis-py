@@ -2,6 +2,8 @@
 
 import threading
 import time
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 import redis
@@ -17,7 +19,7 @@ pytestmark = [
 ]
 
 
-def _ids(res) -> list[tuple[bytes, list[bytes]]]:
+def _ids(res: Any) -> list[tuple[bytes, list[bytes]]]:
     """(stream, [entry ids]) for each stream in a raw XREAD/XREADGROUP reply, in reply order."""
     if res is None:
         return []
@@ -25,16 +27,16 @@ def _ids(res) -> list[tuple[bytes, list[bytes]]]:
     return [(name, [entry[0] for entry in entries]) for name, entries in pairs]
 
 
-def _add(r: ClientType, key: str, n: int, start: int = 1, **fields) -> None:
+def _add(r: ClientType, key: str, n: int, start: int = 1, **fields: Any) -> None:
     for i in range(start, start + n):
         r.xadd(key, fields or {"f": "v"}, id=f"{i}-0")
 
 
-def _xread(r: ClientType, *args):
+def _xread(r: ClientType, *args: Any):
     return _ids(testtools.raw_command(r, "XREAD", *args))
 
 
-def _xreadgroup(r: ClientType, consumer: str, *args):
+def _xreadgroup(r: ClientType, consumer: str, *args: Any):
     return _ids(testtools.raw_command(r, "XREADGROUP", "GROUP", "g", consumer, *args))
 
 
@@ -42,7 +44,7 @@ def _pending(r: ClientType, key: str) -> list[tuple[bytes, bytes]]:
     return [(p["message_id"], p["consumer"]) for p in r.xpending_range(key, "g", "-", "+", 100)]
 
 
-def _assert_error(r: ClientType, args, msg: str) -> None:
+def _assert_error(r: ClientType, args: tuple[Any, ...], msg: str) -> None:
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, *args)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -133,7 +135,7 @@ def test_xread_maxcount_and_maxsize(r: ClientType):
         (("MAXCOUNT", 2, "COUNT", 3), "MAXCOUNT must be greater than or equal to COUNT"),
     ],
 )
-def test_stream_read_caps_errors(r: ClientType, command, options, msg):
+def test_stream_read_caps_errors(r: ClientType, command: tuple[str, ...], options: tuple[Any, ...], msg: str):
     _add(r, "s", 1)
     r.xgroup_create("s", "g", id="0")
     _assert_error(r, (*command, *options, "STREAMS", "s", 0), msg)
@@ -218,7 +220,7 @@ def test_xreadgroup_claim_maxcount(r: ClientType):
     assert _pending(r, "a") == [(b"1-0", b"c3"), (b"2-0", b"c3"), (b"3-0", b"c3"), (b"4-0", b"c3")]
 
 
-def test_stream_read_caps_after_blocking(create_connection):
+def test_stream_read_caps_after_blocking(create_connection: Callable[..., ClientType]):
     r = create_connection(db=1)  # not flushed between tests: each read below starts from a fresh stream
 
     def add_entries():

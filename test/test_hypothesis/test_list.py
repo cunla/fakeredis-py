@@ -1,6 +1,6 @@
 import pytest
 
-from .base import BaseMachine, commands, counts, ints, keys, run_machine, st, values
+from .base import BaseMachine, MachineConfig, commands, counts, ints, keys, run_machine, st, values
 
 # TODO: blocking commands
 list_commands = (
@@ -29,5 +29,5 @@ class ListMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_list(hypothesis_config):
+def test_list(hypothesis_config: MachineConfig):
     run_machine(ListMachine, hypothesis_config)

@@ -1,6 +1,7 @@
 import gc
 import logging
 import weakref
+from collections.abc import Callable
 from typing import cast
 
 import pytest
@@ -9,6 +10,7 @@ import valkey
 
 import fakeredis
 from fakeredis._typing import ClientType
+from test.conftest import ServerDetails
 from test.testtools import raw_command
 
 _ = pytest.importorskip("lupa")
@@ -37,7 +39,7 @@ def test_script_exists_redis7(r: ClientType):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("args", [("a",), tuple("abcdefghijklmn")])
-def test_script_flush_errors_with_args(r, args):
+def test_script_flush_errors_with_args(r: ClientType, args: tuple[str, ...]):
     with pytest.raises(Exception) as ctx:
         raw_command(r, "SCRIPT FLUSH {}".format(" ".join(args)))
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -450,7 +452,7 @@ def test_eval_flushdb(r: ClientType):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_eval_flushall(r, create_connection):
+def test_eval_flushall(r: ClientType, create_connection: Callable[..., ClientType]):
     r1 = create_connection(db=2)
     r2 = create_connection(db=3)
 
@@ -553,7 +555,7 @@ def test_script(r: ClientType):
 
 
 @pytest.mark.fake_only
-def test_lua_log(r, caplog):
+def test_lua_log(r: ClientType, caplog: pytest.LogCaptureFixture):
     logger = fakeredis._core._server.LOGGER
     script = """
         redis.log(redis.LOG_DEBUG, "debug")
@@ -588,7 +590,7 @@ def test_lua_log_no_message(r: ClientType):
 
 
 @pytest.mark.fake_only
-def test_lua_log_different_types(r, caplog):
+def test_lua_log_different_types(r: ClientType, caplog: pytest.LogCaptureFixture):
     logger = logging.getLogger("fakeredis")
     script = "redis.log(redis.LOG_DEBUG, 'string', 1, true, 3.14, 'string')"
     script = r.register_script(script)
@@ -607,7 +609,7 @@ def test_lua_log_wrong_level(r: ClientType):
 
 
 @pytest.mark.fake_only
-def test_lua_log_defined_vars(r, caplog):
+def test_lua_log_defined_vars(r: ClientType, caplog: pytest.LogCaptureFixture):
     logger = fakeredis._core._server.LOGGER
     script = """
         local var='string'
@@ -826,7 +828,9 @@ def test_lua_state_isolated_between_eval_calls(r: ClientType) -> None:
     assert result4 == 1  # true in Lua = 1
 
 
-def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(r: ClientType, real_server_details) -> None:
+def test_eval_call_uses_resp2_shapes_whatever_the_client_speaks(
+    r: ClientType, real_server_details: ServerDetails
+) -> None:
     """A script sees RESP2 replies even on a RESP3 connection, until it asks for RESP3."""
     r.zadd("z", {"member": 42})
     script = """
@@ -907,3 +911,12 @@ def test_eval_container_command(r: ClientType):
     r.xadd("foo", {"a": 1})
     assert r.eval("return redis.call('XGROUP', 'CREATE', KEYS[1], 'group', '$')", 1, "foo") == b"OK"
     assert len(r.eval("return redis.call('xinfo', 'groups', KEYS[1])", 1, "foo")) == 1
+
+
+def test_eval_global_variable_does_not_break_later_scripts(r: ClientType):
+    # A script rejected for setting a global must not leave it behind for the scripts that follow
+    with pytest.raises(Exception) as ctx:
+        r.eval("a=10", 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.eval("return redis.call('set', KEYS[1], ARGV[1])", 1, "foo", "bar") == b"OK"
+    assert r.get("foo") == b"bar"

@@ -7,6 +7,7 @@ Dragonfly counterparts, so both sides of each divergence stay covered.
 
 import time
 import uuid
+from typing import Any
 
 import pytest
 import redis
@@ -25,7 +26,7 @@ pytestmark.extend(
 RESPONSE_ERRORS = ("redis.exceptions.ResponseError", "valkey.exceptions.ResponseError")
 
 
-def _raises(r: ClientType, match: str, *args):
+def _raises(r: ClientType, match: str, *args: Any):
     with pytest.raises(Exception, match=match) as ctx:
         raw_command(r, *args)
     assert type(ctx.value).__module__ + "." + type(ctx.value).__qualname__ in RESPONSE_ERRORS
@@ -141,7 +142,9 @@ def test_sort_leaves_equal_weights_in_place(r: ClientType):
         (("hset", "foo", "field", "v"), ("hdel", "foo", "absent")),
     ],
 )
-def test_a_write_dirties_a_watched_key_even_when_it_changes_nothing(r: ClientType, setup, unchanging_write):
+def test_a_write_dirties_a_watched_key_even_when_it_changes_nothing(
+    r: ClientType, setup: tuple[Any, ...], unchanging_write: tuple[Any, ...]
+):
     # Redis only invalidates the watch when the stored value actually changes.
     raw_command(r, *setup)
     with r.pipeline() as p:

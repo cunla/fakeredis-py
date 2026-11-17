@@ -6,6 +6,7 @@ import redis
 import valkey
 
 from fakeredis._typing import ClientType
+from test.conftest import ServerDetails
 
 from .. import testtools
 from ..testtools import resp_conversion
@@ -528,7 +529,7 @@ def test_blpop_wrong_type(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_blpop_transaction(r: ClientType, real_server_details):
+def test_blpop_transaction(r: ClientType, real_server_details: ServerDetails):
     p = r.pipeline()
     p.multi()
     p.blpop("missing", timeout=1000)
@@ -588,7 +589,7 @@ def test_brpoplpush_wrong_type(r: ClientType):
 
 
 @pytest.mark.slow
-def test_blocking_operations_when_empty(r: ClientType, real_server_details):
+def test_blocking_operations_when_empty(r: ClientType, real_server_details: ServerDetails):
     empty = testtools.empty_blocking_reply(r, real_server_details.server_type)
     assert r.blpop(["foo"], timeout=1) == empty
     assert r.blpop(["bar", "foo"], timeout=1) == empty
@@ -737,7 +738,7 @@ def test_lmpop(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_lmpop_count_not_positive(r: ClientType, real_server_details):
+def test_lmpop_count_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.rpush("foo", "a", "b")
     if real_server_details.server_type == "dragonfly":
         # Dragonfly accepts COUNT 0, naming the key but popping nothing, and reports a negative count as a plain
@@ -761,7 +762,7 @@ def test_lmpop_count_not_positive(r: ClientType, real_server_details):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_lmpop_numkeys_not_positive(r: ClientType, real_server_details):
+def test_lmpop_numkeys_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.rpush("foo", "a")
     is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):
@@ -783,7 +784,7 @@ def test_lmpop_too_few_arguments(r: ClientType):
         assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_lpos_negative_count_or_maxlen(r: ClientType, real_server_details):
+def test_lpos_negative_count_or_maxlen(r: ClientType, real_server_details: ServerDetails):
     r.rpush("foo", "a", "b", "a")
     # Dragonfly rejects these while decoding, so it never names the offending option.
     is_dragonfly = real_server_details.server_type == "dragonfly"

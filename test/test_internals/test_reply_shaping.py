@@ -1,6 +1,8 @@
 """Replies are checked, converted and decoded element by element, with a shortcut for the plain elements that make up
 most of them. These check that the shortcut does not change what comes out for the elements that are not plain."""
 
+from typing import Any
+
 import pytest
 
 import fakeredis
@@ -41,7 +43,7 @@ def test_convert_to_resp2_converts_what_is_nested_between_plain_elements():
         (NoResponse(), True, True),
     ],
 )
-def test_valid_response_type(reply, resp2, resp3):
+def test_valid_response_type(reply: Any, resp2: bool, resp3: bool):
     assert valid_response_type(reply, 2) is resp2
     assert valid_response_type(reply, 3) is resp3
 

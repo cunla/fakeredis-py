@@ -37,7 +37,7 @@ def tuple_to_list(x: Any) -> Any:
     return x
 
 
-def get_protocol_version(r: redis.Redis) -> int:
+def get_protocol_version(r: ClientType) -> int:
     return int(r.connection_pool.connection_kwargs.get("protocol", 2))
 
 
@@ -58,20 +58,20 @@ def convert_to_resp2(val: Any) -> Any:
     return val
 
 
-def resp_conversion(r: redis.Redis, val_resp3: Any, val_resp2: Any) -> Any:
+def resp_conversion(r: ClientType, val_resp3: Any, val_resp2: Any) -> Any:
     res = val_resp2 if get_protocol_version(r) == 2 else val_resp3
     return res
 
 
-def resp_conversion_from_resp2(r: redis.Redis, val: Any) -> Any:
+def resp_conversion_from_resp2(r: ClientType, val: Any) -> Any:
     return resp_conversion(r, tuple_to_list(val), val)
 
 
-def key_val_dict(size=100):
+def key_val_dict(size: int = 100):
     return {f"key:{i}".encode(): f"val:{i}".encode() for i in range(size)}
 
 
-def raw_command(r: ClientType, *args):
+def raw_command(r: ClientType, *args: Any):
     """Like execute_command, but does not do command-specific response parsing"""
     response_callbacks = r.response_callbacks
     try:
@@ -112,7 +112,7 @@ _lua_module = importlib.util.find_spec("lupa")
 run_test_if_lupa = pytest.mark.skipif(_lua_module is None, reason="Test is only applicable if lupa is installed")
 
 
-def redis_server_time(r: redis.Redis) -> datetime:
+def redis_server_time(r: ClientType) -> datetime:
     seconds, milliseconds = r.time()
     timestamp = float(f"{seconds}.{milliseconds}")
     return datetime.fromtimestamp(timestamp)
@@ -134,7 +134,7 @@ def far_future_expiry(server_type: str) -> int:
     return 33177117420
 
 
-def null_array_reply(r: redis.Redis, server_type: str) -> Any:
+def null_array_reply(r: ClientType, server_type: str) -> Any:
     """What a reply redis sends as a null array reads back as on the server under test.
 
     Dragonfly keeps sending the RESP2 null array (`*-1`) under RESP3, where redis sends
@@ -145,7 +145,7 @@ def null_array_reply(r: redis.Redis, server_type: str) -> Any:
     return None
 
 
-def empty_blocking_reply(r: redis.Redis, server_type: str) -> Any:
+def empty_blocking_reply(r: ClientType, server_type: str) -> Any:
     """What a timed-out BLPOP/BRPOP/BZPOPMIN looks like on the server under test."""
     return null_array_reply(r, server_type)
 
@@ -242,7 +242,7 @@ def json_number_reply(r: ClientType, server_type: str, value: float) -> Any:
     return resp_conversion(r, [value], value)
 
 
-def assert_empty_stream_read(r: redis.Redis, server_type: str, *raw_args: Any) -> None:
+def assert_empty_stream_read(r: ClientType, server_type: str, *raw_args: Any) -> None:
     """Assert that an XREAD/XREADGROUP matched nothing.
 
     Redis answers with an empty map under RESP3 and an empty array under RESP2. Dragonfly

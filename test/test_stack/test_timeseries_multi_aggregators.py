@@ -1,5 +1,7 @@
 """Tests for multiple aggregators in a single TS.RANGE/TS.REVRANGE/TS.MRANGE/TS.MREVRANGE (redis 8.8)."""
 
+from typing import Any
+
 import pytest
 
 from fakeredis._typing import ClientType
@@ -23,7 +25,7 @@ def sample(r: ClientType) -> ClientType:
     return r
 
 
-def _values(res) -> list:
+def _values(res: list[Any]) -> list:
     """Normalize (timestamp, value...) rows: RESP2 returns values as bulk strings, RESP3 as doubles."""
     return [[row[0]] + [float(x) for x in row[1:]] for row in res]
 

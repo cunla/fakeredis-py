@@ -20,7 +20,7 @@ async def test_async_init_kwargs():
 
 @pytest.mark.parametrize("cls", [fakeredis.FakeValkey, fakeredis.FakeStrictValkey])
 @pytest.mark.parametrize("scheme", ["valkey", "redis"])
-def test_from_url(cls, scheme):
+def test_from_url(cls: type[fakeredis.FakeValkey], scheme: str):
     conn = cls.from_url(f"{scheme}://localhost:6390/0")
     assert isinstance(conn.connection_pool, valkey.ConnectionPool)
     assert conn.connection_pool.connection_class is FakeValkeyConnection
@@ -47,7 +47,7 @@ def test_from_url_rejects_other_server_types():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("scheme", ["valkey", "redis"])
-async def test_async_from_url(scheme):
+async def test_async_from_url(scheme: str):
     conn = fakeredis.FakeAsyncValkey.from_url(f"{scheme}://localhost:6390/0")
     assert isinstance(conn.connection_pool, valkey.asyncio.ConnectionPool)
     assert conn.connection_pool.connection_class is FakeAsyncValkeyConnection

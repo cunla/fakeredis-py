@@ -800,7 +800,7 @@ def test_vset_commands_without_decoding_responses(r: ClientType):
     assert all(member.decode("utf-8") in elements for member in members_list)
 
 
-def _to_fp32_blob_array(float_array):
+def _to_fp32_blob_array(float_array: list[float]):
     """
     Convert a list of floats to a byte array in fp32 format.
     """
@@ -811,7 +811,7 @@ def _to_fp32_blob_array(float_array):
     return byte_array
 
 
-def _validate_quantization(original, quantized, tolerance=0.1):
+def _validate_quantization(original: list[float], quantized: list[float], tolerance: float = 0.1):
     original = np.array(original, dtype=np.float32)
     quantized = np.array(quantized, dtype=np.float32)
 
@@ -1257,7 +1257,7 @@ def test_vadd_numlinks_one(r: ClientType):
         ("VLINKS", "not_a_vset", "member"),
     ],
 )
-def test_wrongtype_on_string_key(r: ClientType, cmd_args):
+def test_wrongtype_on_string_key(r: ClientType, cmd_args: tuple[str, ...]):
     """All vset commands raise WRONGTYPE when the key holds a string."""
     r.set("not_a_vset", "some_value")
     with pytest.raises(Exception) as excinfo:

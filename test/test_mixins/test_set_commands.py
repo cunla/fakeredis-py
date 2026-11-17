@@ -8,6 +8,7 @@ import valkey
 
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 
 
 @testtools.run_test_if_redispy_ver("gte", "5.1")
@@ -464,7 +465,7 @@ def test_sintercard_bytes_keys(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_negative_limit(r: ClientType, real_server_details):
+def test_sintercard_negative_limit(r: ClientType, real_server_details: ServerDetails):
     r.sadd("foo", "member1", "member2")
     r.sadd("bar", "member2", "member3")
     with pytest.raises(Exception) as ctx:
@@ -576,7 +577,7 @@ def test_psetex_expire_value_using_timedelta(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details):
+def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.sadd("foo", "member1")
     is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):
@@ -591,7 +592,7 @@ def test_sintercard_numkeys_not_positive(r: ClientType, real_server_details):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_sintercard_numkeys_greater_than_keys(r: ClientType, real_server_details):
+def test_sintercard_numkeys_greater_than_keys(r: ClientType, real_server_details: ServerDetails):
     r.sadd("foo", "member1")
     # Dragonfly reports a numkeys that overruns the key list as a plain syntax error.
     expected = (
@@ -604,7 +605,7 @@ def test_sintercard_numkeys_greater_than_keys(r: ClientType, real_server_details
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_spop_negative_count(r: ClientType, real_server_details):
+def test_spop_negative_count(r: ClientType, real_server_details: ServerDetails):
     r.sadd("foo", "member1")
     # Dragonfly fails while decoding the count, so it gives the generic integer error.
     expected = (

@@ -8,6 +8,7 @@ import redis
 import valkey
 
 from fakeredis import _msgs as msgs
+from fakeredis._typing import ClientType
 from test.testtools import get_protocol_version, raw_command, resp_conversion, resp_conversion_from_resp2
 
 timeseries_tests = pytest.importorskip("probables")
@@ -21,7 +22,7 @@ pytestmark.extend(
 
 
 class InfoClass:
-    def __init__(self, r: redis.Redis, response: dict[AnyStr, Any]):
+    def __init__(self, r: ClientType, response: dict[AnyStr, Any]):
         if get_protocol_version(r) == 2:
             self.rules = response.get("rules")
             self.source_key = response.get("source_key")
@@ -53,20 +54,20 @@ class InfoClass:
         return getattr(self, k)
 
 
-def test_ts_type(r: redis.Redis):
+def test_ts_type(r: ClientType):
     key = "key"
     r.ts().add(key, "*", 1)
     assert r.type(key) == b"TSDB-TYPE"
 
 
-def test_add_ts_close(r: redis.Redis):
+def test_add_ts_close(r: ClientType):
     ts1 = r.ts().add(5, "*", 1)
     time.sleep(0.001)
     ts2 = r.ts().add(5, "*", 1)
     assert abs(ts2 - ts1) < 5
 
 
-def test_createrule_errors(r: redis.Redis):
+def test_createrule_errors(r: ClientType):
     timeseries = r.ts()
     with pytest.raises(Exception) as e:
         timeseries.createrule("t1", "t2", aggregation_type="sum", bucket_size_msec=10)
@@ -91,7 +92,7 @@ def test_createrule_errors(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_BAD_TIMESTAMP
 
 
-def test_deleterule_errors(r: redis.Redis):
+def test_deleterule_errors(r: ClientType):
     timeseries = r.ts()
     with pytest.raises(Exception) as e:
         timeseries.deleterule("t1", "t2")
@@ -105,7 +106,7 @@ def test_deleterule_errors(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_RULE_DOES_NOT_EXIST
 
 
-def test_create_key_exist(r: redis.Redis):
+def test_create_key_exist(r: ClientType):
     assert r.ts().create(1)
     with pytest.raises(Exception) as e:
         r.ts().create(1)
@@ -113,14 +114,14 @@ def test_create_key_exist(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_KEY_EXISTS
 
 
-def test_create_bad_duplicate_policy(r: redis.Redis):
+def test_create_bad_duplicate_policy(r: ClientType):
     with pytest.raises(Exception) as e:
         assert r.ts().create(1, duplicate_policy="bad")
     assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_INVALID_DUPLICATE_POLICY
 
 
-def test_create(r: redis.Redis):
+def test_create(r: ClientType):
     assert r.ts().create(1)
     assert r.ts().create(2, retention_msecs=5)
     assert r.ts().create(3, labels={"Redis": "Labs"})
@@ -137,7 +138,7 @@ def test_create(r: redis.Redis):
     assert 128 == info["chunk_size"]
 
 
-def test_create_duplicate_policy(r: redis.Redis):
+def test_create_duplicate_policy(r: ClientType):
     # Test for duplicate policy
     for duplicate_policy in ["block", "last", "first", "min", "max"]:
         ts_name = f"time-serie-ooo-{duplicate_policy}"
@@ -147,7 +148,7 @@ def test_create_duplicate_policy(r: redis.Redis):
         assert duplicate_policy == info["duplicate_policy"]
 
 
-def test_alter(r: redis.Redis):
+def test_alter(r: ClientType):
     assert r.ts().create(1)
     info = r.ts().info(1)
     info = InfoClass(r, info)
@@ -171,7 +172,7 @@ def test_alter(r: redis.Redis):
     assert str(e.value) == "TSDB: CHUNK_SIZE value must be a multiple of 8 in the range [48 .. 1048576]"
 
 
-def test_add(r: redis.Redis):
+def test_add(r: ClientType):
     assert 1 == r.ts().add(1, 1, 1)
     assert 2 == r.ts().add(2, 2, 3, retention_msecs=10)
     assert 3 == r.ts().add(3, 3, 2, labels={"Redis": "Labs"})
@@ -189,7 +190,7 @@ def test_add(r: redis.Redis):
     assert 128 == info["chunk_size"]
 
 
-def test_add_before_retention(r: redis.Redis):
+def test_add_before_retention(r: ClientType):
     r.ts().create("time-serie-1", retention_msecs=1000)
     assert r.ts().add("time-serie-1", 10000, 10.0)
     with pytest.raises(Exception) as e:
@@ -198,7 +199,7 @@ def test_add_before_retention(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_TIMESTAMP_OLDER_THAN_RETENTION
 
 
-def test_add_before_last(r: redis.Redis):
+def test_add_before_last(r: ClientType):
     r.ts().create("time-serie-1", retention_msecs=1000)
     assert r.ts().add("time-serie-1", 100, 10.0) == 100
     assert r.ts().add("time-serie-1", 2, 20.0) == 2
@@ -213,7 +214,7 @@ def test_add_before_last(r: redis.Redis):
     )
 
 
-def test_add_duplicate_policy(r: redis.Redis):
+def test_add_duplicate_policy(r: ClientType):
     # Test for duplicate policy BLOCK
     assert 1 == r.ts().add("time-serie-add-ooo-block", 1, 5.0)
     with pytest.raises(Exception) as e:
@@ -243,12 +244,12 @@ def test_add_duplicate_policy(r: redis.Redis):
     assert 5.0 == r.ts().get("time-serie-add-ooo-min")[1]
 
 
-def test_madd(r: redis.Redis):
+def test_madd(r: ClientType):
     r.ts().create("a")
     assert [1, 2, 3] == r.ts().madd([("a", 1, 5), ("a", 2, 10), ("a", 3, 15)])
 
 
-def test_incrby_decrby(r: redis.Redis):
+def test_incrby_decrby(r: ClientType):
     for _ in range(100):
         assert r.ts().incrby(1, 1)
         sleep(0.001)
@@ -279,7 +280,7 @@ def test_incrby_decrby(r: redis.Redis):
     assert 128 == info["chunk_size"]
 
 
-def test_create_and_delete_rule(r: redis.Redis):
+def test_create_and_delete_rule(r: ClientType):
     # test rule creation
     time = 100
     r.ts().create(1)
@@ -311,7 +312,7 @@ def test_create_and_delete_rule(r: redis.Redis):
     assert info2["source_key"] is None
 
 
-def test_del_range(r: redis.Redis):
+def test_del_range(r: ClientType):
     with pytest.raises(Exception) as e:
         r.ts().delete("test", 0, 100)
     assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
@@ -326,7 +327,7 @@ def test_del_range(r: redis.Redis):
     assert r.ts().delete(1, 60, 3) == 0
 
 
-def test_range(r: redis.Redis):
+def test_range(r: ClientType):
     for i in range(100):
         r.ts().add(1, i, i % 7)
     assert 100 == len(r.ts().range(1, 0, 200))
@@ -342,7 +343,7 @@ def test_range(r: redis.Redis):
     assert 20 == len(r.ts().range(1, 0, 500, aggregation_type="avg", bucket_size_msec=10))
 
 
-def test_range_advanced(r: redis.Redis):
+def test_range_advanced(r: ClientType):
     for i in range(100):
         r.ts().add(1, i, i % 7)
         r.ts().add(1, i + 200, i % 7)
@@ -366,7 +367,7 @@ def test_range_advanced(r: redis.Redis):
     )
 
 
-def test_range_latest(r: redis.Redis):
+def test_range_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2")
@@ -384,7 +385,7 @@ def test_range_latest(r: redis.Redis):
     assert timeseries.range("t2", 0, 9) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
-def test_range_bucket_timestamp(r: redis.Redis):
+def test_range_bucket_timestamp(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.add("t1", 15, 1)
@@ -400,7 +401,7 @@ def test_range_bucket_timestamp(r: redis.Redis):
     ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
-def test_range_empty(r: redis.Redis):
+def test_range_empty(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.add("t1", 15, 1)
@@ -423,7 +424,7 @@ def test_range_empty(r: redis.Redis):
     )
 
 
-def test_rev_range(r: redis.Redis):
+def test_rev_range(r: ClientType):
     for i in range(100):
         r.ts().add(1, i, i % 7)
     assert 100 == len(r.ts().range(1, 0, 200))
@@ -446,7 +447,7 @@ def test_rev_range(r: redis.Redis):
     )
 
 
-def test_revrange_latest(r: redis.Redis):
+def test_revrange_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2")
@@ -461,7 +462,7 @@ def test_revrange_latest(r: redis.Redis):
     assert timeseries.revrange("t2", 0, 9, latest=True) == resp_conversion(r, [[0, 4.0]], [(0, 4.0)])
 
 
-def test_revrange_bucket_timestamp(r: redis.Redis):
+def test_revrange_bucket_timestamp(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.add("t1", 15, 1)
@@ -477,7 +478,7 @@ def test_revrange_bucket_timestamp(r: redis.Redis):
     ) == resp_conversion(r, [[20, 4.0], [60, 3.0], [80, 5.0]], [(20, 4.0), (60, 3.0), (80, 5.0)])
 
 
-def test_revrange_empty(r: redis.Redis):
+def test_revrange_empty(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.add("t1", 15, 1)
@@ -499,7 +500,7 @@ def test_revrange_empty(r: redis.Redis):
     )
 
 
-def test_mrange(r: redis.Redis):
+def test_mrange(r: ClientType):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
     for i in range(100):
@@ -536,7 +537,7 @@ def test_mrange(r: redis.Redis):
     assert {"Test": "This", "team": "ny"} == res
 
 
-def test_multi_range_advanced(r: redis.Redis):
+def test_multi_range_advanced(r: ClientType):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
     for i in range(100):
@@ -608,7 +609,7 @@ def test_multi_range_advanced(r: redis.Redis):
     # assert [(0, 5.0), (5, 6.0)] == res[0]["1"][1]
 
 
-def test_mrange_latest(r: redis.Redis):
+def test_mrange_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2", labels={"is_compaction": "true"})
@@ -632,7 +633,7 @@ def test_mrange_latest(r: redis.Redis):
     )
 
 
-def test_multi_reverse_range(r: redis.Redis):
+def test_multi_reverse_range(r: ClientType):
     r.ts().create(1, labels={"Test": "This", "team": "ny"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That", "team": "sf"})
     for i in range(100):
@@ -727,7 +728,7 @@ def test_multi_reverse_range(r: redis.Redis):
         assert [[10, 1.0], [0, 10.0]] == res[b"1"][2]
 
 
-def test_mrevrange_latest(r: redis.Redis):
+def test_mrevrange_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2", labels={"is_compaction": "true"})
@@ -751,7 +752,7 @@ def test_mrevrange_latest(r: redis.Redis):
     )
 
 
-def test_get(r: redis.Redis):
+def test_get(r: ClientType):
     name = "test"
     r.ts().create(name)
     assert r.ts().get(name) == resp_conversion(r, [], None)
@@ -761,7 +762,7 @@ def test_get(r: redis.Redis):
     assert 4 == r.ts().get(name)[1]
 
 
-def test_get_latest(r: redis.Redis):
+def test_get_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2")
@@ -774,7 +775,7 @@ def test_get_latest(r: redis.Redis):
     assert timeseries.get("t2", latest=True) == resp_conversion(r, [0, 4.0], (0, 4.0))
 
 
-def test_mget_errors(r: redis.Redis):
+def test_mget_errors(r: ClientType):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     with pytest.raises(Exception) as e:
@@ -788,7 +789,7 @@ def test_mget_errors(r: redis.Redis):
     assert str(e.value) == "TSDB: failed parsing labels"
 
 
-def test_mget(r: redis.Redis):
+def test_mget(r: ClientType):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     act_res = r.ts().mget(["Test=This"])
@@ -824,7 +825,7 @@ def test_mget(r: redis.Redis):
         assert {"Taste": "That", "Test": "This"} == {k.decode(): v.decode() for k, v in res[b"2"][0].items()}
 
 
-def test_mget_latest(r: redis.Redis):
+def test_mget_latest(r: ClientType):
     timeseries = r.ts()
     timeseries.create("t1")
     timeseries.create("t2", labels={"is_compaction": "true"})
@@ -839,7 +840,7 @@ def test_mget_latest(r: redis.Redis):
     assert res == resp_conversion(r, {b"t2": [{}, [0, 4.0]]}, [{"t2": [{}, 0, 4.0]}])
 
 
-def test_info(r: redis.Redis):
+def test_info(r: ClientType):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
     info = InfoClass(r, info)
@@ -848,7 +849,7 @@ def test_info(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="7.5")
-def testInfoDuplicatePolicy(r: redis.Redis):
+def testInfoDuplicatePolicy(r: ClientType):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
     info = InfoClass(r, info)
@@ -861,7 +862,7 @@ def testInfoDuplicatePolicy(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.5")
-def testInfoDuplicatePolicy_redis8(r: redis.Redis):
+def testInfoDuplicatePolicy_redis8(r: ClientType):
     r.ts().create(1, retention_msecs=5, labels={"currentLabel": "currentData"})
     info = r.ts().info(1)
     info = InfoClass(r, info)
@@ -874,7 +875,7 @@ def testInfoDuplicatePolicy_redis8(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7.5")
-def test_alter_diplicate_policy_redis8(r: redis.Redis):
+def test_alter_diplicate_policy_redis8(r: ClientType):
     assert r.ts().create(1)
     info = r.ts().info(1)
     info = InfoClass(r, info)
@@ -886,7 +887,7 @@ def test_alter_diplicate_policy_redis8(r: redis.Redis):
     assert "min" == info["duplicate_policy"]
 
 
-def test_query_index(r: redis.Redis):
+def test_query_index(r: ClientType):
     r.ts().create(1, labels={"Test": "This"})
     r.ts().create(2, labels={"Test": "This", "Taste": "That"})
     assert 2 == len(r.ts().queryindex(["Test=This"]))
@@ -894,7 +895,7 @@ def test_query_index(r: redis.Redis):
     assert r.ts().queryindex(["Taste=That"]) == resp_conversion(r, [b"2"], [2])
 
 
-def test_pipeline(r: redis.Redis):
+def test_pipeline(r: ClientType):
     pipeline = r.ts().pipeline()
     pipeline.create("with_pipeline")
     for i in range(100):
@@ -909,7 +910,7 @@ def test_pipeline(r: redis.Redis):
     assert r.ts().get("with_pipeline")[1] == 99 * 1.1
 
 
-def test_uncompressed(r: redis.Redis):
+def test_uncompressed(r: ClientType):
     r.ts().create("compressed")
     r.ts().create("uncompressed", uncompressed=True)
     compressed_info = r.ts().info("compressed")
@@ -919,7 +920,7 @@ def test_uncompressed(r: redis.Redis):
     assert compressed_info["memory_usage"] != uncompressed_info["memory_usage"]
 
 
-def test_create_rule_green(r: redis.Redis):
+def test_create_rule_green(r: ClientType):
     r.ts().create(1)
     r.ts().create(2)
     r.ts().createrule(1, 2, "avg", 100)
@@ -935,7 +936,7 @@ def test_create_rule_green(r: redis.Redis):
     assert info["source_key"] == b"1"
 
 
-def test_create_rule_bad_aggregator(r: redis.Redis):
+def test_create_rule_bad_aggregator(r: ClientType):
     r.ts().create(1)
     r.ts().create(2)
     with pytest.raises(Exception) as e:
@@ -944,14 +945,14 @@ def test_create_rule_bad_aggregator(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_BAD_AGGREGATION_TYPE
 
 
-def test_create_rule_key_not_exist(r: redis.Redis):
+def test_create_rule_key_not_exist(r: ClientType):
     with pytest.raises(Exception) as e:
         r.ts().createrule(1, 2, "avg", 100)
     assert isinstance(e.value, (redis.ResponseError, valkey.ResponseError))
     assert str(e.value) == msgs.TIMESERIES_KEY_DOES_NOT_EXIST
 
 
-def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
+def test_create_rule_with_rule_to_dest_key_exists(r: ClientType):
     r.ts().create(1)
     r.ts().create(2)
     r.ts().createrule(1, 2, "avg", 100)
@@ -961,7 +962,7 @@ def test_create_rule_with_rule_to_dest_key_exists(r: redis.Redis):
     assert str(e.value) == msgs.TIMESERIES_RULE_EXISTS
 
 
-def test_mrange_with_in_condition(r: redis.Redis):
+def test_mrange_with_in_condition(r: ClientType):
     r.ts().create("ts:1", labels={"sensor": "A"})
     r.ts().create("ts:2", labels={"sensor": "B"})
     r.ts().create("ts:3", labels={"sensor": "C"})
@@ -989,7 +990,7 @@ def test_mrange_with_in_condition(r: redis.Redis):
     assert len(res) == 2
 
 
-def test_ts_create_bad_encoding(r: redis.Redis):
+def test_ts_create_bad_encoding(r: ClientType):
     """TS.CREATE with an invalid ENCODING raises an error."""
     with pytest.raises(Exception) as ctx:
         r.execute_command("TS.CREATE", "ts", "ENCODING", "INVALID")
@@ -997,7 +998,7 @@ def test_ts_create_bad_encoding(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_create_bad_chunk_size(r: redis.Redis):
+def test_ts_create_bad_chunk_size(r: ClientType):
     """TS.CREATE with a chunk_size not divisible by 8 raises an error."""
     with pytest.raises(Exception) as ctx:
         r.execute_command("TS.CREATE", "ts", "CHUNK_SIZE", "7")
@@ -1005,7 +1006,7 @@ def test_ts_create_bad_chunk_size(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_info_nonexistent_key(r: redis.Redis):
+def test_ts_info_nonexistent_key(r: ClientType):
     """TS.INFO raises an error for a non-existent key."""
     with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().info("nokey")
@@ -1013,7 +1014,7 @@ def test_ts_info_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_range_nonexistent_key(r: redis.Redis):
+def test_ts_range_nonexistent_key(r: ClientType):
     """TS.RANGE and TS.REVRANGE raise errors for non-existent keys."""
     with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().range("nokey", "-", "+")
@@ -1024,7 +1025,7 @@ def test_ts_range_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_alter_nonexistent_key(r: redis.Redis):
+def test_ts_alter_nonexistent_key(r: ClientType):
     """TS.ALTER raises an error for a non-existent key."""
     with pytest.raises(Exception, match=msgs.TIMESERIES_KEY_DOES_NOT_EXIST) as ctx:
         r.ts().alter("nokey", retention_msecs=1000)
@@ -1032,7 +1033,7 @@ def test_ts_alter_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_alter_bad_chunk_size(r: redis.Redis):
+def test_ts_alter_bad_chunk_size(r: ClientType):
     """TS.ALTER with a chunk_size not divisible by 8 raises an error."""
     r.ts().create("ts")
     with pytest.raises(Exception) as ctx:
@@ -1041,7 +1042,7 @@ def test_ts_alter_bad_chunk_size(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_add_invalid_duplicate_policy(r: redis.Redis):
+def test_ts_add_invalid_duplicate_policy(r: ClientType):
     """TS.ADD with an invalid ON_DUPLICATE policy raises an error."""
     r.ts().create("ts")
     with pytest.raises(Exception) as ctx:
@@ -1050,7 +1051,7 @@ def test_ts_add_invalid_duplicate_policy(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_filter_no_equals_operator(r: redis.Redis):
+def test_ts_filter_no_equals_operator(r: ClientType):
     """A filter expression without = or != raises an error."""
     r.ts().create("ts", labels={"x": "1"})
     r.ts().add("ts", 1000, 1.0)
@@ -1060,7 +1061,7 @@ def test_ts_filter_no_equals_operator(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_incrby_timestamp_lower_than_max(r: redis.Redis):
+def test_ts_incrby_timestamp_lower_than_max(r: ClientType):
     """TS.INCRBY raises an error when the timestamp is lower than the latest."""
     r.ts().create("ts")
     r.ts().incrby("ts", 1.0, timestamp=2000)
@@ -1070,7 +1071,7 @@ def test_ts_incrby_timestamp_lower_than_max(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_range_bad_aggregation_type(r: redis.Redis):
+def test_ts_range_bad_aggregation_type(r: ClientType):
     """TS.RANGE with an invalid aggregation type raises an error."""
     r.ts().create("ts")
     r.ts().add("ts", 1000, 1.0)
@@ -1080,7 +1081,7 @@ def test_ts_range_bad_aggregation_type(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_ts_range_filter_by_ts(r: redis.Redis):
+def test_ts_range_filter_by_ts(r: ClientType):
     """TS.RANGE with FILTER_BY_TS returns only matching timestamps."""
     r.ts().create("ts")
     for t in [1000, 2000, 3000, 4000]:
@@ -1091,7 +1092,7 @@ def test_ts_range_filter_by_ts(r: redis.Redis):
     assert res[1][0] == 3000
 
 
-def test_ts_range_align_to_range_boundary(r: redis.Redis):
+def test_ts_range_align_to_range_boundary(r: ClientType):
     """TS.RANGE with ALIGN + (range end) executes without error."""
     r.ts().create("ts")
     for t in [1000, 2000, 3000]:
@@ -1100,7 +1101,7 @@ def test_ts_range_align_to_range_boundary(r: redis.Redis):
     assert len(res) > 0
 
 
-def test_ts_madd_nonexistent_key(r: redis.Redis):
+def test_ts_madd_nonexistent_key(r: ClientType):
     """TS.MADD returns partial results when any key does not exist."""
     r.ts().create("ts1")
     result = r.ts().madd([("ts1", 1000, 1.0), ("nokey", 2000, 2.0)])
@@ -1108,13 +1109,13 @@ def test_ts_madd_nonexistent_key(r: redis.Redis):
     assert isinstance(result[1], redis.ResponseError)
 
 
-def _range_values(res) -> list:
+def _range_values(res: list[Any]) -> list:
     """Normalize [timestamp, value] rows: RESP2 sends values as bulk strings, RESP3 as doubles; NaN becomes "nan"."""
     return [[t, "nan" if math.isnan(float(v)) else float(v)] for t, v in res]
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
-def test_range_empty_bucket_values(r: redis.Redis):
+def test_range_empty_bucket_values(r: ClientType):
     raw_command(r, "TS.CREATE", "t")
     raw_command(r, "TS.MADD", "t", 1000, 20, "t", 3000, 25)
 
@@ -1130,7 +1131,7 @@ def test_range_empty_bucket_values(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
-def test_range_align(r: redis.Redis):
+def test_range_align(r: ClientType):
     raw_command(r, "TS.CREATE", "t")
     raw_command(r, "TS.MADD", "t", 1000, 10, "t", 2000, 12, "t", 2500, 13)
     res = raw_command(r, "TS.RANGE", "t", "-", "+", "ALIGN", 500, "AGGREGATION", "sum", 1000)
@@ -1140,7 +1141,7 @@ def test_range_align(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
-def test_range_ignores_unknown_arguments(r: redis.Redis):
+def test_range_ignores_unknown_arguments(r: ClientType):
     raw_command(r, "TS.CREATE", "t")
     raw_command(r, "TS.MADD", "t", 1000, 10, "t", 2000, 12)
     assert _range_values(raw_command(r, "TS.RANGE", "t", "-", "+", "FOO")) == [[1000, 10.0], [2000, 12.0]]
@@ -1151,7 +1152,7 @@ def test_range_ignores_unknown_arguments(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8")
-def test_range_count_aggregation_is_a_double(r: redis.Redis):
+def test_range_count_aggregation_is_a_double(r: ClientType):
     if get_protocol_version(r) != 3:
         pytest.skip("RESP3 only")
     raw_command(r, "TS.CREATE", "t")
@@ -1160,7 +1161,7 @@ def test_range_count_aggregation_is_a_double(r: redis.Redis):
     assert res == [[1000, 1.0]] and isinstance(res[0][1], float)
 
 
-def test_copy_does_not_share_samples(r: redis.Redis):
+def test_copy_does_not_share_samples(r: ClientType):
     r.ts().create("source")
     r.ts().add("source", 1, 1)
     assert r.copy("source", "copy")

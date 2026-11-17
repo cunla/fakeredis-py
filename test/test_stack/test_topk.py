@@ -2,6 +2,7 @@ import pytest
 import redis
 import valkey
 
+from fakeredis._typing import ClientType
 from test.testtools import get_protocol_version, resp_conversion
 
 topk_tests = pytest.importorskip("probables")
@@ -16,12 +17,12 @@ pytestmark.extend(
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_topk_type(r: redis.Redis):
+def test_topk_type(r: ClientType):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert r.type("topk") == b"TopK-TYPE"
 
 
-def test_topk_incrby(r: redis.Redis):
+def test_topk_incrby(r: ClientType):
     assert r.topk().reserve("topk", 3, 10, 3, 1)
     assert [None, None, None] == r.topk().incrby("topk", ["bar", "baz", "42"], [3, 6, 4])
     result = r.topk().incrby("topk", ["42", "xyzzy"], [8, 4])
@@ -39,7 +40,7 @@ def test_topk_incrby(r: redis.Redis):
     assert counts[4] >= 0  # item "4" was never added
 
 
-def test_topk(r: redis.Redis):
+def test_topk(r: ClientType):
     # test list with empty buckets
     assert r.topk().reserve("topk", 3, 50, 4, 0.9)
     ret = r.topk().add("topk", "A", "B", "C", "D", "D", "E", "A", "A", "B", "C", "G", "D", "B", "D", "A", "E", "E", 1)
@@ -71,7 +72,7 @@ def test_topk(r: redis.Redis):
         assert 0.9 == round(float(info[b"decay"]), 1)
 
 
-def test_topk_commands_on_nonexistent_key(r: redis.Redis):
+def test_topk_commands_on_nonexistent_key(r: ClientType):
     """All TopK commands raise an error when the key does not exist."""
     with pytest.raises(Exception, match="key does not exist") as ctx:
         r.topk().add("nokey", "item")
@@ -94,7 +95,7 @@ def test_topk_commands_on_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_topk_reserve_already_exists(r: redis.Redis):
+def test_topk_reserve_already_exists(r: ClientType):
     """TOPK.RESERVE raises an error when the key already exists."""
     r.topk().reserve("topk", 3, 10, 3, 0.9)
     with pytest.raises(Exception, match="already exists") as ctx:
@@ -103,7 +104,7 @@ def test_topk_reserve_already_exists(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_topk_incrby_odd_args(r: redis.Redis):
+def test_topk_incrby_odd_args(r: ClientType):
     """TOPK.INCRBY raises an error when items and increments are mismatched."""
     r.topk().reserve("topk", 3, 10, 3, 0.9)
     with pytest.raises(Exception) as ctx:

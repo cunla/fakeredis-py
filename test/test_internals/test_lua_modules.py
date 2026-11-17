@@ -1,9 +1,8 @@
 import json
 
 import pytest
-import redis
 
-from fakeredis._typing import AsyncClientType
+from fakeredis._typing import AsyncClientType, ClientType
 
 lua_modules_test = pytest.importorskip("lupa")
 
@@ -41,7 +40,7 @@ return 0
 
 
 @pytest.mark.load_lua_modules("cjson")
-def test_asgi_ratelimit_script(r: redis.Redis):
+def test_asgi_ratelimit_script(r: ClientType):
     script = """
 local ruleset = cjson.decode(ARGV[1])
 

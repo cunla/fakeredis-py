@@ -6,6 +6,8 @@ and lacks `UNLINK` and `SCRIPT HELP`, which Redis has had since 4.0 and 5.0. Sup
 keyed off the server type rather than off the version it claims.
 """
 
+from typing import Any
+
 import pytest
 import redis
 
@@ -88,7 +90,7 @@ def test_unknown_command_names_nothing(r: ClientType):
         ("xackdel", "stream", "group", "ids", 1, "1-1"),
     ],
 )
-def test_commands_kividb_spells_differently_are_refused(args):
+def test_commands_kividb_spells_differently_are_refused(args: tuple[Any, ...]):
     """Both commands exist on KiviDB, in an argument form fakeredis does not implement.
 
     Refusing them keeps a script that uses the Redis form from passing here and failing against a

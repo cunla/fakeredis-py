@@ -81,7 +81,7 @@ def real_server_details(real_server_address: tuple[str, int]) -> ServerDetails:
 
 
 @pytest_asyncio.fixture(name="fake_server")
-def _fake_server(request, real_server_details: ServerDetails) -> fakeredis.FakeServer:
+def _fake_server(request: pytest.FixtureRequest, real_server_details: ServerDetails) -> fakeredis.FakeServer:
     server = fakeredis.FakeServer(
         server_type=real_server_details.server_type, version=real_server_details.server_version
     )
@@ -107,7 +107,7 @@ def _tcp_fake_server(real_server_details: ServerDetails) -> Generator[tuple[str,
 
 
 @pytest_asyncio.fixture
-def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generator[redis.Redis, Any, None]:
+def r(request: pytest.FixtureRequest, create_connection: Callable[..., ClientType]) -> Generator[ClientType, Any, None]:
     rconn = create_connection(db=2)
     connected = request.node.get_closest_marker("disconnected") is None
     if connected:
@@ -119,7 +119,7 @@ def r(request, create_connection: Callable[[..., Any], redis.Redis]) -> Generato
         rconn.close()  # Older versions of redis-py don't have this method
 
 
-def _validate_server_versions(request, real_server_details: ServerDetails) -> None:
+def _validate_server_versions(request: pytest.FixtureRequest, real_server_details: ServerDetails) -> None:
     server_type, redis_version = real_server_details.server_type, real_server_details.redis_version
     unsupported_server_types = request.node.get_closest_marker("unsupported_server_types")
     if unsupported_server_types and server_type in unsupported_server_types.args:
@@ -184,7 +184,7 @@ def _get_class(
         pytest.param("FakeStrict3", marks=pytest.mark.fake),
     ],
 )
-def _create_connection(request, real_server_details: ServerDetails) -> Callable[[dict[str, Any]], ClientType]:
+def _create_connection(request: pytest.FixtureRequest, real_server_details: ServerDetails) -> Callable[..., ClientType]:
     cls_type, protocol = request.param[:-1], int(request.param[-1])
     if request.node.get_closest_marker("fake_only") and not cls_type.startswith("Fake"):
         pytest.skip("Test is only applicable to fakeredis")
@@ -207,7 +207,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
 
-    def factory(**kwargs: Any) -> redis.Redis:
+    def factory(**kwargs: Any) -> ClientType:
         if REDIS_PY_VERSION.major >= 5:
             kwargs["protocol"] = protocol
         cls = _get_class(cls_type, real_server_details, False)
@@ -230,7 +230,7 @@ def _create_connection(request, real_server_details: ServerDetails) -> Callable[
     ],
     ids=lambda x: f"{x[0]}_resp{x[1]}",
 )
-async def _req_aioredis2(request, real_server_details: ServerDetails) -> AsyncClientType:
+async def _req_aioredis2(request: pytest.FixtureRequest, real_server_details: ServerDetails) -> AsyncClientType:
     param_type, protocol = request.param[0], int(request.param[1])
     if request.node.get_closest_marker("fake_only") and param_type != "fake":
         pytest.skip("Test is only applicable to fakeredis")

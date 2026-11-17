@@ -14,7 +14,7 @@ pytestmark.extend(
 
 
 def test_pubsub(tcp_server_address: tuple[str, int]):
-    def _listen(pubsub, q):
+    def _listen(pubsub: redis.client.PubSub, q: Queue):
         for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
             if count == 4:

@@ -1,12 +1,17 @@
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 import redis
 import redis.client
 import valkey
 
+from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 
 
-def test_multiple_successful_watch_calls(r: redis.Redis):
+def test_multiple_successful_watch_calls(r: ClientType):
     p = r.pipeline()
     p.watch("bam")
     p.multi()
@@ -22,7 +27,7 @@ def test_multiple_successful_watch_calls(r: redis.Redis):
     assert p.execute() == [True]
 
 
-def test_watch_state_is_cleared_after_abort(r: redis.Redis):
+def test_watch_state_is_cleared_after_abort(r: ClientType):
     # redis-py's pipeline handling and connection pooling interferes with this test, so raw commands are used instead.
     testtools.raw_command(r, "watch", "foo")
     testtools.raw_command(r, "multi")
@@ -41,12 +46,12 @@ def test_watch_state_is_cleared_after_abort(r: redis.Redis):
     assert r.get("abc") == b"done"
 
 
-def test_pipeline_transaction_shortcut(r: redis.Redis):
+def test_pipeline_transaction_shortcut(r: ClientType):
     # This example taken pretty much from the redis-py documentation.
     r.set("OUR-SEQUENCE-KEY", 13)
     calls = []
 
-    def client_side_incr(pipe):
+    def client_side_incr(pipe: redis.client.Pipeline):
         calls.append((pipe,))
         current_value = pipe.get("OUR-SEQUENCE-KEY")
         next_value = int(current_value) + 1
@@ -65,8 +70,8 @@ def test_pipeline_transaction_shortcut(r: redis.Redis):
     assert len(calls) == 3
 
 
-def test_pipeline_transaction_value_from_callable(r: redis.Redis):
-    def callback(pipe):
+def test_pipeline_transaction_value_from_callable(r: ClientType):
+    def callback(pipe: redis.client.Pipeline):
         # No need to do anything here since we only want the return value
         return "OUR-RETURN-VALUE"
 
@@ -74,18 +79,18 @@ def test_pipeline_transaction_value_from_callable(r: redis.Redis):
     assert res == "OUR-RETURN-VALUE"
 
 
-def test_pipeline_empty(r: redis.Redis):
+def test_pipeline_empty(r: ClientType):
     p = r.pipeline()
     assert len(p) == 0
 
 
-def test_pipeline_length(r: redis.Redis):
+def test_pipeline_length(r: ClientType):
     p = r.pipeline()
     p.set("baz", "quux").get("baz")
     assert len(p) == 2
 
 
-def test_pipeline_no_commands(r: redis.Redis):
+def test_pipeline_no_commands(r: ClientType):
     # Prior to 3.4, redis-py's execute is a nop if there are no commands queued, so it succeeds even if watched keys
     # have been changed.
     r.set("foo", "1")
@@ -98,7 +103,7 @@ def test_pipeline_no_commands(r: redis.Redis):
     assert isinstance(ctx.value, (redis.WatchError, valkey.WatchError))
 
 
-def test_pipeline_failed_transaction(r: redis.Redis):
+def test_pipeline_failed_transaction(r: ClientType):
     p = r.pipeline()
     p.multi()
     p.set("foo", "bar")
@@ -111,7 +116,7 @@ def test_pipeline_failed_transaction(r: redis.Redis):
     assert not r.exists("foo")
 
 
-def test_pipeline_srem_no_change(r: redis.Redis):
+def test_pipeline_srem_no_change(r: ClientType):
     # A regression test for a case picked up by hypothesis tests.
     p = r.pipeline()
     p.watch("foo")
@@ -124,7 +129,7 @@ def test_pipeline_srem_no_change(r: redis.Redis):
 
 # The behaviour changed in redis 6.0 (see https://github.com/redis/redis/issues/6594).
 @pytest.mark.supported_server_versions(min_redis_ver="6.0")
-def test_pipeline_move(r: redis.Redis):
+def test_pipeline_move(r: ClientType):
     # A regression test for a case picked up by hypothesis tests.
     r.set("foo", "bar")
     p = r.pipeline()
@@ -140,7 +145,7 @@ def test_pipeline_move(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.0.6")
-def test_exec_bad_arguments(r: redis.Redis):
+def test_exec_bad_arguments(r: ClientType):
     # Redis 6.0.6 changed the behaviour of exec so that it always fails with EXECABORT, even when it's just bad syntax.
     with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
@@ -149,7 +154,7 @@ def test_exec_bad_arguments(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.0.6")
-def test_exec_bad_arguments_abort(r: redis.Redis):
+def test_exec_bad_arguments_abort(r: ClientType):
     r.execute_command("multi")
     with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
@@ -162,7 +167,7 @@ def test_exec_bad_arguments_abort(r: redis.Redis):
     assert r.get("bar") == b"baz"
 
 
-def test_pipeline(r: redis.Redis):
+def test_pipeline(r: ClientType):
     # The pipeline method returns an object for issuing multiple commands in a batch.
     p = r.pipeline()
     p.watch("bam")
@@ -182,7 +187,7 @@ def test_pipeline(r: redis.Redis):
     assert p.execute() == []
 
 
-def test_pipeline_ignore_errors(r: redis.Redis):
+def test_pipeline_ignore_errors(r: ClientType):
     """Test the pipeline ignoring errors when asked."""
     with r.pipeline() as p:
         p.set("foo", "bar")
@@ -202,7 +207,7 @@ def test_pipeline_ignore_errors(r: redis.Redis):
         assert isinstance(res[1], (redis.exceptions.ResponseError, valkey.ResponseError))
 
 
-def test_pipeline_non_transactional(r: redis.Redis):
+def test_pipeline_non_transactional(r: ClientType):
     # For our simple-minded model I don't think there is any observable difference.
     p = r.pipeline(transaction=False)
     res = p.set("baz", "quux").get("baz").execute()
@@ -210,7 +215,7 @@ def test_pipeline_non_transactional(r: redis.Redis):
     assert res == [True, b"quux"]
 
 
-def test_pipeline_raises_when_watched_key_changed(r: redis.Redis):
+def test_pipeline_raises_when_watched_key_changed(r: ClientType):
     r.set("foo", "bar")
     r.rpush("greet", "hello")
     p = r.pipeline()
@@ -230,7 +235,7 @@ def test_pipeline_raises_when_watched_key_changed(r: redis.Redis):
         p.reset()
 
 
-def test_pipeline_succeeds_despite_unwatched_key_changed(r: redis.Redis):
+def test_pipeline_succeeds_despite_unwatched_key_changed(r: ClientType):
     # Same setup as before except for the params to the WATCH command.
     r.set("foo", "bar")
     r.rpush("greet", "hello")
@@ -251,7 +256,7 @@ def test_pipeline_succeeds_despite_unwatched_key_changed(r: redis.Redis):
         p.reset()
 
 
-def test_pipeline_succeeds_when_watching_nonexistent_key(r: redis.Redis):
+def test_pipeline_succeeds_when_watching_nonexistent_key(r: ClientType):
     r.set("foo", "bar")
     r.rpush("greet", "hello")
     p = r.pipeline()
@@ -271,7 +276,7 @@ def test_pipeline_succeeds_when_watching_nonexistent_key(r: redis.Redis):
         p.reset()
 
 
-def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
+def test_watch_state_is_cleared_across_multiple_watches(r: ClientType):
     r.set("foo", "one")
     r.set("bar", "baz")
     p = r.pipeline()
@@ -296,7 +301,7 @@ def test_watch_state_is_cleared_across_multiple_watches(r: redis.Redis):
         p.reset()
 
 
-def test_get_within_pipeline(r: redis.Redis):
+def test_get_within_pipeline(r: ClientType):
     r.set("test", "foo")
     r.set("test2", "foo2")
     expected_keys = set(r.keys())
@@ -306,7 +311,7 @@ def test_get_within_pipeline(r: redis.Redis):
         assert set(r.keys()) == expected_keys
 
 
-def test_multidb(create_connection):
+def test_multidb(create_connection: Callable[..., ClientType]):
     r1 = create_connection(db=2)
     r2 = create_connection(db=3)
 
@@ -325,7 +330,7 @@ def test_multidb(create_connection):
     assert "r2" not in r2
 
 
-def _watch_is_invalidated(conn: redis.Redis, key: str, action) -> bool:
+def _watch_is_invalidated(conn: ClientType, key: str, action: Callable[[], Any]) -> bool:
     p = conn.pipeline()
     try:
         p.watch(key)
@@ -341,7 +346,7 @@ def _watch_is_invalidated(conn: redis.Redis, key: str, action) -> bool:
         p.reset()
 
 
-def test_move_invalidates_watch_on_both_databases(r: redis.Redis, create_connection):
+def test_move_invalidates_watch_on_both_databases(r: ClientType, create_connection: Callable[..., ClientType]):
     other_db = create_connection(db=3)
     r.set("foo", "bar", ex=100)
     assert _watch_is_invalidated(other_db, "foo", lambda: r.move("foo", 3))
@@ -352,7 +357,7 @@ def test_move_invalidates_watch_on_both_databases(r: redis.Redis, create_connect
     assert _watch_is_invalidated(r, "foo", lambda: r.move("foo", 3))
 
 
-def test_smove_of_member_already_in_destination_and_its_watch(r: redis.Redis, real_server_details):
+def test_smove_of_member_already_in_destination_and_its_watch(r: ClientType, real_server_details: ServerDetails):
     r.sadd("src", "m", "x")
     r.sadd("dst", "m")
     # Dragonfly counts the destination as modified even though the member was already there.

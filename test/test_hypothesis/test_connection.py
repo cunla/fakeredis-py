@@ -1,6 +1,6 @@
 import pytest
 
-from .base import BaseMachine, commands, dbnums, run_machine, st, values
+from .base import BaseMachine, MachineConfig, commands, dbnums, run_machine, st, values
 
 connection_commands = (
     commands(st.just("echo"), values)
@@ -15,5 +15,5 @@ class ConnectionMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_connection(hypothesis_config):
+def test_connection(hypothesis_config: MachineConfig):
     run_machine(ConnectionMachine, hypothesis_config)

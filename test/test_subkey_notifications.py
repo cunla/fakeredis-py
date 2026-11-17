@@ -7,6 +7,7 @@ enables hash-command events, and each of the S/T/I/V flags enables one subkey ch
 import time
 
 import pytest
+from redis.client import PubSub
 
 from fakeredis._typing import ClientType
 from test import testtools
@@ -22,7 +23,7 @@ pytestmark.extend(
 )
 
 
-def collect_messages(pubsub, timeout=1.0) -> list[tuple[bytes, bytes]]:
+def collect_messages(pubsub: PubSub, timeout: float = 1.0) -> list[tuple[bytes, bytes]]:
     """Collect (channel, data) of pmessages until no message arrives within a short poll window."""
     deadline = time.time() + timeout
     messages = []
@@ -50,7 +51,7 @@ def pubsub(r: ClientType):
     p.close()
 
 
-def test_subkey_hset(r: ClientType, pubsub):
+def test_subkey_hset(r: ClientType, pubsub: PubSub):
     r.hset("hash", mapping={"field1": "v1", "field2": "v2"})
     messages = collect_messages(pubsub)
     assert (b"__subkeyspace@2__:hash", b"hset|6:field1,6:field2") in messages
@@ -60,7 +61,7 @@ def test_subkey_hset(r: ClientType, pubsub):
     assert (b"__subkeyspaceevent@2__:hset|hash", b"6:field1,6:field2") in messages
 
 
-def test_subkey_hdel(r: ClientType, pubsub):
+def test_subkey_hdel(r: ClientType, pubsub: PubSub):
     r.hset("hash", mapping={"field1": "v1", "field2": "v2"})
     collect_messages(pubsub)
     r.hdel("hash", "field1", "missing")
@@ -70,7 +71,7 @@ def test_subkey_hdel(r: ClientType, pubsub):
     assert (b"__subkeyspaceevent@2__:hdel|hash", b"6:field1") in messages
 
 
-def test_subkey_hsetnx(r: ClientType, pubsub):
+def test_subkey_hsetnx(r: ClientType, pubsub: PubSub):
     r.hsetnx("hash", "field", "v1")
     messages = collect_messages(pubsub)
     assert (b"__subkeyspace@2__:hash", b"hset|5:field") in messages
@@ -79,7 +80,7 @@ def test_subkey_hsetnx(r: ClientType, pubsub):
     assert collect_messages(pubsub, timeout=0.3) == []
 
 
-def test_subkey_hincrby(r: ClientType, pubsub):
+def test_subkey_hincrby(r: ClientType, pubsub: PubSub):
     r.hincrby("hash", "counter", 5)
     messages = collect_messages(pubsub)
     assert (b"__subkeyspace@2__:hash", b"hincrby|7:counter") in messages
@@ -88,7 +89,7 @@ def test_subkey_hincrby(r: ClientType, pubsub):
     assert (b"__subkeyspace@2__:hash", b"hincrbyfloat|8:fcounter") in messages
 
 
-def test_subkey_hexpire_and_hpersist(r: ClientType, pubsub):
+def test_subkey_hexpire_and_hpersist(r: ClientType, pubsub: PubSub):
     r.hset("hash", mapping={"field1": "v1", "field2": "v2"})
     collect_messages(pubsub)
     r.hexpire("hash", 100, "field1", "field2")
@@ -102,7 +103,7 @@ def test_subkey_hexpire_and_hpersist(r: ClientType, pubsub):
     assert collect_messages(pubsub, timeout=0.3) == []
 
 
-def test_subkey_hexpire_past_deletes(r: ClientType, pubsub):
+def test_subkey_hexpire_past_deletes(r: ClientType, pubsub: PubSub):
     r.hset("hash", mapping={"field1": "v1", "field2": "v2"})
     collect_messages(pubsub)
     # Expiration in the past deletes the field immediately, firing hdel
@@ -111,7 +112,7 @@ def test_subkey_hexpire_past_deletes(r: ClientType, pubsub):
     assert (b"__subkeyspace@2__:hash", b"hdel|6:field1") in messages
 
 
-def test_subkey_hexpired(r: ClientType, pubsub):
+def test_subkey_hexpired(r: ClientType, pubsub: PubSub):
     r.hset("hash", "field", "v1")
     r.hpexpire("hash", 30, "field")
     collect_messages(pubsub)
@@ -122,14 +123,14 @@ def test_subkey_hexpired(r: ClientType, pubsub):
     assert (b"__subkeyspaceitem@2__:hash\nfield", b"hexpired") in messages
 
 
-def test_subkey_hsetex(r: ClientType, pubsub):
+def test_subkey_hsetex(r: ClientType, pubsub: PubSub):
     r.execute_command("HSETEX", "hash", "EX", 100, "FIELDS", 1, "field", "v1")
     messages = collect_messages(pubsub)
     assert (b"__subkeyspace@2__:hash", b"hset|5:field") in messages
     assert (b"__subkeyspace@2__:hash", b"hexpire|5:field") in messages
 
 
-def test_subkey_hgetdel(r: ClientType, pubsub):
+def test_subkey_hgetdel(r: ClientType, pubsub: PubSub):
     r.hset("hash", "field", "v1")
     collect_messages(pubsub)
     r.execute_command("HGETDEL", "hash", "FIELDS", 1, "field")
@@ -137,7 +138,7 @@ def test_subkey_hgetdel(r: ClientType, pubsub):
     assert (b"__subkeyspace@2__:hash", b"hdel|5:field") in messages
 
 
-def test_subkey_binary_safe_payload(r: ClientType, pubsub):
+def test_subkey_binary_safe_payload(r: ClientType, pubsub: PubSub):
     r.hset("hash", mapping={b"fi|eld": b"v"})
     messages = collect_messages(pubsub)
     assert (b"__subkeyspace@2__:hash", b"hset|6:fi|eld") in messages

@@ -1,6 +1,6 @@
 import pytest
 
-from .base import BaseMachine, commands, fields, keys, run_machine, st
+from .base import BaseMachine, MachineConfig, commands, fields, keys, run_machine, st
 
 set_commands = (
     commands(st.just("sadd"), keys, st.lists(fields))
@@ -23,5 +23,5 @@ class SetMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_set(hypothesis_config):
+def test_set(hypothesis_config: MachineConfig):
     run_machine(SetMachine, hypothesis_config)

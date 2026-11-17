@@ -3,6 +3,7 @@ import redis
 import valkey
 from redis.commands.json.path import Path
 
+from fakeredis._typing import ClientType
 from test import testtools
 from test.conftest import ServerDetails
 from test.testtools import raw_command
@@ -10,7 +11,7 @@ from test.testtools import raw_command
 json_tests = pytest.importorskip("jsonpath_ng")
 
 
-def test_arrlen(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrlen(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert r.json().arrlen("arr", Path.root_path()) == testtools.json_legacy_reply(r, server_type, 5)
@@ -54,7 +55,7 @@ def test_arrlen(r: redis.Redis, real_server_details: ServerDetails):
     assert r.json().arrlen("non_existing_doc", "..a") is None
 
 
-def test_arrappend(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrappend(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     with pytest.raises(Exception) as ctx:
         r.json().arrappend("non-existing-key", Path.root_path(), 2)
@@ -104,7 +105,7 @@ def test_arrappend(r: redis.Redis, real_server_details: ServerDetails):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_arrindex(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrindex(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("foo", Path.root_path(), [0, 1, 2, 3, 4])
 
@@ -260,7 +261,7 @@ def test_arrindex(r: redis.Redis, real_server_details: ServerDetails):
     )
 
 
-def test_arrinsert(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrinsert(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("arr", Path.root_path(), [0, 4])
 
@@ -300,7 +301,7 @@ def test_arrinsert(r: redis.Redis, real_server_details: ServerDetails):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_arrpop(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrpop(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
     assert raw_command(r, "json.arrpop", "arr") == testtools.json_legacy_reply(r, server_type, b"4")
@@ -335,7 +336,7 @@ def test_arrpop(r: redis.Redis, real_server_details: ServerDetails):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_arrtrim(r: redis.Redis, real_server_details: ServerDetails):
+def test_arrtrim(r: ClientType, real_server_details: ServerDetails):
     server_type = real_server_details.server_type
     r.json().set("arr", Path.root_path(), [0, 1, 2, 3, 4])
 

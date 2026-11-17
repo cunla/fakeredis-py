@@ -6,6 +6,8 @@ A stream keeps its entries in nodes of up to `stream-node-max-entries` entries (
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import redis
 import valkey
@@ -25,7 +27,7 @@ def _ids(r: ClientType, key: str = "s") -> list[bytes]:
     return [entry[0] for entry in r.xrange(key)]
 
 
-def _raises(r: ClientType, message: str, *args) -> None:
+def _raises(r: ClientType, message: str, *args: Any) -> None:
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, *args)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -79,7 +81,9 @@ def test_xadd_approximate_maxlen(r: ClientType):
         (1000, 15, 56),
     ],
 )
-def test_xtrim_approximate_node_size_follows_the_bytes_of_the_entries(r: ClientType, size, nodes, trimmed):
+def test_xtrim_approximate_node_size_follows_the_bytes_of_the_entries(
+    r: ClientType, size: int, nodes: int, trimmed: int
+):
     _add(r, 60, value=b"y" * size)
     assert r.xinfo_stream("s")["radix-tree-keys"] == nodes
     assert r.xtrim("s", maxlen=1, approximate=True) == trimmed
