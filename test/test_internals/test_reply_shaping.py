@@ -4,8 +4,9 @@ most of them. These check that the shortcut does not change what comes out for t
 import pytest
 
 import fakeredis
-from fakeredis._helpers import OK, NoResponse, SimpleError
 from fakeredis._socket._resp import convert_to_resp2, valid_response_type
+from fakeredis.commands_mixins.helpers import OK, NoResponse
+from fakeredis.model import SimpleError
 
 pytestmark = [pytest.mark.fake]
 

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from fakeredis._helpers import SimpleError
-from fakeredis.model import StreamEntryKey, StreamRangeTest, XStream
+from fakeredis.model import SimpleError, StreamEntryKey, StreamRangeTest, XStream
 
 
 def _add(stream: XStream, fields: list[bytes], entry_key: bytes = b"*") -> bytes | None:

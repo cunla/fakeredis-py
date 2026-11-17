@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import functools
 import re
-import time
-from typing import AnyStr
 
 
 class SimpleString:
@@ -20,31 +18,15 @@ class SimpleString:
         return f"{self.__class__.__name__}({self.value!r})"
 
 
-class SimpleError(Exception):
-    """Exception that will be turned into a frontend-specific exception."""
-
-    def __init__(self, value: str) -> None:
-        if not isinstance(value, str):
-            raise TypeError("SimpleError value must be str")
-        self.value = value
-
-
 class NoResponse:
     """Returned by pub/sub commands to indicate that no response should be returned"""
 
 
 OK = SimpleString(b"OK")
-QUEUED = SimpleString(b"QUEUED")
-BGSAVE_STARTED = SimpleString(b"Background saving started")
 
 # Dragonfly stores at most 256MB in one string, where redis allows 512MB.
 DRAGONFLY_MAX_STRING_SIZE = 2**28
 MAX_STRING_SIZE = 512 * 1024 * 1024
-
-
-def current_time() -> int:
-    """Return current_time in ms"""
-    return int(time.time() * 1000)
 
 
 def null_terminate(s: bytes) -> bytes:
@@ -65,12 +47,6 @@ def casematch(a: bytes, b: bytes) -> bool:
 
 def decode_command_bytes(s: bytes) -> str:
     return s.decode(encoding="utf-8", errors="replace").lower()
-
-
-def asbytes(value: AnyStr) -> bytes:
-    if isinstance(value, str):
-        return value.encode("utf-8")
-    return value
 
 
 @functools.lru_cache(maxsize=1024)

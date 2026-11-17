@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any, AnyStr
 
-from fakeredis._helpers import asbytes
+from ._general import asbytes
 
 _COMMAND_INFO: dict[bytes, list[Any]] | None = None
 

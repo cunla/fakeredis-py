@@ -2,9 +2,9 @@ import pytest
 import redis
 import valkey
 
-from fakeredis._helpers import asbytes
 from fakeredis._typing import ClientType
 from fakeredis.model import get_categories, get_commands_by_category
+from fakeredis.model._general import asbytes
 from test import testtools
 from test.conftest import ServerDetails
 from test.testtools import resp_conversion

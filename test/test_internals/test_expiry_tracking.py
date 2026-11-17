@@ -7,8 +7,7 @@ import pytest
 
 import fakeredis
 from fakeredis._core._database import Database, Item
-from fakeredis._helpers import current_time
-from fakeredis.model import Hash
+from fakeredis.model import Hash, current_time
 
 pytestmark = [pytest.mark.fake]
 

@@ -2,8 +2,7 @@ import time
 
 import pytest
 
-from fakeredis._helpers import current_time
-from fakeredis.model import ExpiringMembersSet, Hash
+from fakeredis.model import ExpiringMembersSet, Hash, current_time
 
 pytestmark = [pytest.mark.fake]
 
