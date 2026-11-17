@@ -25,6 +25,7 @@ toc_depth: 2
 - fix(streams): blocking `XREADGROUP` returns entries that are already available, and with `COUNT` it waits for new
   ones instead of returning at once
 - fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey
+- fix: `EXPIRE`, `PEXPIRE` and `EXPIREAT` reject expire times that overflow, like Redis 7+
 
 ## v2.40.0 - 2026-10-15
 

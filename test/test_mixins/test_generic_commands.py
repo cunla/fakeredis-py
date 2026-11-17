@@ -459,6 +459,63 @@ def test_expire_should_return_false_for_missing_key(r: ClientType):
     assert r.expire("missing", 1) is False
 
 
+LLONG_MAX = 2**63 - 1
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize(
+    "command,value",
+    [
+        ("expire", LLONG_MAX),
+        ("expire", LLONG_MAX // 1000 + 1),  # seconds to milliseconds overflows
+        ("expire", -(LLONG_MAX // 1000) - 1),  # same, negative
+        ("expire", LLONG_MAX // 1000),  # milliseconds fit, adding the current time overflows
+        ("pexpire", LLONG_MAX),
+        ("expireat", LLONG_MAX),
+        ("expireat", LLONG_MAX // 1000 + 1),
+    ],
+)
+def test_expire_overflow_returns_error(r: ClientType, command: str, value: int):
+    r.set("foo", "bar")
+    for key in ("foo", "missing"):
+        with pytest.raises(Exception, match=f"invalid expire time in '{command}' command") as ctx:
+            r.execute_command(command, key, value)
+        assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.ttl("foo") == -1
+
+
+@pytest.mark.supported_server_versions(min_redis_ver="7")
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize("command", ["expire", "pexpire", "expireat"])
+def test_expire_overflow_checked_after_options(r: ClientType, command: str):
+    # The options are validated before the expire time, so a bad option wins over an overflowing value.
+    r.set("foo", "bar")
+    with pytest.raises(Exception, match="NX and XX, GT or LT options at the same time are not compatible") as ctx:
+        r.execute_command(command, "foo", LLONG_MAX, "NX", "XX")
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    # A valid option still gets the overflow error.
+    with pytest.raises(Exception, match=f"invalid expire time in '{command}' command"):
+        r.execute_command(command, "foo", LLONG_MAX, "NX")
+    assert r.ttl("foo") == -1
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+@pytest.mark.parametrize(
+    "command,value",
+    [
+        ("expire", LLONG_MAX // 1000 - 10**10),
+        ("expire", -(LLONG_MAX // 1000)),
+        ("pexpire", LLONG_MAX - 10**13),
+        ("expireat", LLONG_MAX // 1000),
+        ("pexpireat", LLONG_MAX),
+    ],
+)
+def test_expire_near_limit_values_accepted(r: ClientType, command: str, value: int):
+    r.set("foo", "bar")
+    assert r.execute_command(command, "foo", value) == 1
+
+
 @pytest.mark.slow
 def test_expire_should_expire_key_using_timedelta(r: ClientType):
     r.set("foo", "bar")

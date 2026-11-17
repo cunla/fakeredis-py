@@ -74,7 +74,9 @@ class GenericCommandsMixin(CommandsMixinBase):
                 return None
             return item.value
 
-    def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
+    def _expireat(
+        self, key: CommandItem, timestamp: float, *args: bytes, overflow: tuple[int, int, int, str] | None = None
+    ) -> int:
         is_dragonfly = self.server_type == "dragonfly"
         unsupported_option = (
             msgs.DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION if is_dragonfly else msgs.EXPIRE_UNSUPPORTED_OPTION
@@ -93,6 +95,9 @@ class GenericCommandsMixin(CommandsMixinBase):
             counter = (nx, gt, lt).count(True)
             if (counter > 1) or (nx and xx):
                 raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
+        if overflow is not None:
+            # Like expireGenericCommand: the options are parsed first, then the expire time is checked.
+            self._check_expire_overflow(*overflow)
         if (
             not key
             or (xx and key.expireat is None)
@@ -135,15 +140,23 @@ class GenericCommandsMixin(CommandsMixinBase):
         if self.server_type == "dragonfly" and timestamp > self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS:
             raise SimpleError(msgs.EXPIRY_OUT_OF_RANGE_MSG)
 
+    def _check_expire_overflow(self, when: int, unit_ms: int, basetime_ms: int, command: str) -> None:
+        """Reject an expiry that overflows a 64-bit millisecond timestamp, like redis 7+ expireGenericCommand."""
+        if self.server_type == "dragonfly" or self.version < (7,):
+            return
+        if (unit_ms == 1000 and abs(when) > Int.MAX_VALUE // 1000) or when * unit_ms > Int.MAX_VALUE - basetime_ms:
+            raise SimpleError(msgs.INVALID_EXPIRE_MSG_REDIS_8.format(command))
+
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
-        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args)
+        overflow = (seconds, 1000, int(self._db.time * 1000), "expire")
+        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args, overflow=overflow)
         return res
 
     @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
         self._check_absolute_expiry(float(timestamp))
-        return self._expireat(key, float(timestamp), *args)
+        return self._expireat(key, float(timestamp), *args, overflow=(timestamp, 1000, 0, "expireat"))
 
     @command(name="KEYS", fixed=(bytes,))
     def keys(self, pattern: bytes) -> list[bytes]:
@@ -175,7 +188,8 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
-        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args)
+        overflow = (ms, 1, int(self._db.time * 1000), "pexpire")
+        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args, overflow=overflow)
 
     @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
