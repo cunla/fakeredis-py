@@ -758,8 +758,12 @@ def _convert_redis_arg(value: Any) -> bytes:
 
 
 def _check_for_lua_globals(lua_runtime: Any, expected_globals: set[Any]) -> None:
-    unexpected_globals = set(lua_runtime.globals().keys()) - expected_globals
+    lua_globals = lua_runtime.globals()
+    unexpected_globals = set(lua_globals.keys()) - expected_globals
     if len(unexpected_globals) > 0:
+        # The runtime is shared by every script on the server: drop the globals now, or each later script fails too.
+        for var in unexpected_globals:
+            lua_globals[var] = None
         unexpected = [_ensure_str(var, "utf-8", "replace") for var in unexpected_globals]
         raise SimpleError(msgs.GLOBAL_VARIABLE_MSG.format(", ".join(unexpected)))
 

@@ -907,3 +907,12 @@ def test_eval_container_command(r: ClientType):
     r.xadd("foo", {"a": 1})
     assert r.eval("return redis.call('XGROUP', 'CREATE', KEYS[1], 'group', '$')", 1, "foo") == b"OK"
     assert len(r.eval("return redis.call('xinfo', 'groups', KEYS[1])", 1, "foo")) == 1
+
+
+def test_eval_global_variable_does_not_break_later_scripts(r: ClientType):
+    # A script rejected for setting a global must not leave it behind for the scripts that follow
+    with pytest.raises(Exception) as ctx:
+        r.eval("a=10", 0)
+    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert r.eval("return redis.call('set', KEYS[1], ARGV[1])", 1, "foo", "bar") == b"OK"
+    assert r.get("foo") == b"bar"
