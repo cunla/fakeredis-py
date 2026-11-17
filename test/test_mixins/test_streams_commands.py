@@ -1385,10 +1385,10 @@ def test_xack_invalid_id_on_missing_key_or_group(r: ClientType):
 def test_xack_invalid_id(r: ClientType):
     stream, group = "stream", "group"
     ids = _deliver(r, stream, group, 2)
-    with pytest.raises(redis.ResponseError, match="Invalid stream ID"):
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="Invalid stream ID"):
         r.xack(stream, group, "notanid")
     # The bad ID is rejected before the valid one is acknowledged.
-    with pytest.raises(redis.ResponseError, match="Invalid stream ID"):
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="Invalid stream ID"):
         r.xack(stream, group, ids[0], "notanid")
     assert r.xpending(stream, group)["pending"] == 2
 
