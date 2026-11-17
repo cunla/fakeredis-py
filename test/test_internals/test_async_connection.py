@@ -20,7 +20,7 @@ async def test_not_connected(async_redis: AsyncClientType):
 
 
 @pytest.mark.fake_only
-async def test_disconnect_server(async_redis, fake_server):
+async def test_disconnect_server(async_redis: AsyncClientType, fake_server: FakeServer):
     await async_redis.ping()
     fake_server.connected = False
     with pytest.raises(Exception) as ctx:
@@ -56,7 +56,7 @@ async def test_from_url_with_version():
 
 
 @pytest.mark.fake_only
-async def test_from_url_with_server(async_redis, fake_server):
+async def test_from_url_with_server(async_redis: AsyncClientType, fake_server: FakeServer):
     r2 = aioredis.FakeRedis.from_url("redis://localhost", server=fake_server)
     await async_redis.set("foo", "bar")
     assert await r2.get("foo") == b"bar"

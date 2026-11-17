@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 import redis
 import valkey
@@ -14,7 +16,7 @@ pytestmark.extend(
 )
 
 
-def _as_floats(res) -> list:
+def _as_floats(res: list[Any]) -> list:
     """INCREX BYFLOAT replies are bulk strings in RESP2 and doubles in RESP3."""
     return [float(x) for x in res]
 

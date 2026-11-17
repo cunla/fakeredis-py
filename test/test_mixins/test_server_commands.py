@@ -1,4 +1,5 @@
 import time
+from collections.abc import Callable
 from datetime import datetime
 from time import sleep
 
@@ -11,7 +12,7 @@ from fakeredis._typing import ClientType
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_swapdb(r, create_connection):
+def test_swapdb(r: ClientType, create_connection: Callable[..., ClientType]):
     r1 = create_connection(db=3)
     r.set("foo", "abc")
     r.set("bar", "xyz")

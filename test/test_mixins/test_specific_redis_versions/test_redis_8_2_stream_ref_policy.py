@@ -9,6 +9,7 @@ import valkey
 
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 
 pytestmark = []
 pytestmark.extend(
@@ -95,7 +96,9 @@ def test_xtrim_acked_skips_referenced_entries(r: ClientType):
         ),
     ],
 )
-def test_xtrim_minid_with_ref_policy(r: ClientType, ref_policy, trimmed, remaining, pending):
+def test_xtrim_minid_with_ref_policy(
+    r: ClientType, ref_policy: str, trimmed: int, remaining: list[bytes], pending: list[bytes]
+):
     _setup_stream(r)
     assert testtools.raw_command(r, "XTRIM", "s", "MINID", "=", "9-0", ref_policy) == trimmed
     assert _ids(r) == remaining
@@ -110,7 +113,9 @@ def test_xtrim_minid_with_ref_policy(r: ClientType, ref_policy, trimmed, remaini
         ("ACKED", 120, 30),
     ],
 )
-def test_xtrim_approximate_with_ref_policy(r: ClientType, real_server_details, ref_policy, trimmed, pending):
+def test_xtrim_approximate_with_ref_policy(
+    r: ClientType, real_server_details: ServerDetails, ref_policy: str, trimmed: int, pending: int
+):
     pipe = r.pipeline(transaction=False)
     for i in range(1, 251):  # nodes of 100, 100 and 50 entries
         pipe.xadd("s", {"f": i}, id=f"{i}-1")

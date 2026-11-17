@@ -1,6 +1,6 @@
 import pytest
 
-from .base import BaseMachine, commands, keys, run_machine, server_type, st, values
+from .base import BaseMachine, MachineConfig, commands, keys, run_machine, server_type, st, values
 from .test_string import string_commands
 
 # Dragonfly's SAVE returns before the snapshot is finished, so a SAVE that follows one too closely is refused with
@@ -26,5 +26,5 @@ class ServerMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_server(hypothesis_config):
+def test_server(hypothesis_config: MachineConfig):
     run_machine(ServerMachine, hypothesis_config)

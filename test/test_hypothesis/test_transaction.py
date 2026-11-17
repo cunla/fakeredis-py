@@ -2,6 +2,7 @@ import pytest
 
 from .base import (
     BaseMachine,
+    MachineConfig,
     commands,
     counts,
     expires_ms,
@@ -44,5 +45,5 @@ class TransactionMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_transaction(hypothesis_config):
+def test_transaction(hypothesis_config: MachineConfig):
     run_machine(TransactionMachine, hypothesis_config)

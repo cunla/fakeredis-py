@@ -28,7 +28,7 @@ def test_get_within_pipeline_no_args():
 
 
 @pytest.mark.fake
-def test_socket_cleanup_watch(fake_server):
+def test_socket_cleanup_watch(fake_server: fakeredis.FakeServer):
     r1 = fakeredis.FakeStrictRedis(server=fake_server)
     r2 = fakeredis.FakeStrictRedis(server=fake_server)
     pipeline = r1.pipeline(transaction=False)

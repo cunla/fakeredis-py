@@ -4,6 +4,7 @@ and TS.MRANGE/TS.MREVRANGE EXCLUDEEMPTY."""
 import math
 import threading
 from time import sleep
+from typing import Any
 
 import pytest
 import redis
@@ -22,18 +23,18 @@ pytestmark.extend(
 )
 
 
-def _value(v):
+def _value(v: bytes | float):
     """A sample value as a float, or "nan": RESP2 sends values as bulk strings (NaN as `NaN`), RESP3 as doubles."""
     f = float(v)
     return "nan" if math.isnan(f) else f
 
 
-def _samples(res) -> list:
+def _samples(res: Any) -> list:
     """Normalize TS.READ-style [timestamp, value] rows."""
     return [[t, _value(v)] for t, v in res]
 
 
-def _rows(res) -> list:
+def _rows(res: Any) -> list:
     """Normalize TS.NRANGE-style [timestamp, [value, ...]] rows."""
     return [[t, [_value(v) for v in values]] for t, values in res]
 
@@ -56,7 +57,7 @@ def sample(r: ClientType) -> ClientType:
     return r
 
 
-def _querylabels(r: ClientType, *args) -> list:
+def _querylabels(r: ClientType, *args: Any) -> list:
     return sorted(raw_command(r, "TS.QUERYLABELS", *args))
 
 
@@ -193,7 +194,7 @@ def test_ts_nrange_errors(sample: ClientType):
         assert str(ctx.value) == message, args
 
 
-def _mrange_names(res) -> list:
+def _mrange_names(res: Any) -> list:
     return [series[0] for series in res] if isinstance(res, list) else list(res)
 
 

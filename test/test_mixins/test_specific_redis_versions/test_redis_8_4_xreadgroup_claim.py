@@ -4,6 +4,7 @@ See https://github.com/cunla/fakeredis-py/issues/527
 """
 
 import time
+from typing import Any
 
 import pytest
 import redis
@@ -22,14 +23,14 @@ pytestmark.extend(
 )
 
 
-def get_stream_message(client: ClientType, stream: str, message_id):
+def get_stream_message(client: ClientType, stream: str, message_id: bytes):
     """Fetch a stream message and format it as a (message_id, fields) pair"""
     response = client.xrange(stream, min=message_id, max=message_id)
     assert len(response) == 1
     return response[0]
 
 
-def read_entries(r: ClientType, response, stream: str):
+def read_entries(r: ClientType, response: Any, stream: str):
     """Extract the per-stream entry list from an xreadgroup response"""
     if get_protocol_version(r) == 3:
         return response[stream.encode()][0]

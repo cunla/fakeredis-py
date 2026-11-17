@@ -17,7 +17,9 @@ from .. import testtools
 from ..testtools import resp_conversion
 
 
-def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=False) -> dict[str, Any] | None:
+def wait_for_message(
+    pubsub: PubSub, timeout: float = 0.5, ignore_subscribe_messages: bool = False
+) -> dict[str, Any] | None:
     now = time.time()
     timeout = now + timeout
     while now < timeout:
@@ -29,7 +31,7 @@ def wait_for_message(pubsub: PubSub, timeout=0.5, ignore_subscribe_messages=Fals
     return None
 
 
-def make_message(_type, channel, data, pattern=None):
+def make_message(_type: str, channel: str | None, data: Any, pattern: str | None = None):
     return {
         "type": _type,
         "pattern": pattern and pattern.encode("utf-8") or None,
@@ -144,7 +146,7 @@ def test_pubsub_punsubscribe(r: ClientType):
 
 @pytest.mark.slow
 def test_pubsub_listen(r: ClientType):
-    def _listen(pubsub, q):
+    def _listen(pubsub: PubSub, q: Queue):
         for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
             if count == 4:
@@ -180,7 +182,7 @@ def test_pubsub_listen(r: ClientType):
 
 @pytest.mark.slow
 def test_pubsub_listen_handler(r: ClientType):
-    def _handler(message):
+    def _handler(message: dict[str, Any]):
         calls.append(message)
 
     channel = "ch1"
@@ -211,7 +213,7 @@ def test_pubsub_listen_handler(r: ClientType):
 
 @pytest.mark.slow
 def test_pubsub_ignore_sub_messages_listen(r: ClientType):
-    def _listen(pubsub, q):
+    def _listen(pubsub: PubSub, q: Queue):
         for count, message in enumerate(pubsub.listen(), start=1):
             q.put(message)
             if count == 4:
@@ -251,7 +253,7 @@ def test_pubsub_ignore_sub_messages_listen(r: ClientType):
 
 @pytest.mark.slow
 def test_pubsub_binary(r: ClientType):
-    def _listen(pubsub, q):
+    def _listen(pubsub: PubSub, q: Queue):
         for message in pubsub.listen():
             q.put(message)
             pubsub.close()
@@ -311,7 +313,7 @@ def test_pubsub_run_in_thread(r: ClientType):
 @pytest.mark.parametrize(
     "timeout_value", [1, pytest.param(None, marks=testtools.run_test_if_redispy_ver("gte", "3.2"))]
 )
-def test_pubsub_timeout(r, timeout_value):
+def test_pubsub_timeout(r: ClientType, timeout_value: int | None):
     def publish():
         sleep(0.1)
         r.publish("channel", "hello")
@@ -332,7 +334,7 @@ def test_pubsub_timeout(r, timeout_value):
 
 
 @pytest.mark.fake
-def test_socket_cleanup_pubsub(fake_server):
+def test_socket_cleanup_pubsub(fake_server: fakeredis.FakeServer):
     r1 = fakeredis.FakeStrictRedis(server=fake_server)
     r2 = fakeredis.FakeStrictRedis(server=fake_server)
     ps = r1.pubsub()

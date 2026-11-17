@@ -3,6 +3,7 @@ from time import sleep
 import pytest
 
 from fakeredis._typing import ClientType
+from test.conftest import ServerDetails
 from test.testtools import key_val_dict, raw_command
 
 
@@ -297,7 +298,7 @@ def test_scan_stream(r: ClientType):
         print(s)
 
 
-def test_scan_family_count_not_positive(r: ClientType, real_server_details):
+def test_scan_family_count_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.sadd("set", "m")
     r.hset("hash", "f", "v")
     r.zadd("zset", {"m": 1})

@@ -23,7 +23,7 @@ class TestScripts:
 
     @pytest.mark.supported_server_versions(max_redis_ver="6.2.7")
     @pytest.mark.unsupported_server_types("valkey")
-    async def test_failed_script_error6(self, async_redis):
+    async def test_failed_script_error6(self, async_redis: AsyncClientType):
         await async_redis.set("foo", "bar")
         with pytest.raises(Exception, match="^Error running script") as ctx:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")
@@ -31,7 +31,7 @@ class TestScripts:
         assert isinstance(ctx.value, (redis.asyncio.ResponseError, valkey.asyncio.ResponseError))
 
     @pytest.mark.supported_server_versions(min_redis_ver="7")
-    async def test_failed_script_error7(self, async_redis):
+    async def test_failed_script_error7(self, async_redis: AsyncClientType):
         await async_redis.set("foo", "bar")
         with pytest.raises(Exception) as exc_info:
             await async_redis.eval('return redis.call("ZCOUNT", KEYS[1])', 1, "foo")

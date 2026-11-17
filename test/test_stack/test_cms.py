@@ -2,6 +2,7 @@ import pytest
 import redis
 import valkey
 
+from fakeredis._typing import ClientType
 from test import testtools
 from test.testtools import get_protocol_version
 
@@ -14,12 +15,12 @@ pytestmark.extend(
 )
 
 
-def test_cms_type(r: redis.Redis):
+def test_cms_type(r: ClientType):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.type("cmsDim") == b"CMSk-TYPE"
 
 
-def test_cms_create(r: redis.Redis):
+def test_cms_create(r: ClientType):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbyprob("cmsProb", 0.01, 0.01)
 
@@ -45,7 +46,7 @@ def test_cms_create(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cms_incrby(r: redis.Redis):
+def test_cms_incrby(r: ClientType):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbyprob("cmsProb", 0.01, 0.01)
 
@@ -77,7 +78,7 @@ def test_cms_incrby(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_cms_merge(r: redis.Redis):
+def test_cms_merge(r: ClientType):
     assert r.cms().initbydim("cmsDim", 100, 5)
     assert r.cms().initbydim("cms2", 100, 5)
 
@@ -109,7 +110,7 @@ def test_cms_merge(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_cms_info(r: redis.Redis):
+def test_cms_info(r: ClientType):
     assert r.cms().initbydim("A", 1000, 5)
     assert r.cms().initbydim("B", 1000, 5)
     assert r.cms().initbydim("C", 1000, 5)
@@ -142,7 +143,7 @@ def test_cms_info(r: redis.Redis):
 
 
 @pytest.mark.xfail(reason="Bug in pyprobables")
-def test_cms_merge_fail(r: redis.Redis):
+def test_cms_merge_fail(r: ClientType):
     assert r.cms().initbydim("A", 1000, 5)
     assert r.cms().initbydim("B", 1000, 5)
     assert r.cms().initbydim("C", 1000, 5)

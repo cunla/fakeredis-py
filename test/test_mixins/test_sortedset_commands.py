@@ -1,5 +1,6 @@
 import math
 from collections import OrderedDict
+from typing import Any
 
 import pytest
 import redis
@@ -8,23 +9,24 @@ from packaging.version import Version
 
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import raw_command, resp_conversion, resp_conversion_from_resp2
 
 REDIS_VERSION = Version(redis.__version__)
 
 
-def round_str(x):
+def round_str(x: bytes | float):
     # assert isinstance(x, bytes)
     return round(float(x))
 
 
-def _rank_with_score(result):
+def _rank_with_score(result: list[Any]):
     """Normalize a ZRANK/ZREVRANK WITHSCORE reply to [rank, float_score]."""
     rank, score = result
     return [rank, float(score)]
 
 
-def zincrby(r, key, amount, value):
+def zincrby(r: ClientType, key: str, amount: float, value: str):
     return r.zincrby(key, amount, value)
 
 
@@ -1072,7 +1074,7 @@ def test_zinterstore_nokey(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_zinterstore_nan_to_zero(r: ClientType, real_server_details):
+def test_zinterstore_nan_to_zero(r: ClientType, real_server_details: ServerDetails):
     r.zadd("foo", {"x": math.inf})
     r.zadd("foo2", {"x": math.inf})
     r.zinterstore("bar", OrderedDict([("foo", 1.0), ("foo2", 0.0)]))
@@ -1191,14 +1193,14 @@ def test_zdiffstore(r: ClientType):
     assert r.zrange("out", 0, -1, withscores=True) == resp_conversion_from_resp2(r, [(b"a3", 3.0)])
 
 
-def _skip_dragonfly_resp3_zset_reply(r: ClientType, real_server_details) -> None:
+def _skip_dragonfly_resp3_zset_reply(r: ClientType, real_server_details: ServerDetails) -> None:
     # Under RESP3, dragonfly nests a ZDIFF reply without scores one level too deep and sends WITHSCORES replies flat,
     # which redis-py cannot parse.
     if real_server_details.server_type == "dragonfly" and testtools.get_protocol_version(r) == 3:
         pytest.skip("dragonfly's RESP3 reply shape for this command is not what redis-py expects")
 
 
-def test_zdiff(r: ClientType, real_server_details):
+def test_zdiff(r: ClientType, real_server_details: ServerDetails):
     _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     r.zadd("b", {"a1": 1, "a2": 2})
@@ -1206,7 +1208,7 @@ def test_zdiff(r: ClientType, real_server_details):
     assert r.zdiff(["a", "b"], withscores=True) == resp_conversion(r, [[b"a3", 3.0]], [b"a3", b"3"])
 
 
-def test_zunion(r: ClientType, real_server_details):
+def test_zunion(r: ClientType, real_server_details: ServerDetails):
     _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 1, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
@@ -1231,7 +1233,7 @@ def test_zunion(r: ClientType, real_server_details):
     )
 
 
-def test_zinter(r: ClientType, real_server_details):
+def test_zinter(r: ClientType, real_server_details: ServerDetails):
     _skip_dragonfly_resp3_zset_reply(r, real_server_details)
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 1})
     r.zadd("b", {"a1": 2, "a2": 2, "a3": 2})
@@ -1267,7 +1269,7 @@ def test_zintercard(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zintercard_negative_limit(r: ClientType, real_server_details):
+def test_zintercard_negative_limit(r: ClientType, real_server_details: ServerDetails):
     r.zadd("a", {"a1": 1, "a2": 2})
     r.zadd("b", {"a1": 2, "a2": 2})
     with pytest.raises(Exception) as ctx:
@@ -1349,7 +1351,7 @@ def test_zrangebyscore_negative_start_after_sort(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zmpop_count_not_positive(r: ClientType, real_server_details):
+def test_zmpop_count_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.zadd("foo", {"a": 1, "b": 2})
     if real_server_details.server_type == "dragonfly":
         # Dragonfly accepts both: COUNT 0 pops nothing, and a negative count is read as unsigned and so pops the whole
@@ -1374,7 +1376,7 @@ def test_zmpop_count_not_positive(r: ClientType, real_server_details):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_zmpop_numkeys_not_positive(r: ClientType, real_server_details):
+def test_zmpop_numkeys_not_positive(r: ClientType, real_server_details: ServerDetails):
     r.zadd("foo", {"a": 1})
     is_dragonfly = real_server_details.server_type == "dragonfly"
     for numkeys in (0, -1):

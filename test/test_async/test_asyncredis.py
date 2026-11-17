@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 import redis
 import redis.asyncio
+import redis.asyncio.client
 import valkey
 
 import fakeredis
@@ -58,10 +59,10 @@ async def test_transaction_fail(async_redis: AsyncClientType):
         assert isinstance(exc_info.value, (redis.asyncio.WatchError, valkey.asyncio.WatchError))
 
 
-async def test_pubsub(async_redis):
+async def test_pubsub(async_redis: AsyncClientType):
     queue = asyncio.Queue()
 
-    async def reader(ps):
+    async def reader(ps: redis.asyncio.client.PubSub):
         while True:
             message = await ps.get_message(ignore_subscribe_messages=True, timeout=5)
             if message is not None:
@@ -121,7 +122,9 @@ async def test_get_message_timeout_does_not_busy_poll(async_redis: AsyncClientTy
         assert sleep_spy.call_count == 0
 
 
-async def test_pubsub_publish_from_another_thread(async_redis: AsyncClientType, request, real_server_details):
+async def test_pubsub_publish_from_another_thread(
+    async_redis: AsyncClientType, request: pytest.FixtureRequest, real_server_details: ServerDetails
+):
     """Regression: a sync client publishing from another thread must wake an
     async subscriber promptly. ``can_read`` waits on an ``asyncio.Event`` set
     by ``put_response``, which runs on the publisher's thread here, so the
@@ -244,7 +247,7 @@ async def test_connection_with_username_and_password():
 
 
 @pytest.mark.asyncio
-async def test_cause_fakeredis_bug(async_redis):
+async def test_cause_fakeredis_bug(async_redis: AsyncClientType):
     if sys.version_info < (3, 11):
         return
 

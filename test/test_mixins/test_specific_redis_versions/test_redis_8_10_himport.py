@@ -9,6 +9,8 @@ go through the registry.
 See https://github.com/cunla/fakeredis-py/issues/599
 """
 
+from collections.abc import Callable
+
 import pytest
 import redis
 
@@ -135,7 +137,7 @@ def test_himport_discardall(r: ClientType):
         r.himport_set("foo", "fs", ["1"])
 
 
-def test_himport_fieldsets_belong_to_the_connection(r: ClientType, create_connection):
+def test_himport_fieldsets_belong_to_the_connection(r: ClientType, create_connection: Callable[..., ClientType]):
     other = create_connection()
     r.himport_prepare_internal("fs", ["a"])
     with pytest.raises(redis.ResponseError, match="no such fieldset"):
@@ -171,7 +173,7 @@ def test_himport_in_transaction(r: ClientType):
     assert r.exists("bar") == 0
 
 
-def test_himport_set_invalidates_watch(r: ClientType, create_connection):
+def test_himport_set_invalidates_watch(r: ClientType, create_connection: Callable[..., ClientType]):
     other = create_connection(db=2)  # the database `r` is on
     other.himport_prepare_internal("fs", ["a"])
     with r.pipeline() as p:

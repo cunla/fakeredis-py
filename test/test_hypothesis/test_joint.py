@@ -1,6 +1,6 @@
 import pytest
 
-from .base import BaseMachine, commands, run_machine, st
+from .base import BaseMachine, MachineConfig, commands, run_machine, st
 from .test_connection import connection_commands
 from .test_hash import HashMachine, hash_commands
 from .test_list import ListMachine, list_commands
@@ -36,5 +36,5 @@ class JointMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_joint(hypothesis_config):
+def test_joint(hypothesis_config: MachineConfig):
     run_machine(JointMachine, hypothesis_config)

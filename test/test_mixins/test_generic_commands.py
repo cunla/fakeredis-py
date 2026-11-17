@@ -9,6 +9,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._helpers import current_time
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import raw_command
 
 
@@ -212,7 +213,7 @@ def test_sort_with_store_option(r: ClientType):
     assert r.lrange("bar", 0, -1) == [b"1", b"2", b"3", b"4"]
 
 
-def test_sort_with_by_and_get_option(r: ClientType, real_server_details):
+def test_sort_with_by_and_get_option(r: ClientType, real_server_details: ServerDetails):
     r.rpush("foo", "2")
     r.rpush("foo", "1")
     r.rpush("foo", "4")
@@ -258,7 +259,7 @@ def test_sort_with_by_and_get_option(r: ClientType, real_server_details):
     ]
 
 
-def test_sort_by_nosort_keeps_natural_order(r: ClientType, real_server_details):
+def test_sort_by_nosort_keeps_natural_order(r: ClientType, real_server_details: ServerDetails):
     # A `BY` pattern with no `*` disables sorting: redis returns elements in natural order (insertion order for lists,
     # score order for sorted sets) and reverses only when DESC is given. Dragonfly ignores DESC here.
     natural = [b"3", b"1", b"2", b"5", b"4"]
@@ -273,7 +274,7 @@ def test_sort_by_nosort_keeps_natural_order(r: ClientType, real_server_details):
     assert r.sort("myzset", by="nosort") == [b"b", b"c", b"a"]
 
 
-def test_sort_with_hash(r: ClientType, real_server_details):
+def test_sort_with_hash(r: ClientType, real_server_details: ServerDetails):
     r.rpush("foo", "middle")
     r.rpush("foo", "eldest")
     r.rpush("foo", "youngest")
@@ -410,7 +411,7 @@ def test_expire_should_expire_key(r: ClientType):
     assert r.expire("bar", 1) is False
 
 
-def test_expire_should_throw_error(r: ClientType, real_server_details):
+def test_expire_should_throw_error(r: ClientType, real_server_details: ServerDetails):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
     # Dragonfly only rejects the directly contradictory pairs; NX with GT or LT is accepted.
@@ -788,7 +789,7 @@ def test_key_patterns(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_watch_when_setbit_does_not_change_value(r: ClientType, real_server_details):
+def test_watch_when_setbit_does_not_change_value(r: ClientType, real_server_details: ServerDetails):
     r.set("foo", b"0")
 
     with r.pipeline() as p:
@@ -814,7 +815,7 @@ def test_from_hypothesis_redis7(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_preserves_expiry(r: ClientType, real_server_details):
+def test_copy_preserves_expiry(r: ClientType, real_server_details: ServerDetails):
     expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
     r.expireat("foo", expire_at)
@@ -863,7 +864,7 @@ def test_copy_db_does_not_share_value_with_source(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_copy_replaces_with_expiry(r: ClientType, real_server_details):
+def test_copy_replaces_with_expiry(r: ClientType, real_server_details: ServerDetails):
     expire_at = testtools.far_future_expiry(real_server_details.server_type)
     r.set("foo", "0")
     r.expireat("foo", expire_at)

@@ -1,14 +1,19 @@
 import contextlib
 import threading
 import time
+from collections.abc import Callable
 
 import pytest
 import redis
 import valkey
+from pytest_mock import MockerFixture
+from redis.client import PubSub
 
+from fakeredis import FakeServer
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import raw_command, resp_conversion
 
 RESPONSE_ERRORS = (redis.ResponseError, valkey.ResponseError)
@@ -31,7 +36,7 @@ def raw_connection(r: ClientType):
         r.connection_pool.release(conn)
 
 
-def client_info_field(conn, field: bytes) -> bytes:
+def client_info_field(conn: redis.Connection, field: bytes) -> bytes:
     conn.send_command("CLIENT", "INFO")
     info = conn.read_response()
     if isinstance(info, str):
@@ -64,7 +69,7 @@ def test_unknown_command(r: ClientType):
 
 
 @pytest.mark.fake_only
-def test_time(r: ClientType, mocker):
+def test_time(r: ClientType, mocker: MockerFixture):
     fake_time = mocker.patch("time.time")
     fake_time.return_value = 1234567890.1234567
     assert r.time() == (1234567890, 123457)
@@ -220,7 +225,7 @@ def test_client_reply_skip_skips_only_the_next_command(r: ClientType):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-def test_client_kill_by_id(r: ClientType, create_connection):
+def test_client_kill_by_id(r: ClientType, create_connection: Callable[..., ClientType]):
     victim = create_connection(db=2)
     victim.ping()
     victim_id = victim.client_id()
@@ -238,7 +243,7 @@ def test_client_kill_by_id(r: ClientType, create_connection):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_client_kill_removes_client_from_client_list(r: ClientType, create_connection):
+def test_client_kill_removes_client_from_client_list(r: ClientType, create_connection: Callable[..., ClientType]):
     victim = create_connection(db=2)
     victim.ping()
     victim_id = victim.client_id()
@@ -287,7 +292,7 @@ def test_client_kill_invalid_filters(r: ClientType):
 # Redis only started rejecting a client-id below 1 in 7.0; 6.2 quietly matches nothing.
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_client_kill_invalid_id(r: ClientType, real_server_details):
+def test_client_kill_invalid_id(r: ClientType, real_server_details: ServerDetails):
     with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
         raw_command(r, "CLIENT", "KILL", "ID", "0")
     with pytest.raises(RESPONSE_ERRORS, match="client-id should be greater than 0"):
@@ -342,7 +347,7 @@ def _block_on_blpop(client: ClientType, result: dict) -> threading.Thread:
 @pytest.mark.slow
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-def test_client_unblock_timeout(r: ClientType, create_connection):
+def test_client_unblock_timeout(r: ClientType, create_connection: Callable[..., ClientType]):
     victim = create_connection(db=2)
     victim.ping()
     victim_id = victim.client_id()
@@ -361,7 +366,7 @@ def test_client_unblock_timeout(r: ClientType, create_connection):
 @pytest.mark.slow
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-def test_client_unblock_error(r: ClientType, create_connection):
+def test_client_unblock_error(r: ClientType, create_connection: Callable[..., ClientType]):
     victim = create_connection(db=2)
     victim.ping()
     victim_id = victim.client_id()
@@ -465,23 +470,23 @@ def test_reset_unsubscribes(r: ClientType):
 
 @pytest.mark.decode_responses
 class TestDecodeResponses:
-    def test_decode_str(self, r):
+    def test_decode_str(self, r: ClientType):
         r.set("foo", "bar")
         assert r.get("foo") == "bar"
 
-    def test_decode_set(self, r):
+    def test_decode_set(self, r: ClientType):
         r.sadd("foo", "member1")
         assert set(r.smembers("foo")) == {"member1"}
 
-    def test_decode_list(self, r):
+    def test_decode_list(self, r: ClientType):
         r.rpush("foo", "a", "b")
         assert r.lrange("foo", 0, -1) == ["a", "b"]
 
-    def test_decode_dict(self, r):
+    def test_decode_dict(self, r: ClientType):
         r.hset("foo", "key", "value")
         assert r.hgetall("foo") == {"key": "value"}
 
-    def test_decode_error(self, r):
+    def test_decode_error(self, r: ClientType):
         r.set("foo", "bar")
         with pytest.raises(Exception) as exc_info:
             r.hset("foo", "bar", "baz")
@@ -492,87 +497,87 @@ class TestDecodeResponses:
 @pytest.mark.disconnected
 @pytest.mark.fake_only
 class TestFakeStrictRedisConnectionErrors:
-    def test_flushdb(self, r):
+    def test_flushdb(self, r: ClientType):
         with pytest.raises(Exception):
             r.flushdb()
 
-    def test_flushall(self, r):
+    def test_flushall(self, r: ClientType):
         with pytest.raises(Exception):
             r.flushall()
 
-    def test_append(self, r):
+    def test_append(self, r: ClientType):
         with pytest.raises(Exception):
             r.append("key", "value")
 
-    def test_bitcount(self, r):
+    def test_bitcount(self, r: ClientType):
         with pytest.raises(Exception):
             r.bitcount("key", 0, 20)
 
-    def test_decr(self, r):
+    def test_decr(self, r: ClientType):
         with pytest.raises(Exception):
             r.decr("key", 2)
 
-    def test_exists(self, r):
+    def test_exists(self, r: ClientType):
         with pytest.raises(Exception):
             r.exists("key")
 
-    def test_expire(self, r):
+    def test_expire(self, r: ClientType):
         with pytest.raises(Exception):
             r.expire("key", 20)
 
-    def test_pexpire(self, r):
+    def test_pexpire(self, r: ClientType):
         with pytest.raises(Exception):
             r.pexpire("key", 20)
 
-    def test_echo(self, r):
+    def test_echo(self, r: ClientType):
         with pytest.raises(Exception):
             r.echo("value")
 
-    def test_get(self, r):
+    def test_get(self, r: ClientType):
         with pytest.raises(Exception):
             r.get("key")
 
-    def test_getbit(self, r):
+    def test_getbit(self, r: ClientType):
         with pytest.raises(Exception):
             r.getbit("key", 2)
 
-    def test_getset(self, r):
+    def test_getset(self, r: ClientType):
         with pytest.raises(Exception):
             r.getset("key", "value")
 
-    def test_incr(self, r):
+    def test_incr(self, r: ClientType):
         with pytest.raises(Exception):
             r.incr("key")
 
-    def test_incrby(self, r):
+    def test_incrby(self, r: ClientType):
         with pytest.raises(Exception):
             r.incrby("key")
 
-    def test_ncrbyfloat(self, r):
+    def test_ncrbyfloat(self, r: ClientType):
         with pytest.raises(Exception):
             r.incrbyfloat("key")
 
-    def test_keys(self, r):
+    def test_keys(self, r: ClientType):
         with pytest.raises(Exception):
             r.keys()
 
-    def test_mget(self, r):
+    def test_mget(self, r: ClientType):
         with pytest.raises(Exception):
             r.mget(["key1", "key2"])
 
-    def test_mset(self, r):
+    def test_mset(self, r: ClientType):
         with pytest.raises(Exception):
             r.mset({"key": "value"})
 
-    def test_msetnx(self, r):
+    def test_msetnx(self, r: ClientType):
         with pytest.raises(Exception):
             r.msetnx({"key": "value"})
 
-    def test_persist(self, r):
+    def test_persist(self, r: ClientType):
         with pytest.raises(Exception):
             r.persist("key")
 
-    def test_rename(self, r):
+    def test_rename(self, r: ClientType):
         server = r.connection_pool.connection_kwargs["server"]
         server.connected = True
         r.set("key1", "value")
@@ -583,333 +588,333 @@ class TestFakeStrictRedisConnectionErrors:
         server.connected = True
         assert r.exists("key1")
 
-    def test_eval(self, r):
+    def test_eval(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.eval("", 0)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lpush(self, r):
+    def test_lpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpush("name", 1, 2)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lrange(self, r):
+    def test_lrange(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lrange("name", 1, 5)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_llen(self, r):
+    def test_llen(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.llen("name")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lrem(self, r):
+    def test_lrem(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lrem("name", 2, 2)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_rpush(self, r):
+    def test_rpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpush("name", 1)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lpop(self, r):
+    def test_lpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpop("name")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lset(self, r):
+    def test_lset(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lset("name", 1, 4)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_rpushx(self, r):
+    def test_rpushx(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpushx("name", 1)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_ltrim(self, r):
+    def test_ltrim(self, r: ClientType):
         with pytest.raises(Exception):
             r.ltrim("name", 1, 4)
 
-    def test_lindex(self, r):
+    def test_lindex(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lindex("name", 1)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_lpushx(self, r):
+    def test_lpushx(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpushx("name", 1)
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_rpop(self, r):
+    def test_rpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpop("name")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_linsert(self, r):
+    def test_linsert(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.linsert("name", "where", "refvalue", "value")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_rpoplpush(self, r):
+    def test_rpoplpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpoplpush("src", "dst")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_blpop(self, r):
+    def test_blpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.blpop("keys")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_brpop(self, r):
+    def test_brpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.brpop("keys")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_brpoplpush(self, r):
+    def test_brpoplpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.brpoplpush("src", "dst")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hdel(self, r):
+    def test_hdel(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hdel("name")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hexists(self, r):
+    def test_hexists(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hexists("name", "key")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hget(self, r):
+    def test_hget(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hget("name", "key")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hgetall(self, r):
+    def test_hgetall(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hgetall("name")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hincrby(self, r):
+    def test_hincrby(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hincrby("name", "key")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_hincrbyfloat(self, r):
+    def test_hincrbyfloat(self, r: ClientType):
         with pytest.raises(Exception):
             r.hincrbyfloat("name", "key")
 
-    def test_hkeys(self, r):
+    def test_hkeys(self, r: ClientType):
         with pytest.raises(Exception):
             r.hkeys("name")
 
-    def test_hlen(self, r):
+    def test_hlen(self, r: ClientType):
         with pytest.raises(Exception):
             r.hlen("name")
 
-    def test_hset(self, r):
+    def test_hset(self, r: ClientType):
         with pytest.raises(Exception):
             r.hset("name", "key", 1)
 
-    def test_hsetnx(self, r):
+    def test_hsetnx(self, r: ClientType):
         with pytest.raises(Exception):
             r.hsetnx("name", "key", 2)
 
-    def test_hmset(self, r):
+    def test_hmset(self, r: ClientType):
         with pytest.raises(Exception):
             r.hmset("name", {"key": 1})
 
-    def test_hmget(self, r):
+    def test_hmget(self, r: ClientType):
         with pytest.raises(Exception):
             r.hmget("name", ["a", "b"])
 
-    def test_hvals(self, r):
+    def test_hvals(self, r: ClientType):
         with pytest.raises(Exception):
             r.hvals("name")
 
-    def test_sadd(self, r):
+    def test_sadd(self, r: ClientType):
         with pytest.raises(Exception):
             r.sadd("name", 1, 2)
 
-    def test_scard(self, r):
+    def test_scard(self, r: ClientType):
         with pytest.raises(Exception):
             r.scard("name")
 
-    def test_sdiff(self, r):
+    def test_sdiff(self, r: ClientType):
         with pytest.raises(Exception):
             r.sdiff(["a", "b"])
 
-    def test_sdiffstore(self, r):
+    def test_sdiffstore(self, r: ClientType):
         with pytest.raises(Exception):
             r.sdiffstore("dest", ["a", "b"])
 
-    def test_sinter(self, r):
+    def test_sinter(self, r: ClientType):
         with pytest.raises(Exception):
             r.sinter(["a", "b"])
 
-    def test_sinterstore(self, r):
+    def test_sinterstore(self, r: ClientType):
         with pytest.raises(Exception):
             r.sinterstore("dest", ["a", "b"])
 
-    def test_sismember(self, r):
+    def test_sismember(self, r: ClientType):
         with pytest.raises(Exception):
             r.sismember("name", 20)
 
-    def test_smembers(self, r):
+    def test_smembers(self, r: ClientType):
         with pytest.raises(Exception):
             r.smembers("name")
 
-    def test_smove(self, r):
+    def test_smove(self, r: ClientType):
         with pytest.raises(Exception):
             r.smove("src", "dest", 20)
 
-    def test_spop(self, r):
+    def test_spop(self, r: ClientType):
         with pytest.raises(Exception):
             r.spop("name")
 
-    def test_srandmember(self, r):
+    def test_srandmember(self, r: ClientType):
         with pytest.raises(Exception):
             r.srandmember("name")
 
-    def test_srem(self, r):
+    def test_srem(self, r: ClientType):
         with pytest.raises(Exception):
             r.srem("name")
 
-    def test_sunion(self, r):
+    def test_sunion(self, r: ClientType):
         with pytest.raises(Exception):
             r.sunion(["a", "b"])
 
-    def test_sunionstore(self, r):
+    def test_sunionstore(self, r: ClientType):
         with pytest.raises(Exception):
             r.sunionstore("dest", ["a", "b"])
 
-    def test_zadd(self, r):
+    def test_zadd(self, r: ClientType):
         with pytest.raises(Exception):
             r.zadd("name", {"key": "value"})
 
-    def test_zcard(self, r):
+    def test_zcard(self, r: ClientType):
         with pytest.raises(Exception):
             r.zcard("name")
 
-    def test_zcount(self, r):
+    def test_zcount(self, r: ClientType):
         with pytest.raises(Exception):
             r.zcount("name", 1, 5)
 
-    def test_zincrby(self, r):
+    def test_zincrby(self, r: ClientType):
         with pytest.raises(Exception):
             r.zincrby("name", 1, 1)
 
-    def test_zinterstore(self, r):
+    def test_zinterstore(self, r: ClientType):
         with pytest.raises(Exception):
             r.zinterstore("dest", ["a", "b"])
 
-    def test_zrange(self, r):
+    def test_zrange(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrange("name", 1, 5)
 
-    def test_zrangebyscore(self, r):
+    def test_zrangebyscore(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrangebyscore("name", 1, 5)
 
-    def test_rangebylex(self, r):
+    def test_rangebylex(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrangebylex("name", 1, 4)
 
-    def test_zrem(self, r):
+    def test_zrem(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrem("name", "value")
 
-    def test_zremrangebyrank(self, r):
+    def test_zremrangebyrank(self, r: ClientType):
         with pytest.raises(Exception):
             r.zremrangebyrank("name", 1, 5)
 
-    def test_zremrangebyscore(self, r):
+    def test_zremrangebyscore(self, r: ClientType):
         with pytest.raises(Exception):
             r.zremrangebyscore("name", 1, 5)
 
-    def test_zremrangebylex(self, r):
+    def test_zremrangebylex(self, r: ClientType):
         with pytest.raises(Exception):
             r.zremrangebylex("name", 1, 5)
 
-    def test_zlexcount(self, r):
+    def test_zlexcount(self, r: ClientType):
         with pytest.raises(Exception):
             r.zlexcount("name", 1, 5)
 
-    def test_zrevrange(self, r):
+    def test_zrevrange(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrevrange("name", 1, 5, 1)
 
-    def test_zrevrangebyscore(self, r):
+    def test_zrevrangebyscore(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrevrangebyscore("name", 5, 1)
 
-    def test_zrevrangebylex(self, r):
+    def test_zrevrangebylex(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrevrangebylex("name", 5, 1)
 
-    def test_zrevran(self, r):
+    def test_zrevran(self, r: ClientType):
         with pytest.raises(Exception):
             r.zrevrank("name", 2)
 
-    def test_zscore(self, r):
+    def test_zscore(self, r: ClientType):
         with pytest.raises(Exception):
             r.zscore("name", 2)
 
-    def test_zunionstor(self, r):
+    def test_zunionstor(self, r: ClientType):
         with pytest.raises(Exception):
             r.zunionstore("dest", ["1", "2"])
 
-    def test_pipeline(self, r):
+    def test_pipeline(self, r: ClientType):
         with pytest.raises(Exception):
             r.pipeline().watch("key")
 
-    def test_transaction(self, r):
+    def test_transaction(self, r: ClientType):
         with pytest.raises(Exception):
 
-            def func(a):
+            def func(a: int):
                 return a * a
 
             r.transaction(func, 3)
 
-    def test_lock(self, r):
+    def test_lock(self, r: ClientType):
         with pytest.raises(Exception), r.lock("name"):
             pass
 
-    def test_pubsub(self, r):
+    def test_pubsub(self, r: ClientType):
         with pytest.raises(Exception):
             r.pubsub().subscribe("channel")
 
-    def test_pfadd(self, r):
+    def test_pfadd(self, r: ClientType):
         with pytest.raises(Exception):
             r.pfadd("name", 1)
 
-    def test_pfmerge(self, r):
+    def test_pfmerge(self, r: ClientType):
         with pytest.raises(Exception):
             r.pfmerge("dest", "a", "b")
 
-    def test_scan(self, r):
+    def test_scan(self, r: ClientType):
         with pytest.raises(Exception):
             list(r.scan())
 
-    def test_sscan(self, r):
+    def test_sscan(self, r: ClientType):
         with pytest.raises(Exception):
             r.sscan("name")
 
-    def test_hscan(self, r):
+    def test_hscan(self, r: ClientType):
         with pytest.raises(Exception):
             r.hscan("name")
 
-    def test_scan_iter(self, r):
+    def test_scan_iter(self, r: ClientType):
         with pytest.raises(Exception):
             list(r.scan_iter())
 
-    def test_sscan_iter(self, r):
+    def test_sscan_iter(self, r: ClientType):
         with pytest.raises(Exception):
             list(r.sscan_iter("name"))
 
-    def test_hscan_iter(self, r):
+    def test_hscan_iter(self, r: ClientType):
         with pytest.raises(Exception):
             list(r.hscan_iter("name"))
 
@@ -918,15 +923,15 @@ class TestFakeStrictRedisConnectionErrors:
 @pytest.mark.fake_only
 class TestPubSubConnected:
     @pytest.fixture
-    def pubsub(self, r):
+    def pubsub(self, r: ClientType):
         return r.pubsub()
 
-    def test_basic_subscribe(self, pubsub):
+    def test_basic_subscribe(self, pubsub: PubSub):
         with pytest.raises(Exception) as ctx:
             pubsub.subscribe("logs")
         assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
 
-    def test_subscription_conn_lost(self, fake_server, pubsub):
+    def test_subscription_conn_lost(self, fake_server: FakeServer, pubsub: PubSub):
         fake_server.connected = True
         pubsub.subscribe("logs")
         fake_server.connected = False

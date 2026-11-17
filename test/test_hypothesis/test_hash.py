@@ -2,6 +2,7 @@ import pytest
 
 from .base import (
     BaseMachine,
+    MachineConfig,
     commands,
     expires_ms,
     expires_seconds,
@@ -75,5 +76,5 @@ class HashMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_hash(hypothesis_config):
+def test_hash(hypothesis_config: MachineConfig):
     run_machine(HashMachine, hypothesis_config)

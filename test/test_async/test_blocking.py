@@ -24,7 +24,7 @@ async def conn(async_redis: AsyncClientType):
         yield conn
 
 
-async def test_blocking_ready(async_redis, conn):
+async def test_blocking_ready(async_redis: AsyncClientType, conn: AsyncClientType):
     """Blocking command which does not need to block."""
     await async_redis.rpush("list", "x")
     result = await conn.blpop("list", timeout=1)
@@ -32,14 +32,14 @@ async def test_blocking_ready(async_redis, conn):
 
 
 @pytest.mark.slow
-async def test_blocking_timeout(conn, real_server_details: ServerDetails):
+async def test_blocking_timeout(conn: AsyncClientType, real_server_details: ServerDetails):
     """Blocking command that times out without completing."""
     result = await conn.blpop("missing", timeout=1)
     assert result == empty_blocking_reply(conn, real_server_details.server_type)
 
 
 @pytest.mark.slow
-async def test_blocking_unblock(async_redis, conn):
+async def test_blocking_unblock(async_redis: AsyncClientType, conn: AsyncClientType):
     """Blocking command that gets unblocked after some time."""
 
     async def unblock():
@@ -52,7 +52,7 @@ async def test_blocking_unblock(async_redis, conn):
     await task
 
 
-async def _block_on_blpop(conn) -> asyncio.Task:
+async def _block_on_blpop(conn: AsyncClientType) -> asyncio.Task:
     task = asyncio.get_running_loop().create_task(conn.blpop("missing", timeout=5))
     # Give the client time to actually park in the blocking command.
     await asyncio.sleep(0.3)
@@ -62,7 +62,7 @@ async def _block_on_blpop(conn) -> asyncio.Task:
 @pytest.mark.slow
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-async def test_blocking_client_unblock_timeout(async_redis, conn):
+async def test_blocking_client_unblock_timeout(async_redis: AsyncClientType, conn: AsyncClientType):
     """CLIENT UNBLOCK wakes a blocked client as though the command had timed out."""
     client_id = await conn.client_id()
     task = await _block_on_blpop(conn)
@@ -77,7 +77,7 @@ async def test_blocking_client_unblock_timeout(async_redis, conn):
 @pytest.mark.slow
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-async def test_blocking_client_unblock_error(async_redis, conn):
+async def test_blocking_client_unblock_error(async_redis: AsyncClientType, conn: AsyncClientType):
     """CLIENT UNBLOCK ... ERROR makes the blocked command fail instead."""
     client_id = await conn.client_id()
     task = await _block_on_blpop(conn)
@@ -92,14 +92,14 @@ async def test_blocking_client_unblock_error(async_redis, conn):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="6")
-async def test_client_unblock_not_blocked(async_redis, conn):
+async def test_client_unblock_not_blocked(async_redis: AsyncClientType, conn: AsyncClientType):
     assert await async_redis.execute_command("CLIENT", "UNBLOCK", str(await conn.client_id())) == 0
 
 
 @pytest.mark.slow
 @pytest.mark.unsupported_server_types("dragonfly", "valkey", "kividb")
 @pytest.mark.supported_server_versions(min_redis_ver="8.10")
-async def test_ts_read_timeout_returns_samples_added_while_blocked(async_redis, conn):
+async def test_ts_read_timeout_returns_samples_added_while_blocked(async_redis: AsyncClientType, conn: AsyncClientType):
     """A TS.READ that times out short of min_count answers with the samples there are by then."""
     pytest.importorskip("probables")
     await async_redis.execute_command("TS.CREATE", "ts")

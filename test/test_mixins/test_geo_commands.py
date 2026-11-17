@@ -6,6 +6,7 @@ import valkey
 
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import resp_conversion
 
 
@@ -112,7 +113,7 @@ def test_geodist_missing_one_member(r: ClientType):
         (2.191, 41.433, 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: dict[str, Any], expected):
+def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: dict[str, Any], expected: list[bytes]):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
     r.geoadd("barcelona", values)
     assert r.georadius("barcelona", long, lat, radius, **extra) == expected
@@ -128,7 +129,7 @@ def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra:
         ("place1", 3000, {"count": 1}, [b"place1"]),
     ],
 )
-def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dict[str, Any], expected):
+def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dict[str, Any], expected: list[bytes]):
     values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, b"place2")
     r.geoadd("barcelona", values)
     assert r.georadiusbymember("barcelona", member, radius, **extra) == expected
@@ -205,7 +206,7 @@ def test_georadius_errors(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_geosearch(r: ClientType, real_server_details):
+def test_geosearch(r: ClientType, real_server_details: ServerDetails):
     values = (
         2.1909389952632,
         41.433791470673,
@@ -241,7 +242,7 @@ def test_geosearch(r: ClientType, real_server_details):
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_geosearch_bybox(r: ClientType, real_server_details):
+def test_geosearch_bybox(r: ClientType, real_server_details: ServerDetails):
     r.geoadd(
         "Sicily",
         (
@@ -381,7 +382,7 @@ def test_geosearch_frommember_and_fromlonlat_are_exclusive(
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
-def test_geosearch_missing_member_reported_before_fromlonlat(r: ClientType, real_server_details):
+def test_geosearch_missing_member_reported_before_fromlonlat(r: ClientType, real_server_details: ServerDetails):
     # FROMMEMBER looks its member up as soon as it is parsed, so a missing member is reported before the FROMLONLAT
     # that follows it is rejected
     r.geoadd("Sicily", (15.087269, 37.502669, "Catania"))
@@ -411,7 +412,7 @@ def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitu
     assert "invalid longitude,latitude pair" in str(ctx.value)
 
 
-def test_search_by_missing_member(r: ClientType, real_server_details):
+def test_search_by_missing_member(r: ClientType, real_server_details: ServerDetails):
     r.geoadd("geo", (13.361389, 38.115556, "Palermo"))
     if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
         expected_msg = "member missing does not exist"

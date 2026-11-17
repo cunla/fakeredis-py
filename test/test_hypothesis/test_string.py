@@ -2,6 +2,7 @@ import pytest
 
 from .base import (
     BaseMachine,
+    MachineConfig,
     commands,
     counts,
     expires_ms,
@@ -45,5 +46,5 @@ class StringMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_string(hypothesis_config):
+def test_string(hypothesis_config: MachineConfig):
     run_machine(StringMachine, hypothesis_config)

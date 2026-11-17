@@ -155,7 +155,9 @@ def test_tcp_server_keeps_the_connection_after_a_shutdown_value(tcp_server_addre
         ("EVALSHA", "0" * 40, "0"),  # NOSCRIPT
     ],
 )
-def test_tcp_server_keeps_the_connection_after_an_error_reply(tcp_server_address: tuple[str, int], command):
+def test_tcp_server_keeps_the_connection_after_an_error_reply(
+    tcp_server_address: tuple[str, int], command: tuple[str, ...]
+):
     # An error reply is an ordinary reply: a real server keeps serving the connection. redis-py reconnects on its own
     # when the connection is closed, so compare client ids to catch a dropped connection.
     with redis.Redis(host=tcp_server_address[0], port=tcp_server_address[1]) as r:

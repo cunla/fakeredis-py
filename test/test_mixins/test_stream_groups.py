@@ -6,12 +6,15 @@ Deleting entries (not trimming them) leaves holes that can make both unknown, wh
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import redis
 import valkey
 
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 
 pytestmark = [
     pytest.mark.supported_server_versions(min_redis_ver="7"),
@@ -46,7 +49,7 @@ def test_xgroup_setid_to_zero_rereads_every_entry(r: ClientType):
     assert _group(r) == (b"3-1", 3, 0)
 
 
-def test_xgroup_setid_entries_read(r: ClientType, real_server_details):
+def test_xgroup_setid_entries_read(r: ClientType, real_server_details: ServerDetails):
     _add(r, 3)
     r.xgroup_create("s", "g", id="0")
     _read(r)
@@ -95,7 +98,7 @@ def test_xgroup_create_after_the_last_entry_was_deleted(r: ClientType):
     assert r.xinfo_groups("new")[0]["lag"] == 1
 
 
-def test_xinfo_groups_lag_with_deleted_entries(r: ClientType, real_server_details):
+def test_xinfo_groups_lag_with_deleted_entries(r: ClientType, real_server_details: ServerDetails):
     _add(r, 10)
     r.xgroup_create("s", "g", id="0")
     r.xgroup_create("s", "h", id="0")
@@ -120,7 +123,7 @@ def test_xinfo_groups_lag_with_deleted_entries(r: ClientType, real_server_detail
     assert _group(r, "h") == (b"10-1", 10, 0 if trim_aware else 1)
 
 
-def test_xinfo_groups_lag_after_trimming_past_the_group(r: ClientType, real_server_details):
+def test_xinfo_groups_lag_after_trimming_past_the_group(r: ClientType, real_server_details: ServerDetails):
     _add(r, 10)
     r.xgroup_create("s", "g", id="0")
     _read(r, count=6)
@@ -134,14 +137,14 @@ def test_xinfo_groups_lag_after_trimming_past_the_group(r: ClientType, real_serv
     assert _group(r) == (b"8-1", 8, 0 if trim_aware else 2)
 
 
-def _error(r: ClientType, *args) -> str:
+def _error(r: ClientType, *args: Any) -> str:
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, *args)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
     return str(ctx.value)
 
 
-def test_group_commands_on_a_missing_key(r: ClientType, real_server_details):
+def test_group_commands_on_a_missing_key(r: ClientType, real_server_details: ServerDetails):
     key_needed = (
         "The XGROUP subcommand requires the key to exist. "
         "Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically."
@@ -161,7 +164,7 @@ def test_group_commands_on_a_missing_key(r: ClientType, real_server_details):
     assert r.exists("missing") == 0
 
 
-def test_group_commands_on_a_missing_group(r: ClientType, real_server_details):
+def test_group_commands_on_a_missing_group(r: ClientType, real_server_details: ServerDetails):
     r.xadd("s", {"f": "v"}, id="1-1")
     no_group = "NOGROUP No such consumer group 'g' for key name 's'"
     for args in (("SETID", "s", "g", "0"), ("CREATECONSUMER", "s", "g", "c"), ("DELCONSUMER", "s", "g", "c")):

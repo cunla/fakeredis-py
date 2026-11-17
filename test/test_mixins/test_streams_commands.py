@@ -1,5 +1,7 @@
 import threading
 import time
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 import redis
@@ -8,10 +10,11 @@ import valkey
 from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
+from test.conftest import ServerDetails
 from test.testtools import get_protocol_version, resp_conversion
 
 
-def get_ids(results):
+def get_ids(results: list[Any]):
     return [result[0] for result in results]
 
 
@@ -210,7 +213,7 @@ def test_xread_count_limits(r: ClientType):
     stream = "stream"
     ids = [r.xadd(stream, {"n": i}, id=f"{i}-0") for i in range(1, 11)]
 
-    def read_ids(start, count):
+    def read_ids(start: str, count: int):
         res = r.xread({stream: start}, count=count)
         entries = res[0][1] if isinstance(res, list) else res[stream.encode()][0]
         return get_ids(entries)
@@ -295,7 +298,7 @@ def test_xrange_bounds_without_sequence_number(r: ClientType):
     ]
 
 
-def get_stream_message(client, stream, message_id):
+def get_stream_message(client: ClientType, stream: str, message_id: bytes):
     """Fetch a stream message and format it as a (message_id, fields) pair"""
     response = client.xrange(stream, min=message_id, max=message_id)
     assert len(response) == 1
@@ -324,7 +327,7 @@ def test_xread_blocking_no_count(r: ClientType):
     assert m1[0][1] == {b"value": b"1234"}
 
 
-def test_xread(r: ClientType, real_server_details):
+def test_xread(r: ClientType, real_server_details: ServerDetails):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"bing": "baz"})
@@ -439,7 +442,7 @@ def test_xgroup_create_connection7(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7", max_redis_ver="8.2")
-def test_xgroup_setid_redis7(r: ClientType, real_server_details):
+def test_xgroup_setid_redis7(r: ClientType, real_server_details: ServerDetails):
     stream, group = "stream", "group"
     message_id = r.xadd(stream, {"foo": "bar"})
 
@@ -516,7 +519,7 @@ def test_xinfo_consumers(r: ClientType):
     assert info == expected
 
 
-def test_xreadgroup(r: ClientType, real_server_details):
+def test_xreadgroup(r: ClientType, real_server_details: ServerDetails):
     stream, group, consumer = "stream", "group", "consumer1"
     with pytest.raises(Exception) as ctx:
         r.xreadgroup(group, consumer, streams={stream: ">"})
@@ -666,7 +669,7 @@ def test_xack(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_xinfo_stream_redis7(r: ClientType, real_server_details):
+def test_xinfo_stream_redis7(r: ClientType, real_server_details: ServerDetails):
     stream = "stream"
     m1 = r.xadd(stream, {"foo": "bar"})
     m2 = r.xadd(stream, {"foo": "bar"})
@@ -722,7 +725,7 @@ def test_xinfo_groups_missing_stream(r: ClientType):
     assert not r.exists(stream)
 
 
-def test_xpending_missing_stream_or_group(r: ClientType, real_server_details):
+def test_xpending_missing_stream_or_group(r: ClientType, real_server_details: ServerDetails):
     stream, group = "stream", "group"
     # Dragonfly looks the key up before the group, so a missing stream is "no such key".
     missing_stream_error = "no such key" if real_server_details.server_type == "dragonfly" else "NOGROUP"
@@ -1049,7 +1052,7 @@ def test_xclaim_min_idle_time_not_met_leaves_delivery_count(r: ClientType):
     assert _times_delivered(r, stream, group) == 1
 
 
-def test_xread_blocking(create_connection, real_server_details):
+def test_xread_blocking(create_connection: Callable[..., ClientType], real_server_details: ServerDetails):
     # thread with xread block 0 should hang putting data in the stream should unblock it
     event = threading.Event()
     event.clear()
@@ -1123,7 +1126,7 @@ def test_xreadgroup_read_2(r: ClientType):
     assert len(messages) == len(streams)
 
 
-def test_xreadgroup_pel_read(r: ClientType, real_server_details):
+def test_xreadgroup_pel_read(r: ClientType, real_server_details: ServerDetails):
     stream, group, consumer = "stream", "group", "consumer1"
     c1 = {b"foo": b"bar"}
     c2 = {b"bing": b"baz"}
@@ -1427,7 +1430,7 @@ def test_xreadgroup_noack_leaves_the_pending_count_at_zero(r: ClientType):
 
 
 @pytest.mark.parametrize("count", [None, 5])
-def test_xreadgroup_blocking(create_connection, count):
+def test_xreadgroup_blocking(create_connection: Callable[..., ClientType], count: int | None):
     r = create_connection(db=1)  # not flushed between tests
     r.delete("stream")
     r.xadd("stream", {"x": "1"}, id="1-0")
@@ -1458,7 +1461,7 @@ def test_xreadgroup_blocking(create_connection, count):
 # Dragonfly reads nothing for COUNT 0, and rejects a negative COUNT
 @pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("count", [0, -1])
-def test_xreadgroup_count_not_positive(r: ClientType, count):
+def test_xreadgroup_count_not_positive(r: ClientType, count: int):
     for i in range(1, 4):
         r.xadd("stream", {"x": i}, id=f"{i}-0")
     r.xgroup_create("stream", "group", id="0")

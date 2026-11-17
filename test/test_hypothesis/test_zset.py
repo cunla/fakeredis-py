@@ -3,6 +3,7 @@ import pytest
 from .base import (
     BaseMachine,
     Command,
+    MachineConfig,
     commands,
     counts,
     fields,
@@ -35,7 +36,9 @@ zset_no_score_commands = (
 )
 
 
-def build_zstore(command, dest, sources, weights, aggregate) -> Command:
+def build_zstore(
+    command: str, dest: bytes, sources: list[tuple[bytes, bytes]], weights: bool, aggregate: str | None
+) -> Command:
     args = [command, dest, len(sources)]
     args += [source[0] for source in sources]
     if weights:
@@ -94,10 +97,10 @@ class ZSetNoScoresMachine(BaseMachine):
 
 
 @pytest.mark.slow
-def test_zset(hypothesis_config):
+def test_zset(hypothesis_config: MachineConfig):
     run_machine(ZSetMachine, hypothesis_config)
 
 
 @pytest.mark.slow
-def test_zset_no_scores(hypothesis_config):
+def test_zset_no_scores(hypothesis_config: MachineConfig):
     run_machine(ZSetNoScoresMachine, hypothesis_config)

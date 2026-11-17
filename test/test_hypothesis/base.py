@@ -15,6 +15,7 @@ from hypothesis.stateful import RuleBasedStateMachine, initialize, precondition,
 from hypothesis.strategies import SearchStrategy
 
 import fakeredis
+from fakeredis._typing import ClientType
 
 # ---------------------------------------------------------------------------
 # Runtime configuration
@@ -48,11 +49,11 @@ class MachineConfig:
     port: int = 6390
     db: int = 2
 
-    def make_real_client(self) -> redis.Redis:
+    def make_real_client(self) -> ClientType:
         cls = _REAL_CLIENT_CLASSES.get(self.server_type, redis.StrictRedis)
         return cls(self.host, port=self.port, db=self.db)
 
-    def make_fake_client(self) -> redis.Redis:
+    def make_fake_client(self) -> ClientType:
         cls = _FAKE_CLIENT_CLASSES.get(self.server_type, fakeredis.FakeStrictRedis)
         server = fakeredis.FakeServer(server_type=self.server_type, version=self.version)
         return cls(server=server, db=self.db)
@@ -90,7 +91,7 @@ self_strategy = st.runner()
 
 
 @st.composite
-def sample_attr(draw, name):
+def sample_attr(draw: st.DrawFn, name: str):
     """Strategy for sampling a specific attribute from a state machine"""
     machine = draw(self_strategy)
     values = getattr(machine, name)
@@ -139,7 +140,7 @@ expires_ms = st.integers(min_value=5_000, max_value=50_000)
 class WrappedException:
     """Wraps an exception for comparison."""
 
-    def __init__(self, exc):
+    def __init__(self, exc: Exception):
         self.wrapped = exc
 
     def __str__(self):
@@ -148,13 +149,13 @@ class WrappedException:
     def __repr__(self):
         return f"WrappedException({self.wrapped!r})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object):
         if not isinstance(other, WrappedException):
             return NotImplemented
         return type(self.wrapped) is type(other.wrapped)
 
 
-def wrap_exceptions(obj):
+def wrap_exceptions(obj: Any):
     if isinstance(obj, list):
         return [wrap_exceptions(item) for item in obj]
     elif isinstance(obj, Exception):
@@ -163,14 +164,14 @@ def wrap_exceptions(obj):
         return obj
 
 
-def sort_list(lst):
+def sort_list(lst: Any):
     if isinstance(lst, list):
         return sorted(lst)
     else:
         return lst
 
 
-def normalize_if_number(x):
+def normalize_if_number(x: Any):
     if isinstance(x, list):
         return [normalize_if_number(item) for item in x]
     try:
@@ -180,7 +181,7 @@ def normalize_if_number(x):
         return x
 
 
-def flatten(args):
+def flatten(args: Any):
     if isinstance(args, (list, tuple)):
         for arg in args:
             yield from flatten(arg)
@@ -203,7 +204,7 @@ def zero_or_more(*args: Any):
 
 
 class Command:
-    def __init__(self, *args):
+    def __init__(self, *args: Any):
         args = list(flatten(args))
         args = [default_normalize(x) for x in args]
         self.args = tuple(args)
@@ -213,7 +214,7 @@ class Command:
         return "Command({})".format(", ".join(parts))
 
     @staticmethod
-    def encode(arg):
+    def encode(arg: Any):
         encoder = redis.connection.Encoder("utf-8", "replace", False)
         return encoder.encode(arg)
 
@@ -257,7 +258,7 @@ class Command:
         return b"\x00" not in command
 
 
-def commands(*args, **kwargs):
+def commands(*args: Any, **kwargs: Any):
     return st.builds(functools.partial(Command, **kwargs), *args)
 
 
@@ -331,7 +332,7 @@ class BaseMachine(RuleBasedStateMachine):
         super().teardown()
 
     @staticmethod
-    def _evaluate(client, command):
+    def _evaluate(client: ClientType, command: Command):
         try:
             result = client.execute_command(*command.args)
             if result != "QUEUED":
@@ -344,7 +345,7 @@ class BaseMachine(RuleBasedStateMachine):
     #: Set operations whose answer is empty as soon as one input key is missing.
     _SHORT_CIRCUITING_SET_OPS = frozenset({b"sdiff", b"sdiffstore", b"zinter", b"zinterstore", b"zintercard"})
 
-    def _unnoticed_dragonfly_wrongtype(self, command, fake_exc) -> bool:
+    def _unnoticed_dragonfly_wrongtype(self, command: Command, fake_exc: Exception | None) -> bool:
         """Whether only fakeredis reported a wrongly typed input to a set operation.
 
         Dragonfly runs these shard by shard and stops as soon as one key is missing -- the
@@ -359,7 +360,7 @@ class BaseMachine(RuleBasedStateMachine):
         return Command.encode(command.args[0]).lower() in self._SHORT_CIRCUITING_SET_OPS
 
     @staticmethod
-    def _same(fake_value, real_value) -> bool:
+    def _same(fake_value: Any, real_value: Any) -> bool:
         """Whether two replies agree, allowing for the last bits of a float.
 
         A score both servers arrived at by adding the same numbers in a different order --
@@ -373,7 +374,7 @@ class BaseMachine(RuleBasedStateMachine):
             return fake_value == pytest.approx(real_value)
         return bool(fake_value == real_value)
 
-    def _compare(self, command):
+    def _compare(self, command: Command):
         fake_result, fake_exc = self._evaluate(self.fake, command)
         real_result, real_exc = self._evaluate(self.real, command)
 
@@ -425,7 +426,7 @@ class BaseMachine(RuleBasedStateMachine):
             }
         )
     )
-    def init_attrs(self, attrs):
+    def init_attrs(self, attrs: dict[str, list[Any]]):
         for key, value in attrs.items():
             setattr(self, key, value)
 
@@ -433,14 +434,14 @@ class BaseMachine(RuleBasedStateMachine):
     # init_data exactly once and after init_attrs.
     @precondition(lambda self: not self.initialized_data)
     @rule(commands=self_strategy.flatmap(lambda self: st.lists(self.create_command_strategy)))
-    def init_data(self, commands):
+    def init_data(self, commands: list[Command]):
         for command in commands:
             self._compare(command)
         self.initialized_data = True
 
     @precondition(lambda self: self.initialized_data)
     @rule(command=self_strategy.flatmap(lambda self: self.command_strategy))
-    def one_command(self, command):
+    def one_command(self, command: Command):
         self._compare(command)
 
 

@@ -23,7 +23,7 @@ def fake() -> fakeredis.FakeRedis:
     return fakeredis.FakeRedis(server=fakeredis.FakeServer(version=(8,)))
 
 
-def test_dbsize_and_keys_drop_expired_keys(fake):
+def test_dbsize_and_keys_drop_expired_keys(fake: fakeredis.FakeRedis):
     fake.set("stays", "v")
     fake.set("short", "v", px=20)
     fake.set("long", "v", ex=100)
@@ -35,7 +35,7 @@ def test_dbsize_and_keys_drop_expired_keys(fake):
     assert sorted(fake.scan_iter()) == [b"long", b"stays"]
 
 
-def test_expiry_replaced_or_cleared_is_not_applied(fake):
+def test_expiry_replaced_or_cleared_is_not_applied(fake: fakeredis.FakeRedis):
     fake.set("extended", "v", px=20)
     fake.expire("extended", 100)
     fake.set("persisted", "v", px=20)
@@ -49,7 +49,7 @@ def test_expiry_replaced_or_cleared_is_not_applied(fake):
     assert fake.dbsize() == 3
 
 
-def test_key_recreated_after_delete_keeps_only_its_new_expiry(fake):
+def test_key_recreated_after_delete_keeps_only_its_new_expiry(fake: fakeredis.FakeRedis):
     fake.set("k", "v", px=20)
     fake.delete("k")
     fake.set("k", "v")
@@ -58,7 +58,7 @@ def test_key_recreated_after_delete_keeps_only_its_new_expiry(fake):
 
 
 @pytest.mark.parametrize("command", ["rename", "copy", "move", "restore", "swapdb"])
-def test_expiry_follows_the_key(fake, command):
+def test_expiry_follows_the_key(fake: fakeredis.FakeRedis, command: str):
     fake.set("src", "v", px=30)
     target_db = 0
     if command == "rename":
@@ -82,14 +82,14 @@ def test_expiry_follows_the_key(fake, command):
     assert target.keys() == ([b"src"] if command in ("copy", "restore") else [])
 
 
-def test_flushdb_forgets_pending_expiries(fake):
+def test_flushdb_forgets_pending_expiries(fake: fakeredis.FakeRedis):
     for i in range(10):
         fake.set(f"k{i}", "v", ex=100)
     fake.flushdb()
     assert _db_of(fake)._expiry_heap == []
 
 
-def test_refreshing_a_ttl_does_not_grow_the_heap_without_bound(fake):
+def test_refreshing_a_ttl_does_not_grow_the_heap_without_bound(fake: fakeredis.FakeRedis):
     fake.set("k", "v")
     for _ in range(1000):
         fake.expire("k", 100)

@@ -337,7 +337,7 @@ def test_acl_whoami(r: ClientType):
     r.config_set("requirepass", "")
 
 
-def test_acl_log_auth_exist(r: ClientType, request):
+def test_acl_log_auth_exist(r: ClientType, request: pytest.FixtureRequest):
     username = "fredis-py-user"
 
     def teardown():
@@ -377,7 +377,7 @@ def test_acl_log_auth_exist(r: ClientType, request):
     assert auth_record["object"] == "AUTH"
 
 
-def test_acl_log_invalid_key(r: ClientType, request):
+def test_acl_log_invalid_key(r: ClientType, request: pytest.FixtureRequest):
     username = "fredis-py-user"
 
     def teardown():
@@ -431,7 +431,7 @@ def test_acl_log_invalid_key(r: ClientType, request):
     assert bad_command_record["object"].lower() == "hset"
 
 
-def test_acl_log_invalid_channel(r: ClientType, request):
+def test_acl_log_invalid_channel(r: ClientType, request: pytest.FixtureRequest):
     username = "fredis-py-user"
 
     def teardown():

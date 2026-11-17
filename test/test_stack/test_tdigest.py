@@ -5,6 +5,7 @@ import pytest
 import redis
 import valkey
 
+from fakeredis._typing import ClientType
 from test.testtools import get_protocol_version
 
 topk_tests = pytest.importorskip("probables")
@@ -18,13 +19,13 @@ pytestmark.extend(
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_tdigest_type(r: redis.Redis):
+def test_tdigest_type(r: ClientType):
     assert r.tdigest().create("tDigest", 10)
     assert r.type("tDigest") == b"TDIS-TYPE"
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_tdigest_reset(r: redis.Redis):
+def test_tdigest_reset(r: ClientType):
     assert r.tdigest().create("tDigest", 10)
     # reset on empty histogram
     assert r.tdigest().reset("tDigest")
@@ -38,7 +39,7 @@ def test_tdigest_reset(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_tdigest_merge(r: redis.Redis):
+def test_tdigest_merge(r: ClientType):
     assert r.tdigest().create("to-tDigest", 10)
     assert r.tdigest().create("from-tDigest", 10)
     # insert data-points into sketch
@@ -63,7 +64,7 @@ def test_tdigest_merge(r: redis.Redis):
     assert r.tdigest().max("to-tDigest") == 4.0
 
 
-def test_tdigest_min_and_max(r: redis.Redis):
+def test_tdigest_min_and_max(r: ClientType):
     assert r.tdigest().create("tDigest", 100)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", [1, 2, 3])
@@ -72,7 +73,7 @@ def test_tdigest_min_and_max(r: redis.Redis):
     assert 1 == r.tdigest().min("tDigest")
 
 
-def test_tdigest_quantile(r: redis.Redis):
+def test_tdigest_quantile(r: ClientType):
     assert r.tdigest().create("tDigest", 500)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", [x * 0.01 for x in range(1, 10000)])
@@ -91,7 +92,7 @@ def test_tdigest_quantile(r: redis.Redis):
     assert [3.0, 5.0] == r.tdigest().quantile("t-digest", 0.5, 0.8)
 
 
-def test_tdigest_cdf(r: redis.Redis):
+def test_tdigest_cdf(r: ClientType):
     assert r.tdigest().create("tDigest", 100)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", list(range(1, 10)))
@@ -101,7 +102,7 @@ def test_tdigest_cdf(r: redis.Redis):
     assert [0.1, 0.9] == [round(x, 1) for x in res]
 
 
-def test_tdigest_trimmed_mean(r: redis.Redis):
+def test_tdigest_trimmed_mean(r: ClientType):
     assert r.tdigest().create("tDigest", 100)
     # insert data-points into sketch
     assert r.tdigest().add("tDigest", list(range(1, 10)))
@@ -109,7 +110,7 @@ def test_tdigest_trimmed_mean(r: redis.Redis):
     assert 4.5 == r.tdigest().trimmed_mean("tDigest", 0.4, 0.5)
 
 
-def test_tdigest_rank(r: redis.Redis):
+def test_tdigest_rank(r: ClientType):
     assert r.tdigest().create("t-digest", 500)
     assert r.tdigest().add("t-digest", list(range(20)))
     assert -1 == r.tdigest().rank("t-digest", -1)[0]
@@ -118,7 +119,7 @@ def test_tdigest_rank(r: redis.Redis):
     assert [-1, 20, 9] == r.tdigest().rank("t-digest", -20, 20, 9)
 
 
-def test_tdigest_revrank(r: redis.Redis):
+def test_tdigest_revrank(r: ClientType):
     assert r.tdigest().create("t-digest", 500)
     assert r.tdigest().add("t-digest", list(range(20)))
     assert -1 == r.tdigest().revrank("t-digest", 20)[0]
@@ -126,7 +127,7 @@ def test_tdigest_revrank(r: redis.Redis):
     assert [-1, 19, 9] == r.tdigest().revrank("t-digest", 21, 0, 10)
 
 
-def test_tdigest_byrank(r: redis.Redis):
+def test_tdigest_byrank(r: ClientType):
     assert r.tdigest().create("t-digest", 500)
     assert r.tdigest().add("t-digest", list(range(1, 11)))
     assert 1 == r.tdigest().byrank("t-digest", 0)[0]
@@ -138,7 +139,7 @@ def test_tdigest_byrank(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_byrevrank(r: redis.Redis):
+def test_tdigest_byrevrank(r: ClientType):
     assert r.tdigest().create("t-digest", 500)
     assert r.tdigest().add("t-digest", list(range(1, 11)))
     assert 10 == r.tdigest().byrevrank("t-digest", 0)[0]
@@ -151,7 +152,7 @@ def test_tdigest_byrevrank(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(max_redis_ver="8.9")
-def test_tdigest_quantile_nan(r: redis.Redis):
+def test_tdigest_quantile_nan(r: ClientType):
     r.tdigest().create("foo")
     r.tdigest().add("foo", [123])
     res = r.tdigest().quantile("foo", 0.9)
@@ -167,7 +168,7 @@ def test_tdigest_quantile_nan(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="8.10")
-def test_tdigest_quantile_single_observation(r: redis.Redis):
+def test_tdigest_quantile_single_observation(r: ClientType):
     """Since redis 8.10, every quantile of a single observation is that observation."""
     r.tdigest().create("foo")
     assert all(math.isnan(float(x)) for x in r.tdigest().quantile("foo", 0.5, 0.9))
@@ -176,7 +177,7 @@ def test_tdigest_quantile_single_observation(r: redis.Redis):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="7")
-def test_tdigest_create_default_compression(r: redis.Redis):
+def test_tdigest_create_default_compression(r: ClientType):
     """TDIGEST.CREATE without compression uses default of 100."""
     r.tdigest().create("td")
     info = r.tdigest().info("td")
@@ -186,7 +187,7 @@ def test_tdigest_create_default_compression(r: redis.Redis):
         assert info.get(b"Compression") == 100
 
 
-def test_tdigest_create_already_exists(r: redis.Redis):
+def test_tdigest_create_already_exists(r: ClientType):
     """TDIGEST.CREATE raises an error when the key already exists."""
     r.tdigest().create("td", 100)
     with pytest.raises(Exception) as ctx:
@@ -195,7 +196,7 @@ def test_tdigest_create_already_exists(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_commands_on_nonexistent_key(r: redis.Redis):
+def test_tdigest_commands_on_nonexistent_key(r: ClientType):
     """TDIGEST commands raise key-not-exist errors on missing keys."""
     with pytest.raises(Exception) as ctx:
         r.tdigest().reset("nokey")
@@ -233,7 +234,7 @@ def test_tdigest_commands_on_nonexistent_key(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_commands_on_empty_digest(r: redis.Redis):
+def test_tdigest_commands_on_empty_digest(r: ClientType):
     """TDIGEST commands on an empty digest return NaN or -2."""
     r.tdigest().create("td", 100)
     assert math.isnan(float(r.tdigest().max("td")))
@@ -245,7 +246,7 @@ def test_tdigest_commands_on_empty_digest(r: redis.Redis):
     assert math.isnan(float(r.tdigest().trimmed_mean("td", 0.1, 0.9)))
 
 
-def test_tdigest_quantile_bad_value(r: redis.Redis):
+def test_tdigest_quantile_bad_value(r: ClientType):
     """TDIGEST.QUANTILE raises an error for quantile values outside [0, 1]."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", [1.0, 2.0, 3.0])
@@ -258,7 +259,7 @@ def test_tdigest_quantile_bad_value(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_trimmed_mean_bad_bounds(r: redis.Redis):
+def test_tdigest_trimmed_mean_bad_bounds(r: ClientType):
     """TDIGEST.TRIMMED_MEAN raises an error for invalid bounds."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", list(range(10)))
@@ -268,7 +269,7 @@ def test_tdigest_trimmed_mean_bad_bounds(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_trimmed_mean_adjacent_bounds(r: redis.Redis):
+def test_tdigest_trimmed_mean_adjacent_bounds(r: ClientType):
     """TDIGEST.TRIMMED_MEAN with right == left + 1 takes the average of two values."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
@@ -276,7 +277,7 @@ def test_tdigest_trimmed_mean_adjacent_bounds(r: redis.Redis):
     assert isinstance(result, float)
 
 
-def test_tdigest_merge_wrong_numkeys(r: redis.Redis):
+def test_tdigest_merge_wrong_numkeys(r: ClientType):
     """TDIGEST.MERGE raises an error when numkeys > actual source count."""
     r.tdigest().create("src", 100)
     r.tdigest().add("src", [1.0, 2.0])
@@ -287,7 +288,7 @@ def test_tdigest_merge_wrong_numkeys(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_merge_missing_source(r: redis.Redis):
+def test_tdigest_merge_missing_source(r: ClientType):
     """TDIGEST.MERGE raises an error when a source key does not exist."""
     r.tdigest().create("src", 100)
     r.tdigest().create("dst", 100)
@@ -297,7 +298,7 @@ def test_tdigest_merge_missing_source(r: redis.Redis):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
-def test_tdigest_merge_override_into_nonexistent_dest(r: redis.Redis):
+def test_tdigest_merge_override_into_nonexistent_dest(r: ClientType):
     """TDIGEST.MERGE with OVERRIDE creates the destination if it doesn't exist."""
     r.tdigest().create("src", 100)
     r.tdigest().add("src", [1.0, 2.0, 3.0])
@@ -305,7 +306,7 @@ def test_tdigest_merge_override_into_nonexistent_dest(r: redis.Redis):
     assert r.tdigest().min("newdest") == 1.0
 
 
-def test_tdigest_merge_into_nonexistent_dest(r: redis.Redis):
+def test_tdigest_merge_into_nonexistent_dest(r: ClientType):
     """TDIGEST.MERGE into non-existent dest creates the destination automatically."""
     r.tdigest().create("src", 100)
     r.tdigest().add("src", [1.0, 2.0, 3.0])
@@ -313,7 +314,7 @@ def test_tdigest_merge_into_nonexistent_dest(r: redis.Redis):
     assert r.tdigest().min("newdest2") == 1.0
 
 
-def test_tdigest_cdf_boundary_values(r: redis.Redis):
+def test_tdigest_cdf_boundary_values(r: ClientType):
     """TDIGEST.CDF returns 0.0 for values below min and 1.0 for values above max."""
     r.tdigest().create("td", 100)
     r.tdigest().add("td", [5.0, 10.0, 15.0])

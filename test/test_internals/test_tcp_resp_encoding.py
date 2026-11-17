@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from redis.exceptions import ResponseError
 
@@ -25,7 +27,7 @@ pytestmark = [pytest.mark.fake]
         (ResponseError("boom"), b"-ERR boom\r\n", b"-ERR boom\r\n"),
     ],
 )
-def test_encode_reply(value, resp2: bytes, resp3: bytes):
+def test_encode_reply(value: Any, resp2: bytes, resp3: bytes):
     assert encode_reply(value, 2) == resp2
     assert encode_reply(value, 3) == resp3
 
