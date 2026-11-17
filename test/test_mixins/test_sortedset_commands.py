@@ -1133,6 +1133,8 @@ def test_bzpopmax(r: ClientType):
     assert r.bzpopmax(["foo", "bar"], 0) == resp_conversion(r, [b"bar", b"c", 3.5], (b"bar", b"c", 3.5))
 
 
+# Dragonfly checks every key's type before popping, so a wrongly typed key after one it could pop from is still WRONGTYPE.
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize("command", ["bzpopmin", "bzpopmax"])
 def test_bzpop_wrong_type(r: ClientType, command: str):
     r.set("str", "v")
@@ -1143,6 +1145,8 @@ def test_bzpop_wrong_type(r: ClientType, command: str):
     assert list(raw_command(r, command, "zset", "str", 0.1))[:2] == [b"zset", b"m"]
 
 
+# Dragonfly does not answer WRONGTYPE from ZMPOP/BZMPOP on a key of another type.
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.supported_server_versions(min_redis_ver="7")
 @pytest.mark.parametrize("args", [("zmpop", 1, "str", "min"), ("bzmpop", 0.1, 1, "str", "min")])
 def test_zmpop_wrong_type(r: ClientType, args: tuple):
