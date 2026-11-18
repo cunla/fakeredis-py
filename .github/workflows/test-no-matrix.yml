@@ -28,6 +28,8 @@ jobs:
   test-tcp-server:
     name: "TCP server test"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: [ "3.15" ]
