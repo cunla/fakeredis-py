@@ -12,6 +12,7 @@ Generates a JSON file with the following structure:
       8. Tips (as of Redis 7.0)
       9. Key specifications (as of Redis 7.0)
       10. Subcommands (as of Redis 7.0)
+      11. Redis version that added the command, or null for module commands (dropped when loaded)
     ]
 }
 that is used for the `COMMAND` redis command.
@@ -24,6 +25,7 @@ import os
 from typing import Any
 
 from fakeredis._commands import SUPPORTED_COMMANDS
+from fakeredis._core._server import _create_version
 from scripts.generate_supported_commands_doc import download_commands
 
 THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +65,13 @@ def dict_deep_get(d: dict[Any, Any], *keys, default_value: Any = None) -> Any:
 
 def key_specs_array(cmd_info: dict[str, Any]) -> list[Any]:
     return []
+
+
+def since_version(cmd_info: dict[str, Any]) -> list[int] | None:
+    """Module commands have none: their `since` is the module's release, not Redis'"""
+    if "since" not in cmd_info or cmd_info.get("module"):
+        return None
+    return list(_create_version(cmd_info["since"]))
 
 
 def get_command_info(cmd_name: str, all_commands: dict[str, Any]) -> list[Any]:
@@ -120,4 +129,4 @@ if __name__ == "__main__":
             )[9].append(command_info_dict[cmd])
         print(command_info_dict[cmd])
     with open(os.path.join(os.path.dirname(__file__), "..", "fakeredis", "commands.json"), "w") as f:
-        json.dump(command_info_dict, f)
+        json.dump({cmd: [*info, since_version(cmds.get(cmd, {}))] for cmd, info in command_info_dict.items()}, f)

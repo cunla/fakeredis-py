@@ -33,11 +33,13 @@ class FakeServer:
         version: VersionType = (8,),
         server_type: ServerType = "redis",
         config: dict[bytes, bytes] | None = None,
+        strict_version: bool = False,
     ) -> None:
         """Initialize a new FakeServer instance.
         :param version: The version of the server (e.g. 6, 7.4, "7.4.1", can also be a tuple)
         :param server_type: The type of server (redis, dragonfly, valkey, kividb)
         :param config: A dictionary of configuration options.
+        :param strict_version: Reject commands added after `version`, like that Redis release (redis server type only)
 
         Configuration options:
         - `requirepass`: The password required to authenticate to the server.
@@ -56,6 +58,7 @@ class FakeServer:
         self.sockets: list[Any] = []
         self.closed_sockets: list[Any] = []
         self.version: VersionType = _create_version(version)
+        self.strict_version = strict_version
         if server_type not in ("redis", "dragonfly", "valkey", "kividb"):
             raise ValueError(f"Unsupported server type: {server_type}")
         self.server_type: ServerType = server_type
