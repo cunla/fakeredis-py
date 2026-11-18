@@ -12,6 +12,7 @@ toc_depth: 2
 ### 🚀 Features
 
 - feat: `INFO` command (server, clients, persistence, replication, cluster and keyspace sections) #654
+- feat: `FakeServer(strict_version=True)` rejects commands added after the emulated Redis version, like the real server
 
 ### 🐛 Bug Fixes
 

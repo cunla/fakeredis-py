@@ -7,6 +7,7 @@ from ._command_info import (
     get_categories,
     get_command_info,
     get_commands_by_category,
+    is_command_in_version,
     is_write_command,
 )
 from ._expiring_members_set import ExpiringMembersSet
@@ -40,6 +41,7 @@ __all__ = [
     "get_categories",
     "get_command_info",
     "get_commands_by_category",
+    "is_command_in_version",
     "is_write_command",
 ]
 
