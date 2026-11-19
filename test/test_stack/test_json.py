@@ -58,6 +58,22 @@ def test_json_setgetdeleteforget(r: ClientType):
     assert r.exists("foo") == 0
 
 
+def test_json_delete_array_elements(r: ClientType):
+    # Deleting an array element must not delete the element that shifts
+    # into its place: the count and the remaining elements must match RedisJSON.
+    cases = [
+        ("$.e[0]", 1, [2, 3, 4]),
+        ("$.e[1:3]", 2, [1, 4]),
+        ("$.e[-1]", 1, [1, 2, 3]),
+        ("$.e[0,1]", 2, [3, 4]),
+        ("$.e[*]", 4, []),
+    ]
+    for path, count, remaining in cases:
+        r.json().set("k", "$", {"e": [1, 2, 3, 4]})
+        assert r.json().delete("k", path) == count, path
+        assert r.json().get("k") == {"e": remaining}, path
+
+
 def test_json_delete_with_dollar(r: ClientType):
     doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
     assert r.json().set("doc1", Path.root_path(), doc1)

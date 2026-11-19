@@ -14,6 +14,7 @@ from typing import Any, Callable, ClassVar
 from jsonpath_ng import JSONPath, Root
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
+from jsonpath_ng.jsonpath import Child, Fields, Index
 
 from fakeredis import _helpers as helpers
 from fakeredis import _msgs as msgs
@@ -36,6 +37,21 @@ def _key_not_found(server_type: ServerType) -> helpers.SimpleError:
 
 # Marks a JSON.ARRPOP match that is not an array, which servers report differently from an empty array.
 _NOT_AN_ARRAY = object()
+
+
+def _full_path_components(path: JSONPath) -> tuple[tuple[str, Any], ...]:
+    """Flatten a match's full path into a tuple of (kind, value) components.
+
+    Used to compare match locations structurally: one match is inside
+    another's subtree when its components start with the other's.
+    """
+    if isinstance(path, Child):
+        return _full_path_components(path.left) + _full_path_components(path.right)
+    if isinstance(path, Fields):
+        return tuple(("field", field) for field in path.fields)
+    if isinstance(path, Index):
+        return tuple(("index", index) for index in path.indices)
+    return ()
 
 
 def _path_is_legacy(path_str: bytes | str | None) -> bool:
@@ -421,15 +437,31 @@ class JSONCommandsMixin(CommandsMixinBase):
         curr_value = copy.deepcopy(key.value)
 
         found_matches = path.find(curr_value)
-        res = 0
-        while len(found_matches) > 0:
-            item = found_matches[0]
+        # The matches are computed once, on the original document. Re-running
+        # the path after each deletion (the old loop) made array elements that
+        # shift into a deleted index match again, so they were deleted too.
+        seen: set[tuple[tuple[str, Any], ...]] = set()
+        matches = []
+        for item in found_matches:
+            components = _full_path_components(item.full_path)
+            if components not in seen:
+                seen.add(components)
+                matches.append((components, item))
+        # A match inside another match's subtree is subsumed by it: deleting
+        # the ancestor removes the descendant as well, and only the ancestor
+        # is counted.
+        matches = [
+            (components, item)
+            for components, item in matches
+            if not any(other != components and components[: len(other)] == other for other, _ in matches)
+        ]
+        # Delete in reverse document order, so that deleting an array element
+        # does not shift the indices of the matches still to be deleted.
+        for _, item in reversed(matches):
             curr_value = item.full_path.filter(lambda _: True, curr_value)
-            res += 1
-            found_matches = path.find(curr_value)
 
         key.update(curr_value)
-        return res
+        return len(matches)
 
     def _json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> SimpleString | None:
         path = _parse_jsonpath(path_str, self.server_type)
