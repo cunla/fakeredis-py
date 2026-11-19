@@ -67,6 +67,42 @@ def test_expire_should_not_handle_floating_point_values(r: ClientType):
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_expire_rejects_out_of_range_times(r: ClientType):
+    r.set("x", "v")
+    cases = [
+        (r.expire, 9223372036854775807),
+        (r.pexpire, 9223372036854775807),
+        (r.expireat, 9223372036854775807),
+        (r.expire, -9223372036854775808),
+    ]
+    for cmd, when in cases:
+        with pytest.raises((redis.ResponseError, valkey.ResponseError), match="invalid expire time"):
+            cmd("x", when)
+        assert r.get("x") == b"v"
+        assert r.ttl("x") == -1
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_expire_out_of_range_errors_on_missing_key(r: ClientType):
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="invalid expire time"):
+        r.expire("missing", 9223372036854775807)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_expire_options_error_takes_precedence_over_range_check(r: ClientType):
+    r.set("x", "v")
+    with pytest.raises((redis.ResponseError, valkey.ResponseError), match="NX and XX"):
+        r.expire("x", 9223372036854775807, nx=True, xx=True)
+
+
+@pytest.mark.unsupported_server_types("dragonfly")
+def test_expire_accepts_large_in_range_times(r: ClientType):
+    r.set("x", "v")
+    assert r.pexpireat("x", 9223372036854775807) is True
+    assert r.expireat("x", 9223372036854775) is True
+
+
 def test_ttl_should_return_minus_one_for_non_expiring_key(r: ClientType):
     r.set("foo", "bar")
     assert r.get("foo") == b"bar"
