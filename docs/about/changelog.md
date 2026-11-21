@@ -16,6 +16,8 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 - fix(json):JSON.DEL on array index/slice paths deletes extra elements and returns too high a count #645
+- fix: `EXPIRE`, `PEXPIRE` and `EXPIREAT` reject expire times that overflow a 64-bit millisecond timestamp with
+  `invalid expire time`, like Redis, instead of setting a huge TTL or deleting the key (#646)
 - fix: support redis-py 8.2: creating a client no longer fails with
   `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
   again, and RESP3 connections still make no DNS lookup (#636)

@@ -32,7 +32,10 @@ class SortFloat(Float):
 
 # Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry (EXPIRE, PEXPIRE, SET
 # EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond it is rejected outright.
-DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
+_DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
+
+# Redis stores an expiry as a signed 64-bit millisecond timestamp.
+_LLONG_MAX = 2**63 - 1
 
 
 class GenericCommandsMixin(CommandsMixinBase):
@@ -74,7 +77,12 @@ class GenericCommandsMixin(CommandsMixinBase):
                 return None
             return item.value
 
-    def _expireat(self, key: CommandItem, timestamp: float, *args: bytes) -> int:
+    def _expireat(self, key: CommandItem, timestamp: float, *args: bytes, invalid_in: str | None = None) -> int:
+        """Set `key` to expire at `timestamp`, honoring the NX/XX/GT/LT options in `args`.
+
+        `invalid_in` names the command when its expire time is out of range; that error is raised after the options are
+        validated and before the key is looked at, as Redis does.
+        """
         is_dragonfly = self.server_type == "dragonfly"
         unsupported_option = (
             msgs.DRAGONFLY_EXPIRE_UNSUPPORTED_OPTION if is_dragonfly else msgs.EXPIRE_UNSUPPORTED_OPTION
@@ -93,6 +101,9 @@ class GenericCommandsMixin(CommandsMixinBase):
             counter = (nx, gt, lt).count(True)
             if (counter > 1) or (nx and xx):
                 raise SimpleError(msgs.NX_XX_GT_LT_ERROR_MSG)
+        if invalid_in is not None:
+            msg = msgs.INVALID_EXPIRE_MSG if self.version < (7,) else msgs.INVALID_EXPIRE_MSG_REDIS_8
+            raise SimpleError(msg.format(invalid_in))
         if (
             not key
             or (xx and key.expireat is None)
@@ -128,22 +139,36 @@ class GenericCommandsMixin(CommandsMixinBase):
         """Clamp a relative expiry deadline to what the server is willing to store."""
         if self.server_type != "dragonfly":
             return timestamp
-        return min(timestamp, self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS)
+        return min(timestamp, self._db.time + _DRAGONFLY_MAX_EXPIRE_SECONDS)
 
     def _check_absolute_expiry(self, timestamp: float) -> None:
         """Reject an absolute expiry deadline the server considers too far in the future."""
-        if self.server_type == "dragonfly" and timestamp > self._db.time + DRAGONFLY_MAX_EXPIRE_SECONDS:
+        if self.server_type == "dragonfly" and timestamp > self._db.time + _DRAGONFLY_MAX_EXPIRE_SECONDS:
             raise SimpleError(msgs.EXPIRY_OUT_OF_RANGE_MSG)
+
+    def _invalid_expire_in(self, name: str, when: int, unit_ms: int, relative: bool) -> str | None:
+        """`name` if Redis rejects the expire time `when`, given in units of `unit_ms` milliseconds, else None.
+
+        Mirrors the overflow checks of `expireGenericCommand`: the time, converted to milliseconds and offset by the
+        current time when `relative`, must fit in a signed 64-bit integer. Dragonfly clamps or range-checks instead.
+        """
+        if self.server_type == "dragonfly":
+            return None
+        if unit_ms == 1000 and abs(when) > _LLONG_MAX // 1000:
+            return name
+        basetime_ms = int(self._db.time * 1000) if relative else 0
+        return name if when * unit_ms > _LLONG_MAX - basetime_ms else None
 
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:
-        res = self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args)
-        return res
+        invalid_in = self._invalid_expire_in("expire", seconds, 1000, relative=True)
+        return self._expireat(key, self._clamp_relative_expiry(self._db.time + seconds), *args, invalid_in=invalid_in)
 
     @command(name="EXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def expireat(self, key: CommandItem, timestamp: int, *args: bytes) -> int:
         self._check_absolute_expiry(float(timestamp))
-        return self._expireat(key, float(timestamp), *args)
+        invalid_in = self._invalid_expire_in("expireat", timestamp, 1000, relative=False)
+        return self._expireat(key, float(timestamp), *args, invalid_in=invalid_in)
 
     @command(name="KEYS", fixed=(bytes,))
     def keys(self, pattern: bytes) -> list[bytes]:
@@ -175,7 +200,10 @@ class GenericCommandsMixin(CommandsMixinBase):
 
     @command(name="PEXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def pexpire(self, key: CommandItem, ms: int, *args: bytes) -> int:
-        return self._expireat(key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args)
+        invalid_in = self._invalid_expire_in("pexpire", ms, 1, relative=True)
+        return self._expireat(
+            key, self._clamp_relative_expiry(self._db.time + ms / 1000.0), *args, invalid_in=invalid_in
+        )
 
     @command(name="PEXPIREAT", fixed=(Key(), Int), repeat=(bytes,))
     def pexpireat(self, key: CommandItem, ms_timestamp: int, *args: bytes) -> int:
