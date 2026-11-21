@@ -42,6 +42,7 @@ on:
           - "redis:8.4"
           - "redis:7.4.8"
           - "redis:6.2.17"
+          - "valkey/valkey:9.2"
           - "valkey/valkey:9.1"
           - "valkey/valkey:8.1.8"
           - "redis/redis-stack-server:7.4.0-v8"
