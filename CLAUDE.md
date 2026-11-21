@@ -10,12 +10,6 @@ fakeredis provides drop-in replacements for `redis.Redis` / `redis.asyncio.Redis
 # Install all dependencies including optional extras
 uv sync --all-extras
 
-# Run tests (fake redis only)
-uv run pytest -v -m "fake"
-
-# Run a single test file
-uv run pytest -v test/test_mixins/test_string_mixin.py
-
 # Lint, format, type check
 uv run ruff check --fix fakeredis/
 uv run ruff format fakeredis/
@@ -27,15 +21,7 @@ uv run python scripts/generate_command_info.py
 
 ## Testing
 
-A real server on `localhost:6390` is required for **all** test runs (even `fake`-only): the session-scoped `real_server_details` fixture connects on startup and calls `pytest.exit()` if it can't reach one. Start one with any service from `docker-compose.yml`, e.g. `docker compose up -d redis8`.
-
-**Markers** (combine with `-m`): `fake`, `real`, `slow`, `disconnected`, `tcp_server`, `resp2_only`, `resp3_only`, `load_lua_modules`, plus per-test markers below.
-
-- Limit by server version: `@pytest.mark.supported_server_versions(min_redis_ver="7")` — kwargs: `min_redis_ver`, `max_redis_ver`, `min_valkey_ver`, `max_valkey_ver`
-- Skip on a server type: `@pytest.mark.unsupported_server_types("valkey")`
-- Limit by redis-py version: `@testtools.run_test_if_redispy_ver("gte", "4.2.0")`
-
-When the server on port 6390 is a Valkey server, the conftest auto-selects `FakeValkey`/`valkey.StrictValkey` instead of the Redis client classes — no marker needed.
+See `test/CLAUDE.md` for running tests, the real server they need, fixtures, markers and helpers.
 
 ## Architecture
 
@@ -99,6 +85,6 @@ def append(self, key: CommandItem, value: bytes) -> int:
 ### Adding a New Command
 
 1. Implement the method with `@command(...)` in the appropriate mixin file in `commands_mixins/` (or `stack/` for module commands)
-2. Write tests in the corresponding `test/test_mixins/` file — pytest injects a redis connection as `r`
+2. Write tests in the corresponding `test/test_mixins/` file (see `test/CLAUDE.md`)
 3. Run `uv run python scripts/generate_command_info.py` to update `commands.json`
 4. Run `uv run python scripts/generate_supported_commands_doc.py` to update `docs/` and include those changes in the PR
