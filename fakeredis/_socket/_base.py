@@ -22,7 +22,7 @@ from fakeredis._socket._dragonfly import (
 from fakeredis._socket._notifications import NotificationsMixin
 from fakeredis._socket._resp import convert_to_resp2, extract_command, valid_response_type
 from fakeredis._typing import ResponseErrorType, ServerType, VersionType
-from fakeredis.model import ClientInfo
+from fakeredis.model import ClientInfo, is_command_in_version
 
 _file_no_counter = itertools.count(8)
 
@@ -398,7 +398,11 @@ class BaseFakeSocket(NotificationsMixin):
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
             raise self._unknown_command(clean_name)
         sig = SUPPORTED_COMMANDS[cmd_name]
-        if self._server.server_type not in sig.server_types:
+        if self._server.server_type not in sig.server_types or (
+            self._server.strict_version
+            and self._server.server_type == "redis"
+            and not is_command_in_version(cmd_name.encode(), self._server.version)
+        ):
             # redis remaps \r or \n in an error to ' ' to make it legal protocol
             clean_name = cmd_name.replace("\r", " ").replace("\n", " ")
             raise self._unknown_command(clean_name)
