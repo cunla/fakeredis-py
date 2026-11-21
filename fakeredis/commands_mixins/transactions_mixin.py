@@ -5,7 +5,7 @@ from typing import Any, Callable
 from fakeredis import _msgs as msgs
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
-from fakeredis._helpers import OK, SimpleError, SimpleString
+from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 
 
@@ -71,8 +71,18 @@ class TransactionsCommandsMixin(CommandsMixinBase):
         self._clear_watches()
         return OK
 
-    @command(name="exec", fixed=(), repeat=(), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
-    def exec_(self) -> Any:
+    def _exec_abort(self, error: str) -> SimpleError:
+        """Discard the transaction and watches, and give the EXECABORT error EXEC answers with for `error`."""
+        self._forget_transaction()
+        self._clear_watches()
+        return SimpleError(msgs.EXECABORT_BECAUSE_MSG.format(error.removeprefix("ERR ")))
+
+    @command(name="exec", fixed=(), repeat=(bytes,), flags=[msgs.FLAG_NO_SCRIPT, msgs.FLAG_TRANSACTION])
+    def exec_(self, *conditions: bytes) -> Any:
+        # Before Valkey 9.2, EXEC takes no arguments; that is checked ahead of whether a transaction is open.
+        takes_conditions = self.server_type == "valkey" and self.version >= (9, 2)
+        if conditions and not takes_conditions:
+            raise self._exec_abort(msgs.WRONG_ARGS_MSG6.format("exec"))
         if not self._queueing:
             if self._transaction_failed:  # a transaction dragonfly stopped queueing
                 self._forget_transaction()
@@ -84,6 +94,18 @@ class TransactionsCommandsMixin(CommandsMixinBase):
             self._forget_transaction()
             self._clear_watches()
             raise SimpleError(msgs.DRAGONFLY_EXECABORT_MSG if self.server_type == "dragonfly" else msgs.EXECABORT_MSG)
+        if conditions:
+            """The error for the IFEQ/IFNE/NX/XX conditions Valkey 9.2 added to EXEC, which fakeredis does not evaluate."""
+            i = 0
+            err_msg = msgs.EXEC_CONDITIONS_UNSUPPORTED_MSG
+            while i < len(conditions):
+                arity = 2 if casematch(conditions[i], b"ifeq") or casematch(conditions[i], b"ifne") else 1
+                if not (
+                    arity == 2 or casematch(conditions[i], b"nx") or casematch(conditions[i], b"xx")
+                ) or i + arity >= len(conditions):
+                    err_msg = msgs.EXEC_INVALID_CONDITION_MSG
+                i += arity + 1
+            raise self._exec_abort(err_msg)
         transaction = self._transaction or []
         self._forget_transaction()
         watch_notified = self._watch_notified

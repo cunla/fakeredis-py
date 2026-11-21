@@ -145,12 +145,38 @@ def test_pipeline_move(r: ClientType):
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.0.6")
-def test_exec_bad_arguments(r: ClientType):
-    # Redis 6.0.6 changed the behaviour of exec so that it always fails with EXECABORT, even when it's just bad syntax.
+def _exec_takes_conditions(details: ServerDetails) -> bool:
+    """Whether EXEC accepts the IFEQ/IFNE/NX/XX conditions Valkey 9.2 added."""
+    return details.server_type == "valkey" and details.server_version >= (9, 2)
+
+
+def test_exec_bad_arguments(r: ClientType, real_server_details: ServerDetails):
     with pytest.raises(Exception) as ctx:
         r.execute_command("exec", "blahblah")
+    if _exec_takes_conditions(real_server_details):
+        # Arguments are conditions now, and EXEC wants a transaction before it looks at them.
+        assert isinstance(ctx.value, testtools.RESPONSE_ERRORS)
+        assert str(ctx.value) == "EXEC without MULTI"
+    else:
+        # Redis 6.0.6 changed the behaviour of exec so that it always fails with EXECABORT, even when it's just bad
+        # syntax.
+        assert isinstance(ctx.value, (redis.exceptions.ExecAbortError, valkey.exceptions.ExecAbortError))
 
+
+@pytest.mark.supported_server_versions(min_valkey_ver="9.2")
+@pytest.mark.unsupported_server_types("redis", "dragonfly", "kividb")
+@pytest.mark.parametrize("condition", [["IFEQ", "k"], ["NX"], ["NX", "k", "extra"], ["BOGUS", "k"]])
+def test_exec_invalid_condition_syntax(r: ClientType, condition: list[str]):
+    r.execute_command("multi")
+    r.execute_command("set", "a", "1")
+    with pytest.raises(Exception) as ctx:
+        r.execute_command("exec", *condition)
     assert isinstance(ctx.value, (redis.exceptions.ExecAbortError, valkey.exceptions.ExecAbortError))
+    assert str(ctx.value) == "Transaction discarded because of: invalid check condition syntax"
+    # The transaction is gone.
+    with pytest.raises(Exception, match="EXEC without MULTI"):
+        r.execute_command("exec")
+    assert r.get("a") is None
 
 
 @pytest.mark.supported_server_versions(min_redis_ver="6.0.6")

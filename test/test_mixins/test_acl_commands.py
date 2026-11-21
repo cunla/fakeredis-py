@@ -18,6 +18,9 @@ pytestmark.extend(
     ]
 )
 
+# Categories of commands fakeredis does not implement: Redis Search, and Valkey 9.2's path hash (`PHSET`, ...).
+_UNSUPPORTED_CATEGORIES = {b"search", b"pathhash"}
+
 _VALKEY_UNSUPPORTED_COMMANDS = {
     "ardelrange",
     "arlastitems",
@@ -59,15 +62,13 @@ _VALKEY_UNSUPPORTED_COMMANDS = {
 @pytest.mark.supported_server_versions(min_redis_ver="8.8", min_valkey_ver="9.1")
 def test_acl_cat(r: ClientType, real_server_details: ServerDetails):
     fakeredis_categories = get_categories()
-    fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories}
-    fakeredis_categories.add(b"search")
+    fakeredis_categories = {asbytes(cat) for cat in fakeredis_categories} | _UNSUPPORTED_CATEGORIES
     response_categories = r.acl_cat()
     response_categories = {asbytes(cat) for cat in response_categories}
     assert len(set(response_categories) - set(fakeredis_categories)) == 0, (
         f"Unexpected categories in ACL CAT response: {set(response_categories) - set(fakeredis_categories)}"
     )
-    if b"search" in response_categories:
-        response_categories.remove(b"search")  # `search` is not supported by fakeredis
+    response_categories -= _UNSUPPORTED_CATEGORIES
     for cat in response_categories:
         commands = get_commands_by_category(cat)
         commands = {cmd.decode() for cmd in commands}

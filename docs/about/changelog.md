@@ -20,6 +20,8 @@ toc_depth: 2
   `invalid expire time`, like Redis, instead of setting a huge TTL or deleting the key (#646)
 - fix(streams): with Valkey 9.1.4 and later, `XINFO GROUPS` reports the lag of a group on an emptied stream, or one
   trimmed past the group, the way Valkey 9.1.4 and Redis 7.4 do
+- fix(transactions): on Valkey 9.2, `EXEC` with arguments outside `MULTI` returns `EXEC without MULTI`, and invalid
+  `IFEQ`/`IFNE`/`NX`/`XX` conditions abort the transaction like Valkey; valid conditions are not supported yet (#649)
 - fix: support redis-py 8.2: creating a client no longer fails with
   `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
   again, and RESP3 connections still make no DNS lookup (#636)
