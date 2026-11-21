@@ -467,8 +467,13 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     @property
     def _trim_aware_lag(self) -> bool:
-        """Whether XINFO works out a group's lag with the shortcuts Redis 7.4 added (see `StreamGroup.lag`)."""
-        return self.server_type == "redis" and self.version >= (7, 4)
+        """Whether XINFO works out a group's lag with the shortcuts Redis 7.4 and Valkey 9.1.4 added.
+
+        See `StreamGroup.lag`.
+        """
+        return (self.server_type == "redis" and self.version >= (7, 4)) or (
+            self.server_type == "valkey" and self.version >= (9, 1, 4)
+        )
 
     @command(name="XGROUP DESTROY", fixed=(Key(XStream), bytes), repeat=(), flags=msgs.FLAG_DO_NOT_CREATE)
     def xgroup_destroy(self, key: CommandItem, group_name: bytes) -> int:

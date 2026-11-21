@@ -235,8 +235,8 @@ class StreamGroup:
     def lag(self, trim_aware: bool) -> int | None:
         """How many entries the group has yet to read, or None when deletions make that unknowable.
 
-        `trim_aware` adds the two shortcuts Redis 7.4 introduced: an empty stream leaves nothing to read, and a group
-        whose last-delivered-id has been trimmed away has the whole stream left to read.
+        `trim_aware` adds the two shortcuts Redis 7.4 (and Valkey 9.1.4) introduced: an empty stream leaves nothing to
+        read, and a group whose last-delivered-id has been trimmed away has the whole stream left to read.
         """
         stream = self.stream
         if not stream.entries_added:

@@ -32,6 +32,13 @@ def _group(r: ClientType, name: str = "g") -> tuple[bytes, int | None, int | Non
     return group["last-delivered-id"], group["entries-read"], group["lag"]
 
 
+def _trim_aware_lag(details: ServerDetails) -> bool:
+    """Whether the server reports lag with the trimming shortcuts added in Redis 7.4 and Valkey 9.1.4."""
+    if details.server_type == "redis":
+        return details.server_version >= (7, 4)
+    return details.server_type == "valkey" and details.server_version >= (9, 1, 4)
+
+
 def _read(r: ClientType, count: int | None = None, name: str = "g") -> list[bytes]:
     res = r.xreadgroup(name, "c", {"s": ">"}, count=count)
     if not res:
@@ -118,8 +125,8 @@ def test_xinfo_groups_lag_with_deleted_entries(r: ClientType, real_server_detail
     assert _read(r) == [b"7-1", b"8-1", b"9-1", b"10-1", b"11-1"]
     assert _group(r) == (b"11-1", 11, 0)
     r.xdel("s", *[f"{i}-1" for i in range(1, 12)])
-    # Redis 7.4 reports no lag for a stream with nothing left in it.
-    trim_aware = real_server_details.server_type == "redis" and real_server_details.server_version >= (7, 4)
+    # Redis 7.4 and Valkey 9.1.4 report no lag for a stream with nothing left in it.
+    trim_aware = _trim_aware_lag(real_server_details)
     assert _group(r, "h") == (b"10-1", 10, 0 if trim_aware else 1)
 
 
@@ -128,8 +135,9 @@ def test_xinfo_groups_lag_after_trimming_past_the_group(r: ClientType, real_serv
     r.xgroup_create("s", "g", id="0")
     _read(r, count=6)
     r.xtrim("s", maxlen=3, approximate=False)
-    # Since Redis 7.4 a group behind the first entry is behind by the whole stream; before, its count still held.
-    trim_aware = real_server_details.server_type == "redis" and real_server_details.server_version >= (7, 4)
+    # Since Redis 7.4 and Valkey 9.1.4 a group behind the first entry is behind by the whole stream; before, its count
+    # still held.
+    trim_aware = _trim_aware_lag(real_server_details)
     assert _group(r) == (b"6-1", 6, 3 if trim_aware else 4)
     assert _read(r, count=1) == [b"8-1"]
     assert _group(r) == (b"8-1", 8, 2)
