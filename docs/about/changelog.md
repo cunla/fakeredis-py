@@ -15,7 +15,7 @@ toc_depth: 2
 - feat(streams): `XREAD` and `XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
 
 ### 🐛 Bug Fixes
-
+- fix(json):JSON.DEL on array index/slice paths deletes extra elements and returns too high a count
 - fix: support redis-py 8.2: creating a client no longer fails with
   `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
   again, and RESP3 connections still make no DNS lookup (#636)

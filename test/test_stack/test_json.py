@@ -15,6 +15,12 @@ from test import testtools
 from test.conftest import ServerDetails
 
 json_tests = pytest.importorskip("jsonpath_ng")
+pytestmark = []
+pytestmark.extend(
+    [
+        pytest.mark.unsupported_server_types("valkey"),
+    ]
+)
 
 
 def test_jsonsetnx(r: ClientType):
@@ -99,6 +105,24 @@ def test_json_delete_with_dollar(r: ClientType):
     assert r.json().get("doc3", Path.root_path()) is None
 
     r.json().delete("not_a_document", "..a")
+
+
+@pytest.mark.parametrize(
+    "path,count,remaining",
+    [
+        ("$.e[0]", 1, [2, 3, 4]),
+        ("$.e[1:3]", 2, [1, 4]),
+        ("$.e[-1]", 1, [1, 2, 3]),
+        ("$.e[0,1]", 2, [3, 4]),
+        ("$.e[3]", 1, [1, 2, 3]),
+        ("$.e[2:]", 2, [1, 2]),
+        ("$.e[*]", 4, []),
+    ],
+)
+def test_json_delete_array_elements(r: ClientType, path: str, count: int, remaining: list[int]):
+    r.json().set("k", "$", {"e": [1, 2, 3, 4]})
+    assert r.json().delete("k", path) == count
+    assert r.json().get("k") == {"e": remaining}
 
 
 def test_json_et_non_dict_value(r: ClientType):

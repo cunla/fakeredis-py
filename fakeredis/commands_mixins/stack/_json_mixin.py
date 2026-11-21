@@ -11,7 +11,7 @@ from functools import lru_cache
 from json import JSONDecodeError
 from typing import Any, Callable, ClassVar
 
-from jsonpath_ng import JSONPath, Root
+from jsonpath_ng import DatumInContext, Fields, Index, JSONPath, Root
 from jsonpath_ng.exceptions import JsonPathParserError
 from jsonpath_ng.ext import parse
 
@@ -404,12 +404,7 @@ class JSONCommandsMixin(CommandsMixinBase):
             return val[0]
         return val
 
-    @command(
-        name=["JSON.DEL", "JSON.FORGET"],
-        fixed=(Key(),),
-        repeat=(bytes,),
-        flags=msgs.FLAG_LEAVE_EMPTY_VAL,
-    )
+    @command(name=["JSON.DEL", "JSON.FORGET"], fixed=(Key(),), repeat=(bytes,), flags=msgs.FLAG_LEAVE_EMPTY_VAL)
     def json_del(self, key: CommandItem, path_str: bytes) -> int:
         if key.value is None:
             return 0
@@ -420,16 +415,40 @@ class JSONCommandsMixin(CommandsMixinBase):
             return 1
         curr_value = copy.deepcopy(key.value)
 
-        found_matches = path.find(curr_value)
-        res = 0
-        while len(found_matches) > 0:
-            item = found_matches[0]
-            curr_value = item.full_path.filter(lambda _: True, curr_value)
-            res += 1
-            found_matches = path.find(curr_value)
+        # Resolve every match against the original document before deleting anything: re-running the path after a
+        # deletion would match the array elements that shifted into the deleted positions.
+        def location(datum: DatumInContext | None) -> tuple[Any, Any] | None:
+            """The container holding `datum` and its key or (non-negative) index there."""
+            if datum is None or datum.context is None:
+                return None
+            container, step = datum.context.value, datum.path
+            if isinstance(step, Fields):
+                return container, step.fields[0]
+            if isinstance(step, Index):
+                return container, step.indices[0] % len(container)
+            return None
+
+        def slot_id(datum: DatumInContext | None) -> tuple[int, Any] | None:
+            loc = location(datum)
+            return None if loc is None else (id(loc[0]), loc[1])
+
+        matches = path.find(curr_value)
+        matched = {slot_id(m) for m in matches} - {None}
+        to_delete: dict[int, tuple[Any, set[Any]]] = {}
+        for m in matches:
+            loc, ancestor = location(m), m.context
+            while ancestor is not None and slot_id(ancestor) not in matched:
+                ancestor = ancestor.context
+            if loc is None or ancestor is not None:
+                continue  # Inside a match that is itself deleted.
+            to_delete.setdefault(id(loc[0]), (loc[0], set()))[1].add(loc[1])
+
+        for container, slots in to_delete.values():
+            for slot in sorted(slots, reverse=True):
+                del container[slot]
 
         key.update(curr_value)
-        return res
+        return sum(len(slots) for _, slots in to_delete.values())
 
     def _json_set(self, key: CommandItem, path_str: bytes, value: JsonType, *args: Any) -> SimpleString | None:
         path = _parse_jsonpath(path_str, self.server_type)
