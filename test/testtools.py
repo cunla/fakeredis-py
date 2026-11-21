@@ -15,6 +15,19 @@ from fakeredis._typing import ClientType
 
 REDIS_PY_VERSION = Version(redis.__version__)
 
+# The errors a command reply and a lost connection raise, whichever client the conftest picked for the server.
+# valkey-py is optional.
+RESPONSE_ERRORS: tuple[type[Exception], ...]
+CONNECTION_ERRORS: tuple[type[Exception], ...]
+try:
+    import valkey
+
+    RESPONSE_ERRORS = (redis.ResponseError, valkey.ResponseError)
+    CONNECTION_ERRORS = (redis.ConnectionError, valkey.ConnectionError)
+except ImportError:
+    RESPONSE_ERRORS = (redis.ResponseError,)
+    CONNECTION_ERRORS = (redis.ConnectionError,)
+
 
 def pool_get_connection(pool: Any) -> Any:
     """Get a connection from `pool`, papering over the differing signatures.

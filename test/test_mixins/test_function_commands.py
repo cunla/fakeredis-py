@@ -4,12 +4,11 @@ from typing import Any
 
 import pytest
 import redis
-import valkey
 
 import fakeredis
 from fakeredis._typing import ClientType
 from test.conftest import ServerDetails
-from test.testtools import raw_command
+from test.testtools import RESPONSE_ERRORS, raw_command
 
 _ = pytest.importorskip("lupa")
 
@@ -17,8 +16,6 @@ pytestmark = [
     pytest.mark.supported_server_versions(min_redis_ver="7"),
     pytest.mark.unsupported_server_types("dragonfly", "kividb"),
 ]
-
-RESPONSE_ERRORS = (redis.ResponseError, valkey.ResponseError)
 
 LIBRARY = (
     "#!lua name=mylib\n"

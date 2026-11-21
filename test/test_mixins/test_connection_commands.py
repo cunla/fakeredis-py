@@ -5,7 +5,6 @@ from collections.abc import Callable
 
 import pytest
 import redis
-import valkey
 from pytest_mock import MockerFixture
 from redis.client import PubSub
 
@@ -14,10 +13,7 @@ from fakeredis import _msgs as msgs
 from fakeredis._typing import ClientType
 from test import testtools
 from test.conftest import ServerDetails
-from test.testtools import raw_command, resp_conversion
-
-RESPONSE_ERRORS = (redis.ResponseError, valkey.ResponseError)
-CONNECTION_ERRORS = (redis.ConnectionError, valkey.ConnectionError)
+from test.testtools import CONNECTION_ERRORS, RESPONSE_ERRORS, raw_command, resp_conversion
 
 
 @contextlib.contextmanager
@@ -54,7 +50,7 @@ def test_ping(r: ClientType):
     with pytest.raises(Exception, match=msgs.WRONG_ARGS_MSG6.format("ping")[4:]) as ctx:
         raw_command(r, "ping", "arg1", "arg2")
 
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert isinstance(ctx.value, RESPONSE_ERRORS)
 
 
 def test_echo(r: ClientType):
@@ -65,7 +61,7 @@ def test_echo(r: ClientType):
 def test_unknown_command(r: ClientType):
     with pytest.raises(Exception) as ctx:
         raw_command(r, "0 3 3")
-    assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+    assert isinstance(ctx.value, RESPONSE_ERRORS)
 
 
 @pytest.mark.fake_only
@@ -490,7 +486,7 @@ class TestDecodeResponses:
         r.set("foo", "bar")
         with pytest.raises(Exception) as exc_info:
             r.hset("foo", "bar", "baz")
-        assert isinstance(exc_info.value, (redis.ResponseError, valkey.ResponseError))
+        assert isinstance(exc_info.value, RESPONSE_ERRORS)
         assert isinstance(exc_info.value.args[0], str)
 
 
@@ -584,54 +580,54 @@ class TestFakeStrictRedisConnectionErrors:
         server.connected = False
         with pytest.raises(Exception) as ctx:
             r.rename("key1", "key2")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
         server.connected = True
         assert r.exists("key1")
 
     def test_eval(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.eval("", 0)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpush("name", 1, 2)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lrange(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lrange("name", 1, 5)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_llen(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.llen("name")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lrem(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lrem("name", 2, 2)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_rpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpush("name", 1)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpop("name")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lset(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lset("name", 1, 4)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_rpushx(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpushx("name", 1)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_ltrim(self, r: ClientType):
         with pytest.raises(Exception):
@@ -640,67 +636,67 @@ class TestFakeStrictRedisConnectionErrors:
     def test_lindex(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lindex("name", 1)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_lpushx(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.lpushx("name", 1)
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_rpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpop("name")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_linsert(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.linsert("name", "where", "refvalue", "value")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_rpoplpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.rpoplpush("src", "dst")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_blpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.blpop("keys")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_brpop(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.brpop("keys")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_brpoplpush(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.brpoplpush("src", "dst")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hdel(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hdel("name")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hexists(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hexists("name", "key")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hget(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hget("name", "key")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hgetall(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hgetall("name")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hincrby(self, r: ClientType):
         with pytest.raises(Exception) as ctx:
             r.hincrby("name", "key")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_hincrbyfloat(self, r: ClientType):
         with pytest.raises(Exception):
@@ -929,7 +925,7 @@ class TestPubSubConnected:
     def test_basic_subscribe(self, pubsub: PubSub):
         with pytest.raises(Exception) as ctx:
             pubsub.subscribe("logs")
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
 
     def test_subscription_conn_lost(self, fake_server: FakeServer, pubsub: PubSub):
         fake_server.connected = True
@@ -941,4 +937,4 @@ class TestPubSubConnected:
         assert msg == check, "Message was not published to channel"
         with pytest.raises(Exception) as ctx:
             pubsub.get_message()
-        assert isinstance(ctx.value, (redis.ConnectionError, valkey.ConnectionError))
+        assert isinstance(ctx.value, CONNECTION_ERRORS)
