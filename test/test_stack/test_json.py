@@ -113,7 +113,8 @@ def test_json_delete_with_dollar(r: ClientType):
         ("$.e[0]", 1, [2, 3, 4]),
         ("$.e[1:3]", 2, [1, 4]),
         ("$.e[-1]", 1, [1, 2, 3]),
-        ("$.e[0,1]", 2, [3, 4]),
+        # Dragonfly's JSONPath has no union indices: any path with `[0,1]` is a syntax error.
+        pytest.param("$.e[0,1]", 2, [3, 4], marks=pytest.mark.unsupported_server_types("dragonfly", "valkey")),
         ("$.e[3]", 1, [1, 2, 3]),
         ("$.e[2:]", 2, [1, 2]),
         ("$.e[*]", 4, []),
