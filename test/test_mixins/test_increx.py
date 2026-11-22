@@ -10,8 +10,8 @@ from test import testtools
 pytestmark = []
 pytestmark.extend(
     [
-        pytest.mark.supported_server_versions(min_redis_ver="8.7.2"),
-        pytest.mark.unsupported_server_types("dragonfly", "valkey"),
+        pytest.mark.supported_server_versions(min_redis_ver="8.7.2", min_valkey_ver="9.2"),
+        pytest.mark.unsupported_server_types("dragonfly"),
     ]
 )
 
@@ -152,3 +152,83 @@ def test_increx_errors(r: ClientType):
         testtools.raw_command(r, "INCREX", "key", "BYINT", 1, "LBOUND", 1.5)
     with pytest.raises(Exception, match="LBOUND is not a valid float"):
         testtools.raw_command(r, "INCREX", "key", "BYFLOAT", 1.5, "LBOUND", "abc")
+
+
+@pytest.mark.parametrize(
+    "args,error",
+    [
+        (("BYINT", "nx"), "Increment is not an integer or out of range"),
+        (("BYINT", 1.5), "Increment is not an integer or out of range"),
+        (("BYFLOAT", "abc"), "Increment is not a valid float"),
+        (("BYFLOAT", "nan"), "Increment is not a valid float"),
+        (("BYFLOAT", "inf"), "BYFLOAT increment cannot be Infinity"),
+        (("BYFLOAT", "-inf"), "BYFLOAT increment cannot be Infinity"),
+    ],
+)
+def test_increx_invalid_increment(r: ClientType, args: tuple, error: str):
+    with pytest.raises(testtools.RESPONSE_ERRORS, match=error):
+        testtools.raw_command(r, "INCREX", "key", *args)
+    assert r.exists("key") == 0
+
+
+def test_increx_increment_is_checked_before_the_value(r: ClientType):
+    r.set("key", "abc")
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="Increment is not an integer or out of range"):
+        testtools.raw_command(r, "INCREX", "key", "BYINT", "x")
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("SATURATE", "SATURATE"),
+        ("PERSIST", "PERSIST"),
+        ("ENX", "EX", 5, "ENX"),
+        ("EX", 5, "ex", 6),
+        ("BYINT", 1, "BYINT", 2),
+        ("UBOUND", 9, "UBOUND", 8),
+    ],
+)
+def test_increx_repeated_option(r: ClientType, args: tuple):
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="syntax error"):
+        testtools.raw_command(r, "INCREX", "key", *args)
+    assert r.exists("key") == 0
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "valkey")
+@pytest.mark.parametrize("flag", ["NX", "XX"])
+def test_increx_nx_xx_are_valkey_only(r: ClientType, flag: str):
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="syntax error"):
+        testtools.raw_command(r, "INCREX", "key", flag)
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "redis", "kividb")
+def test_increx_xx(r: ClientType):
+    # XX skips a missing key, without creating it.
+    assert testtools.raw_command(r, "INCREX", "key", "XX") == [0, 0]
+    assert r.exists("key") == 0
+    assert _as_floats(testtools.raw_command(r, "INCREX", "key", "XX", "BYFLOAT", 1.5)) == [0.0, 0.0]
+    r.set("key", 1)
+    assert testtools.raw_command(r, "INCREX", "key", "XX", "EX", 50) == [2, 1]
+    assert 40 < r.ttl("key") <= 50
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "redis", "kividb")
+def test_increx_nx(r: ClientType):
+    assert testtools.raw_command(r, "INCREX", "key", "NX", "BYINT", 10, "UBOUND", 5, "SATURATE") == [5, 5]
+    r.set("key", 1, ex=100)
+    # NX skips an existing key, leaving its value and TTL alone.
+    assert testtools.raw_command(r, "INCREX", "key", "NX", "EX", 5) == [1, 0]
+    assert 90 < r.ttl("key") <= 100
+    r.set("key", "2.5")
+    assert _as_floats(testtools.raw_command(r, "INCREX", "key", "NX", "BYFLOAT", 1)) == [2.5, 0.0]
+    # The stored value is still parsed.
+    r.set("key", "abc")
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="value is not an integer or out of range"):
+        testtools.raw_command(r, "INCREX", "key", "NX")
+
+
+@pytest.mark.unsupported_server_types("dragonfly", "redis", "kividb")
+@pytest.mark.parametrize("args", [("NX", "XX"), ("XX", "NX"), ("NX", "NX"), ("xx", "XX")])
+def test_increx_nx_xx_conflicts(r: ClientType, args: tuple):
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="syntax error"):
+        testtools.raw_command(r, "INCREX", "key", *args)

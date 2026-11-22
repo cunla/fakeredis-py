@@ -68,7 +68,9 @@ plus the per-test markers below.
 ## Layout
 
 - `test_mixins/` — one file per command mixin; new command tests go in the matching file.
-  `test_specific_redis_versions/` holds tests for commands added in a given Redis release (`test_redis_8_8_increx.py`).
+  `test_specific_redis_versions/` holds tests for commands added in a given Redis release that only Redis has
+  (`test_redis_8_4_digest_delex.py`). Once Valkey gets the command too, move its tests to the matching `test_mixins/`
+  file.
 - `test_stack/` — Redis Stack modules (JSON, Bloom, Cuckoo, CMS, TopK, T-Digest, TimeSeries, VectorSet); skipped unless
   the extras are installed.
 - `test_async/` — the async client.

@@ -26,6 +26,9 @@ try:
 except ImportError:  # the `digest` extra is not installed
     xxhash = None  # type: ignore[assignment]
 
+# INCREX options that take no value; every other option is followed by one.
+_INCREX_FLAGS = {b"SATURATE", b"PERSIST", b"ENX", b"NX", b"XX"}
+
 
 def _lcs(s1: bytes, s2: bytes) -> tuple[int, bytes, list[Any]]:
     l1 = len(s1)
@@ -112,10 +115,30 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             raise SimpleError(msgs.DIGEST_MISSING_XXHASH_MSG)
         return xxhash.xxh3_64_hexdigest(value).encode()
 
-    @command(name="DELEX", fixed=(Key(),), repeat=(bytes,), server_types=("redis",))
+    def _valkey_delex(self, key: CommandItem, *args: bytes) -> int:
+        """DELEX key <IFEQ | IFNE> value, as Valkey 9.2 has it.
+
+        Unlike Redis, the condition is required, there are no digest conditions, and the condition is parsed before the
+        key is looked at, so a bad one is a syntax error even on a missing key.
+        """
+        if len(args) != 2:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("delex"))
+        condition, operand = args
+        if not (casematch(condition, b"ifeq") or casematch(condition, b"ifne")):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if not key:
+            return 0
+        if not isinstance(key.value, bytes):
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        matched = (key.value == operand) == casematch(condition, b"ifeq")
+        return delete_keys(key) if matched else 0
+
+    @command(name="DELEX", fixed=(Key(),), repeat=(bytes,), server_types=("redis", "valkey"))
     def delex(self, key: CommandItem, *args: bytes) -> int:
-        if self.version < (8, 4):
+        if self.version < ((9, 2) if self.server_type == "valkey" else (8, 4)):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("DELEX"))
+        if self.server_type == "valkey":
+            return self._valkey_delex(key, *args)
         if len(args) not in (0, 2):
             raise SimpleError(msgs.WRONG_ARGS_MSG6.format("delex"))
         if not key:
@@ -184,17 +207,36 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
             return Float.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_FLOAT_MSG.format(name))
         return Int.decode(raw, decode_error=msgs.INCREX_BOUND_NOT_INTEGER_MSG.format(name))
 
-    @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis", "kividb"))
+    @staticmethod
+    def _increx_has_repeated_option(args: tuple[bytes, ...]) -> bool:
+        """Whether an INCREX option is given twice, which Redis and Valkey reject (e.g. `SATURATE SATURATE`)."""
+        seen: set[bytes] = set()
+        i = 0
+        while i < len(args):
+            option = args[i].upper()
+            if option in seen:
+                return True
+            seen.add(option)
+            i += 1 if option in _INCREX_FLAGS else 2
+        return False
+
+    @command(name="INCREX", fixed=(Key(bytes),), repeat=(bytes,), server_types=("redis", "valkey", "kividb"))
     def increx(self, key: CommandItem, *args: bytes) -> list[Any]:
         # KiviDB reports redis_version 7.0.15 but ships INCREX, so its support is keyed off the
         # server type rather than the version it claims.
-        if self.version < (8, 8) and self.server_type != "kividb":
+        if self.server_type != "kividb" and self.version < ((9, 2) if self.server_type == "valkey" else (8, 8)):
             raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("INCREX"))
-        (byfloat, byint, saturate, lbound, ubound, ex, px, exat, pxat, persist, enx), _ = extract_args(
+        (byfloat, byint, saturate, lbound, ubound, ex, px, exat, pxat, persist, enx, nx, xx), _ = extract_args(
             args,
-            ("*byfloat", "*byint", "saturate", "*lbound", "*ubound", "+ex", "+px", "+exat", "+pxat", "persist", "enx"),
+            (
+                *("*byfloat", "*byint", "saturate", "*lbound", "*ubound", "+ex", "+px", "+exat", "+pxat", "persist"),
+                *("enx", "nx", "xx"),
+            ),
         )
-        if byfloat is not None and byint is not None:
+        if byfloat is not None and byint is not None or self._increx_has_repeated_option(args):
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        # Only Valkey has NX (increment only a missing key) and XX (only an existing one).
+        if (nx or xx) and (self.server_type != "valkey" or (nx and xx)):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         expirations = [x for x in (ex, px, exat, pxat) if x is not None]
         if len(expirations) + (1 if persist else 0) > 1:
@@ -224,22 +266,19 @@ class StringCommandsMixin(CommandsMixinBase, ABC):
         if lower > upper:
             raise SimpleError(msgs.INCREX_LBOUND_GT_UBOUND_MSG)
 
-        current: int | float
-        amount: int | float
-        if float_mode:
-            current = Float.decode(key.get(b"0"))
-            amount = Float.decode(byfloat)
-        else:
-            current = Int.decode(key.get(b"0"))
-            amount = Int.decode(byint) if byint is not None else 1
+        # The increment is checked before the stored value.
+        amount = self._increx_bound(byfloat if float_mode else byint, "Increment", float_mode, 1)
+        if float_mode and math.isinf(amount):
+            raise SimpleError(msgs.INCREX_INFINITE_INCREMENT_MSG)
+        current: int | float = Float.decode(key.get(b"0")) if float_mode else Int.decode(key.get(b"0"))
         result = current + amount
-        if result < lower or result > upper or (float_mode and not math.isfinite(result)):
-            if not saturate:
-                # Out of bounds: skip the operation, leaving the key and its TTL untouched.
-                result, amount = current, 0
-                if self._resp_version == 2 and float_mode:
-                    return [self._encodefloat(result, True), self._encodefloat(0.0, True)]
-                return [result, amount]
+        out_of_bounds = result < lower or result > upper or (float_mode and not math.isfinite(result))
+        if (nx and key) or (xx and not key) or (out_of_bounds and not saturate):
+            # Skip the operation, leaving the key and its TTL untouched.
+            if self._resp_version == 2 and float_mode:
+                return [self._encodefloat(current, True), self._encodefloat(0.0, True)]
+            return [current, 0]
+        if out_of_bounds:
             result = min(max(result, lower), upper)
             amount = result - current
             if float_mode:

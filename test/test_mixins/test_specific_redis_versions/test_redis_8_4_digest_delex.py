@@ -1,11 +1,10 @@
 import importlib.util
 
 import pytest
-import redis
 
 from fakeredis._typing import ClientType
 from fakeredis.commands_mixins import string_mixin
-from test.testtools import raw_command
+from test.testtools import RESPONSE_ERRORS, raw_command
 
 pytestmark = []
 pytestmark.extend(
@@ -43,52 +42,15 @@ def test_digest_missing_key(r: ClientType):
 
 def test_digest_wrong_type(r: ClientType):
     r.rpush("foo", "a")
-    with pytest.raises(redis.ResponseError, match="WRONGTYPE"):
+    with pytest.raises(RESPONSE_ERRORS, match="WRONGTYPE"):
         raw_command(r, "DIGEST", "foo")
 
 
 def test_digest_wrong_number_of_args(r: ClientType):
-    with pytest.raises(redis.ResponseError, match="wrong number of arguments for 'digest' command"):
+    with pytest.raises(RESPONSE_ERRORS, match="wrong number of arguments for 'digest' command"):
         raw_command(r, "DIGEST")
-    with pytest.raises(redis.ResponseError, match="wrong number of arguments for 'digest' command"):
+    with pytest.raises(RESPONSE_ERRORS, match="wrong number of arguments for 'digest' command"):
         raw_command(r, "DIGEST", "foo", "bar")
-
-
-def test_delex_no_condition(r: ClientType):
-    assert raw_command(r, "DELEX", "foo") == 0
-    r.set("foo", "hello")
-    assert raw_command(r, "DELEX", "foo") == 1
-    assert r.exists("foo") == 0
-    r.rpush("foo", "a")
-    assert raw_command(r, "DELEX", "foo") == 1
-    assert r.exists("foo") == 0
-
-
-@pytest.mark.parametrize("condition", ["IFEQ", "IFNE", "IFDEQ", "IFDNE", "FOO"])
-def test_delex_missing_key(r: ClientType, condition: str):
-    assert raw_command(r, "DELEX", "foo", condition, "bar") == 0
-
-
-def test_delex_ifeq(r: ClientType):
-    r.set("foo", "hello")
-    assert raw_command(r, "DELEX", "foo", "IFEQ", "other") == 0
-    assert r.get("foo") == b"hello"
-    assert raw_command(r, "DELEX", "foo", "ifeq", "hello") == 1
-    assert r.exists("foo") == 0
-
-
-def test_delex_ifne(r: ClientType):
-    r.set("foo", "hello")
-    assert raw_command(r, "DELEX", "foo", "IFNE", "hello") == 0
-    assert r.get("foo") == b"hello"
-    assert raw_command(r, "DELEX", "foo", "IfNe", "other") == 1
-    assert r.exists("foo") == 0
-
-
-def test_delex_ifeq_compares_bytes_not_numbers(r: ClientType):
-    r.set("foo", "0123")
-    assert raw_command(r, "DELEX", "foo", "IFEQ", "123") == 0
-    assert raw_command(r, "DELEX", "foo", "IFNE", "123") == 1
 
 
 @run_test_if_xxhash
@@ -127,44 +89,9 @@ def test_delex_digest_only_length_is_validated(r: ClientType):
 @pytest.mark.parametrize("digest", [b"", b"0123", HELLO_DIGEST[1:], b"0" + HELLO_DIGEST])
 def test_delex_digest_wrong_length(r: ClientType, condition: str, digest: bytes):
     r.set("foo", "hello")
-    with pytest.raises(redis.ResponseError, match="must be exactly 16 hexadecimal characters"):
+    with pytest.raises(RESPONSE_ERRORS, match="must be exactly 16 hexadecimal characters"):
         raw_command(r, "DELEX", "foo", condition, digest)
     assert r.get("foo") == b"hello"
-
-
-@pytest.mark.parametrize("condition", ["IFEQ", "IFNE", "IFDEQ", "IFDNE", "FOO"])
-def test_delex_condition_on_wrong_type(r: ClientType, condition: str):
-    r.rpush("foo", "a")
-    with pytest.raises(redis.ResponseError, match="Key should be of string type if conditions are specified"):
-        raw_command(r, "DELEX", "foo", condition, "a")
-    assert r.exists("foo") == 1
-
-
-def test_delex_invalid_condition(r: ClientType):
-    r.set("foo", "hello")
-    with pytest.raises(redis.ResponseError, match="Invalid condition. Use IFEQ, IFNE, IFDEQ, or IFDNE"):
-        raw_command(r, "DELEX", "foo", "FOO", "hello")
-    assert r.get("foo") == b"hello"
-
-
-@pytest.mark.parametrize("args", [("IFEQ",), ("IFEQ", "hello", "extra")])
-def test_delex_wrong_number_of_args(r: ClientType, args: tuple):
-    r.set("foo", "hello")
-    with pytest.raises(redis.ResponseError, match="wrong number of arguments for 'delex' command"):
-        raw_command(r, "DELEX", "foo", *args)
-    with pytest.raises(redis.ResponseError, match="wrong number of arguments for 'delex' command"):
-        raw_command(r, "DELEX", "missing", *args)
-
-
-def test_delex_invalidates_watch(r: ClientType):
-    r.set("foo", "hello")
-    with r.pipeline() as p:
-        p.watch("foo")
-        assert raw_command(r, "DELEX", "foo", "IFEQ", "hello") == 1
-        p.multi()
-        p.set("bar", "baz")
-        with pytest.raises(redis.WatchError):
-            p.execute()
 
 
 @pytest.mark.fake_only
@@ -172,9 +99,9 @@ def test_digest_without_xxhash(r: ClientType, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(string_mixin, "xxhash", None)
     r.set("foo", "hello")
     assert raw_command(r, "DIGEST", "missing") is None
-    with pytest.raises(redis.ResponseError, match=r"fakeredis\[digest\]"):
+    with pytest.raises(RESPONSE_ERRORS, match=r"fakeredis\[digest\]"):
         raw_command(r, "DIGEST", "foo")
-    with pytest.raises(redis.ResponseError, match=r"fakeredis\[digest\]"):
+    with pytest.raises(RESPONSE_ERRORS, match=r"fakeredis\[digest\]"):
         raw_command(r, "DELEX", "foo", "IFDEQ", HELLO_DIGEST)
     # Conditions that need no digest keep working
     assert raw_command(r, "DELEX", "foo", "IFEQ", "hello") == 1

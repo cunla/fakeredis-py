@@ -595,9 +595,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
             res.append([msg.encode() for msg in msgs_removed])
         return res
 
-    @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis", "kividb"))
+    @command(name="XDELEX", fixed=(Key(XStream),), repeat=(bytes,), server_types=("redis", "valkey", "kividb"))
     def xdelex(self, key: CommandItem, *args: bytes) -> list[int]:
         """XDELEX key [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
+        if self.server_type == "valkey" and self.version < (9, 2):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("XDELEX"))
         mode, ids = self._parse_xdelex_args(args, "XDELEX")
         if key.value is None:
             return [-1] * len(ids)
@@ -607,9 +609,11 @@ class StreamsCommandsMixin(CommandsMixinBase):
 
     # KiviDB has XACKDEL, but shaped like XACK - `XACKDEL key group id [id ...]`, with no ref-policy
     # and no IDS count - so the Redis form below would answer where the real server errors.
-    @command(name="XACKDEL", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis",))
+    @command(name="XACKDEL", fixed=(Key(XStream), bytes), repeat=(bytes,), server_types=("redis", "valkey"))
     def xackdel(self, key: CommandItem, group_name: bytes, *args: bytes) -> list[int]:
         """XACKDEL key group [KEEPREF | DELREF | ACKED] IDS numids id [id ...]"""
+        if self.server_type == "valkey" and self.version < (9, 2):
+            raise SimpleError(msgs.UNKNOWN_COMMAND_MSG.format("XACKDEL"))
         mode, ids = self._parse_xdelex_args(args, "XACKDEL")
         if key.value is None:
             return [-1] * len(ids)
