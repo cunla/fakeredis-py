@@ -9,16 +9,24 @@ from collections.abc import Sequence
 from typing import Any, TypeVar
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, Int, RedisType, StringTest, Timeout, extract_args, parse_mpop_args
+from fakeredis._command_args_parsing import (
+    LLONG_MAX,
+    Float,
+    Int,
+    RedisType,
+    StringTest,
+    Timeout,
+    extract_args,
+    parse_mpop_args,
+)
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError, casematch, fix_range, null_terminate
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, ZSet
 
-_LONG_MAX = 2**63 - 1
 ZRANDMEMBER_OUT_OF_RANGE_MSG = "ERR value is out of range"
-ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG = f"ERR value is out of range, value must between {-_LONG_MAX} and {_LONG_MAX}"
+ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG = f"ERR value is out of range, value must between {-LLONG_MAX} and {LLONG_MAX}"
 DRAGONFLY_UNSUPPORTED_OPTION_MSG = "ERR Unsupported option:{}"
 
 SORTED_SET_METHODS = {
@@ -626,7 +634,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         count = Int.decode(args[0]) if args else 1
         if dragonfly and not -(2**31) <= count < 2**31:
             raise SimpleError(msgs.INVALID_INT_MSG)
-        if not dragonfly and count < -_LONG_MAX:
+        if not dragonfly and count < -LLONG_MAX:
             raise SimpleError(
                 ZRANDMEMBER_OUT_OF_RANGE_MSG if self.server_type == "kividb" else ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG
             )
@@ -638,7 +646,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         # The reply holds two entries per member, so redis halves the range
-        if withscores and not dragonfly and not -(_LONG_MAX // 2) <= count <= _LONG_MAX // 2:
+        if withscores and not dragonfly and not -(LLONG_MAX // 2) <= count <= LLONG_MAX // 2:
             raise SimpleError(ZRANDMEMBER_OUT_OF_RANGE_MSG)
         return count, withscores
 

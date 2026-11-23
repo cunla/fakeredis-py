@@ -11,6 +11,9 @@ from . import _msgs as msgs
 from ._helpers import SimpleError, null_terminate
 from .model import AfterAny, BeforeAny
 
+# LLONG_MAX in redis: the largest signed 64-bit integer
+LLONG_MAX = 2**63 - 1
+
 
 class RedisType:
     @classmethod
@@ -23,8 +26,8 @@ class Int(RedisType):
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
     ENCODE_ERROR = msgs.OVERFLOW_MSG
-    MIN_VALUE = -(2**63)
-    MAX_VALUE = 2**63 - 1
+    MIN_VALUE = -LLONG_MAX - 1
+    MAX_VALUE = LLONG_MAX
 
     @classmethod
     def valid(cls, value: int) -> bool:
