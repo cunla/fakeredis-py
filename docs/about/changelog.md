@@ -32,6 +32,10 @@ toc_depth: 2
   ones instead of returning at once
 - fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey
 
+### 🧰 Maintenance
+
+- Support for redis-py 8.2.0
+
 ## v2.40.0 - 2026-10-15
 
 ### 🚀 Features
