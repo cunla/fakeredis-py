@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 256" width="820" height="256" role="img" aria-label="fakeredis">
+  <title>fakeredis</title>
+  <defs>
+    <linearGradient id="fr-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF5A4D"/>
+      <stop offset="1" stop-color="#FF3328"/>
+    </linearGradient>
+    <linearGradient id="fr-left" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B41E12"/>
+      <stop offset="1" stop-color="#8E160C"/>
+    </linearGradient>
+    <linearGradient id="fr-right" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E8412F"/>
+      <stop offset="1" stop-color="#C5230F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== Mark: stacked data blocks (solid) + a "fake" ghost block on top ===== -->
+  <g>
+    <!-- Bottom block -->
+    <path d="M128,125 L192,158 L128,191 L64,158 Z" fill="url(#fr-top)"/>
+    <path d="M64,158 L64,182 L128,215 L128,191 Z" fill="url(#fr-left)"/>
+    <path d="M128,191 L128,215 L192,182 L192,158 Z" fill="url(#fr-right)"/>
+
+    <!-- Middle block -->
+    <path d="M128,83 L192,116 L128,149 L64,116 Z" fill="url(#fr-top)"/>
+    <path d="M64,116 L64,140 L128,173 L128,149 Z" fill="url(#fr-left)"/>
+    <path d="M128,149 L128,173 L192,140 L192,116 Z" fill="url(#fr-right)"/>
+
+    <!-- Top block: the "fake" / simulated layer, drawn as a dashed wireframe -->
+    <g fill="none" stroke="#FF6B5E" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 7">
+      <path d="M128,37 L192,70 L128,103 L64,70 Z"/>
+      <path d="M64,70 L64,94 L128,127 L192,94 L192,70"/>
+      <path d="M128,103 L128,127"/>
+    </g>
+  </g>
+
+  <!-- ===== Wordmark ===== -->
+  <g font-family="'Segoe UI', 'Helvetica Neue', Arial, system-ui, sans-serif">
+    <text x="296" y="150" font-size="96" font-weight="800" letter-spacing="-2">
+      <tspan fill="#7B8794">fake</tspan><tspan fill="#E12C1C">redis</tspan>
+    </text>
+    <text x="300" y="192" font-size="25" font-weight="500" letter-spacing="1.5" fill="#9AA4AE">in-memory Redis for your tests</text>
+  </g>
+</svg>

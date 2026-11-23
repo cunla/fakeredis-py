@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="fakeredis icon">
+  <title>fakeredis</title>
+  <defs>
+    <linearGradient id="fri-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF4438"/>
+      <stop offset="1" stop-color="#B21D12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App-icon background -->
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="url(#fri-bg)"/>
+
+  <!-- White data-block stack -->
+  <g>
+    <!-- Bottom block -->
+    <path d="M128,125 L192,158 L128,191 L64,158 Z" fill="#ffffff"/>
+    <path d="M64,158 L64,182 L128,215 L128,191 Z" fill="#ffffff" fill-opacity="0.55"/>
+    <path d="M128,191 L128,215 L192,182 L192,158 Z" fill="#ffffff" fill-opacity="0.78"/>
+
+    <!-- Middle block -->
+    <path d="M128,83 L192,116 L128,149 L64,116 Z" fill="#ffffff"/>
+    <path d="M64,116 L64,140 L128,173 L128,149 Z" fill="#ffffff" fill-opacity="0.55"/>
+    <path d="M128,149 L128,173 L192,140 L192,116 Z" fill="#ffffff" fill-opacity="0.78"/>
+
+    <!-- Top block: the "fake" / simulated layer, dashed wireframe -->
+    <g fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 7" stroke-opacity="0.95">
+      <path d="M128,37 L192,70 L128,103 L64,70 Z"/>
+      <path d="M64,70 L64,94 L128,127 L192,94 L192,70"/>
+      <path d="M128,103 L128,127"/>
+    </g>
+  </g>
+</svg>
