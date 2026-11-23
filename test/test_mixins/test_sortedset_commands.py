@@ -1189,6 +1189,25 @@ def test_zrandemember(r: ClientType):
     assert len(r.zrandmember("a", -10)) == 10
 
 
+def test_zrandmember_reply_shapes(r: ClientType):
+    r.zadd("a", {"a1": 1, "a2": 2})
+
+    # Without a count Redis returns one member as a bulk string.
+    member = r.zrandmember("a")
+    assert isinstance(member, bytes)
+    assert member in {b"a1", b"a2"}
+
+    # A missing key without a count returns nil.
+    assert r.zrandmember("missing") is None
+
+    # A missing key with a negative count returns an empty array.
+    assert r.zrandmember("missing", -1) == []
+
+    # Arguments after WITHSCORES are a syntax error.
+    with pytest.raises(testtools.RESPONSE_ERRORS):
+        raw_command(r, "ZRANDMEMBER", "a", "1", "WITHSCORES", "EXTRA")
+
+
 def test_zdiffstore(r: ClientType):
     r.zadd("a", {"a1": 1, "a2": 2, "a3": 3})
     r.zadd("b", {"a1": 1, "a2": 2})
