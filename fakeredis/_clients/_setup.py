@@ -20,13 +20,28 @@ def _get_args_to_warn(method: Callable[..., Any]) -> Set[str]:
     """Collect argument names that ``method`` would emit deprecation warnings for.
 
     redis-py marks deprecated ``__init__`` arguments by wrapping the method in a
-    ``@deprecated_args(args_to_warn=[...])`` decorator. There is no public API to query the names, so this walks the
-    wrapper's closure cells looking for the variable holding them: ``args_to_warn`` (a list, before redis-py 8.2) or
-    ``warned`` (a tuple, from 8.2), recursing through nested wrappers and helper functions. Cells are matched by
-    variable name so that other sequences of names in the closure (such as ``allowed_args``) aren't mistaken for it.
+    ``@deprecated_args(args_to_warn=[...])`` decorator. There is no public API to query the names:
+
+    - From redis-py 8.2, the decorator collapses stacked layers into one wrapper and records them on it as
+      ``_deprecated_args_layers = (func, ((args_to_warn, allowed_args, reason, version), ...))``. ``functools.wraps``
+      copies the attribute onto any decorator wrapping it, so it is found from the outermost wrapper.
+    - Before 8.2, the names are only in the wrapper's closure, so this walks its cells looking for the variable
+      holding them (``args_to_warn``, or ``warned``), recursing through nested wrappers and helper functions. Cells
+      are matched by variable name so that other sequences of names in the closure (such as ``allowed_args``) aren't
+      mistaken for it.
+
     If redis-py changes how the decorator stores the names, this returns an empty set and deprecated defaults are
     simply forwarded again.
     """
+    stacked = getattr(method, "_deprecated_args_layers", None)
+    if isinstance(stacked, tuple) and len(stacked) == 2 and isinstance(stacked[1], tuple):
+        return {
+            arg
+            for layer in stacked[1]
+            if isinstance(layer, tuple) and layer and isinstance(layer[0], (list, tuple, set, frozenset))
+            for arg in layer[0]
+            if isinstance(arg, str)
+        }
     if not inspect.isfunction(method) or method.__closure__ is None:
         # Native callables (e.g. the ``dict_keys`` method descriptors redis-py 8.2 keeps in its wrapper's closure)
         # have no ``__closure__``.

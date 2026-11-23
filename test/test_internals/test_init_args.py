@@ -49,7 +49,7 @@ def test_deprecated_args_no_warnings(warn_mock: mock.MagicMock):
 @pytest.mark.parametrize("client_class", [redis.Redis, redis.asyncio.Redis])
 def test_deprecated_args_are_found_in_the_decorator(client_class: type[Any]):
     # Finding none would forward the deprecated defaults and make every client creation warn (redis-py 8.2 moved them
-    # from a list to a tuple and added native callables to the wrapper's closure, see #636).
+    # out of the wrapper's closure into its `_deprecated_args_layers` attribute, see #636).
     assert {"retry_on_timeout", "lib_name", "lib_version"} <= _get_args_to_warn(client_class.__init__)
 
 
