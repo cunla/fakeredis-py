@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Int
+from fakeredis._command_args_parsing import Int, parse_random_count_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch
@@ -193,15 +193,20 @@ class SetCommandsMixin(CommandsMixinBase):
                 key.updated()  # Inside the loop because redis special-cases count=0
             return items
 
-    @command((Key(ExpiringMembersSet),), (Int,))
-    def srandmember(self, key: CommandItem, count: int | None = None) -> bytes | list[bytes] | None:
+    @command((Key(),), (bytes,))
+    def srandmember(self, key: CommandItem, *args: bytes) -> bytes | list[bytes] | None:
+        count, _ = parse_random_count_args("srandmember", args, None, self.server_type)
+        members = key.value
+        if members is not None and type(members) is not ExpiringMembersSet:  # checked after the arguments
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         if count is None:
-            items: list[bytes] = key.value.random_members(1)
+            items: list[bytes] = members.random_members(1) if members is not None else []
             return items[0] if items else None
-        elif count >= 0:
-            return key.value.random_members(count)  # type: ignore[no-any-return]
-        else:
-            return key.value.random_members(-count, distinct=False)  # type: ignore[no-any-return]
+        if members is None:
+            return []
+        if count >= 0:
+            return members.random_members(count)
+        return members.random_members(-count, distinct=False)
 
     @command((Key(ExpiringMembersSet), bytes), (bytes,))
     def srem(self, key: CommandItem, *members: bytes) -> int:

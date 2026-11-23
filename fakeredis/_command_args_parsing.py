@@ -8,11 +8,16 @@ from collections.abc import Sequence
 from typing import Any
 
 from . import _msgs as msgs
-from ._helpers import SimpleError, null_terminate
+from ._helpers import SimpleError, casematch, null_terminate
 from .model import AfterAny, BeforeAny
 
 # LLONG_MAX in redis: the largest signed 64-bit integer
 LLONG_MAX = 2**63 - 1
+
+VALUE_OUT_OF_RANGE_MSG = "ERR value is out of range"
+RANDOM_COUNT_OUT_OF_RANGE_MSG = f"ERR value is out of range, value must between {-LLONG_MAX} and {LLONG_MAX}"
+DRAGONFLY_HRANDFIELD_COUNT_MSG = "ERR count value is not an integer"
+DRAGONFLY_UNSUPPORTED_OPTION_MSG = "ERR Unsupported option:{}"
 
 
 class RedisType:
@@ -25,6 +30,8 @@ class Int(RedisType):
     """Argument converter for 64-bit signed integers"""
 
     DECODE_ERROR = msgs.INVALID_INT_MSG
+    # For a 64-bit integer outside [MIN_VALUE, MAX_VALUE]; DECODE_ERROR when unset
+    RANGE_ERROR: str | None = None
     ENCODE_ERROR = msgs.OVERFLOW_MSG
     MIN_VALUE = -LLONG_MAX - 1
     MAX_VALUE = LLONG_MAX
@@ -35,13 +42,16 @@ class Int(RedisType):
 
     @classmethod
     def decode(cls, value: bytes, decode_error: str | None = None) -> int:
+        """Parse a 64-bit integer; `decode_error` replaces both DECODE_ERROR and RANGE_ERROR."""
         try:
             out = int(value)
-            if not cls.valid(out) or str(out).encode() != value:
+            if not Int.valid(out) or str(out).encode() != value:
                 raise ValueError
-            return out
         except ValueError:
             raise SimpleError(decode_error or cls.DECODE_ERROR)
+        if not cls.valid(out):
+            raise SimpleError(decode_error or cls.RANGE_ERROR or cls.DECODE_ERROR)
+        return out
 
     @classmethod
     def encode(cls, value: int) -> bytes:
@@ -57,6 +67,24 @@ class DbIndex(Int):
     DECODE_ERROR = msgs.INVALID_DB_MSG
     MIN_VALUE = 0
     MAX_VALUE = 15
+
+
+class RandomCount(Int):
+    """The count of HRANDFIELD, SRANDMEMBER and ZRANDMEMBER: any 64-bit integer but the smallest"""
+
+    MIN_VALUE = -LLONG_MAX
+    RANGE_ERROR = RANDOM_COUNT_OUT_OF_RANGE_MSG
+
+
+class KividbRandomCount(RandomCount):
+    RANGE_ERROR = VALUE_OUT_OF_RANGE_MSG
+
+
+class DragonflyRandomCount(Int):
+    """Dragonfly reads the count as a 32-bit integer"""
+
+    MIN_VALUE = -(2**31)
+    MAX_VALUE = 2**31 - 1
 
 
 class Float(RedisType):
@@ -339,3 +367,39 @@ def parse_mpop_args(
                 raise SimpleError(msgs.INVALID_INT_MSG)
             count = sys.maxsize
     return keys, 1 if count is None else count, first
+
+
+def parse_random_count_args(
+    command: str, args: tuple[bytes, ...], option: bytes | None, server_type: str = "redis"
+) -> tuple[int | None, bool]:
+    """Validate the `[count [option]]` tail of HRANDFIELD, SRANDMEMBER (which has no option) and ZRANDMEMBER.
+
+    The checks run in the server's order, all before the key's type is checked.
+    Returns the count (None when absent) and whether `option` (WITHVALUES / WITHSCORES) was given.
+    """
+    max_args = 1 if option is None else 2
+    dragonfly = server_type == "dragonfly"
+    if len(args) > max_args:
+        if (dragonfly and command == "zrandmember") or (server_type == "kividb" and command == "srandmember"):
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format(command))
+        if option is None and not dragonfly:  # SRANDMEMBER counts its arguments before parsing the count
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if not args:
+        return None, False
+    if dragonfly:
+        count = DragonflyRandomCount.decode(
+            args[0], DRAGONFLY_HRANDFIELD_COUNT_MSG if command == "hrandfield" else None
+        )
+    else:
+        count = (KividbRandomCount if server_type == "kividb" else RandomCount).decode(args[0])
+    with_option = option is not None and len(args) > 1 and casematch(args[1], option)
+    if len(args) > 1 and not with_option:
+        if dragonfly and command == "zrandmember":
+            raise SimpleError(DRAGONFLY_UNSUPPORTED_OPTION_MSG.format(args[1].decode(errors="replace")))
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    if len(args) > max_args:
+        raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    # The reply holds two entries per member, so redis halves the range
+    if with_option and not dragonfly and not -(LLONG_MAX // 2) <= count <= LLONG_MAX // 2:
+        raise SimpleError(VALUE_OUT_OF_RANGE_MSG)
+    return count, with_option

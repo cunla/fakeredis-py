@@ -10,7 +10,6 @@ from typing import Any, TypeVar
 
 from fakeredis import _msgs as msgs
 from fakeredis._command_args_parsing import (
-    LLONG_MAX,
     Float,
     Int,
     RedisType,
@@ -18,16 +17,13 @@ from fakeredis._command_args_parsing import (
     Timeout,
     extract_args,
     parse_mpop_args,
+    parse_random_count_args,
 )
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError, casematch, fix_range, null_terminate
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, ZSet
-
-ZRANDMEMBER_OUT_OF_RANGE_MSG = "ERR value is out of range"
-ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG = f"ERR value is out of range, value must between {-LLONG_MAX} and {LLONG_MAX}"
-DRAGONFLY_UNSUPPORTED_OPTION_MSG = "ERR Unsupported option:{}"
 
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
@@ -626,38 +622,18 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         scores = map(key.value.get, members)
         return list(scores)
 
-    def _zrandmember_args(self, args: tuple[bytes, ...]) -> tuple[int, bool]:
-        """Validate ZRANDMEMBER's count and option the way the server does, before the key is read."""
-        dragonfly = self.server_type == "dragonfly"
-        if dragonfly and len(args) > 2:
-            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("zrandmember"))
-        count = Int.decode(args[0]) if args else 1
-        if dragonfly and not -(2**31) <= count < 2**31:
-            raise SimpleError(msgs.INVALID_INT_MSG)
-        if not dragonfly and count < -LLONG_MAX:
-            raise SimpleError(
-                ZRANDMEMBER_OUT_OF_RANGE_MSG if self.server_type == "kividb" else ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG
-            )
-        withscores = len(args) > 1 and casematch(args[1], b"withscores")
-        if len(args) > 1 and not withscores:
-            if dragonfly:
-                raise SimpleError(DRAGONFLY_UNSUPPORTED_OPTION_MSG.format(args[1].decode(errors="replace")))
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if len(args) > 2:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        # The reply holds two entries per member, so redis halves the range
-        if withscores and not dragonfly and not -(LLONG_MAX // 2) <= count <= LLONG_MAX // 2:
-            raise SimpleError(ZRANDMEMBER_OUT_OF_RANGE_MSG)
-        return count, withscores
-
-    @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
+    @command(name="ZRANDMEMBER", fixed=(Key(),), repeat=(bytes,))
     def zrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[Any] | None:
-        count, withscores = self._zrandmember_args(args)
-        # Without a count, redis replies with one member; dragonfly with a one-element array
-        single_member = len(args) == 0 and self.server_type != "dragonfly"
+        count, withscores = parse_random_count_args("zrandmember", args, b"withscores", self.server_type)
         zset = key.value
+        if zset is not None and type(zset) is not ZSet:  # checked after the arguments, like the server
+            raise SimpleError(msgs.WRONGTYPE_MSG)
         if not zset:
-            return None if len(args) == 0 else []
+            return None if count is None else []
+        # Without a count, redis replies with one member; dragonfly with a one-element array
+        single_member = count is None and self.server_type != "dragonfly"
+        count = 1 if count is None else count
+        res: list[Any]
         if count < 0:  # Allow repetitions
             res = random.choices(sorted(zset.items()), k=-count)
         else:  # Unique values from hash

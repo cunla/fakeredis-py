@@ -678,3 +678,54 @@ def test_setop_card_errors(r: ClientType, command: str):
     for keys in (("s1", "str"), ("str", "s1"), ("missing", "str")):
         with pytest.raises(redis.ResponseError, match="WRONGTYPE"):
             r.execute_command(command, 2, *keys)
+
+
+def _srandmember_error(r: ClientType, *args) -> str:
+    with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+        testtools.raw_command(r, "SRANDMEMBER", *args)
+    return str(ctx.value)
+
+
+def test_srandmember_missing_key(r: ClientType):
+    assert r.srandmember("missing") is None
+    assert r.srandmember("missing", 2) == []
+    assert r.srandmember("missing", 0) == []
+
+
+def test_srandmember_extra_arguments(r: ClientType, real_server_details: ServerDetails):
+    r.sadd("s", "m")
+    server_type = real_server_details.server_type
+    too_many = "wrong number of arguments for 'srandmember' command" if server_type == "kividb" else "syntax error"
+    for key in ("s", "missing"):
+        assert _srandmember_error(r, key, "1", "extra") == too_many
+        # Dragonfly parses the count first, the others count the arguments first
+        expected = "value is not an integer or out of range" if server_type == "dragonfly" else too_many
+        assert _srandmember_error(r, key, "notanint", "extra") == expected
+
+
+def test_srandmember_count_out_of_range(r: ClientType, real_server_details: ServerDetails):
+    # Every count here is refused before the reply is built: an accepted negative
+    # count this large would make a real server send that many members.
+    r.sadd("s", "m")
+    server_type = real_server_details.server_type
+    long_min = {
+        "dragonfly": "value is not an integer or out of range",
+        "kividb": "value is out of range",
+    }.get(server_type, "value is out of range, value must between -9223372036854775807 and 9223372036854775807")
+    for key in ("s", "missing"):
+        assert _srandmember_error(r, key, "9223372036854775808") == "value is not an integer or out of range"
+        assert _srandmember_error(r, key, "-9223372036854775808") == long_min
+
+
+def test_srandmember_dragonfly_count_is_32_bit(r: ClientType, real_server_details: ServerDetails):
+    r.sadd("s", "m")
+    if real_server_details.server_type == "dragonfly":
+        assert _srandmember_error(r, "s", "2147483648") == "value is not an integer or out of range"
+    else:  # a positive count is capped at the size of the set
+        assert list(r.srandmember("s", 2147483648)) == [b"m"]
+
+
+def test_srandmember_arguments_checked_before_type(r: ClientType):
+    r.set("str", "v")
+    assert _srandmember_error(r, "str", "notanint") == "value is not an integer or out of range"
+    assert _srandmember_error(r, "str", "1").startswith("WRONGTYPE")

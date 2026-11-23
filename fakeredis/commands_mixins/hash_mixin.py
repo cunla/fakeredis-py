@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Any, Callable, List, cast
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, Int, extract_args
+from fakeredis._command_args_parsing import Float, Int, extract_args, parse_random_count_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, current_time
@@ -127,22 +127,24 @@ class HashCommandsMixin(CommandsMixinBase):
     def hvals(self, key: CommandItem) -> list[bytes]:
         return list(key.value.values())
 
-    @command(name="HRANDFIELD", fixed=(Key(Hash),), repeat=(bytes,))
+    @command(name="HRANDFIELD", fixed=(Key(),), repeat=(bytes,))
     def hrandfield(self, key: CommandItem, *args: bytes) -> list[list[str]] | list[str] | None:
-        if len(args) > 2:
-            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
-        if key.value is None or len(key.value) == 0:
-            return None
-        has_count = len(args) >= 1
-        count = min(Int.decode(args[0]) if len(args) >= 1 else 1, len(key.value))
-        withvalues = casematch(args[1], b"withvalues") if len(args) >= 2 else False
+        count, withvalues = parse_random_count_args("hrandfield", args, b"withvalues", self.server_type)
+        hash_val = key.value
+        if hash_val is not None and type(hash_val) is not Hash:  # checked after the arguments, like the server
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        has_count = count is not None
+        if hash_val is None or len(hash_val) == 0:
+            return [] if has_count else None
+        count = min(count if count is not None else 1, len(hash_val))
         if count == 0:
             return []
 
+        res: list[Any]
         if count < 0:  # Allow repetitions
-            res = random.choices(sorted(key.value.items()), k=-count)
+            res = random.choices(sorted(hash_val.items()), k=-count)
         else:  # Unique values from hash
-            res = random.sample(sorted(key.value.items()), count)
+            res = random.sample(sorted(hash_val.items()), count)
 
         if withvalues:
             if self._resp_version == 2:

@@ -382,3 +382,61 @@ def test_hrandfield(r: ClientType):
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "HRANDFIELD", "key", 3, "WITHVALUES", 3)
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
+
+
+def _hrandfield_error(r: ClientType, *args) -> str:
+    with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+        raw_command(r, "HRANDFIELD", *args)
+    return str(ctx.value)
+
+
+def test_hrandfield_missing_key(r: ClientType):
+    assert r.hrandfield("missing") is None
+    assert r.hrandfield("missing", -2) == []
+    assert r.hrandfield("missing", 2) == []
+    assert r.hrandfield("missing", 0) == []
+    assert r.hrandfield("missing", -1, withvalues=True) == []
+
+
+def test_hrandfield_extra_arguments(r: ClientType):
+    r.hset("h", "f", "v")
+    for key in ("h", "missing"):
+        assert _hrandfield_error(r, key, "1", "extra") == "syntax error"
+        assert _hrandfield_error(r, key, "1", "WITHVALUES", "extra") == "syntax error"
+
+
+def test_hrandfield_count_out_of_range(r: ClientType, real_server_details: ServerDetails):
+    # Every count here is refused before the reply is built: an accepted negative
+    # count this large would make a real server send that many fields.
+    r.hset("h", "f", "v")
+    server_type = real_server_details.server_type
+    if server_type == "dragonfly":
+        not_an_integer = out_of_range = long_min = "count value is not an integer"
+    else:
+        not_an_integer, out_of_range = "value is not an integer or out of range", "value is out of range"
+        long_min = out_of_range
+        if server_type in ("redis", "valkey"):
+            long_min = "value is out of range, value must between -9223372036854775807 and 9223372036854775807"
+    for key in ("h", "missing"):
+        assert _hrandfield_error(r, key, "notanint") == not_an_integer
+        assert _hrandfield_error(r, key, "9223372036854775808") == not_an_integer
+        assert _hrandfield_error(r, key, "-9223372036854775808") == long_min
+        assert _hrandfield_error(r, key, "4611686018427387904", "WITHVALUES") == out_of_range
+        assert _hrandfield_error(r, key, "-4611686018427387904", "WITHVALUES") == out_of_range
+
+
+def test_hrandfield_dragonfly_count_is_32_bit(r: ClientType, real_server_details: ServerDetails):
+    r.hset("h", "f", "v")
+    if real_server_details.server_type == "dragonfly":
+        assert _hrandfield_error(r, "h", "2147483648") == "count value is not an integer"
+    else:  # a positive count is capped at the size of the hash
+        assert r.hrandfield("h", 2147483648) == [b"f"]
+
+
+def test_hrandfield_arguments_checked_before_type(r: ClientType, real_server_details: ServerDetails):
+    r.set("str", "v")
+    dragonfly = real_server_details.server_type == "dragonfly"
+    expected = "count value is not an integer" if dragonfly else "value is not an integer or out of range"
+    assert _hrandfield_error(r, "str", "notanint") == expected
+    assert _hrandfield_error(r, "str", "1", "extra") == "syntax error"
+    assert _hrandfield_error(r, "str", "1").startswith("WRONGTYPE")

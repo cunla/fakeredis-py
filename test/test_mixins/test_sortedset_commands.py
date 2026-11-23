@@ -1471,3 +1471,17 @@ def test_zrandmember_dragonfly_count_is_32_bit(r: ClientType, real_server_detail
             raw_command(r, "ZRANDMEMBER", "z", "2147483648")
     else:  # a positive count is capped at the size of the set
         assert r.zrandmember("z", 2147483648) == [b"a"]
+
+
+def test_zrandmember_arguments_checked_before_type(r: ClientType, real_server_details: ServerDetails):
+    r.set("str", "v")
+    dragonfly = real_server_details.server_type == "dragonfly"
+    for args, expected in (
+        (("notanint",), "value is not an integer or out of range"),
+        (("1", "extra"), "Unsupported option:extra" if dragonfly else "syntax error"),
+    ):
+        with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+            raw_command(r, "ZRANDMEMBER", "str", *args)
+        assert str(ctx.value) == expected
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="^WRONGTYPE"):
+        raw_command(r, "ZRANDMEMBER", "str", "1")
