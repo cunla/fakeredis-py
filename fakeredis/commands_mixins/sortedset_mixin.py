@@ -16,6 +16,11 @@ from fakeredis._helpers import SimpleError, casematch, fix_range, null_terminate
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.model import AfterAny, BeforeAny, ExpiringMembersSet, ZSet
 
+_LONG_MAX = 2**63 - 1
+ZRANDMEMBER_OUT_OF_RANGE_MSG = "ERR value is out of range"
+ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG = f"ERR value is out of range, value must between {-_LONG_MAX} and {_LONG_MAX}"
+DRAGONFLY_UNSUPPORTED_OPTION_MSG = "ERR Unsupported option:{}"
+
 SORTED_SET_METHODS = {
     "ZUNIONSTORE": lambda s1, s2: s1 | s2,
     "ZUNION": lambda s1, s2: s1 | s2,
@@ -613,18 +618,35 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         scores = map(key.value.get, members)
         return list(scores)
 
-    @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[Any] | None:
-        count, withscores = 1, None
-        if len(args) > 0:
-            count = Int.decode(args[0])
-        if len(args) > 1:
-            if casematch(b"withscores", args[1]):
-                withscores = True
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    def _zrandmember_args(self, args: tuple[bytes, ...]) -> tuple[int, bool]:
+        """Validate ZRANDMEMBER's count and option the way the server does, before the key is read."""
+        dragonfly = self.server_type == "dragonfly"
+        if dragonfly and len(args) > 2:
+            raise SimpleError(msgs.WRONG_ARGS_MSG6.format("zrandmember"))
+        count = Int.decode(args[0]) if args else 1
+        if dragonfly and not -(2**31) <= count < 2**31:
+            raise SimpleError(msgs.INVALID_INT_MSG)
+        if not dragonfly and count < -_LONG_MAX:
+            raise SimpleError(
+                ZRANDMEMBER_OUT_OF_RANGE_MSG if self.server_type == "kividb" else ZRANDMEMBER_COUNT_OUT_OF_RANGE_MSG
+            )
+        withscores = len(args) > 1 and casematch(args[1], b"withscores")
+        if len(args) > 1 and not withscores:
+            if dragonfly:
+                raise SimpleError(DRAGONFLY_UNSUPPORTED_OPTION_MSG.format(args[1].decode(errors="replace")))
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         if len(args) > 2:
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        # The reply holds two entries per member, so redis halves the range
+        if withscores and not dragonfly and not -(_LONG_MAX // 2) <= count <= _LONG_MAX // 2:
+            raise SimpleError(ZRANDMEMBER_OUT_OF_RANGE_MSG)
+        return count, withscores
+
+    @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
+    def zrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[Any] | None:
+        count, withscores = self._zrandmember_args(args)
+        # Without a count, redis replies with one member; dragonfly with a one-element array
+        single_member = len(args) == 0 and self.server_type != "dragonfly"
         zset = key.value
         if not zset:
             return None if len(args) == 0 else []
@@ -636,7 +658,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
 
         if not withscores:
             res = [t[0] for t in res]
-            return res[0] if len(args) == 0 else res
+            return res[0] if single_member else res
         if self._resp_version == 2:
             res = [item for t in res for item in t]
         else:  # self._resp_version == 3 and withscores
