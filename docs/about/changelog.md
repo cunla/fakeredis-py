@@ -7,34 +7,27 @@ tags:
 toc_depth: 2
 ---
 
-## Next release
+## v2.41.0 - 2026-11-23
 
 ### 🚀 Features
 
-- feat(geo): `GEOSEARCH` and `GEOSEARCHSTORE` support `BYBOX`
-- feat(streams): `XREAD` and `XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
+- feat(geo): `GEOSEARCH`/`GEOSEARCHSTORE` support `BYBOX`
+- feat(streams): `XREAD`/`XREADGROUP` support `MAXCOUNT` and `MAXSIZE` (Redis 8.10)
 
 ### 🐛 Bug Fixes
-- fix(json):JSON.DEL on array index/slice paths deletes extra elements and returns too high a count #645
-- fix: `EXPIRE`, `PEXPIRE` and `EXPIREAT` reject expire times that overflow a 64-bit millisecond timestamp with
-  `invalid expire time`, like Redis, instead of setting a huge TTL or deleting the key (#646)
-- fix(streams): with Valkey 9.1.4 and later, `XINFO GROUPS` reports the lag of a group on an emptied stream, or one
-  trimmed past the group, the way Valkey 9.1.4 and Redis 7.4 do
-- fix(transactions): on Valkey 9.2, `EXEC` with arguments outside `MULTI` returns `EXEC without MULTI`, and invalid
-  `IFEQ`/`IFNE`/`NX`/`XX` conditions abort the transaction like Valkey; valid conditions are not supported yet (#649)
-- fix: support redis-py 8.2: creating a client no longer fails with
-  `AttributeError: 'method_descriptor' object has no attribute '__closure__'`, `FakeAsyncRedis` can send commands
-  again, and RESP3 connections still make no DNS lookup (#636)
-- fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` parse their options like Redis: `FROMMEMBER`/`FROMLONLAT` and `BYRADIUS`/`BYBOX`
-  are mutually exclusive, `BYRADIUS` requires a unit, `FROMLONLAT` coordinates are range-checked, and invalid
-  arguments get Redis' error messages
-- fix(streams): blocking `XREADGROUP` returns entries that are already available, and with `COUNT` it waits for new
-  ones instead of returning at once
-- fix(streams): `XREADGROUP` with a `COUNT` of 0 or less reads everything, like Redis and Valkey
+
+- fix: support redis-py 8.2: client creation no longer crashes or emits deprecation warnings, and `FakeAsyncRedis` sends commands again (#636)
+- fix: `EXPIRE`/`PEXPIRE`/`EXPIREAT` reject expire times that overflow a 64-bit ms timestamp, like Redis (#646)
+- fix(json): `JSON.DEL` on array index/slice paths no longer deletes extra elements or over-counts (#645)
+- fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` validate their options and return Redis' errors
+- fix(streams): blocking `XREADGROUP` returns already-available entries, and with `COUNT` waits for new ones instead of returning at once
+- fix(streams): `XREADGROUP` with `COUNT` ≤ 0 reads everything, like Redis and Valkey
+- fix(streams): on Valkey 9.1.4+, `XINFO GROUPS` reports lag for emptied or over-trimmed streams like Valkey/Redis 7.4
+- fix(transactions): on Valkey 9.2, `EXEC` outside `MULTI` with arguments and invalid `IFEQ`/`IFNE`/`NX`/`XX` conditions fail like Valkey; valid conditions are not supported yet (#649)
 
 ### 🧰 Maintenance
 
-- Support for redis-py 8.2.0
+- test: run CI against redis-py 8.2.0
 
 ## v2.40.0 - 2026-10-15
 
