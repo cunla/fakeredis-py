@@ -1409,3 +1409,79 @@ def test_bzpopmin_bzpopmax_negative_timeout(r: ClientType):
     with pytest.raises(Exception, match="timeout is negative"):
         r.bzpopmax("foo", timeout=-1)
     assert r.zcard("foo") == 1
+
+
+def test_zrandmember_without_count(r: ClientType, real_server_details: ServerDetails):
+    r.zadd("z", {"a": 1})
+    # Redis replies with one member, Dragonfly with an array holding it
+    expected = [b"a"] if real_server_details.server_type == "dragonfly" else b"a"
+    assert r.zrandmember("z") == expected
+    assert r.zrandmember("missing") is None
+
+
+def test_zrandmember_missing_key(r: ClientType):
+    assert r.zrandmember("missing", -2) == []
+    assert r.zrandmember("missing", 2) == []
+    assert r.zrandmember("missing", 0) == []
+    assert r.zrandmember("missing", -1, withscores=True) == []
+
+
+def test_zrandmember_extra_arguments(r: ClientType, real_server_details: ServerDetails):
+    r.zadd("z", {"a": 1})
+    dragonfly = real_server_details.server_type == "dragonfly"
+    with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+        raw_command(r, "ZRANDMEMBER", "z", "1", "WITHSCORES", "extra")
+    assert str(ctx.value) == ("wrong number of arguments for 'zrandmember' command" if dragonfly else "syntax error")
+    with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+        raw_command(r, "ZRANDMEMBER", "z", "1", "extra")
+    assert str(ctx.value) == ("Unsupported option:extra" if dragonfly else "syntax error")
+
+
+def test_zrandmember_count_out_of_range(r: ClientType, real_server_details: ServerDetails):
+    # Every count here is refused before the reply is built: an accepted negative
+    # count this large would make a real server send that many members.
+    r.zadd("z", {"a": 1})
+    server_type = real_server_details.server_type
+    not_an_integer = "value is not an integer or out of range"
+    out_of_range = not_an_integer if server_type == "dragonfly" else "value is out of range"
+    for key in ("z", "missing"):
+        for args, msg in (
+            (("9223372036854775808",), not_an_integer),
+            (("4611686018427387904", "WITHSCORES"), out_of_range),
+            (("-4611686018427387904", "WITHSCORES"), out_of_range),
+            (("9223372036854775807", "WITHSCORES"), out_of_range),
+        ):
+            with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+                raw_command(r, "ZRANDMEMBER", key, *args)
+            assert str(ctx.value) == msg
+        with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+            raw_command(r, "ZRANDMEMBER", key, "-9223372036854775808")
+        if server_type in ("redis", "valkey"):
+            assert str(ctx.value) == (
+                "value is out of range, value must between -9223372036854775807 and 9223372036854775807"
+            )
+        else:
+            assert str(ctx.value) == out_of_range
+
+
+def test_zrandmember_dragonfly_count_is_32_bit(r: ClientType, real_server_details: ServerDetails):
+    r.zadd("z", {"a": 1})
+    if real_server_details.server_type == "dragonfly":
+        with pytest.raises(testtools.RESPONSE_ERRORS, match="value is not an integer or out of range"):
+            raw_command(r, "ZRANDMEMBER", "z", "2147483648")
+    else:  # a positive count is capped at the size of the set
+        assert r.zrandmember("z", 2147483648) == [b"a"]
+
+
+def test_zrandmember_arguments_checked_before_type(r: ClientType, real_server_details: ServerDetails):
+    r.set("str", "v")
+    dragonfly = real_server_details.server_type == "dragonfly"
+    for args, expected in (
+        (("notanint",), "value is not an integer or out of range"),
+        (("1", "extra"), "Unsupported option:extra" if dragonfly else "syntax error"),
+    ):
+        with pytest.raises(testtools.RESPONSE_ERRORS) as ctx:
+            raw_command(r, "ZRANDMEMBER", "str", *args)
+        assert str(ctx.value) == expected
+    with pytest.raises(testtools.RESPONSE_ERRORS, match="^WRONGTYPE"):
+        raw_command(r, "ZRANDMEMBER", "str", "1")

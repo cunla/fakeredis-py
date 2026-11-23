@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Any
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import DbIndex, Float, Int, extract_args
+from fakeredis._command_args_parsing import LLONG_MAX, DbIndex, Float, Int, extract_args
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem, delete_keys
 from fakeredis._helpers import OK, SimpleError, SimpleString, casematch, compile_pattern
@@ -33,9 +33,6 @@ class SortFloat(Float):
 # Dragonfly refuses to store an expiry deadline more than 2**28-1 seconds away. A relative expiry (EXPIRE, PEXPIRE, SET
 # EX) is silently clamped to that horizon, whereas an absolute one (EXPIREAT, PEXPIREAT) beyond it is rejected outright.
 _DRAGONFLY_MAX_EXPIRE_SECONDS = 2**28 - 1
-
-# Redis stores an expiry as a signed 64-bit millisecond timestamp.
-_LLONG_MAX = 2**63 - 1
 
 
 class GenericCommandsMixin(CommandsMixinBase):
@@ -154,10 +151,10 @@ class GenericCommandsMixin(CommandsMixinBase):
         """
         if self.server_type == "dragonfly":
             return None
-        if unit_ms == 1000 and abs(when) > _LLONG_MAX // 1000:
+        if unit_ms == 1000 and abs(when) > LLONG_MAX // 1000:
             return name
         basetime_ms = int(self._db.time * 1000) if relative else 0
-        return name if when * unit_ms > _LLONG_MAX - basetime_ms else None
+        return name if when * unit_ms > LLONG_MAX - basetime_ms else None
 
     @command(name="EXPIRE", fixed=(Key(), Int), repeat=(bytes,))
     def expire(self, key: CommandItem, seconds: int, *args: bytes) -> int:

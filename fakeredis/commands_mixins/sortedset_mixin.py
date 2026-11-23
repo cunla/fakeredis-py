@@ -9,7 +9,16 @@ from collections.abc import Sequence
 from typing import Any, TypeVar
 
 from fakeredis import _msgs as msgs
-from fakeredis._command_args_parsing import Float, Int, RedisType, StringTest, Timeout, extract_args, parse_mpop_args
+from fakeredis._command_args_parsing import (
+    Float,
+    Int,
+    RedisType,
+    StringTest,
+    Timeout,
+    extract_args,
+    parse_mpop_args,
+    parse_random_count_args,
+)
 from fakeredis._commands import Key, command
 from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError, casematch, fix_range, null_terminate
@@ -613,28 +622,28 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         scores = map(key.value.get, members)
         return list(scores)
 
-    @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args: bytes) -> list[Any] | None:
-        count, withscores = 1, None
-        if len(args) > 0:
-            count = Int.decode(args[0])
-        if len(args) > 1:
-            if casematch(b"withscores", args[1]):
-                withscores = True
-            else:
-                raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+    @command(name="ZRANDMEMBER", fixed=(Key(),), repeat=(bytes,))
+    def zrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[Any] | None:
+        count, withscores = parse_random_count_args("zrandmember", args, b"withscores", self.server_type)
         zset = key.value
-        if zset is None:
-            return None if len(args) == 0 else []
+        if zset is not None and type(zset) is not ZSet:  # checked after the arguments, like the server
+            raise SimpleError(msgs.WRONGTYPE_MSG)
+        if not zset:
+            return None if count is None else []
+        # Without a count, redis replies with one member; dragonfly with a one-element array
+        single_member = count is None and self.server_type != "dragonfly"
+        count = 1 if count is None else count
+        res: list[Any]
         if count < 0:  # Allow repetitions
-            res = random.choices(sorted(key.value.items()), k=-count)
+            res = random.choices(sorted(zset.items()), k=-count)
         else:  # Unique values from hash
-            count = min(count, len(key.value))
-            res = random.sample(sorted(key.value.items()), count)
+            count = min(count, len(zset))
+            res = random.sample(sorted(zset.items()), count)
 
         if not withscores:
             res = [t[0] for t in res]
-        elif self._resp_version == 2:
+            return res[0] if single_member else res
+        if self._resp_version == 2:
             res = [item for t in res for item in t]
         else:  # self._resp_version == 3 and withscores
             res = [list(item) for item in res]
