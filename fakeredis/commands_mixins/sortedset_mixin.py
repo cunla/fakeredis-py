@@ -614,7 +614,7 @@ class SortedSetCommandsMixin(CommandsMixinBase):
         return list(scores)
 
     @command(name="ZRANDMEMBER", fixed=(Key(ZSet),), repeat=(bytes,))
-    def zrandmember(self, key: CommandItem, *args: bytes) -> list[Any] | None:
+    def zrandmember(self, key: CommandItem, *args: bytes) -> bytes | list[Any] | None:
         count, withscores = 1, None
         if len(args) > 0:
             count = Int.decode(args[0])
@@ -623,18 +623,21 @@ class SortedSetCommandsMixin(CommandsMixinBase):
                 withscores = True
             else:
                 raise SimpleError(msgs.SYNTAX_ERROR_MSG)
+        if len(args) > 2:
+            raise SimpleError(msgs.SYNTAX_ERROR_MSG)
         zset = key.value
-        if zset is None:
+        if not zset:
             return None if len(args) == 0 else []
         if count < 0:  # Allow repetitions
-            res = random.choices(sorted(key.value.items()), k=-count)
+            res = random.choices(sorted(zset.items()), k=-count)
         else:  # Unique values from hash
-            count = min(count, len(key.value))
-            res = random.sample(sorted(key.value.items()), count)
+            count = min(count, len(zset))
+            res = random.sample(sorted(zset.items()), count)
 
         if not withscores:
             res = [t[0] for t in res]
-        elif self._resp_version == 2:
+            return res[0] if len(args) == 0 else res
+        if self._resp_version == 2:
             res = [item for t in res for item in t]
         else:  # self._resp_version == 3 and withscores
             res = [list(item) for item in res]

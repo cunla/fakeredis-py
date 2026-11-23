@@ -1409,3 +1409,25 @@ def test_bzpopmin_bzpopmax_negative_timeout(r: ClientType):
     with pytest.raises(Exception, match="timeout is negative"):
         r.bzpopmax("foo", timeout=-1)
     assert r.zcard("foo") == 1
+
+
+def test_no_count_returns_one_member(r: ClientType):
+    r.zadd("z", {"a": 1})
+    assert r.zrandmember("z") == b"a"  # fakeredis now: [b'a']
+
+
+def test_missing_key_no_count_returns_none(r: ClientType):
+    r.zadd("z", {"a": 1})
+    assert r.zrandmember("missing") is None  # fakeredis now: []
+
+
+def test_missing_key_negative_count_returns_empty(r: ClientType):
+    r.zadd("z", {"a": 1})
+    assert r.zrandmember("missing", -2) == []  # fakeredis now: IndexError
+
+
+def test_extra_argument_is_a_syntax_error(r: ClientType):
+    r.zadd("z", {"a": 1})
+    with pytest.raises(redis.ResponseError, match="syntax error"):
+        r.execute_command("ZRANDMEMBER", "z", "1", "WITHSCORES", "extra")  # fakeredis now: [b'a', b'1']
+
