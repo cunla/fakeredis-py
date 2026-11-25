@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import platform
 import secrets
+import struct
 import threading
 import time
 import weakref
@@ -11,7 +14,7 @@ from typing import Any, ClassVar
 
 from fakeredis._core._database import Database
 from fakeredis._typing import ServerType, VersionType
-from fakeredis.model import AccessControlList
+from fakeredis.model import AccessControlList, Hash
 
 LOGGER = logging.getLogger("fakeredis")
 
@@ -25,6 +28,11 @@ def _create_version(v: tuple[int, ...] | int | str) -> VersionType:
         v_split = v.split(".")
         return tuple(int(x) for x in v_split)
     raise ValueError(f"Unsupported version: {v}")
+
+
+def _version_string(version: tuple[int, ...]) -> str:
+    """`(7, 4)` -> `"7.4.0"`: servers always report at least major.minor.patch."""
+    return ".".join(str(part) for part in (*version, 0, 0, 0)[: max(3, len(version))])
 
 
 # Valkey keeps reporting the Redis version it forked from, whatever its own version.
@@ -121,6 +129,64 @@ class FakeServer:
     @property
     def details(self) -> ServerDetails:
         return ServerDetails.create(self.server_type, self.version)
+
+    def info_server_fields(self) -> dict[str, Any]:
+        """The fields of INFO SERVER, in the order they are printed."""
+        details = self.details
+        fields: dict[str, Any] = {"redis_version": _version_string(details.redis_version)}
+        if details.valkey_version is not None:
+            fields["server_name"] = "valkey"
+            fields["valkey_version"] = _version_string(details.valkey_version)
+        if details.dragonfly_version is not None:
+            fields["dragonfly_version"] = f"df-v{_version_string(details.dragonfly_version)}"
+        if details.kividb_version is not None:
+            fields["kividb_version"] = _version_string(details.kividb_version)
+        # Valkey 8.0 renamed redis_mode to server_mode.
+        valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
+        fields["server_mode" if valkey_8 else "redis_mode"] = "standalone"
+        now = time.time()
+        uptime = int(now - self.started_at)
+        fields["os"] = f"{platform.system()} {platform.release()} {platform.machine()}"
+        fields["arch_bits"] = struct.calcsize("P") * 8
+        fields["process_id"] = os.getpid()
+        if self.server_type != "dragonfly":
+            fields["run_id"] = self.run_id
+        if self.server_type in ("redis", "valkey"):
+            fields["server_time_usec"] = int(now * 1_000_000)
+        fields["uptime_in_seconds"] = uptime
+        fields["uptime_in_days"] = uptime // 86400
+        return fields
+
+    def info_keyspace_fields(self) -> dict[str, Any]:
+        """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
+        fields: dict[str, Any] = {}
+        indexes = set(self.dbs)
+        if self.server_type == "dragonfly":
+            indexes.add(0)  # Dragonfly lists db0 even when it is empty
+        for index in sorted(indexes):
+            db = self.dbs.get(index)
+            items = [] if db is None else list(db.values())  # iterating sweeps out expired keys first
+            if not items and not (self.server_type == "dragonfly" and index == 0):
+                continue
+            now = db.time if db is not None else 0.0
+            ttls_ms = [(item.expireat - now) * 1000 for item in items if item.expireat is not None]
+            stats: dict[str, int] = {"keys": len(items), "expires": len(ttls_ms)}
+            if self.server_type == "dragonfly":
+                stats["avg_ttl"] = -1  # Dragonfly does not compute it
+            else:
+                stats["avg_ttl"] = int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0
+            # Keys holding hash fields with a TTL. Redis 7.4 calls them subexpiry, Valkey 9 keys_with_volatile_items.
+            volatile_field = None
+            if self.server_type == "redis" and self.version >= (7, 4):
+                volatile_field = "subexpiry"
+            elif self.server_type == "valkey" and self.version >= (9,):
+                volatile_field = "keys_with_volatile_items"
+            if volatile_field is not None:
+                stats[volatile_field] = sum(
+                    1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields()
+                )
+            fields[f"db{index}"] = stats
+        return fields
 
     def remember_scan_cursor(self, cursor_key: tuple[Any, int], resume_at: tuple[list[Any], int]) -> None:
         """Record where a SCAN-family cursor resumes, forgetting the oldest cursor once too many are held."""

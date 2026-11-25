@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import os
-import platform
-import struct
 import time
 from typing import Any
 
@@ -11,16 +8,11 @@ from fakeredis._command_args_parsing import DbIndex
 from fakeredis._commands import command
 from fakeredis._helpers import BGSAVE_STARTED, OK, SimpleError, SimpleString, casematch
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
-from fakeredis.model import Hash, get_all_commands_info, get_command_info
+from fakeredis.model import get_all_commands_info, get_command_info
 
 # The INFO sections fakeredis reports, in the order Redis prints them. Sections whose figures fakeredis does not track
 # (memory, stats, cpu, commandstats, ...) are left out rather than filled with made-up numbers.
 _INFO_SECTIONS = (b"server", b"clients", b"persistence", b"replication", b"cluster", b"keyspace")
-
-
-def _version_string(version: tuple[int, ...]) -> str:
-    """`(7, 4)` -> `"7.4.0"`: servers always report at least major.minor.patch."""
-    return ".".join(str(part) for part in (*version, 0, 0, 0)[: max(3, len(version))])
 
 
 class ServerCommandsMixin(CommandsMixinBase):
@@ -123,7 +115,7 @@ class ServerCommandsMixin(CommandsMixinBase):
     def _info_fields(self, name: bytes) -> dict[str, Any]:
         """The fields of INFO section `name`, in the order they are printed."""
         if name == b"server":
-            return self._info_server_fields()
+            return self._server.info_server_fields()
         if name == b"clients":
             return {"connected_clients": len(self._server.sockets)}
         if name == b"persistence":
@@ -133,61 +125,4 @@ class ServerCommandsMixin(CommandsMixinBase):
             return {"role": "master", "connected_slaves": 0}
         if name == b"cluster":
             return {"cluster_enabled": 0}
-        return self._info_keyspace_fields()
-
-    def _info_server_fields(self) -> dict[str, Any]:
-        details = self._server.details
-        fields: dict[str, Any] = {"redis_version": _version_string(details.redis_version)}
-        if details.valkey_version is not None:
-            fields["server_name"] = "valkey"
-            fields["valkey_version"] = _version_string(details.valkey_version)
-        if details.dragonfly_version is not None:
-            fields["dragonfly_version"] = f"df-v{_version_string(details.dragonfly_version)}"
-        if details.kividb_version is not None:
-            fields["kividb_version"] = _version_string(details.kividb_version)
-        # Valkey 8.0 renamed redis_mode to server_mode.
-        valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
-        fields["server_mode" if valkey_8 else "redis_mode"] = "standalone"
-        now = time.time()
-        uptime = int(now - self._server.started_at)
-        fields["os"] = f"{platform.system()} {platform.release()} {platform.machine()}"
-        fields["arch_bits"] = struct.calcsize("P") * 8
-        fields["process_id"] = os.getpid()
-        if self.server_type != "dragonfly":
-            fields["run_id"] = self._server.run_id
-        if self.server_type in ("redis", "valkey"):
-            fields["server_time_usec"] = int(now * 1_000_000)
-        fields["uptime_in_seconds"] = uptime
-        fields["uptime_in_days"] = uptime // 86400
-        return fields
-
-    def _info_keyspace_fields(self) -> dict[str, Any]:
-        """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
-        fields: dict[str, Any] = {}
-        indexes = set(self._server.dbs)
-        if self.server_type == "dragonfly":
-            indexes.add(0)  # Dragonfly lists db0 even when it is empty
-        for index in sorted(indexes):
-            db = self._server.dbs.get(index)
-            items = [] if db is None else list(db.values())  # iterating sweeps out expired keys first
-            if not items and not (self.server_type == "dragonfly" and index == 0):
-                continue
-            now = db.time if db is not None else 0.0
-            ttls_ms = [(item.expireat - now) * 1000 for item in items if item.expireat is not None]
-            stats: dict[str, int] = {"keys": len(items), "expires": len(ttls_ms)}
-            if self.server_type == "dragonfly":
-                stats["avg_ttl"] = -1  # Dragonfly does not compute it
-            else:
-                stats["avg_ttl"] = int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0
-            # Keys holding hash fields with a TTL. Redis 7.4 calls them subexpiry, Valkey 9 keys_with_volatile_items.
-            volatile_field = None
-            if self.server_type == "redis" and self.version >= (7, 4):
-                volatile_field = "subexpiry"
-            elif self.server_type == "valkey" and self.version >= (9,):
-                volatile_field = "keys_with_volatile_items"
-            if volatile_field is not None:
-                stats[volatile_field] = sum(
-                    1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields()
-                )
-            fields[f"db{index}"] = stats
-        return fields
+        return self._server.info_keyspace_fields()
