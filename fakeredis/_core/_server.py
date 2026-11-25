@@ -169,14 +169,13 @@ class FakeServer:
     @property
     def details(self) -> ServerDetails:
         """`version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type."""
-        server_type, version = self.server_type, self.version
         now = time.time()
         return ServerDetails(
-            server_type=server_type,
-            redis_version=_VALKEY_REDIS_VERSION if server_type == "valkey" else version,
-            valkey_version=version if server_type == "valkey" else None,
-            dragonfly_version=_UNKNOWN_PRODUCT_VERSION if server_type == "dragonfly" else None,
-            kividb_version=_UNKNOWN_PRODUCT_VERSION if server_type == "kividb" else None,
+            server_type=self.server_type,
+            redis_version=_VALKEY_REDIS_VERSION if self.server_type == "valkey" else self.version,
+            valkey_version=self.version if self.server_type == "valkey" else None,
+            dragonfly_version=_UNKNOWN_PRODUCT_VERSION if self.server_type == "dragonfly" else None,
+            kividb_version=_UNKNOWN_PRODUCT_VERSION if self.server_type == "kividb" else None,
             os=f"{platform.system()} {platform.release()} {platform.machine()}",
             arch_bits=struct.calcsize("P") * 8,
             process_id=os.getpid(),
