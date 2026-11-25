@@ -17,16 +17,18 @@ from fakeredis._core._server import DbDetails
     ],
 )
 def test_server_details(server_type, version, expected):
-    assert ServerDetails.create(server_type, version) == expected
     details = FakeServer(server_type=server_type, version=version).details
+    identity = ("server_type", "redis_version", "valkey_version", "dragonfly_version", "kividb_version")
+    assert {field: getattr(details, field) for field in identity} == {
+        field: getattr(expected, field) for field in identity
+    }
     assert details.server_version == version
-    assert (details.server_type, details.redis_version) == (expected.server_type, expected.redis_version)
     assert details.process_id > 0 and details.run_id and details.uptime_in_seconds >= 0
 
 
 def _info_server(server_type, version) -> ServerDetails:
     return dataclasses.replace(
-        ServerDetails.create(server_type, version),
+        FakeServer(server_type=server_type, version=version).details,
         os="Linux",
         arch_bits=64,
         process_id=1,

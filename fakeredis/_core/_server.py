@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import logging
 import os
 import platform
@@ -48,9 +47,8 @@ class ServerDetails:
     """What a server says about itself in INFO SERVER: its type, the Redis version it reports, its own version, and
     the figures of this run. `to_dict` picks the fields the server type and version report.
 
-    The identity fields mirror `ServerDetails` in `test/conftest.py`, which reads them from a real server. The figures
-    of the run have defaults, so details can be built from the identity alone (`create`); `FakeServer.details` fills
-    them in.
+    The identity fields mirror `ServerDetails` in `test/conftest.py`, which reads them from a real server.
+    `FakeServer.details` builds them.
     """
 
     server_type: ServerType
@@ -65,23 +63,9 @@ class ServerDetails:
     server_time_usec: int = 0
     uptime_in_seconds: int = 0
 
-    @classmethod
-    def create(cls, server_type: ServerType, version: VersionType) -> ServerDetails:
-        """The details of a `FakeServer` built with `server_type` and `version`.
-
-        `version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type.
-        """
-        if server_type == "valkey":
-            return cls(server_type, _VALKEY_REDIS_VERSION, valkey_version=version)
-        if server_type == "dragonfly":
-            return cls(server_type, version, dragonfly_version=_UNKNOWN_PRODUCT_VERSION)
-        if server_type == "kividb":
-            return cls(server_type, version, kividb_version=_UNKNOWN_PRODUCT_VERSION)
-        return cls(server_type, version)
-
     @property
     def server_version(self) -> VersionType:
-        """The version a `FakeServer` is built with, as in `create`."""
+        """The version a `FakeServer` is built with: Valkey's own version for Valkey, the Redis version for others."""
         return self.valkey_version if self.valkey_version is not None else self.redis_version
 
     def to_dict(self) -> dict[str, Any]:
@@ -184,9 +168,15 @@ class FakeServer:
 
     @property
     def details(self) -> ServerDetails:
+        """`version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type."""
+        server_type, version = self.server_type, self.version
         now = time.time()
-        return dataclasses.replace(
-            ServerDetails.create(self.server_type, self.version),
+        return ServerDetails(
+            server_type=server_type,
+            redis_version=_VALKEY_REDIS_VERSION if server_type == "valkey" else version,
+            valkey_version=version if server_type == "valkey" else None,
+            dragonfly_version=_UNKNOWN_PRODUCT_VERSION if server_type == "dragonfly" else None,
+            kividb_version=_UNKNOWN_PRODUCT_VERSION if server_type == "kividb" else None,
             os=f"{platform.system()} {platform.release()} {platform.machine()}",
             arch_bits=struct.calcsize("P") * 8,
             process_id=os.getpid(),
