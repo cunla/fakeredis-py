@@ -93,7 +93,7 @@ class ServerCommandsMixin(CommandsMixinBase):
         res = [get_command_info(cmd) for cmd in get_all_commands_info()]
         return res
 
-    @command((), (bytes,))
+    @command(name="INFO", fixed=(), repeat=(bytes,))
     def info(self, *sections: bytes) -> bytes:
         if len(sections) > 1 and self.server_type == "redis" and self.version < (7,):
             raise SimpleError(msgs.SYNTAX_ERROR_MSG)  # Redis 7.0 made INFO take several sections
