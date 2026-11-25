@@ -16,11 +16,6 @@ from fakeredis.model import Hash, get_all_commands_info, get_command_info
 # The INFO sections fakeredis reports, in the order Redis prints them. Sections whose figures fakeredis does not track
 # (memory, stats, cpu, commandstats, ...) are left out rather than filled with made-up numbers.
 _INFO_SECTIONS = (b"server", b"clients", b"persistence", b"replication", b"cluster", b"keyspace")
-# Valkey keeps reporting the Redis version it forked from, whatever its own version.
-_VALKEY_REDIS_VERSION = "7.2.4"
-# A fake Dragonfly or KiviDB server is built with the Redis version it emulates, so fakeredis has no product version to
-# report for it. The field is still sent: clients tell these servers apart by whether it is there.
-_UNKNOWN_PRODUCT_VERSION = "0.0.0"
 
 
 def _version_string(version: tuple[int, ...]) -> str:
@@ -135,30 +130,17 @@ class ServerCommandsMixin(CommandsMixinBase):
         return f"# {title}\r\n".encode() + b"".join(f"{key}:{value}\r\n".encode() for key, value in fields)
 
     def _info_server_fields(self) -> list[tuple[str, Any]]:
-        version = _version_string(self.version)
-        fields: list[tuple[str, Any]]
-        if self.server_type == "valkey":
-            mode_field = "server_mode" if self.version >= (8,) else "redis_mode"
-            fields = [
-                ("redis_version", _VALKEY_REDIS_VERSION),
-                ("server_name", "valkey"),
-                ("valkey_version", version),
-                (mode_field, "standalone"),
-            ]
-        elif self.server_type == "dragonfly":
-            fields = [
-                ("redis_version", version),
-                ("dragonfly_version", f"df-v{_UNKNOWN_PRODUCT_VERSION}"),
-                ("redis_mode", "standalone"),
-            ]
-        elif self.server_type == "kividb":
-            fields = [
-                ("redis_version", version),
-                ("redis_mode", "standalone"),
-                ("kividb_version", _UNKNOWN_PRODUCT_VERSION),
-            ]
-        else:
-            fields = [("redis_version", version), ("redis_mode", "standalone")]
+        details = self._server.details
+        fields: list[tuple[str, Any]] = [("redis_version", _version_string(details.redis_version))]
+        if details.valkey_version is not None:
+            fields += [("server_name", "valkey"), ("valkey_version", _version_string(details.valkey_version))]
+        if details.dragonfly_version is not None:
+            fields.append(("dragonfly_version", f"df-v{_version_string(details.dragonfly_version)}"))
+        if details.kividb_version is not None:
+            fields.append(("kividb_version", _version_string(details.kividb_version)))
+        # Valkey 8.0 renamed redis_mode to server_mode.
+        valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
+        fields.append(("server_mode" if valkey_8 else "redis_mode", "standalone"))
         now = time.time()
         uptime = int(now - self._server.started_at)
         fields += [

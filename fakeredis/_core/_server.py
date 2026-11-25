@@ -6,6 +6,7 @@ import threading
 import time
 import weakref
 from collections import OrderedDict, defaultdict
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from fakeredis._core._database import Database
@@ -24,6 +25,46 @@ def _create_version(v: tuple[int, ...] | int | str) -> VersionType:
         v_split = v.split(".")
         return tuple(int(x) for x in v_split)
     raise ValueError(f"Unsupported version: {v}")
+
+
+# Valkey keeps reporting the Redis version it forked from, whatever its own version.
+_VALKEY_REDIS_VERSION: VersionType = (7, 2, 4)
+# A fake Dragonfly or KiviDB server is built with the Redis version it emulates, so fakeredis has no product version to
+# report for it. One is still given: clients tell these servers apart by whether it is there.
+_UNKNOWN_PRODUCT_VERSION: VersionType = (0, 0, 0)
+
+
+@dataclass(frozen=True)
+class ServerDetails:
+    """What a server says about itself (in INFO SERVER): its type, the Redis version it reports, and its own version.
+
+    Mirrors `ServerDetails` in `test/conftest.py`, which reads the same fields from a real server.
+    """
+
+    server_type: ServerType
+    redis_version: VersionType
+    valkey_version: VersionType | None = None
+    dragonfly_version: VersionType | None = None
+    kividb_version: VersionType | None = None
+
+    @classmethod
+    def create(cls, server_type: ServerType, version: VersionType) -> ServerDetails:
+        """The details of a `FakeServer` built with `server_type` and `version`.
+
+        `version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type.
+        """
+        if server_type == "valkey":
+            return cls(server_type, _VALKEY_REDIS_VERSION, valkey_version=version)
+        if server_type == "dragonfly":
+            return cls(server_type, version, dragonfly_version=_UNKNOWN_PRODUCT_VERSION)
+        if server_type == "kividb":
+            return cls(server_type, version, kividb_version=_UNKNOWN_PRODUCT_VERSION)
+        return cls(server_type, version)
+
+    @property
+    def server_version(self) -> VersionType:
+        """The version a `FakeServer` is built with, as in `create`."""
+        return self.valkey_version if self.valkey_version is not None else self.redis_version
 
 
 class FakeServer:
@@ -76,6 +117,10 @@ class FakeServer:
         self.scan_cursors: OrderedDict[tuple[Any, int], tuple[list[Any], int]] = OrderedDict()
 
     SCAN_CURSORS_LIMIT: ClassVar[int] = 1024
+
+    @property
+    def details(self) -> ServerDetails:
+        return ServerDetails.create(self.server_type, self.version)
 
     def remember_scan_cursor(self, cursor_key: tuple[Any, int], resume_at: tuple[list[Any], int]) -> None:
         """Record where a SCAN-family cursor resumes, forgetting the oldest cursor once too many are held."""
