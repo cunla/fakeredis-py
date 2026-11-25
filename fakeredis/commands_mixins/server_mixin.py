@@ -112,51 +112,56 @@ class ServerCommandsMixin(CommandsMixinBase):
         return b"\r\n".join(self._info_section(name) for name in names)
 
     def _info_section(self, name: bytes) -> bytes:
-        fields: list[tuple[str, Any]]
+        fields: dict[str, Any]
         if name == b"server":
             fields = self._info_server_fields()
         elif name == b"clients":
-            fields = [("connected_clients", len(self._server.sockets))]
+            fields = {"connected_clients": len(self._server.sockets)}
         elif name == b"persistence":
             save_field = "last_success_save" if self.server_type == "dragonfly" else "rdb_last_save_time"
-            fields = [("loading", 0), (save_field, self._server.lastsave)]
+            fields = {"loading": 0, save_field: self._server.lastsave}
         elif name == b"replication":
-            fields = [("role", "master"), ("connected_slaves", 0)]
+            fields = {"role": "master", "connected_slaves": 0}
         elif name == b"cluster":
-            fields = [("cluster_enabled", 0)]
+            fields = {"cluster_enabled": 0}
         else:
             fields = self._info_keyspace_fields()
-        title = name.decode().capitalize()
-        return f"# {title}\r\n".encode() + b"".join(f"{key}:{value}\r\n".encode() for key, value in fields)
+        lines = [f"# {name.decode().capitalize()}"]
+        for key, value in fields.items():
+            if isinstance(value, dict):  # a keyspace line: db0:keys=1,expires=0,...
+                value = ",".join(f"{stat}={number}" for stat, number in value.items())
+            lines.append(f"{key}:{value}")
+        return "".join(f"{line}\r\n" for line in lines).encode()
 
-    def _info_server_fields(self) -> list[tuple[str, Any]]:
+    def _info_server_fields(self) -> dict[str, Any]:
         details = self._server.details
-        fields: list[tuple[str, Any]] = [("redis_version", _version_string(details.redis_version))]
+        fields: dict[str, Any] = {"redis_version": _version_string(details.redis_version)}
         if details.valkey_version is not None:
-            fields += [("server_name", "valkey"), ("valkey_version", _version_string(details.valkey_version))]
+            fields["server_name"] = "valkey"
+            fields["valkey_version"] = _version_string(details.valkey_version)
         if details.dragonfly_version is not None:
-            fields.append(("dragonfly_version", f"df-v{_version_string(details.dragonfly_version)}"))
+            fields["dragonfly_version"] = f"df-v{_version_string(details.dragonfly_version)}"
         if details.kividb_version is not None:
-            fields.append(("kividb_version", _version_string(details.kividb_version)))
+            fields["kividb_version"] = _version_string(details.kividb_version)
         # Valkey 8.0 renamed redis_mode to server_mode.
         valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
-        fields.append(("server_mode" if valkey_8 else "redis_mode", "standalone"))
+        fields["server_mode" if valkey_8 else "redis_mode"] = "standalone"
         now = time.time()
         uptime = int(now - self._server.started_at)
-        fields += [
-            ("os", f"{platform.system()} {platform.release()} {platform.machine()}"),
-            ("arch_bits", struct.calcsize("P") * 8),
-            ("process_id", os.getpid()),
-        ]
+        fields["os"] = f"{platform.system()} {platform.release()} {platform.machine()}"
+        fields["arch_bits"] = struct.calcsize("P") * 8
+        fields["process_id"] = os.getpid()
         if self.server_type != "dragonfly":
-            fields.append(("run_id", self._server.run_id))
+            fields["run_id"] = self._server.run_id
         if self.server_type in ("redis", "valkey"):
-            fields.append(("server_time_usec", int(now * 1_000_000)))
-        fields += [("uptime_in_seconds", uptime), ("uptime_in_days", uptime // 86400)]
+            fields["server_time_usec"] = int(now * 1_000_000)
+        fields["uptime_in_seconds"] = uptime
+        fields["uptime_in_days"] = uptime // 86400
         return fields
 
-    def _info_keyspace_fields(self) -> list[tuple[str, Any]]:
-        fields: list[tuple[str, Any]] = []
+    def _info_keyspace_fields(self) -> dict[str, Any]:
+        """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
+        fields: dict[str, Any] = {}
         indexes = set(self._server.dbs)
         if self.server_type == "dragonfly":
             indexes.add(0)  # Dragonfly lists db0 even when it is empty
@@ -167,11 +172,11 @@ class ServerCommandsMixin(CommandsMixinBase):
                 continue
             now = db.time if db is not None else 0.0
             ttls_ms = [(item.expireat - now) * 1000 for item in items if item.expireat is not None]
-            stats = f"keys={len(items)},expires={len(ttls_ms)}"
+            stats: dict[str, int] = {"keys": len(items), "expires": len(ttls_ms)}
             if self.server_type == "dragonfly":
-                stats += ",avg_ttl=-1"  # Dragonfly does not compute it
+                stats["avg_ttl"] = -1  # Dragonfly does not compute it
             else:
-                stats += f",avg_ttl={int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0}"
+                stats["avg_ttl"] = int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0
             # Keys holding hash fields with a TTL. Redis 7.4 calls them subexpiry, Valkey 9 keys_with_volatile_items.
             volatile_field = None
             if self.server_type == "redis" and self.version >= (7, 4):
@@ -179,7 +184,8 @@ class ServerCommandsMixin(CommandsMixinBase):
             elif self.server_type == "valkey" and self.version >= (9,):
                 volatile_field = "keys_with_volatile_items"
             if volatile_field is not None:
-                volatile = sum(1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields())
-                stats += f",{volatile_field}={volatile}"
-            fields.append((f"db{index}", stats))
+                stats[volatile_field] = sum(
+                    1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields()
+                )
+            fields[f"db{index}"] = stats
         return fields
