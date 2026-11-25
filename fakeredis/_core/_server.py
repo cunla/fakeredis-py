@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import threading
 import time
 import weakref
@@ -51,6 +52,9 @@ class FakeServer:
         self.psubscribers: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.ssubscribers: dict[bytes, weakref.WeakSet[Any]] = defaultdict(weakref.WeakSet)
         self.lastsave: int = int(time.time())
+        # Reported by INFO SERVER: when the server started (for uptime_in_seconds) and the id of this run.
+        self.started_at: float = time.time()
+        self.run_id: str = secrets.token_hex(20)
         self.connected = True
         # List of weakrefs to sockets that are being closed lazily
         self.sockets: list[Any] = []
