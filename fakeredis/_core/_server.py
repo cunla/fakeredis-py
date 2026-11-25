@@ -10,7 +10,7 @@ import time
 import weakref
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Dict
 
 from fakeredis._core._database import Database
 from fakeredis._typing import ServerType, VersionType
@@ -42,7 +42,7 @@ _VALKEY_REDIS_VERSION: VersionType = (7, 2, 4)
 _UNKNOWN_PRODUCT_VERSION: VersionType = (0, 0, 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ServerDetails:
     """What a server says about itself (in INFO SERVER): its type, the Redis version it reports, and its own version.
 
@@ -73,6 +73,30 @@ class ServerDetails:
     def server_version(self) -> VersionType:
         """The version a `FakeServer` is built with, as in `create`."""
         return self.valkey_version if self.valkey_version is not None else self.redis_version
+
+
+@dataclass(frozen=True, slots=True)
+class DbDetails:
+    server_type: ServerType
+    server_version: VersionType
+    db_num: int
+    keys: int
+    expires: int
+    avg_ttl: int
+    subexpiry: int
+
+    def to_dict(self) -> Dict[str, int]:
+        res: Dict[str, int] = {
+            "db_num": self.db_num,
+            "keys": self.keys,
+            "expires": self.expires,
+            "avg_ttl": self.avg_ttl if self.server_type != "dragonfly" else -1,
+        }
+        if self.server_type == "redis" and self.server_version >= (7, 4):
+            res["subexpiry"] = self.subexpiry
+        elif self.server_type == "valkey" and self.server_version >= (9,):
+            res["keys_with_volatile_items"] = self.subexpiry
+        return res
 
 
 class FakeServer:
@@ -157,9 +181,9 @@ class FakeServer:
         fields["uptime_in_days"] = uptime // 86400
         return fields
 
-    def info_keyspace_fields(self) -> dict[str, Any]:
+    def info_keyspace_fields(self) -> dict[str, dict[str, int]]:
         """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
-        fields: dict[str, Any] = {}
+        fields: dict[str, DbDetails] = {}
         indexes = set(self.dbs)
         if self.server_type == "dragonfly":
             indexes.add(0)  # Dragonfly lists db0 even when it is empty
@@ -170,23 +194,16 @@ class FakeServer:
                 continue
             now = db.time if db is not None else 0.0
             ttls_ms = [(item.expireat - now) * 1000 for item in items if item.expireat is not None]
-            stats: dict[str, int] = {"keys": len(items), "expires": len(ttls_ms)}
-            if self.server_type == "dragonfly":
-                stats["avg_ttl"] = -1  # Dragonfly does not compute it
-            else:
-                stats["avg_ttl"] = int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0
-            # Keys holding hash fields with a TTL. Redis 7.4 calls them subexpiry, Valkey 9 keys_with_volatile_items.
-            volatile_field = None
-            if self.server_type == "redis" and self.version >= (7, 4):
-                volatile_field = "subexpiry"
-            elif self.server_type == "valkey" and self.version >= (9,):
-                volatile_field = "keys_with_volatile_items"
-            if volatile_field is not None:
-                stats[volatile_field] = sum(
-                    1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields()
-                )
-            fields[f"db{index}"] = stats
-        return fields
+            fields[f"db{index}"] = DbDetails(
+                db_num=index,
+                keys=len(items),
+                expires=len(ttls_ms),
+                avg_ttl=int(sum(ttls_ms) / len(ttls_ms)) if ttls_ms else 0,
+                subexpiry=sum(1 for item in items if isinstance(item.value, Hash) and item.value.has_volatile_fields()),
+                server_type=self.server_type,
+                server_version=self.version,
+            )
+        return {k: v.to_dict() for k, v in fields.items()}
 
     def remember_scan_cursor(self, cursor_key: tuple[Any, int], resume_at: tuple[list[Any], int]) -> None:
         """Record where a SCAN-family cursor resumes, forgetting the oldest cursor once too many are held."""
