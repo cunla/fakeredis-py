@@ -10,7 +10,7 @@ import time
 import weakref
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar
 
 from fakeredis._core._database import Database
 from fakeredis._typing import ServerType, VersionType
@@ -42,7 +42,7 @@ _VALKEY_REDIS_VERSION: VersionType = (7, 2, 4)
 _UNKNOWN_PRODUCT_VERSION: VersionType = (0, 0, 0)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class ServerDetails:
     """What a server says about itself (in INFO SERVER): its type, the Redis version it reports, and its own version.
 
@@ -75,7 +75,7 @@ class ServerDetails:
         return self.valkey_version if self.valkey_version is not None else self.redis_version
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class DbDetails:
     server_type: ServerType
     server_version: VersionType
@@ -85,9 +85,8 @@ class DbDetails:
     avg_ttl: int
     subexpiry: int
 
-    def to_dict(self) -> Dict[str, int]:
-        res: Dict[str, int] = {
-            "db_num": self.db_num,
+    def to_dict(self) -> dict[str, int]:
+        res: dict[str, int] = {
             "keys": self.keys,
             "expires": self.expires,
             "avg_ttl": self.avg_ttl if self.server_type != "dragonfly" else -1,
@@ -96,6 +95,44 @@ class DbDetails:
             res["subexpiry"] = self.subexpiry
         elif self.server_type == "valkey" and self.server_version >= (9,):
             res["keys_with_volatile_items"] = self.subexpiry
+        return res
+
+
+@dataclass(frozen=True)
+class InfoServer:
+    """The INFO SERVER section: the server's identity and the figures of this run. `to_dict` picks the fields the
+    server type and version report."""
+
+    details: ServerDetails
+    os: str
+    arch_bits: int
+    process_id: int
+    run_id: str
+    server_time_usec: int
+    uptime_in_seconds: int
+
+    def to_dict(self) -> dict[str, Any]:
+        details = self.details
+        res: dict[str, Any] = {"redis_version": _version_string(details.redis_version)}
+        if details.valkey_version is not None:
+            res["server_name"] = "valkey"
+            res["valkey_version"] = _version_string(details.valkey_version)
+        if details.dragonfly_version is not None:
+            res["dragonfly_version"] = f"df-v{_version_string(details.dragonfly_version)}"
+        if details.kividb_version is not None:
+            res["kividb_version"] = _version_string(details.kividb_version)
+        # Valkey 8.0 renamed redis_mode to server_mode.
+        valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
+        res["server_mode" if valkey_8 else "redis_mode"] = "standalone"
+        res["os"] = self.os
+        res["arch_bits"] = self.arch_bits
+        res["process_id"] = self.process_id
+        if details.server_type != "dragonfly":
+            res["run_id"] = self.run_id
+        if details.server_type in ("redis", "valkey"):
+            res["server_time_usec"] = self.server_time_usec
+        res["uptime_in_seconds"] = self.uptime_in_seconds
+        res["uptime_in_days"] = self.uptime_in_seconds // 86400
         return res
 
 
@@ -156,30 +193,16 @@ class FakeServer:
 
     def info_server_fields(self) -> dict[str, Any]:
         """The fields of INFO SERVER, in the order they are printed."""
-        details = self.details
-        fields: dict[str, Any] = {"redis_version": _version_string(details.redis_version)}
-        if details.valkey_version is not None:
-            fields["server_name"] = "valkey"
-            fields["valkey_version"] = _version_string(details.valkey_version)
-        if details.dragonfly_version is not None:
-            fields["dragonfly_version"] = f"df-v{_version_string(details.dragonfly_version)}"
-        if details.kividb_version is not None:
-            fields["kividb_version"] = _version_string(details.kividb_version)
-        # Valkey 8.0 renamed redis_mode to server_mode.
-        valkey_8 = details.valkey_version is not None and details.valkey_version >= (8,)
-        fields["server_mode" if valkey_8 else "redis_mode"] = "standalone"
         now = time.time()
-        uptime = int(now - self.started_at)
-        fields["os"] = f"{platform.system()} {platform.release()} {platform.machine()}"
-        fields["arch_bits"] = struct.calcsize("P") * 8
-        fields["process_id"] = os.getpid()
-        if self.server_type != "dragonfly":
-            fields["run_id"] = self.run_id
-        if self.server_type in ("redis", "valkey"):
-            fields["server_time_usec"] = int(now * 1_000_000)
-        fields["uptime_in_seconds"] = uptime
-        fields["uptime_in_days"] = uptime // 86400
-        return fields
+        return InfoServer(
+            details=self.details,
+            os=f"{platform.system()} {platform.release()} {platform.machine()}",
+            arch_bits=struct.calcsize("P") * 8,
+            process_id=os.getpid(),
+            run_id=self.run_id,
+            server_time_usec=int(now * 1_000_000),
+            uptime_in_seconds=int(now - self.started_at),
+        ).to_dict()
 
     def info_keyspace_fields(self) -> dict[str, dict[str, int]]:
         """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
