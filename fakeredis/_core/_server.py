@@ -166,11 +166,13 @@ class FakeServer:
 
     SCAN_CURSORS_LIMIT: ClassVar[int] = 1024
 
-    @property
-    def details(self) -> ServerDetails:
-        """`version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type."""
+    def info_server_fields(self) -> dict[str, Any]:
+        """
+        `version` is Valkey's own version for Valkey, and the Redis version emulated for every other server type.
+        The fields of INFO SERVER, in the order they are printed.
+        """
         now = time.time()
-        return ServerDetails(
+        details = ServerDetails(
             server_type=self.server_type,
             redis_version=_VALKEY_REDIS_VERSION if self.server_type == "valkey" else self.version,
             valkey_version=self.version if self.server_type == "valkey" else None,
@@ -183,10 +185,7 @@ class FakeServer:
             server_time_usec=int(now * 1_000_000),
             uptime_in_seconds=int(now - self.started_at),
         )
-
-    def info_server_fields(self) -> dict[str, Any]:
-        """The fields of INFO SERVER, in the order they are printed."""
-        return self.details.to_dict()
+        return details.to_dict()
 
     def info_keyspace_fields(self) -> dict[str, dict[str, int]]:
         """`{"db0": {"keys": 2, "expires": 1, ...}, ...}`, one entry per database listed."""
