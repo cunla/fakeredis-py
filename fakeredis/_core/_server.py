@@ -48,7 +48,7 @@ class ServerDetails:
     the figures of this run. `to_dict` picks the fields the server type and version report.
 
     The identity fields mirror `ServerDetails` in `test/conftest.py`, which reads them from a real server.
-    `FakeServer.details` builds them.
+    `FakeServer.info_server_fields` builds them.
     """
 
     server_type: ServerType
