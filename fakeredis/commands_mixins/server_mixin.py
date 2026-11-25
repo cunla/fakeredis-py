@@ -112,26 +112,28 @@ class ServerCommandsMixin(CommandsMixinBase):
         return b"\r\n".join(self._info_section(name) for name in names)
 
     def _info_section(self, name: bytes) -> bytes:
-        fields: dict[str, Any]
-        if name == b"server":
-            fields = self._info_server_fields()
-        elif name == b"clients":
-            fields = {"connected_clients": len(self._server.sockets)}
-        elif name == b"persistence":
-            save_field = "last_success_save" if self.server_type == "dragonfly" else "rdb_last_save_time"
-            fields = {"loading": 0, save_field: self._server.lastsave}
-        elif name == b"replication":
-            fields = {"role": "master", "connected_slaves": 0}
-        elif name == b"cluster":
-            fields = {"cluster_enabled": 0}
-        else:
-            fields = self._info_keyspace_fields()
+        fields = self._info_fields(name)
         lines = [f"# {name.decode().capitalize()}"]
         for key, value in fields.items():
             if isinstance(value, dict):  # a keyspace line: db0:keys=1,expires=0,...
                 value = ",".join(f"{stat}={number}" for stat, number in value.items())
             lines.append(f"{key}:{value}")
         return "".join(f"{line}\r\n" for line in lines).encode()
+
+    def _info_fields(self, name: bytes) -> dict[str, Any]:
+        """The fields of INFO section `name`, in the order they are printed."""
+        if name == b"server":
+            return self._info_server_fields()
+        if name == b"clients":
+            return {"connected_clients": len(self._server.sockets)}
+        if name == b"persistence":
+            save_field = "last_success_save" if self.server_type == "dragonfly" else "rdb_last_save_time"
+            return {"loading": 0, save_field: self._server.lastsave}
+        if name == b"replication":
+            return {"role": "master", "connected_slaves": 0}
+        if name == b"cluster":
+            return {"cluster_enabled": 0}
+        return self._info_keyspace_fields()
 
     def _info_server_fields(self) -> dict[str, Any]:
         details = self._server.details
