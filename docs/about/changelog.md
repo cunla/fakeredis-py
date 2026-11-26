@@ -13,6 +13,10 @@ toc_depth: 2
 
 - feat: `INFO` command (server, clients, persistence, replication, cluster and keyspace sections) #654
 
+### 🐛 Bug Fixes
+
+- fix: clients created with `health_check_interval` no longer fail to connect with `Bad response from PING health check`, or hang when `retry_on_error` is set. This affected sync clients on redis-py 8.2, `FakeAsyncRedis` on redis-py 5.0+ and `FakeAsyncValkey` (#658)
+
 ## v2.41.0 - 2026-11-23
 
 ### 🚀 Features

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import valkey
@@ -23,6 +24,11 @@ def _validate_server_type(args_dict: dict[str, Any]) -> None:
 
 class FakeValkeyConnection(FakeBaseConnection, valkey.Connection):
     _connection_error_class = valkey.ConnectionError
+
+    @staticmethod
+    def _health_check_clock() -> float:
+        # valkey-py times its health checks with the wall clock.
+        return time.time()
 
 
 class FakeAsyncValkeyConnection(FakeBaseAsyncConnection, valkey.asyncio.Connection):

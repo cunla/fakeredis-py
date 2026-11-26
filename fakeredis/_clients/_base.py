@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import redis
 
@@ -87,6 +87,20 @@ class FakeBaseConnectionMixin:
         }
         client_info.update(client_info_arg)
         self._client_info = ClientInfo(**client_info)
+
+    def _defer_health_check(self, now: float) -> None:
+        """Push back the next PING health check, as redis-py does after reading any reply (an error reply too).
+
+        Without this, check_health() sends a PING before every command of a pipelined handshake, and a PING then reads
+        another command's reply. See https://github.com/cunla/fakeredis-py/issues/658
+
+        :param now: the current time on the clock the connection's check_health() compares against.
+        """
+        # The attributes belong to the redis-py/valkey-py connection class this mixin is combined with, which type
+        # them differently (int or float).
+        conn = cast(Any, self)
+        if conn.health_check_interval:
+            conn.next_health_check = now + conn.health_check_interval
 
     def _decode(self, response: Any) -> Any:
         if isinstance(response, list):

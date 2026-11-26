@@ -140,6 +140,8 @@ class FakeBaseAsyncConnection(FakeBaseConnectionMixin):
             if kwargs.get("disconnect_on_error", True):
                 await self.disconnect(nowait=True)
             raise
+        # redis-py's async connection times its health checks with the event loop's clock.
+        self._defer_health_check(asyncio.get_running_loop().time())
         if isinstance(response, RaiseErrorTypes):
             raise response
         if kwargs.get("disable_decoding", False):

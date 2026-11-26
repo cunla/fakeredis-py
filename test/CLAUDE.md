@@ -35,6 +35,9 @@ with `-m fake`, or switch to `redis8`.
 - `async_redis` — the async equivalent, parametrized over fake/real × RESP2/RESP3.
 - `create_connection` — the factory behind `r`; call `create_connection(db=..., **kwargs)` for extra clients on the same
   server.
+- `create_async_connection` — the factory behind `async_redis`; call `create_async_connection(**kwargs)` for an async
+  client with extra options (e.g. `health_check_interval`). Real clients default to db 2. Its clients are disconnected
+  after the test, but not flushed.
 - `real_server_details` — a `ServerDetails` with `server_type` (`redis`, `valkey`, `dragonfly`, `kividb`) and versions;
   use it when the expected reply differs by server.
 - `fake_server`, `tcp_server_address` — the shared `FakeServer`, and a `TcpFakeServer` serving it over TCP.
