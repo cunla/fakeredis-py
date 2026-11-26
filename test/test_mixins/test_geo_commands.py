@@ -438,3 +438,78 @@ def test_search_by_missing_member(r: ClientType, real_server_details: ServerDeta
     assert r.geosearch("missing-key", member="x", radius=100, unit="km") == []
     if has_geosearchstore:
         assert r.geosearchstore("dst", "missing-key", member="x", radius=100, unit="km") == 0
+
+
+PALERMO_HASH = 3479099956230698  # ZSCORE Sicily Palermo on Redis 8.10.3
+CATANIA_HASH = 3479447370796909
+
+
+@pytest.fixture
+def sicily(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    return r
+
+
+def _scored(rows: Any) -> list[tuple[str, float]]:
+    """Score rows as (name, number), whatever the client decodes names into and whether scores arrive as int or float."""
+    return [
+        (name.decode() if isinstance(name, bytes) else name, float(score))
+        for name, score in rows
+    ]
+
+
+def _texts(values: Any) -> list[str]:
+    return [value.decode() if isinstance(value, bytes) else value for value in values]
+
+
+def test_geo_member_score_is_the_52_bit_geohash(sicily: ClientType):
+    assert float(sicily.zscore("Sicily", "Palermo")) == PALERMO_HASH
+    assert float(sicily.zscore("Sicily", "Catania")) == CATANIA_HASH
+
+
+def test_sorted_set_commands_work_on_a_geo_key(sicily: ClientType):
+    assert sicily.zcount("Sicily", 0, 9999999999999999) == 2
+    assert _scored(sicily.zrange("Sicily", 0, -1, withscores=True)) == [
+        ("Palermo", PALERMO_HASH),
+        ("Catania", CATANIA_HASH),
+    ]
+    assert _texts(sicily.zrangebyscore("Sicily", 0, 9999999999999999)) == ["Palermo", "Catania"]
+
+
+def test_geosearchstore_destination_holds_hashes(sicily: ClientType):
+    sicily.geosearchstore("dst", "Sicily", longitude=15, latitude=37, radius=200, unit="km")
+    assert _scored(sicily.zrange("dst", 0, -1, withscores=True)) == [
+        ("Palermo", PALERMO_HASH),
+        ("Catania", CATANIA_HASH),
+    ]
+
+
+def test_geohash_and_geopos_still_answer_the_string_form(sicily: ClientType):
+    assert _texts(sicily.geohash("Sicily", "Palermo", "Catania")) == ["sqc8b49rny0", "sqdtr74hyu0"]
+    palermo = sicily.geopos("Sicily", "Palermo")[0]
+    assert round(palermo[0], 5) == 13.36139
+    assert round(palermo[1], 5) == 38.11556
+
+
+def test_withhash_returns_the_integer_score(sicily: ClientType):
+    found = sicily.georadius("Sicily", 15, 37, 200, unit="km", withhash=True, sort="ASC")
+    assert [(row[0].decode() if isinstance(row[0], bytes) else row[0], float(row[1])) for row in found] == [
+        ("Catania", CATANIA_HASH),
+        ("Palermo", PALERMO_HASH),
+    ]
+
+
+def test_geosearch_withhash_and_withcoord(sicily: ClientType):
+    found = sicily.geosearch(
+        "Sicily", longitude=15, latitude=37, radius=200, unit="km", withhash=True, withcoord=True, sort="ASC"
+    )
+    names = [row[0].decode() if isinstance(row[0], bytes) else row[0] for row in found]
+    assert names == ["Catania", "Palermo"]
+    assert [float(row[1]) for row in found] == [CATANIA_HASH, PALERMO_HASH]
+    assert round(found[0][2][0], 5) == 15.08727
+    assert round(found[0][2][1], 5) == 37.50267
+
+
+def test_georadius_by_member_still_locates_the_member(sicily: ClientType):
+    found = sicily.georadiusbymember("Sicily", "Palermo", 200, unit="km", sort="ASC")
+    assert _texts(found) == ["Palermo", "Catania"]

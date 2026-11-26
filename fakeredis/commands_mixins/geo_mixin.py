@@ -12,6 +12,7 @@ from fakeredis._core import CommandItem
 from fakeredis._helpers import SimpleError
 from fakeredis.commands_mixins._mixin_base import CommandsMixinBase
 from fakeredis.geo import distance, geo_decode, geo_encode
+from fakeredis.geo.geohash import geo_decode_score, geo_encode_score
 from fakeredis.model import ZSet
 
 GEO_UNSUPPORTED_UNIT = "ERR unsupported unit provided. please use M, KM, FT, MI"
@@ -46,10 +47,11 @@ def translate_meters_to_unit(unit_arg: bytes) -> float:
 GeoResult = namedtuple("GeoResult", "name long lat hash distance")
 
 
-def _parse_results(items: list[GeoResult], withcoord: bool, withdist: bool) -> list[Any]:
+def _parse_results(items: list[GeoResult], withcoord: bool, withdist: bool, withhash: bool = False) -> list[Any]:
     """Parse list of GeoResults to redis response
     :param withcoord: include coordinates in response
     :param withdist: include distance in response
+    :param withhash: include the 52-bit geohash score in response
     :returns: Parsed list
     """
     res = []
@@ -57,6 +59,8 @@ def _parse_results(items: list[GeoResult], withcoord: bool, withdist: bool) -> l
         new_item = [item.name]
         if withdist:
             new_item.append(Float.encode(item.distance, False))
+        if withhash:
+            new_item.append(Int.encode(item.hash))
         if withcoord:
             new_item.append([Float.encode(item.long, False), Float.encode(item.lat, False)])
         if len(new_item) == 1:
@@ -97,7 +101,7 @@ def _find_near(
     scores = dict(zset.items())
     for name in zset:
         _hash = scores[name]
-        p_lat, p_long, _, _ = geo_decode(_hash)
+        p_lat, p_long = geo_decode_score(_hash)
         if box is not None and not _in_box(lat, long, p_lat, p_long, box, conv):
             continue
         dist = distance((p_lat, p_long), (lat, long)) * conv
@@ -153,7 +157,7 @@ class GeoCommandsMixin(CommandsMixinBase):
         return len(geo_results)
 
     def _georadius(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[bytes] | int:
-        (withcoord, withdist, _withhash, count, count_any, asc, desc, store, storedist), _left_args = extract_args(
+        (withcoord, withdist, withhash, count, count_any, asc, desc, store, storedist), _left_args = extract_args(
             args,
             ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc", "*store", "*storedist"),
             error_on_unexpected=False,
@@ -180,7 +184,7 @@ class GeoCommandsMixin(CommandsMixinBase):
         if storedist:
             self._store_geo_results(storedist, geo_results, scoredist=True)
             return len(geo_results)
-        return _parse_results(geo_results, withcoord, withdist)
+        return _parse_results(geo_results, withcoord, withdist, withhash)
 
     @command(name="GEOADD", fixed=(Key(ZSet),), repeat=(bytes,))
     def geoadd(self, key: CommandItem, *args: bytes) -> int:
@@ -200,7 +204,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             ):
                 raise SimpleError(GEO_INVALID_COORDINATE_MSG.format(f"{long:f}", f"{lat:f}"))
             should_add = (name in zset and not xx) or (name not in zset and not nx)
-            if should_add and zset.add(name, geo_encode(lat, long, 10)):
+            if should_add and zset.add(name, geo_encode_score(lat, long)):
                 changed_items += 1
         if changed_items:
             key.updated()
@@ -210,13 +214,20 @@ class GeoCommandsMixin(CommandsMixinBase):
 
     @command(name="GEOHASH", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def geohash(self, key: CommandItem, *members: bytes) -> list[bytes | None]:
-        hashes = map(key.value.get, members)
-        geohash_list: list[bytes | None] = [((x + "0").encode() if x is not None else x) for x in hashes]
+        geohash_list: list[bytes | None] = []
+        for member in members:
+            score = key.value.get(member)
+            if score is None:
+                geohash_list.append(None)
+                continue
+            lat, long = geo_decode_score(score)
+            # Redis answers an 11-character geohash: the 10-character string form plus a zero padding character.
+            geohash_list.append((geo_encode(lat, long, 10) + "0").encode())
         return geohash_list
 
     @command(name="GEOPOS", fixed=(Key(ZSet), bytes), repeat=(bytes,))
     def geopos(self, key: CommandItem, *members: bytes) -> list[list[float] | None]:
-        gospositions = (geo_decode(x) if x is not None else x for x in map(key.value.get, members))
+        gospositions = (geo_decode_score(x) if x is not None else x for x in map(key.value.get, members))
         res = [([x[1], x[0]] if x is not None else None) for x in gospositions]
         return res
 
@@ -225,14 +236,14 @@ class GeoCommandsMixin(CommandsMixinBase):
         geohashes = [key.value.get(m1), key.value.get(m2)]
         if any(elem is None for elem in geohashes):
             return None
-        geo_locs = [geo_decode(x) for x in geohashes]
+        geo_locs = [geo_decode_score(x) for x in geohashes]
         res = distance((geo_locs[0][0], geo_locs[0][1]), (geo_locs[1][0], geo_locs[1][1]))
         unit = translate_meters_to_unit(args[0]) if len(args) == 1 else 1
         return res * unit
 
     @command(name="GEORADIUS_RO", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
     def georadius_ro(self, key: CommandItem, long: float, lat: float, radius: float, *args: bytes) -> list[Any]:
-        (withcoord, withdist, _withhash, count, count_any, asc, desc), _left_args = extract_args(
+        (withcoord, withdist, withhash, count, count_any, asc, desc), _left_args = extract_args(
             args,
             ("withcoord", "withdist", "withhash", "+count", "any", "asc", "desc"),
             error_on_unexpected=False,
@@ -253,7 +264,7 @@ class GeoCommandsMixin(CommandsMixinBase):
             sort=self.server_type != "dragonfly" or asc or desc,
         )
 
-        ret = _parse_results(geo_results, withcoord, withdist)
+        ret = _parse_results(geo_results, withcoord, withdist, withhash)
         return ret
 
     @command(name="GEORADIUS", fixed=(Key(ZSet), Float, Float, Float), repeat=(bytes,))
@@ -269,7 +280,7 @@ class GeoCommandsMixin(CommandsMixinBase):
                 raise SimpleError(GEO_MEMBER_NOT_FOUND_MSG)
             # A missing key finds nothing, wherever the search is centred.
             return 0.0, 0.0
-        lat, long, _, _ = geo_decode(member_score)
+        lat, long = geo_decode_score(member_score)
         return lat, long
 
     @command(name="GEORADIUSBYMEMBER", fixed=(Key(ZSet), bytes, Float), repeat=(bytes,))
@@ -372,7 +383,7 @@ class GeoCommandsMixin(CommandsMixinBase):
     @command(name="GEOSEARCH", fixed=(Key(ZSet),), repeat=(bytes,))
     def geosearch(self, key: CommandItem, *args: bytes) -> list[Any]:
         parsed = self._parse_geosearch_args("GEOSEARCH", key, args, store=False)
-        return _parse_results(self._geosearch(key, parsed), parsed.withcoord, parsed.withdist)
+        return _parse_results(self._geosearch(key, parsed), parsed.withcoord, parsed.withdist, parsed.withhash)
 
     @command(name="GEOSEARCHSTORE", fixed=(bytes, Key(ZSet)), repeat=(bytes,))
     def geosearchstore(self, dst: bytes, src: CommandItem, *args: bytes) -> int:
