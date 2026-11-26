@@ -7,6 +7,12 @@ tags:
 toc_depth: 2
 ---
 
+## Next release
+
+### 🚀 Features
+
+- feat: `INFO` command (server, clients, persistence, replication, cluster and keyspace sections) #654
+
 ## v2.41.0 - 2026-11-23
 
 ### 🚀 Features

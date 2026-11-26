@@ -61,6 +61,13 @@ class Hash(BaseModel):
         self._schedule_expiry(key_bytes, when_ms)
         return 1
 
+    def has_volatile_fields(self) -> bool:
+        """Whether a field still has a TTL that has not passed. Read-only: expires nothing and queues no notification."""
+        if not self._expirations:
+            return False
+        now = current_time()
+        return any(exp >= now for exp in self._expirations.values())
+
     def clear_key_expireat(self, key: AnyStr) -> bool:
         return self._expirations.pop(asbytes(key), None) is not None
 
