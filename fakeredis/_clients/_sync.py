@@ -15,9 +15,6 @@ from fakeredis._core import FakeSelector, FakeServer
 from fakeredis._socket import FakeSocket
 from fakeredis._typing import RaiseErrorTypes, Self, ServerType, VersionType
 
-# redis-py<6 times its health checks with the wall clock, later versions with a monotonic one.
-_HEALTH_CHECK_CLOCK = time.monotonic if int(redis.__version__.split(".")[0]) >= 6 else time.time
-
 
 class FakeBaseConnection(FakeBaseConnectionMixin):
     _connection_error_class = redis.ConnectionError
@@ -25,7 +22,8 @@ class FakeBaseConnection(FakeBaseConnectionMixin):
     @staticmethod
     def _health_check_clock() -> float:
         """The clock the client library's check_health() compares next_health_check against."""
-        return _HEALTH_CHECK_CLOCK()
+        # redis-py<6 times its health checks with the wall clock, later versions with a monotonic one.
+        return time.monotonic()
 
     def connect(self) -> None:
         if self._sock:
