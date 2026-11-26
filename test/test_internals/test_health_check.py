@@ -43,6 +43,7 @@ def test_connection_handshake_with_health_check_interval():
     assert r.client_getname() in ("c", b"c")
 
 
+@testtools.run_test_if_redispy_ver("gte", "6.0")
 def test_health_check_pings_only_once_the_interval_has_passed(create_connection: Callable[..., ClientType]):
     client = create_connection(db=2, health_check_interval=30)
     client.set("foo", "bar")
@@ -61,6 +62,7 @@ def test_health_check_pings_only_once_the_interval_has_passed(create_connection:
         client.connection_pool.release(conn)
 
 
+@testtools.run_test_if_redispy_ver("gte", "6.0")
 def test_error_reply_postpones_health_check(create_connection: Callable[..., ClientType]):
     client = create_connection(db=2, health_check_interval=30)
     client.set("foo", "bar")
