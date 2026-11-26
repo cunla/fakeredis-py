@@ -5,6 +5,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+import redis
 
 import fakeredis
 from test.testtools import RESPONSE_ERRORS, pool_get_connection, run_test_if_redispy_ver
@@ -31,6 +32,23 @@ def _client_kwargs(protocol: int) -> dict[str, Any]:
     if protocol == 3:
         kwargs["protocol"] = 3
     return kwargs
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize(
+    "pool_kwargs", [{}, {"retry_on_error": [redis.TimeoutError]}], ids=["default", "retry_on_error"]
+)
+def test_connection_pool_from_url_with_health_check_interval(pool_kwargs: dict[str, Any]):
+    # The reproduction from the issue. With redis-py 8.2, the first command raised `Bad response from PING health
+    # check`, or with retry_on_error blocked forever in read_response, hence the timeout.
+    pool = redis.ConnectionPool.from_url(
+        "redis://localhost:6379/0",
+        connection_class=fakeredis.FakeRedisConnection,
+        server=fakeredis.FakeServer(),
+        health_check_interval=30,
+        **pool_kwargs,
+    )
+    assert redis.Redis(connection_pool=pool).get("key") is None
 
 
 @pytest.mark.parametrize("protocol", PROTOCOLS)
