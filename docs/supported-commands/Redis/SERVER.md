@@ -1,4 +1,4 @@
-# Redis `server` commands (23/85 implemented)
+# Redis `server` commands (24/85 implemented)
 
 ## [ACL CAT](https://redis.io/commands/acl-cat/)
 
@@ -75,6 +75,10 @@ Removes all keys from all databases.
 ## [FLUSHDB](https://redis.io/commands/flushdb/)
 
 Remove all keys from the current database.
+
+## [INFO](https://redis.io/commands/info/)
+
+Returns information and statistics about the server.
 
 ## [LASTSAVE](https://redis.io/commands/lastsave/)
 
@@ -199,10 +203,6 @@ Starts hotkeys tracking.
 #### [HOTKEYS STOP](https://redis.io/commands/hotkeys-stop/) <small>(not implemented)</small>
 
 Stops hotkeys tracking.
-
-#### [INFO](https://redis.io/commands/info/) <small>(not implemented)</small>
-
-Returns information and statistics about the server.
 
 #### [LATENCY](https://redis.io/commands/latency/) <small>(not implemented)</small>
 
