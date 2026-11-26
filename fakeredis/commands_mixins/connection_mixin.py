@@ -72,9 +72,9 @@ class ConnectionCommandsMixin(CommandsMixinBase):
         return OK
 
     @command(name="CLIENT GETNAME", fixed=(), repeat=())
-    def client_getname(self) -> bytes:
+    def client_getname(self) -> bytes | None:
         name: str = self._client_info.get("name", "")
-        return name.encode("utf-8")
+        return name.encode("utf-8") if name else None
 
     @command(name="CLIENT ID", fixed=(), repeat=())
     def client_getid(self) -> int:
