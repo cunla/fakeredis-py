@@ -48,7 +48,7 @@ jobs:
           - "valkey/valkey:8.1.8"
           - "redis:6.2.17"
         python-version: ["3.10", "3.12", "3.13", "3.14", "3.15"]
-        redis-py: ["4.6.0", "6.4.0", "7.4.0", "8.2.0"]
+        redis-py: ["6.4.0", "7.4.0", "8.2.0"]
         install-extras: [false]
         coverage: [false]
         exclude:
@@ -96,7 +96,7 @@ jobs:
       contents: read
       pull-requests: write
     name: >
-      tests py${{ matrix.python-version }},redis-py:${{ matrix.redis-py }},${{ matrix.server-image }}
+      py${{ matrix.python-version }}, redis-py:${{ matrix.redis-py }}, ${{ matrix.server-image }}
     uses: ./.github/workflows/test-combination.yml
     with:
       server-image: ${{ matrix.server-image }}
