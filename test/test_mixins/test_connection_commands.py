@@ -124,6 +124,7 @@ def test_client_id(r: ClientType):
 
 
 def test_client_setname(r: ClientType):
+    assert r.client_getname() is None
     assert r.client_setname("test") is True
     assert r.client_getname() == resp_conversion(r, b"test", "test")
 
