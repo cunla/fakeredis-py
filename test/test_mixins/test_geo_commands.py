@@ -11,21 +11,40 @@ from test.testtools import resp_conversion
 
 PALERMO_HASH = 3479099956230698
 
+# (longitude, latitude) of every member the tests add, keyed by member name
+LOCATIONS: dict[str, tuple[float, float]] = {
+    # Barcelona
+    "place1": (2.1909389952632, 41.433791470673),
+    "place2": (2.1873744593677, 41.406342043777),
+    "place3": (2.1804738294738, 41.405647879212),
+    # About 35 km south-east of place1 and place2
+    "place4": (2.583333, 41.316667),
+    # Sicily, from the Redis documentation's GEO examples
+    "Palermo": (13.361389, 38.115556),
+    "Catania": (15.087269, 37.502669),
+    "edge1": (12.758489, 38.788135),
+    "edge2": (17.241510, 38.788135),
+}
+
+
+def geo_values(*members: str) -> tuple[Any, ...]:
+    """The flat (longitude, latitude, member, ...) sequence GEOADD takes, for members of LOCATIONS."""
+    return tuple(value for member in members for value in (*LOCATIONS[member], member))
+
 
 def test_geoadd_ch(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1")
-    assert r.geoadd("a", values) == 1
-    values = (2.1909389952632, 31.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
+    assert r.geoadd("a", geo_values("place1")) == 1
+    # place1 moves 10 degrees south, place2 is new
+    values = (LOCATIONS["place1"][0], 31.433791470673, "place1", *geo_values("place2"))
     assert r.geoadd("a", values, ch=True) == 2
     assert r.zrange("a", 0, -1) == [b"place1", b"place2"]
 
 
 def test_geoadd(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    assert r.geoadd("barcelona", values) == 2
+    assert r.geoadd("barcelona", geo_values("place1", "place2")) == 2
     assert r.zcard("barcelona") == 2
 
-    values = (2.1909389952632, 41.433791470673, "place1")
+    values = geo_values("place1")
     assert r.geoadd("a", values) == 1
 
     with pytest.raises(Exception) as ctx:
@@ -44,51 +63,35 @@ def test_geoadd(r: ClientType):
 
 
 def test_geoadd_xx(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    assert r.geoadd("a", values) == 2
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        b"place1",
-        2.1873744593677,
-        41.406342043777,
-        b"place2",
-        2.1804738294738,
-        41.405647879212,
-        b"place3",
-    )
-    assert r.geoadd("a", values, nx=True) == 1
+    assert r.geoadd("a", geo_values("place1", "place2")) == 2
+    assert r.geoadd("a", geo_values("place1", "place2", "place3"), nx=True) == 1
     assert r.zrange("a", 0, -1) == [b"place3", b"place2", b"place1"]
 
 
 def test_geohash(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     assert r.geohash("barcelona", "place1", "place2", "place3") == resp_conversion(
         r, [b"sp3e9yg3kd0", b"sp3e9cbc3t0", None], ["sp3e9yg3kd0", "sp3e9cbc3t0", None]
     )
 
 
 def test_geopos(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     # small errors may be introduced.
     assert r.geopos("barcelona", "place1", "place4", "place2") == [
-        pytest.approx((2.1909389952632, 41.433791470673), 0.00001),
+        pytest.approx(LOCATIONS["place1"], 0.00001),
         None,
-        pytest.approx((2.1873744593677, 41.406342043777), 0.00001),
+        pytest.approx(LOCATIONS["place2"], 0.00001),
     ]
 
 
 def test_geodist(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    assert r.geoadd("barcelona", values) == 2
+    assert r.geoadd("barcelona", geo_values("place1", "place2")) == 2
     assert r.geodist("barcelona", "place1", "place2") == pytest.approx(3067.4157, 0.0001)
 
 
 def test_geodist_units(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     assert r.geodist("barcelona", "place1", "place2", "km") == pytest.approx(3.0674, 0.0001)
     assert r.geodist("barcelona", "place1", "place2", "mi") == pytest.approx(1.906, 0.0001)
     assert r.geodist("barcelona", "place1", "place2", "ft") == pytest.approx(10063.6998, 0.0001)
@@ -99,8 +102,7 @@ def test_geodist_units(r: ClientType):
 
 
 def test_geodist_missing_one_member(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1"))
     assert r.geodist("barcelona", "place1", "missing_member", "km") is None
 
 
@@ -116,8 +118,7 @@ def test_geodist_missing_one_member(r: ClientType):
     ],
 )
 def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra: dict[str, Any], expected: list[bytes]):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     assert r.georadius("barcelona", long, lat, radius, **extra) == expected
 
 
@@ -132,8 +133,7 @@ def test_georadius(r: ClientType, long: float, lat: float, radius: float, extra:
     ],
 )
 def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dict[str, Any], expected: list[bytes]):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, b"place2")
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     assert r.georadiusbymember("barcelona", member, radius, **extra) == expected
     assert r.georadiusbymember("barcelona", member, radius, **extra, store_dist="extract") == len(expected)
     assert r.zcard("extract") == len(expected)
@@ -141,9 +141,7 @@ def test_georadiusbymember(r: ClientType, member: str, radius: float, extra: dic
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_with(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
     # test a bunch of combinations to test the parse response function.
     res = r.georadius("barcelona", 2.191, 41.433, 1, unit="km", withdist=True, withcoord=True)
     assert len(res) == 1
@@ -161,9 +159,7 @@ def test_georadius_with(r: ClientType):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_georadius_count(r: ClientType):
-    values = (2.1909389952632, 41.433791470673, "place1", 2.1873744593677, 41.406342043777, "place2")
-
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2"))
 
     assert r.georadius("barcelona", 2.191, 41.433, 3000, count=1, store="barcelona") == 1
     assert r.georadius("barcelona", 2.191, 41.433, 3000, store_dist="extract") == 1
@@ -171,9 +167,7 @@ def test_georadius_count(r: ClientType):
     res = r.georadius("barcelona", 2.191, 41.433, 3000, count=1, any=True)
     assert (res == [b"place2"]) or res == [b"place1"]
 
-    values = (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania")
-
-    r.geoadd("Sicily", values)
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     assert (
         testtools.raw_command(
             r, "GEORADIUS", "Sicily", "15", "37", "200", "km", "STOREDIST", "neardist", "STORE", "near"
@@ -185,9 +179,7 @@ def test_georadius_count(r: ClientType):
 
 
 def test_georadius_errors(r: ClientType):
-    values = (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania")
-
-    r.geoadd("Sicily", values)
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
 
     with pytest.raises(Exception) as ctx:
         r.georadius("barcelona", 2.191, 41.433, 3000, unit="dsf")
@@ -198,7 +190,8 @@ def test_georadius_errors(r: ClientType):
         )
 
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
-    bad_values = (13.361389, 38.115556, "Palermo", 15.087269, "Catania")
+    # Catania is missing its latitude
+    bad_values = (*geo_values("Palermo"), LOCATIONS["Catania"][0], "Catania")
     with pytest.raises(Exception) as ctx:
         r.geoadd("newgroup", bad_values)
     assert isinstance(ctx.value, (redis.DataError, valkey.DataError))
@@ -209,59 +202,32 @@ def test_georadius_errors(r: ClientType):
 
 
 def test_geosearch(r: ClientType, real_server_details: ServerDetails):
-    values = (
-        2.1909389952632,
-        41.433791470673,
-        b"place1",
-        2.1873744593677,
-        41.406342043777,
-        b"place2",
-        2.583333,
-        41.316667,
-        b"place3",
-    )
-    r.geoadd("barcelona", values)
+    r.geoadd("barcelona", geo_values("place1", "place2", "place4"))
     assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, radius=1000) == [b"place1"]
     assert r.geosearch("barcelona", longitude=2.187, latitude=41.406, radius=1000) == [b"place2"]
     # assert r.geosearch("barcelona", longitude=2.191, latitude=41.433, height=1000, width=1000) == [b"place1"]
-    assert set(r.geosearch("barcelona", member="place3", radius=100, unit="km")) == {b"place2", b"place1", b"place3"}
+    assert set(r.geosearch("barcelona", member="place4", radius=100, unit="km")) == {b"place2", b"place1", b"place4"}
     # test count
     if real_server_details.server_type == "dragonfly":
         # COUNT alone does not imply an ascending sort on dragonfly: results come back in geohash (sorted-set score)
         # order unless ASC/DESC is asked for explicitly.
-        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place2", b"place1"]
-        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2, sort="ASC") == [
-            b"place3",
+        assert r.geosearch("barcelona", member="place4", radius=100, unit="km", count=2) == [b"place2", b"place1"]
+        assert r.geosearch("barcelona", member="place4", radius=100, unit="km", count=2, sort="ASC") == [
+            b"place4",
             b"place2",
         ]
     else:
-        assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=2) == [b"place3", b"place2"]
-    assert r.geosearch("barcelona", member="place3", radius=100, unit="km", count=1, any=True)[0] in [
+        assert r.geosearch("barcelona", member="place4", radius=100, unit="km", count=2) == [b"place4", b"place2"]
+    assert r.geosearch("barcelona", member="place4", radius=100, unit="km", count=1, any=True)[0] in [
         b"place1",
-        b"place3",
+        b"place4",
         b"place2",
     ]
 
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_geosearch_bybox(r: ClientType, real_server_details: ServerDetails):
-    r.geoadd(
-        "Sicily",
-        (
-            13.361389,
-            38.115556,
-            "Palermo",
-            15.087269,
-            37.502669,
-            "Catania",
-            12.758489,
-            38.788135,
-            "edge1",
-            17.241510,
-            38.788135,
-            "edge2",
-        ),
-    )
+    r.geoadd("Sicily", geo_values("Palermo", "Catania", "edge1", "edge2"))
     # The GEOSEARCH example of the Redis documentation: edge1 and edge2 are just inside the 400 x 400 km box
     res = r.geosearch("Sicily", longitude=15, latitude=37, width=400, height=400, unit="km", sort="ASC", withdist=True)
     assert [name for name, _ in res[:2]] == [b"Catania", b"Palermo"]
@@ -295,7 +261,7 @@ def test_geosearch_bybox(r: ClientType, real_server_details: ServerDetails):
 
 @pytest.mark.unsupported_server_types("dragonfly")
 def test_geosearch_bybox_options(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     # STOREDIST scores are distances in the requested unit
     assert (
         r.geosearchstore("dst", "Sicily", longitude=15, latitude=37, width=400, height=400, unit="km", storedist=True)
@@ -349,7 +315,7 @@ def test_geosearch_bybox_options(r: ClientType):
 )
 @pytest.mark.parametrize("origin", [("FROMLONLAT", 15, 37), ("FROMMEMBER", "Catania")])
 def test_geosearch_byradius_and_bybox_are_exclusive(r: ClientType, origin: tuple[Any, ...], shapes: tuple[Any, ...]):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     for command in (("GEOSEARCH", "Sicily"), ("GEOSEARCHSTORE", "dst", "Sicily")):
         with pytest.raises(Exception) as ctx:
             testtools.raw_command(r, *command, *origin, *shapes)
@@ -374,7 +340,7 @@ def test_geosearch_byradius_and_bybox_are_exclusive(r: ClientType, origin: tuple
 def test_geosearch_frommember_and_fromlonlat_are_exclusive(
     r: ClientType, key: str, origins: tuple[Any, ...], shape: tuple[Any, ...]
 ):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     for command in (("GEOSEARCH", key), ("GEOSEARCHSTORE", "dst", key)):
         with pytest.raises(Exception) as ctx:
             testtools.raw_command(r, *command, *origins, *shape)
@@ -387,7 +353,7 @@ def test_geosearch_frommember_and_fromlonlat_are_exclusive(
 def test_geosearch_missing_member_reported_before_fromlonlat(r: ClientType, real_server_details: ServerDetails):
     # FROMMEMBER looks its member up as soon as it is parsed, so a missing member is reported before the FROMLONLAT
     # that follows it is rejected
-    r.geoadd("Sicily", (15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Catania"))
     with pytest.raises(Exception) as ctx:
         testtools.raw_command(r, "GEOSEARCH", "Sicily", "FROMMEMBER", "nope", "FROMLONLAT", 15, 37, "BYRADIUS", 1, "km")
     assert isinstance(ctx.value, (redis.ResponseError, valkey.ResponseError))
@@ -415,7 +381,7 @@ def test_geoadd_rejects_coordinates_outside_geohash_range(r: ClientType, longitu
 
 
 def test_search_by_missing_member(r: ClientType, real_server_details: ServerDetails):
-    r.geoadd("geo", (13.361389, 38.115556, "Palermo"))
+    r.geoadd("geo", geo_values("Palermo"))
     if real_server_details.server_type == "valkey" and real_server_details.server_version >= (9,):
         expected_msg = "member missing does not exist"
     else:
@@ -443,29 +409,29 @@ def test_search_by_missing_member(r: ClientType, real_server_details: ServerDeta
 
 
 def test_geo_member_score_is_the_52_bit_geohash(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     assert r.zscore("Sicily", "Palermo") == PALERMO_HASH
 
 
 def test_zcount_on_a_geo_key(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     assert r.zcount("Sicily", "-inf", "+inf") == 2
 
 
 def test_geosearch_withhash(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     res = r.geosearch("Sicily", member="Palermo", radius=1, unit="km", withhash=True)
     assert res == [[b"Palermo", PALERMO_HASH]]
 
 
 def test_georadius_withhash_withcoord(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
-    res = r.georadius("Sicily", 13.361389, 38.115556, 1, unit="km", withhash=True, withcoord=True)
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
+    res = r.georadius("Sicily", *LOCATIONS["Palermo"], 1, unit="km", withhash=True, withcoord=True)
     assert res[0][:2] == [b"Palermo", PALERMO_HASH]
 
 
 def test_georadiusbymember_withhash(r: ClientType):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     res = r.georadiusbymember("Sicily", "Palermo", 1, unit="km", withhash=True)
     assert res == [[b"Palermo", PALERMO_HASH]]
 
@@ -474,11 +440,11 @@ def test_georadiusbymember_withhash(r: ClientType):
 @pytest.mark.parametrize(
     "cmd, args",
     [
-        ("GEORADIUS_RO", ("13.361389", "38.115556")),
+        ("GEORADIUS_RO", LOCATIONS["Palermo"]),
         ("GEORADIUSBYMEMBER_RO", ("Palermo",)),
     ],
 )
 def test_ro_variants_withhash(r: ClientType, cmd: str, args: tuple[Any]):
-    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    r.geoadd("Sicily", geo_values("Palermo", "Catania"))
     res = r.execute_command(cmd, "Sicily", *args, "1", "km", "WITHHASH")
     assert res == [[b"Palermo", PALERMO_HASH]]
