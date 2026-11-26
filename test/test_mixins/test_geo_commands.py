@@ -470,6 +470,7 @@ def test_georadiusbymember_withhash(r: ClientType):
     assert res == [[b"Palermo", PALERMO_HASH]]
 
 
+@pytest.mark.unsupported_server_types("dragonfly")
 @pytest.mark.parametrize(
     "cmd, args",
     [
