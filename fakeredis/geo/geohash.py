@@ -3,50 +3,13 @@
 
 from __future__ import annotations
 
-base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
-decodemap = {base32[i]: i for i in range(len(base32))}
-
-
-def geo_decode(geohash: str) -> tuple[float, float, float, float]:
-    """
-    Decode the geohash to its exact values, including the error margins of the result.  Returns four float values:
-    latitude, longitude, the plus/minus error for latitude (as a positive number) and the plus/minus error for longitude
-    (as a positive number).
-    """
-    lat_interval, lon_interval = (-90.0, 90.0), (-180.0, 180.0)
-    lat_err, lon_err = 90.0, 180.0
-    is_longitude = True
-    for c in geohash:
-        cd = decodemap[c]
-        for mask in [16, 8, 4, 2, 1]:
-            if is_longitude:  # adds longitude info
-                lon_err /= 2
-                if cd & mask:
-                    lon_interval = (
-                        (lon_interval[0] + lon_interval[1]) / 2,
-                        lon_interval[1],
-                    )
-                else:
-                    lon_interval = (
-                        lon_interval[0],
-                        (lon_interval[0] + lon_interval[1]) / 2,
-                    )
-            else:  # adds latitude info
-                lat_err /= 2
-                if cd & mask:
-                    lat_interval = (
-                        (lat_interval[0] + lat_interval[1]) / 2,
-                        lat_interval[1],
-                    )
-                else:
-                    lat_interval = (
-                        lat_interval[0],
-                        (lat_interval[0] + lat_interval[1]) / 2,
-                    )
-            is_longitude = not is_longitude
-    lat = (lat_interval[0] + lat_interval[1]) / 2
-    lon = (lon_interval[0] + lon_interval[1]) / 2
-    return lat, lon, lat_err, lon_err
+_BASE32_HASH = "0123456789bcdefghjkmnpqrstuvwxyz"
+# Redis stores a GEO member's score as the 52-bit interleaved geohash over the *Web Mercator* latitude range, not over
+# the -90..90 range the base32 string above uses. The two encodings are different: the string is for humans and GEOHASH
+# output, the integer is what every sorted-set command sees as the score.
+_GEO_SCORE_LAT_MIN, _GEO_SCORE_LAT_MAX = -85.05112878, 85.05112878
+_GEO_SCORE_LON_MIN, _GEO_SCORE_LON_MAX = -180.0, 180.0
+_GEO_SCORE_STEP = 26
 
 
 def geo_encode(latitude: float, longitude: float, precision: int = 12) -> str:
@@ -76,18 +39,10 @@ def geo_encode(latitude: float, longitude: float, precision: int = 12) -> str:
         if bit < 4:
             bit += 1
         else:
-            geohash += base32[ch]
+            geohash += _BASE32_HASH[ch]
             bit = 0
             ch = 0
     return "".join(geohash)
-
-
-# Redis stores a GEO member's score as the 52-bit interleaved geohash over the *Web Mercator* latitude range, not over
-# the -90..90 range the base32 string above uses. The two encodings are different: the string is for humans and GEOHASH
-# output, the integer is what every sorted-set command sees as the score.
-_GEO_SCORE_LAT_MIN, _GEO_SCORE_LAT_MAX = -85.05112878, 85.05112878
-_GEO_SCORE_LON_MIN, _GEO_SCORE_LON_MAX = -180.0, 180.0
-_GEO_SCORE_STEP = 26
 
 
 def _spread_bits(value: int) -> int:
