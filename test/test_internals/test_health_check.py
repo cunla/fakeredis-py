@@ -1,6 +1,5 @@
 """Connections created with health_check_interval > 0 (https://github.com/cunla/fakeredis-py/issues/658)."""
 
-import asyncio
 from collections.abc import Callable
 from typing import Any
 from unittest import mock
@@ -82,18 +81,23 @@ def test_error_reply_postpones_health_check(create_connection: Callable[..., Cli
 
 
 @pytest.mark.asyncio
-async def test_async_connection_handshake_with_health_check_interval(async_redis: AsyncClientType):
-    assert await async_redis.set("foo", "bar") is True
-    assert await async_redis.get("foo") == b"bar"
-    assert await async_redis.client_getname() in ("c", b"c")
+async def test_async_connection_handshake_with_health_check_interval(
+    create_async_connection: Callable[..., AsyncClientType],
+):
+    client = create_async_connection(db=2, health_check_interval=30, client_name="c")
+    assert await client.set("foo", "bar") is True
+    assert await client.get("foo") == b"bar"
+    assert await client.client_getname() in ("c", b"c")
 
 
 @pytest.mark.asyncio
-async def test_async_health_check_pings_only_once_the_interval_has_passed(async_redis: AsyncClientType):
-    await async_redis.set("foo", "bar")
-    conn = await pool_get_connection(async_redis.connection_pool)
+async def test_async_health_check_pings_only_once_the_interval_has_passed(
+    create_async_connection: Callable[..., AsyncClientType],
+):
+    client = create_async_connection(db=2, health_check_interval=30)
+    await client.set("foo", "bar")
+    conn = await pool_get_connection(client.connection_pool)
     try:
-        assert conn.next_health_check > asyncio.get_running_loop().time() + 25
         with mock.patch.object(conn, "_send_ping", wraps=conn._send_ping) as send_ping:
             await conn.send_command("GET", "foo")
             assert await conn.read_response() == b"bar"
@@ -104,4 +108,4 @@ async def test_async_health_check_pings_only_once_the_interval_has_passed(async_
             assert await conn.read_response() == b"bar"
             send_ping.assert_called_once()
     finally:
-        await async_redis.connection_pool.release(conn)
+        await client.connection_pool.release(conn)

@@ -1,5 +1,5 @@
 import time
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
 from threading import Thread
 from typing import Any, Callable
@@ -221,7 +221,7 @@ def _create_connection(request: pytest.FixtureRequest, real_server_details: Serv
 
 
 @pytest_asyncio.fixture(
-    name="async_redis",
+    name="create_async_connection",
     params=[
         pytest.param(("fake", 2), marks=pytest.mark.fake),
         pytest.param(("fake", 3), marks=pytest.mark.fake),
@@ -230,7 +230,9 @@ def _create_connection(request: pytest.FixtureRequest, real_server_details: Serv
     ],
     ids=lambda x: f"{x[0]}_resp{x[1]}",
 )
-async def _req_aioredis2(request: pytest.FixtureRequest, real_server_details: ServerDetails) -> AsyncClientType:
+async def _create_async_connection(
+    request: pytest.FixtureRequest, real_server_details: ServerDetails
+) -> AsyncGenerator[Callable[..., AsyncClientType], None]:
     param_type, protocol = request.param[0], int(request.param[1])
     if request.node.get_closest_marker("fake_only") and param_type != "fake":
         pytest.skip("Test is only applicable to fakeredis")
@@ -244,22 +246,44 @@ async def _req_aioredis2(request: pytest.FixtureRequest, real_server_details: Se
     lua_modules = set(lua_modules_marker.args) if lua_modules_marker else None
     if lua_modules and not _check_lua_module_supported():
         pytest.skip("LUA modules not supported by fakeredis")
-    fake_server: fakeredis.FakeServer | None
     cls = _get_class(param_type, real_server_details, True)
-    if param_type == "fake":
-        fake_server = request.getfixturevalue("fake_server")
-        ret = cls(server=fake_server, lua_modules=lua_modules, decode_responses=decode_responses, protocol=protocol)
-    else:
-        kwds = {"host": "localhost", "port": 6390, "db": 2, "decode_responses": decode_responses}
-        if REDIS_PY_VERSION.major >= 5:
-            kwds["protocol"] = protocol
-        ret = cls(**kwds)
-        fake_server = None
-    if not fake_server or fake_server.connected:
+    fake_server = request.getfixturevalue("fake_server") if param_type == "fake" else None
+    clients: list[AsyncClientType] = []
+
+    def factory(**kwargs: Any) -> AsyncClientType:
+        if fake_server is not None:
+            client = cls(
+                server=fake_server,
+                lua_modules=lua_modules,
+                decode_responses=decode_responses,
+                protocol=protocol,
+                **kwargs,
+            )
+        else:
+            # The real server is shared, so its clients stay in db 2 unless the test picks another.
+            kwargs.setdefault("db", 2)
+            if REDIS_PY_VERSION.major >= 5:
+                kwargs["protocol"] = protocol
+            client = cls(host="localhost", port=6390, decode_responses=decode_responses, **kwargs)
+        clients.append(client)
+        return client
+
+    yield factory
+
+    for client in clients:
+        await client.connection_pool.disconnect()
+
+
+@pytest_asyncio.fixture(name="async_redis")
+async def _req_aioredis2(
+    request: pytest.FixtureRequest, create_async_connection: Callable[..., AsyncClientType]
+) -> AsyncGenerator[AsyncClientType, None]:
+    ret = create_async_connection()
+    connected = request.node.get_closest_marker("disconnected") is None
+    if connected:
         await ret.flushall()
 
     yield ret
 
-    if not fake_server or fake_server.connected:
+    if connected:
         await ret.flushall()
-    await ret.connection_pool.disconnect()
