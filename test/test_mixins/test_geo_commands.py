@@ -9,6 +9,8 @@ from test import testtools
 from test.conftest import ServerDetails
 from test.testtools import resp_conversion
 
+PALERMO_HASH = 3479099956230698
+
 
 def test_geoadd_ch(r: ClientType):
     values = (2.1909389952632, 41.433791470673, "place1")
@@ -438,3 +440,44 @@ def test_search_by_missing_member(r: ClientType, real_server_details: ServerDeta
     assert r.geosearch("missing-key", member="x", radius=100, unit="km") == []
     if has_geosearchstore:
         assert r.geosearchstore("dst", "missing-key", member="x", radius=100, unit="km") == 0
+
+
+def test_geo_member_score_is_the_52_bit_geohash(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    assert r.zscore("Sicily", "Palermo") == PALERMO_HASH
+
+
+def test_zcount_on_a_geo_key(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    assert r.zcount("Sicily", "-inf", "+inf") == 2
+
+
+def test_geosearch_withhash(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    res = r.geosearch("Sicily", member="Palermo", radius=1, unit="km", withhash=True)
+    assert res == [[b"Palermo", PALERMO_HASH]]
+
+
+def test_georadius_withhash_withcoord(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    res = r.georadius("Sicily", 13.361389, 38.115556, 1, unit="km", withhash=True, withcoord=True)
+    assert res[0][:2] == [b"Palermo", PALERMO_HASH]
+
+
+def test_georadiusbymember_withhash(r: ClientType):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    res = r.georadiusbymember("Sicily", "Palermo", 1, unit="km", withhash=True)
+    assert res == [[b"Palermo", PALERMO_HASH]]
+
+
+@pytest.mark.parametrize(
+    "cmd, args",
+    [
+        ("GEORADIUS_RO", ("13.361389", "38.115556")),
+        ("GEORADIUSBYMEMBER_RO", ("Palermo",)),
+    ],
+)
+def test_ro_variants_withhash(r: ClientType, cmd: str, args: tuple[Any]):
+    r.geoadd("Sicily", (13.361389, 38.115556, "Palermo", 15.087269, 37.502669, "Catania"))
+    res = r.execute_command(cmd, "Sicily", *args, "1", "km", "WITHHASH")
+    assert res == [[b"Palermo", PALERMO_HASH]]

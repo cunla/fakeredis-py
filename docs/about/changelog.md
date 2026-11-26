@@ -15,7 +15,10 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- fix: clients created with `health_check_interval` no longer fail to connect with `Bad response from PING health check`, or hang when `retry_on_error` is set. This affected sync clients on redis-py 8.2, `FakeAsyncRedis` on redis-py 5.0+ and `FakeAsyncValkey` (#658)
+- fix: clients created with `health_check_interval` no longer fail to connect with
+  `Bad response from PING health check`, or hang when `retry_on_error` is set. This affected sync clients on redis-py
+  8.2, `FakeAsyncRedis` on redis-py 5.0+ and `FakeAsyncValkey` (#658)
+- fix: GEO member scores are base32 strings instead of the integer geohash, and WITHHASH is dropped
 
 ## v2.41.0 - 2026-11-23
 
@@ -26,14 +29,17 @@ toc_depth: 2
 
 ### 🐛 Bug Fixes
 
-- fix: support redis-py 8.2: client creation no longer crashes or emits deprecation warnings, and `FakeAsyncRedis` sends commands again (#636)
+- fix: support redis-py 8.2: client creation no longer crashes or emits deprecation warnings, and `FakeAsyncRedis` sends
+  commands again (#636)
 - fix: `EXPIRE`/`PEXPIRE`/`EXPIREAT` reject expire times that overflow a 64-bit ms timestamp, like Redis (#646)
 - fix(json): `JSON.DEL` on array index/slice paths no longer deletes extra elements or over-counts (#645)
 - fix(geo): `GEOSEARCH`/`GEOSEARCHSTORE` validate their options and return Redis' errors
-- fix(streams): blocking `XREADGROUP` returns already-available entries, and with `COUNT` waits for new ones instead of returning at once
+- fix(streams): blocking `XREADGROUP` returns already-available entries, and with `COUNT` waits for new ones instead of
+  returning at once
 - fix(streams): `XREADGROUP` with `COUNT` ≤ 0 reads everything, like Redis and Valkey
 - fix(streams): on Valkey 9.1.4+, `XINFO GROUPS` reports lag for emptied or over-trimmed streams like Valkey/Redis 7.4
-- fix(transactions): on Valkey 9.2, `EXEC` outside `MULTI` with arguments and invalid `IFEQ`/`IFNE`/`NX`/`XX` conditions fail like Valkey; valid conditions are not supported yet (#649)
+- fix(transactions): on Valkey 9.2, `EXEC` outside `MULTI` with arguments and invalid `IFEQ`/`IFNE`/`NX`/`XX` conditions
+  fail like Valkey; valid conditions are not supported yet (#649)
 
 ### 🧰 Maintenance
 
@@ -45,13 +51,15 @@ toc_depth: 2
 
 - feat: implement `HIMPORT PREPARE`/`SET`/`DISCARD`/`DISCARDALL` (Redis 8.10) (#599)
 - feat(json): implement `JSON.NUMPOWBY` (#602)
-- feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra, `pip install "fakeredis[digest]"` (#600, #601)
+- feat: implement `DIGEST` and `DELEX` (Redis 8.4); digests need the new `digest` extra,
+  `pip install "fakeredis[digest]"` (#600, #601)
 
 ### 🧰 Maintenance
 
 - perf: lower per-command and client-construction overhead (#612, #613)
 - perf: expire keys and hash fields through a heap instead of scanning (#606)
-- perf: faster `SPOP`/`SRANDMEMBER`, `SCAN`-family iteration, stream range reads with `COUNT`, large replies and Lua table conversion (#605, #610, #611, #614, #615)
+- perf: faster `SPOP`/`SRANDMEMBER`, `SCAN`-family iteration, stream range reads with `COUNT`, large replies and Lua
+  table conversion (#605, #610, #611, #614, #615)
 - test: run CI against Python 3.15
 - docs: document `TcpFakeServer` in the README
 - chore: update dependencies
@@ -60,15 +68,18 @@ toc_depth: 2
 
 ### 🚀 Features
 
-- feat: support Redis 8.10 commands `LMOVEM`, `BLMOVEM`, `SUNIONCARD`, `SDIFFCARD`, `TS.QUERYLABELS`, `TS.NRANGE`, `TS.NREVRANGE` and `TS.READ` (#597)
+- feat: support Redis 8.10 commands `LMOVEM`, `BLMOVEM`, `SUNIONCARD`, `SDIFFCARD`, `TS.QUERYLABELS`, `TS.NRANGE`,
+  `TS.NREVRANGE` and `TS.READ` (#597)
 - feat(kividb): add the `kividb` server type, matching KiviDB 1.0.4's command surface (#570, #571)
 - feat(streams): `XADD`/`XTRIM` accept the `KEEPREF`/`DELREF`/`ACKED` reference policies (#583)
 
 ### 🐛 Bug Fixes
 
-- fix: `MOVE`/`SMOVE` invalidate `WATCH` like Redis, add `SORT_RO`, sort unsorted `SORT` results in scripts/`STORE`, and fix `ZSCAN` while deleting (#595)
+- fix: `MOVE`/`SMOVE` invalidate `WATCH` like Redis, add `SORT_RO`, sort unsorted `SORT` results in scripts/`STORE`, and
+  fix `ZSCAN` while deleting (#595)
 - fix(bitmap): `BITOP` pads shorter operands and treats missing keys as empty (#593)
-- fix(geo): `*BYMEMBER`/`FROMMEMBER` searches on a missing member return Redis'/Valkey 9's error instead of crashing (#594)
+- fix(geo): `*BYMEMBER`/`FROMMEMBER` searches on a missing member return Redis'/Valkey 9's error instead of crashing
+  (#594)
 - fix(valkey): `from_url` works for `FakeValkey`, `FakeStrictValkey` and `FakeAsyncValkey` (#591)
 - fix(streams): approximate (`~`) trimming drops whole nodes and `XADD`/`XTRIM` options use Redis' errors (#583)
 - fix(streams): `XADD` never reuses deleted IDs and rejects invalid IDs like Redis (#583)
@@ -85,7 +96,8 @@ toc_depth: 2
 ### 🧰 Maintenance
 
 - perf: cache glob patterns, skip empty TTL scans, and stop polling in `get_message(timeout=...)` (#577)
-- refactor: layer internals into `fakeredis/_core`, `fakeredis/_clients` and `fakeredis/_socket` packages (#589, #590, #592)
+- refactor: layer internals into `fakeredis/_core`, `fakeredis/_clients` and `fakeredis/_socket` packages (#589, #590,
+  #592)
 - test: run CI against Redis 8.10 and a real KiviDB (#570, #597)
 - test: drop stale TODOs and narrow Dragonfly zset test skips (#596)
 - test: drop `from __future__ import annotations` from test files (#586)
@@ -125,8 +137,7 @@ toc_depth: 2
 - fix: `XCLAIM`/`XAUTOCLAIM` now move an entry's pending count to the claiming consumer instead of
   leaving it on the previous owner, so a later `XACK` no longer drives that count negative (#548)
 - fix: `XACK` no longer raises a raw Python `KeyError` when a pending entry has no live consumer, and
-  `XGROUP DELCONSUMER` now removes the entries that consumer owned, returning how many it dropped
-  (#549)
+  `XGROUP DELCONSUMER` now removes the entries that consumer owned, returning how many it dropped (#549)
 - fix: `XCLAIM` now honours `RETRYCOUNT`, and `XCLAIM`/`XAUTOCLAIM` honour `JUSTID`, when updating an
   entry's delivery counter. `RETRYCOUNT` takes precedence over `JUSTID`, and a negative `RETRYCOUNT`
   means "not given" (#544)
@@ -137,8 +148,7 @@ toc_depth: 2
   list is exhausted (#547)
 - fix: `SMOVE` no longer raises `WRONGTYPE` for a wrongly typed destination when the source key is
   missing, `BITCOUNT` reports the syntax error before decoding its range arguments on a pre-7.0
-  server, and `GEORADIUS` returns an unsorted reply in geohash order rather than insertion order
-  (#553)
+  server, and `GEORADIUS` returns an unsorted reply in geohash order rather than insertion order (#553)
 - fix: reap `TcpFakeServer` handler threads when a client disconnects (#541)
 
 ### 🧰 Maintenance
@@ -155,7 +165,8 @@ toc_depth: 2
 
 - fix: honor the `FILTER-EF` (max filtering effort) option in `VSIM` — the value was previously parsed but ignored, so a
   low `FILTER-EF` could return filter matches that real Redis skips
-- fix: `ZPOPMIN`/`ZPOPMAX` in RESP3 now return a flat `[member, score]` pair when no count is given (an array of pairs is
+- fix: `ZPOPMIN`/`ZPOPMAX` in RESP3 now return a flat `[member, score]` pair when no count is given (an array of pairs
+  is
   only returned when an explicit count is passed), matching real Redis
 - fix: `ZPOPMIN`/`ZPOPMAX` now reject a negative count with `value is out of range, must be positive`
 - fix: `ZPOPMIN`/`ZPOPMAX`/`BZPOPMIN`/`BZPOPMAX`/`ZMPOP`/`BZMPOP` now delete the sorted set key once its last member is
@@ -184,8 +195,8 @@ toc_depth: 2
   not actually suspend command processing; the client-side caching commands (`CLIENT TRACKING`, `CLIENT TRACKINGINFO`,
   `CLIENT CACHING`, `CLIENT GETREDIR`) remain unsupported
 - feat: support `INCREX` command (redis 8.8) (#520)
-- feat: support `FPHA` argument in `JSON.SET` to force homogeneous numeric arrays to a floating-point type (redis 8.8) (
-  #523)
+- feat: support `FPHA` argument in `JSON.SET` to force homogeneous numeric arrays to a floating-point type (redis 8.8)
+  (#523)
 - feat: support hash field subkey notifications (redis 8.8) (#525)
 - feat: support multiple aggregators in `TS.RANGE`/`TS.REVRANGE`/`TS.MRANGE`/`TS.MREVRANGE` (redis 8.8) (#524)
 - feat: support `COUNT` aggregator in `ZUNION`/`ZINTER`/`ZUNIONSTORE`/`ZINTERSTORE` (redis 8.8) (#522)
@@ -245,8 +256,8 @@ toc_depth: 2
 - feat(lua): add server global alias for Valkey @przemub (#480)
 - feat(streams): implement `XACKDEL`, `XDELEX`, `XIDMPRECORD`, `XNACK` commands (#484)
 - feat: add `VISMEMBER` command to check element existence in vector set
-- feat: implement array commands (`ARSET`, `ARGET`, `ARLEN`, `ARGETRANGE`, `ARINSERT`, `ARDEL`, etc.) for Redis 8.8 (
-  #487)
+- feat: implement array commands (`ARSET`, `ARGET`, `ARLEN`, `ARGETRANGE`, `ARINSERT`, `ARDEL`, etc.) for Redis 8.8
+  (#487)
 
 ### 🐛 Bug Fixes
 
