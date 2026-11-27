@@ -120,6 +120,20 @@ def redis_client(request):
 FakeRedis can imitate Redis server version 6.x or 7.x or 8.x, [Valkey server](./valkey-support),
 and [dragonfly server](./dragonfly-support). Redis version 7 is used by default.
 
+With `FakeServer(strict_version=True)`, commands added after the emulated Redis version (per
+[redis/docs](https://github.com/redis/docs)) are unknown commands, as on the real server. For example, a RESP3
+client connects with `HELLO`, which Redis 5 doesn't have:
+
+```pycon
+>>> server = fakeredis.FakeServer(version="5.0", strict_version=True)
+>>> fakeredis.FakeStrictRedis(server=server, protocol=3).ping()
+Traceback (most recent call last):
+...
+redis.exceptions.ResponseError: unknown command 'hello', with args beginning with:
+```
+
+Only the parts given are compared: `version=6` accepts every 6.x command. Applies to `server_type="redis"` only.
+
 The intent is for fakeredis to act as though you're talking to a real redis server.
 It does this by storing the state internally. For example:
 
