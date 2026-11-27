@@ -40,6 +40,19 @@ def test_topk_incrby(r: ClientType):
     assert counts[4] >= 0  # item "4" was never added
 
 
+def test_topk_incrby_is_deterministic(r: ClientType):
+    for key in ("topk-a", "topk-b"):
+        assert r.topk().reserve(key, 3, 10, 3, 1)
+        assert [None, None, None] == r.topk().incrby(key, ["bar", "baz", "42"], [3, 6, 4])
+        r.topk().incrby(key, ["42", "xyzzy"], [8, 4])
+
+    with pytest.deprecated_call():
+        counts_a = r.topk().count("topk-a", "bar", "baz", "42", "xyzzy", 4)
+        counts_b = r.topk().count("topk-b", "bar", "baz", "42", "xyzzy", 4)
+
+    assert counts_a == counts_b
+
+
 def test_topk(r: ClientType):
     # test list with empty buckets
     assert r.topk().reserve("topk", 3, 50, 4, 0.9)
