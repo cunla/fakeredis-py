@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import heapq
 import random
 import time
@@ -37,11 +38,11 @@ class Bucket:
 
 
 class HashArray:
-    def __init__(self, width: int, decay: float):
+    def __init__(self, width: int, decay: float, seed: int = 0):
         self.width = width
         self.decay = decay
         self.array = [Bucket(0, 0) for _ in range(width)]
-        self._seed = random.getrandbits(32)
+        self._seed = seed
 
     def count(self, item: bytes) -> int:
         return self.get_bucket(item).count(self._hash(item))
@@ -54,7 +55,9 @@ class HashArray:
         return self.array[self._hash(item) % self.width]
 
     def _hash(self, item: bytes) -> int:
-        return hash(item) ^ self._seed
+        # RedisBloom uses fixed seeds, so equal items land in the same buckets across runs and processes.
+        digest = hashlib.blake2s(item, key=self._seed.to_bytes(4, "big"), digest_size=8).digest()
+        return int.from_bytes(digest, "big")
 
 
 class HeavyKeeper(BaseModel):
@@ -68,7 +71,7 @@ class HeavyKeeper(BaseModel):
         self.width = width
         self.depth = depth
         self.decay = decay
-        self.hash_arrays = [HashArray(width, decay) for _ in range(depth)]
+        self.hash_arrays = [HashArray(width, decay, seed=index) for index in range(depth)]
         self.min_heap: list[tuple[int, bytes]] = []
 
     def _index(self, val: bytes) -> int:
